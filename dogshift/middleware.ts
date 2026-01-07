@@ -8,6 +8,23 @@ type RoleToken = JWT & { role?: string };
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
+  if (pathname.startsWith("/api") || pathname.startsWith("/_next") || pathname === "/favicon.ico") {
+    return NextResponse.next();
+  }
+
+  const accessCode = (process.env.SITE_ACCESS_CODE ?? "").trim();
+  if (accessCode) {
+    const hasAccess = req.cookies.get("dogshift_access")?.value === "true";
+    const isAccessPage = pathname === "/access";
+
+    if (!hasAccess && !isAccessPage) {
+      const url = req.nextUrl.clone();
+      url.pathname = "/access";
+      url.searchParams.set("next", `${req.nextUrl.pathname}${req.nextUrl.search}`);
+      return NextResponse.redirect(url);
+    }
+  }
+
   const isHost = pathname.startsWith("/host");
   const isAccount = pathname.startsWith("/account");
 
@@ -40,5 +57,5 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/host/:path*", "/account/:path*"],
+  matcher: ["/:path*"],
 };
