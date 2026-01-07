@@ -81,7 +81,7 @@ export default function AccessPage() {
             </button>
 
             <p className="text-xs text-slate-500">
-              En cas de problème, contacte <a href="mailto:contact@dogshift.ch">contact@dogshift.ch</a>.
+              En cas de problème, contactez notre support à l’adresse <a href="mailto:support@dogshift.ch">support@dogshift.ch</a>.
             </p>
           </form>
         </div>
