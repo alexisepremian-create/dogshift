@@ -80,7 +80,9 @@ export default function AccessPage() {
               {status === "submitting" ? "…" : "Continuer"}
             </button>
 
-            <p className="text-xs text-slate-500">En cas de problème, contacte support@dogshift.ch.</p>
+            <p className="text-xs text-slate-500">
+              En cas de problème, contacte <a href="mailto:contact@dogshift.ch">contact@dogshift.ch</a>.
+            </p>
           </form>
         </div>
       </div>
