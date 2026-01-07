@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 
 export default function AccessPage() {
@@ -50,7 +49,7 @@ export default function AccessPage() {
     <main className="min-h-screen bg-white px-4 py-16 text-slate-900">
       <div className="mx-auto w-full max-w-md">
         <div className="flex flex-col items-center text-center">
-          <Image src="/dogshift-logo.png" alt="DogShift" width={220} height={52} className="h-[52px] w-auto" priority />
+          <img src="/dogshift-logo.png" alt="DogShift" className="h-[52px] w-auto" />
           <h1 className="mt-8 text-balance text-2xl font-semibold tracking-tight text-slate-900">Site bientôt dispo</h1>
           <p className="mt-3 text-pretty text-sm leading-relaxed text-slate-600">
             DogShift arrive très bientôt. Le site est temporairement protégé par un code.
