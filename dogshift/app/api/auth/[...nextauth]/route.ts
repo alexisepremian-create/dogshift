@@ -79,11 +79,7 @@ function missingAuthEnv() {
   return missing;
 }
 
-function buildAuthOptions(): NextAuthOptions | null {
-  const missing = missingAuthEnv();
-  if (missing.length) return null;
-
-  return {
+export const authOptions: NextAuthOptions = {
   debug: true,
   secret: process.env.NEXTAUTH_SECRET,
   adapter: PrismaAdapter(prisma),
@@ -101,8 +97,8 @@ function buildAuthOptions(): NextAuthOptions | null {
   },
   providers: [
     GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID as string,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
+      clientId: (process.env.GOOGLE_CLIENT_ID ?? "") as string,
+      clientSecret: (process.env.GOOGLE_CLIENT_SECRET ?? "") as string,
       allowDangerousEmailAccountLinking: true,
       authorization: {
         params: {
@@ -228,11 +224,9 @@ function buildAuthOptions(): NextAuthOptions | null {
       await applyWantedRoleByEmail(user.email);
     },
   },
-  };
-}
+};
 
-export const authOptions: NextAuthOptions | null = buildAuthOptions();
-const handler = authOptions ? NextAuth(authOptions) : null;
+const handler = missingAuthEnv().length === 0 ? NextAuth(authOptions) : null;
 
 function misconfiguredResponse() {
   const missing = missingAuthEnv();
