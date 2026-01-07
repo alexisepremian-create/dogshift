@@ -14,7 +14,16 @@ function nextWithPath(req: NextRequest) {
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  if (pathname.startsWith("/api") || pathname.startsWith("/_next") || pathname === "/favicon.ico") {
+  const isStaticAsset = /\.(png|jpg|jpeg|svg|webp|ico|txt|xml)$/i.test(pathname);
+
+  if (
+    pathname.startsWith("/api") ||
+    pathname.startsWith("/_next") ||
+    pathname === "/favicon.ico" ||
+    pathname === "/robots.txt" ||
+    pathname === "/sitemap.xml" ||
+    isStaticAsset
+  ) {
     return NextResponse.next();
   }
 
