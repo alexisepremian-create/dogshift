@@ -1,0 +1,332 @@
+"use client";
+
+import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
+import { useSession } from "next-auth/react";
+
+import SunCornerGlow from "@/components/SunCornerGlow";
+
+import { getSitterById } from "@/lib/mockSitters";
+import { loadReviewsFromStorage, type DogShiftReview } from "@/lib/reviews";
+import { getUnreadHostMessageCount } from "@/lib/hostMessages";
+import {
+  getDefaultHostProfile,
+  getHostCompletion,
+  getHostTodos,
+  loadHostProfileFromStorage,
+  saveHostProfileToStorage,
+  type HostProfileV1,
+} from "@/lib/hostProfile";
+import { loadHostBookings, loadHostRequestStatus } from "@/lib/hostBookings";
+import { addToPublicSittersIndex } from "@/lib/publicSitters";
+
+function formatRating(rating: number) {
+  return rating % 1 === 0 ? rating.toFixed(0) : rating.toFixed(1);
+}
+
+function StarIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true" className={className}>
+      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.286 3.957a1 1 0 00.95.69h4.16c.969 0 1.371 1.24.588 1.81l-3.366 2.447a1 1 0 00-.364 1.118l1.286 3.957c.3.921-.755 1.688-1.54 1.118l-3.366-2.447a1 1 0 00-1.176 0l-3.366 2.447c-.784.57-1.838-.197-1.54-1.118l1.286-3.957a1 1 0 00-.364-1.118L2.102 9.384c-.783-.57-.38-1.81.588-1.81h4.16a1 1 0 00.95-.69l1.286-3.957z" />
+    </svg>
+  );
+}
+
+function FilledSunIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 64 64" className={className} aria-hidden="true" focusable="false">
+      <circle cx="32" cy="32" r="18" fill="#fbbf24" />
+      <polygon points="32,4 26,16 38,16" fill="#fbbf24" />
+      <polygon points="32,60 26,48 38,48" fill="#fbbf24" />
+      <polygon points="4,32 16,26 16,38" fill="#fbbf24" />
+      <polygon points="60,32 48,26 48,38" fill="#fbbf24" />
+      <polygon points="12,12 22,18 18,22" fill="#fbbf24" />
+      <polygon points="52,12 46,22 42,18" fill="#fbbf24" />
+      <polygon points="12,52 18,42 22,46" fill="#fbbf24" />
+      <polygon points="52,52 42,46 46,42" fill="#fbbf24" />
+    </svg>
+  );
+}
+
+function StatusBadge({ status }: { status: "verified" | "pending" | "unverified" }) {
+  if (status === "verified") {
+    return (
+      <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-800 shadow-sm">
+        Vérifié
+      </span>
+    );
+  }
+  if (status === "pending") {
+    return (
+      <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-800 shadow-sm">
+        En cours
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-700 shadow-sm">
+      Non vérifié
+    </span>
+  );
+}
+
+function HostAvatar({ src, alt }: { src: string | null; alt: string }) {
+  if (!src) {
+    return null;
+  }
+
+  return (
+    <img
+      src={src}
+      alt={alt}
+      className="h-14 w-14 rounded-full border border-slate-200 object-cover"
+      referrerPolicy="no-referrer"
+    />
+  );
+}
+
+export default function HostDashboardPage() {
+  const { data, status } = useSession();
+  const sitterId = ((data?.user as any)?.sitterId as string | undefined) ?? null;
+  const [unreadMessages, setUnreadMessages] = useState(0);
+
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => {
+      if (sitterId && e.key === `ds_host_messages_${sitterId}`) {
+        try {
+          setUnreadMessages(getUnreadHostMessageCount(sitterId));
+        } catch {
+          setUnreadMessages(0);
+        }
+      }
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, [sitterId]);
+
+  const baseSitter = useMemo(() => (sitterId ? getSitterById(sitterId) : null), [sitterId]);
+  const [profile, setProfile] = useState<HostProfileV1>(() => getDefaultHostProfile(""));
+  const [storedReviews, setStoredReviews] = useState<DogShiftReview[]>([]);
+
+  useEffect(() => {
+    if (!sitterId) return;
+    const stored = loadHostProfileFromStorage(sitterId);
+    setProfile(stored ?? getDefaultHostProfile(sitterId));
+  }, [sitterId]);
+
+  useEffect(() => {
+    if (!sitterId) return;
+    const stored = loadHostProfileFromStorage(sitterId);
+    if (!stored) return;
+    if (stored.listingStatus === "published" || Boolean(stored.publishedAt)) return;
+    const now = new Date().toISOString();
+    const next: HostProfileV1 = {
+      ...stored,
+      listingStatus: "published",
+      publishedAt: stored.publishedAt ?? now,
+      updatedAt: now,
+    };
+    try {
+      saveHostProfileToStorage(next);
+      addToPublicSittersIndex(sitterId);
+      setProfile(next);
+    } catch {
+      // ignore
+    }
+  }, [sitterId]);
+
+  useEffect(() => {
+    if (!sitterId) return;
+    setStoredReviews(loadReviewsFromStorage(sitterId));
+  }, [sitterId]);
+
+  useEffect(() => {
+    if (!sitterId) return;
+    try {
+      setUnreadMessages(getUnreadHostMessageCount(sitterId));
+    } catch {
+      setUnreadMessages(0);
+    }
+  }, [sitterId]);
+
+  const reviewCount = storedReviews.length;
+  const averageRating = reviewCount
+    ? storedReviews.reduce((acc, r) => acc + (Number.isFinite(r.rating) ? r.rating : 0), 0) / reviewCount
+    : null;
+
+  const rating = averageRating === null ? "—" : formatRating(averageRating);
+
+  const completion = useMemo(() => getHostCompletion(profile), [profile]);
+  const todos = useMemo(() => getHostTodos(profile), [profile]);
+
+  const bookings = useMemo(() => (sitterId ? loadHostBookings(sitterId) : []), [sitterId]);
+  const statuses = useMemo(() => (sitterId ? loadHostRequestStatus(sitterId) : {}), [sitterId]);
+  const pendingRequests = bookings.filter((b) => (statuses[b.bookingId] ?? "new") === "new").length;
+
+  const responseTime = baseSitter?.responseTime ?? "~1h";
+
+  const avatarSrc =
+    (profile.avatarDataUrl && profile.avatarDataUrl.trim() ? profile.avatarDataUrl.trim() : null) ??
+    ((((data?.user as any)?.image as string | undefined) ?? "").trim() || null);
+
+  if (status !== "authenticated") {
+    return null;
+  }
+
+  if (!sitterId) {
+    return null;
+  }
+
+  return (
+    <div className="relative grid gap-6 overflow-hidden" data-testid="host-dashboard">
+      <SunCornerGlow variant="sitterDashboard" />
+
+      <div className="relative z-10">
+        <div className="grid gap-4 sm:grid-cols-[1fr_auto] sm:items-end">
+          <div>
+            <p className="text-sm font-semibold text-slate-600">Tableau de bord</p>
+            <div className="mt-2 flex items-center gap-4">
+              <HostAvatar
+                src={avatarSrc}
+                alt={profile.firstName.trim() ? `Photo de profil de ${profile.firstName.trim()}` : "Photo de profil"}
+              />
+              <h1 className="flex flex-wrap items-center gap-2 text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">
+                <span>Bonjour {profile.firstName.trim() ? profile.firstName.trim() : "Host"}</span>
+                {profile.firstName.trim() ? <FilledSunIcon className="h-7 w-7" /> : null}
+              </h1>
+            </div>
+            <div className="mt-3 flex min-h-[32px] flex-wrap items-center gap-2">
+              <StatusBadge status={profile.verificationStatus} />
+              <span className="inline-flex items-center rounded-full bg-white px-3 py-1 text-xs font-medium text-slate-600 ring-1 ring-slate-200">
+                Profil {completion.percent}%
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)]">
+            <p className="text-xs font-semibold text-slate-600">Note moyenne</p>
+            <div className="mt-2 flex items-center gap-2">
+              <StarIcon className="h-5 w-5 text-[#F5B301]" />
+              <p className="text-2xl font-semibold text-slate-900">{rating}</p>
+            </div>
+          </div>
+
+          <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)]">
+            <p className="text-xs font-semibold text-slate-600">Nombre d’avis</p>
+            <p className="mt-2 text-2xl font-semibold text-slate-900">{reviewCount}</p>
+          </div>
+
+          <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)]">
+            <p className="text-xs font-semibold text-slate-600">Demandes en attente</p>
+            <p className="mt-2 text-2xl font-semibold text-slate-900">{pendingRequests}</p>
+          </div>
+
+          <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)]">
+            <p className="text-xs font-semibold text-slate-600">Temps de réponse</p>
+            <p className="mt-2 text-2xl font-semibold text-slate-900">{responseTime}</p>
+          </div>
+        </div>
+
+        <div className="mt-8 grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
+          <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)]">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <h2 className="text-base font-semibold text-slate-900">À faire</h2>
+                <p className="mt-1 text-sm text-slate-600">Quelques actions pour optimiser votre profil.</p>
+              </div>
+            </div>
+
+            {todos.length === 0 ? (
+              <div className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50 p-5">
+                <p className="text-sm font-semibold text-emerald-900">Tout est prêt</p>
+                <p className="mt-1 text-sm text-emerald-900/80">Votre profil est complet.</p>
+              </div>
+            ) : (
+              <div className="mt-5 space-y-3">
+                {todos.map((item) => (
+                  <Link
+                    key={item.id}
+                    href={item.href}
+                    className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4 text-sm font-semibold text-slate-900 transition hover:bg-slate-100"
+                  >
+                    <span>{item.label}</span>
+                    <span className="ml-auto inline-flex items-center gap-2">
+                      <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-rose-600 px-1.5 text-[11px] font-semibold text-white opacity-0">
+                        0
+                      </span>
+                      <span className="text-slate-400">→</span>
+                    </span>
+                  </Link>
+                ))}
+              </div>
+            )}
+
+            <div className="mt-5">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-semibold text-slate-600">Progression</p>
+                <p className="text-xs font-semibold text-slate-600">{completion.percent}%</p>
+              </div>
+              <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-slate-100">
+                <div className="h-full rounded-full bg-[var(--dogshift-blue)]" style={{ width: `${completion.percent}%` }} />
+              </div>
+            </div>
+          </section>
+
+          <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)]">
+            <h2 className="text-base font-semibold text-slate-900">Accès rapide</h2>
+            <div className="mt-4 space-y-3">
+              <Link
+                href="/host/requests"
+                className="flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4 text-sm font-semibold text-slate-900 transition hover:bg-slate-100"
+              >
+                <span>Demandes & réservations</span>
+                <span className="ml-auto inline-flex items-center gap-2">
+                  {pendingRequests > 0 ? (
+                    <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-rose-600 px-1.5 text-[11px] font-semibold text-white">
+                      {pendingRequests}
+                    </span>
+                  ) : (
+                    <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-rose-600 px-1.5 text-[11px] font-semibold text-white opacity-0">
+                      0
+                    </span>
+                  )}
+                  <span className="text-slate-400">→</span>
+                </span>
+              </Link>
+              <Link
+                href="/host/messages"
+                className="flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4 text-sm font-semibold text-slate-900 transition hover:bg-slate-100"
+              >
+                <span>Messages</span>
+                <span className="ml-auto inline-flex items-center gap-2">
+                  {unreadMessages > 0 ? (
+                    <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-rose-600 px-1.5 text-[11px] font-semibold text-white">
+                      {unreadMessages}
+                    </span>
+                  ) : (
+                    <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-rose-600 px-1.5 text-[11px] font-semibold text-white opacity-0">
+                      0
+                    </span>
+                  )}
+                  <span className="text-slate-400">→</span>
+                </span>
+              </Link>
+
+              <Link
+                href="/host/settings"
+                className="flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4 text-sm font-semibold text-slate-900 transition hover:bg-slate-100"
+              >
+                <span>Paramètres</span>
+                <span className="ml-auto inline-flex items-center gap-2">
+                  <span className="text-slate-400">→</span>
+                </span>
+              </Link>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+  );
+}
