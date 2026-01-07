@@ -5,6 +5,12 @@ import type { JWT } from "next-auth/jwt";
 
 type RoleToken = JWT & { role?: string };
 
+function nextWithPath(req: NextRequest) {
+  const requestHeaders = new Headers(req.headers);
+  requestHeaders.set("x-dogshift-pathname", req.nextUrl.pathname);
+  return NextResponse.next({ request: { headers: requestHeaders } });
+}
+
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
@@ -28,7 +34,7 @@ export async function middleware(req: NextRequest) {
   const isHost = pathname.startsWith("/host");
   const isAccount = pathname.startsWith("/account");
 
-  if (!isHost && !isAccount) return NextResponse.next();
+  if (!isHost && !isAccount) return nextWithPath(req);
 
   const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
 
@@ -53,7 +59,7 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  return NextResponse.next();
+  return nextWithPath(req);
 }
 
 export const config = {

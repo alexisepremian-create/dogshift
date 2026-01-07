@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 
 export default function AccessPage() {
@@ -46,16 +47,18 @@ export default function AccessPage() {
   }
 
   return (
-    <main className="min-h-screen bg-gradient-to-b from-slate-50 to-white px-4 py-16 text-slate-900">
+    <main className="min-h-screen bg-white px-4 py-16 text-slate-900">
       <div className="mx-auto w-full max-w-md">
-        <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)]">
-          <p className="text-xs font-semibold text-slate-600">DogShift</p>
-          <h1 className="mt-2 text-balance text-2xl font-semibold tracking-tight text-slate-900">Accès privé</h1>
-          <p className="mt-3 text-sm leading-relaxed text-slate-600">
-            Le site est temporairement protégé. Entrez le code d’accès pour continuer.
+        <div className="flex flex-col items-center text-center">
+          <Image src="/dogshift-logo.png" alt="DogShift" width={220} height={52} className="h-[52px] w-auto" priority />
+          <h1 className="mt-8 text-balance text-2xl font-semibold tracking-tight text-slate-900">Site bientôt dispo</h1>
+          <p className="mt-3 text-pretty text-sm leading-relaxed text-slate-600">
+            DogShift arrive très bientôt. Le site est temporairement protégé par un code.
           </p>
+        </div>
 
-          <form className="mt-6 space-y-3" onSubmit={(e) => void onSubmit(e)}>
+        <div className="mt-10 rounded-3xl border border-slate-200 bg-white p-8 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)]">
+          <form className="space-y-3" onSubmit={(e) => void onSubmit(e)}>
             <label className="block">
               <span className="text-xs font-semibold text-slate-700">Code d’accès</span>
               <input
