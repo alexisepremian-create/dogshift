@@ -1,8 +1,10 @@
-import NextAuth, { type NextAuthOptions, type Session, type User } from "next-auth";
+import type { NextAuthOptions, Session, User } from "next-auth";
+import NextAuth from "next-auth/next";
 import GoogleProvider from "next-auth/providers/google";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import type { JWT } from "next-auth/jwt";
+import type { NextRequest } from "next/server";
 
 import { prisma } from "@/lib/prisma";
 
@@ -11,8 +13,6 @@ export const runtime = "nodejs";
 type RoleJwt = { role?: string; uid?: string; sitterId?: string };
 
 const minimalOauth = (process.env.NEXTAUTH_MINIMAL_OAUTH || "").trim() === "1";
-const trustHost =
-  (process.env.NEXTAUTH_TRUST_HOST || "").trim().toLowerCase() === "true" || Boolean(process.env.VERCEL);
 
 const envLogGoogleClientId = (process.env.GOOGLE_CLIENT_ID || "").trim();
 console.log("[next-auth][env]", {
@@ -21,7 +21,6 @@ console.log("[next-auth][env]", {
   GOOGLE_CLIENT_ID: envLogGoogleClientId ? `${envLogGoogleClientId.slice(0, 6)}…` : "missing",
   DATABASE_URL: process.env.DATABASE_URL ? "present" : "missing",
   NEXTAUTH_MINIMAL_OAUTH: minimalOauth,
-  NEXTAUTH_TRUST_HOST: trustHost,
 });
 
 function normalizeEmail(email: string) {
@@ -347,7 +346,9 @@ export const authOptions: NextAuthOptions = {
 
 const handler = NextAuth(authOptions);
 
-async function logAndHandle(req: Request) {
+type RouteContext = { params: { nextauth: string[] } };
+
+async function logAndHandle(req: NextRequest, context: RouteContext) {
   const startedAt = new Date().toISOString();
   const url = new URL(req.url);
   const pathname = url.pathname;
@@ -373,7 +374,7 @@ async function logAndHandle(req: Request) {
           referer,
           userAgent: ua,
           minimalOauth,
-          trustHost,
+          nextauth: context?.params?.nextauth ?? null,
         },
         null,
         2
@@ -381,7 +382,7 @@ async function logAndHandle(req: Request) {
     );
   }
 
-  return handler(req as any);
+  return handler(req as any, context as any);
 }
 
 export { logAndHandle as GET, logAndHandle as POST };
