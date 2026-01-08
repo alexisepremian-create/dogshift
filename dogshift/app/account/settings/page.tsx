@@ -130,6 +130,7 @@ export default function AccountSettingsPage(
   const [notificationSavedKey, setNotificationSavedKey] = useState<keyof SettingsState["notifications"] | null>(null);
 
   const [emailSending, setEmailSending] = useState(false);
+  const [emailSendStatus, setEmailSendStatus] = useState<null | { type: "success" | "error"; message: string }>(null);
   const [cooldownSecondsLeft, setCooldownSecondsLeft] = useState<number>(0);
 
   useEffect(() => {
@@ -480,31 +481,41 @@ export default function AccountSettingsPage(
                 }
                 onClick={async () => {
                   setEmailSending(true);
+                  setEmailSendStatus(null);
                   try {
                     const res = await fetch("/api/account/email-verification/send", { method: "POST" });
                     const payload = (await res.json()) as { ok?: boolean; error?: string; retryInSeconds?: number; sentAt?: string };
                     if (!res.ok || !payload.ok) {
                       if (payload.error === "ALREADY_VERIFIED") {
-                        setToast("Email déjà vérifié");
+                        setEmailSendStatus({ type: "success", message: "Ton email est déjà vérifié." });
                         setEmailVerificationStatus("verified");
                         return;
                       }
                       if (payload.error === "COOLDOWN") {
-                        setToast("Réessaie dans quelques secondes");
+                        setEmailSendStatus({ type: "error", message: "Réessaie dans quelques secondes." });
                         if (typeof payload.retryInSeconds === "number") {
                           const sentAt = new Date(Date.now() - (60_000 - payload.retryInSeconds * 1000)).toISOString();
                           setLastVerificationEmailSentAt(sentAt);
                         }
                         return;
                       }
-                      setToast("Impossible d’envoyer l’email de vérification");
+                      setEmailSendStatus({
+                        type: "error",
+                        message: "Une erreur est survenue lors de l’envoi de l’email.",
+                      });
                       return;
                     }
-                    setToast("Email envoyé");
+                    setEmailSendStatus({
+                      type: "success",
+                      message: "Email de vérification envoyé. Pense à vérifier tes spams.",
+                    });
                     setEmailVerificationStatus("pending");
                     if (typeof payload.sentAt === "string") setLastVerificationEmailSentAt(payload.sentAt);
                   } catch {
-                    setToast("Impossible d’envoyer l’email de vérification");
+                    setEmailSendStatus({
+                      type: "error",
+                      message: "Une erreur est survenue lors de l’envoi de l’email.",
+                    });
                   } finally {
                     setEmailSending(false);
                   }
@@ -523,6 +534,20 @@ export default function AccountSettingsPage(
               </button>
             </div>
           </div>
+
+          {emailSendStatus ? (
+            <div
+              className={
+                "mt-3 rounded-2xl border px-4 py-3 text-sm " +
+                (emailSendStatus.type === "success"
+                  ? "border-emerald-200 bg-emerald-50 text-emerald-900"
+                  : "border-rose-200 bg-rose-50 text-rose-900")
+              }
+              role="status"
+            >
+              {emailSendStatus.message}
+            </div>
+          ) : null}
         </div>
       </div>
 

@@ -96,7 +96,57 @@ function emailVerificationTtlSeconds() {
 async function sendEmail({ to, url }: { to: string; url: string }) {
   const resendKey = (process.env.RESEND_API_KEY || "").trim();
   const fromEnv = (process.env.EMAIL_FROM || "").trim();
-  const from = fromEnv || "DogShift <no-reply@dogshift.local>";
+  const from = fromEnv || "DogShift no-reply@dogshift.ch";
+
+  const subject = "Vérification de ton compte DogShift";
+  const text = `Bonjour,\n\nClique sur ce lien pour vérifier ton email :\n${url}\n\nSi tu n’es pas à l’origine de cette demande, tu peux ignorer cet email.\n\n— DogShift\n`;
+
+  const html = `<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>${subject}</title>
+  </head>
+  <body style="margin:0;padding:0;background:#f8fafc;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,Apple Color Emoji,Segoe UI Emoji;">
+    <div style="padding:28px 16px;">
+      <div style="max-width:560px;margin:0 auto;background:#ffffff;border:1px solid #e2e8f0;border-radius:18px;overflow:hidden;">
+        <div style="padding:22px 22px 0 22px;">
+          <div style="font-size:13px;letter-spacing:0.06em;text-transform:uppercase;color:#64748b;font-weight:700;">DogShift</div>
+          <h1 style="margin:12px 0 0 0;font-size:22px;line-height:1.25;color:#0f172a;">Vérifie ton email</h1>
+          <p style="margin:10px 0 0 0;font-size:14px;line-height:1.6;color:#334155;">
+            Clique sur le bouton ci-dessous pour confirmer ton adresse email et sécuriser ton compte DogShift.
+          </p>
+        </div>
+
+        <div style="padding:18px 22px 6px 22px;">
+          <a href="${url}"
+             style="display:inline-block;background:#0b0b0c;color:#ffffff;text-decoration:none;font-weight:700;font-size:14px;padding:12px 18px;border-radius:12px;">
+            Vérifier mon email
+          </a>
+        </div>
+
+        <div style="padding:0 22px 22px 22px;">
+          <p style="margin:12px 0 0 0;font-size:13px;line-height:1.6;color:#64748b;">
+            Si le bouton ne fonctionne pas, copie/colle ce lien dans ton navigateur :
+          </p>
+          <p style="margin:8px 0 0 0;font-size:13px;line-height:1.6;word-break:break-word;">
+            <a href="${url}" style="color:#0f172a;text-decoration:underline;">${url}</a>
+          </p>
+
+          <div style="margin-top:18px;border-top:1px solid #e2e8f0;padding-top:14px;">
+            <p style="margin:0;font-size:12px;line-height:1.6;color:#64748b;">
+              Si tu n’es pas à l’origine de cette demande, tu peux ignorer cet email.
+            </p>
+            <p style="margin:10px 0 0 0;font-size:12px;line-height:1.6;color:#64748b;">
+              — DogShift
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>`;
 
   if (resendKey) {
     if (!fromEnv) {
@@ -113,9 +163,9 @@ async function sendEmail({ to, url }: { to: string; url: string }) {
       body: JSON.stringify({
         from,
         to,
-        subject: "Vérifie ton email — DogShift",
-        text: `Bonjour,\n\nClique sur ce lien pour vérifier ton email :\n${url}\n\nSi tu n’es pas à l’origine de cette demande, tu peux ignorer cet email.\n`,
-        html: `<p>Bonjour,</p><p>Clique sur ce lien pour vérifier ton email :</p><p><a href="${url}">${url}</a></p><p>Si tu n’es pas à l’origine de cette demande, tu peux ignorer cet email.</p>`,
+        subject,
+        text,
+        html,
       }),
     });
 

@@ -80,7 +80,7 @@ function missingAuthEnv() {
 const missingEnvAtBoot = missingAuthEnv();
 if (missingEnvAtBoot.length > 0) {
   console.error("[next-auth] misconfigured env", { missing: missingEnvAtBoot });
-  throw new Error(`NEXTAUTH_MISCONFIGURED: missing ${missingEnvAtBoot.join(", ")}`);
+  throw new Error("NEXTAUTH_MISCONFIGURED");
 }
 
 export const authOptions: NextAuthOptions = {
