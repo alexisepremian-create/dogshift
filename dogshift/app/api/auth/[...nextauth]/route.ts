@@ -11,6 +11,8 @@ export const runtime = "nodejs";
 type RoleJwt = { role?: string; uid?: string; sitterId?: string };
 
 const minimalOauth = (process.env.NEXTAUTH_MINIMAL_OAUTH || "").trim() === "1";
+const trustHost =
+  (process.env.NEXTAUTH_TRUST_HOST || "").trim().toLowerCase() === "true" || Boolean(process.env.VERCEL);
 
 const envLogGoogleClientId = (process.env.GOOGLE_CLIENT_ID || "").trim();
 console.log("[next-auth][env]", {
@@ -19,6 +21,7 @@ console.log("[next-auth][env]", {
   GOOGLE_CLIENT_ID: envLogGoogleClientId ? `${envLogGoogleClientId.slice(0, 6)}…` : "missing",
   DATABASE_URL: process.env.DATABASE_URL ? "present" : "missing",
   NEXTAUTH_MINIMAL_OAUTH: minimalOauth,
+  NEXTAUTH_TRUST_HOST: trustHost,
 });
 
 function normalizeEmail(email: string) {
@@ -91,74 +94,35 @@ export const authOptions: NextAuthOptions = {
   secret: process.env.NEXTAUTH_SECRET,
   adapter: PrismaAdapter(prisma),
   session: { strategy: "jwt" },
-  cookies:
-    process.env.NODE_ENV === "production"
-      ? {
-          sessionToken: {
-            name: "__Secure-next-auth.session-token",
-            options: {
-              httpOnly: true,
-              sameSite: "lax",
-              path: "/",
-              secure: true,
-            },
-          },
-          csrfToken: {
-            name: "__Host-next-auth.csrf-token",
-            options: {
-              httpOnly: true,
-              sameSite: "lax",
-              path: "/",
-              secure: true,
-            },
-          },
-          callbackUrl: {
-            name: "__Secure-next-auth.callback-url",
-            options: {
-              httpOnly: true,
-              sameSite: "lax",
-              path: "/",
-              secure: true,
-            },
-          },
-          pkceCodeVerifier: {
-            name: "__Secure-next-auth.pkce.code_verifier",
-            options: {
-              httpOnly: true,
-              sameSite: "lax",
-              path: "/",
-              secure: true,
-            },
-          },
-          state: {
-            name: "__Secure-next-auth.state",
-            options: {
-              httpOnly: true,
-              sameSite: "lax",
-              path: "/",
-              secure: true,
-            },
-          },
-          nonce: {
-            name: "__Secure-next-auth.nonce",
-            options: {
-              httpOnly: true,
-              sameSite: "lax",
-              path: "/",
-              secure: true,
-            },
-          },
-        }
-      : undefined,
   logger: {
     error(code: string, metadata?: unknown) {
-      console.error("[next-auth][error]", code, metadata);
+      console.error(
+        "[next-auth][error]",
+        JSON.stringify(
+          {
+            code,
+            metadata,
+          },
+          null,
+          2
+        )
+      );
     },
     warn(code: string) {
       console.warn("[next-auth][warn]", code);
     },
     debug(code: string, metadata?: unknown) {
-      console.log("[next-auth][debug]", code, metadata);
+      console.log(
+        "[next-auth][debug]",
+        JSON.stringify(
+          {
+            code,
+            metadata,
+          },
+          null,
+          2
+        )
+      );
     },
   },
   providers: [
@@ -382,4 +346,42 @@ export const authOptions: NextAuthOptions = {
 };
 
 const handler = NextAuth(authOptions);
-export { handler as GET, handler as POST };
+
+async function logAndHandle(req: Request) {
+  const startedAt = new Date().toISOString();
+  const url = new URL(req.url);
+  const pathname = url.pathname;
+
+  const host = req.headers.get("host");
+  const xfHost = req.headers.get("x-forwarded-host");
+  const xfProto = req.headers.get("x-forwarded-proto");
+  const referer = req.headers.get("referer");
+  const ua = req.headers.get("user-agent");
+
+  if (pathname.startsWith("/api/auth/callback/") || pathname.startsWith("/api/auth/signin/") || pathname === "/api/auth/csrf") {
+    console.log(
+      "[next-auth][request]",
+      JSON.stringify(
+        {
+          startedAt,
+          method: req.method,
+          pathname,
+          search: url.search,
+          host,
+          xForwardedHost: xfHost,
+          xForwardedProto: xfProto,
+          referer,
+          userAgent: ua,
+          minimalOauth,
+          trustHost,
+        },
+        null,
+        2
+      )
+    );
+  }
+
+  return handler(req as any);
+}
+
+export { logAndHandle as GET, logAndHandle as POST };
