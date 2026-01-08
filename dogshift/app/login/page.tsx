@@ -59,12 +59,24 @@ export default function LoginPage() {
   }
 
   async function refreshSessionAndRedirect() {
+    try {
+      await fetch("/api/auth/session", {
+        method: "GET",
+        cache: "no-store",
+        headers: { "cache-control": "no-store" },
+      });
+    } catch {
+      // ignore
+    }
+
+    router.refresh();
+
     const session = await getSession().catch(() => null);
     if (session?.user) {
       router.push(finalRedirect);
       return;
     }
-    setError("Connexion annulée ou échouée.");
+    setError("Connexion annulée ou échouée");
   }
 
   async function startGooglePopup() {
