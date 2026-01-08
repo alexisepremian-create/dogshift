@@ -15,6 +15,8 @@ export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
   const isStaticAsset = /\.(png|jpg|jpeg|svg|webp|ico|txt|xml)$/i.test(pathname);
+  const isNextAuthRoute = pathname.startsWith("/api/auth/");
+  const isPopupClose = pathname === "/auth/popup-close" || pathname === "/auth/popup-close/";
 
   if (
     pathname.startsWith("/api") ||
@@ -22,6 +24,8 @@ export async function middleware(req: NextRequest) {
     pathname === "/favicon.ico" ||
     pathname === "/robots.txt" ||
     pathname === "/sitemap.xml" ||
+    isNextAuthRoute ||
+    isPopupClose ||
     isStaticAsset
   ) {
     return NextResponse.next();
