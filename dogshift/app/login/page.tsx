@@ -60,7 +60,11 @@ export default function LoginPage() {
       );
       return;
     }
-    setError(errorFromQuery);
+    if (errorFromQuery === "Callback") {
+      setError("Une erreur est survenue pendant la connexion. Réessaie.");
+      return;
+    }
+    setError("Une erreur est survenue pendant la connexion. Réessaie.");
   }, [errorFromQuery]);
 
   return (
