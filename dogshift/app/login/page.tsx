@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { getSession, signIn, useSession } from "next-auth/react";
+import { signIn, useSession } from "next-auth/react";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -41,6 +41,8 @@ export default function LoginPage() {
   const googlePollRef = useRef<number | null>(null);
   const googleTimeoutRef = useRef<number | null>(null);
   const googlePopupRef = useRef<Window | null>(null);
+  const googleFinalizeTimeoutRef = useRef<number | null>(null);
+  const [awaitingGoogleAuth, setAwaitingGoogleAuth] = useState(false);
 
   const finalRedirect = useMemo(() => {
     const target = next ? next : callbackUrl;
@@ -56,27 +58,27 @@ export default function LoginPage() {
       window.clearTimeout(googleTimeoutRef.current);
       googleTimeoutRef.current = null;
     }
+    if (googleFinalizeTimeoutRef.current) {
+      window.clearTimeout(googleFinalizeTimeoutRef.current);
+      googleFinalizeTimeoutRef.current = null;
+    }
   }
 
-  async function refreshSessionAndRedirect() {
+  function finalizeGoogleAuth() {
+    cleanupGooglePopup();
     try {
-      await fetch("/api/auth/session", {
-        method: "GET",
-        cache: "no-store",
-        headers: { "cache-control": "no-store" },
-      });
+      googlePopupRef.current?.close();
     } catch {
       // ignore
     }
 
+    setAwaitingGoogleAuth(true);
     router.refresh();
 
-    const session = await getSession().catch(() => null);
-    if (session?.user) {
-      router.push(finalRedirect);
-      return;
-    }
-    setError("Connexion annulée ou échouée");
+    googleFinalizeTimeoutRef.current = window.setTimeout(() => {
+      setAwaitingGoogleAuth(false);
+      setError("Connexion annulée ou échouée");
+    }, 12_000);
   }
 
   async function startGooglePopup() {
@@ -126,8 +128,7 @@ export default function LoginPage() {
       const w = googlePopupRef.current;
       if (!w) return;
       if (w.closed) {
-        cleanupGooglePopup();
-        await refreshSessionAndRedirect();
+        finalizeGoogleAuth();
       }
     }, 400);
 
@@ -149,6 +150,18 @@ export default function LoginPage() {
   }, [status, router, next, callbackUrl]);
 
   useEffect(() => {
+    if (!awaitingGoogleAuth) return;
+    if (status !== "authenticated") return;
+
+    if (googleFinalizeTimeoutRef.current) {
+      window.clearTimeout(googleFinalizeTimeoutRef.current);
+      googleFinalizeTimeoutRef.current = null;
+    }
+    setAwaitingGoogleAuth(false);
+    router.push(finalRedirect);
+  }, [awaitingGoogleAuth, status, router, finalRedirect]);
+
+  useEffect(() => {
     setMounted(true);
   }, []);
 
@@ -159,13 +172,7 @@ export default function LoginPage() {
       if (!data || typeof data !== "object") return;
       if (data.type !== "DOGSHIFT_AUTH_SUCCESS") return;
 
-      cleanupGooglePopup();
-      try {
-        googlePopupRef.current?.close();
-      } catch {
-        // ignore
-      }
-      void refreshSessionAndRedirect();
+      finalizeGoogleAuth();
     };
 
     window.addEventListener("message", onMessage);
