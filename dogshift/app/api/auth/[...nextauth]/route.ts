@@ -35,8 +35,7 @@ async function logAndHandle(req: Request) {
     );
   }
 
-  const webReq = new Request(req);
-  return (handler as unknown as (r: Request) => Promise<Response>)(webReq);
+  return (handler as unknown as (r: Request) => Promise<Response>)(req);
 }
 
 export { logAndHandle as GET, logAndHandle as POST };
