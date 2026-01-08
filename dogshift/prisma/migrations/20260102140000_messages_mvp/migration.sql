@@ -1,7 +1,5 @@
 -- Messages MVP: Conversation + Message tables
 
-PRAGMA foreign_keys=OFF;
-
 CREATE TABLE "Conversation" (
   "id" TEXT NOT NULL PRIMARY KEY,
   "ownerId" TEXT NOT NULL,
@@ -36,6 +34,3 @@ CREATE INDEX "Conversation_lastMessageAt_idx" ON "Conversation"("lastMessageAt")
 CREATE INDEX "Message_conversationId_idx" ON "Message"("conversationId");
 CREATE INDEX "Message_senderId_idx" ON "Message"("senderId");
 CREATE INDEX "Message_createdAt_idx" ON "Message"("createdAt");
-
-PRAGMA foreign_key_check;
-PRAGMA foreign_keys=ON;

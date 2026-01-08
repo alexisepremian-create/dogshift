@@ -4,6 +4,9 @@
   - A unique constraint covering the columns `[sitterId]` on the table `User` will be added. If there are existing duplicate values, this will fail.
 
 */
+-- CreateIndex
+CREATE UNIQUE INDEX "User_sitterId_key" ON "User"("sitterId");
+
 -- CreateTable
 CREATE TABLE "Booking" (
     "id" TEXT NOT NULL PRIMARY KEY,
@@ -32,6 +35,3 @@ CREATE INDEX "Booking_stripeSessionId_idx" ON "Booking"("stripeSessionId");
 
 -- CreateIndex
 CREATE INDEX "Booking_stripePaymentIntentId_idx" ON "Booking"("stripePaymentIntentId");
-
--- CreateIndex
-CREATE UNIQUE INDEX "User_sitterId_key" ON "User"("sitterId");
