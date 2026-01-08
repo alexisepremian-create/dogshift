@@ -3,8 +3,6 @@ import GoogleProvider from "next-auth/providers/google";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import type { JWT } from "next-auth/jwt";
-import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
 
 import { prisma } from "@/lib/prisma";
 
@@ -77,6 +75,12 @@ function missingAuthEnv() {
   if (!process.env.GOOGLE_CLIENT_ID) missing.push("GOOGLE_CLIENT_ID");
   if (!process.env.GOOGLE_CLIENT_SECRET) missing.push("GOOGLE_CLIENT_SECRET");
   return missing;
+}
+
+const missingEnvAtBoot = missingAuthEnv();
+if (missingEnvAtBoot.length > 0) {
+  console.error("[next-auth] misconfigured env", { missing: missingEnvAtBoot });
+  throw new Error(`NEXTAUTH_MISCONFIGURED: missing ${missingEnvAtBoot.join(", ")}`);
 }
 
 export const authOptions: NextAuthOptions = {
@@ -226,20 +230,5 @@ export const authOptions: NextAuthOptions = {
   },
 };
 
-function misconfiguredResponse() {
-  const missing = missingAuthEnv();
-  console.error("[next-auth] misconfigured env", { missing });
-  return NextResponse.json({ ok: false, error: "NEXTAUTH_MISCONFIGURED", missing }, { status: 500 });
-}
-
-export async function GET(req: NextRequest) {
-  if (missingAuthEnv().length > 0) return misconfiguredResponse();
-  const handler = NextAuth(authOptions);
-  return handler(req);
-}
-
-export async function POST(req: NextRequest) {
-  if (missingAuthEnv().length > 0) return misconfiguredResponse();
-  const handler = NextAuth(authOptions);
-  return handler(req);
-}
+const handler = NextAuth(authOptions);
+export { handler as GET, handler as POST };
