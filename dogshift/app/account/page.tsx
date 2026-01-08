@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { getServerSession } from "next-auth";
+import { getServerSession } from "next-auth/next";
 import {
   AlertTriangle,
   BarChart3,
@@ -14,7 +14,7 @@ import {
   Settings,
 } from "lucide-react";
 
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { authOptions } from "@/lib/nextauth";
 import SunCornerGlow from "@/components/SunCornerGlow";
 import { prisma } from "@/lib/prisma";
 
