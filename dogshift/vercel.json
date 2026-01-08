@@ -1,0 +1,10 @@
+{
+  "redirects": [
+    {
+      "source": "/:path*",
+      "has": [{ "type": "host", "value": "dogshift.ch" }],
+      "destination": "https://www.dogshift.ch/:path*",
+      "permanent": true
+    }
+  ]
+}
