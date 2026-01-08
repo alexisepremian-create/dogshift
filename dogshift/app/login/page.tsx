@@ -98,6 +98,9 @@ export default function LoginPage() {
     const origin = "https://www.dogshift.ch";
     const popupCallback = `${origin}/auth/popup-close`;
     const signinUrl = `${origin}/api/auth/signin/google?callbackUrl=${encodeURIComponent(popupCallback)}`;
+    const redirectSigninUrl = `${origin}/api/auth/signin/google?callbackUrl=${encodeURIComponent(
+      `${origin}${finalRedirect}`
+    )}`;
 
     const width = 520;
     const height = 650;
@@ -113,7 +116,7 @@ export default function LoginPage() {
 
     if (!popup) {
       setGooglePopupStatus("Popup bloquée, redirection en cours…");
-      await signIn("google", { callbackUrl: finalRedirect }).catch(() => null);
+      window.location.assign(redirectSigninUrl);
       return;
     }
 
