@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
-import { signIn, useSession } from "next-auth/react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { getSession, signIn, useSession } from "next-auth/react";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -37,6 +37,98 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [googlePopupStatus, setGooglePopupStatus] = useState<string | null>(null);
+  const googlePollRef = useRef<number | null>(null);
+  const googleTimeoutRef = useRef<number | null>(null);
+  const googlePopupRef = useRef<Window | null>(null);
+
+  const finalRedirect = useMemo(() => {
+    const target = next ? next : callbackUrl;
+    return target && target.startsWith("/") ? target : "/account";
+  }, [next, callbackUrl]);
+
+  function cleanupGooglePopup() {
+    if (googlePollRef.current) {
+      window.clearInterval(googlePollRef.current);
+      googlePollRef.current = null;
+    }
+    if (googleTimeoutRef.current) {
+      window.clearTimeout(googleTimeoutRef.current);
+      googleTimeoutRef.current = null;
+    }
+  }
+
+  async function refreshSessionAndRedirect() {
+    const session = await getSession().catch(() => null);
+    if (session?.user) {
+      router.push(finalRedirect);
+      return;
+    }
+    setError("Connexion annulée ou échouée.");
+  }
+
+  async function startGooglePopup() {
+    setError(null);
+    setGooglePopupStatus(null);
+
+    const existing = googlePopupRef.current;
+    if (existing && !existing.closed) {
+      try {
+        existing.focus();
+      } catch {
+        // ignore
+      }
+      return;
+    }
+
+    const origin = "https://www.dogshift.ch";
+    const popupCallback = `${origin}/auth/popup-close`;
+    const signinUrl = `${origin}/api/auth/signin/google?callbackUrl=${encodeURIComponent(popupCallback)}`;
+
+    const width = 520;
+    const height = 650;
+    const dualScreenLeft = window.screenLeft ?? window.screenX ?? 0;
+    const dualScreenTop = window.screenTop ?? window.screenY ?? 0;
+    const screenWidth = window.innerWidth || document.documentElement.clientWidth || screen.width;
+    const screenHeight = window.innerHeight || document.documentElement.clientHeight || screen.height;
+    const left = Math.max(0, Math.floor(screenWidth / 2 - width / 2 + dualScreenLeft));
+    const top = Math.max(0, Math.floor(screenHeight / 2 - height / 2 + dualScreenTop));
+
+    const features = `width=${width},height=${height},left=${left},top=${top},noreferrer`;
+    const popup = window.open(signinUrl, "dogshift-google", features);
+
+    if (!popup) {
+      setGooglePopupStatus("Popup bloquée, redirection en cours…");
+      await signIn("google", { callbackUrl: finalRedirect }).catch(() => null);
+      return;
+    }
+
+    googlePopupRef.current = popup;
+    try {
+      popup.focus();
+    } catch {
+      // ignore
+    }
+
+    googlePollRef.current = window.setInterval(async () => {
+      const w = googlePopupRef.current;
+      if (!w) return;
+      if (w.closed) {
+        cleanupGooglePopup();
+        await refreshSessionAndRedirect();
+      }
+    }, 400);
+
+    googleTimeoutRef.current = window.setTimeout(() => {
+      cleanupGooglePopup();
+      try {
+        googlePopupRef.current?.close();
+      } catch {
+        // ignore
+      }
+      setError("Connexion annulée ou échouée.");
+    }, 2 * 60 * 1000);
+  }
 
   useEffect(() => {
     if (status !== "authenticated") return;
@@ -47,6 +139,30 @@ export default function LoginPage() {
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  useEffect(() => {
+    const onMessage = (event: MessageEvent) => {
+      if (event.origin !== "https://www.dogshift.ch") return;
+      const data = event.data as any;
+      if (!data || typeof data !== "object") return;
+      if (data.type !== "DOGSHIFT_AUTH_SUCCESS") return;
+
+      cleanupGooglePopup();
+      try {
+        googlePopupRef.current?.close();
+      } catch {
+        // ignore
+      }
+      void refreshSessionAndRedirect();
+    };
+
+    window.addEventListener("message", onMessage);
+    return () => {
+      window.removeEventListener("message", onMessage);
+      cleanupGooglePopup();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [finalRedirect]);
 
   useEffect(() => {
     if (!errorFromQuery) return;
@@ -84,12 +200,14 @@ export default function LoginPage() {
             <button
               type="button"
               onClick={() => {
-                void signIn("google", { callbackUrl });
+                void startGooglePopup();
               }}
               className="w-full rounded-2xl border border-slate-300 bg-white px-6 py-3 text-sm font-semibold text-slate-900 shadow-sm transition disabled:cursor-not-allowed disabled:opacity-60"
             >
               Continuer avec Google
             </button>
+
+            {googlePopupStatus ? <p className="text-sm font-medium text-slate-600">{googlePopupStatus}</p> : null}
 
             {!mounted ? null : (
               <div className="pt-2">
