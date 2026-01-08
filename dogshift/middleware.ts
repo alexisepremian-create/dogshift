@@ -14,6 +14,14 @@ function nextWithPath(req: NextRequest) {
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
+  const host = (req.headers.get("host") ?? "").split(":")[0].toLowerCase();
+  if (host === "dogshift.ch") {
+    const url = req.nextUrl.clone();
+    url.hostname = "www.dogshift.ch";
+    url.protocol = "https:";
+    return NextResponse.redirect(url, 308);
+  }
+
   const isStaticAsset = /\.(png|jpg|jpeg|svg|webp|ico|txt|xml)$/i.test(pathname);
   const isNextAuthRoute = pathname.startsWith("/api/auth/");
   const isPopupClose = pathname === "/auth/popup-close" || pathname === "/auth/popup-close/";
