@@ -1,12 +1,12 @@
-import NextAuth from "next-auth/next";
-
-import type { NextRequest } from "next/server";
+import NextAuth from "next-auth";
 
 import { authOptions } from "@/lib/nextauth";
 
+export const runtime = "nodejs";
+
 const handler = NextAuth(authOptions);
 
-async function logAndHandle(req: NextRequest) {
+async function logAndHandle(req: Request) {
   const url = new URL(req.url);
   const pathname = url.pathname;
 
