@@ -1,4 +1,4 @@
-import NextAuth from "next-auth/next";
+import NextAuth from "next-auth";
 
 import { authOptions } from "@/lib/nextauth";
 
@@ -35,7 +35,8 @@ async function logAndHandle(req: Request) {
     );
   }
 
-  return (handler as unknown as (r: Request) => Promise<Response>)(req);
+  const webReq = new Request(req);
+  return (handler as unknown as (r: Request) => Promise<Response>)(webReq);
 }
 
 export { logAndHandle as GET, logAndHandle as POST };
