@@ -4,7 +4,7 @@ CREATE TABLE "SitterProfile" (
     "userId" TEXT NOT NULL,
     "sitterId" TEXT NOT NULL,
     "published" BOOLEAN NOT NULL DEFAULT false,
-    "publishedAt" DATETIME,
+    "publishedAt" TIMESTAMP(3),
     "displayName" TEXT,
     "city" TEXT,
     "postalCode" TEXT,
@@ -15,8 +15,8 @@ CREATE TABLE "SitterProfile" (
     "services" JSONB,
     "pricing" JSONB,
     "dogSizes" JSONB,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
     CONSTRAINT "SitterProfile_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
 

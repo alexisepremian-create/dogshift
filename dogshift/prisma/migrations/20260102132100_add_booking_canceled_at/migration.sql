@@ -1,3 +1,3 @@
 -- Add canceledAt timestamp to Booking (owner cancellation)
 
-ALTER TABLE "Booking" ADD COLUMN "canceledAt" DATETIME;
+ALTER TABLE "Booking" ADD COLUMN "canceledAt" TIMESTAMP(3);

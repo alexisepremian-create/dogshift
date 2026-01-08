@@ -15,8 +15,8 @@ CREATE TABLE "Booking" (
     "platformFeeAmount" INTEGER NOT NULL,
     "stripeSessionId" TEXT,
     "stripePaymentIntentId" TEXT,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
     CONSTRAINT "Booking_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
     CONSTRAINT "Booking_sitterId_fkey" FOREIGN KEY ("sitterId") REFERENCES "User" ("sitterId") ON DELETE RESTRICT ON UPDATE CASCADE
 );

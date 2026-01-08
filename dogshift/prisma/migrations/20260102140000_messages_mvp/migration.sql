@@ -7,10 +7,10 @@ CREATE TABLE "Conversation" (
   "ownerId" TEXT NOT NULL,
   "sitterId" TEXT NOT NULL,
   "bookingId" TEXT,
-  "lastMessageAt" DATETIME,
+  "lastMessageAt" TIMESTAMP(3),
   "lastMessagePreview" TEXT,
-  "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  "updatedAt" DATETIME NOT NULL,
+  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updatedAt" TIMESTAMP(3) NOT NULL,
   CONSTRAINT "Conversation_ownerId_fkey" FOREIGN KEY ("ownerId") REFERENCES "User" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
   CONSTRAINT "Conversation_sitterId_fkey" FOREIGN KEY ("sitterId") REFERENCES "User" ("sitterId") ON DELETE RESTRICT ON UPDATE CASCADE,
   CONSTRAINT "Conversation_bookingId_fkey" FOREIGN KEY ("bookingId") REFERENCES "Booking" ("id") ON DELETE SET NULL ON UPDATE CASCADE
@@ -21,8 +21,8 @@ CREATE TABLE "Message" (
   "conversationId" TEXT NOT NULL,
   "senderId" TEXT NOT NULL,
   "body" TEXT NOT NULL,
-  "readAt" DATETIME,
-  "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "readAt" TIMESTAMP(3),
+  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT "Message_conversationId_fkey" FOREIGN KEY ("conversationId") REFERENCES "Conversation" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
   CONSTRAINT "Message_senderId_fkey" FOREIGN KEY ("senderId") REFERENCES "User" ("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
