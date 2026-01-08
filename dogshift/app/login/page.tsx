@@ -10,15 +10,25 @@ export default function LoginPage() {
   const searchParams = useSearchParams();
   const { status } = useSession();
   const next = (searchParams?.get("next") ?? "").trim();
-  const callbackUrlRaw = (searchParams?.get("callbackUrl") ?? "").trim();
+  const callbackUrlRaw = (searchParams?.get("callbackUrl") ?? "/").trim();
   const callbackUrl = (() => {
-    if (!callbackUrlRaw) return "";
+    if (!callbackUrlRaw) return "/";
+    if (typeof window === "undefined") return "/";
     try {
       const u = new URL(callbackUrlRaw, window.location.origin);
-      if (u.origin !== window.location.origin) return "";
-      return `${u.pathname}${u.search}${u.hash}`;
+      if (u.origin !== window.location.origin) return "/";
+      const path = `${u.pathname}${u.search}${u.hash}`;
+      if (!path.startsWith("/")) return "/";
+      if (path.startsWith("//")) return "/";
+      if (path.startsWith("/api")) return "/";
+      if (path.startsWith("/_next")) return "/";
+      return path;
     } catch {
-      return callbackUrlRaw.startsWith("/") ? callbackUrlRaw : "";
+      if (!callbackUrlRaw.startsWith("/")) return "/";
+      if (callbackUrlRaw.startsWith("//")) return "/";
+      if (callbackUrlRaw.startsWith("/api")) return "/";
+      if (callbackUrlRaw.startsWith("/_next")) return "/";
+      return callbackUrlRaw;
     }
   })();
   const errorFromQuery = (searchParams?.get("error") ?? "").trim();
@@ -27,12 +37,10 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [googlePopupMessage, setGooglePopupMessage] = useState<string | null>(null);
-  const [googlePopupRetryToken, setGooglePopupRetryToken] = useState(0);
 
   useEffect(() => {
     if (status !== "authenticated") return;
-    const target = next ? next : callbackUrl ? callbackUrl : "/post-login";
+    const target = next ? next : callbackUrl;
     router.replace(target);
   }, [status, router, next, callbackUrl]);
 
@@ -55,104 +63,6 @@ export default function LoginPage() {
     setError(errorFromQuery);
   }, [errorFromQuery]);
 
-  async function signInWithGooglePopup() {
-    setGooglePopupMessage("Ouverture de la fenêtre Google…");
-
-    const width = 520;
-    const height = 700;
-    const dualScreenLeft = window.screenLeft ?? window.screenX ?? 0;
-    const dualScreenTop = window.screenTop ?? window.screenY ?? 0;
-    const viewportWidth = window.innerWidth || document.documentElement.clientWidth || screen.width;
-    const viewportHeight = window.innerHeight || document.documentElement.clientHeight || screen.height;
-
-    const left = Math.max(0, Math.round(viewportWidth / 2 - width / 2 + dualScreenLeft));
-    const top = Math.max(0, Math.round(viewportHeight / 2 - height / 2 + dualScreenTop));
-
-    const popupStartUrl = new URL("/auth/google", window.location.origin);
-    popupStartUrl.searchParams.set("next", next ? next : "/post-login");
-
-    const popup = window.open(
-      "about:blank",
-      "dogshift-google-auth",
-      `popup=yes,width=${width},height=${height},top=${top},left=${left}`
-    );
-
-    if (!popup) {
-      setGooglePopupMessage("Popups bloquées. Autorisez-les pour continuer, puis réessayez.");
-      return;
-    }
-
-    popup.focus();
-
-    setGooglePopupMessage("Connexion en cours…");
-    popup.location.href = popupStartUrl.toString();
-
-    let finished = false;
-
-    const cleanup = (intervalId: number) => {
-      window.clearInterval(intervalId);
-      window.removeEventListener("message", onMessage);
-    };
-
-    const finalizeSuccess = async (targetUrl?: string) => {
-      if (finished) return;
-      finished = true;
-
-      setGooglePopupMessage(null);
-
-      try {
-        popup.close();
-      } catch {
-        // ignore
-      }
-
-      const fallbackTarget = next ? next : "/post-login";
-      const target = typeof targetUrl === "string" && targetUrl.trim() ? targetUrl.trim() : fallbackTarget;
-      window.location.assign(target);
-    };
-
-    const finalizeCancelled = () => {
-      if (finished) return;
-      finished = true;
-      setGooglePopupMessage("Connexion annulée. Réessayez.");
-    };
-
-    const onMessage = (event: MessageEvent) => {
-      if (event.origin !== window.location.origin) return;
-      const data = event.data as { type?: string; next?: string } | null;
-      if (!data || data.type !== "dogshift:auth-popup") return;
-      void finalizeSuccess(data?.next);
-    };
-
-    window.addEventListener("message", onMessage);
-
-    const intervalId = window.setInterval(() => {
-      if (finished) {
-        cleanup(intervalId);
-        return;
-      }
-
-      try {
-        const url = popup.location.href;
-        if (url.startsWith(window.location.origin)) {
-          const u = new URL(url);
-          if (u.pathname === "/auth/popup") {
-            cleanup(intervalId);
-            void finalizeSuccess();
-            return;
-          }
-        }
-      } catch {
-        // ignore cross-origin access errors
-      }
-
-      if (popup.closed) {
-        cleanup(intervalId);
-        finalizeCancelled();
-      }
-    }, 350);
-  }
-
   return (
     <div className="min-h-screen bg-white text-slate-900">
       <main className="mx-auto max-w-6xl px-4 py-14 sm:px-6">
@@ -170,34 +80,12 @@ export default function LoginPage() {
             <button
               type="button"
               onClick={() => {
-                if (typeof window === "undefined") return;
-                setGooglePopupRetryToken((n) => n + 1);
-                void signInWithGooglePopup();
+                void signIn("google", { callbackUrl });
               }}
               className="w-full rounded-2xl border border-slate-300 bg-white px-6 py-3 text-sm font-semibold text-slate-900 shadow-sm transition disabled:cursor-not-allowed disabled:opacity-60"
             >
               Continuer avec Google
             </button>
-
-            {googlePopupMessage ? (
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
-                <p className="font-medium">{googlePopupMessage}</p>
-                {googlePopupMessage.toLowerCase().includes("réessayez") ||
-                googlePopupMessage.toLowerCase().includes("autorisez") ? (
-                  <button
-                    key={googlePopupRetryToken}
-                    type="button"
-                    onClick={() => {
-                      if (typeof window === "undefined") return;
-                      void signInWithGooglePopup();
-                    }}
-                    className="mt-3 inline-flex items-center justify-center rounded-2xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800"
-                  >
-                    Réessayer
-                  </button>
-                ) : null}
-              </div>
-            ) : null}
 
             {!mounted ? null : (
               <div className="pt-2">
@@ -238,10 +126,17 @@ export default function LoginPage() {
                   setError(null);
 
                   try {
-                    await signIn("credentials", {
+                    const res = await signIn("credentials", {
                       email: normalizedEmail,
                       password,
+                      callbackUrl,
+                      redirect: false,
                     });
+                    if (res?.error) {
+                      setError(res.error === "CredentialsSignin" ? "Email ou mot de passe incorrect." : res.error);
+                      return;
+                    }
+                    router.push(callbackUrl);
                   } catch (err) {
                     setError("Email ou mot de passe incorrect.");
                   } finally {
