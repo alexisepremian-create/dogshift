@@ -91,6 +91,65 @@ export const authOptions: NextAuthOptions = {
   secret: process.env.NEXTAUTH_SECRET,
   adapter: PrismaAdapter(prisma),
   session: { strategy: "jwt" },
+  cookies:
+    process.env.NODE_ENV === "production"
+      ? {
+          sessionToken: {
+            name: "__Secure-next-auth.session-token",
+            options: {
+              httpOnly: true,
+              sameSite: "lax",
+              path: "/",
+              secure: true,
+            },
+          },
+          csrfToken: {
+            name: "__Host-next-auth.csrf-token",
+            options: {
+              httpOnly: true,
+              sameSite: "lax",
+              path: "/",
+              secure: true,
+            },
+          },
+          callbackUrl: {
+            name: "__Secure-next-auth.callback-url",
+            options: {
+              httpOnly: true,
+              sameSite: "lax",
+              path: "/",
+              secure: true,
+            },
+          },
+          pkceCodeVerifier: {
+            name: "__Secure-next-auth.pkce.code_verifier",
+            options: {
+              httpOnly: true,
+              sameSite: "lax",
+              path: "/",
+              secure: true,
+            },
+          },
+          state: {
+            name: "__Secure-next-auth.state",
+            options: {
+              httpOnly: true,
+              sameSite: "lax",
+              path: "/",
+              secure: true,
+            },
+          },
+          nonce: {
+            name: "__Secure-next-auth.nonce",
+            options: {
+              httpOnly: true,
+              sameSite: "lax",
+              path: "/",
+              secure: true,
+            },
+          },
+        }
+      : undefined,
   logger: {
     error(code: string, metadata?: unknown) {
       console.error("[next-auth][error]", code, metadata);

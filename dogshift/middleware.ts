@@ -14,7 +14,8 @@ function nextWithPath(req: NextRequest) {
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  const host = (req.headers.get("host") ?? "").split(":")[0].toLowerCase();
+  const rawHostHeader = (req.headers.get("x-forwarded-host") ?? req.headers.get("host") ?? "").split(",")[0] ?? "";
+  const host = rawHostHeader.split(":")[0].toLowerCase();
   if (host === "dogshift.ch") {
     const url = req.nextUrl.clone();
     url.hostname = "www.dogshift.ch";
