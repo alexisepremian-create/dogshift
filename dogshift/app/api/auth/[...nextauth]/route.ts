@@ -10,7 +10,11 @@ async function logAndHandle(req: Request) {
   const url = new URL(req.url);
   const pathname = url.pathname;
 
-  if (pathname.startsWith("/api/auth/callback/") || pathname.startsWith("/api/auth/error")) {
+  if (
+    pathname.startsWith("/api/auth/callback/") ||
+    pathname.startsWith("/api/auth/error") ||
+    pathname.startsWith("/api/auth/session")
+  ) {
     console.log(
       "[nextauth-route][hit]",
       JSON.stringify(

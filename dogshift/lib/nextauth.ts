@@ -79,8 +79,6 @@ function missingAuthEnv() {
   const missing: string[] = [];
   if (!process.env.NEXTAUTH_SECRET) missing.push("NEXTAUTH_SECRET");
   if (!process.env.NEXTAUTH_URL) missing.push("NEXTAUTH_URL");
-  if (!process.env.GOOGLE_CLIENT_ID) missing.push("GOOGLE_CLIENT_ID");
-  if (!process.env.GOOGLE_CLIENT_SECRET) missing.push("GOOGLE_CLIENT_SECRET");
   return missing;
 }
 
@@ -88,6 +86,14 @@ const missingEnvAtBoot = missingAuthEnv();
 if (missingEnvAtBoot.length > 0) {
   console.error("[next-auth] misconfigured env", { missing: missingEnvAtBoot });
   throw new Error("NEXTAUTH_MISCONFIGURED");
+}
+
+const hasGoogleOauth = Boolean((process.env.GOOGLE_CLIENT_ID || "").trim() && (process.env.GOOGLE_CLIENT_SECRET || "").trim());
+if (!hasGoogleOauth) {
+  console.warn("[next-auth] google oauth disabled (missing env)", {
+    GOOGLE_CLIENT_ID: Boolean((process.env.GOOGLE_CLIENT_ID || "").trim()),
+    GOOGLE_CLIENT_SECRET: Boolean((process.env.GOOGLE_CLIENT_SECRET || "").trim()),
+  });
 }
 
 export const authOptions: NextAuthOptions = {
@@ -127,16 +133,20 @@ export const authOptions: NextAuthOptions = {
     },
   },
   providers: [
-    GoogleProvider({
-      clientId: (process.env.GOOGLE_CLIENT_ID ?? "") as string,
-      clientSecret: (process.env.GOOGLE_CLIENT_SECRET ?? "") as string,
-      allowDangerousEmailAccountLinking: true,
-      authorization: {
-        params: {
-          prompt: "consent select_account",
-        },
-      },
-    }),
+    ...(hasGoogleOauth
+      ? [
+          GoogleProvider({
+            clientId: process.env.GOOGLE_CLIENT_ID as string,
+            clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
+            allowDangerousEmailAccountLinking: true,
+            authorization: {
+              params: {
+                prompt: "consent select_account",
+              },
+            },
+          }),
+        ]
+      : []),
     CredentialsProvider({
       name: "Credentials",
       credentials: {

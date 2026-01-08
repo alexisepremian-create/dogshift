@@ -30,7 +30,8 @@ export async function middleware(req: NextRequest) {
   if (
     pathname.startsWith("/api/auth/callback/google") ||
     pathname.startsWith("/api/auth/error") ||
-    pathname.startsWith("/api/auth/signin/google")
+    pathname.startsWith("/api/auth/signin/google") ||
+    pathname.startsWith("/api/auth/session")
   ) {
     const xfProto = (req.headers.get("x-forwarded-proto") || "").split(",")[0]?.trim();
     const xfHost = (req.headers.get("x-forwarded-host") || "").split(",")[0]?.trim();
