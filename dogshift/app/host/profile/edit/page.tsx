@@ -568,13 +568,6 @@ export default function HostProfileEditPage() {
                     />
                   </button>
                 </div>
-                {saved ? (
-                  <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
-                    <p className="text-sm font-semibold text-emerald-900">Enregistré</p>
-                    <p className="mt-1 text-sm text-emerald-900/80">Vos modifications seront visibles sur votre profil public.</p>
-                  </div>
-                ) : null}
-                {error ? <p className="mt-4 text-sm font-medium text-rose-600">{error}</p> : null}
 
                 <div id="verification" className="mt-8 rounded-2xl border border-slate-200 bg-white p-5">
                   <p className="text-sm font-semibold text-slate-900">Vérification</p>
@@ -683,6 +676,15 @@ export default function HostProfileEditPage() {
                 >
                   Enregistrer
                 </button>
+
+                {saved ? (
+                  <div className="mt-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+                    <p className="text-sm font-semibold text-emerald-900">Enregistré</p>
+                    <p className="mt-1 text-sm text-emerald-900/80">Vos modifications seront visibles sur votre profil public.</p>
+                  </div>
+                ) : null}
+
+                {error ? <p className="mt-4 text-sm font-medium text-rose-600">{error}</p> : null}
               </div>
           </section>
         </div>
