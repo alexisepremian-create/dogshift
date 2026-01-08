@@ -28,6 +28,30 @@ export async function middleware(req: NextRequest) {
   const isPopupClose = pathname === "/auth/popup-close" || pathname === "/auth/popup-close/";
 
   if (
+    pathname.startsWith("/api/auth/callback/google") ||
+    pathname.startsWith("/api/auth/error") ||
+    pathname.startsWith("/api/auth/signin/google")
+  ) {
+    console.log(
+      "[middleware][nextauth]",
+      JSON.stringify(
+        {
+          ts: new Date().toISOString(),
+          pathname,
+          search: req.nextUrl.search,
+          host: req.headers.get("host"),
+          xForwardedHost: req.headers.get("x-forwarded-host"),
+          xForwardedProto: req.headers.get("x-forwarded-proto"),
+          referer: req.headers.get("referer"),
+          userAgent: req.headers.get("user-agent"),
+        },
+        null,
+        2
+      )
+    );
+  }
+
+  if (
     pathname.startsWith("/api") ||
     pathname.startsWith("/_next") ||
     pathname === "/favicon.ico" ||
