@@ -10,12 +10,15 @@ export const runtime = "nodejs";
 
 type RoleJwt = { role?: string; uid?: string; sitterId?: string };
 
+const minimalOauth = (process.env.NEXTAUTH_MINIMAL_OAUTH || "").trim() === "1";
+
 const envLogGoogleClientId = (process.env.GOOGLE_CLIENT_ID || "").trim();
 console.log("[next-auth][env]", {
   NEXTAUTH_URL: (process.env.NEXTAUTH_URL || "").trim() || null,
   NEXTAUTH_SECRET: (process.env.NEXTAUTH_SECRET || "").trim() ? "present" : "missing",
   GOOGLE_CLIENT_ID: envLogGoogleClientId ? `${envLogGoogleClientId.slice(0, 6)}…` : "missing",
   DATABASE_URL: process.env.DATABASE_URL ? "present" : "missing",
+  NEXTAUTH_MINIMAL_OAUTH: minimalOauth,
 });
 
 function normalizeEmail(email: string) {
@@ -163,58 +166,118 @@ export const authOptions: NextAuthOptions = {
   ],
   callbacks: {
     async jwt({ token, user }: { token: JWT; user?: User }) {
-      if (user?.email) {
-        token.email = user.email;
-      }
-
-      if (typeof user?.name === "string") {
-        token.name = user.name;
-      }
-
-      if (token?.email) {
-        const email = normalizeEmail(String(token.email));
-        const dbUser = await prisma.user.findUnique({ where: { email } });
-        if (dbUser) {
-          const sitterId = (dbUser as unknown as { sitterId?: string }).sitterId;
-          (token as unknown as RoleJwt).role = String((dbUser as { role: unknown }).role);
-          (token as unknown as RoleJwt).uid = String((dbUser as { id: unknown }).id);
-          (token as unknown as RoleJwt).sitterId = typeof sitterId === "string" ? sitterId : undefined;
-
-          const name = (dbUser as unknown as { name?: string | null }).name;
-          if (typeof name === "string") {
-            token.name = name;
-          }
-        } else {
-          (token as unknown as RoleJwt).role = wantedRoleForEmail(email) ?? "OWNER";
+      try {
+        if (user?.email) {
+          token.email = user.email;
         }
-      }
 
-      return token;
+        if (typeof user?.name === "string") {
+          token.name = user.name;
+        }
+
+        if (token?.email && !minimalOauth) {
+          const email = normalizeEmail(String(token.email));
+          try {
+            const dbUser = await prisma.user.findUnique({ where: { email } });
+            if (dbUser) {
+              const sitterId = (dbUser as unknown as { sitterId?: string }).sitterId;
+              (token as unknown as RoleJwt).role = String((dbUser as { role: unknown }).role);
+              (token as unknown as RoleJwt).uid = String((dbUser as { id: unknown }).id);
+              (token as unknown as RoleJwt).sitterId = typeof sitterId === "string" ? sitterId : undefined;
+
+              const name = (dbUser as unknown as { name?: string | null }).name;
+              if (typeof name === "string") {
+                token.name = name;
+              }
+            } else {
+              (token as unknown as RoleJwt).role = wantedRoleForEmail(email) ?? "OWNER";
+            }
+          } catch (err) {
+            console.error("[next-auth][jwt] db lookup failed", {
+              email,
+              err: err instanceof Error ? { name: err.name, message: err.message, stack: err.stack } : err,
+            });
+          }
+        }
+
+        return token;
+      } catch (err) {
+        console.error("[next-auth][jwt] callback failed", {
+          err: err instanceof Error ? { name: err.name, message: err.message, stack: err.stack } : err,
+        });
+        return token;
+      }
     },
     async session({ session, token }: { session: Session; token: JWT }) {
-      if (session.user) {
-        (session.user as unknown as { role?: unknown }).role = (token as unknown as RoleJwt).role ?? "OWNER";
-        (session.user as unknown as { id?: unknown }).id = (token as unknown as RoleJwt).uid;
-        (session.user as unknown as { sitterId?: unknown }).sitterId = (token as unknown as RoleJwt).sitterId;
+      try {
+        if (session.user && !minimalOauth) {
+          (session.user as unknown as { role?: unknown }).role = (token as unknown as RoleJwt).role ?? "OWNER";
+          (session.user as unknown as { id?: unknown }).id = (token as unknown as RoleJwt).uid;
+          (session.user as unknown as { sitterId?: unknown }).sitterId = (token as unknown as RoleJwt).sitterId;
 
-        if (typeof token.name === "string") {
-          session.user.name = token.name;
+          if (typeof token.name === "string") {
+            session.user.name = token.name;
+          }
         }
+        return session;
+      } catch (err) {
+        console.error("[next-auth][session] callback failed", {
+          err: err instanceof Error ? { name: err.name, message: err.message, stack: err.stack } : err,
+        });
+        return session;
       }
-      return session;
     },
-    async signIn({ user }: { user: User }) {
-      if (!user.email) return false;
-      await applyWantedRoleByEmail(user.email);
-      return true;
+    async signIn(params: any) {
+      try {
+        const user = params?.user as User | undefined;
+        const account = params?.account as { provider?: unknown; type?: unknown } | undefined;
+        const profile = params?.profile as { email?: unknown; sub?: unknown } | undefined;
+
+        console.log("[next-auth][signIn] callback", {
+          user: user ? { id: user.id, email: user.email, name: user.name } : null,
+          account: account ? { provider: account.provider, type: account.type } : null,
+          profile: profile ? { email: profile.email, sub: profile.sub } : null,
+          minimalOauth,
+        });
+
+        if (!user?.email) {
+          console.error("[next-auth][signIn] missing user/email", {
+            user: user ? { id: user.id, email: user.email, name: user.name } : null,
+          });
+          return false;
+        }
+
+        if (!minimalOauth) {
+          try {
+            await applyWantedRoleByEmail(user.email);
+          } catch (err) {
+            console.error("[next-auth][signIn] applyWantedRoleByEmail failed (non-blocking)", {
+              email: user.email,
+              err: err instanceof Error ? { name: err.name, message: err.message, stack: err.stack } : err,
+            });
+          }
+        }
+
+        console.log("[next-auth][signIn] allow", { email: user.email, minimalOauth });
+        return true;
+      } catch (err) {
+        console.error("[next-auth][signIn] callback failed", {
+          err: err instanceof Error ? { name: err.name, message: err.message, stack: err.stack } : err,
+        });
+        return true;
+      }
     },
     async redirect({ url, baseUrl }: { url: string; baseUrl: string }) {
-      if (url.startsWith("/")) return `${baseUrl}${url}`;
       try {
+        if (url.startsWith("/")) return `${baseUrl}${url}`;
         const target = new URL(url);
         if (target.origin === baseUrl) return url;
-      } catch {
-        // ignore
+      } catch (err) {
+        console.error("[next-auth][redirect] invalid redirect", {
+          url,
+          baseUrl,
+          err: err instanceof Error ? { name: err.name, message: err.message } : err,
+        });
       }
       return baseUrl;
     },
@@ -225,7 +288,36 @@ export const authOptions: NextAuthOptions = {
   },
   events: {
     async createUser({ user }: { user: User }) {
-      await applyWantedRoleByEmail(user.email);
+      console.log("[next-auth][event][createUser]", { id: user.id, email: user.email, minimalOauth });
+      if (minimalOauth) return;
+      try {
+        await applyWantedRoleByEmail(user.email);
+      } catch (err) {
+        console.error("[next-auth][event][createUser] applyWantedRoleByEmail failed (non-blocking)", {
+          email: user.email,
+          err: err instanceof Error ? { name: err.name, message: err.message, stack: err.stack } : err,
+        });
+      }
+    },
+    async signIn(message: any) {
+      console.log("[next-auth][event][signIn]", {
+        user: { id: message.user?.id, email: message.user?.email },
+        account: { provider: message.account?.provider, type: message.account?.type },
+        minimalOauth,
+      });
+    },
+    async linkAccount(message: any) {
+      console.log("[next-auth][event][linkAccount]", {
+        user: { id: message.user?.id, email: message.user?.email },
+        account: { provider: message.account?.provider, type: message.account?.type },
+        minimalOauth,
+      });
+    },
+    async session(message: any) {
+      console.log("[next-auth][event][session]", {
+        sessionUser: message.session?.user ? { email: message.session.user.email, name: message.session.user.name } : null,
+        minimalOauth,
+      });
     },
   },
 };
