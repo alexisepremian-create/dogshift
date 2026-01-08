@@ -96,6 +96,14 @@ if (!hasGoogleOauth) {
   });
 }
 
+const googleClientIdTrimmed = (process.env.GOOGLE_CLIENT_ID || "").trim();
+const googleClientSecretTrimmed = (process.env.GOOGLE_CLIENT_SECRET || "").trim();
+console.log("[next-auth][boot][google]", {
+  VERCEL_ENV: process.env.VERCEL_ENV || null,
+  googleClientIdSuffix: googleClientIdTrimmed ? googleClientIdTrimmed.slice(-6) : null,
+  googleClientSecretLength: googleClientSecretTrimmed ? googleClientSecretTrimmed.length : null,
+});
+
 export const authOptions: NextAuthOptions = {
   debug: true,
   secret: process.env.NEXTAUTH_SECRET,
