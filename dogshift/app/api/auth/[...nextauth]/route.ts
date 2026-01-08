@@ -226,8 +226,6 @@ export const authOptions: NextAuthOptions = {
   },
 };
 
-const handler = missingAuthEnv().length === 0 ? NextAuth(authOptions) : null;
-
 function misconfiguredResponse() {
   const missing = missingAuthEnv();
   console.error("[next-auth] misconfigured env", { missing });
@@ -235,11 +233,13 @@ function misconfiguredResponse() {
 }
 
 export async function GET(req: NextRequest) {
-  if (!handler) return misconfiguredResponse();
+  if (missingAuthEnv().length > 0) return misconfiguredResponse();
+  const handler = NextAuth(authOptions);
   return handler(req);
 }
 
 export async function POST(req: NextRequest) {
-  if (!handler) return misconfiguredResponse();
+  if (missingAuthEnv().length > 0) return misconfiguredResponse();
+  const handler = NextAuth(authOptions);
   return handler(req);
 }
