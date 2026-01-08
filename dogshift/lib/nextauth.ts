@@ -10,6 +10,22 @@ type RoleJwt = { role?: string; uid?: string; sitterId?: string };
 
 const minimalOauth = (process.env.NEXTAUTH_MINIMAL_OAUTH || "").trim() === "1";
 
+const CANONICAL_NEXTAUTH_URL = "https://www.dogshift.ch";
+const nextAuthUrlEnv = (process.env.NEXTAUTH_URL || "").trim();
+if (nextAuthUrlEnv) {
+  console.log("[next-auth][boot]", {
+    NEXTAUTH_URL: nextAuthUrlEnv,
+    expected: CANONICAL_NEXTAUTH_URL,
+    matchesCanonical: nextAuthUrlEnv === CANONICAL_NEXTAUTH_URL,
+  });
+  if (nextAuthUrlEnv !== CANONICAL_NEXTAUTH_URL) {
+    console.warn("[next-auth][boot] NEXTAUTH_URL mismatch", {
+      NEXTAUTH_URL: nextAuthUrlEnv,
+      expected: CANONICAL_NEXTAUTH_URL,
+    });
+  }
+}
+
 function normalizeEmail(email: string) {
   return email.replace(/\s+/g, "+").trim().toLowerCase();
 }
@@ -276,18 +292,34 @@ export const authOptions: NextAuthOptions = {
       }
     },
     async redirect({ url, baseUrl }: { url: string; baseUrl: string }) {
+      let returned = baseUrl;
       try {
-        if (url.startsWith("/")) return `${baseUrl}${url}`;
+        if (url.startsWith("/")) {
+          returned = `${baseUrl}${url}`;
+          return returned;
+        }
         const target = new URL(url);
-        if (target.origin === baseUrl) return url;
+        if (target.origin === baseUrl) {
+          returned = url;
+          return returned;
+        }
+        returned = baseUrl;
+        return returned;
       } catch (err) {
         console.error("[next-auth][redirect] invalid redirect", {
           url,
           baseUrl,
           err: err instanceof Error ? { name: err.name, message: err.message } : err,
         });
+        returned = baseUrl;
+        return returned;
+      } finally {
+        console.log("[next-auth][redirect] decision", {
+          url,
+          baseUrl,
+          returned,
+        });
       }
-      return baseUrl;
     },
   },
   pages: {

@@ -32,6 +32,16 @@ export async function middleware(req: NextRequest) {
     pathname.startsWith("/api/auth/error") ||
     pathname.startsWith("/api/auth/signin/google")
   ) {
+    const xfProto = (req.headers.get("x-forwarded-proto") || "").split(",")[0]?.trim();
+    const xfHost = (req.headers.get("x-forwarded-host") || "").split(",")[0]?.trim();
+    const hostHeader = (req.headers.get("host") || "").split(",")[0]?.trim();
+    const proto = xfProto || "https";
+    const derivedHost = xfHost || hostHeader;
+    const derivedOrigin = derivedHost ? `${proto}://${derivedHost}` : null;
+    const nextAuthUrlEnv = (process.env.NEXTAUTH_URL || "").trim() || null;
+    const canonical = "https://www.dogshift.ch";
+    const originMismatch = Boolean(nextAuthUrlEnv && nextAuthUrlEnv !== canonical);
+
     console.log(
       "[middleware][nextauth]",
       JSON.stringify(
@@ -42,6 +52,10 @@ export async function middleware(req: NextRequest) {
           host: req.headers.get("host"),
           xForwardedHost: req.headers.get("x-forwarded-host"),
           xForwardedProto: req.headers.get("x-forwarded-proto"),
+          derivedOrigin,
+          NEXTAUTH_URL: nextAuthUrlEnv,
+          expectedNEXTAUTH_URL: canonical,
+          nextauthUrlMismatch: originMismatch,
           referer: req.headers.get("referer"),
           userAgent: req.headers.get("user-agent"),
         },
