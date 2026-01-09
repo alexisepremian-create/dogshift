@@ -53,7 +53,7 @@ export default async function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <ClerkProvider>
+        <ClerkProvider signInUrl="/login" signUpUrl="/signup" afterSignInUrl="/account" afterSignUpUrl="/account">
           <Suspense fallback={null}>
             <SessionAuthProvider>
               {isAccess ? children : <SiteHeader />}
