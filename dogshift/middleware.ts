@@ -90,6 +90,27 @@ export async function middleware(req: NextRequest) {
     const hasAccess = req.cookies.get("dogshift_access")?.value === "true";
     const isAccessPage = pathname === "/access";
 
+    const isLoginPage = pathname === "/login";
+    const hasNextAuthSessionCookie =
+      Boolean(req.cookies.get("next-auth.session-token")?.value) ||
+      Boolean(req.cookies.get("__Secure-next-auth.session-token")?.value) ||
+      Boolean(req.cookies.get("__Host-next-auth.session-token")?.value);
+
+    if (!isAccessPage) {
+      if (isLoginPage || hasNextAuthSessionCookie) {
+        return nextWithPath(req);
+      }
+
+      try {
+        const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
+        if (token) {
+          return nextWithPath(req);
+        }
+      } catch {
+        // If token parsing fails, fall through to access gate.
+      }
+    }
+
     if (!hasAccess && !isAccessPage) {
       const url = req.nextUrl.clone();
       url.pathname = "/access";
