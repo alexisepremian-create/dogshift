@@ -26,6 +26,12 @@ if (nextAuthUrlEnv) {
   }
 }
 
+if (nextAuthUrlEnv) {
+  console.log("[nextauth][boot] expected google callback", {
+    callback: `${nextAuthUrlEnv}/api/auth/callback/google`,
+  });
+}
+
 function normalizeEmail(email: string) {
   return email.replace(/\s+/g, "+").trim().toLowerCase();
 }
@@ -88,16 +94,11 @@ if (missingEnvAtBoot.length > 0) {
   throw new Error("NEXTAUTH_MISCONFIGURED");
 }
 
-const hasGoogleOauth = Boolean((process.env.GOOGLE_CLIENT_ID || "").trim() && (process.env.GOOGLE_CLIENT_SECRET || "").trim());
-if (!hasGoogleOauth) {
-  console.warn("[next-auth] google oauth disabled (missing env)", {
-    GOOGLE_CLIENT_ID: Boolean((process.env.GOOGLE_CLIENT_ID || "").trim()),
-    GOOGLE_CLIENT_SECRET: Boolean((process.env.GOOGLE_CLIENT_SECRET || "").trim()),
-  });
-}
-
 const googleClientIdTrimmed = (process.env.GOOGLE_CLIENT_ID || "").trim();
 const googleClientSecretTrimmed = (process.env.GOOGLE_CLIENT_SECRET || "").trim();
+if (!googleClientIdTrimmed || !googleClientSecretTrimmed) {
+  throw new Error("Missing GOOGLE_CLIENT_ID/GOOGLE_CLIENT_SECRET");
+}
 console.log("[next-auth][boot][google]", {
   VERCEL_ENV: process.env.VERCEL_ENV || null,
   googleClientIdSuffix: googleClientIdTrimmed ? googleClientIdTrimmed.slice(-6) : null,
@@ -111,50 +112,26 @@ export const authOptions: NextAuthOptions = {
   session: { strategy: "jwt" },
   logger: {
     error(code: string, metadata?: unknown) {
-      console.error(
-        "[next-auth][error]",
-        JSON.stringify(
-          {
-            code,
-            metadata,
-          },
-          null,
-          2
-        )
-      );
+      console.error("[nextauth][error]", code, metadata);
     },
     warn(code: string) {
-      console.warn("[next-auth][warn]", code);
+      console.warn("[nextauth][warn]", code);
     },
     debug(code: string, metadata?: unknown) {
-      console.log(
-        "[next-auth][debug]",
-        JSON.stringify(
-          {
-            code,
-            metadata,
-          },
-          null,
-          2
-        )
-      );
+      console.log("[nextauth][debug]", code, metadata);
     },
   },
   providers: [
-    ...(hasGoogleOauth
-      ? [
-          GoogleProvider({
-            clientId: googleClientIdTrimmed,
-            clientSecret: googleClientSecretTrimmed,
-            allowDangerousEmailAccountLinking: true,
-            authorization: {
-              params: {
-                prompt: "consent select_account",
-              },
-            },
-          }),
-        ]
-      : []),
+    GoogleProvider({
+      clientId: googleClientIdTrimmed,
+      clientSecret: googleClientSecretTrimmed,
+      allowDangerousEmailAccountLinking: true,
+      authorization: {
+        params: {
+          prompt: "consent select_account",
+        },
+      },
+    }),
     CredentialsProvider({
       name: "Credentials",
       credentials: {
