@@ -23,6 +23,12 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(url, 308);
   }
 
+  if (pathname.startsWith("/api/auth")) return NextResponse.next();
+  if (pathname.startsWith("/api")) return NextResponse.next();
+  if (pathname.startsWith("/_next")) return NextResponse.next();
+  if (pathname === "/favicon.ico") return NextResponse.next();
+  if (pathname.startsWith("/access")) return NextResponse.next();
+
   const isStaticAsset = /\.(png|jpg|jpeg|svg|webp|ico|txt|xml)$/i.test(pathname);
   const isNextAuthRoute = pathname.startsWith("/api/auth/");
   const isPopupClose = pathname === "/auth/popup-close" || pathname === "/auth/popup-close/";
@@ -124,5 +130,5 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/:path*"],
+  matcher: ["/((?!api|_next|favicon.ico|access).*)"],
 };
