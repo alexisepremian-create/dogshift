@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { useSession } from "next-auth/react";
+import { useUser } from "@clerk/nextjs";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { User } from "lucide-react";
 import { loadHostProfileFromStorage, type HostProfileV1 } from "@/lib/hostProfile";
@@ -121,8 +121,8 @@ export default function SitterProfilePage() {
   const router = useRouter();
   const params = useParams<{ id: string }>();
   const searchParams = useSearchParams();
-  const { data, status } = useSession();
-  const isLoggedIn = false;
+  const { isLoaded, isSignedIn, user } = useUser();
+  const isLoggedIn = Boolean(isLoaded && isSignedIn);
 
   const [hydrated, setHydrated] = useState(false);
   const [currentHostId, setCurrentHostId] = useState<string | null>(null);
@@ -140,8 +140,8 @@ export default function SitterProfilePage() {
   const [previewSitter, setPreviewSitter] = useState<SitterCard | null>(null);
   const [profileData, setProfileData] = useState<HostProfileV1 | null>(null);
 
-  const sessionName = typeof (data?.user as any)?.name === "string" ? ((data?.user as any).name as string) : "";
-  const sessionImage = typeof (data?.user as any)?.image === "string" ? ((data?.user as any).image as string) : null;
+  const sessionName = typeof user?.fullName === "string" ? user.fullName : "";
+  const sessionImage = typeof user?.imageUrl === "string" ? user.imageUrl : null;
 
   function buildSitterFromProfile(profile: HostProfileV1): SitterCard {
     const services = profile.services && typeof profile.services === "object" ? profile.services : ({} as any);
@@ -249,7 +249,7 @@ export default function SitterProfilePage() {
 
   useEffect(() => {
     if (!id) return;
-    if (status !== "authenticated") {
+    if (!isLoaded || !isSignedIn) {
       setPreviewLoaded(false);
       setPreviewSitter(null);
       setProfileData(null);
@@ -298,25 +298,33 @@ export default function SitterProfilePage() {
         setPreviewLoaded(true);
       }
     })();
-  }, [id, isHostViewingOwn, isPreviewMode, status]);
+  }, [id, isHostViewingOwn, isPreviewMode, isLoaded, isSignedIn]);
 
   useEffect(() => {
     setHydrated(true);
-    const role = (data?.user as any)?.role as string | undefined;
-    const sitterId = (data?.user as any)?.sitterId as string | undefined;
-    setCurrentHostId(role === "SITTER" && typeof sitterId === "string" ? sitterId : null);
-  }, []);
-
-  useEffect(() => {
-    if (!hydrated) return;
-    if (status !== "authenticated") {
+    if (!isLoaded || !isSignedIn) {
       setCurrentHostId(null);
       return;
     }
-    const role = (data?.user as any)?.role as string | undefined;
-    const sitterId = (data?.user as any)?.sitterId as string | undefined;
-    setCurrentHostId(role === "SITTER" && typeof sitterId === "string" ? sitterId : null);
-  }, [data?.user, hydrated, status]);
+    void (async () => {
+      try {
+        const res = await fetch("/api/host/profile", { method: "GET" });
+        const payload = (await res.json()) as { ok?: boolean; sitterId?: string | null };
+        if (!res.ok || !payload.ok) {
+          setCurrentHostId(null);
+          return;
+        }
+        const sitterId = typeof payload.sitterId === "string" ? payload.sitterId : null;
+        setCurrentHostId(sitterId && sitterId.trim() ? sitterId.trim() : null);
+      } catch {
+        setCurrentHostId(null);
+      }
+    })();
+  }, [isLoaded, isSignedIn]);
+
+  useEffect(() => {
+    // handled above
+  }, [hydrated]);
 
   const sitter = useMemo(() => {
     if (isPreviewMode && isHostViewingOwn) {
@@ -808,7 +816,7 @@ export default function SitterProfilePage() {
                       onClick={() => {
                         if (disableSelfActions) return;
                         if (startingChat) return;
-                        if (status !== "authenticated") {
+                        if (!isLoggedIn) {
                           router.push("/login");
                           return;
                         }

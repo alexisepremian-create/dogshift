@@ -4,7 +4,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
+import { useUser } from "@clerk/nextjs";
 import { MessageCircle } from "lucide-react";
 
 import SunCornerGlow from "@/components/SunCornerGlow";
@@ -57,7 +58,8 @@ function formatDateOnly(iso: string) {
 
 export default function HostMessagesLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { status } = useSession();
+  const router = useRouter();
+  const { isLoaded, isSignedIn } = useUser();
 
   const [conversations, setConversations] = useState<ConversationListItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -104,10 +106,17 @@ export default function HostMessagesLayout({ children }: { children: React.React
   }
 
   useEffect(() => {
-    if (status !== "authenticated") return;
+    if (!isLoaded) return;
+    if (!isSignedIn) {
+      router.replace("/login");
+      return;
+    }
     void loadConversations();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [status]);
+  }, [isLoaded, isSignedIn, router]);
+
+  if (!isLoaded) return null;
+  if (!isSignedIn) return null;
 
   const rows = useMemo(() => {
     return conversations.slice().sort((a, b) => {

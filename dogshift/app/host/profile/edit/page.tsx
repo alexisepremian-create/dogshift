@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
+import { useUser } from "@clerk/nextjs";
 import { Pencil } from "lucide-react";
 
 import SunCornerGlow from "@/components/SunCornerGlow";
@@ -37,8 +38,8 @@ function parsePrice(raw: string) {
 }
 
 export default function HostProfileEditPage() {
-  const { data, status } = useSession();
-  const sessionSitterId = ((data?.user as any)?.sitterId as string | undefined) ?? null;
+  const router = useRouter();
+  const { isLoaded, isSignedIn } = useUser();
   const [effectiveSitterId, setEffectiveSitterId] = useState<string | null>(null);
 
   const [published, setPublished] = useState(false);
@@ -52,7 +53,11 @@ export default function HostProfileEditPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (status !== "authenticated") return;
+    if (!isLoaded) return;
+    if (!isSignedIn) {
+      router.replace("/login");
+      return;
+    }
 
     void (async () => {
       try {
@@ -67,7 +72,7 @@ export default function HostProfileEditPage() {
         if (!res.ok || !payload.ok) return;
 
         const apiSitterId = typeof payload.sitterId === "string" && payload.sitterId.trim() ? payload.sitterId.trim() : null;
-        const nextSitterId = apiSitterId ?? sessionSitterId;
+        const nextSitterId = apiSitterId;
         if (!nextSitterId) return;
         setEffectiveSitterId(nextSitterId);
 
@@ -93,7 +98,7 @@ export default function HostProfileEditPage() {
         // ignore
       }
     })();
-  }, [sessionSitterId, status]);
+  }, [isLoaded, isSignedIn, router]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -125,6 +130,9 @@ export default function HostProfileEditPage() {
     window.addEventListener("hashchange", onHashChange);
     return () => window.removeEventListener("hashchange", onHashChange);
   }, []);
+
+  if (!isLoaded) return null;
+  if (!isSignedIn) return null;
 
   async function persistProfile(nextProfile: HostProfileV1) {
     if (!effectiveSitterId) return;

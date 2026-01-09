@@ -4,7 +4,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
-import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
+import { useUser } from "@clerk/nextjs";
 
 type ConversationHeader = {
   id: string;
@@ -51,9 +52,8 @@ function formatDateTime(value: string) {
 
 export default function HostMessageThreadPage() {
   const params = useParams<{ id: string }>();
-  const { data, status } = useSession();
-
-  const uid = ((data?.user as any)?.id as string | undefined) ?? null;
+  const router = useRouter();
+  const { isLoaded, isSignedIn } = useUser();
   const conversationId = typeof params?.id === "string" ? params.id : "";
 
   const [header, setHeader] = useState<ConversationHeader | null>(null);
@@ -65,8 +65,11 @@ export default function HostMessageThreadPage() {
   const [sending, setSending] = useState(false);
 
   useEffect(() => {
-    if (status === "loading") return;
-  }, [status]);
+    if (!isLoaded) return;
+    if (!isSignedIn) {
+      router.replace("/login");
+    }
+  }, [isLoaded, isSignedIn, router]);
 
   async function loadThread() {
     if (!conversationId) return;
@@ -110,10 +113,10 @@ export default function HostMessageThreadPage() {
   }
 
   useEffect(() => {
-    if (status !== "authenticated") return;
+    if (!isLoaded || !isSignedIn) return;
     void loadThread();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [conversationId, status]);
+  }, [conversationId, isLoaded, isSignedIn]);
 
   const canSend = text.trim().length > 0 && !sending;
 
@@ -151,8 +154,10 @@ export default function HostMessageThreadPage() {
     }
   }
 
-  if (status === "loading") return null;
-  if (status !== "authenticated") {
+  if (!isLoaded) return null;
+  if (!isSignedIn) return null;
+
+  if (error) {
     return (
       <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)] sm:p-8">
         <p className="text-sm font-semibold text-slate-900">Connexion requise (401).</p>
@@ -231,7 +236,7 @@ export default function HostMessageThreadPage() {
                 </div>
               ) : (
                 messages.map((m) => {
-                  const mine = uid && m.senderId === uid;
+                  const mine = false;
                   return (
                     <div key={m.id} className={mine ? "flex justify-end" : "flex justify-start"}>
                       <div
