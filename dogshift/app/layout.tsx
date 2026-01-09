@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Suspense } from "react";
 import { headers } from "next/headers";
+import { ClerkProvider } from "@clerk/nextjs";
 import DogShiftBot from "@/components/DogShiftBot";
 import PageTopOffset from "@/components/PageTopOffset";
 import SessionAuthProvider from "@/components/SessionAuthProvider";
@@ -52,40 +53,42 @@ export default async function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <Suspense fallback={null}>
-          <SessionAuthProvider>
-            {isAccess ? children : <SiteHeader />}
-            {isAccess ? null : <PageTopOffset>{children}</PageTopOffset>}
-            {isAccess ? null : <DogShiftBot />}
-          </SessionAuthProvider>
-        </Suspense>
-        {isAccess ? null : (
-          <footer className="border-t border-slate-200/70 bg-white">
-            <div className="flex w-full flex-col gap-3 px-4 py-8 text-sm text-slate-600 sm:flex-row sm:items-center sm:justify-start sm:px-6">
-              <div className="flex items-start gap-4">
-                <Link href="/" aria-label="DogShift" className="inline-flex items-center">
-                  <Image
-                    src="/dogshift-logo.png"
-                    alt="DogShift"
-                    width={240}
-                    height={56}
-                    className="h-[52px] w-auto"
-                    priority={false}
-                  />
-                </Link>
-                <div className="flex flex-col items-start gap-1 pt-1">
-                  <Link
-                    href="/cgu"
-                    className="font-semibold text-[var(--dogshift-blue)] hover:text-[var(--dogshift-blue-hover)]"
-                  >
-                    CGU
+        <ClerkProvider>
+          <Suspense fallback={null}>
+            <SessionAuthProvider>
+              {isAccess ? children : <SiteHeader />}
+              {isAccess ? null : <PageTopOffset>{children}</PageTopOffset>}
+              {isAccess ? null : <DogShiftBot />}
+            </SessionAuthProvider>
+          </Suspense>
+          {isAccess ? null : (
+            <footer className="border-t border-slate-200/70 bg-white">
+              <div className="flex w-full flex-col gap-3 px-4 py-8 text-sm text-slate-600 sm:flex-row sm:items-center sm:justify-start sm:px-6">
+                <div className="flex items-start gap-4">
+                  <Link href="/" aria-label="DogShift" className="inline-flex items-center">
+                    <Image
+                      src="/dogshift-logo.png"
+                      alt="DogShift"
+                      width={240}
+                      height={56}
+                      className="h-[52px] w-auto"
+                      priority={false}
+                    />
                   </Link>
-                  <p className="font-medium text-slate-700">© {new Date().getFullYear()} DogShift</p>
+                  <div className="flex flex-col items-start gap-1 pt-1">
+                    <Link
+                      href="/cgu"
+                      className="font-semibold text-[var(--dogshift-blue)] hover:text-[var(--dogshift-blue-hover)]"
+                    >
+                      CGU
+                    </Link>
+                    <p className="font-medium text-slate-700">© {new Date().getFullYear()} DogShift</p>
+                  </div>
                 </div>
               </div>
-            </div>
-          </footer>
-        )}
+            </footer>
+          )}
+        </ClerkProvider>
       </body>
     </html>
   );
