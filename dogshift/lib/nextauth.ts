@@ -287,35 +287,27 @@ export const authOptions: NextAuthOptions = {
       }
     },
     async redirect({ url, baseUrl }: { url: string; baseUrl: string }) {
-      let returned = baseUrl;
-      try {
-        if (url.startsWith("/")) {
-          returned = `${baseUrl}${url}`;
-          return returned;
-        }
-        const target = new URL(url);
-        if (target.origin === baseUrl) {
-          returned = url;
-          return returned;
-        }
-        returned = baseUrl;
-        return returned;
-      } catch (err) {
-        console.error("[next-auth][redirect] invalid redirect", {
-          url,
-          baseUrl,
-          err: err instanceof Error ? { name: err.name, message: err.message } : err,
-        });
-        returned = baseUrl;
-        return returned;
-      } finally {
-        console.log("[next-auth][redirect] decision", {
-          url,
-          baseUrl,
-          returned,
-        });
-      }
-    },
+  // 1) internal relative URLs
+  if (url.startsWith("/")) return `${baseUrl}${url}`;
+
+  const baseOrigin = new URL(baseUrl).origin;
+
+  // 2) same-origin absolute URLs
+  try {
+    const target = new URL(url);
+
+    if (target.origin === baseOrigin) return url;
+
+    // 3) allow Google OAuth redirects (needed for signIn("google"))
+    if (target.origin === "https://accounts.google.com") return url;
+    if (target.origin === "https://oauth2.googleapis.com") return url;
+
+    // Otherwise block external redirects
+    return baseUrl;
+  } catch {
+    return baseUrl;
+  }
+},
   },
   pages: {
     signIn: "/login",
