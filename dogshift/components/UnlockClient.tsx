@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 export default function UnlockClient({ next }: { next: string }) {
@@ -8,6 +8,7 @@ export default function UnlockClient({ next }: { next: string }) {
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const submittingRef = useRef(false);
 
   const safeNext = useMemo(() => {
     if (typeof next !== "string") return "/";
@@ -19,7 +20,9 @@ export default function UnlockClient({ next }: { next: string }) {
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (submitting) return;
+    if (submittingRef.current || submitting) return;
+
+    submittingRef.current = true;
 
     setSubmitting(true);
     setError(null);
@@ -39,10 +42,13 @@ export default function UnlockClient({ next }: { next: string }) {
       const data = (await res.json()) as { ok?: boolean; next?: string };
       const dest = typeof data?.next === "string" && data.next.startsWith("/") ? data.next : safeNext;
       router.replace(dest);
-      router.refresh();
+      setTimeout(() => {
+        router.refresh();
+      }, 0);
     } catch {
       setError("Impossible de déverrouiller le site.");
     } finally {
+      submittingRef.current = false;
       setSubmitting(false);
     }
   }
@@ -63,6 +69,7 @@ export default function UnlockClient({ next }: { next: string }) {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              disabled={submitting}
               className="h-11 w-full rounded-2xl border border-slate-300 bg-white px-4 text-slate-900 shadow-sm outline-none transition focus:border-[var(--dogshift-blue)] focus:ring-2 focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_80%)]"
               placeholder="••••••••"
               autoComplete="current-password"
