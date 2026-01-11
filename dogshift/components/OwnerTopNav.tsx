@@ -36,13 +36,13 @@ export default function OwnerTopNav({ className }: OwnerTopNavProps) {
         (className ? ` ${className}` : "")
       }
     >
-      <Link href="/account/bookings" className={activeTab === "bookings" ? activeBtn : inactiveBtn}>
+      <Link href="/account/bookings" prefetch={false} className={activeTab === "bookings" ? activeBtn : inactiveBtn}>
         Réservations
       </Link>
-      <Link href="/account/messages" className={activeTab === "messages" ? activeBtn : inactiveBtn}>
+      <Link href="/account/messages" prefetch={false} className={activeTab === "messages" ? activeBtn : inactiveBtn}>
         Messages
       </Link>
-      <Link href="/account/settings" className={activeTab === "settings" ? activeBtn : inactiveBtn}>
+      <Link href="/account/settings" prefetch={false} className={activeTab === "settings" ? activeBtn : inactiveBtn}>
         Paramètres
       </Link>
     </nav>

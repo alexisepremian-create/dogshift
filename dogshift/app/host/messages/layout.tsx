@@ -69,7 +69,7 @@ export default function HostMessagesLayout({ children }: { children: React.React
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/host/messages/conversations", { method: "GET" });
+      const res = await fetch("/api/host/messages/conversations", { method: "GET", cache: "no-store" });
       const payload = (await res.json()) as { ok?: boolean; conversations?: ConversationListItem[]; error?: string };
       if (!res.ok || !payload.ok) {
         if (res.status === 401 || payload.error === "UNAUTHORIZED") {

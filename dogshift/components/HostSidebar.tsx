@@ -36,7 +36,7 @@ export default function HostSidebar({ onNavigate, className }: HostSidebarProps)
 
     void (async () => {
       try {
-        const res = await fetch("/api/host/profile", { method: "GET" });
+        const res = await fetch("/api/host/profile", { method: "GET", cache: "no-store" });
         const payload = (await res.json()) as { ok?: boolean; sitterId?: string | null };
         if (!res.ok || !payload.ok) return;
         if (typeof payload.sitterId === "string" && payload.sitterId.trim()) {

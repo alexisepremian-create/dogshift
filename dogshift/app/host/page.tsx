@@ -107,7 +107,7 @@ export default function HostDashboardPage() {
 
     void (async () => {
       try {
-        const res = await fetch("/api/host/profile", { method: "GET" });
+        const res = await fetch("/api/host/profile", { method: "GET", cache: "no-store" });
         const payload = (await res.json()) as { ok?: boolean; sitterId?: string | null };
         const nextSitterId = typeof payload?.sitterId === "string" && payload.sitterId.trim() ? payload.sitterId.trim() : null;
         if (res.ok && payload.ok && nextSitterId) {
@@ -145,7 +145,7 @@ export default function HostDashboardPage() {
     if (!sitterId) return;
     void (async () => {
       try {
-        const res = await fetch("/api/host/profile", { method: "GET" });
+        const res = await fetch("/api/host/profile", { method: "GET", cache: "no-store" });
         const payload = (await res.json()) as { ok?: boolean; profile?: unknown; sitterId?: string | null };
         if (res.ok && payload.ok && payload.profile && payload.sitterId === sitterId) {
           const remote = payload.profile as Partial<HostProfileV1> | null | undefined;

@@ -106,6 +106,7 @@ export default function SiteHeader() {
                     <Link
                       role="menuitem"
                       href={accountHref}
+                      prefetch={false}
                       onClick={() => setMenuOpen(false)}
                       className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50"
                     >

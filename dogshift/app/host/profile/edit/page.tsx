@@ -63,7 +63,7 @@ export default function HostProfileEditPage() {
     setEffectiveSitterIdChecked(false);
     void (async () => {
       try {
-        const res = await fetch("/api/host/profile", { method: "GET" });
+        const res = await fetch("/api/host/profile", { method: "GET", cache: "no-store" });
         const payload = (await res.json()) as {
           ok?: boolean;
           sitterId?: string | null;

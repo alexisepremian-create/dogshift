@@ -109,7 +109,7 @@ export default function OwnerSidebar({ onNavigate, className }: OwnerSidebarProp
               {item.active ? (
                 <div className="pointer-events-none absolute left-0 top-1/2 h-6 w-[2px] -translate-y-1/2 rounded-full bg-[var(--dogshift-blue)]" />
               ) : null}
-              <Link href={item.href} className={item.active ? activeLink : inactiveLink} onClick={onNavigate}>
+              <Link href={item.href} prefetch={false} className={item.active ? activeLink : inactiveLink} onClick={onNavigate}>
                 <span className={"text-slate-500 group-hover:text-slate-700" + (item.active ? " text-slate-700" : "")}>{item.icon}</span>
                 <span>{item.label}</span>
               </Link>

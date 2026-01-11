@@ -18,6 +18,8 @@ import SunCornerGlow from "@/components/SunCornerGlow";
 import { prisma } from "@/lib/prisma";
 import { getUserContexts } from "@/lib/userContexts";
 
+export const dynamic = "force-dynamic";
+
 function firstNameFromFullName(name: string) {
   const cleaned = (name ?? "").trim();
   if (!cleaned) return "";

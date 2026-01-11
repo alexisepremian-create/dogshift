@@ -1,4 +1,5 @@
 import { auth, clerkClient, currentUser } from "@clerk/nextjs/server";
+import { unstable_noStore as noStore } from "next/cache";
 
 import { prisma } from "@/lib/prisma";
 
@@ -11,6 +12,7 @@ export type UserContexts = {
 };
 
 export async function getUserContexts(): Promise<UserContexts> {
+  noStore();
   const { userId } = await auth();
   if (!userId) {
     throw new Error("UNAUTHENTICATED");
