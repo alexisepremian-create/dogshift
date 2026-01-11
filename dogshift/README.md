@@ -69,3 +69,9 @@ npm run dev
 - `/search` search results (mock sitters, "Contacter" -> profile)
 - `/sitter/s-1` sitter profile (mock messaging + mock booking modal)
 - `/login` and `/signup` (UI only)
+
+## Prelaunch password lock
+
+To enable the site lock, set `SITE_PASSWORD` in the environment.
+
+To disable it, remove `SITE_PASSWORD`.
