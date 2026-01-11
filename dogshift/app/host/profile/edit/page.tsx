@@ -41,6 +41,7 @@ export default function HostProfileEditPage() {
   const router = useRouter();
   const { isLoaded, isSignedIn } = useUser();
   const [effectiveSitterId, setEffectiveSitterId] = useState<string | null>(null);
+  const [effectiveSitterIdChecked, setEffectiveSitterIdChecked] = useState(false);
 
   const [published, setPublished] = useState(false);
 
@@ -59,6 +60,7 @@ export default function HostProfileEditPage() {
       return;
     }
 
+    setEffectiveSitterIdChecked(false);
     void (async () => {
       try {
         const res = await fetch("/api/host/profile", { method: "GET" });
@@ -69,11 +71,17 @@ export default function HostProfileEditPage() {
           published?: boolean;
           publishedAt?: string | null;
         };
-        if (!res.ok || !payload.ok) return;
+        if (!res.ok || !payload.ok) {
+          setEffectiveSitterId(null);
+          return;
+        }
 
         const apiSitterId = typeof payload.sitterId === "string" && payload.sitterId.trim() ? payload.sitterId.trim() : null;
         const nextSitterId = apiSitterId;
-        if (!nextSitterId) return;
+        if (!nextSitterId) {
+          setEffectiveSitterId(null);
+          return;
+        }
         setEffectiveSitterId(nextSitterId);
 
         const remote = payload.profile as Partial<HostProfileV1> | null | undefined;
@@ -95,7 +103,9 @@ export default function HostProfileEditPage() {
         setVerificationSelfieFileName(null);
         setVerificationError(null);
       } catch {
-        // ignore
+        setEffectiveSitterId(null);
+      } finally {
+        setEffectiveSitterIdChecked(true);
       }
     })();
   }, [isLoaded, isSignedIn, router]);
@@ -234,8 +244,24 @@ export default function HostProfileEditPage() {
     })();
   }
 
-  if (status !== "authenticated") return null;
-  if (!effectiveSitterId) return null;
+  if (!effectiveSitterId) {
+    if (!effectiveSitterIdChecked) return null;
+
+    return (
+      <div className="relative grid gap-6 overflow-hidden" data-testid="host-profile-edit">
+        <SunCornerGlow variant="sitterProfile" />
+        <div className="relative z-10 rounded-3xl border border-slate-200 bg-white p-6">
+          <p className="text-sm font-semibold text-slate-900">Profil hôte</p>
+          <p className="mt-2 text-sm text-slate-600">Ton profil hôte n’est pas encore disponible.</p>
+          <div className="mt-4">
+            <Link href="/become-sitter" className="text-sm font-semibold text-[var(--dogshift-blue)]">
+              Créer mon profil hôte
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="relative grid gap-6 overflow-hidden" data-testid="host-profile-edit">
