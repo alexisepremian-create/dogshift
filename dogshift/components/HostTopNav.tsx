@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useMemo } from "react";
 import { useUser } from "@clerk/nextjs";
 
@@ -13,8 +13,11 @@ type HostTopNavProps = {
 
 export default function HostTopNav({ className }: HostTopNavProps) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { isLoaded, isSignedIn } = useUser();
   const { sitterId } = useHostUser();
+
+  const disablePrefetch = useMemo(() => (searchParams?.get("mode") ?? "") === "preview", [searchParams]);
 
   const publicHref = useMemo(() => {
     if (!isLoaded || !isSignedIn) return "/login";
@@ -47,16 +50,16 @@ export default function HostTopNav({ className }: HostTopNavProps) {
         (className ? ` ${className}` : "")
       }
     >
-      <Link href="/host" prefetch={false} className={activeTab === "dashboard" ? activeBtn : inactiveBtn}>
+      <Link href="/host" prefetch={!disablePrefetch} className={activeTab === "dashboard" ? activeBtn : inactiveBtn}>
         Tableau de bord
       </Link>
-      <Link href={publicHref} prefetch={false} className={activeTab === "public" ? activeBtn : inactiveBtn}>
+      <Link href={publicHref} prefetch={!disablePrefetch} className={activeTab === "public" ? activeBtn : inactiveBtn}>
         Profil public
       </Link>
-      <Link href="/host/messages" prefetch={false} className={activeTab === "messages" ? activeBtn : inactiveBtn}>
+      <Link href="/host/messages" prefetch={!disablePrefetch} className={activeTab === "messages" ? activeBtn : inactiveBtn}>
         Messages
       </Link>
-      <Link href="/host/profile/edit" prefetch={false} className={activeTab === "host" ? activeBtn : inactiveBtn}>
+      <Link href="/host/profile/edit" prefetch={!disablePrefetch} className={activeTab === "host" ? activeBtn : inactiveBtn}>
         Modifier le profil
       </Link>
     </nav>

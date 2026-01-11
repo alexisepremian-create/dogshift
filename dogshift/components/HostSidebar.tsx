@@ -29,6 +29,8 @@ export default function HostSidebar({ onNavigate, className }: HostSidebarProps)
   const { isLoaded, isSignedIn } = useUser();
   const { sitterId } = useHostUser();
 
+  const disablePrefetch = useMemo(() => (searchParams?.get("mode") ?? "") === "preview", [searchParams]);
+
   const publicHref = useMemo(() => {
     if (!isLoaded || !isSignedIn) return "/login";
     return sitterId ? `/sitter/${encodeURIComponent(sitterId)}?mode=preview` : "/host/profile/edit";
@@ -139,7 +141,7 @@ export default function HostSidebar({ onNavigate, className }: HostSidebarProps)
               ) : null}
               <Link
                 href={item.href}
-                prefetch={false}
+                prefetch={!disablePrefetch}
                 className={item.active ? activeLink : inactiveLink}
                 onClick={onNavigate}
               >
