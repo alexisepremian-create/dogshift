@@ -1,44 +1,45 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { getToken } from "next-auth/jwt";
+import { auth, currentUser } from "@clerk/nextjs/server";
 
 import { prisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
-
-type RoleJwt = { uid?: string; sub?: string; sitterId?: string };
-
-function tokenUserId(token: RoleJwt | null) {
-  const uid = typeof token?.uid === "string" ? token.uid : null;
-  const sub = typeof token?.sub === "string" ? token.sub : null;
-  return uid ?? sub;
-}
 
 function isMigrationMissingError(err: unknown) {
   const msg = err instanceof Error ? err.message : String(err);
   return msg.includes("no such table") || msg.includes("does not exist") || msg.includes("P2021");
 }
 
-async function resolveSitterId(uid: string, token: RoleJwt | null) {
-  const fromToken = typeof token?.sitterId === "string" && token.sitterId.trim() ? token.sitterId.trim() : null;
-  if (fromToken) return fromToken;
-  const user = await (prisma as any).user.findUnique({ where: { id: uid }, select: { sitterId: true } });
-  const fromDb = typeof user?.sitterId === "string" && user.sitterId.trim() ? user.sitterId.trim() : null;
-  return fromDb;
+async function resolveDbUserAndSitterId() {
+  const { userId } = await auth();
+  if (!userId) return { uid: null as string | null, sitterId: null as string | null };
+
+  const clerkUser = await currentUser();
+  const primaryEmail = clerkUser?.primaryEmailAddress?.emailAddress ?? "";
+  if (!primaryEmail) return { uid: null as string | null, sitterId: null as string | null };
+
+  const dbUser = await prisma.user.findUnique({ where: { email: primaryEmail }, select: { id: true, sitterId: true } });
+  if (!dbUser) return { uid: null as string | null, sitterId: null as string | null };
+
+  const sitterProfile = await prisma.sitterProfile.findUnique({ where: { userId: dbUser.id }, select: { sitterId: true } });
+  const sitterId =
+    (typeof sitterProfile?.sitterId === "string" && sitterProfile.sitterId.trim() ? sitterProfile.sitterId.trim() : null) ??
+    (typeof dbUser.sitterId === "string" && dbUser.sitterId.trim() ? dbUser.sitterId.trim() : null);
+
+  return { uid: dbUser.id, sitterId };
 }
 
 export async function GET(req: NextRequest, { params }: { params: { id: string } | Promise<{ id: string }> }) {
   try {
-    const token = (await getToken({ req, secret: process.env.NEXTAUTH_SECRET })) as RoleJwt | null;
-    const uid = tokenUserId(token);
+    const { uid, sitterId } = await resolveDbUserAndSitterId();
     if (!uid) {
       if (process.env.NODE_ENV !== "production") {
-        console.error("[api][host][messages][conversations][id][GET] UNAUTHORIZED", { hasToken: Boolean(token) });
+        console.error("[api][host][messages][conversations][id][GET] UNAUTHORIZED", { hasUser: false });
       }
       return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
     }
 
-    const sitterId = await resolveSitterId(uid, token);
     if (!sitterId) {
       if (process.env.NODE_ENV !== "production") {
         console.error("[api][host][messages][conversations][id][GET] UNAUTHORIZED_NO_SITTER", { uid });
