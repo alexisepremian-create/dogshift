@@ -102,6 +102,37 @@ export default function HostSidebar({ onNavigate, className }: HostSidebarProps)
     ];
   }, [activeKey, publicHref]);
 
+  if (!isLoaded) {
+    return (
+      <aside
+        className={
+          "flex h-full flex-col border-r border-slate-200 bg-white" + (className ? ` ${className}` : "")
+        }
+        aria-busy="true"
+        aria-live="polite"
+      >
+        <div className="px-4 pt-6">
+          <div className="flex items-center gap-3">
+            <div className="h-12 w-12 rounded-2xl bg-slate-100" />
+            <div className="flex-1">
+              <div className="h-4 w-28 rounded bg-slate-100" />
+              <div className="mt-2 h-3 w-20 rounded bg-slate-100" />
+            </div>
+          </div>
+
+          <div className="mt-6 space-y-2">
+            {Array.from({ length: 6 }).map((_, idx) => (
+              <div key={idx} className="flex items-center gap-3 rounded-2xl px-3 py-3">
+                <div className="h-4 w-4 rounded bg-slate-100" />
+                <div className="h-4 w-32 rounded bg-slate-100" />
+              </div>
+            ))}
+          </div>
+        </div>
+      </aside>
+    );
+  }
+
   const linkBase =
     "group flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)]";
 
@@ -111,7 +142,7 @@ export default function HostSidebar({ onNavigate, className }: HostSidebarProps)
   return (
     <aside
       className={
-        "flex h-full w-full flex-col border-r border-slate-200 bg-white" + (className ? ` ${className}` : "")
+        "flex h-full flex-col border-r border-slate-200 bg-white" + (className ? ` ${className}` : "")
       }
     >
       <div className="px-4 pt-2.5">

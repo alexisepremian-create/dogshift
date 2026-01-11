@@ -42,6 +42,26 @@ export default function HostTopNav({ className }: HostTopNavProps) {
   const inactiveBtn =
     baseBtn + " border-slate-300 bg-white text-slate-900 hover:bg-slate-50";
 
+  if (!isLoaded) {
+    return (
+      <nav
+        aria-label="Navigation Host"
+        aria-busy="true"
+        aria-live="polite"
+        className={
+          "flex flex-col gap-2 overflow-x-auto sm:flex-row sm:items-center sm:justify-center sm:gap-3 sm:overflow-visible" +
+          (className ? ` ${className}` : "")
+        }
+      >
+        {Array.from({ length: 4 }).map((_, idx) => (
+          <div key={idx} className={baseBtn + " border-slate-200 bg-slate-50 text-transparent"}>
+            .
+          </div>
+        ))}
+      </nav>
+    );
+  }
+
   return (
     <nav
       aria-label="Navigation Host"
