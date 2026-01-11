@@ -143,8 +143,23 @@ export default function HostDashboardPage() {
 
   useEffect(() => {
     if (!sitterId) return;
-    const stored = loadHostProfileFromStorage(sitterId);
-    setProfile(stored ?? getDefaultHostProfile(sitterId));
+    void (async () => {
+      try {
+        const res = await fetch("/api/host/profile", { method: "GET" });
+        const payload = (await res.json()) as { ok?: boolean; profile?: unknown; sitterId?: string | null };
+        if (res.ok && payload.ok && payload.profile && payload.sitterId === sitterId) {
+          const remote = payload.profile as Partial<HostProfileV1> | null | undefined;
+          if (remote && typeof remote === "object" && remote.profileVersion === 1 && remote.sitterId === sitterId) {
+            setProfile(remote as HostProfileV1);
+            return;
+          }
+        }
+      } catch {
+        // ignore
+      }
+      const stored = loadHostProfileFromStorage(sitterId);
+      setProfile(stored ?? getDefaultHostProfile(sitterId));
+    })();
   }, [sitterId]);
 
   useEffect(() => {
@@ -198,6 +213,12 @@ export default function HostDashboardPage() {
 
   const responseTime = baseSitter?.responseTime ?? "~1h";
 
+  const greetingName =
+    (typeof profile.firstName === "string" && profile.firstName.trim() ? profile.firstName.trim() : null) ??
+    (typeof user?.firstName === "string" && user.firstName.trim() ? user.firstName.trim() : null) ??
+    (typeof user?.fullName === "string" && user.fullName.trim() ? user.fullName.trim() : null) ??
+    null;
+
   const avatarSrc =
     (profile.avatarDataUrl && profile.avatarDataUrl.trim() ? profile.avatarDataUrl.trim() : null) ??
     (typeof user?.imageUrl === "string" && user.imageUrl.trim() ? user.imageUrl.trim() : null);
@@ -236,11 +257,11 @@ export default function HostDashboardPage() {
             <div className="mt-2 flex items-center gap-4">
               <HostAvatar
                 src={avatarSrc}
-                alt={profile.firstName.trim() ? `Photo de profil de ${profile.firstName.trim()}` : "Photo de profil"}
+                alt={greetingName ? `Photo de profil de ${greetingName}` : "Photo de profil"}
               />
               <h1 className="flex flex-wrap items-center gap-2 text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">
-                <span>Bonjour {profile.firstName.trim() ? profile.firstName.trim() : "Host"}</span>
-                {profile.firstName.trim() ? <FilledSunIcon className="h-7 w-7" /> : null}
+                <span>Bonjour {greetingName ?? ""}</span>
+                {greetingName ? <FilledSunIcon className="h-7 w-7" /> : null}
               </h1>
             </div>
             <div className="mt-3 flex min-h-[32px] flex-wrap items-center gap-2">
