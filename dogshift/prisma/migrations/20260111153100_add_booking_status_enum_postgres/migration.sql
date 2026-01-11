@@ -14,13 +14,21 @@ EXCEPTION
   WHEN duplicate_object THEN NULL;
 END $$;
 
--- Normalize legacy TEXT statuses (in case previous migrations were not applied)
+-- Drop legacy TEXT default before casting (required by Postgres)
+ALTER TABLE "Booking" ALTER COLUMN "status" DROP DEFAULT;
+
+-- Normalize legacy values before the cast
 UPDATE "Booking"
-SET "status" = CASE "status"
-  WHEN 'PENDING' THEN 'PENDING_PAYMENT'
-  WHEN 'CANCELED' THEN 'CANCELLED'
-  ELSE "status"
-END;
+SET "status" = 'PENDING_PAYMENT'
+WHERE "status" IS NULL;
+
+UPDATE "Booking"
+SET "status" = 'CANCELLED'
+WHERE "status" = 'CANCELED';
+
+UPDATE "Booking"
+SET "status" = 'PENDING_PAYMENT'
+WHERE "status" = 'PENDING';
 
 -- Fallback: any unexpected value becomes PENDING_PAYMENT to allow cast
 UPDATE "Booking"
@@ -39,5 +47,6 @@ WHERE "status" NOT IN (
 ALTER TABLE "Booking"
   ALTER COLUMN "status" TYPE "BookingStatus" USING ("status"::"BookingStatus");
 
+-- Restore default after cast
 ALTER TABLE "Booking"
   ALTER COLUMN "status" SET DEFAULT 'PENDING_PAYMENT';
