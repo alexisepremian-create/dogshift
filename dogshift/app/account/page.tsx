@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { auth, clerkClient, currentUser } from "@clerk/nextjs/server";
+import { currentUser } from "@clerk/nextjs/server";
 import {
   AlertTriangle,
   BarChart3,
@@ -16,6 +16,7 @@ import {
 
 import SunCornerGlow from "@/components/SunCornerGlow";
 import { prisma } from "@/lib/prisma";
+import { getUserContexts } from "@/lib/userContexts";
 
 function firstNameFromFullName(name: string) {
   const cleaned = (name ?? "").trim();
@@ -40,29 +41,34 @@ function FilledSunIcon({ className }: { className?: string }) {
   );
 }
 
-export default async function AccountDashboardPage() {
-  const { userId } = await auth();
-  if (!userId) redirect("/login");
+export default async function AccountDashboardPage({
+  searchParams,
+}: {
+  searchParams?: Record<string, string | string[] | undefined>;
+}) {
+  let contexts: Awaited<ReturnType<typeof getUserContexts>>;
+  try {
+    contexts = await getUserContexts();
+  } catch {
+    redirect("/login");
+  }
 
-  const client = await clerkClient();
-  const clerkUser = (await currentUser()) ?? (await client.users.getUser(userId));
-  const primaryEmail = clerkUser?.primaryEmailAddress?.emailAddress ?? "";
-  if (!primaryEmail) redirect("/login");
+  const roleParam = Array.isArray(searchParams?.role) ? searchParams?.role[0] : searchParams?.role;
+  const preferredRole = roleParam === "owner" || roleParam === "sitter" ? roleParam : null;
 
+  if (preferredRole === "sitter") {
+    redirect("/host");
+  }
+
+  if (contexts.hasSitterProfile && preferredRole !== "owner") {
+    redirect("/host");
+  }
+
+  const uid = contexts.dbUserId;
+
+  const clerkUser = await currentUser();
   const rawName = typeof clerkUser?.fullName === "string" ? clerkUser.fullName : "";
   const firstName = firstNameFromFullName(rawName) || "";
-
-  const dbUser =
-    (await prisma.user.findUnique({ where: { email: primaryEmail } })) ??
-    (await prisma.user.create({
-      data: {
-        email: primaryEmail,
-        name: rawName || null,
-        role: "OWNER",
-      },
-    }));
-
-  const uid = dbUser.id;
 
   const now = new Date();
   const stalePaymentBefore = new Date(Date.now() - 48 * 60 * 60 * 1000);

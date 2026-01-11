@@ -39,8 +39,9 @@ export default async function BecomeSitterPage() {
       }))
     : null;
 
-  const role = (dbUser as any)?.role as string | undefined;
-  const isAlreadySitter = role === "SITTER";
+  const isAlreadySitter = dbUser
+    ? Boolean(await prisma.sitterProfile.findUnique({ where: { userId: dbUser.id }, select: { id: true } }))
+    : false;
 
   return (
     <div className="min-h-screen bg-white text-slate-900">
