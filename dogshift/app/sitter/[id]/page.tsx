@@ -250,78 +250,73 @@ export default function SitterProfilePage() {
 
   useEffect(() => {
     if (!id) return;
-    if (!isLoaded || !isSignedIn) {
-      setPreviewLoaded(false);
-      setPreviewSitter(null);
-      setProfileData(null);
-      return;
-    }
-    if (!isPreviewMode || !isHostViewingOwn) {
-      setPreviewLoaded(false);
-      setPreviewSitter(null);
-      setProfileData(null);
-      return;
-    }
-
-    setPreviewLoaded(false);
-    void (async () => {
-      try {
-        const res = await fetch("/api/host/profile", { method: "GET" });
-        const payload = (await res.json()) as { ok?: boolean; sitterId?: string | null; profile?: unknown };
-        if (res.ok && payload.ok && payload.profile && payload.sitterId === id) {
-          const p = payload.profile as HostProfileV1;
-          if (p && typeof p === "object" && p.profileVersion === 1 && p.sitterId === id) {
-            setPreviewSitter(buildSitterFromProfile(p));
-            setProfileData(p);
-            setPreviewLoaded(true);
-            return;
-          }
-        }
-
-        const stored = loadHostProfileFromStorage(id);
-        if (stored) {
-          setPreviewSitter(buildSitterFromProfile(stored));
-          setProfileData(stored);
-        } else {
-          setPreviewSitter(null);
-          setProfileData(null);
-        }
-        setPreviewLoaded(true);
-      } catch {
-        const stored = loadHostProfileFromStorage(id);
-        if (stored) {
-          setPreviewSitter(buildSitterFromProfile(stored));
-          setProfileData(stored);
-        } else {
-          setPreviewSitter(null);
-          setProfileData(null);
-        }
-        setPreviewLoaded(true);
-      }
-    })();
-  }, [id, isHostViewingOwn, isPreviewMode, isLoaded, isSignedIn]);
+    // handled below by the single /api/host/profile fetch
+  }, [id]);
 
   useEffect(() => {
     setHydrated(true);
     if (!isLoaded || !isSignedIn) {
       setCurrentHostId(null);
+      setPreviewLoaded(false);
+      setPreviewSitter(null);
+      setProfileData(null);
       return;
     }
     void (async () => {
       try {
-        const res = await fetch("/api/host/profile", { method: "GET" });
-        const payload = (await res.json()) as { ok?: boolean; sitterId?: string | null };
+        const res = await fetch("/api/host/profile", { method: "GET", cache: "no-store" });
+        const payload = (await res.json()) as { ok?: boolean; sitterId?: string | null; profile?: unknown };
         if (!res.ok || !payload.ok) {
           setCurrentHostId(null);
+          setPreviewLoaded(false);
+          setPreviewSitter(null);
+          setProfileData(null);
           return;
         }
         const sitterId = typeof payload.sitterId === "string" ? payload.sitterId : null;
-        setCurrentHostId(sitterId && sitterId.trim() ? sitterId.trim() : null);
+        const normalizedSitterId = sitterId && sitterId.trim() ? sitterId.trim() : null;
+        setCurrentHostId(normalizedSitterId);
+
+        if (!id || !normalizedSitterId) {
+          setPreviewLoaded(false);
+          setPreviewSitter(null);
+          setProfileData(null);
+          return;
+        }
+
+        const shouldLoadPreview = Boolean(isPreviewMode && normalizedSitterId === id);
+        if (!shouldLoadPreview) {
+          setPreviewLoaded(false);
+          setPreviewSitter(null);
+          setProfileData(null);
+          return;
+        }
+
+        const remote = payload.profile as HostProfileV1 | null | undefined;
+        if (remote && typeof remote === "object" && remote.profileVersion === 1 && remote.sitterId === id) {
+          setProfileData(remote);
+          setPreviewSitter(buildSitterFromProfile(remote));
+          setPreviewLoaded(true);
+          return;
+        }
+
+        const stored = loadHostProfileFromStorage(id);
+        if (stored) {
+          setProfileData(stored);
+          setPreviewSitter(buildSitterFromProfile(stored));
+        } else {
+          setProfileData(null);
+          setPreviewSitter(null);
+        }
+        setPreviewLoaded(true);
       } catch {
         setCurrentHostId(null);
+        setPreviewLoaded(false);
+        setPreviewSitter(null);
+        setProfileData(null);
       }
     })();
-  }, [isLoaded, isSignedIn]);
+  }, [id, isLoaded, isSignedIn, isPreviewMode]);
 
   useEffect(() => {
     // handled above

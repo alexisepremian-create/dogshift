@@ -139,6 +139,7 @@ export default function HostSidebar({ onNavigate, className }: HostSidebarProps)
               ) : null}
               <Link
                 href={item.href}
+                prefetch={false}
                 className={item.active ? activeLink : inactiveLink}
                 onClick={onNavigate}
               >

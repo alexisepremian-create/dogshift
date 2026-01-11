@@ -47,16 +47,16 @@ export default function HostTopNav({ className }: HostTopNavProps) {
         (className ? ` ${className}` : "")
       }
     >
-      <Link href="/host" className={activeTab === "dashboard" ? activeBtn : inactiveBtn}>
+      <Link href="/host" prefetch={false} className={activeTab === "dashboard" ? activeBtn : inactiveBtn}>
         Tableau de bord
       </Link>
-      <Link href={publicHref} className={activeTab === "public" ? activeBtn : inactiveBtn}>
+      <Link href={publicHref} prefetch={false} className={activeTab === "public" ? activeBtn : inactiveBtn}>
         Profil public
       </Link>
-      <Link href="/host/messages" className={activeTab === "messages" ? activeBtn : inactiveBtn}>
+      <Link href="/host/messages" prefetch={false} className={activeTab === "messages" ? activeBtn : inactiveBtn}>
         Messages
       </Link>
-      <Link href="/host/profile/edit" className={activeTab === "host" ? activeBtn : inactiveBtn}>
+      <Link href="/host/profile/edit" prefetch={false} className={activeTab === "host" ? activeBtn : inactiveBtn}>
         Modifier le profil
       </Link>
     </nav>
