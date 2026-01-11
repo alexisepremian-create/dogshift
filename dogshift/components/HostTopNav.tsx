@@ -2,8 +2,10 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useUser } from "@clerk/nextjs";
+
+import { useHostUser } from "@/components/HostUserProvider";
 
 type HostTopNavProps = {
   className?: string;
@@ -12,30 +14,7 @@ type HostTopNavProps = {
 export default function HostTopNav({ className }: HostTopNavProps) {
   const pathname = usePathname();
   const { isLoaded, isSignedIn } = useUser();
-  const sessionSitterId = null;
-  const [dbSitterId, setDbSitterId] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!isLoaded || !isSignedIn) {
-      setDbSitterId(null);
-      return;
-    }
-
-    void (async () => {
-      try {
-        const res = await fetch("/api/host/profile", { method: "GET" });
-        const payload = (await res.json()) as { ok?: boolean; sitterId?: string | null };
-        if (!res.ok || !payload.ok) return;
-        if (typeof payload.sitterId === "string" && payload.sitterId.trim()) {
-          setDbSitterId(payload.sitterId.trim());
-        }
-      } catch {
-        // ignore
-      }
-    })();
-  }, [isLoaded, isSignedIn]);
-
-  const sitterId = dbSitterId ?? sessionSitterId;
+  const { sitterId } = useHostUser();
 
   const publicHref = useMemo(() => {
     if (!isLoaded || !isSignedIn) return "/login";

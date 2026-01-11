@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useUser } from "@clerk/nextjs";
 
 import SunCornerGlow from "@/components/SunCornerGlow";
+import { useHostUser } from "@/components/HostUserProvider";
 
 import { getSitterById } from "@/lib/mockSitters";
 import { loadReviewsFromStorage, type DogShiftReview } from "@/lib/reviews";
@@ -87,8 +88,7 @@ function HostAvatar({ src, alt }: { src: string | null; alt: string }) {
 
 export default function HostDashboardPage() {
   const { isLoaded, isSignedIn, user } = useUser();
-  const [sitterId, setSitterId] = useState<string | null>(null);
-  const [sitterIdChecked, setSitterIdChecked] = useState(false);
+  const { sitterId, profile: remoteProfile } = useHostUser();
   const [unreadMessages, setUnreadMessages] = useState(0);
 
   useEffect(() => {
@@ -96,31 +96,6 @@ export default function HostDashboardPage() {
     if (!isSignedIn) {
       window.location.assign("/login");
     }
-  }, [isLoaded, isSignedIn]);
-
-  useEffect(() => {
-    if (!isLoaded || !isSignedIn) {
-      setSitterId(null);
-      setSitterIdChecked(false);
-      return;
-    }
-
-    void (async () => {
-      try {
-        const res = await fetch("/api/host/profile", { method: "GET", cache: "no-store" });
-        const payload = (await res.json()) as { ok?: boolean; sitterId?: string | null };
-        const nextSitterId = typeof payload?.sitterId === "string" && payload.sitterId.trim() ? payload.sitterId.trim() : null;
-        if (res.ok && payload.ok && nextSitterId) {
-          setSitterId(nextSitterId);
-        } else {
-          setSitterId(null);
-        }
-      } catch {
-        setSitterId(null);
-      } finally {
-        setSitterIdChecked(true);
-      }
-    })();
   }, [isLoaded, isSignedIn]);
 
   useEffect(() => {
@@ -143,24 +118,14 @@ export default function HostDashboardPage() {
 
   useEffect(() => {
     if (!sitterId) return;
-    void (async () => {
-      try {
-        const res = await fetch("/api/host/profile", { method: "GET", cache: "no-store" });
-        const payload = (await res.json()) as { ok?: boolean; profile?: unknown; sitterId?: string | null };
-        if (res.ok && payload.ok && payload.profile && payload.sitterId === sitterId) {
-          const remote = payload.profile as Partial<HostProfileV1> | null | undefined;
-          if (remote && typeof remote === "object" && remote.profileVersion === 1 && remote.sitterId === sitterId) {
-            setProfile(remote as HostProfileV1);
-            return;
-          }
-        }
-      } catch {
-        // ignore
-      }
-      const stored = loadHostProfileFromStorage(sitterId);
-      setProfile(stored ?? getDefaultHostProfile(sitterId));
-    })();
-  }, [sitterId]);
+    const remote = remoteProfile as Partial<HostProfileV1> | null | undefined;
+    if (remote && typeof remote === "object" && remote.profileVersion === 1 && remote.sitterId === sitterId) {
+      setProfile(remote as HostProfileV1);
+      return;
+    }
+    const stored = loadHostProfileFromStorage(sitterId);
+    setProfile(stored ?? getDefaultHostProfile(sitterId));
+  }, [sitterId, remoteProfile]);
 
   useEffect(() => {
     if (!sitterId) return;
@@ -228,8 +193,6 @@ export default function HostDashboardPage() {
   }
 
   if (!sitterId) {
-    if (!sitterIdChecked) return null;
-
     return (
       <div className="relative grid gap-6 overflow-hidden" data-testid="host-dashboard">
         <SunCornerGlow variant="sitterDashboard" />

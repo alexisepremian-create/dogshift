@@ -1,13 +1,18 @@
 import HostDashboardShell from "@/components/HostDashboardShell";
+import { HostUserProvider } from "@/components/HostUserProvider";
+import { getHostUserData } from "@/lib/hostUser";
 
 export const dynamic = "force-dynamic";
 
-export default function HostLayout({
+export default async function HostLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const hostUser = await getHostUserData();
   return (
-    <HostDashboardShell>{children}</HostDashboardShell>
+    <HostUserProvider value={hostUser}>
+      <HostDashboardShell>{children}</HostDashboardShell>
+    </HostUserProvider>
   );
 }

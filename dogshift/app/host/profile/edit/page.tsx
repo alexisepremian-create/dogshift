@@ -7,6 +7,7 @@ import { useUser } from "@clerk/nextjs";
 import { Pencil } from "lucide-react";
 
 import SunCornerGlow from "@/components/SunCornerGlow";
+import { useHostUser } from "@/components/HostUserProvider";
 
 import type { DogSize, ServiceType } from "@/lib/mockSitters";
 import {
@@ -40,8 +41,7 @@ function parsePrice(raw: string) {
 export default function HostProfileEditPage() {
   const router = useRouter();
   const { isLoaded, isSignedIn } = useUser();
-  const [effectiveSitterId, setEffectiveSitterId] = useState<string | null>(null);
-  const [effectiveSitterIdChecked, setEffectiveSitterIdChecked] = useState(false);
+  const { sitterId, profile: remoteProfile, published: remotePublished } = useHostUser();
 
   const [published, setPublished] = useState(false);
 
@@ -59,56 +59,25 @@ export default function HostProfileEditPage() {
       router.replace("/login");
       return;
     }
-
-    setEffectiveSitterIdChecked(false);
-    void (async () => {
-      try {
-        const res = await fetch("/api/host/profile", { method: "GET", cache: "no-store" });
-        const payload = (await res.json()) as {
-          ok?: boolean;
-          sitterId?: string | null;
-          profile?: unknown;
-          published?: boolean;
-          publishedAt?: string | null;
-        };
-        if (!res.ok || !payload.ok) {
-          setEffectiveSitterId(null);
-          return;
-        }
-
-        const apiSitterId = typeof payload.sitterId === "string" && payload.sitterId.trim() ? payload.sitterId.trim() : null;
-        const nextSitterId = apiSitterId;
-        if (!nextSitterId) {
-          setEffectiveSitterId(null);
-          return;
-        }
-        setEffectiveSitterId(nextSitterId);
-
-        const remote = payload.profile as Partial<HostProfileV1> | null | undefined;
-        if (remote && typeof remote === "object" && remote.profileVersion === 1 && remote.sitterId === nextSitterId) {
-          setProfile(remote as HostProfileV1);
-          setPublished(Boolean(payload.published));
-          setAvatarFileName(null);
-          setVerificationIdFileName(null);
-          setVerificationSelfieFileName(null);
-          setVerificationError(null);
-          return;
-        }
-
-        const stored = loadHostProfileFromStorage(nextSitterId);
-        setProfile(stored ?? getDefaultHostProfile(nextSitterId));
-        setPublished(Boolean(payload.published));
-        setAvatarFileName(null);
-        setVerificationIdFileName(null);
-        setVerificationSelfieFileName(null);
-        setVerificationError(null);
-      } catch {
-        setEffectiveSitterId(null);
-      } finally {
-        setEffectiveSitterIdChecked(true);
-      }
-    })();
   }, [isLoaded, isSignedIn, router]);
+
+  useEffect(() => {
+    if (!sitterId) return;
+
+    const remote = remoteProfile as Partial<HostProfileV1> | null | undefined;
+    if (remote && typeof remote === "object" && remote.profileVersion === 1 && remote.sitterId === sitterId) {
+      setProfile(remote as HostProfileV1);
+    } else {
+      const stored = loadHostProfileFromStorage(sitterId);
+      setProfile(stored ?? getDefaultHostProfile(sitterId));
+    }
+
+    setPublished(Boolean(remotePublished));
+    setAvatarFileName(null);
+    setVerificationIdFileName(null);
+    setVerificationSelfieFileName(null);
+    setVerificationError(null);
+  }, [sitterId, remoteProfile, remotePublished]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -145,11 +114,11 @@ export default function HostProfileEditPage() {
   if (!isSignedIn) return null;
 
   async function persistProfile(nextProfile: HostProfileV1) {
-    if (!effectiveSitterId) return;
+    if (!sitterId) return;
 
     const normalized: HostProfileV1 = {
       ...nextProfile,
-      sitterId: effectiveSitterId,
+      sitterId,
       profileVersion: 1,
       updatedAt: new Date().toISOString(),
     };
@@ -198,10 +167,10 @@ export default function HostProfileEditPage() {
       return;
     }
 
-    if (!effectiveSitterId) return;
+    if (!sitterId) return;
     const nextProfile: HostProfileV1 = {
       ...profile,
-      sitterId: effectiveSitterId,
+      sitterId,
       profileVersion: 1,
       updatedAt: new Date().toISOString(),
     };
@@ -222,20 +191,6 @@ export default function HostProfileEditPage() {
           return;
         }
 
-        try {
-          const getRes = await fetch("/api/host/profile", { method: "GET" });
-          const getPayload = (await getRes.json()) as { ok?: boolean; profile?: unknown; sitterId?: string | null };
-          if (getRes.ok && getPayload.ok && getPayload.profile && typeof getPayload.sitterId === "string") {
-            const remote = getPayload.profile as Partial<HostProfileV1> | null | undefined;
-            if (remote && typeof remote === "object" && remote.profileVersion === 1 && remote.sitterId === getPayload.sitterId) {
-              setProfile(remote as HostProfileV1);
-              setAvatarFileName(null);
-            }
-          }
-        } catch {
-          // ignore
-        }
-
         setSaved(true);
       } catch {
         setError("Impossible d’enregistrer le profil.");
@@ -244,9 +199,7 @@ export default function HostProfileEditPage() {
     })();
   }
 
-  if (!effectiveSitterId) {
-    if (!effectiveSitterIdChecked) return null;
-
+  if (!sitterId) {
     return (
       <div className="relative grid gap-6 overflow-hidden" data-testid="host-profile-edit">
         <SunCornerGlow variant="sitterProfile" />

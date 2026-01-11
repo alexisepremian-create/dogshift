@@ -3,9 +3,11 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useClerk, useUser } from "@clerk/nextjs";
 import { LayoutDashboard, MessageSquare, Pencil, User, LogOut, CalendarDays, Settings, Wallet } from "lucide-react";
+
+import { useHostUser } from "@/components/HostUserProvider";
 
 type HostSidebarProps = {
   onNavigate?: () => void;
@@ -25,30 +27,7 @@ export default function HostSidebar({ onNavigate, className }: HostSidebarProps)
   const searchParams = useSearchParams();
   const clerk = useClerk();
   const { isLoaded, isSignedIn } = useUser();
-  const sessionSitterId = null;
-  const [dbSitterId, setDbSitterId] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!isLoaded || !isSignedIn) {
-      setDbSitterId(null);
-      return;
-    }
-
-    void (async () => {
-      try {
-        const res = await fetch("/api/host/profile", { method: "GET", cache: "no-store" });
-        const payload = (await res.json()) as { ok?: boolean; sitterId?: string | null };
-        if (!res.ok || !payload.ok) return;
-        if (typeof payload.sitterId === "string" && payload.sitterId.trim()) {
-          setDbSitterId(payload.sitterId.trim());
-        }
-      } catch {
-        // ignore
-      }
-    })();
-  }, [isLoaded, isSignedIn]);
-
-  const sitterId = dbSitterId ?? sessionSitterId;
+  const { sitterId } = useHostUser();
 
   const publicHref = useMemo(() => {
     if (!isLoaded || !isSignedIn) return "/login";
