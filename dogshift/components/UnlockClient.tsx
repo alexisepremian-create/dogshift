@@ -1,10 +1,8 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
 
 export default function UnlockClient({ next }: { next: string }) {
-  const router = useRouter();
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -41,10 +39,9 @@ export default function UnlockClient({ next }: { next: string }) {
 
       const data = (await res.json()) as { ok?: boolean; next?: string };
       const dest = typeof data?.next === "string" && data.next.startsWith("/") ? data.next : safeNext;
-      router.replace(dest);
-      setTimeout(() => {
-        router.refresh();
-      }, 0);
+
+      await new Promise((r) => setTimeout(r, 50));
+      window.location.assign(dest || "/");
     } catch {
       setError("Impossible de déverrouiller le site.");
     } finally {
