@@ -7,6 +7,7 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { User } from "lucide-react";
 import { loadHostProfileFromStorage, type HostProfileV1 } from "@/lib/hostProfile";
 import HostDashboardShell from "@/components/HostDashboardShell";
+import { HostUserProvider } from "@/components/HostUserProvider";
 import SunCornerGlow from "@/components/SunCornerGlow";
 import { appendHostMessage } from "@/lib/hostMessages";
 
@@ -453,30 +454,37 @@ export default function SitterProfilePage() {
   const showHostChrome = isPreviewMode || (isHostViewingOwnStable && viewMode !== "public");
   const disableSelfActions = isPreviewMode || isHostViewingOwnStable;
 
+  const hostUserValue = useMemo(
+    () => ({ sitterId: currentHostId, published: false, publishedAt: null, profile: profileData }),
+    [currentHostId, profileData]
+  );
+
   const isHostPreview = showHostChrome && isPreviewMode;
 
   if (sitter === undefined) {
     return (
       <div className="min-h-screen bg-white text-slate-900">
         {isHostPreview ? (
-          <HostDashboardShell>
-            <div className="grid gap-4">
-              <div>
-                <p className="text-sm font-semibold text-slate-600">Tableau de bord</p>
-                <h1 className="mt-2 flex items-center gap-2 text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">
-                  <User className="h-6 w-6 text-slate-700" aria-hidden="true" />
-                  <span>Profil public</span>
-                </h1>
-                <div className="mt-3 flex min-h-[32px] items-center" />
-              </div>
+          <HostUserProvider value={hostUserValue}>
+            <HostDashboardShell>
+              <div className="grid gap-4">
+                <div>
+                  <p className="text-sm font-semibold text-slate-600">Tableau de bord</p>
+                  <h1 className="mt-2 flex items-center gap-2 text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">
+                    <User className="h-6 w-6 text-slate-700" aria-hidden="true" />
+                    <span>Profil public</span>
+                  </h1>
+                  <div className="mt-3 flex min-h-[32px] items-center" />
+                </div>
 
-              <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-[0_18px_60px_-40px_rgba(2,6,23,0.35)]">
-                <div className="h-6 w-40 rounded bg-slate-100" />
-                <div className="mt-6 h-24 w-full rounded-2xl bg-slate-50" />
-                <div className="mt-4 h-24 w-full rounded-2xl bg-slate-50" />
+                <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-[0_18px_60px_-40px_rgba(2,6,23,0.35)]">
+                  <div className="h-6 w-40 rounded bg-slate-100" />
+                  <div className="mt-6 h-24 w-full rounded-2xl bg-slate-50" />
+                  <div className="mt-4 h-24 w-full rounded-2xl bg-slate-50" />
+                </div>
               </div>
-            </div>
-          </HostDashboardShell>
+            </HostDashboardShell>
+          </HostUserProvider>
         ) : (
           <main className="mx-auto max-w-6xl px-4 py-14 sm:px-6">
             <div className="mx-auto max-w-xl rounded-3xl border border-slate-200 bg-white p-8 text-center shadow-[0_18px_60px_-40px_rgba(2,6,23,0.35)]">
@@ -960,7 +968,9 @@ export default function SitterProfilePage() {
   return (
     <div className="min-h-screen bg-white text-slate-900">
       {showHostChrome ? (
-        <HostDashboardShell>{content}</HostDashboardShell>
+        <HostUserProvider value={hostUserValue}>
+          <HostDashboardShell>{content}</HostDashboardShell>
+        </HostUserProvider>
       ) : (
         <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6">{content}</main>
       )}
