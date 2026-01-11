@@ -1,11 +1,12 @@
 "use client";
 
-import { signOut } from "next-auth/react";
+import { useClerk } from "@clerk/nextjs";
 
 import BrandLogo from "@/components/BrandLogo";
 import OwnerTopNav from "@/components/OwnerTopNav";
 
 export default function OwnerShell({ children }: { children: React.ReactNode }) {
+  const clerk = useClerk();
   const logoutBtn =
     "inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-900 transition-all duration-200 ease-out hover:bg-slate-50 active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)]";
 
@@ -22,7 +23,7 @@ export default function OwnerShell({ children }: { children: React.ReactNode }) 
           <button
             type="button"
             onClick={() => {
-              void signOut({ callbackUrl: "/" });
+              void clerk.signOut({ redirectUrl: "/login" });
             }}
             className={logoutBtn}
           >

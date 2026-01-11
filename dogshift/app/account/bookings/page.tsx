@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useSession } from "next-auth/react";
+import { useUser } from "@clerk/nextjs";
 import { CalendarDays } from "lucide-react";
 
 import SunCornerGlow from "@/components/SunCornerGlow";
@@ -184,9 +184,9 @@ function matchesPendingSubfilter(status: string, sub: "payment" | "acceptance" |
 }
 
 export default function AccountBookingsPage() {
-  const { status } = useSession();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { isLoaded, isSignedIn } = useUser();
 
   const [bookings, setBookings] = useState<BookingListItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -240,14 +240,17 @@ export default function AccountBookingsPage() {
   }
 
   useEffect(() => {
-    if (status === "loading") return;
-  }, [status]);
+    if (!isLoaded) return;
+    if (!isSignedIn) {
+      router.replace("/login");
+    }
+  }, [isLoaded, isSignedIn, router]);
 
   useEffect(() => {
-    if (status !== "authenticated") return;
+    if (!isLoaded || !isSignedIn) return;
     void loadBookings();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [status]);
+  }, [isLoaded, isSignedIn]);
 
   const activeTab = useMemo<TabKey>(() => {
     const tabQ = searchParams?.get("tab");
@@ -361,28 +364,26 @@ export default function AccountBookingsPage() {
       }
     }
 
-    if (status !== "authenticated") return () => {};
     if (!selectedId) return () => {};
     void loadDetail(selectedId);
     return () => {
       canceled = true;
     };
-  }, [selectedId, status]);
+  }, [selectedId]);
 
-  if (status === "loading") return null;
-  if (status !== "authenticated") {
+  if (!isLoaded || !isSignedIn) return null;
+  if (error) {
     return (
-      <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)] sm:p-8">
-        <p className="text-sm font-semibold text-slate-900">Connexion requise (401).</p>
-        <p className="mt-2 text-sm text-slate-600">Connecte-toi pour accéder à tes réservations.</p>
-        <div className="mt-5">
+      <div className="rounded-3xl border border-rose-200 bg-rose-50 p-6 text-sm font-medium text-rose-900 sm:p-8">
+        <p>{error}</p>
+        {error.includes("401") ? (
           <Link
             href="/login"
-            className="inline-flex items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-6 py-3 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition hover:bg-[var(--dogshift-blue-hover)]"
+            className="mt-4 inline-flex items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-6 py-3 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition hover:bg-[var(--dogshift-blue-hover)]"
           >
             Se connecter
           </Link>
-        </div>
+        ) : null}
       </div>
     );
   }

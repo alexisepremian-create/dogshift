@@ -1,12 +1,46 @@
 import BecomeSitterForm from "@/components/BecomeSitterForm";
 import Link from "next/link";
-import { getServerSession } from "next-auth/next";
+import { auth, currentUser } from "@clerk/nextjs/server";
 
-import { authOptions } from "@/lib/nextauth";
+import { prisma } from "@/lib/prisma";
 
 export default async function BecomeSitterFormPage() {
-  const session = await getServerSession(authOptions);
-  const role = (session?.user as any)?.role as string | undefined;
+  const { userId } = await auth();
+  if (!userId) {
+    return (
+      <div className="min-h-screen bg-white text-slate-900">
+        <main className="mx-auto max-w-6xl px-4 py-14 sm:px-6">
+          <div className="mx-auto max-w-3xl">
+            <div className="relative rounded-3xl border border-slate-200 bg-white p-8 shadow-[0_18px_60px_-40px_rgba(2,6,23,0.35)] sm:p-10">
+              <p className="text-base font-semibold text-slate-900">Connexion requise</p>
+              <p className="mt-2 text-sm text-slate-600">Connecte-toi pour continuer.</p>
+              <Link
+                href="/login"
+                className="mt-5 inline-flex w-full items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-6 py-3 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition hover:bg-[var(--dogshift-blue-hover)]"
+              >
+                Se connecter
+              </Link>
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  const clerkUser = await currentUser();
+  const primaryEmail = clerkUser?.primaryEmailAddress?.emailAddress ?? "";
+  const dbUser = primaryEmail
+    ? (await prisma.user.findUnique({ where: { email: primaryEmail } })) ??
+      (await prisma.user.create({
+        data: {
+          email: primaryEmail,
+          name: typeof clerkUser?.fullName === "string" && clerkUser.fullName.trim() ? clerkUser.fullName.trim() : null,
+          role: "OWNER",
+        },
+      }))
+    : null;
+
+  const role = (dbUser as any)?.role as string | undefined;
   const isAlreadySitter = role === "SITTER";
 
   return (

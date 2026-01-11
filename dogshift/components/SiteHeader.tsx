@@ -2,16 +2,16 @@
 
 import Link from "next/link";
 import { Menu, LogOut, HelpCircle, LayoutDashboard, User } from "lucide-react";
-import { signOut } from "next-auth/react";
+import { useClerk, useUser } from "@clerk/nextjs";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
-import { useSession } from "next-auth/react";
 import BrandLogo from "@/components/BrandLogo";
 
 export default function SiteHeader() {
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  const { data, status } = useSession();
+  const { isLoaded, isSignedIn, user } = useUser();
+  const clerk = useClerk();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const isHome = pathname === "/";
@@ -19,8 +19,7 @@ export default function SiteHeader() {
   const isAccountArea = Boolean(pathname && pathname.startsWith("/account"));
   const isHostPreview = Boolean(pathname && pathname.startsWith("/sitter/") && (searchParams?.get("mode") ?? "") === "preview");
 
-  const role = (data?.user as any)?.role as string | undefined;
-  const accountHref = role === "SITTER" ? "/host" : "/account";
+  const accountHref = "/account";
 
   const menuRef = useRef<HTMLDivElement | null>(null);
 
@@ -102,7 +101,7 @@ export default function SiteHeader() {
                 aria-label="Menu utilisateur"
                 className="absolute right-0 top-0 z-10 w-56 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_18px_60px_-40px_rgba(2,6,23,0.25)]"
               >
-                {status === "authenticated" ? (
+                {isLoaded && isSignedIn ? (
                   <>
                     <Link
                       role="menuitem"
@@ -124,16 +123,16 @@ export default function SiteHeader() {
                     </Link>
                     <div className="h-px w-full bg-slate-200" />
                     <button
-                      type="button"
                       role="menuitem"
+                      type="button"
                       onClick={() => {
                         setMenuOpen(false);
-                        void signOut({ callbackUrl: "/" });
+                        void clerk.signOut({ redirectUrl: "/login" });
                       }}
                       className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-medium text-slate-700 hover:bg-slate-50"
                     >
                       <LogOut className="h-4 w-4 text-slate-500" aria-hidden="true" />
-                      Déconnexion
+                      Se déconnecter
                     </button>
                   </>
                 ) : (

@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useSession } from "next-auth/react";
+import { useUser } from "@clerk/nextjs";
 import { MessageCircle, RefreshCw } from "lucide-react";
 
 import SunCornerGlow from "@/components/SunCornerGlow";
@@ -70,11 +70,9 @@ function formatDateOnly(iso: string) {
 }
 
 export default function AccountMessagesPage() {
-  const { data, status } = useSession();
+  const { isLoaded, isSignedIn } = useUser();
   const router = useRouter();
   const searchParams = useSearchParams();
-
-  const uid = ((data?.user as any)?.id as string | undefined) ?? null;
 
   const [conversations, setConversations] = useState<ConversationListItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -89,8 +87,11 @@ export default function AccountMessagesPage() {
   const [sending, setSending] = useState(false);
 
   useEffect(() => {
-    if (status === "loading") return;
-  }, [status]);
+    if (!isLoaded) return;
+    if (!isSignedIn) {
+      router.replace("/login");
+    }
+  }, [isLoaded, isSignedIn, router]);
 
   async function loadConversations() {
     setLoading(true);
@@ -171,10 +172,10 @@ export default function AccountMessagesPage() {
   }
 
   useEffect(() => {
-    if (status !== "authenticated") return;
+    if (!isLoaded || !isSignedIn) return;
     void loadConversations();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [status]);
+  }, [isLoaded, isSignedIn]);
 
   const rows = useMemo(() => {
     return conversations.slice().sort((a, b) => {
@@ -461,7 +462,7 @@ export default function AccountMessagesPage() {
                         </div>
                       ) : (
                         messages.map((m) => {
-                          const mine = uid && m.senderId === uid;
+                          const mine = false;
                           return (
                             <div key={m.id} className={mine ? "flex justify-end" : "flex justify-start"}>
                               <div

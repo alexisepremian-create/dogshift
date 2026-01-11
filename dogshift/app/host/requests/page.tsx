@@ -1,13 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
+import { useUser } from "@clerk/nextjs";
 
 import { RequestsSplitView, type HostRequest } from "@/components/host/requests/RequestsSplitView";
 import SunCornerGlow from "@/components/SunCornerGlow";
 
 export default function HostRequestsPage() {
-  const { status: sessionStatus } = useSession();
+  const router = useRouter();
+  const { isLoaded, isSignedIn } = useUser();
 
   const [rows, setRows] = useState<HostRequest[]>([]);
   const [loading, setLoading] = useState(true);
@@ -56,16 +58,19 @@ export default function HostRequestsPage() {
   }
 
   useEffect(() => {
-    if (sessionStatus === "loading") return;
-  }, [sessionStatus]);
+    if (!isLoaded) return;
+    if (!isSignedIn) {
+      router.replace("/login");
+    }
+  }, [isLoaded, isSignedIn, router]);
 
   useEffect(() => {
-    if (sessionStatus !== "authenticated") return;
+    if (!isLoaded || !isSignedIn) return;
     void loadRequests();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sessionStatus]);
+  }, [isLoaded, isSignedIn]);
 
-  if (sessionStatus !== "authenticated") return null;
+  if (!isLoaded || !isSignedIn) return null;
 
   return (
     <div className="relative grid gap-6 overflow-hidden" data-testid="host-requests-page">

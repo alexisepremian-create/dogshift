@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useSession } from "next-auth/react";
+import { useUser } from "@clerk/nextjs";
 import MiniStepRing from "@/components/MiniStepRing";
 import { getDefaultHostProfile, loadHostProfileFromStorage, saveHostProfileToStorage, type HostProfileV1 } from "@/lib/hostProfile";
 import { addToPublicSittersIndex } from "@/lib/publicSitters";
@@ -16,7 +16,8 @@ const SERVICE_OPTIONS = ["Promenade", "Garde", "Pension"] as const;
 
 export default function BecomeSitterForm() {
   const router = useRouter();
-  const { data, status: sessionStatus } = useSession();
+  const { isLoaded, isSignedIn, user } = useUser();
+  const sessionStatus = !isLoaded ? "loading" : isSignedIn ? "authenticated" : "unauthenticated";
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [formStatus, setFormStatus] = useState<"idle" | "submitting" | "done" | "error">("idle");
 
@@ -44,10 +45,11 @@ export default function BecomeSitterForm() {
   const DAILY_MAX = 140;
 
   useEffect(() => {
-    const sessionEmail = (data?.user as any)?.email as string | undefined;
+    if (!isLoaded || !isSignedIn) return;
+    const sessionEmail = user?.primaryEmailAddress?.emailAddress;
     if (!sessionEmail) return;
     setEmail(sessionEmail);
-  }, [data?.user]);
+  }, [isLoaded, isSignedIn, user]);
 
   const step1Errors = useMemo(() => {
     if (sessionStatus === "authenticated") return {};
@@ -149,7 +151,7 @@ export default function BecomeSitterForm() {
       return;
     }
 
-    let sitterId = ((data?.user as any)?.sitterId as string | undefined)?.trim() ?? "";
+    let sitterId = "";
     if (!sitterId) {
       try {
         const res = await fetch("/api/role/make-sitter", { method: "POST" });

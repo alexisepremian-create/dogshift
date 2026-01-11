@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { signOut, useSession } from "next-auth/react";
+import { useClerk, useUser } from "@clerk/nextjs";
 import { LayoutDashboard, MessageSquare, Pencil, User, LogOut, CalendarDays, Settings, Wallet } from "lucide-react";
 
 type HostSidebarProps = {
@@ -23,12 +23,13 @@ type NavItem = {
 export default function HostSidebar({ onNavigate, className }: HostSidebarProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const { data, status } = useSession();
-  const sessionSitterId = ((data?.user as any)?.sitterId as string | undefined) ?? null;
+  const clerk = useClerk();
+  const { isLoaded, isSignedIn } = useUser();
+  const sessionSitterId = null;
   const [dbSitterId, setDbSitterId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (status !== "authenticated") {
+    if (!isLoaded || !isSignedIn) {
       setDbSitterId(null);
       return;
     }
@@ -45,14 +46,14 @@ export default function HostSidebar({ onNavigate, className }: HostSidebarProps)
         // ignore
       }
     })();
-  }, [status]);
+  }, [isLoaded, isSignedIn]);
 
   const sitterId = dbSitterId ?? sessionSitterId;
 
   const publicHref = useMemo(() => {
-    if (status !== "authenticated") return "/login";
+    if (!isLoaded || !isSignedIn) return "/login";
     return sitterId ? `/sitter/${encodeURIComponent(sitterId)}?mode=preview` : "/host/profile/edit";
-  }, [sitterId, status]);
+  }, [sitterId, isLoaded, isSignedIn]);
 
   const activeKey = useMemo(() => {
     if (pathname === "/host") return "dashboard";
@@ -175,7 +176,7 @@ export default function HostSidebar({ onNavigate, className }: HostSidebarProps)
           <button
             type="button"
             onClick={() => {
-              void signOut({ callbackUrl: "/" });
+              void clerk.signOut({ redirectUrl: "/login" });
             }}
             className={
               "flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-50 hover:text-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)]"

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useSession } from "next-auth/react";
+import { useUser } from "@clerk/nextjs";
 
 import SunCornerGlow, { type SunCornerGlowVariant } from "@/components/SunCornerGlow";
 import {
@@ -95,9 +95,9 @@ export default function AccountSettingsPage(
 ) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { data: session, status: sessionStatus, update } = useSession();
+  const { isLoaded, isSignedIn, user } = useUser();
 
-  const email = (session?.user as any)?.email as string | undefined;
+  const email = user?.primaryEmailAddress?.emailAddress;
 
   const [meLoading, setMeLoading] = useState(true);
   const [meError, setMeError] = useState<string | null>(null);
@@ -138,14 +138,14 @@ export default function AccountSettingsPage(
   }, []);
 
   useEffect(() => {
-    if (sessionStatus === "loading") return;
-    if (sessionStatus !== "authenticated") {
+    if (!isLoaded) return;
+    if (!isSignedIn) {
       router.replace(`/login?callbackUrl=${encodeURIComponent(basePath)}`);
     }
-  }, [basePath, router, sessionStatus]);
+  }, [basePath, router, isLoaded, isSignedIn]);
 
   useEffect(() => {
-    if (sessionStatus !== "authenticated") return;
+    if (!isLoaded || !isSignedIn) return;
     let canceled = false;
     void (async () => {
       setMeLoading(true);
@@ -188,21 +188,17 @@ export default function AccountSettingsPage(
     return () => {
       canceled = true;
     };
-  }, [email, sessionStatus]);
+  }, [email, isLoaded, isSignedIn]);
 
   useEffect(() => {
     const verified = searchParams?.get("verified");
     if (verified === "1") {
       setToast("Email vérifié");
-      void update().then(() => router.refresh());
+      router.refresh();
     } else if (verified === "0") {
       setToast("Lien de vérification invalide ou expiré");
-    } else {
-      return;
     }
-    router.replace(basePath);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams]);
+  }, [router, searchParams]);
 
   useEffect(() => {
     if (!toast) return;
@@ -417,7 +413,6 @@ export default function AccountSettingsPage(
                   }
 
                   setProfileSnapshot({ firstName: profileFirstName, lastName: profileLastName });
-                  await update();
                   router.refresh();
                   setToast("Informations mises à jour");
                 } catch {

@@ -1,18 +1,11 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { getToken } from "next-auth/jwt";
+import { auth, currentUser } from "@clerk/nextjs/server";
 
 import { prisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
 
-type TokenShape = { uid?: string; role?: string; sitterId?: string; email?: string };
-
-function tokenUserId(token: TokenShape | null) {
-  const uid = typeof token?.uid === "string" ? token.uid : null;
-  const sub = typeof (token as any)?.sub === "string" ? (token as any).sub : null;
-  return uid ?? sub;
-}
 
 function generateSitterId() {
   return `s-${Date.now()}-${Math.random().toString(16).slice(2)}`;
@@ -20,15 +13,31 @@ function generateSitterId() {
 
 export async function GET(req: NextRequest) {
   try {
-    const token = (await getToken({ req, secret: process.env.NEXTAUTH_SECRET })) as TokenShape | null;
-    const uid = tokenUserId(token);
-
-    if (!uid) {
+    const { userId } = await auth();
+    if (!userId) {
       if (process.env.NODE_ENV !== "production") {
-        console.error("[api][host][profile][GET] UNAUTHORIZED", { hasToken: Boolean(token) });
+        console.error("[api][host][profile][GET] UNAUTHORIZED", { hasUserId: false });
       }
       return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
     }
+
+    const clerkUser = await currentUser();
+    const primaryEmail = clerkUser?.primaryEmailAddress?.emailAddress ?? "";
+    if (!primaryEmail) {
+      return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
+    }
+
+    const dbUser =
+      (await prisma.user.findUnique({ where: { email: primaryEmail } })) ??
+      (await prisma.user.create({
+        data: {
+          email: primaryEmail,
+          name: typeof clerkUser?.fullName === "string" && clerkUser.fullName.trim() ? clerkUser.fullName.trim() : null,
+          role: "SITTER",
+        },
+      }));
+
+    const uid = dbUser.id;
 
     const user = await prisma.user.findUnique({ where: { id: uid } });
     if (!user) {
@@ -116,12 +125,28 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const token = (await getToken({ req, secret: process.env.NEXTAUTH_SECRET })) as TokenShape | null;
-    const uid = token?.uid;
-
-    if (!uid) {
+    const { userId } = await auth();
+    if (!userId) {
       return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
     }
+
+    const clerkUser = await currentUser();
+    const primaryEmail = clerkUser?.primaryEmailAddress?.emailAddress ?? "";
+    if (!primaryEmail) {
+      return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
+    }
+
+    const dbUser =
+      (await prisma.user.findUnique({ where: { email: primaryEmail } })) ??
+      (await prisma.user.create({
+        data: {
+          email: primaryEmail,
+          name: typeof clerkUser?.fullName === "string" && clerkUser.fullName.trim() ? clerkUser.fullName.trim() : null,
+          role: "SITTER",
+        },
+      }));
+
+    const uid = dbUser.id;
 
     const body = (await req.json()) as unknown;
 

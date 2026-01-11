@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { signOut } from "next-auth/react";
+import { useClerk } from "@clerk/nextjs";
 import { useMemo } from "react";
 import { LayoutDashboard, CalendarDays, MessageSquare, Settings, LogOut, Wallet } from "lucide-react";
 
@@ -21,6 +21,7 @@ type NavItem = {
 };
 
 export default function OwnerSidebar({ onNavigate, className }: OwnerSidebarProps) {
+  const clerk = useClerk();
   const pathname = usePathname();
 
   const activeKey = useMemo(() => {
@@ -122,7 +123,7 @@ export default function OwnerSidebar({ onNavigate, className }: OwnerSidebarProp
           <button
             type="button"
             onClick={() => {
-              void signOut({ callbackUrl: "/" });
+              void clerk.signOut({ redirectUrl: "/login" });
             }}
             className={
               "flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-50 hover:text-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)]"

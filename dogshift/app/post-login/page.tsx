@@ -3,16 +3,16 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useSearchParams } from "next/navigation";
-import { useSession } from "next-auth/react";
+import { useUser } from "@clerk/nextjs";
 
 export default function PostLoginPage() {
-  const { data, status } = useSession();
+  const { isLoaded, isSignedIn } = useUser();
   const router = useRouter();
   const searchParams = useSearchParams();
 
   useEffect(() => {
-    if (status === "loading") return;
-    if (status !== "authenticated") return;
+    if (!isLoaded) return;
+    if (!isSignedIn) return;
 
     const next = (searchParams?.get("next") ?? "").trim();
     if (next) {
@@ -20,9 +20,8 @@ export default function PostLoginPage() {
       return;
     }
 
-    const role = (data?.user as any)?.role as string | undefined;
-    router.replace(role === "SITTER" ? "/host" : "/account");
-  }, [status, data, router, searchParams]);
+    router.replace("/account");
+  }, [isLoaded, isSignedIn, router, searchParams]);
 
   return null;
 }

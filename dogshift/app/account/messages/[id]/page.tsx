@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
-import { useSession } from "next-auth/react";
+import { useUser } from "@clerk/nextjs";
 
 type ConversationHeader = {
   id: string;
@@ -51,9 +51,7 @@ function formatDateTime(value: string) {
 
 export default function AccountMessageThreadPage() {
   const params = useParams<{ id: string }>();
-  const { data, status } = useSession();
-
-  const uid = ((data?.user as any)?.id as string | undefined) ?? null;
+  const { isLoaded, isSignedIn } = useUser();
   const conversationId = typeof params?.id === "string" ? params.id : "";
 
   const [header, setHeader] = useState<ConversationHeader | null>(null);
@@ -65,8 +63,8 @@ export default function AccountMessageThreadPage() {
   const [sending, setSending] = useState(false);
 
   useEffect(() => {
-    if (status === "loading") return;
-  }, [status]);
+    // noop
+  }, []);
 
   async function loadThread() {
     if (!conversationId) return;
@@ -110,10 +108,10 @@ export default function AccountMessageThreadPage() {
   }
 
   useEffect(() => {
-    if (status !== "authenticated") return;
+    if (!isLoaded || !isSignedIn) return;
     void loadThread();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [conversationId, status]);
+  }, [conversationId, isLoaded, isSignedIn]);
 
   const canSend = text.trim().length > 0 && !sending;
 
@@ -151,23 +149,7 @@ export default function AccountMessageThreadPage() {
     }
   }
 
-  if (status === "loading") return null;
-  if (status !== "authenticated") {
-    return (
-      <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)] sm:p-8">
-        <p className="text-sm font-semibold text-slate-900">Connexion requise (401).</p>
-        <p className="mt-2 text-sm text-slate-600">Connecte-toi pour accéder à cette conversation.</p>
-        <div className="mt-5">
-          <Link
-            href="/login"
-            className="inline-flex items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-6 py-3 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition hover:bg-[var(--dogshift-blue-hover)]"
-          >
-            Se connecter
-          </Link>
-        </div>
-      </div>
-    );
-  }
+  if (!isLoaded || !isSignedIn) return null;
 
   return (
     <div className="grid gap-6">
@@ -243,7 +225,7 @@ export default function AccountMessageThreadPage() {
                 </div>
               ) : (
                 messages.map((m) => {
-                  const mine = uid && m.senderId === uid;
+                  const mine = false;
                   return (
                     <div key={m.id} className={mine ? "flex justify-end" : "flex justify-start"}>
                       <div

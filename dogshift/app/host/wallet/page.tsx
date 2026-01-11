@@ -1,14 +1,14 @@
 "use client";
 
-import { useSession } from "next-auth/react";
+import { useUser } from "@clerk/nextjs";
 import { ArrowDownRight, ArrowUpRight, Wallet } from "lucide-react";
 
 import SunCornerGlow from "@/components/SunCornerGlow";
 
 export default function HostWalletPage() {
-  const { status: sessionStatus } = useSession();
+  const { isLoaded, isSignedIn } = useUser();
 
-  if (sessionStatus !== "authenticated") return null;
+  if (!isLoaded || !isSignedIn) return null;
 
   return (
     <div className="relative grid gap-6 overflow-hidden" data-testid="host-wallet-page">

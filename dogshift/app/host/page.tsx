@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { useSession } from "next-auth/react";
+import { useUser } from "@clerk/nextjs";
 
 import SunCornerGlow from "@/components/SunCornerGlow";
 
@@ -86,9 +86,16 @@ function HostAvatar({ src, alt }: { src: string | null; alt: string }) {
 }
 
 export default function HostDashboardPage() {
-  const { data, status } = useSession();
-  const sitterId = ((data?.user as any)?.sitterId as string | undefined) ?? null;
+  const { isLoaded, isSignedIn, user } = useUser();
+  const sitterId = null;
   const [unreadMessages, setUnreadMessages] = useState(0);
+
+  useEffect(() => {
+    if (!isLoaded) return;
+    if (!isSignedIn) {
+      window.location.assign("/login");
+    }
+  }, [isLoaded, isSignedIn]);
 
   useEffect(() => {
     const onStorage = (e: StorageEvent) => {
@@ -167,9 +174,9 @@ export default function HostDashboardPage() {
 
   const avatarSrc =
     (profile.avatarDataUrl && profile.avatarDataUrl.trim() ? profile.avatarDataUrl.trim() : null) ??
-    ((((data?.user as any)?.image as string | undefined) ?? "").trim() || null);
+    (typeof user?.imageUrl === "string" && user.imageUrl.trim() ? user.imageUrl.trim() : null);
 
-  if (status !== "authenticated") {
+  if (!isLoaded || !isSignedIn) {
     return null;
   }
 

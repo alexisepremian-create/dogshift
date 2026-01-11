@@ -1,12 +1,10 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { getToken } from "next-auth/jwt";
+import { auth, currentUser } from "@clerk/nextjs/server";
 
 import { prisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
-
-type RoleJwt = { uid?: string; sub?: string };
 
 function readLastEmailVerificationSentAt(hostProfileJson: string | null) {
   if (!hostProfileJson) return null;
@@ -33,12 +31,6 @@ type SettingsState = {
     dateFormat: "auto" | "dd/mm/yyyy" | "mm/dd/yyyy" | "yyyy-mm-dd";
   };
 };
-
-function tokenUserId(token: RoleJwt | null) {
-  const uid = typeof token?.uid === "string" ? token.uid : null;
-  const sub = typeof token?.sub === "string" ? token.sub : null;
-  return uid ?? sub;
-}
 
 function splitName(full: string) {
   const cleaned = (full ?? "").trim();
@@ -132,14 +124,29 @@ function mergeSettingsIntoHostProfileJson(hostProfileJson: string | null, next: 
 
 export async function GET(req: NextRequest) {
   try {
-    const token = (await getToken({ req, secret: process.env.NEXTAUTH_SECRET })) as RoleJwt | null;
-    const uid = tokenUserId(token);
-    if (!uid) {
+    const { userId } = await auth();
+    if (!userId) {
       return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
     }
 
+    const clerkUser = await currentUser();
+    const primaryEmail = clerkUser?.primaryEmailAddress?.emailAddress ?? "";
+    if (!primaryEmail) {
+      return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
+    }
+
+    const dbUser =
+      (await prisma.user.findUnique({ where: { email: primaryEmail } })) ??
+      (await prisma.user.create({
+        data: {
+          email: primaryEmail,
+          name: typeof clerkUser?.fullName === "string" && clerkUser.fullName.trim() ? clerkUser.fullName.trim() : null,
+          role: "OWNER",
+        },
+      }));
+
     const user = await prisma.user.findUnique({
-      where: { id: uid },
+      where: { id: dbUser.id },
       select: {
         id: true,
         email: true,
@@ -159,12 +166,13 @@ export async function GET(req: NextRequest) {
     const name = typeof user.name === "string" ? user.name : "";
     const { firstName, lastName } = splitName(name);
 
-    const googleConnected = Array.isArray((user as any).accounts)
-      ? (user as any).accounts.some((a: any) => String(a?.provider ?? "") === "google")
+    const googleConnected = Array.isArray((clerkUser as any)?.externalAccounts)
+      ? (clerkUser as any).externalAccounts.some((a: any) => String(a?.provider ?? "") === "google")
       : false;
 
     const lastVerificationEmailSentAt = readLastEmailVerificationSentAt((user as any).hostProfileJson ?? null);
-    const emailVerified = Boolean((user as any).emailVerified);
+    const emailVerified =
+      String((clerkUser as any)?.primaryEmailAddress?.verification?.status ?? "") === "verified" || Boolean((user as any).emailVerified);
 
     const emailVerificationStatus = (() => {
       if (emailVerified) return "verified" as const;
@@ -188,11 +196,11 @@ export async function GET(req: NextRequest) {
         security: {
           googleConnected,
           emailVerified,
-          passwordSet: Boolean((user as any).passwordHash),
+          passwordSet: false,
         },
         emailVerificationStatus,
         lastVerificationEmailSentAt,
-        provider: googleConnected ? "google" : "credentials",
+        provider: googleConnected ? "google" : "clerk",
         settings,
       },
       { status: 200 }
@@ -212,18 +220,33 @@ type PatchBody = {
 
 export async function PATCH(req: NextRequest) {
   try {
-    const token = (await getToken({ req, secret: process.env.NEXTAUTH_SECRET })) as RoleJwt | null;
-    const uid = tokenUserId(token);
-    if (!uid) {
+    const { userId } = await auth();
+    if (!userId) {
       return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
     }
+
+    const clerkUser = await currentUser();
+    const primaryEmail = clerkUser?.primaryEmailAddress?.emailAddress ?? "";
+    if (!primaryEmail) {
+      return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
+    }
+
+    const dbUser =
+      (await prisma.user.findUnique({ where: { email: primaryEmail } })) ??
+      (await prisma.user.create({
+        data: {
+          email: primaryEmail,
+          name: typeof clerkUser?.fullName === "string" && clerkUser.fullName.trim() ? clerkUser.fullName.trim() : null,
+          role: "OWNER",
+        },
+      }));
 
     const body = (await req.json()) as PatchBody;
 
     const firstName = typeof body?.firstName === "string" ? body.firstName.trim() : "";
     const lastName = typeof body?.lastName === "string" ? body.lastName.trim() : "";
 
-    const user = await prisma.user.findUnique({ where: { id: uid }, select: { id: true, hostProfileJson: true } });
+    const user = await prisma.user.findUnique({ where: { id: dbUser.id }, select: { id: true, hostProfileJson: true } });
     if (!user) {
       return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
     }
@@ -265,7 +288,7 @@ export async function PATCH(req: NextRequest) {
     const name = [firstName, lastName].filter(Boolean).join(" ").trim();
 
     await prisma.user.update({
-      where: { id: uid },
+      where: { id: dbUser.id },
       data: {
         ...(name ? { name } : {}),
         hostProfileJson,

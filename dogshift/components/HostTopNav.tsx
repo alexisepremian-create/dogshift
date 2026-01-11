@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { useSession } from "next-auth/react";
+import { useUser } from "@clerk/nextjs";
 
 type HostTopNavProps = {
   className?: string;
@@ -11,12 +11,12 @@ type HostTopNavProps = {
 
 export default function HostTopNav({ className }: HostTopNavProps) {
   const pathname = usePathname();
-  const { data, status } = useSession();
-  const sessionSitterId = ((data?.user as any)?.sitterId as string | undefined) ?? null;
+  const { isLoaded, isSignedIn } = useUser();
+  const sessionSitterId = null;
   const [dbSitterId, setDbSitterId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (status !== "authenticated") {
+    if (!isLoaded || !isSignedIn) {
       setDbSitterId(null);
       return;
     }
@@ -33,14 +33,14 @@ export default function HostTopNav({ className }: HostTopNavProps) {
         // ignore
       }
     })();
-  }, [status]);
+  }, [isLoaded, isSignedIn]);
 
   const sitterId = dbSitterId ?? sessionSitterId;
 
   const publicHref = useMemo(() => {
-    if (status !== "authenticated") return "/login";
+    if (!isLoaded || !isSignedIn) return "/login";
     return sitterId ? `/sitter/${sitterId}?mode=preview` : "/host/profile/edit";
-  }, [sitterId, status]);
+  }, [sitterId, isLoaded, isSignedIn]);
 
   const activeTab = useMemo(() => {
     if (pathname === "/host") return "dashboard";

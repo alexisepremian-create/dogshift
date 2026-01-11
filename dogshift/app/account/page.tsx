@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { getServerSession } from "next-auth/next";
+import { auth, clerkClient, currentUser } from "@clerk/nextjs/server";
 import {
   AlertTriangle,
   BarChart3,
@@ -14,7 +14,6 @@ import {
   Settings,
 } from "lucide-react";
 
-import { authOptions } from "@/lib/nextauth";
 import SunCornerGlow from "@/components/SunCornerGlow";
 import { prisma } from "@/lib/prisma";
 
@@ -42,14 +41,28 @@ function FilledSunIcon({ className }: { className?: string }) {
 }
 
 export default async function AccountDashboardPage() {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) redirect("/login");
+  const { userId } = await auth();
+  if (!userId) redirect("/login");
 
-  const uid = String((session.user as any)?.id ?? "");
-  if (!uid) redirect("/login");
+  const client = await clerkClient();
+  const clerkUser = (await currentUser()) ?? (await client.users.getUser(userId));
+  const primaryEmail = clerkUser?.primaryEmailAddress?.emailAddress ?? "";
+  if (!primaryEmail) redirect("/login");
 
-  const rawName = typeof session.user.name === "string" ? session.user.name : "";
+  const rawName = typeof clerkUser?.fullName === "string" ? clerkUser.fullName : "";
   const firstName = firstNameFromFullName(rawName) || "";
+
+  const dbUser =
+    (await prisma.user.findUnique({ where: { email: primaryEmail } })) ??
+    (await prisma.user.create({
+      data: {
+        email: primaryEmail,
+        name: rawName || null,
+        role: "OWNER",
+      },
+    }));
+
+  const uid = dbUser.id;
 
   const now = new Date();
   const stalePaymentBefore = new Date(Date.now() - 48 * 60 * 60 * 1000);

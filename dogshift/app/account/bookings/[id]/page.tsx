@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
-import { useSession } from "next-auth/react";
+import { useUser } from "@clerk/nextjs";
 import { CalendarDays, Clock3 } from "lucide-react";
 
 type BookingDetail = {
@@ -153,7 +153,7 @@ function StatusPill({ status }: { status: string }) {
 
 export default function AccountBookingDetailPage() {
   const params = useParams<{ id: string }>();
-  const { status } = useSession();
+  const { isLoaded, isSignedIn } = useUser();
 
   const bookingId = typeof params?.id === "string" ? params.id : "";
 
@@ -167,7 +167,7 @@ export default function AccountBookingDetailPage() {
   const [toast, setToast] = useState<string | null>(null);
 
   async function loadBooking() {
-    if (status !== "authenticated") return;
+    if (!isLoaded || !isSignedIn) return null;
     if (!bookingId) return;
     setLoading(true);
     setError(null);
@@ -210,15 +210,10 @@ export default function AccountBookingDetailPage() {
   }
 
   useEffect(() => {
-    if (status === "loading") return;
-  }, [status]);
-
-  useEffect(() => {
-    if (status !== "authenticated") return;
-    if (!bookingId) return;
+    if (!isLoaded || !isSignedIn) return;
     void loadBooking();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [bookingId, status]);
+  }, [bookingId, isLoaded, isSignedIn]);
 
   useEffect(() => {
     if (!toast) return;

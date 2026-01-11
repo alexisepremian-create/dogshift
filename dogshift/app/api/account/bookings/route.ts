@@ -1,18 +1,10 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { getToken } from "next-auth/jwt";
+import { auth, currentUser } from "@clerk/nextjs/server";
 
 import { prisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
-
-type RoleJwt = { uid?: string; sub?: string };
-
-function tokenUserId(token: RoleJwt | null) {
-  const uid = typeof token?.uid === "string" ? token.uid : null;
-  const sub = typeof token?.sub === "string" ? token.sub : null;
-  return uid ?? sub;
-}
 
 function isMigrationMissingError(err: unknown) {
   const msg = err instanceof Error ? err.message : String(err);
@@ -44,14 +36,31 @@ type AccountBookingListItem = {
 
 export async function GET(req: NextRequest) {
   try {
-    const token = (await getToken({ req, secret: process.env.NEXTAUTH_SECRET })) as RoleJwt | null;
-    const userId = tokenUserId(token);
-    if (!userId) {
+    const { userId: clerkUserId } = await auth();
+    if (!clerkUserId) {
       if (process.env.NODE_ENV !== "production") {
-        console.error("[api][account][bookings][GET] UNAUTHORIZED", { hasToken: Boolean(token) });
+        console.error("[api][account][bookings][GET] UNAUTHORIZED", { hasUserId: false });
       }
       return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
     }
+
+    const clerkUser = await currentUser();
+    const primaryEmail = clerkUser?.primaryEmailAddress?.emailAddress ?? "";
+    if (!primaryEmail) {
+      return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
+    }
+
+    const dbUser =
+      (await prisma.user.findUnique({ where: { email: primaryEmail } })) ??
+      (await prisma.user.create({
+        data: {
+          email: primaryEmail,
+          name: typeof clerkUser?.fullName === "string" && clerkUser.fullName.trim() ? clerkUser.fullName.trim() : null,
+          role: "OWNER",
+        },
+      }));
+
+    const userId = dbUser.id;
 
     const bookings = await (prisma as any).booking.findMany({
       where: { userId },
