@@ -87,7 +87,8 @@ function HostAvatar({ src, alt }: { src: string | null; alt: string }) {
 
 export default function HostDashboardPage() {
   const { isLoaded, isSignedIn, user } = useUser();
-  const sitterId = null;
+  const [sitterId, setSitterId] = useState<string | null>(null);
+  const [sitterIdChecked, setSitterIdChecked] = useState(false);
   const [unreadMessages, setUnreadMessages] = useState(0);
 
   useEffect(() => {
@@ -95,6 +96,31 @@ export default function HostDashboardPage() {
     if (!isSignedIn) {
       window.location.assign("/login");
     }
+  }, [isLoaded, isSignedIn]);
+
+  useEffect(() => {
+    if (!isLoaded || !isSignedIn) {
+      setSitterId(null);
+      setSitterIdChecked(false);
+      return;
+    }
+
+    void (async () => {
+      try {
+        const res = await fetch("/api/host/profile", { method: "GET" });
+        const payload = (await res.json()) as { ok?: boolean; sitterId?: string | null };
+        const nextSitterId = typeof payload?.sitterId === "string" && payload.sitterId.trim() ? payload.sitterId.trim() : null;
+        if (res.ok && payload.ok && nextSitterId) {
+          setSitterId(nextSitterId);
+        } else {
+          setSitterId(null);
+        }
+      } catch {
+        setSitterId(null);
+      } finally {
+        setSitterIdChecked(true);
+      }
+    })();
   }, [isLoaded, isSignedIn]);
 
   useEffect(() => {
@@ -181,7 +207,22 @@ export default function HostDashboardPage() {
   }
 
   if (!sitterId) {
-    return null;
+    if (!sitterIdChecked) return null;
+
+    return (
+      <div className="relative grid gap-6 overflow-hidden" data-testid="host-dashboard">
+        <SunCornerGlow variant="sitterDashboard" />
+        <div className="relative z-10 rounded-3xl border border-slate-200 bg-white p-6">
+          <p className="text-sm font-semibold text-slate-900">Tableau de bord</p>
+          <p className="mt-2 text-sm text-slate-600">Ton profil hôte n’est pas encore disponible.</p>
+          <div className="mt-4">
+            <Link href="/become-sitter" className="text-sm font-semibold text-[var(--dogshift-blue)]">
+              Créer mon profil hôte
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
