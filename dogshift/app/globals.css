@@ -8,6 +8,7 @@
   --dogshift-blue-pin: color-mix(in_srgb, var(--dogshift-blue), white 78%);
   --dogshift-blue-pin-solid: #b9d6ff;
   --ds-page-top-offset: 72px;
+  --header-h: 96px;
 }
 
 @theme inline {
@@ -33,7 +34,6 @@ body {
 [data-clerk-component] {
   display: flex;
   width: 100%;
-  align-items: center;
   justify-content: center;
 }
 
