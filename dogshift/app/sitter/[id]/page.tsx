@@ -351,6 +351,11 @@ export default function SitterProfilePage() {
   const [startingChat, setStartingChat] = useState(false);
   const [chatError, setChatError] = useState<string | null>(null);
 
+  const shouldAutoStartChat = useMemo(() => {
+    const v = (searchParams?.get("startChat") ?? "").trim();
+    return v === "1" || v.toLowerCase() === "true";
+  }, [searchParams]);
+
   useEffect(() => {
     if (!payError) return;
     if (selectedService || bookingStart || bookingEnd) {
@@ -448,6 +453,49 @@ export default function SitterProfilePage() {
   const showFullListing = !isHostViewingOwnStable || viewMode === "public" || isPreviewMode;
   const showHostChrome = isPreviewMode || (isHostViewingOwnStable && viewMode !== "public");
   const disableSelfActions = isPreviewMode || isHostViewingOwnStable;
+
+  useEffect(() => {
+    if (!shouldAutoStartChat) return;
+    if (!id) return;
+    if (!isLoggedIn) return;
+    if (disableSelfActions) return;
+    if (startingChat) return;
+
+    setStartingChat(true);
+    setChatError(null);
+    void (async () => {
+      try {
+        const res = await fetch("/api/messages/conversations", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sitterId: id }),
+        });
+        const payload = (await res.json()) as { ok?: boolean; conversationId?: string; error?: string };
+        const conversationId = typeof payload?.conversationId === "string" ? payload.conversationId : "";
+        if (!res.ok || !payload.ok || !conversationId) {
+          if (res.status === 401 || payload.error === "UNAUTHORIZED") {
+            const next = `/sitter/${encodeURIComponent(id)}?startChat=1`;
+            router.push(`/login?next=${encodeURIComponent(next)}`);
+            return;
+          }
+          setChatError(`Erreur serveur: ${payload.error ?? res.status}`);
+          return;
+        }
+
+        const nextParams = new URLSearchParams(searchParams?.toString() ?? "");
+        nextParams.delete("startChat");
+        const tail = nextParams.toString();
+        const keepOnUrl = tail ? `?${tail}` : "";
+        router.replace(`/sitter/${encodeURIComponent(id)}${keepOnUrl}`);
+        router.push(`/account/messages/${encodeURIComponent(conversationId)}`);
+      } catch {
+        setChatError("Erreur réseau. Réessaie.");
+      } finally {
+        setStartingChat(false);
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shouldAutoStartChat, id, isLoggedIn, disableSelfActions]);
 
   const hostUserValue = useMemo(
     () => ({ sitterId: currentHostId, published: false, publishedAt: null, profile: profileData }),
@@ -820,7 +868,8 @@ export default function SitterProfilePage() {
                         if (disableSelfActions) return;
                         if (startingChat) return;
                         if (!isLoggedIn) {
-                          router.push("/login");
+                          const next = `/sitter/${encodeURIComponent(id)}?startChat=1`;
+                          router.push(`/login?next=${encodeURIComponent(next)}`);
                           return;
                         }
 
@@ -828,7 +877,7 @@ export default function SitterProfilePage() {
                         setChatError(null);
                         void (async () => {
                           try {
-                            const res = await fetch("/api/account/messages/conversations/start", {
+                            const res = await fetch("/api/messages/conversations", {
                               method: "POST",
                               headers: { "Content-Type": "application/json" },
                               body: JSON.stringify({ sitterId: id }),
@@ -838,7 +887,8 @@ export default function SitterProfilePage() {
                             if (!res.ok || !payload.ok || !conversationId) {
                               if (res.status === 401 || payload.error === "UNAUTHORIZED") {
                                 setChatError("Tu dois être connecté (401).");
-                                router.push("/login");
+                                const next = `/sitter/${encodeURIComponent(id)}?startChat=1`;
+                                router.push(`/login?next=${encodeURIComponent(next)}`);
                                 return;
                               }
                               setChatError(`Erreur serveur: ${payload.error ?? res.status}`);
@@ -854,8 +904,17 @@ export default function SitterProfilePage() {
                       }}
                       className="w-full rounded-2xl bg-[var(--dogshift-blue)] px-6 py-3 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition hover:bg-[var(--dogshift-blue-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)] disabled:cursor-not-allowed disabled:opacity-55"
                     >
-                      {startingChat ? "Ouverture…" : "Envoyer un message"}
+                      {startingChat ? "Ouverture…" : disableSelfActions ? "Voir mes messages" : "Envoyer un message"}
                     </button>
+
+                    {disableSelfActions ? (
+                      <Link
+                        href="/host/messages"
+                        className="inline-flex w-full items-center justify-center rounded-2xl border border-slate-300 bg-white px-6 py-3 text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)]"
+                      >
+                        Voir mes messages
+                      </Link>
+                    ) : null}
 
                     {chatError ? (
                       <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4">
