@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { headers } from "next/headers";
 import { ClerkProvider } from "@clerk/nextjs";
+import { frFR } from "@clerk/localizations";
 import DogShiftBot from "@/components/DogShiftBot";
 import PageTopOffset from "@/components/PageTopOffset";
 import SessionAuthProvider from "@/components/SessionAuthProvider";
@@ -53,7 +54,13 @@ export default async function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <ClerkProvider signInUrl="/login" signUpUrl="/signup" afterSignInUrl="/account" afterSignUpUrl="/account">
+        <ClerkProvider
+          signInUrl="/login"
+          signUpUrl="/signup"
+          afterSignInUrl="/account"
+          afterSignUpUrl="/account"
+          localization={frFR}
+        >
           <Suspense fallback={null}>
             <SessionAuthProvider>
               {isAccess ? children : <SiteHeader />}
