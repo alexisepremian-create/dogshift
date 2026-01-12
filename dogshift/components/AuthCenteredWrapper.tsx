@@ -4,8 +4,8 @@ export default function AuthCenteredWrapper({ children }: { children: React.Reac
       <div
         className={
           "flex w-full justify-center px-4" +
-          " min-h-[calc(100vh-var(--header-h,96px))]" +
-          " pt-[clamp(24px,6vh,72px)]" +
+          " min-h-[calc(100vh-120px)]" +
+          " pt-[clamp(16px,4vh,40px)]" +
           " pb-[clamp(24px,6vh,72px)]" +
           " items-start"
         }
