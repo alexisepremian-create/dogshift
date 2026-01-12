@@ -30,6 +30,13 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
+[data-clerk-component] {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+}
+
 .dogshift-popup .mapboxgl-popup-content {
   max-width: 260px;
   padding: 10px 10px 10px 10px;

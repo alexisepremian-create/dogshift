@@ -1,7 +1,12 @@
 "use client";
 
 import { SignUp } from "@clerk/nextjs";
+import AuthCenteredWrapper from "@/components/AuthCenteredWrapper";
 
 export default function SignupCatchAllPage() {
-  return <SignUp routing="path" path="/signup" signInUrl="/login" />;
+  return (
+    <AuthCenteredWrapper>
+      <SignUp routing="path" path="/signup" signInUrl="/login" />
+    </AuthCenteredWrapper>
+  );
 }
