@@ -3,6 +3,7 @@ import type { NextRequest } from "next/server";
 import { auth, currentUser } from "@clerk/nextjs/server";
 
 import { prisma } from "@/lib/prisma";
+import { resolveBookingParticipants, sendNotificationEmail } from "@/lib/notifications/sendNotificationEmail";
 
 export const runtime = "nodejs";
 
@@ -64,6 +65,28 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       data: { status: "CONFIRMED" },
       select: { id: true, status: true },
     });
+
+    try {
+      const participants = await resolveBookingParticipants(bookingId);
+      if (participants?.owner?.id) {
+        await sendNotificationEmail({
+          recipientUserId: participants.owner.id,
+          key: "bookingConfirmed",
+          entityId: bookingId,
+          payload: { kind: "bookingConfirmed", bookingId },
+        });
+      }
+      if (participants?.sitter?.id) {
+        await sendNotificationEmail({
+          recipientUserId: participants.sitter.id,
+          key: "bookingConfirmed",
+          entityId: bookingId,
+          payload: { kind: "bookingConfirmed", bookingId },
+        });
+      }
+    } catch (err) {
+      console.error("[api][host][requests][accept][POST] notification failed", err);
+    }
 
     return NextResponse.json({ ok: true, id: String(updated.id), status: String(updated.status) }, { status: 200 });
   } catch (err) {

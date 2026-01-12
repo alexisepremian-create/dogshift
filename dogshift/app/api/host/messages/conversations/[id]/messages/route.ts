@@ -3,6 +3,10 @@ import type { NextRequest } from "next/server";
 import { auth, currentUser } from "@clerk/nextjs/server";
 
 import { prisma } from "@/lib/prisma";
+import {
+  resolveNotificationRecipientForConversation,
+  sendNotificationEmail,
+} from "@/lib/notifications/sendNotificationEmail";
 
 export const runtime = "nodejs";
 
@@ -97,6 +101,28 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       },
       select: { id: true },
     });
+
+    try {
+      const recipient = await resolveNotificationRecipientForConversation({
+        conversationId,
+        senderUserId: uid,
+      });
+      if (recipient) {
+        await sendNotificationEmail({
+          recipientUserId: recipient.recipientUserId,
+          key: "newMessages",
+          entityId: String(msg.id),
+          payload: {
+            kind: "newMessage",
+            conversationId,
+            messagePreview: previewOf(text),
+            fromName: recipient.fromName,
+          },
+        });
+      }
+    } catch (err) {
+      console.error("[api][host][messages][send][POST] notification failed", err);
+    }
 
     return NextResponse.json(
       {

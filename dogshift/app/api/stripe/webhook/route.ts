@@ -5,8 +5,48 @@ import Stripe from "stripe";
 
 import { stripe } from "@/lib/stripe";
 import { prisma } from "@/lib/prisma";
+import { resolveBookingParticipants, sendNotificationEmail } from "@/lib/notifications/sendNotificationEmail";
 
 export const runtime = "nodejs";
+
+async function notifyPendingAcceptance(req: NextRequest, bookingId: string) {
+  try {
+    const participants = await resolveBookingParticipants(bookingId);
+    if (!participants) return;
+
+    if (participants.sitter?.id) {
+      await sendNotificationEmail({
+        req,
+        recipientUserId: participants.sitter.id,
+        key: "newBookingRequest",
+        entityId: `${bookingId}:pending_acceptance`,
+        payload: { kind: "bookingRequest", bookingId },
+      });
+    }
+
+    if (participants.owner?.id) {
+      await sendNotificationEmail({
+        req,
+        recipientUserId: participants.owner.id,
+        key: "paymentReceived",
+        entityId: `${bookingId}:payment_received`,
+        payload: { kind: "paymentReceived", bookingId },
+      });
+    }
+
+    if (participants.sitter?.id) {
+      await sendNotificationEmail({
+        req,
+        recipientUserId: participants.sitter.id,
+        key: "paymentReceived",
+        entityId: `${bookingId}:payment_received`,
+        payload: { kind: "paymentReceived", bookingId },
+      });
+    }
+  } catch (err) {
+    console.error("[api][stripe][webhook] notifyPendingAcceptance failed", { bookingId, err });
+  }
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -64,6 +104,10 @@ export async function POST(req: NextRequest) {
 
       console.log(`[webhook][stripe] booking.updateMany count=${res?.count ?? "?"}`);
 
+      if (bookingId && Number(res?.count ?? 0) > 0) {
+        await notifyPendingAcceptance(req, bookingId);
+      }
+
       return NextResponse.json({ received: true }, { status: 200 });
     }
 
@@ -90,6 +134,10 @@ export async function POST(req: NextRequest) {
       });
 
       console.log(`[webhook][stripe] booking.updateMany count=${res?.count ?? "?"}`);
+
+      if (Number(res?.count ?? 0) > 0) {
+        await notifyPendingAcceptance(req, bookingId);
+      }
 
       return NextResponse.json({ received: true }, { status: 200 });
     }
