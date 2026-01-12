@@ -26,6 +26,14 @@ enum BookingStatus {
   CANCELLED
 }
 
+enum NotificationType {
+  newMessages
+  newBookingRequest
+  paymentReceived
+  bookingConfirmed
+  bookingReminder
+}
+
 model User {
   id        String   @id @default(cuid())
   email     String   @unique
@@ -50,6 +58,32 @@ model User {
   sentMessages Message[]
 
   sitterProfile SitterProfile?
+
+  notifications Notification[]
+}
+
+model Notification {
+  id String @id @default(cuid())
+
+  userId String
+  type NotificationType
+
+  title String
+  body String?
+  entityId String?
+  url String?
+  metadata Json?
+
+  idempotencyKey String
+
+  createdAt DateTime @default(now())
+  readAt DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt])
+  @@index([userId, createdAt])
+  @@unique([userId, idempotencyKey])
 }
 
 model SitterProfile {

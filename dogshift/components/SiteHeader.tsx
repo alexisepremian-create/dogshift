@@ -6,11 +6,12 @@ import { useClerk, useUser } from "@clerk/nextjs";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import BrandLogo from "@/components/BrandLogo";
+import NotificationBell from "@/components/NotificationBell";
 
 export default function SiteHeader() {
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  const { isLoaded, isSignedIn, user } = useUser();
+  const { isLoaded, isSignedIn } = useUser();
   const clerk = useClerk();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -84,6 +85,7 @@ export default function SiteHeader() {
             ref={menuRef}
             className={authMenuOffset + " relative flex items-center gap-2 transition-all duration-200 ease-out"}
           >
+            {isLoaded && isSignedIn ? <NotificationBell /> : null}
             <button
               type="button"
               onClick={() => setMenuOpen((v) => !v)}

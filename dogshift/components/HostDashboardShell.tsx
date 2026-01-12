@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Menu, X } from "lucide-react";
 
 import HostSidebar from "@/components/HostSidebar";
+import NotificationBell from "@/components/NotificationBell";
 
 export default function HostDashboardShell({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -43,7 +44,7 @@ export default function HostDashboardShell({ children }: { children: React.React
                 </Link>
               </div>
 
-              <div className="hidden lg:block" />
+              <NotificationBell />
             </div>
           </header>
 

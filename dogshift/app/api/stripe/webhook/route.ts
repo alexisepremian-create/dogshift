@@ -5,6 +5,7 @@ import Stripe from "stripe";
 
 import { stripe } from "@/lib/stripe";
 import { prisma } from "@/lib/prisma";
+import { createNotification } from "@/lib/notifications/inApp";
 import { resolveBookingParticipants, sendNotificationEmail } from "@/lib/notifications/sendNotificationEmail";
 
 export const runtime = "nodejs";
@@ -15,6 +16,21 @@ async function notifyPendingAcceptance(req: NextRequest, bookingId: string) {
     if (!participants) return;
 
     if (participants.sitter?.id) {
+      try {
+        await createNotification({
+          userId: participants.sitter.id,
+          type: "newBookingRequest",
+          title: "Nouvelle demande de réservation",
+          body: null,
+          entityId: bookingId,
+          url: "/host/requests",
+          idempotencyKey: `newBookingRequest:${bookingId}:pending_acceptance`,
+          metadata: { bookingId },
+        });
+      } catch (err) {
+        console.error("[api][stripe][webhook] in-app notification failed (newBookingRequest)", err);
+      }
+
       await sendNotificationEmail({
         req,
         recipientUserId: participants.sitter.id,
@@ -25,6 +41,21 @@ async function notifyPendingAcceptance(req: NextRequest, bookingId: string) {
     }
 
     if (participants.owner?.id) {
+      try {
+        await createNotification({
+          userId: participants.owner.id,
+          type: "paymentReceived",
+          title: "Paiement reçu",
+          body: null,
+          entityId: bookingId,
+          url: `/account/bookings?id=${encodeURIComponent(bookingId)}`,
+          idempotencyKey: `paymentReceived:${bookingId}:payment_received`,
+          metadata: { bookingId },
+        });
+      } catch (err) {
+        console.error("[api][stripe][webhook] in-app notification failed (paymentReceived owner)", err);
+      }
+
       await sendNotificationEmail({
         req,
         recipientUserId: participants.owner.id,
@@ -35,6 +66,21 @@ async function notifyPendingAcceptance(req: NextRequest, bookingId: string) {
     }
 
     if (participants.sitter?.id) {
+      try {
+        await createNotification({
+          userId: participants.sitter.id,
+          type: "paymentReceived",
+          title: "Paiement reçu",
+          body: null,
+          entityId: bookingId,
+          url: "/host/requests",
+          idempotencyKey: `paymentReceived:${bookingId}:payment_received`,
+          metadata: { bookingId },
+        });
+      } catch (err) {
+        console.error("[api][stripe][webhook] in-app notification failed (paymentReceived sitter)", err);
+      }
+
       await sendNotificationEmail({
         req,
         recipientUserId: participants.sitter.id,

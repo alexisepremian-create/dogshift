@@ -3,6 +3,7 @@ import type { NextRequest } from "next/server";
 import { auth, currentUser } from "@clerk/nextjs/server";
 
 import { prisma } from "@/lib/prisma";
+import { createNotification } from "@/lib/notifications/inApp";
 import { resolveBookingParticipants, sendNotificationEmail } from "@/lib/notifications/sendNotificationEmail";
 
 export const runtime = "nodejs";
@@ -69,6 +70,21 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     try {
       const participants = await resolveBookingParticipants(bookingId);
       if (participants?.owner?.id) {
+        try {
+          await createNotification({
+            userId: participants.owner.id,
+            type: "bookingConfirmed",
+            title: "Réservation confirmée",
+            body: null,
+            entityId: bookingId,
+            url: `/account/bookings?id=${encodeURIComponent(bookingId)}`,
+            idempotencyKey: `bookingConfirmed:${bookingId}`,
+            metadata: { bookingId },
+          });
+        } catch (err) {
+          console.error("[api][host][requests][accept][POST] in-app notification failed (owner)", err);
+        }
+
         await sendNotificationEmail({
           recipientUserId: participants.owner.id,
           key: "bookingConfirmed",
@@ -77,6 +93,21 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
         });
       }
       if (participants?.sitter?.id) {
+        try {
+          await createNotification({
+            userId: participants.sitter.id,
+            type: "bookingConfirmed",
+            title: "Réservation confirmée",
+            body: null,
+            entityId: bookingId,
+            url: "/host/requests",
+            idempotencyKey: `bookingConfirmed:${bookingId}`,
+            metadata: { bookingId },
+          });
+        } catch (err) {
+          console.error("[api][host][requests][accept][POST] in-app notification failed (sitter)", err);
+        }
+
         await sendNotificationEmail({
           recipientUserId: participants.sitter.id,
           key: "bookingConfirmed",

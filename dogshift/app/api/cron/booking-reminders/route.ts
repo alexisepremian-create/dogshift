@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 import { prisma } from "@/lib/prisma";
+import { createNotification } from "@/lib/notifications/inApp";
 import { resolveBookingParticipants, sendNotificationEmail } from "@/lib/notifications/sendNotificationEmail";
 
 export const runtime = "nodejs";
@@ -65,6 +66,21 @@ export async function GET(req: NextRequest) {
         const startsAtIso = participants.startsAtIso || "";
 
         if (participants.owner?.id) {
+          try {
+            await createNotification({
+              userId: participants.owner.id,
+              type: "bookingReminder",
+              title: "Rappel : réservation à venir",
+              body: startsAtIso ? `Début : ${startsAtIso}` : null,
+              entityId: bookingId,
+              url: `/account/bookings?id=${encodeURIComponent(bookingId)}`,
+              idempotencyKey: `bookingReminder:${bookingId}:24h`,
+              metadata: { bookingId, startsAtIso },
+            });
+          } catch (err) {
+            console.error("[api][cron][booking-reminders] in-app notification failed (owner)", err);
+          }
+
           const res = await sendNotificationEmail({
             req,
             recipientUserId: participants.owner.id,
@@ -77,6 +93,21 @@ export async function GET(req: NextRequest) {
         }
 
         if (participants.sitter?.id) {
+          try {
+            await createNotification({
+              userId: participants.sitter.id,
+              type: "bookingReminder",
+              title: "Rappel : réservation à venir",
+              body: startsAtIso ? `Début : ${startsAtIso}` : null,
+              entityId: bookingId,
+              url: "/host/requests",
+              idempotencyKey: `bookingReminder:${bookingId}:24h`,
+              metadata: { bookingId, startsAtIso },
+            });
+          } catch (err) {
+            console.error("[api][cron][booking-reminders] in-app notification failed (sitter)", err);
+          }
+
           const res = await sendNotificationEmail({
             req,
             recipientUserId: participants.sitter.id,

@@ -3,6 +3,7 @@ import type { NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
 
 import { prisma } from "@/lib/prisma";
+import { createNotification } from "@/lib/notifications/inApp";
 import {
   resolveNotificationRecipientForConversation,
   sendNotificationEmail,
@@ -88,6 +89,21 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
         senderUserId: uid,
       });
       if (recipient) {
+        try {
+          await createNotification({
+            userId: recipient.recipientUserId,
+            type: "newMessages",
+            title: "Nouveau message",
+            body: previewOf(text),
+            entityId: conversationId,
+            url: `/account/messages?conversationId=${encodeURIComponent(conversationId)}`,
+            idempotencyKey: `newMessages:${msg.id}`,
+            metadata: { conversationId },
+          });
+        } catch (err) {
+          console.error("[api][account][messages][send][POST] in-app notification failed", err);
+        }
+
         await sendNotificationEmail({
           recipientUserId: recipient.recipientUserId,
           key: "newMessages",

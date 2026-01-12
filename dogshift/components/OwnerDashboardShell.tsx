@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Menu, X } from "lucide-react";
 
 import OwnerSidebar from "@/components/OwnerSidebar";
+import NotificationBell from "@/components/NotificationBell";
 
 export default function OwnerDashboardShell({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -42,6 +43,8 @@ export default function OwnerDashboardShell({ children }: { children: React.Reac
                   DogShift
                 </Link>
               </div>
+
+              <NotificationBell />
             </div>
           </header>
 
