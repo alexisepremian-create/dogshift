@@ -44,43 +44,6 @@ function parseEmailList(value: string | undefined, fallback: string[]) {
     .filter(Boolean);
 }
 
-const OWNER_EMAILS = parseEmailList(process.env.OWNER_EMAILS, ["luigi111.ytbr@gmail.com"]);
-const SITTER_EMAILS = parseEmailList(process.env.SITTER_EMAILS, ["alexis.epremian@gmail.com"]);
-
-function wantedRoleForEmail(emailRaw: string | null | undefined) {
-  const email = typeof emailRaw === "string" ? normalizeEmail(emailRaw) : "";
-  if (!email) return null;
-  if (OWNER_EMAILS.includes(email)) return "OWNER";
-  if (SITTER_EMAILS.includes(email)) return "SITTER";
-  return null;
-}
-
-async function applyWantedRoleByEmail(emailRaw: string | null | undefined) {
-  const email = typeof emailRaw === "string" ? normalizeEmail(emailRaw) : "";
-  if (!email) return;
-
-  const roleWanted = wantedRoleForEmail(email);
-  if (!roleWanted) return;
-
-  if (roleWanted === "SITTER") {
-    const existing = await prisma.user.findUnique({ where: { email } });
-    const existingSitterId = (existing as unknown as { sitterId?: string | null } | null)?.sitterId ?? null;
-    const sitterId =
-      existingSitterId && existingSitterId.trim() ? existingSitterId.trim() : `s-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-
-    await prisma.user.updateMany({
-      where: { email },
-      data: { role: "SITTER", sitterId } as unknown as { role: "SITTER"; sitterId: string },
-    });
-    return;
-  }
-
-  await prisma.user.updateMany({
-    where: { email },
-    data: { role: "OWNER" } as unknown as { role: "OWNER" },
-  });
-}
-
 function missingAuthEnv() {
   const missing: string[] = [];
   if (!process.env.NEXTAUTH_SECRET) missing.push("NEXTAUTH_SECRET");
@@ -208,8 +171,6 @@ export const authOptions: NextAuthOptions = {
               if (typeof name === "string") {
                 token.name = name;
               }
-            } else {
-              (token as unknown as RoleJwt).role = wantedRoleForEmail(email) ?? "OWNER";
             }
           } catch (err) {
             console.error("[next-auth][jwt] db lookup failed", {
@@ -266,16 +227,7 @@ export const authOptions: NextAuthOptions = {
           return false;
         }
 
-        if (!minimalOauth) {
-          try {
-            await applyWantedRoleByEmail(user.email);
-          } catch (err) {
-            console.error("[next-auth][signIn] applyWantedRoleByEmail failed (non-blocking)", {
-              email: user.email,
-              err: err instanceof Error ? { name: err.name, message: err.message, stack: err.stack } : err,
-            });
-          }
-        }
+        // Role changes are explicit only; do not auto-promote by email.
 
         console.log("[next-auth][signIn] allow", { email: user.email, minimalOauth });
         return true;
@@ -303,14 +255,7 @@ export const authOptions: NextAuthOptions = {
     async createUser({ user }: { user: User }) {
       console.log("[next-auth][event][createUser]", { id: user.id, email: user.email, minimalOauth });
       if (minimalOauth) return;
-      try {
-        await applyWantedRoleByEmail(user.email);
-      } catch (err) {
-        console.error("[next-auth][event][createUser] applyWantedRoleByEmail failed (non-blocking)", {
-          email: user.email,
-          err: err instanceof Error ? { name: err.name, message: err.message, stack: err.stack } : err,
-        });
-      }
+      // Role changes are explicit only; do not auto-promote by email.
     },
     async signIn(message: any) {
       console.log("[next-auth][event][signIn]", {

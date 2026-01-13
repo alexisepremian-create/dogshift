@@ -17,34 +17,9 @@ function normalizeEmail(email: string) {
   return email.replace(/\s+/g, "+").trim().toLowerCase();
 }
 
-function parseEmailList(value: string | undefined, fallback: string[]) {
-  if (!value) return fallback.map(normalizeEmail);
-  return value
-    .split(",")
-    .map((e) => normalizeEmail(e))
-    .filter(Boolean);
-}
-
-const OWNER_EMAILS = parseEmailList(process.env.OWNER_EMAILS, ["luigi111.ytbr@gmail.com"]);
-const SITTER_EMAILS = parseEmailList(process.env.SITTER_EMAILS, ["alexis.epremian@gmail.com"]);
-
-function wantedRoleForEmail(emailRaw: string | null | undefined) {
-  const email = typeof emailRaw === "string" ? normalizeEmail(emailRaw) : "";
-  if (!email) return null;
-  if (OWNER_EMAILS.includes(email)) return "OWNER";
-  if (SITTER_EMAILS.includes(email)) return "SITTER";
-  return null;
-}
-
-function newSitterId() {
-  return `s-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-}
-
 export async function ensureDbUserByEmail(params: { email: string; name?: string | null }): Promise<DbUserEnsured | null> {
   const email = normalizeEmail(params.email);
   if (!email) return null;
-
-  const roleWanted = wantedRoleForEmail(email);
 
   const existing = await prisma.user.findUnique({ where: { email }, select: { id: true, role: true, sitterId: true } });
   if (existing?.id) {
@@ -52,8 +27,8 @@ export async function ensureDbUserByEmail(params: { email: string; name?: string
   }
 
   const name = typeof params.name === "string" && params.name.trim() ? params.name.trim() : null;
-  const role = roleWanted ?? "OWNER";
-  const sitterId = role === "SITTER" ? newSitterId() : null;
+  const role = "OWNER";
+  const sitterId = null;
   const created = await prisma.user.create({ data: { email, name, role, sitterId }, select: { id: true, role: true, sitterId: true } });
   return { id: created.id, role: created.role, sitterId: created.sitterId ?? null };
 }
