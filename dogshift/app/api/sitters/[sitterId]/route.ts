@@ -28,20 +28,37 @@ export async function GET(
       ? await (params as Promise<{ sitterId: string }>)
       : (params as { sitterId: string })) as { sitterId: string };
 
-    const sitterId = typeof resolvedParams?.sitterId === "string" ? resolvedParams.sitterId : "";
+    const sitterIdRaw = typeof resolvedParams?.sitterId === "string" ? resolvedParams.sitterId : "";
+    const input = sitterIdRaw.trim();
 
-    if (!sitterId) {
+    if (!input) {
       return NextResponse.json({ ok: false, error: "INVALID_ID" }, { status: 400 });
+    }
+
+    let sitterId = input;
+    if (!sitterId.startsWith("s-")) {
+      const userDelegate = (prisma as any)?.user;
+      if (userDelegate && typeof userDelegate.findUnique === "function") {
+        const byId = await userDelegate.findUnique({ where: { id: sitterId }, select: { sitterId: true } });
+        const normalizedById = typeof byId?.sitterId === "string" ? byId.sitterId.trim() : "";
+        if (normalizedById) {
+          sitterId = normalizedById;
+        } else {
+          const bySitterId = await userDelegate.findUnique({ where: { sitterId }, select: { sitterId: true } });
+          const normalizedBySitterId = typeof bySitterId?.sitterId === "string" ? bySitterId.sitterId.trim() : "";
+          if (normalizedBySitterId) sitterId = normalizedBySitterId;
+        }
+      }
     }
 
     const db = prisma as unknown as { sitterProfile: any };
     const sitterProfile = await db.sitterProfile.findFirst({
       where: {
         sitterId,
-        published: true,
       },
       select: {
         sitterId: true,
+        published: true,
         displayName: true,
         city: true,
         postalCode: true,
@@ -62,6 +79,13 @@ export async function GET(
     });
 
     if (!sitterProfile) {
+      return NextResponse.json({ ok: false, error: "NOT_FOUND" }, { status: 404 });
+    }
+
+    if (!sitterProfile.published) {
+      if (process.env.NODE_ENV !== "production") {
+        return NextResponse.json({ ok: false, error: "NOT_PUBLISHED" }, { status: 403 });
+      }
       return NextResponse.json({ ok: false, error: "NOT_FOUND" }, { status: 404 });
     }
 

@@ -12,8 +12,12 @@ export default async function AccountLayout({ children }: { children: React.Reac
     redirect("/login");
   }
 
-  if (contexts.hasSitterProfile) {
-    redirect("/host");
+  if (process.env.NODE_ENV !== "production") {
+    console.log("[guard][account/layout] allow account routes", {
+      path: "/account/*",
+      hasSitterProfile: contexts.hasSitterProfile,
+      dbUserId: contexts.dbUserId,
+    });
   }
 
   return <OwnerDashboardShell>{children}</OwnerDashboardShell>;

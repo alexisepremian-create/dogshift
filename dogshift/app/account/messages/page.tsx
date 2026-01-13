@@ -220,7 +220,7 @@ export default function AccountMessagesPage() {
 
   useEffect(() => {
     let canceled = false;
-    if (status !== "authenticated") return () => {};
+    if (!isLoaded || !isSignedIn) return () => {};
     if (!selectedId) return () => {};
     void (async () => {
       if (canceled) return;
@@ -229,7 +229,7 @@ export default function AccountMessagesPage() {
     return () => {
       canceled = true;
     };
-  }, [selectedId, status]);
+  }, [selectedId, isLoaded, isSignedIn]);
 
   const canSend = text.trim().length > 0 && !sending;
 
@@ -276,8 +276,8 @@ export default function AccountMessagesPage() {
     }
   }
 
-  if (status === "loading") return null;
-  if (status !== "authenticated") {
+  if (!isLoaded) return null;
+  if (!isSignedIn) {
     return (
       <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)] sm:p-8">
         <p className="text-sm font-semibold text-slate-900">Connexion requise (401).</p>

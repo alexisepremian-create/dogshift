@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { getToken } from "next-auth/jwt";
 
 import { prisma } from "@/lib/prisma";
+import { resolveDbUserId } from "@/lib/auth/resolveDbUserId";
 import { createNotification } from "@/lib/notifications/inApp";
 import {
   resolveNotificationRecipientForConversation,
@@ -10,14 +10,6 @@ import {
 } from "@/lib/notifications/sendNotificationEmail";
 
 export const runtime = "nodejs";
-
-type RoleJwt = { uid?: string; sub?: string };
-
-function tokenUserId(token: RoleJwt | null) {
-  const uid = typeof token?.uid === "string" ? token.uid : null;
-  const sub = typeof token?.sub === "string" ? token.sub : null;
-  return uid ?? sub;
-}
 
 function isMigrationMissingError(err: unknown) {
   const msg = err instanceof Error ? err.message : String(err);
@@ -34,11 +26,14 @@ function previewOf(text: string) {
 
 export async function POST(req: NextRequest, { params }: { params: { id: string } | Promise<{ id: string }> }) {
   try {
-    const token = (await getToken({ req, secret: process.env.NEXTAUTH_SECRET })) as RoleJwt | null;
-    const uid = tokenUserId(token);
+    if (process.env.NODE_ENV !== "production") {
+      console.log("[api][account][messages][send][POST] entered");
+    }
+    const uid = await resolveDbUserId(req);
     if (!uid) {
       if (process.env.NODE_ENV !== "production") {
-        console.error("[api][account][messages][send][POST] UNAUTHORIZED", { hasToken: Boolean(token) });
+        console.error("[api][account][messages][send][POST] UNAUTHORIZED", { reason: "resolveDbUserId returned null" });
+        console.log("[api][account][messages][send][POST] API END", { status: 401, error: "UNAUTHORIZED" });
       }
       return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
     }
@@ -46,12 +41,18 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     const resolvedParams = typeof (params as any)?.then === "function" ? await (params as Promise<{ id: string }>) : (params as { id: string });
     const conversationId = typeof resolvedParams?.id === "string" ? resolvedParams.id : "";
     if (!conversationId) {
+      if (process.env.NODE_ENV !== "production") {
+        console.log("[api][account][messages][send][POST] API END", { status: 400, error: "INVALID_ID" });
+      }
       return NextResponse.json({ ok: false, error: "INVALID_ID" }, { status: 400 });
     }
 
     const body = (await req.json()) as Body;
     const text = typeof body?.text === "string" ? body.text.trim() : "";
     if (!text) {
+      if (process.env.NODE_ENV !== "production") {
+        console.log("[api][account][messages][send][POST] API END", { status: 400, error: "INVALID_TEXT" });
+      }
       return NextResponse.json({ ok: false, error: "INVALID_TEXT" }, { status: 400 });
     }
 
@@ -61,10 +62,16 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     });
 
     if (!conversation) {
+      if (process.env.NODE_ENV !== "production") {
+        console.log("[api][account][messages][send][POST] API END", { status: 404, error: "NOT_FOUND" });
+      }
       return NextResponse.json({ ok: false, error: "NOT_FOUND" }, { status: 404 });
     }
 
     if (conversation.ownerId !== uid) {
+      if (process.env.NODE_ENV !== "production") {
+        console.log("[api][account][messages][send][POST] API END", { status: 403, error: "FORBIDDEN" });
+      }
       return NextResponse.json({ ok: false, error: "FORBIDDEN" }, { status: 403 });
     }
 
@@ -83,12 +90,32 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       select: { id: true },
     });
 
-    try {
-      const recipient = await resolveNotificationRecipientForConversation({
-        conversationId,
-        senderUserId: uid,
-      });
-      if (recipient) {
+    // Respond ASAP; run notifications in background to avoid hanging the request.
+    const response = NextResponse.json(
+      {
+        ok: true,
+        message: {
+          id: String(msg.id),
+          senderId: uid,
+          body: text,
+          createdAt: msg.createdAt instanceof Date ? msg.createdAt.toISOString() : new Date(msg.createdAt).toISOString(),
+        },
+      },
+      { status: 200 }
+    );
+
+    if (process.env.NODE_ENV !== "production") {
+      console.log("[api][account][messages][send][POST] API END", { status: 200, ok: true, messageId: String(msg.id) });
+    }
+
+    void (async () => {
+      try {
+        const recipient = await resolveNotificationRecipientForConversation({
+          conversationId,
+          senderUserId: uid,
+        });
+        if (!recipient) return;
+
         try {
           await createNotification({
             userId: recipient.recipientUserId,
@@ -104,34 +131,27 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
           console.error("[api][account][messages][send][POST] in-app notification failed", err);
         }
 
-        await sendNotificationEmail({
-          recipientUserId: recipient.recipientUserId,
-          key: "newMessages",
-          entityId: String(msg.id),
-          payload: {
-            kind: "newMessage",
-            conversationId,
-            messagePreview: previewOf(text),
-            fromName: recipient.fromName,
-          },
-        });
+        try {
+          await sendNotificationEmail({
+            recipientUserId: recipient.recipientUserId,
+            key: "newMessages",
+            entityId: String(msg.id),
+            payload: {
+              kind: "newMessage",
+              conversationId,
+              messagePreview: previewOf(text),
+              fromName: recipient.fromName,
+            },
+          });
+        } catch (err) {
+          console.error("[api][account][messages][send][POST] email notification failed", err);
+        }
+      } catch (err) {
+        console.error("[api][account][messages][send][POST] notification failed", err);
       }
-    } catch (err) {
-      console.error("[api][account][messages][send][POST] notification failed", err);
-    }
+    })();
 
-    return NextResponse.json(
-      {
-        ok: true,
-        message: {
-          id: String(msg.id),
-          senderId: uid,
-          body: text,
-          createdAt: msg.createdAt instanceof Date ? msg.createdAt.toISOString() : new Date(msg.createdAt).toISOString(),
-        },
-      },
-      { status: 200 }
-    );
+    return response;
   } catch (err) {
     if (isMigrationMissingError(err)) {
       return NextResponse.json(
@@ -141,6 +161,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     }
     if (process.env.NODE_ENV !== "production") {
       console.error("[api][account][messages][send][POST] error", err);
+      console.log("[api][account][messages][send][POST] API END", { status: 500, error: "INTERNAL_ERROR" });
     }
     return NextResponse.json({ ok: false, error: "INTERNAL_ERROR" }, { status: 500 });
   }

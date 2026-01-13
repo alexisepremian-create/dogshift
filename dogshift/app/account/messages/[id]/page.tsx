@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
 
@@ -53,6 +53,7 @@ export default function AccountMessageThreadPage() {
   const params = useParams<{ id: string }>();
   const { isLoaded, isSignedIn } = useUser();
   const conversationId = typeof params?.id === "string" ? params.id : "";
+  const threadRef = useRef<HTMLDivElement | null>(null);
 
   const [header, setHeader] = useState<ConversationHeader | null>(null);
   const [messages, setMessages] = useState<MessageItem[]>([]);
@@ -125,12 +126,18 @@ export default function AccountMessageThreadPage() {
 
     setSending(true);
     try {
+      if (process.env.NODE_ENV !== "production") {
+        console.log("[account][thread][send] about to POST", { conversationId, len: body.length });
+      }
       const res = await fetch(`/api/account/messages/conversations/${encodeURIComponent(conversationId)}/messages`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text: body }),
       });
       const payload = (await res.json()) as { ok?: boolean; message?: MessageItem; error?: string };
+      if (process.env.NODE_ENV !== "production") {
+        console.log("[account][thread][send] response", { status: res.status, payload });
+      }
       if (!res.ok || !payload.ok || !payload.message) {
         if (res.status === 401 || payload.error === "UNAUTHORIZED") {
           setError("Connexion requise (401). ");
@@ -149,10 +156,31 @@ export default function AccountMessageThreadPage() {
     }
   }
 
+  useEffect(() => {
+    if (process.env.NODE_ENV === "production") return;
+    const handler = (e: Event) => {
+      const target = e.target as HTMLElement | null;
+      const inThread = Boolean(threadRef.current && target && threadRef.current.contains(target));
+      console.log("[account][thread][submit][capture]", {
+        conversationId,
+        prevented: inThread,
+        target: target?.tagName,
+        targetId: target?.id,
+        targetClass: target?.className,
+      });
+      if (inThread) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    };
+    document.addEventListener("submit", handler, true);
+    return () => document.removeEventListener("submit", handler, true);
+  }, [conversationId]);
+
   if (!isLoaded || !isSignedIn) return null;
 
   return (
-    <div className="grid gap-6">
+    <div ref={threadRef} className="grid gap-6">
       <div className="flex items-center justify-between">
         <div>
           <p className="text-sm font-semibold text-slate-600">Messages</p>
@@ -258,7 +286,11 @@ export default function AccountMessageThreadPage() {
               <button
                 type="button"
                 disabled={!canSend}
-                onClick={() => void send()}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  void send();
+                }}
                 className="mt-3 inline-flex items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-5 py-3 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition hover:bg-[var(--dogshift-blue-hover)] disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {sending ? "Envoi…" : "Envoyer"}

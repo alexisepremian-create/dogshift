@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { useParams, usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { User } from "lucide-react";
 import { loadHostProfileFromStorage, type HostProfileV1 } from "@/lib/hostProfile";
 import HostDashboardShell from "@/components/HostDashboardShell";
@@ -39,6 +39,11 @@ type BookingStep = "form" | "confirm" | "sent";
 
 function formatRating(rating: number) {
   return rating % 1 === 0 ? rating.toFixed(0) : rating.toFixed(1);
+}
+
+function formatRatingMaybe(rating: number | null) {
+  if (typeof rating !== "number" || !Number.isFinite(rating)) return "—";
+  return formatRating(rating);
 }
 
 function safeStringArray(value: unknown) {
@@ -122,17 +127,22 @@ export default function SitterProfilePage() {
   const router = useRouter();
   const params = useParams<{ id: string }>();
   const searchParams = useSearchParams();
+  const pathname = usePathname();
+  const actionsRef = useRef<HTMLDivElement | null>(null);
+  const idParam = params?.id;
+  const id = typeof idParam === "string" ? idParam : Array.isArray(idParam) ? idParam[0] : "";
+
   const { isLoaded, isSignedIn, user } = useUser();
   const isLoggedIn = Boolean(isLoaded && isSignedIn);
 
   const [hydrated, setHydrated] = useState(false);
   const [currentHostId, setCurrentHostId] = useState<string | null>(null);
 
-  const id = typeof params?.id === "string" ? params.id : "";
   const [apiSitter, setApiSitter] = useState<SitterCard | null>(null);
   const [apiLoaded, setApiLoaded] = useState(false);
+  const [apiError, setApiError] = useState<string | null>(null);
 
-  const viewMode = searchParams?.get("mode") ?? "";
+  const viewMode = (searchParams?.get("mode") ?? "public").trim() || "public";
   const isPreviewMode = viewMode === "preview";
   const isPublicView = viewMode === "public";
   const isHostViewingOwn = Boolean(currentHostId && id && currentHostId === id);
@@ -182,6 +192,7 @@ export default function SitterProfilePage() {
   useEffect(() => {
     if (!id) return;
     setApiLoaded(false);
+    setApiError(null);
     void (async () => {
       try {
         const res = await fetch(`/api/sitters/${encodeURIComponent(id)}`);
@@ -205,6 +216,8 @@ export default function SitterProfilePage() {
           | { ok: false; error: string };
 
         if (!res.ok || !payload.ok) {
+          const err = (payload as any)?.error;
+          setApiError(typeof err === "string" ? err : res.status === 403 ? "FORBIDDEN" : "NOT_FOUND");
           setApiSitter(null);
           setProfileData(null);
           setApiLoaded(true);
@@ -241,6 +254,7 @@ export default function SitterProfilePage() {
         setApiSitter(sitter);
         setApiLoaded(true);
       } catch {
+        setApiError("NETWORK_ERROR");
         setApiSitter(null);
         setProfileData(null);
         setApiLoaded(true);
@@ -455,9 +469,37 @@ export default function SitterProfilePage() {
   const disableSelfActions = isPreviewMode || isHostViewingOwnStable;
 
   useEffect(() => {
+    if (process.env.NODE_ENV === "production") return;
+    const handler = (e: Event) => {
+      const target = e.target as HTMLElement | null;
+      const inActions = Boolean(actionsRef.current && target && actionsRef.current.contains(target));
+      if (inActions) {
+        console.log("[sitter][submit][capture] prevented", {
+          sitterId: id,
+          target: target?.tagName,
+          targetId: target?.id,
+          targetClass: target?.className,
+        });
+        e.preventDefault();
+        e.stopPropagation();
+      } else {
+        console.log("[sitter][submit][capture]", {
+          sitterId: id,
+          target: target?.tagName,
+          targetId: target?.id,
+          targetClass: target?.className,
+        });
+      }
+    };
+    document.addEventListener("submit", handler, true);
+    return () => document.removeEventListener("submit", handler, true);
+  }, [id]);
+
+  useEffect(() => {
     if (!shouldAutoStartChat) return;
     if (!id) return;
-    if (!isLoggedIn) return;
+    if (!isLoaded) return;
+    if (!isSignedIn) return;
     if (disableSelfActions) return;
     if (startingChat) return;
 
@@ -465,6 +507,9 @@ export default function SitterProfilePage() {
     setChatError(null);
     void (async () => {
       try {
+        if (process.env.NODE_ENV !== "production") {
+          console.log("[sitter][startChat] creating conversation", { sitterId: id });
+        }
         const res = await fetch("/api/messages/conversations", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -474,7 +519,7 @@ export default function SitterProfilePage() {
         const conversationId = typeof payload?.conversationId === "string" ? payload.conversationId : "";
         if (!res.ok || !payload.ok || !conversationId) {
           if (res.status === 401 || payload.error === "UNAUTHORIZED") {
-            const next = `/sitter/${encodeURIComponent(id)}?startChat=1`;
+            const next = `/sitter/${encodeURIComponent(id)}?mode=public&startChat=1`;
             router.push(`/login?next=${encodeURIComponent(next)}`);
             return;
           }
@@ -487,7 +532,12 @@ export default function SitterProfilePage() {
         const tail = nextParams.toString();
         const keepOnUrl = tail ? `?${tail}` : "";
         router.replace(`/sitter/${encodeURIComponent(id)}${keepOnUrl}`);
-        router.push(`/account/messages/${encodeURIComponent(conversationId)}`);
+        const target = `/account/messages/${encodeURIComponent(conversationId)}`;
+        if (typeof window !== "undefined") {
+          window.location.assign(target);
+        } else {
+          router.push(target);
+        }
       } catch {
         setChatError("Erreur réseau. Réessaie.");
       } finally {
@@ -503,6 +553,20 @@ export default function SitterProfilePage() {
   );
 
   const isHostPreview = showHostChrome && isPreviewMode;
+
+  if (process.env.NODE_ENV !== "production") {
+    console.log("[sitter][render]", {
+      sitterId: id,
+      viewerDbUserId: null,
+      viewerClerkUserId: user?.id ?? null,
+      disableSelfActions,
+      isLoaded,
+      isSignedIn,
+      mode: viewMode,
+      pathname,
+      search: searchParams?.toString?.() ? `?${searchParams.toString()}` : "",
+    });
+  }
 
   if (sitter === undefined) {
     return (
@@ -541,19 +605,33 @@ export default function SitterProfilePage() {
   }
 
   if (sitter === null) {
+    const isNotPublished = apiError === "NOT_PUBLISHED";
     return (
       <div className="min-h-screen bg-white text-slate-900">
         <main className="mx-auto max-w-6xl px-4 py-14 sm:px-6">
           <div className="mx-auto max-w-xl rounded-3xl border border-slate-200 bg-white p-8 text-center shadow-[0_18px_60px_-40px_rgba(2,6,23,0.35)]">
             <h1 className="text-xl font-semibold text-slate-900">Sitter introuvable</h1>
-            <p className="mt-2 text-sm text-slate-600">Ce profil n&apos;est pas disponible.</p>
+            {isNotPublished ? (
+              <p className="mt-2 text-sm text-slate-600">Profil existant mais non publié (dev).</p>
+            ) : (
+              <p className="mt-2 text-sm text-slate-600">Ce profil n&apos;est pas disponible.</p>
+            )}
             <div className="mt-6">
-              <Link
-                href="/search"
-                className="inline-flex items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-6 py-3 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition hover:bg-[var(--dogshift-blue-hover)]"
-              >
-                Voir les sitters
-              </Link>
+              {isNotPublished ? (
+                <Link
+                  href="/host/profile/edit"
+                  className="inline-flex items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-6 py-3 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition hover:bg-[var(--dogshift-blue-hover)]"
+                >
+                  Publier mon annonce
+                </Link>
+              ) : (
+                <Link
+                  href="/search"
+                  className="inline-flex items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-6 py-3 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition hover:bg-[var(--dogshift-blue-hover)]"
+                >
+                  Voir les sitters
+                </Link>
+              )}
             </div>
           </div>
         </main>
@@ -561,8 +639,8 @@ export default function SitterProfilePage() {
     );
   }
 
-  const ratingLabel = sitter.rating === null ? "—" : formatRating(sitter.rating);
-  const reviewCountLabel = String(sitter.reviewCount ?? 0);
+  const ratingLabel = formatRatingMaybe(sitter.rating);
+  const reviewCountLabel = sitter.reviewCount ?? 0;
 
   const content = (
     <div className="relative grid gap-6 overflow-hidden" data-testid="sitter-public-profile">
@@ -752,169 +830,116 @@ export default function SitterProfilePage() {
 
                 <aside className="border-t border-slate-200 p-6 sm:p-8 lg:border-l lg:border-t-0">
                   <h2 className="text-sm font-semibold text-slate-900">Actions</h2>
-                  <div className="mt-5 space-y-3">
-                    {!disableSelfActions ? (
-                      <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                        <p className="text-sm font-semibold text-slate-900">Demande de réservation</p>
-                        <p className="mt-1 text-sm text-slate-600">Choisis un service et des dates pour démarrer le paiement.</p>
-
-                        {selectedService ? (
-                          <p className="mt-3 text-sm font-semibold text-slate-900">
-                            Service sélectionné: <span className="text-[var(--dogshift-blue)]">{selectedService}</span>
-                          </p>
-                        ) : null}
-
-                        {sitter.services.length === 0 ? (
-                          <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                            <p className="text-sm font-medium text-slate-700">Ce sitter n’a pas encore de services.</p>
-                          </div>
-                        ) : (
-                          <div className="mt-4">
-                            <p className="text-xs font-semibold text-slate-600">Service</p>
-                            <div className="mt-2 grid gap-2">
-                              {sitter.services.map((svc) => {
-                                const price = (sitter.pricing as Record<string, number | undefined>)[svc];
-                                const selectable = typeof price === "number" && Number.isFinite(price) && price > 0;
-                                const selected = selectedService === svc;
-                                return (
-                                  <button
-                                    key={svc}
-                                    type="button"
-                                    disabled={!selectable}
-                                    onClick={() => {
-                                      if (!selectable) return;
-                                      setSelectedService(svc);
-                                      setPayError(null);
-                                    }}
-                                    className={
-                                      selected
-                                        ? "flex w-full items-center justify-between rounded-2xl border border-[var(--dogshift-blue)] bg-[color-mix(in_srgb,var(--dogshift-blue),white_92%)] px-4 py-3 text-sm font-semibold text-[var(--dogshift-blue)]"
-                                        : selectable
-                                          ? "flex w-full items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 hover:bg-slate-50"
-                                          : "flex w-full items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-500"
-                                    }
-                                  >
-                                    <span>{svc}</span>
-                                    <span className={selected ? "text-[var(--dogshift-blue)]" : selectable ? "text-slate-900" : "text-slate-500"}>
-                                      {selectable ? `CHF ${price}${svc === "Pension" ? " / jour" : " / heure"}` : "Prix sur demande"}
-                                    </span>
-                                  </button>
-                                );
-                              })}
-                            </div>
-
-                            <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                              <div>
-                                <label className="block text-xs font-semibold text-slate-600" htmlFor="booking_start">
-                                  Début
-                                </label>
-                                <input
-                                  id="booking_start"
-                                  type="date"
-                                  value={bookingStart}
-                                  onChange={(e) => {
-                                    setBookingStart(e.target.value);
-                                    setPayError(null);
-                                  }}
-                                  className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition focus:border-[var(--dogshift-blue)] focus:ring-4 focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_85%)]"
-                                />
-                              </div>
-                              <div>
-                                <label className="block text-xs font-semibold text-slate-600" htmlFor="booking_end">
-                                  Fin
-                                </label>
-                                <input
-                                  id="booking_end"
-                                  type="date"
-                                  value={bookingEnd}
-                                  onChange={(e) => {
-                                    setBookingEnd(e.target.value);
-                                    setPayError(null);
-                                  }}
-                                  className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition focus:border-[var(--dogshift-blue)] focus:ring-4 focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_85%)]"
-                                />
-                              </div>
-                            </div>
-
-                            <div className="mt-4">
-                              <label className="block text-xs font-semibold text-slate-600" htmlFor="booking_message">
-                                Message (optionnel)
-                              </label>
-                              <textarea
-                                id="booking_message"
-                                value={bookingMessage}
-                                onChange={(e) => setBookingMessage(e.target.value)}
-                                className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition focus:border-[var(--dogshift-blue)] focus:ring-4 focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_85%)]"
-                                rows={3}
-                                placeholder="Décris ton chien et tes attentes."
-                              />
-                            </div>
-                          </div>
-                        )}
-
-                        {bookingEstimate !== null ? (
-                          <p className="mt-4 text-sm font-semibold text-slate-900">
-                            Estimation: CHF {bookingEstimate.toFixed(0)}
-                            <span className="text-sm font-medium text-slate-500"> (montant final calculé côté serveur)</span>
-                          </p>
-                        ) : null}
-                      </div>
-                    ) : null}
-
-                    <button
-                      type="button"
-                      disabled={disableSelfActions}
-                      onClick={() => {
-                        if (disableSelfActions) return;
-                        if (startingChat) return;
-                        if (!isLoggedIn) {
-                          const next = `/sitter/${encodeURIComponent(id)}?startChat=1`;
-                          router.push(`/login?next=${encodeURIComponent(next)}`);
-                          return;
-                        }
-
-                        setStartingChat(true);
-                        setChatError(null);
-                        void (async () => {
-                          try {
-                            const res = await fetch("/api/messages/conversations", {
-                              method: "POST",
-                              headers: { "Content-Type": "application/json" },
-                              body: JSON.stringify({ sitterId: id }),
-                            });
-                            const payload = (await res.json()) as { ok?: boolean; conversationId?: string; error?: string };
-                            const conversationId = typeof payload?.conversationId === "string" ? payload.conversationId : "";
-                            if (!res.ok || !payload.ok || !conversationId) {
-                              if (res.status === 401 || payload.error === "UNAUTHORIZED") {
-                                setChatError("Tu dois être connecté (401).");
-                                const next = `/sitter/${encodeURIComponent(id)}?startChat=1`;
-                                router.push(`/login?next=${encodeURIComponent(next)}`);
-                                return;
-                              }
-                              setChatError(`Erreur serveur: ${payload.error ?? res.status}`);
-                              return;
-                            }
-                            router.push(`/account/messages/${encodeURIComponent(conversationId)}`);
-                          } catch {
-                            setChatError("Erreur réseau. Réessaie.");
-                          } finally {
-                            setStartingChat(false);
-                          }
-                        })();
-                      }}
-                      className="w-full rounded-2xl bg-[var(--dogshift-blue)] px-6 py-3 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition hover:bg-[var(--dogshift-blue-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)] disabled:cursor-not-allowed disabled:opacity-55"
-                    >
-                      {startingChat ? "Ouverture…" : disableSelfActions ? "Voir mes messages" : "Envoyer un message"}
-                    </button>
-
+                  <div
+                    ref={actionsRef}
+                    className="mt-5 space-y-3"
+                    onClickCapture={(e) => {
+                      if (process.env.NODE_ENV === "production") return;
+                      const t = e.target as HTMLElement | null;
+                      const ct = e.currentTarget as HTMLElement | null;
+                      console.log("[sitter][actions][capture]", {
+                        sitterId: id,
+                        disableSelfActions,
+                        target: t?.tagName,
+                        targetId: t?.id,
+                        targetClass: t?.className,
+                        currentTarget: ct?.tagName,
+                        currentTargetId: ct?.id,
+                        currentTargetClass: ct?.className,
+                      });
+                    }}
+                  >
                     {disableSelfActions ? (
                       <Link
                         href="/host/messages"
-                        className="inline-flex w-full items-center justify-center rounded-2xl border border-slate-300 bg-white px-6 py-3 text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)]"
+                        className="inline-flex w-full items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-6 py-3 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition hover:bg-[var(--dogshift-blue-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)]"
                       >
                         Voir mes messages
                       </Link>
-                    ) : null}
+                    ) : (
+                      <button
+                        type="button"
+                        disabled={startingChat}
+                        onClickCapture={(e) => {
+                          if (process.env.NODE_ENV !== "production") {
+                            console.log("[sitter][cta][capture]", {
+                              id,
+                              mode: viewMode,
+                              isLoaded,
+                              isSignedIn,
+                              disableSelfActions,
+                              defaultPrevented: e.defaultPrevented,
+                            });
+                          }
+                        }}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          if (process.env.NODE_ENV !== "production") {
+                            console.log("[sitter][cta][click]", {
+                              id,
+                              mode: viewMode,
+                              isLoaded,
+                              isSignedIn,
+                              disableSelfActions,
+                            });
+                          }
+                          if (startingChat) return;
+                          if (!isLoaded) {
+                            setChatError("Chargement de la session… Réessaie dans une seconde.");
+                            return;
+                          }
+                          if (!isSignedIn) {
+                            const next = `/sitter/${encodeURIComponent(id)}?mode=public&startChat=1`;
+                            router.push(`/login?next=${encodeURIComponent(next)}`);
+                            return;
+                          }
+
+                          setStartingChat(true);
+                          setChatError(null);
+                          void (async () => {
+                            try {
+                              if (process.env.NODE_ENV !== "production") {
+                                console.log("[sitter][cta] creating conversation", { sitterId: id });
+                              }
+                              if (process.env.NODE_ENV !== "production") {
+                                console.log("[sitter][cta] about to POST /api/messages/conversations", { sitterId: id });
+                              }
+                              const res = await fetch("/api/messages/conversations", {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ sitterId: id }),
+                              });
+                              const payload = (await res.json()) as { ok?: boolean; conversationId?: string; error?: string };
+                              const conversationId = typeof payload?.conversationId === "string" ? payload.conversationId : "";
+                              if (!res.ok || !payload.ok || !conversationId) {
+                                if (res.status === 401 || payload.error === "UNAUTHORIZED") {
+                                  setChatError("Tu dois être connecté (401).");
+                                  const next = `/sitter/${encodeURIComponent(id)}?mode=public&startChat=1`;
+                                  router.push(`/login?next=${encodeURIComponent(next)}`);
+                                  return;
+                                }
+                                setChatError(`Erreur serveur: ${payload.error ?? res.status}`);
+                                return;
+                              }
+                              const target = `/account/messages/${encodeURIComponent(conversationId)}`;
+                              if (typeof window !== "undefined") {
+                                window.location.assign(target);
+                              } else {
+                                router.push(target);
+                              }
+                            } catch {
+                              setChatError("Erreur réseau. Réessaie.");
+                            } finally {
+                              setStartingChat(false);
+                            }
+                          })();
+                        }}
+                        className="w-full rounded-2xl bg-[var(--dogshift-blue)] px-6 py-3 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition hover:bg-[var(--dogshift-blue-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)] disabled:cursor-not-allowed disabled:opacity-55"
+                      >
+                        {startingChat ? "Ouverture…" : "Envoyer un message"}
+                      </button>
+                    )}
 
                     {chatError ? (
                       <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4">

@@ -14,9 +14,15 @@ function tokenUserId(token: RoleJwt | null) {
 }
 
 export async function resolveDbUserId(req: NextRequest) {
-  const token = (await getToken({ req, secret: process.env.NEXTAUTH_SECRET })) as RoleJwt | null;
-  const uid = tokenUserId(token);
-  if (uid) return uid;
+  if (process.env.NEXTAUTH_SECRET) {
+    try {
+      const token = (await getToken({ req, secret: process.env.NEXTAUTH_SECRET })) as RoleJwt | null;
+      const uid = tokenUserId(token);
+      if (uid) return uid;
+    } catch {
+      // ignore and fallback to Clerk
+    }
+  }
 
   const { userId } = await auth();
   if (!userId) return null;
@@ -25,6 +31,16 @@ export async function resolveDbUserId(req: NextRequest) {
   const email = clerkUser?.primaryEmailAddress?.emailAddress ?? "";
   if (!email) return null;
 
-  const dbUser = await prisma.user.findUnique({ where: { email }, select: { id: true } });
-  return dbUser?.id ?? null;
+  const existing = await prisma.user.findUnique({ where: { email }, select: { id: true } });
+  if (existing?.id) return existing.id;
+
+  const created = await prisma.user.create({
+    data: {
+      email,
+      name: typeof clerkUser?.fullName === "string" && clerkUser.fullName.trim() ? clerkUser.fullName.trim() : null,
+      role: "OWNER",
+    },
+    select: { id: true },
+  });
+  return created.id;
 }

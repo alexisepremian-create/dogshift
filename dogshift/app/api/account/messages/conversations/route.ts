@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { auth, currentUser } from "@clerk/nextjs/server";
 
 import { prisma } from "@/lib/prisma";
+import { resolveDbUserId } from "@/lib/auth/resolveDbUserId";
 
 export const runtime = "nodejs";
 
@@ -30,31 +30,13 @@ type ConversationListItem = {
 export async function GET(req: NextRequest) {
   let ownerIdForLog: string | null = null;
   try {
-    const { userId: clerkUserId } = await auth();
-    if (!clerkUserId) {
+    const ownerId = await resolveDbUserId(req);
+    if (!ownerId) {
       if (process.env.NODE_ENV !== "production") {
-        console.error("[api][account][messages][conversations][GET] UNAUTHORIZED", { hasUserId: false });
+        console.error("[api][account][messages][conversations][GET] UNAUTHORIZED", { reason: "resolveDbUserId returned null" });
       }
       return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
     }
-
-    const clerkUser = await currentUser();
-    const primaryEmail = clerkUser?.primaryEmailAddress?.emailAddress ?? "";
-    if (!primaryEmail) {
-      return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
-    }
-
-    const dbUser =
-      (await prisma.user.findUnique({ where: { email: primaryEmail } })) ??
-      (await prisma.user.create({
-        data: {
-          email: primaryEmail,
-          name: typeof clerkUser?.fullName === "string" && clerkUser.fullName.trim() ? clerkUser.fullName.trim() : null,
-          role: "OWNER",
-        },
-      }));
-
-    const ownerId = dbUser.id;
     ownerIdForLog = ownerId;
 
     const conversations = await (prisma as any).conversation.findMany({

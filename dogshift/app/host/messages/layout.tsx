@@ -115,9 +115,6 @@ export default function HostMessagesLayout({ children }: { children: React.React
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLoaded, isSignedIn, router]);
 
-  if (!isLoaded) return null;
-  if (!isSignedIn) return null;
-
   const rows = useMemo(() => {
     return conversations.slice().sort((a, b) => {
       const ta = new Date(a.lastMessageAt ?? a.updatedAt).getTime();
@@ -125,6 +122,9 @@ export default function HostMessagesLayout({ children }: { children: React.React
       return (Number.isNaN(tb) ? 0 : tb) - (Number.isNaN(ta) ? 0 : ta);
     });
   }, [conversations]);
+
+  if (!isLoaded) return null;
+  if (!isSignedIn) return null;
 
   return (
     <div className="relative grid gap-6 overflow-hidden" data-testid="host-messages-layout">
