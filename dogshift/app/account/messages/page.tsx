@@ -81,6 +81,7 @@ export default function AccountMessagesPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [threadHeader, setThreadHeader] = useState<ConversationHeader | null>(null);
   const [messages, setMessages] = useState<MessageItem[]>([]);
+  const [viewerId, setViewerId] = useState<string | null>(null);
   const [threadLoading, setThreadLoading] = useState(false);
   const [threadError, setThreadError] = useState<string | null>(null);
   const [text, setText] = useState("");
@@ -139,6 +140,7 @@ export default function AccountMessagesPage() {
       const res = await fetch(`/api/account/messages/conversations/${encodeURIComponent(conversationId)}`, { method: "GET" });
       const payload = (await res.json()) as {
         ok?: boolean;
+        viewerId?: string;
         conversation?: ConversationHeader;
         messages?: MessageItem[];
         error?: string;
@@ -146,6 +148,7 @@ export default function AccountMessagesPage() {
       if (!res.ok || !payload.ok || !payload.conversation) {
         setThreadHeader(null);
         setMessages([]);
+        setViewerId(null);
         if (res.status === 401 || payload.error === "UNAUTHORIZED") setThreadError("Connexion requise (401). ");
         else if (res.status === 403 || payload.error === "FORBIDDEN") setThreadError("Accès refusé (403).");
         else if (res.status === 404 || payload.error === "NOT_FOUND") setThreadError("Introuvable (404).");
@@ -155,9 +158,11 @@ export default function AccountMessagesPage() {
       }
       setThreadHeader(payload.conversation);
       setMessages(Array.isArray(payload.messages) ? payload.messages : []);
+      setViewerId(typeof payload.viewerId === "string" && payload.viewerId.trim() ? payload.viewerId.trim() : null);
     } catch {
       setThreadHeader(null);
       setMessages([]);
+      setViewerId(null);
       setThreadError("Impossible de charger la conversation.");
     } finally {
       setThreadLoading(false);
@@ -185,51 +190,25 @@ export default function AccountMessagesPage() {
     });
   }, [conversations]);
 
-  const selectedFromQuery = useMemo(() => {
-    const raw = searchParams?.get("conversationId");
-    return typeof raw === "string" && raw.trim() ? raw.trim() : "";
-  }, [searchParams]);
-
   useEffect(() => {
     if (loading) return;
     if (rows.length === 0) {
       setSelectedId(null);
       setThreadHeader(null);
       setMessages([]);
+      setViewerId(null);
       setThreadError(null);
       return;
     }
 
-    if (selectedFromQuery && rows.some((c) => c.id === selectedFromQuery)) {
-      setSelectedId(selectedFromQuery);
-      return;
+    if (selectedId && !rows.some((c) => c.id === selectedId)) {
+      setSelectedId(null);
+      setThreadHeader(null);
+      setMessages([]);
+      setViewerId(null);
+      setThreadError(null);
     }
-
-    if (!selectedId || !rows.some((c) => c.id === selectedId)) {
-      setSelectedId(rows[0]!.id);
-    }
-  }, [loading, rows, selectedFromQuery, selectedId]);
-
-  useEffect(() => {
-    if (!selectedId) return;
-    const params = new URLSearchParams(searchParams?.toString() ?? "");
-    params.set("conversationId", selectedId);
-    router.replace(`/account/messages?${params.toString()}`);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedId]);
-
-  useEffect(() => {
-    let canceled = false;
-    if (!isLoaded || !isSignedIn) return () => {};
-    if (!selectedId) return () => {};
-    void (async () => {
-      if (canceled) return;
-      await loadThread(selectedId);
-    })();
-    return () => {
-      canceled = true;
-    };
-  }, [selectedId, isLoaded, isSignedIn]);
+  }, [loading, rows, selectedId]);
 
   const canSend = text.trim().length > 0 && !sending;
 
@@ -376,7 +355,13 @@ export default function AccountMessagesPage() {
                     <button
                       key={c.id}
                       type="button"
-                      onClick={() => setSelectedId(c.id)}
+                      onClick={() => {
+                        setSelectedId(c.id);
+                        const params = new URLSearchParams(searchParams?.toString() ?? "");
+                        params.set("conversationId", c.id);
+                        router.replace(`/account/messages?${params.toString()}`);
+                        void loadThread(c.id);
+                      }}
                       className={
                         "block w-full rounded-2xl border px-4 py-3 text-left transition" +
                         (active
@@ -421,6 +406,11 @@ export default function AccountMessagesPage() {
                 <div className="rounded-2xl border border-rose-200 bg-rose-50 p-5">
                   <p className="text-sm font-semibold text-rose-900">{threadError}</p>
                 </div>
+              ) : !selectedId ? (
+                <div className="flex h-full min-h-[140px] flex-col justify-center rounded-2xl border border-slate-200 bg-slate-50 p-5">
+                  <p className="text-sm font-semibold text-slate-900">Sélectionne une conversation</p>
+                  <p className="mt-1 text-sm text-slate-600">Clique sur une conversation à gauche pour l’ouvrir.</p>
+                </div>
               ) : threadLoading || !threadHeader ? (
                 <div className="flex h-full min-h-[140px] flex-col justify-center rounded-2xl border border-slate-200 bg-slate-50 p-5">
                   <p className="text-sm font-semibold text-slate-900">Chargement…</p>
@@ -462,13 +452,13 @@ export default function AccountMessagesPage() {
                         </div>
                       ) : (
                         messages.map((m) => {
-                          const mine = false;
+                          const mine = Boolean(viewerId && m.senderId === viewerId);
                           return (
                             <div key={m.id} className={mine ? "flex justify-end" : "flex justify-start"}>
                               <div
                                 className={
                                   mine
-                                    ? "max-w-[85%] rounded-2xl border border-slate-200 bg-[color-mix(in_srgb,var(--dogshift-blue),white_92%)] px-4 py-3"
+                                    ? "max-w-[85%] rounded-2xl border border-slate-200 bg-slate-100 px-4 py-3"
                                     : "max-w-[85%] rounded-2xl border border-slate-200 bg-white px-4 py-3"
                                 }
                               >

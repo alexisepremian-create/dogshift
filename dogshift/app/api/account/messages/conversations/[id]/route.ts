@@ -87,6 +87,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     return NextResponse.json(
       {
         ok: true,
+        viewerId: ownerId,
         conversation: {
           id: String(conversation.id),
           sitter: { sitterId: String(conversation.sitterId), name: sitterName, avatarUrl },
