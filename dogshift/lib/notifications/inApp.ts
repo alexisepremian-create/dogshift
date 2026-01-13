@@ -103,25 +103,35 @@ export async function listNotifications(userId: string, limit: number) {
     const entityId = typeof n.entityId === "string" ? n.entityId : null;
     const metadata = n?.metadata && typeof n.metadata === "object" ? (n.metadata as Record<string, unknown>) : null;
     const metaConversationId = typeof metadata?.conversationId === "string" ? (metadata!.conversationId as string) : null;
-    const conversationId = entityId ?? metaConversationId;
+    let conversationId = entityId ?? metaConversationId;
 
     let title = String(n.title ?? "");
     let url = typeof n.url === "string" ? n.url : null;
     let body = typeof n.body === "string" ? n.body : null;
 
-    if (type === "newMessages" && conversationId) {
-      if (!url || url.startsWith("/host/messages?") || url.startsWith("/account/messages?")) {
-        url = `${baseUrl}${encodeURIComponent(conversationId)}`;
+    if (type === "newMessages") {
+      if (!conversationId && url) {
+        const m = url.match(/^\/(?:account|host)\/messages\/([^/?#]+)/);
+        if (m && m[1]) conversationId = m[1];
       }
 
-      const metaFromName = typeof metadata?.fromName === "string" ? (metadata!.fromName as string) : "";
-      const inferred = metaFromName.trim() ? metaFromName.trim() : await resolveFromName(conversationId);
+      if (!conversationId) {
+        // Can't infer sender or normalize URL without a conversation id.
+        body = null;
+      } else {
+        if (!url || url.startsWith("/host/messages?") || url.startsWith("/account/messages?")) {
+          url = `${baseUrl}${encodeURIComponent(conversationId)}`;
+        }
 
-      // Never show message preview in the notifications dropdown.
-      body = null;
+        const metaFromName = typeof metadata?.fromName === "string" ? (metadata!.fromName as string) : "";
+        const inferred = metaFromName.trim() ? metaFromName.trim() : await resolveFromName(conversationId);
 
-      // Always show the sender name next to "Nouveau message" when available.
-      title = inferred ? `Nouveau message — ${inferred}` : "Nouveau message";
+        // Never show message preview in the notifications dropdown.
+        body = null;
+
+        // Always show the sender name next to "Nouveau message" when available.
+        title = inferred ? `Nouveau message — ${inferred}` : "Nouveau message";
+      }
     }
 
     out.push({

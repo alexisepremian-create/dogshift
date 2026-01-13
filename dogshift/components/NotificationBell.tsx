@@ -67,7 +67,11 @@ export default function NotificationBell({ className }: { className?: string }) 
         setItems([]);
         return;
       }
-      setItems(Array.isArray(payload.items) ? payload.items : []);
+      const nextItems = Array.isArray(payload.items) ? payload.items : [];
+      setItems(nextItems);
+
+      const localUnread = nextItems.reduce((acc, n) => acc + (n.readAt ? 0 : 1), 0);
+      setUnread((prev) => (prev > 0 ? prev : localUnread));
     } catch {
       setError("Impossible de charger les notifications.");
       setItems([]);
