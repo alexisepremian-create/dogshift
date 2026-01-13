@@ -2,6 +2,8 @@ import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
+import SunCornerGlow from "@/components/SunCornerGlow";
+
 export default function AuthShell({
   title,
   subtitle,
@@ -12,15 +14,15 @@ export default function AuthShell({
   children: ReactNode;
 }) {
   return (
-    <main className="relative min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
-      <div
-        className="pointer-events-none absolute inset-0"
-        aria-hidden="true"
-        style={{
-          background:
-            "radial-gradient(900px circle at 15% 10%, rgba(11,77,140,0.12), transparent 60%), radial-gradient(800px circle at 90% 15%, rgba(250,204,21,0.16), transparent 55%)",
-        }}
-      />
+    <main className="relative min-h-screen overflow-hidden bg-[radial-gradient(1200px_circle_at_18%_-10%,rgba(11,77,140,0.14),transparent_60%),radial-gradient(900px_circle_at_100%_10%,rgba(250,204,21,0.22),transparent_55%),linear-gradient(to_bottom,rgba(248,250,252,1),rgba(241,245,249,1))]">
+      <SunCornerGlow variant="ownerDashboard" intensity={0.85} />
+
+      <div className="pointer-events-none absolute inset-0 opacity-[0.10]">
+        <div className="absolute inset-x-0 top-0 h-[520px] bg-[radial-gradient(circle_at_50%_0%,rgba(15,23,42,0.12),transparent_65%)]" />
+        <div className="absolute -right-24 top-24 hidden h-[520px] w-[520px] sm:block">
+          <Image src="/hero-illustration.svg" alt="" fill className="object-contain" priority={false} />
+        </div>
+      </div>
 
       <header className="relative z-10">
         <div className="mx-auto flex w-full max-w-screen-xl items-center justify-between px-6 py-5">
@@ -33,18 +35,19 @@ export default function AuthShell({
         </div>
       </header>
 
-      <div className="relative z-10 mx-auto flex w-full max-w-screen-xl flex-col items-center px-6 pb-16 pt-10 sm:pt-14">
-        <div className="w-full max-w-[520px]">
-          <div className="flex flex-col items-center text-center">
-            <div className="mb-6 inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-white/70 text-slate-900">
-              <span className="text-sm font-semibold">DS</span>
+      <div className="relative z-10 mx-auto w-full max-w-screen-xl px-6 pb-16 pt-10 sm:pt-14">
+        <div className="mx-auto flex w-full max-w-[600px] flex-col">
+          <div className="flex items-center gap-3">
+            <div className="relative h-10 w-10 overflow-hidden rounded-2xl border border-slate-200/70 bg-white/70">
+              <Image src="/dogshift-logo.png" alt="" fill className="object-contain p-1.5" priority={false} />
             </div>
-
-            <h1 className="text-2xl font-semibold tracking-[-0.02em] text-slate-900 sm:text-3xl">{title}</h1>
-            {subtitle ? <p className="mt-2 text-sm text-slate-600">{subtitle}</p> : null}
+            <div className="min-w-0">
+              <h1 className="text-2xl font-semibold tracking-[-0.02em] text-slate-900 sm:text-3xl">{title}</h1>
+              {subtitle ? <p className="mt-1 text-sm text-slate-600">{subtitle}</p> : null}
+            </div>
           </div>
 
-          <div className="mt-10 w-full max-w-[520px]">{children}</div>
+          <div className="mt-10 w-full">{children}</div>
         </div>
       </div>
     </main>

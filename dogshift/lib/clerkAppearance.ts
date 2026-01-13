@@ -12,7 +12,7 @@ export const clerkAppearance: Theme = {
     colorBackground: "#FFFFFF",
     colorInputBackground: "#FFFFFF",
     colorInputText: "#0F172A",
-    borderRadius: "14px",
+    borderRadius: "999px",
     fontFamily: "var(--font-geist-sans)",
   },
   elements: {
@@ -25,9 +25,9 @@ export const clerkAppearance: Theme = {
     headerTitle: "hidden",
     headerSubtitle: "hidden",
     logoBox: "hidden",
-    socialButtons: "grid grid-cols-1 gap-3 sm:grid-cols-2",
     socialButtonsBlockButton:
-      "h-11 w-full rounded-full border border-slate-200/80 bg-white/80 text-slate-900 backdrop-blur-sm shadow-none transition hover:bg-white active:bg-white focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_82%)]",
+      "h-11 w-full rounded-full border border-slate-200/80 bg-white/80 text-slate-900 backdrop-blur-sm shadow-none transition hover:bg-white focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_82%)]",
+    socialButtons: "grid gap-3",
     dividerLine: "bg-slate-200/80",
     dividerText: "text-slate-500",
     formFieldLabel: "text-sm font-medium text-slate-700",
