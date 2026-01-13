@@ -383,7 +383,7 @@ export default function MapboxMap({
 
                 <div className="mt-3">
                   <Link
-                    href={`/sitter/${active.id}`}
+                    href={`/sitter/${active.id}?mode=public`}
                     className="inline-flex items-center gap-1 rounded-lg bg-[var(--dogshift-blue)] px-2.5 py-1.5 text-xs font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_70%)] transition hover:bg-[var(--dogshift-blue-hover)]"
                   >
                     Voir profil

@@ -120,7 +120,7 @@ export default function LeafletMap({
                 })()}
               </p>
               <Link
-                href={`/sitter/${sitter.id}`}
+                href={`/sitter/${sitter.id}?mode=public`}
                 className="mt-3 inline-flex w-full items-center justify-center rounded-xl bg-[var(--dogshift-blue)] px-3 py-2 text-xs font-semibold text-white shadow-sm shadow-[var(--dogshift-blue)]/25 transition hover:bg-[var(--dogshift-blue)]/90"
               >
                 Voir profil

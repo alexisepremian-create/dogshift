@@ -458,7 +458,7 @@ export default function SearchResultsClient() {
                     />
                     <div>
                       <h2 className="text-base font-semibold text-slate-900">
-                        <Link href={`/sitter/${sitter.id}`} className="hover:underline">
+                        <Link href={`/sitter/${sitter.id}?mode=public`} className="hover:underline">
                           {sitter.name}
                         </Link>
                       </h2>
