@@ -16,14 +16,17 @@ export const clerkAppearance: Theme = {
     fontFamily: "var(--font-geist-sans)",
   },
   elements: {
-    card: "border-0 bg-transparent p-0 shadow-none",
-    cardBox: "shadow-none",
+    rootBox: "w-full",
+    main: "w-full",
+    card: "border-0 bg-transparent p-0 shadow-none rounded-none",
+    cardBox: "shadow-none border-0 bg-transparent p-0 rounded-none",
     header: "hidden",
     headerTitle: "hidden",
     headerSubtitle: "hidden",
     logoBox: "hidden",
     socialButtonsBlockButton:
       "h-11 w-full rounded-full border border-slate-200/80 bg-white/80 text-slate-900 backdrop-blur-sm shadow-none transition hover:bg-white focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_82%)]",
+    socialButtons: "grid gap-3",
     dividerLine: "bg-slate-200/80",
     dividerText: "text-slate-500",
     formFieldLabel: "text-sm font-medium text-slate-700",
@@ -31,6 +34,7 @@ export const clerkAppearance: Theme = {
       "h-11 w-full rounded-full border border-slate-200/80 bg-white/80 px-4 text-slate-900 shadow-none outline-none transition focus:border-[color-mix(in_srgb,var(--dogshift-blue),black_10%)] focus:ring-4 focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_82%)]",
     formButtonPrimary:
       "h-11 w-full rounded-full bg-[var(--dogshift-blue)] text-white shadow-none transition hover:bg-[var(--dogshift-blue-hover)] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)]",
+    form: "space-y-4",
     footer: "hidden",
     footerPages: "hidden",
     footerPageLink: "hidden",

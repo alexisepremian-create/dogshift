@@ -1,15 +1,10 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import Image from "next/image";
-import Link from "next/link";
 import { Suspense } from "react";
-import { headers } from "next/headers";
 import { ClerkProvider } from "@clerk/nextjs";
 import { frFR } from "@clerk/localizations";
-import DogShiftBot from "@/components/DogShiftBot";
-import PageTopOffset from "@/components/PageTopOffset";
+import AppChrome from "@/components/AppChrome";
 import SessionAuthProvider from "@/components/SessionAuthProvider";
-import SiteHeader from "@/components/SiteHeader";
 import "maplibre-gl/dist/maplibre-gl.css";
 import "./globals.css";
 
@@ -41,10 +36,6 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const h = await headers();
-  const pathname = h.get("x-dogshift-pathname") ?? "";
-  const isAccess = pathname === "/access";
-  const isAuth = pathname === "/login" || pathname.startsWith("/login/") || pathname === "/signup" || pathname.startsWith("/signup/");
   const siteLockOn = process.env.NODE_ENV !== "production" && Boolean(process.env.SITE_PASSWORD);
 
   return (
@@ -70,38 +61,9 @@ export default async function RootLayout({
         >
           <Suspense fallback={null}>
             <SessionAuthProvider>
-              {isAccess || isAuth ? children : <SiteHeader />}
-              {isAccess || isAuth ? null : <PageTopOffset>{children}</PageTopOffset>}
-              {isAccess || isAuth ? null : <DogShiftBot />}
+              <AppChrome>{children}</AppChrome>
             </SessionAuthProvider>
           </Suspense>
-          {isAccess || isAuth ? null : (
-            <footer className="border-t border-slate-200/70 bg-white">
-              <div className="flex w-full flex-col gap-3 px-4 py-8 text-sm text-slate-600 sm:flex-row sm:items-center sm:justify-start sm:px-6">
-                <div className="flex items-start gap-4">
-                  <Link href="/" aria-label="DogShift" className="inline-flex items-center">
-                    <Image
-                      src="/dogshift-logo.png"
-                      alt="DogShift"
-                      width={240}
-                      height={56}
-                      className="h-[52px] w-auto"
-                      priority={false}
-                    />
-                  </Link>
-                  <div className="flex flex-col items-start gap-1 pt-1">
-                    <Link
-                      href="/cgu"
-                      className="font-semibold text-[var(--dogshift-blue)] hover:text-[var(--dogshift-blue-hover)]"
-                    >
-                      CGU
-                    </Link>
-                    <p className="font-medium text-slate-700">© {new Date().getFullYear()} DogShift</p>
-                  </div>
-                </div>
-              </div>
-            </footer>
-          )}
         </ClerkProvider>
       </body>
     </html>
