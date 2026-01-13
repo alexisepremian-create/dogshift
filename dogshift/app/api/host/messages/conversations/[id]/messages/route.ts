@@ -113,7 +113,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
           await createNotification({
             userId: recipient.recipientUserId,
             type: "newMessages",
-            title: "Nouveau message",
+            title: `Message de ${recipient.fromName}`,
             body: previewOf(text),
             entityId: conversationId,
             url: `/host/messages/${encodeURIComponent(conversationId)}`,
