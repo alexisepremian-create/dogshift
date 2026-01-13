@@ -5,6 +5,7 @@ import { ClerkProvider } from "@clerk/nextjs";
 import { frFR } from "@clerk/localizations";
 import AppChrome from "@/components/AppChrome";
 import SessionAuthProvider from "@/components/SessionAuthProvider";
+import { clerkAppearance } from "@/lib/clerkAppearance";
 import "maplibre-gl/dist/maplibre-gl.css";
 import "./globals.css";
 
@@ -58,6 +59,7 @@ export default async function RootLayout({
           afterSignInUrl="/account"
           afterSignUpUrl="/account"
           localization={frFR}
+          appearance={clerkAppearance}
         >
           <Suspense fallback={null}>
             <SessionAuthProvider>

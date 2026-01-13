@@ -12,7 +12,7 @@ export const clerkAppearance: Theme = {
     colorBackground: "#FFFFFF",
     colorInputBackground: "#FFFFFF",
     colorInputText: "#0F172A",
-    borderRadius: "14px",
+    borderRadius: "999px",
     fontFamily: "var(--font-geist-sans)",
   },
   elements: {
@@ -20,6 +20,7 @@ export const clerkAppearance: Theme = {
     main: "w-full",
     card: "border-0 bg-transparent p-0 shadow-none rounded-none",
     cardBox: "shadow-none border-0 bg-transparent p-0 rounded-none",
+    pageScrollBox: "bg-transparent",
     header: "hidden",
     headerTitle: "hidden",
     headerSubtitle: "hidden",
