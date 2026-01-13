@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 import { prisma } from "@/lib/prisma";
+import { resolveDbUserId } from "@/lib/auth/resolveDbUserId";
 
 export const runtime = "nodejs";
 
@@ -20,10 +21,15 @@ type SitterDetail = {
 };
 
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: { sitterId: string } | Promise<{ sitterId: string }> }
 ) {
   try {
+    const { searchParams } = new URL(req.url);
+    const viewModeRaw = (searchParams.get("mode") ?? "").trim();
+    const isPreviewMode = viewModeRaw === "preview";
+    const viewerId = isPreviewMode ? await resolveDbUserId(req) : null;
+
     const resolvedParams = (typeof (params as any)?.then === "function"
       ? await (params as Promise<{ sitterId: string }>)
       : (params as { sitterId: string })) as { sitterId: string };
@@ -58,6 +64,7 @@ export async function GET(
       },
       select: {
         sitterId: true,
+        userId: true,
         published: true,
         displayName: true,
         city: true,
@@ -83,10 +90,15 @@ export async function GET(
     }
 
     if (!sitterProfile.published) {
-      if (process.env.NODE_ENV !== "production") {
-        return NextResponse.json({ ok: false, error: "NOT_PUBLISHED" }, { status: 403 });
+      const ownerByPreview = Boolean(isPreviewMode && viewerId && sitterProfile.userId === viewerId);
+      if (ownerByPreview) {
+        // Allow preview for the profile owner.
+      } else {
+        if (process.env.NODE_ENV !== "production") {
+          return NextResponse.json({ ok: false, error: "NOT_PUBLISHED" }, { status: 403 });
+        }
+        return NextResponse.json({ ok: false, error: "NOT_FOUND" }, { status: 404 });
       }
-      return NextResponse.json({ ok: false, error: "NOT_FOUND" }, { status: 404 });
     }
 
     const name = String((sitterProfile.displayName ?? sitterProfile.user?.name ?? "") ?? "").trim();

@@ -195,7 +195,9 @@ export default function SitterProfilePage() {
     setApiError(null);
     void (async () => {
       try {
-        const res = await fetch(`/api/sitters/${encodeURIComponent(id)}`);
+        const res = await fetch(
+          `/api/sitters/${encodeURIComponent(id)}${isPreviewMode ? "?mode=preview" : ""}`
+        );
         const payload = (await res.json()) as
           | {
               ok: true;
