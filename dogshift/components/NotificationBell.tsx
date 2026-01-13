@@ -61,7 +61,7 @@ export default function NotificationBell({ className }: { className?: string }) 
     setError(null);
     try {
       const res = await fetch("/api/notifications?limit=10", { method: "GET" });
-      const payload = (await res.json()) as { ok?: boolean; items?: NotificationItem[] };
+      const payload = (await res.json()) as { ok?: boolean; items?: NotificationItem[]; unreadTotal?: number };
       if (!res.ok || !payload.ok) {
         setError("Impossible de charger les notifications.");
         setItems([]);
@@ -71,7 +71,8 @@ export default function NotificationBell({ className }: { className?: string }) 
       setItems(nextItems);
 
       const localUnread = nextItems.reduce((acc, n) => acc + (n.readAt ? 0 : 1), 0);
-      setUnread((prev) => (prev > 0 ? prev : localUnread));
+      const serverUnread = typeof payload.unreadTotal === "number" && Number.isFinite(payload.unreadTotal) ? payload.unreadTotal : null;
+      setUnread(serverUnread ?? localUnread);
     } catch {
       setError("Impossible de charger les notifications.");
       setItems([]);

@@ -74,6 +74,12 @@ export async function listNotifications(userId: string, limit: number) {
 
   const baseUrl = hasSitterProfile ? "/host/messages/" : "/account/messages/";
 
+  const firstNameOf = (name: string | null) => {
+    const cleaned = (name ?? "").trim();
+    if (!cleaned) return null;
+    return cleaned.split(/\s+/)[0] ?? null;
+  };
+
   const resolveFromName = async (conversationId: string) => {
     try {
       const c = await (prisma as any).conversation.findUnique({
@@ -123,14 +129,20 @@ export async function listNotifications(userId: string, limit: number) {
           url = `${baseUrl}${encodeURIComponent(conversationId)}`;
         }
 
-        const metaFromName = typeof metadata?.fromName === "string" ? (metadata!.fromName as string) : "";
-        const inferred = metaFromName.trim() ? metaFromName.trim() : await resolveFromName(conversationId);
+        const metaSenderName = typeof metadata?.senderName === "string" ? String(metadata!.senderName) : "";
+        const metaFromName = typeof metadata?.fromName === "string" ? String(metadata!.fromName) : "";
+        const inferredFull = metaSenderName.trim()
+          ? metaSenderName.trim()
+          : metaFromName.trim()
+            ? metaFromName.trim()
+            : await resolveFromName(conversationId);
+        const inferred = firstNameOf(inferredFull) ?? "Utilisateur";
 
         // Never show message preview in the notifications dropdown.
         body = null;
 
         // Always show the sender name next to "Nouveau message" when available.
-        title = inferred ? `Nouveau message — ${inferred}` : "Nouveau message";
+        title = `Nouveau message — ${inferred}`;
       }
     }
 

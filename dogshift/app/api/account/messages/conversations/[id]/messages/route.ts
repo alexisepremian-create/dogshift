@@ -131,7 +131,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
             entityId: conversationId,
             url,
             idempotencyKey: `newMessages:${msg.id}`,
-            metadata: { conversationId, fromName: recipient.fromName },
+            metadata: { conversationId, fromName: recipient.fromName, senderName: recipient.fromName },
           });
         } catch (err) {
           console.error("[api][account][messages][send][POST] in-app notification failed", err);
