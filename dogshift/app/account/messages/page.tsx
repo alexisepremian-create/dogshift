@@ -430,7 +430,7 @@ export default function AccountMessagesPage() {
                   <p className="mt-1 text-sm text-slate-600">Clique sur une conversation à gauche pour l’ouvrir.</p>
                 </div>
               ) : threadLoading || !threadHeader ? (
-                <div className="flex h-full min-h-[140px] flex-col justify-center rounded-2xl border border-slate-200 bg-slate-50 p-5">
+                <div className="flex h-full flex-col rounded-2xl border border-slate-200 bg-slate-50 p-5">
                   <p className="text-sm font-semibold text-slate-900">Chargement…</p>
                   <p className="mt-1 text-sm text-slate-600">Nous récupérons la conversation.</p>
                 </div>
