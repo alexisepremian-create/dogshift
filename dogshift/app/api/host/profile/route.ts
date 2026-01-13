@@ -35,11 +35,13 @@ export async function GET(req: NextRequest) {
     if (!ensured) {
       return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
     }
-    if (ensured.role !== "SITTER") {
-      return NextResponse.json({ ok: false, error: "FORBIDDEN" }, { status: 403 });
-    }
 
     const uid = ensured.id;
+
+    const hasSitterProfile = await (prisma as any).sitterProfile.findUnique({ where: { userId: uid }, select: { id: true } });
+    if (!hasSitterProfile) {
+      return NextResponse.json({ ok: false, error: "FORBIDDEN" }, { status: 403 });
+    }
 
     const user = await prisma.user.findUnique({ where: { id: uid } });
     if (!user) {
@@ -145,11 +147,12 @@ export async function POST(req: NextRequest) {
     if (!ensured) {
       return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
     }
-    if (ensured.role !== "SITTER") {
+    const uid = ensured.id;
+
+    const hasSitterProfile = await (prisma as any).sitterProfile.findUnique({ where: { userId: uid }, select: { id: true } });
+    if (!hasSitterProfile) {
       return NextResponse.json({ ok: false, error: "FORBIDDEN" }, { status: 403 });
     }
-
-    const uid = ensured.id;
 
     const body = (await req.json()) as unknown;
 

@@ -31,8 +31,6 @@ const SITTER_EMAILS = parseEmailList(process.env.SITTER_EMAILS, ["alexis.epremia
 function wantedRoleForEmail(emailRaw: string | null | undefined) {
   const email = typeof emailRaw === "string" ? normalizeEmail(emailRaw) : "";
   if (!email) return null;
-  if (email === "luigi111.ytbr@gmail.com") return "SITTER";
-  if (email === "alexis.epremian@gmail.com") return "OWNER";
   if (OWNER_EMAILS.includes(email)) return "OWNER";
   if (SITTER_EMAILS.includes(email)) return "SITTER";
   return null;
@@ -50,17 +48,6 @@ export async function ensureDbUserByEmail(params: { email: string; name?: string
 
   const existing = await prisma.user.findUnique({ where: { email }, select: { id: true, role: true, sitterId: true } });
   if (existing?.id) {
-    if (roleWanted && existing.role !== roleWanted) {
-      if (roleWanted === "SITTER") {
-        const sitterId = existing.sitterId && existing.sitterId.trim() ? existing.sitterId.trim() : newSitterId();
-        const updated = await prisma.user.update({ where: { id: existing.id }, data: { role: "SITTER", sitterId }, select: { id: true, role: true, sitterId: true } });
-        return { id: updated.id, role: updated.role, sitterId: updated.sitterId ?? null };
-      }
-
-      const updated = await prisma.user.update({ where: { id: existing.id }, data: { role: "OWNER" }, select: { id: true, role: true, sitterId: true } });
-      return { id: updated.id, role: updated.role, sitterId: updated.sitterId ?? null };
-    }
-
     return { id: existing.id, role: existing.role, sitterId: existing.sitterId ?? null };
   }
 

@@ -20,9 +20,7 @@ async function resolveDbUserAndSitterId() {
   if (!dbUser) return { uid: null as string | null, sitterId: null as string | null };
 
   const sitterProfile = await prisma.sitterProfile.findUnique({ where: { userId: dbUser.id }, select: { sitterId: true } });
-  const sitterId =
-    (typeof sitterProfile?.sitterId === "string" && sitterProfile.sitterId.trim() ? sitterProfile.sitterId.trim() : null) ??
-    (typeof dbUser.sitterId === "string" && dbUser.sitterId.trim() ? dbUser.sitterId.trim() : null);
+  const sitterId = typeof sitterProfile?.sitterId === "string" && sitterProfile.sitterId.trim() ? sitterProfile.sitterId.trim() : null;
 
   return { uid: dbUser.id, sitterId };
 }

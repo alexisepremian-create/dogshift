@@ -37,27 +37,22 @@ export async function getHostUserData(): Promise<HostUserData> {
         return { sitterId: null, published: false, publishedAt: null, profile: null };
       }
 
-      if (ensured.role !== "SITTER") {
-        return { sitterId: null, published: false, publishedAt: null, profile: null };
-      }
-
       const user = await prisma.user.findUnique({ where: { id: ensured.id } });
       if (!user) {
         return { sitterId: null, published: false, publishedAt: null, profile: null };
       }
 
-      let sitterId = (user as unknown as { sitterId?: string | null }).sitterId ?? null;
+      const sitterProfile = await prisma.sitterProfile.findUnique({ where: { userId: user.id }, select: { sitterId: true, published: true, publishedAt: true } });
+      if (!sitterProfile) {
+        return { sitterId: null, published: false, publishedAt: null, profile: null };
+      }
+
+      const sitterId =
+        (typeof sitterProfile.sitterId === "string" && sitterProfile.sitterId.trim() ? sitterProfile.sitterId.trim() : null) ??
+        ((user as unknown as { sitterId?: string | null }).sitterId ?? null);
+
       if (!sitterId) {
-        sitterId = generateSitterId();
-        try {
-          await prisma.user.update({
-            where: { id: user.id },
-            data: { sitterId } as unknown as Record<string, unknown>,
-          });
-        } catch {
-          const refreshed = await prisma.user.findUnique({ where: { id: user.id } });
-          sitterId = (refreshed as unknown as { sitterId?: string | null } | null)?.sitterId ?? sitterId;
-        }
+        return { sitterId: null, published: false, publishedAt: null, profile: null };
       }
 
       const hostProfileJson = (user as unknown as { hostProfileJson?: string | null }).hostProfileJson ?? null;
@@ -70,21 +65,6 @@ export async function getHostUserData(): Promise<HostUserData> {
           profile = null;
         }
       }
-
-      const sitterProfileDelegate = (prisma as any)?.sitterProfile as
-        | {
-            upsert: (args: any) => Promise<{ published: boolean; publishedAt: Date | null }>;
-          }
-        | undefined;
-
-      const sitterProfile = sitterProfileDelegate
-        ? await sitterProfileDelegate.upsert({
-            where: { userId: user.id },
-            create: { userId: user.id, sitterId, published: false, publishedAt: null },
-            update: { sitterId },
-            select: { published: true, publishedAt: true },
-          })
-        : null;
 
       return {
         sitterId,

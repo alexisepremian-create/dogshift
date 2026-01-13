@@ -30,17 +30,11 @@ async function resolveDbUserAndSitterId() {
   const primaryEmail = clerkUser?.primaryEmailAddress?.emailAddress ?? "";
   if (!primaryEmail) return { uid: null as string | null, sitterId: null as string | null };
 
-  const dbUser = await prisma.user.findUnique({ where: { email: primaryEmail }, select: { id: true, sitterId: true, role: true } });
+  const dbUser = await prisma.user.findUnique({ where: { email: primaryEmail }, select: { id: true, sitterId: true } });
   if (!dbUser) return { uid: null as string | null, sitterId: null as string | null };
 
-  if (dbUser.role !== "SITTER") {
-    return { uid: dbUser.id, sitterId: null };
-  }
-
   const sitterProfile = await prisma.sitterProfile.findUnique({ where: { userId: dbUser.id }, select: { sitterId: true } });
-  const sitterId =
-    (typeof sitterProfile?.sitterId === "string" && sitterProfile.sitterId.trim() ? sitterProfile.sitterId.trim() : null) ??
-    (typeof dbUser.sitterId === "string" && dbUser.sitterId.trim() ? dbUser.sitterId.trim() : null);
+  const sitterId = typeof sitterProfile?.sitterId === "string" && sitterProfile.sitterId.trim() ? sitterProfile.sitterId.trim() : null;
 
   return { uid: dbUser.id, sitterId };
 }
