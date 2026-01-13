@@ -110,15 +110,21 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       });
       if (recipient) {
         try {
+          const recipientHasSitterProfile = Boolean(
+            await prisma.sitterProfile.findUnique({ where: { userId: recipient.recipientUserId }, select: { userId: true } })
+          );
+          const url = recipientHasSitterProfile
+            ? `/host/messages/${encodeURIComponent(conversationId)}`
+            : `/account/messages/${encodeURIComponent(conversationId)}`;
           await createNotification({
             userId: recipient.recipientUserId,
             type: "newMessages",
             title: `Message de ${recipient.fromName}`,
             body: previewOf(text),
             entityId: conversationId,
-            url: `/host/messages/${encodeURIComponent(conversationId)}`,
+            url,
             idempotencyKey: `newMessages:${msg.id}`,
-            metadata: { conversationId },
+            metadata: { conversationId, fromName: recipient.fromName },
           });
         } catch (err) {
           console.error("[api][host][messages][send][POST] in-app notification failed", err);

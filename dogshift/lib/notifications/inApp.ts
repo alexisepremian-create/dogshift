@@ -52,6 +52,9 @@ export async function getUnreadCount(userId: string) {
 
 export async function listNotifications(userId: string, limit: number) {
   const take = Math.max(1, Math.min(50, limit));
+  const hasSitterProfile = Boolean(
+    await (prisma as any).sitterProfile.findUnique({ where: { userId }, select: { userId: true } })
+  );
   const items = await (prisma as any).notification.findMany({
     where: { userId },
     orderBy: { createdAt: "desc" },
@@ -63,21 +66,73 @@ export async function listNotifications(userId: string, limit: number) {
       body: true,
       url: true,
       entityId: true,
+      metadata: true,
       createdAt: true,
       readAt: true,
     },
   });
 
-  return (items as any[]).map((n) => ({
-    id: String(n.id),
-    type: String(n.type),
-    title: String(n.title ?? ""),
-    body: typeof n.body === "string" ? n.body : null,
-    url: typeof n.url === "string" ? n.url : null,
-    entityId: typeof n.entityId === "string" ? n.entityId : null,
-    createdAt: n.createdAt instanceof Date ? n.createdAt.toISOString() : new Date(n.createdAt).toISOString(),
-    readAt: n.readAt instanceof Date ? n.readAt.toISOString() : n.readAt ? new Date(n.readAt).toISOString() : null,
-  }));
+  const baseUrl = hasSitterProfile ? "/host/messages/" : "/account/messages/";
+
+  const resolveFromName = async (conversationId: string) => {
+    try {
+      const c = await (prisma as any).conversation.findUnique({
+        where: { id: conversationId },
+        select: {
+          owner: { select: { name: true } },
+          sitter: { select: { name: true, user: { select: { name: true } } } },
+        },
+      });
+      if (!c) return null;
+      if (hasSitterProfile) {
+        const ownerName = typeof c?.owner?.name === "string" && c.owner.name.trim() ? c.owner.name.trim() : null;
+        return ownerName;
+      }
+      const sitterName =
+        (typeof c?.sitter?.user?.name === "string" && c.sitter.user.name.trim() ? c.sitter.user.name.trim() : null) ??
+        (typeof c?.sitter?.name === "string" && c.sitter.name.trim() ? c.sitter.name.trim() : null);
+      return sitterName;
+    } catch {
+      return null;
+    }
+  };
+
+  const out: any[] = [];
+  for (const n of items as any[]) {
+    const type = String(n.type);
+    const entityId = typeof n.entityId === "string" ? n.entityId : null;
+    const metadata = n?.metadata && typeof n.metadata === "object" ? (n.metadata as Record<string, unknown>) : null;
+    const metaConversationId = typeof metadata?.conversationId === "string" ? (metadata!.conversationId as string) : null;
+    const conversationId = entityId ?? metaConversationId;
+
+    let title = String(n.title ?? "");
+    let url = typeof n.url === "string" ? n.url : null;
+
+    if (type === "newMessages" && conversationId) {
+      if (!url || url.startsWith("/host/messages?") || url.startsWith("/account/messages?")) {
+        url = `${baseUrl}${encodeURIComponent(conversationId)}`;
+      }
+
+      const metaFromName = typeof metadata?.fromName === "string" ? (metadata!.fromName as string) : "";
+      if (!title || title === "Nouveau message") {
+        const inferred = metaFromName.trim() ? metaFromName.trim() : await resolveFromName(conversationId);
+        title = inferred ? `Message de ${inferred}` : "Nouveau message";
+      }
+    }
+
+    out.push({
+      id: String(n.id),
+      type,
+      title,
+      body: typeof n.body === "string" ? n.body : null,
+      url,
+      entityId,
+      createdAt: n.createdAt instanceof Date ? n.createdAt.toISOString() : new Date(n.createdAt).toISOString(),
+      readAt: n.readAt instanceof Date ? n.readAt.toISOString() : n.readAt ? new Date(n.readAt).toISOString() : null,
+    });
+  }
+
+  return out;
 }
 
 export async function markAllRead(userId: string) {
