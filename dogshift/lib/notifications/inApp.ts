@@ -107,6 +107,7 @@ export async function listNotifications(userId: string, limit: number) {
 
     let title = String(n.title ?? "");
     let url = typeof n.url === "string" ? n.url : null;
+    let body = typeof n.body === "string" ? n.body : null;
 
     if (type === "newMessages" && conversationId) {
       if (!url || url.startsWith("/host/messages?") || url.startsWith("/account/messages?")) {
@@ -114,17 +115,20 @@ export async function listNotifications(userId: string, limit: number) {
       }
 
       const metaFromName = typeof metadata?.fromName === "string" ? (metadata!.fromName as string) : "";
-      if (!title || title === "Nouveau message") {
-        const inferred = metaFromName.trim() ? metaFromName.trim() : await resolveFromName(conversationId);
-        title = inferred ? `Message de ${inferred}` : "Nouveau message";
-      }
+      const inferred = metaFromName.trim() ? metaFromName.trim() : await resolveFromName(conversationId);
+
+      // Never show message preview in the notifications dropdown.
+      body = null;
+
+      // Always show the sender name next to "Nouveau message" when available.
+      title = inferred ? `Nouveau message — ${inferred}` : "Nouveau message";
     }
 
     out.push({
       id: String(n.id),
       type,
       title,
-      body: typeof n.body === "string" ? n.body : null,
+      body,
       url,
       entityId,
       createdAt: n.createdAt instanceof Date ? n.createdAt.toISOString() : new Date(n.createdAt).toISOString(),
