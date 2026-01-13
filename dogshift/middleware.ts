@@ -28,6 +28,15 @@ function isPublicSitterRoute(req: any) {
 
 export default clerkMiddleware(async (auth, req) => {
   const sitePassword = process.env.SITE_PASSWORD;
+  const passwordSet = Boolean(sitePassword);
+  const unlockedCookie = req.cookies.get("site_unlocked")?.value;
+  const lockOn = passwordSet && unlockedCookie !== "1";
+
+  const addLockHeaders = (res: NextResponse) => {
+    res.headers.set("x-site-password-set", passwordSet ? "1" : "0");
+    res.headers.set("x-site-lock-on", lockOn ? "1" : "0");
+    return res;
+  };
   if (sitePassword) {
     const { pathname, search } = req.nextUrl;
 
@@ -35,12 +44,11 @@ export default clerkMiddleware(async (auth, req) => {
     const isStaticFile = /\.[^/]+$/.test(pathname);
 
     if (!isLockBypassRoute(req) && !isPublicSitterRoute(req) && !isNextAsset && !isStaticFile) {
-      const unlocked = req.cookies.get("site_unlocked")?.value;
-      if (unlocked !== "1") {
+      if (unlockedCookie !== "1") {
         const url = req.nextUrl.clone();
         url.pathname = "/unlock";
         url.search = `?next=${encodeURIComponent(pathname + search)}`;
-        return NextResponse.redirect(url);
+        return addLockHeaders(NextResponse.redirect(url));
       }
     }
   }
@@ -48,6 +56,7 @@ export default clerkMiddleware(async (auth, req) => {
   if (isPublicRoute(req)) return;
 
   await auth();
+  return addLockHeaders(NextResponse.next());
 });
 
 export const config = {
