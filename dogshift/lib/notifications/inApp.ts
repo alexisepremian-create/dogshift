@@ -103,6 +103,16 @@ export async function listNotifications(userId: string, limit: number) {
     }
   };
 
+  const resolveSenderNameById = async (senderId: string) => {
+    try {
+      const u = await (prisma as any).user.findUnique({ where: { id: senderId }, select: { name: true } });
+      const name = typeof u?.name === "string" && u.name.trim() ? u.name.trim() : null;
+      return name;
+    } catch {
+      return null;
+    }
+  };
+
   const out: any[] = [];
   for (const n of items as any[]) {
     const type = String(n.type);
@@ -130,13 +140,15 @@ export async function listNotifications(userId: string, limit: number) {
         }
 
         const metaSenderName = typeof metadata?.senderName === "string" ? String(metadata!.senderName) : "";
-        const metaFromName = typeof metadata?.fromName === "string" ? String(metadata!.fromName) : "";
-        const inferredFull = metaSenderName.trim()
+        const metaSenderId = typeof metadata?.senderId === "string" ? String(metadata!.senderId) : "";
+
+        const senderFull = metaSenderName.trim()
           ? metaSenderName.trim()
-          : metaFromName.trim()
-            ? metaFromName.trim()
+          : metaSenderId.trim()
+            ? await resolveSenderNameById(metaSenderId.trim())
             : await resolveFromName(conversationId);
-        const inferred = firstNameOf(inferredFull) ?? "Utilisateur";
+
+        const inferred = firstNameOf(senderFull) ?? "Utilisateur";
 
         // Never show message preview in the notifications dropdown.
         body = null;
