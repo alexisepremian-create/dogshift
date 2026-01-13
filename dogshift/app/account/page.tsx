@@ -55,23 +55,9 @@ export default async function AccountDashboardPage({
     redirect("/login");
   }
 
-  const roleParam = Array.isArray(searchParams?.role) ? searchParams?.role[0] : searchParams?.role;
-  const preferredRole = roleParam === "owner" || roleParam === "sitter" ? roleParam : null;
-
-  if (preferredRole === "sitter") {
-    if (process.env.NODE_ENV !== "production") {
-      console.log("[guard] redirecting to /host because preferredRole=sitter", {
-        path: "/account",
-        preferredRole,
-        hasSitterProfile: contexts.hasSitterProfile,
-        dbUserId: contexts.dbUserId,
-      });
-    }
+  if (contexts.hasSitterProfile) {
     redirect("/host");
   }
-
-  // Default to the owner dashboard even if the user also has a sitter profile.
-  // Users can still switch explicitly by navigating to /account?role=sitter.
 
   const uid = contexts.dbUserId;
 
