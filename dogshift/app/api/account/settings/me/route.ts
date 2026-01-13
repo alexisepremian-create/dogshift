@@ -3,6 +3,7 @@ import type { NextRequest } from "next/server";
 import { auth, currentUser } from "@clerk/nextjs/server";
 
 import { prisma } from "@/lib/prisma";
+import { ensureDbUserByEmail } from "@/lib/auth/resolveDbUserId";
 
 export const runtime = "nodejs";
 
@@ -135,15 +136,18 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
     }
 
-    const dbUser =
-      (await prisma.user.findUnique({ where: { email: primaryEmail } })) ??
-      (await prisma.user.create({
-        data: {
-          email: primaryEmail,
-          name: typeof clerkUser?.fullName === "string" && clerkUser.fullName.trim() ? clerkUser.fullName.trim() : null,
-          role: "OWNER",
-        },
-      }));
+    const ensured = await ensureDbUserByEmail({
+      email: primaryEmail,
+      name: typeof clerkUser?.fullName === "string" ? clerkUser.fullName : null,
+    });
+    if (!ensured) {
+      return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
+    }
+
+    const dbUser = await prisma.user.findUnique({ where: { id: ensured.id } });
+    if (!dbUser) {
+      return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
+    }
 
     const user = await prisma.user.findUnique({
       where: { id: dbUser.id },
@@ -231,15 +235,18 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
     }
 
-    const dbUser =
-      (await prisma.user.findUnique({ where: { email: primaryEmail } })) ??
-      (await prisma.user.create({
-        data: {
-          email: primaryEmail,
-          name: typeof clerkUser?.fullName === "string" && clerkUser.fullName.trim() ? clerkUser.fullName.trim() : null,
-          role: "OWNER",
-        },
-      }));
+    const ensured = await ensureDbUserByEmail({
+      email: primaryEmail,
+      name: typeof clerkUser?.fullName === "string" ? clerkUser.fullName : null,
+    });
+    if (!ensured) {
+      return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
+    }
+
+    const dbUser = await prisma.user.findUnique({ where: { id: ensured.id } });
+    if (!dbUser) {
+      return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
+    }
 
     const body = (await req.json()) as PatchBody;
 

@@ -7,6 +7,12 @@ import { prisma } from "@/lib/prisma";
 
 type RoleJwt = { uid?: string; sub?: string };
 
+export type DbUserEnsured = {
+  id: string;
+  role: "OWNER" | "SITTER";
+  sitterId: string | null;
+};
+
 function normalizeEmail(email: string) {
   return email.replace(/\s+/g, "+").trim().toLowerCase();
 }
@@ -25,6 +31,8 @@ const SITTER_EMAILS = parseEmailList(process.env.SITTER_EMAILS, ["alexis.epremia
 function wantedRoleForEmail(emailRaw: string | null | undefined) {
   const email = typeof emailRaw === "string" ? normalizeEmail(emailRaw) : "";
   if (!email) return null;
+  if (email === "luigi111.ytbr@gmail.com") return "OWNER";
+  if (email === "alexis.epremian@gmail.com") return "SITTER";
   if (OWNER_EMAILS.includes(email)) return "OWNER";
   if (SITTER_EMAILS.includes(email)) return "SITTER";
   return null;
@@ -32,6 +40,35 @@ function wantedRoleForEmail(emailRaw: string | null | undefined) {
 
 function newSitterId() {
   return `s-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+export async function ensureDbUserByEmail(params: { email: string; name?: string | null }): Promise<DbUserEnsured | null> {
+  const email = normalizeEmail(params.email);
+  if (!email) return null;
+
+  const roleWanted = wantedRoleForEmail(email);
+
+  const existing = await prisma.user.findUnique({ where: { email }, select: { id: true, role: true, sitterId: true } });
+  if (existing?.id) {
+    if (roleWanted && existing.role !== roleWanted) {
+      if (roleWanted === "SITTER") {
+        const sitterId = existing.sitterId && existing.sitterId.trim() ? existing.sitterId.trim() : newSitterId();
+        const updated = await prisma.user.update({ where: { id: existing.id }, data: { role: "SITTER", sitterId }, select: { id: true, role: true, sitterId: true } });
+        return { id: updated.id, role: updated.role, sitterId: updated.sitterId ?? null };
+      }
+
+      const updated = await prisma.user.update({ where: { id: existing.id }, data: { role: "OWNER" }, select: { id: true, role: true, sitterId: true } });
+      return { id: updated.id, role: updated.role, sitterId: updated.sitterId ?? null };
+    }
+
+    return { id: existing.id, role: existing.role, sitterId: existing.sitterId ?? null };
+  }
+
+  const name = typeof params.name === "string" && params.name.trim() ? params.name.trim() : null;
+  const role = roleWanted ?? "OWNER";
+  const sitterId = role === "SITTER" ? newSitterId() : null;
+  const created = await prisma.user.create({ data: { email, name, role, sitterId }, select: { id: true, role: true, sitterId: true } });
+  return { id: created.id, role: created.role, sitterId: created.sitterId ?? null };
 }
 
 function tokenUserId(token: RoleJwt | null) {
@@ -58,29 +95,9 @@ export async function resolveDbUserId(req: NextRequest) {
   const email = clerkUser?.primaryEmailAddress?.emailAddress ?? "";
   if (!email) return null;
 
-  const roleWanted = wantedRoleForEmail(email);
-
-  const existing = await prisma.user.findUnique({ where: { email }, select: { id: true, role: true, sitterId: true } });
-  if (existing?.id) {
-    if (roleWanted && existing.role !== roleWanted) {
-      if (roleWanted === "SITTER") {
-        const sitterId = existing.sitterId && existing.sitterId.trim() ? existing.sitterId.trim() : newSitterId();
-        await prisma.user.update({ where: { id: existing.id }, data: { role: "SITTER", sitterId } });
-      } else {
-        await prisma.user.update({ where: { id: existing.id }, data: { role: "OWNER" } });
-      }
-    }
-    return existing.id;
-  }
-
-  const created = await prisma.user.create({
-    data: {
-      email,
-      name: typeof clerkUser?.fullName === "string" && clerkUser.fullName.trim() ? clerkUser.fullName.trim() : null,
-      role: roleWanted ?? "OWNER",
-      sitterId: roleWanted === "SITTER" ? newSitterId() : null,
-    },
-    select: { id: true },
+  const ensured = await ensureDbUserByEmail({
+    email,
+    name: typeof clerkUser?.fullName === "string" ? clerkUser.fullName : null,
   });
-  return created.id;
+  return ensured?.id ?? null;
 }

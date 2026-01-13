@@ -3,6 +3,7 @@ import Link from "next/link";
 import { auth, currentUser } from "@clerk/nextjs/server";
 
 import { prisma } from "@/lib/prisma";
+import { ensureDbUserByEmail } from "@/lib/auth/resolveDbUserId";
 
 export default async function BecomeSitterFormPage() {
   const { userId } = await auth();
@@ -30,14 +31,10 @@ export default async function BecomeSitterFormPage() {
   const clerkUser = await currentUser();
   const primaryEmail = clerkUser?.primaryEmailAddress?.emailAddress ?? "";
   const dbUser = primaryEmail
-    ? (await prisma.user.findUnique({ where: { email: primaryEmail } })) ??
-      (await prisma.user.create({
-        data: {
-          email: primaryEmail,
-          name: typeof clerkUser?.fullName === "string" && clerkUser.fullName.trim() ? clerkUser.fullName.trim() : null,
-          role: "OWNER",
-        },
-      }))
+    ? await ensureDbUserByEmail({
+        email: primaryEmail,
+        name: typeof clerkUser?.fullName === "string" ? clerkUser.fullName : null,
+      })
     : null;
 
   const isAlreadySitter = dbUser
