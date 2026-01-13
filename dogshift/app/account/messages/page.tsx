@@ -159,6 +159,8 @@ export default function AccountMessagesPage() {
       setThreadHeader(payload.conversation);
       setMessages(Array.isArray(payload.messages) ? payload.messages : []);
       setViewerId(typeof payload.viewerId === "string" && payload.viewerId.trim() ? payload.viewerId.trim() : null);
+
+      setConversations((prev) => prev.map((c) => (c.id === conversationId ? { ...c, unreadCount: 0 } : c)));
     } catch {
       setThreadHeader(null);
       setMessages([]);
@@ -341,11 +343,11 @@ export default function AccountMessagesPage() {
           </div>
         </div>
       ) : (
-        <div className="rounded-3xl border border-slate-200 bg-white shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)]">
-          <div className="grid gap-0 lg:grid-cols-[360px_1fr]">
-            <section className="flex flex-col p-4 sm:p-6">
+        <div className="h-[calc(100vh-260px)] overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)]">
+          <div className="grid h-full gap-0 lg:grid-cols-[360px_1fr]">
+            <section className="flex h-full flex-col p-4 sm:p-6">
               <p className="px-2 pb-3 text-xs font-semibold text-slate-600">Boîte de réception</p>
-              <div className="space-y-2">
+              <div className="min-h-0 flex-1 space-y-2 overflow-y-auto">
                 {rows.map((c) => {
                   const subtitle = c.booking?.service
                     ? `${c.booking.service} • ${c.booking.startDate ? formatDateOnly(c.booking.startDate) : "—"}`
@@ -357,6 +359,7 @@ export default function AccountMessagesPage() {
                       type="button"
                       onClick={() => {
                         setSelectedId(c.id);
+                        setConversations((prev) => prev.map((x) => (x.id === c.id ? { ...x, unreadCount: 0 } : x)));
                         const params = new URLSearchParams(searchParams?.toString() ?? "");
                         params.set("conversationId", c.id);
                         router.replace(`/account/messages?${params.toString()}`);
@@ -401,7 +404,7 @@ export default function AccountMessagesPage() {
               </div>
             </section>
 
-            <section className="border-t border-slate-200 p-6 lg:border-l lg:border-t-0">
+            <section className="flex h-full min-h-0 flex-col border-t border-slate-200 p-6 lg:border-l lg:border-t-0">
               {threadError ? (
                 <div className="rounded-2xl border border-rose-200 bg-rose-50 p-5">
                   <p className="text-sm font-semibold text-rose-900">{threadError}</p>
@@ -417,7 +420,7 @@ export default function AccountMessagesPage() {
                   <p className="mt-1 text-sm text-slate-600">Nous récupérons la conversation.</p>
                 </div>
               ) : (
-                <div className="flex h-full flex-col rounded-2xl border border-slate-200 bg-white">
+                <div className="flex h-full min-h-0 flex-col rounded-2xl border border-slate-200 bg-white">
                   <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-5 py-4">
                     <div className="flex items-center gap-3">
                       <div className="relative h-10 w-10 overflow-hidden rounded-2xl bg-slate-100">
@@ -444,8 +447,8 @@ export default function AccountMessagesPage() {
                     </div>
                   </div>
 
-                  <div className="flex-1 p-5">
-                    <div className="space-y-3">
+                  <div className="flex min-h-0 flex-1 flex-col p-5">
+                    <div className="min-h-0 flex-1 space-y-3 overflow-y-auto">
                       {messages.length === 0 ? (
                         <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                           <p className="text-sm text-slate-600">Aucun message pour l’instant.</p>
@@ -482,14 +485,16 @@ export default function AccountMessagesPage() {
                         className="mt-2 w-full min-h-[110px] rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition focus:border-[var(--dogshift-blue)] focus:ring-4 focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_85%)]"
                         placeholder="Écrire un message…"
                       />
-                      <button
-                        type="button"
-                        disabled={!canSend}
-                        onClick={() => void send()}
-                        className="mt-3 inline-flex items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-5 py-3 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition hover:bg-[var(--dogshift-blue-hover)] disabled:cursor-not-allowed disabled:opacity-60"
-                      >
-                        {sending ? "Envoi…" : "Envoyer"}
-                      </button>
+                      <div className="mt-3 flex justify-end">
+                        <button
+                          type="button"
+                          disabled={!canSend}
+                          onClick={() => void send()}
+                          className="inline-flex items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-5 py-3 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition hover:bg-[var(--dogshift-blue-hover)] disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          {sending ? "Envoi…" : "Envoyer"}
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>

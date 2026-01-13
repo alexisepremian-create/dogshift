@@ -115,6 +115,13 @@ export default function HostMessagesLayout({ children }: { children: React.React
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLoaded, isSignedIn, router]);
 
+  useEffect(() => {
+    const m = pathname.match(/^\/host\/messages\/([^/?#]+)/);
+    const activeId = m && m[1] ? decodeURIComponent(m[1]) : null;
+    if (!activeId) return;
+    setConversations((prev) => prev.map((c) => (c.id === activeId ? { ...c, unreadCount: 0 } : c)));
+  }, [pathname]);
+
   const rows = useMemo(() => {
     return conversations.slice().sort((a, b) => {
       const ta = new Date(a.lastMessageAt ?? a.updatedAt).getTime();
@@ -144,7 +151,7 @@ export default function HostMessagesLayout({ children }: { children: React.React
           </div>
         </div>
 
-        <div className="relative rounded-3xl border border-slate-200 bg-white shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)]">
+        <div className="relative h-[calc(100vh-260px)] overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)]">
           <button
             type="button"
             aria-label="Rafraîchir"
@@ -157,8 +164,8 @@ export default function HostMessagesLayout({ children }: { children: React.React
               <path d="M21 3v6h-6" />
             </svg>
           </button>
-          <div className="grid gap-0 lg:grid-cols-[360px_1fr]">
-            <aside className="border-b border-slate-200 p-4 sm:p-6 lg:border-b-0 lg:border-r">
+          <div className="grid h-full gap-0 lg:grid-cols-[360px_1fr]">
+            <aside className="flex h-full flex-col border-b border-slate-200 p-4 sm:p-6 lg:border-b-0 lg:border-r">
               <div className="flex items-center justify-between">
                 <p className="px-2 pb-3 text-xs font-semibold text-slate-600">Boîte de réception</p>
               </div>
@@ -187,7 +194,7 @@ export default function HostMessagesLayout({ children }: { children: React.React
                   <p className="mt-1 text-sm text-slate-600">Les conversations apparaîtront quand un client te contacte.</p>
                 </div>
               ) : (
-                <div className="space-y-2">
+                <div className="min-h-0 flex-1 overflow-y-auto">
                   {rows.map((c) => {
                     const subtitle = c.booking?.service
                       ? `${c.booking.service} • ${c.booking.startDate ? formatDateOnly(c.booking.startDate) : "—"}`
@@ -198,6 +205,9 @@ export default function HostMessagesLayout({ children }: { children: React.React
                       <Link
                         key={c.id}
                         href={href}
+                        onClick={() => {
+                          setConversations((prev) => prev.map((x) => (x.id === c.id ? { ...x, unreadCount: 0 } : x)));
+                        }}
                         className={
                           active
                             ? "block w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-left"
@@ -237,7 +247,7 @@ export default function HostMessagesLayout({ children }: { children: React.React
               )}
             </aside>
 
-            <section className="p-4 sm:p-6">{children}</section>
+            <section className="h-full min-h-0 p-4 sm:p-6">{children}</section>
           </div>
         </div>
       </div>

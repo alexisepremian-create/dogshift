@@ -180,7 +180,7 @@ export default function HostMessageThreadPage() {
   }
 
   return (
-    <div className="grid gap-4">
+    <div className="flex h-full flex-col gap-4">
       <div>
         <p className="text-sm font-semibold text-slate-600">Messages</p>
         <h1 className="mt-2 text-2xl font-semibold tracking-tight text-slate-900">{threadTitle}</h1>
@@ -214,7 +214,7 @@ export default function HostMessageThreadPage() {
           <p className="mt-2 text-sm text-slate-600">Nous récupérons la conversation.</p>
         </div>
       ) : (
-        <div className="rounded-3xl border border-slate-200 bg-white shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)]">
+        <div className="min-h-0 flex-1 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)]">
           <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-6 py-4">
             <div className="flex items-center gap-3">
               <div className="relative h-10 w-10 overflow-hidden rounded-2xl bg-slate-100">
@@ -233,8 +233,8 @@ export default function HostMessageThreadPage() {
             </div>
           </div>
 
-          <div className="p-6">
-            <div className="space-y-3">
+          <div className="flex h-full min-h-0 flex-col p-6">
+            <div className="min-h-0 flex-1 space-y-3 overflow-y-auto">
               {messages.length === 0 ? (
                 <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                   <p className="text-sm text-slate-600">Aucun message pour l’instant.</p>
@@ -271,14 +271,16 @@ export default function HostMessageThreadPage() {
                 className="mt-2 w-full min-h-[110px] rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition focus:border-[var(--dogshift-blue)] focus:ring-4 focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_85%)]"
                 placeholder="Écrire un message…"
               />
-              <button
-                type="button"
-                disabled={!canSend}
-                onClick={() => void send()}
-                className="mt-3 inline-flex items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-5 py-3 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition hover:bg-[var(--dogshift-blue-hover)] disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {sending ? "Envoi…" : "Envoyer"}
-              </button>
+              <div className="mt-3 flex justify-end">
+                <button
+                  type="button"
+                  disabled={!canSend}
+                  onClick={() => void send()}
+                  className="inline-flex items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-5 py-3 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition hover:bg-[var(--dogshift-blue-hover)] disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {sending ? "Envoi…" : "Envoyer"}
+                </button>
+              </div>
             </div>
           </div>
         </div>
