@@ -82,6 +82,9 @@ export default function NotificationBell({ className }: { className?: string }) 
   }
 
   async function markAllRead() {
+    const now = new Date().toISOString();
+    setUnread(0);
+    setItems((prev) => prev.map((n) => ({ ...n, readAt: n.readAt ?? now })));
     try {
       const res = await fetch("/api/notifications/mark-all-read", { method: "POST" });
       const payload = (await res.json()) as { ok?: boolean };
@@ -129,6 +132,8 @@ export default function NotificationBell({ className }: { className?: string }) 
   const btn =
     "relative inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-900 transition hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)]";
 
+  const unreadItems = useMemo(() => items.filter((n) => !n.readAt), [items]);
+
   return (
     <div ref={rootRef} className={"relative" + (className ? ` ${className}` : "")}> 
       <button
@@ -169,11 +174,14 @@ export default function NotificationBell({ className }: { className?: string }) 
               <div className="p-3 text-sm text-slate-600">Chargement…</div>
             ) : error ? (
               <div className="p-3 text-sm text-rose-700">{error}</div>
-            ) : items.length === 0 ? (
-              <div className="p-3 text-sm text-slate-600">Aucune notification</div>
+            ) : unreadItems.length === 0 ? (
+              <div className="p-6">
+                <p className="text-sm font-semibold text-slate-900">Aucune nouvelle notification</p>
+                <p className="mt-1 text-sm text-slate-600">Vous êtes à jour.</p>
+              </div>
             ) : (
               <div className="space-y-2">
-                {items.map((n) => {
+                {unreadItems.map((n) => {
                   const isUnread = !n.readAt;
                   const content = (
                     <div
