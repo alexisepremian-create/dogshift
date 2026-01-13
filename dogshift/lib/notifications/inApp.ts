@@ -105,9 +105,42 @@ export async function listNotifications(userId: string, limit: number) {
 
   const resolveSenderNameById = async (senderId: string) => {
     try {
-      const u = await (prisma as any).user.findUnique({ where: { id: senderId }, select: { name: true } });
-      const name = typeof u?.name === "string" && u.name.trim() ? u.name.trim() : null;
-      return name;
+      const u = await (prisma as any).user.findUnique({
+        where: { id: senderId },
+        select: { name: true, sitterProfile: { select: { displayName: true } } },
+      });
+      const displayName =
+        (typeof u?.sitterProfile?.displayName === "string" && u.sitterProfile.displayName.trim()
+          ? u.sitterProfile.displayName.trim()
+          : null) ?? (typeof u?.name === "string" && u.name.trim() ? u.name.trim() : null);
+      return displayName;
+    } catch {
+      return null;
+    }
+  };
+
+  const resolveOtherParticipantName = async (conversationId: string) => {
+    try {
+      const c = await (prisma as any).conversation.findUnique({
+        where: { id: conversationId },
+        select: { ownerId: true, sitterId: true },
+      });
+      if (!c) return null;
+
+      const otherUserId = c.ownerId === userId ? null : String(c.ownerId);
+      if (otherUserId) {
+        return await resolveSenderNameById(otherUserId);
+      }
+
+      const sitterId = typeof c.sitterId === "string" ? c.sitterId : "";
+      if (!sitterId) return null;
+      const sitterUser = await (prisma as any).user.findUnique({
+        where: { sitterId },
+        select: { id: true },
+      });
+      const sitterUserId = typeof sitterUser?.id === "string" ? sitterUser.id : null;
+      if (!sitterUserId) return null;
+      return await resolveSenderNameById(sitterUserId);
     } catch {
       return null;
     }
@@ -140,13 +173,13 @@ export async function listNotifications(userId: string, limit: number) {
         }
 
         const metaSenderName = typeof metadata?.senderName === "string" ? String(metadata!.senderName) : "";
-        const metaSenderId = typeof metadata?.senderId === "string" ? String(metadata!.senderId) : "";
+        const metaSenderUserId = typeof metadata?.senderUserId === "string" ? String(metadata!.senderUserId) : "";
 
         const senderFull = metaSenderName.trim()
           ? metaSenderName.trim()
-          : metaSenderId.trim()
-            ? await resolveSenderNameById(metaSenderId.trim())
-            : await resolveFromName(conversationId);
+          : metaSenderUserId.trim()
+            ? await resolveSenderNameById(metaSenderUserId.trim())
+            : await resolveOtherParticipantName(conversationId);
 
         const inferred = firstNameOf(senderFull) ?? "Utilisateur";
 
