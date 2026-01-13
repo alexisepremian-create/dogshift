@@ -44,6 +44,7 @@ export default async function RootLayout({
   const h = await headers();
   const pathname = h.get("x-dogshift-pathname") ?? "";
   const isAccess = pathname === "/access";
+  const siteLockOn = process.env.NODE_ENV !== "production" && Boolean(process.env.SITE_PASSWORD);
 
   return (
     <html lang="en">
@@ -54,6 +55,11 @@ export default async function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
+        {siteLockOn ? (
+          <div className="fixed left-3 top-3 z-[1000] rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-900 shadow-sm">
+            SITE_LOCK=ON
+          </div>
+        ) : null}
         <ClerkProvider
           signInUrl="/login"
           signUpUrl="/signup"

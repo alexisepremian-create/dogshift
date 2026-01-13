@@ -12,16 +12,19 @@ const isPublicRoute = createRouteMatcher([
 const isLockBypassRoute = createRouteMatcher([
   "/unlock(.*)",
   "/api/unlock(.*)",
-  "/api(.*)",
-  "/api/stripe/webhook(.*)",
-  "/host(.*)",
-  "/account(.*)",
   "/favicon.ico",
   "/robots.txt",
   "/sitemap.xml",
   "/assets(.*)",
   "/images(.*)",
 ]);
+
+function isPublicSitterRoute(req: any) {
+  const pathname = String(req?.nextUrl?.pathname ?? "");
+  if (!pathname.startsWith("/sitter/")) return false;
+  const mode = String(req?.nextUrl?.searchParams?.get("mode") ?? "");
+  return mode === "public";
+}
 
 export default clerkMiddleware(async (auth, req) => {
   const sitePassword = process.env.SITE_PASSWORD;
@@ -31,7 +34,7 @@ export default clerkMiddleware(async (auth, req) => {
     const isNextAsset = pathname.startsWith("/_next/");
     const isStaticFile = /\.[^/]+$/.test(pathname);
 
-    if (!isLockBypassRoute(req) && !isNextAsset && !isStaticFile) {
+    if (!isLockBypassRoute(req) && !isPublicSitterRoute(req) && !isNextAsset && !isStaticFile) {
       const unlocked = req.cookies.get("site_unlocked")?.value;
       if (unlocked !== "1") {
         const url = req.nextUrl.clone();
