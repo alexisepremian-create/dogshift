@@ -151,7 +151,7 @@ export default function HostMessagesLayout({ children }: { children: React.React
           </div>
         </div>
 
-        <div className="relative h-[calc(100vh-200px)] overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)]">
+        <div className="relative h-[calc(100vh-140px)] overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)]">
           <button
             type="button"
             aria-label="Rafraîchir"

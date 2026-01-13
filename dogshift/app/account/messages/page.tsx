@@ -343,7 +343,7 @@ export default function AccountMessagesPage() {
           </div>
         </div>
       ) : (
-        <div className="h-[calc(100vh-200px)] overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)]">
+        <div className="h-[calc(100vh-140px)] overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)]">
           <div className="grid h-full gap-0 lg:grid-cols-[360px_1fr]">
             <section className="flex h-full flex-col p-4 sm:p-6">
               <p className="px-2 pb-3 text-xs font-semibold text-slate-600">Boîte de réception</p>
