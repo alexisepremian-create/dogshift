@@ -214,7 +214,7 @@ export default function HostMessageThreadPage() {
           <p className="mt-2 text-sm text-slate-600">Nous récupérons la conversation.</p>
         </div>
       ) : (
-        <div className="min-h-0 flex-1 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)]">
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)]">
           <div className="flex min-h-0 flex-1 flex-col p-6">
             <div className="min-h-0 flex-1 space-y-3 overflow-y-auto">
               {messages.length === 0 ? (
