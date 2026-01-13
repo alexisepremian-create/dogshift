@@ -16,18 +16,21 @@ export const clerkAppearance: Theme = {
     fontFamily: "var(--font-geist-sans)",
   },
   elements: {
-    card: "rounded-[16px] border border-slate-200/70 bg-white shadow-[0_18px_70px_-40px_rgba(15,23,42,0.55)]",
-    headerTitle: "text-[22px] font-semibold tracking-[-0.02em] text-slate-900",
-    headerSubtitle: "text-sm text-slate-600",
+    card: "border-0 bg-transparent p-0 shadow-none",
+    cardBox: "shadow-none",
+    header: "hidden",
+    headerTitle: "hidden",
+    headerSubtitle: "hidden",
+    logoBox: "hidden",
     socialButtonsBlockButton:
-      "rounded-xl border border-slate-200 bg-white text-slate-900 shadow-sm hover:bg-slate-50",
-    dividerLine: "bg-slate-200",
+      "h-11 w-full rounded-full border border-slate-200/80 bg-white/80 text-slate-900 backdrop-blur-sm shadow-none transition hover:bg-white focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_82%)]",
+    dividerLine: "bg-slate-200/80",
     dividerText: "text-slate-500",
     formFieldLabel: "text-sm font-medium text-slate-700",
     formFieldInput:
-      "h-11 rounded-xl border border-slate-200 bg-white text-slate-900 shadow-sm outline-none ring-0 focus:border-slate-300 focus:ring-2 focus:ring-[rgba(11,77,140,0.25)]",
+      "h-11 w-full rounded-full border border-slate-200/80 bg-white/80 px-4 text-slate-900 shadow-none outline-none transition focus:border-[color-mix(in_srgb,var(--dogshift-blue),black_10%)] focus:ring-4 focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_82%)]",
     formButtonPrimary:
-      "h-11 rounded-xl bg-[var(--dogshift-blue)] text-white shadow-sm hover:bg-[var(--dogshift-blue-hover)]",
+      "h-11 w-full rounded-full bg-[var(--dogshift-blue)] text-white shadow-none transition hover:bg-[var(--dogshift-blue-hover)] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)]",
     footer: "hidden",
     footerPages: "hidden",
     footerPageLink: "hidden",

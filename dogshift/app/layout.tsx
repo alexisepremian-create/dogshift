@@ -44,6 +44,7 @@ export default async function RootLayout({
   const h = await headers();
   const pathname = h.get("x-dogshift-pathname") ?? "";
   const isAccess = pathname === "/access";
+  const isAuth = pathname === "/login" || pathname.startsWith("/login/") || pathname === "/signup" || pathname.startsWith("/signup/");
   const siteLockOn = process.env.NODE_ENV !== "production" && Boolean(process.env.SITE_PASSWORD);
 
   return (
@@ -69,12 +70,12 @@ export default async function RootLayout({
         >
           <Suspense fallback={null}>
             <SessionAuthProvider>
-              {isAccess ? children : <SiteHeader />}
-              {isAccess ? null : <PageTopOffset>{children}</PageTopOffset>}
-              {isAccess ? null : <DogShiftBot />}
+              {isAccess || isAuth ? children : <SiteHeader />}
+              {isAccess || isAuth ? null : <PageTopOffset>{children}</PageTopOffset>}
+              {isAccess || isAuth ? null : <DogShiftBot />}
             </SessionAuthProvider>
           </Suspense>
-          {isAccess ? null : (
+          {isAccess || isAuth ? null : (
             <footer className="border-t border-slate-200/70 bg-white">
               <div className="flex w-full flex-col gap-3 px-4 py-8 text-sm text-slate-600 sm:flex-row sm:items-center sm:justify-start sm:px-6">
                 <div className="flex items-start gap-4">
