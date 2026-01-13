@@ -1038,13 +1038,7 @@ export default function SitterProfilePage() {
             </div>
           )}
 
-        {showHostChrome ? (
-          <div className="mx-auto mt-8 max-w-5xl">
-            <Link href="/host" className="text-sm font-semibold text-[var(--dogshift-blue)] hover:text-[var(--dogshift-blue-hover)]">
-              ← Retour au Tableau de bord
-            </Link>
-          </div>
-        ) : null}
+        {showHostChrome ? null : null}
       </div>
     </div>
   );
