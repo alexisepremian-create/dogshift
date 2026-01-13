@@ -2,7 +2,7 @@
 
 import { SignIn } from "@clerk/nextjs";
 import { useSearchParams } from "next/navigation";
-import AuthShell from "@/components/AuthShell";
+import AuthCenteredWrapper from "@/components/AuthCenteredWrapper";
 import { clerkAppearance } from "@/lib/clerkAppearance";
 
 export default function LoginCatchAllPage() {
@@ -11,7 +11,7 @@ export default function LoginCatchAllPage() {
   const after = next ? `/post-login?next=${encodeURIComponent(next)}` : "/post-login";
 
   return (
-    <AuthShell title="Se connecter" subtitle="Accédez à votre espace DogShift">
+    <AuthCenteredWrapper>
       <SignIn
         routing="path"
         path="/login"
@@ -19,6 +19,6 @@ export default function LoginCatchAllPage() {
         afterSignInUrl={after}
         appearance={clerkAppearance}
       />
-    </AuthShell>
+    </AuthCenteredWrapper>
   );
 }
