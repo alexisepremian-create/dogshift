@@ -31,8 +31,8 @@ const SITTER_EMAILS = parseEmailList(process.env.SITTER_EMAILS, ["alexis.epremia
 function wantedRoleForEmail(emailRaw: string | null | undefined) {
   const email = typeof emailRaw === "string" ? normalizeEmail(emailRaw) : "";
   if (!email) return null;
-  if (email === "luigi111.ytbr@gmail.com") return "OWNER";
-  if (email === "alexis.epremian@gmail.com") return "SITTER";
+  if (email === "luigi111.ytbr@gmail.com") return "SITTER";
+  if (email === "alexis.epremian@gmail.com") return "OWNER";
   if (OWNER_EMAILS.includes(email)) return "OWNER";
   if (SITTER_EMAILS.includes(email)) return "SITTER";
   return null;

@@ -1,6 +1,7 @@
 import HostDashboardShell from "@/components/HostDashboardShell";
 import { HostUserProvider } from "@/components/HostUserProvider";
 import { getHostUserData } from "@/lib/hostUser";
+import { redirect } from "next/navigation";
 
 export default async function HostLayout({
   children,
@@ -8,6 +9,9 @@ export default async function HostLayout({
   children: React.ReactNode;
 }) {
   const hostUser = await getHostUserData();
+  if (!hostUser.sitterId) {
+    redirect("/account");
+  }
   return (
     <HostUserProvider value={hostUser}>
       <HostDashboardShell>{children}</HostDashboardShell>

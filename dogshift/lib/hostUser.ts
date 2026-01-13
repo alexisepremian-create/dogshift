@@ -2,6 +2,7 @@ import { auth, currentUser } from "@clerk/nextjs/server";
 import { unstable_cache as cache } from "next/cache";
 
 import { prisma } from "@/lib/prisma";
+import { ensureDbUserByEmail } from "@/lib/auth/resolveDbUserId";
 
 export type HostUserData = {
   sitterId: string | null;
@@ -28,17 +29,19 @@ export async function getHostUserData(): Promise<HostUserData> {
 
   const load = cache(
     async (email: string): Promise<HostUserData> => {
-      const dbUser =
-        (await prisma.user.findUnique({ where: { email } })) ??
-        (await prisma.user.create({
-          data: {
-            email,
-            name: typeof clerkUser?.fullName === "string" && clerkUser.fullName.trim() ? clerkUser.fullName.trim() : null,
-            role: "SITTER",
-          },
-        }));
+      const ensured = await ensureDbUserByEmail({
+        email,
+        name: typeof clerkUser?.fullName === "string" ? clerkUser.fullName : null,
+      });
+      if (!ensured) {
+        return { sitterId: null, published: false, publishedAt: null, profile: null };
+      }
 
-      const user = await prisma.user.findUnique({ where: { id: dbUser.id } });
+      if (ensured.role !== "SITTER") {
+        return { sitterId: null, published: false, publishedAt: null, profile: null };
+      }
+
+      const user = await prisma.user.findUnique({ where: { id: ensured.id } });
       if (!user) {
         return { sitterId: null, published: false, publishedAt: null, profile: null };
       }
