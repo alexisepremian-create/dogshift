@@ -11,10 +11,6 @@ export type HostUserData = {
   profile: unknown;
 };
 
-function generateSitterId() {
-  return `s-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-}
-
 export async function getHostUserData(): Promise<HostUserData> {
   const { userId } = await auth();
   if (!userId) {
@@ -42,17 +38,32 @@ export async function getHostUserData(): Promise<HostUserData> {
         return { sitterId: null, published: false, publishedAt: null, profile: null };
       }
 
-      const sitterProfile = await prisma.sitterProfile.findUnique({ where: { userId: user.id }, select: { sitterId: true, published: true, publishedAt: true } });
+      const sitterProfile = await prisma.sitterProfile.findUnique({
+        where: { userId: user.id },
+        select: { sitterId: true, published: true, publishedAt: true },
+      });
+
+      // Authorization rule: allow /host ONLY if a SitterProfile exists for this DB user.
       if (!sitterProfile) {
         return { sitterId: null, published: false, publishedAt: null, profile: null };
       }
 
-      const sitterId =
-        (typeof sitterProfile.sitterId === "string" && sitterProfile.sitterId.trim() ? sitterProfile.sitterId.trim() : null) ??
-        ((user as unknown as { sitterId?: string | null }).sitterId ?? null);
+      const sitterId = typeof sitterProfile.sitterId === "string" && sitterProfile.sitterId.trim() ? sitterProfile.sitterId.trim() : null;
 
       if (!sitterId) {
         return { sitterId: null, published: false, publishedAt: null, profile: null };
+      }
+
+      const userSitterId = (user as unknown as { sitterId?: string | null }).sitterId ?? null;
+      if (userSitterId !== sitterId) {
+        try {
+          await prisma.user.update({
+            where: { id: user.id },
+            data: { sitterId } as unknown as Record<string, unknown>,
+          });
+        } catch {
+          // ignore
+        }
       }
 
       const hostProfileJson = (user as unknown as { hostProfileJson?: string | null }).hostProfileJson ?? null;
@@ -73,7 +84,7 @@ export async function getHostUserData(): Promise<HostUserData> {
         profile,
       };
     },
-    ["hostUserData"],
+    ["hostUserData", primaryEmail],
     { revalidate: 30 }
   );
 
