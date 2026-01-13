@@ -58,6 +58,7 @@ export default function HostMessageThreadPage() {
 
   const [header, setHeader] = useState<ConversationHeader | null>(null);
   const [messages, setMessages] = useState<MessageItem[]>([]);
+  const [viewerId, setViewerId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -79,6 +80,7 @@ export default function HostMessageThreadPage() {
       const res = await fetch(`/api/host/messages/conversations/${encodeURIComponent(conversationId)}`, { method: "GET" });
       const payload = (await res.json()) as {
         ok?: boolean;
+        viewerId?: string;
         conversation?: ConversationHeader;
         messages?: MessageItem[];
         error?: string;
@@ -99,14 +101,17 @@ export default function HostMessageThreadPage() {
         }
         setHeader(null);
         setMessages([]);
+        setViewerId(null);
         return;
       }
       setHeader(payload.conversation);
       setMessages(Array.isArray(payload.messages) ? payload.messages : []);
+      setViewerId(typeof payload.viewerId === "string" && payload.viewerId.trim() ? payload.viewerId.trim() : null);
     } catch {
       setError("Impossible de charger la conversation.");
       setHeader(null);
       setMessages([]);
+      setViewerId(null);
     } finally {
       setLoading(false);
     }
@@ -236,13 +241,13 @@ export default function HostMessageThreadPage() {
                 </div>
               ) : (
                 messages.map((m) => {
-                  const mine = false;
+                  const mine = Boolean(viewerId && m.senderId === viewerId);
                   return (
                     <div key={m.id} className={mine ? "flex justify-end" : "flex justify-start"}>
                       <div
                         className={
                           mine
-                            ? "max-w-[85%] rounded-2xl border border-slate-200 bg-[color-mix(in_srgb,var(--dogshift-blue),white_92%)] px-4 py-3"
+                            ? "max-w-[85%] rounded-2xl border border-slate-200 bg-slate-100 px-4 py-3"
                             : "max-w-[85%] rounded-2xl border border-slate-200 bg-white px-4 py-3"
                         }
                       >

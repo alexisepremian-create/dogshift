@@ -93,6 +93,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     return NextResponse.json(
       {
         ok: true,
+        viewerId: uid,
         conversation: {
           id: String(conversation.id),
           owner: { id: String(conversation.ownerId), name: ownerName, avatarUrl },
