@@ -192,6 +192,21 @@ export default function AccountMessagesPage() {
     });
   }, [conversations]);
 
+  const requestedConversationId = useMemo(() => {
+    const raw = searchParams?.get("conversationId");
+    return typeof raw === "string" && raw.trim() ? raw.trim() : null;
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (!requestedConversationId) return;
+    if (loading) return;
+    if (!rows.some((c) => c.id === requestedConversationId)) return;
+    if (selectedId === requestedConversationId && threadHeader) return;
+    setSelectedId(requestedConversationId);
+    void loadThread(requestedConversationId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, requestedConversationId, rows]);
+
   useEffect(() => {
     if (loading) return;
     if (rows.length === 0) {

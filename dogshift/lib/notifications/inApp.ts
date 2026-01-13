@@ -72,7 +72,7 @@ export async function listNotifications(userId: string, limit: number) {
     },
   });
 
-  const baseUrl = hasSitterProfile ? "/host/messages/" : "/account/messages/";
+  const baseRequestsUrl = hasSitterProfile ? "/host/requests" : "/account/bookings";
 
   const firstNameOf = (name: string | null) => {
     const cleaned = (name ?? "").trim();
@@ -154,6 +154,9 @@ export async function listNotifications(userId: string, limit: number) {
     const metaConversationId = typeof metadata?.conversationId === "string" ? (metadata!.conversationId as string) : null;
     let conversationId = entityId ?? metaConversationId;
 
+    const metaBookingId = typeof metadata?.bookingId === "string" ? (metadata!.bookingId as string) : null;
+    const bookingId = (entityId ?? metaBookingId) && type !== "newMessages" ? (entityId ?? metaBookingId) : metaBookingId;
+
     let title = String(n.title ?? "");
     let url = typeof n.url === "string" ? n.url : null;
     let body = typeof n.body === "string" ? n.body : null;
@@ -168,8 +171,10 @@ export async function listNotifications(userId: string, limit: number) {
         // Can't infer sender or normalize URL without a conversation id.
         body = null;
       } else {
-        if (!url || url.startsWith("/host/messages?") || url.startsWith("/account/messages?")) {
-          url = `${baseUrl}${encodeURIComponent(conversationId)}`;
+        if (hasSitterProfile) {
+          url = `/host/messages/${encodeURIComponent(conversationId)}`;
+        } else {
+          url = `/account/messages?conversationId=${encodeURIComponent(conversationId)}`;
         }
 
         const metaSenderName = typeof metadata?.senderName === "string" ? String(metadata!.senderName) : "";
@@ -188,6 +193,21 @@ export async function listNotifications(userId: string, limit: number) {
 
         // Always show the sender name next to "Nouveau message" when available.
         title = `Nouveau message — ${inferred}`;
+      }
+    }
+
+    if (type === "newBookingRequest" || type === "bookingConfirmed" || type === "paymentReceived" || type === "bookingReminder") {
+      const normalizedBookingId = typeof bookingId === "string" && bookingId.trim() ? bookingId.trim() : null;
+      if (normalizedBookingId) {
+        if (hasSitterProfile) {
+          url = `/host/requests?id=${encodeURIComponent(normalizedBookingId)}`;
+        } else {
+          url = `/account/bookings?id=${encodeURIComponent(normalizedBookingId)}`;
+        }
+      } else if (!url && !hasSitterProfile) {
+        url = baseRequestsUrl;
+      } else if (!url && hasSitterProfile) {
+        url = "/host/requests";
       }
     }
 

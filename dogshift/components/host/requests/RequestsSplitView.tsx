@@ -1,3 +1,5 @@
+"use client";
+
 import {
   DndContext,
   PointerSensor,
@@ -10,6 +12,7 @@ import {
 } from "@dnd-kit/core";
 import { ClipboardList } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 
 import { RequestDetailPanel } from "./RequestDetailPanel";
 import { RequestListItem, type HostRequest } from "./RequestListItem";
@@ -55,6 +58,8 @@ export function RequestsSplitView({
   error: string | null;
   onRetry: () => void;
 }) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [localRows, setLocalRows] = useState<HostRequest[]>(rows);
   const [filter, setFilter] = useState<FilterKey>("ALL");
   const [lastActiveFilter, setLastActiveFilter] = useState<Exclude<FilterKey, "ARCHIVED">>("ALL");
@@ -112,6 +117,11 @@ export function RequestsSplitView({
       });
   }, [localRows, filter, search]);
 
+  const initialSelectedFromQuery = useMemo(() => {
+    const q = searchParams?.get("id");
+    return typeof q === "string" && q.trim() ? q.trim() : "";
+  }, [searchParams]);
+
   useEffect(() => {
     if (loading) return;
     if (filtered.length === 0) {
@@ -120,10 +130,24 @@ export function RequestsSplitView({
       return;
     }
 
+    const desired = initialSelectedFromQuery;
+    if (desired && filtered.some((r) => r.id === desired)) {
+      setSelectedId(desired);
+      return;
+    }
+
     if (!selectedId || !filtered.some((r) => r.id === selectedId)) {
       setSelectedId(filtered[0]!.id);
     }
-  }, [filtered, loading, selectedId]);
+  }, [filtered, initialSelectedFromQuery, loading, selectedId]);
+
+  useEffect(() => {
+    if (!selectedId) return;
+    const params = new URLSearchParams(searchParams?.toString() ?? "");
+    params.set("id", selectedId);
+    router.replace(`/host/requests?${params.toString()}`);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedId]);
 
   async function hardDelete(bookingId: string) {
     if (deleting) return;
