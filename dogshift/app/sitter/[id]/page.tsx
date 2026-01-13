@@ -342,7 +342,10 @@ export default function SitterProfilePage() {
     if (isPreviewMode && isHostViewingOwn) {
       if (!previewLoaded) return undefined;
       if (previewSitter) return previewSitter;
-      return null;
+
+      // If no draft profile is available for preview, fall back to the DB-backed API profile.
+      if (!apiLoaded) return undefined;
+      return apiSitter ?? null;
     }
 
     if (!apiLoaded) return undefined;
