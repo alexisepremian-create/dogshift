@@ -18,7 +18,7 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
           </div>
         </div>
 
-        <div className="flex flex-1 flex-col justify-center pt-4 pb-7 sm:-translate-y-6">{children}</div>
+        <div className="flex flex-1 flex-col justify-center pt-2 pb-7 sm:-translate-y-4">{children}</div>
 
         <div className="border-t border-slate-200 pt-4 text-center text-xs text-slate-500">
           <p>DogShift</p>

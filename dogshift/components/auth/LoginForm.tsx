@@ -77,8 +77,8 @@ export default function LoginForm() {
 
   return (
     <div className="flex flex-col">
-      <h1 className="text-2xl font-semibold tracking-tight text-slate-900">S’identifier</h1>
-      <p className="mt-2 text-sm text-slate-600">Accède à ton espace DogShift.</p>
+      <h1 className="text-center text-2xl font-semibold tracking-tight text-slate-900">S’identifier</h1>
+      <p className="mt-2 text-center text-sm text-slate-600">Accède à ton espace DogShift.</p>
 
       <div className="mt-6 flex flex-col gap-6">
         <button
