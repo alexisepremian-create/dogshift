@@ -7,6 +7,12 @@ import { prisma } from "@/lib/prisma";
 type EmailToken = JWT & { email?: string };
 
 export async function POST(req: Request) {
+  const expected = (process.env.DOGSHIFT_ADMIN_SECRET || "").trim();
+  const provided = (req.headers.get("x-dogshift-admin-secret") || "").trim();
+  if (!expected || provided !== expected) {
+    return NextResponse.json({ ok: false }, { status: 403 });
+  }
+
   const token = (await getToken({ req: req as never, secret: process.env.NEXTAUTH_SECRET })) as EmailToken | null;
   const email = token?.email;
   if (!email) return NextResponse.json({ ok: false }, { status: 401 });

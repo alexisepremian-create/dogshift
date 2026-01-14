@@ -5,8 +5,16 @@ const isPublicRoute = createRouteMatcher([
   "/",
   "/login(.*)",
   "/signup(.*)",
+  "/become-sitter",
+  "/become-sitter/access",
   "/api/webhooks(.*)",
   "/api/clerk(.*)",
+  "/api/invites/verify",
+]);
+
+const isBecomeSitterInviteProtectedRoute = createRouteMatcher([
+  "/become-sitter/form",
+  "/api/become-sitter/apply",
 ]);
 
 const isLockBypassRoute = createRouteMatcher([
@@ -53,7 +61,22 @@ export default clerkMiddleware(async (auth, req) => {
     }
   }
 
-  if (isPublicRoute(req)) return;
+  if (isBecomeSitterInviteProtectedRoute(req)) {
+    const inviteCookie = req.cookies.get("dogsitter_invite")?.value;
+    if (inviteCookie !== "ok") {
+      const pathname = String(req?.nextUrl?.pathname ?? "");
+      if (pathname.startsWith("/api/")) {
+        return NextResponse.json({ ok: false, error: "INVITE_REQUIRED" }, { status: 403 });
+      }
+
+      const url = req.nextUrl.clone();
+      url.pathname = "/become-sitter/access";
+      url.search = "";
+      return addLockHeaders(NextResponse.redirect(url));
+    }
+  }
+
+  if (isPublicRoute(req)) return addLockHeaders(NextResponse.next());
 
   await auth();
   return addLockHeaders(NextResponse.next());

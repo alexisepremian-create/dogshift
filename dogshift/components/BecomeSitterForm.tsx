@@ -4,8 +4,6 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
 import MiniStepRing from "@/components/MiniStepRing";
-import { getDefaultHostProfile, loadHostProfileFromStorage, saveHostProfileToStorage, type HostProfileV1 } from "@/lib/hostProfile";
-import { addToPublicSittersIndex } from "@/lib/publicSitters";
 
 const SERVICE_OPTIONS = ["Promenade", "Garde", "Pension"] as const;
 
@@ -151,73 +149,32 @@ export default function BecomeSitterForm() {
       return;
     }
 
-    let sitterId = "";
-    if (!sitterId) {
-      try {
-        const res = await fetch("/api/role/make-sitter", { method: "POST" });
-        if (!res.ok) {
-          setFormStatus("error");
-          return;
-        }
-        const json = (await res.json()) as { ok?: boolean; sitterId?: string };
-        sitterId = typeof json?.sitterId === "string" ? json.sitterId.trim() : "";
-      } catch {
+    try {
+      const res = await fetch("/api/become-sitter/apply", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          firstName,
+          city,
+          email,
+          services,
+          hourlyRate,
+          pricePerDay,
+          availability,
+          bio,
+          avatarDataUrl,
+        }),
+      });
+      if (!res.ok) {
         setFormStatus("error");
         return;
       }
-    }
-
-    if (!sitterId) {
+    } catch {
       setFormStatus("error");
       return;
     }
 
-    const existingHostProfile = loadHostProfileFromStorage(sitterId);
-    const now = new Date().toISOString();
-
-    const nextProfile: HostProfileV1 = {
-      ...getDefaultHostProfile(sitterId),
-      sitterId,
-      firstName,
-      city,
-      bio,
-      avatarDataUrl: avatarDataUrl ?? undefined,
-      services: {
-        Promenade: serviceFlags.walk,
-        Garde: serviceFlags.sitting,
-        Pension: serviceFlags.boarding,
-      },
-      pricing: {
-        Promenade: pricingVisibility.showHourlyRate && serviceFlags.walk ? (hourlyRate ?? undefined) : undefined,
-        Garde: pricingVisibility.showHourlyRate && serviceFlags.sitting ? (hourlyRate ?? undefined) : undefined,
-        Pension: pricingVisibility.showPricePerDay && serviceFlags.boarding ? (pricePerDay ?? undefined) : undefined,
-      },
-      listingStatus: "published",
-      publishedAt: now,
-    };
-
-    try {
-      if (!existingHostProfile) {
-        saveHostProfileToStorage(nextProfile);
-      } else {
-        saveHostProfileToStorage({
-          ...existingHostProfile,
-          listingStatus: "published",
-          publishedAt: existingHostProfile.publishedAt ?? now,
-        });
-      }
-
-      addToPublicSittersIndex(sitterId);
-    } catch {
-      // ignore
-    }
-
-    try {
-      sessionStorage.setItem("dogshift_flash", "Annonce publiée. Votre profil est maintenant visible sur la recherche.");
-    } catch {
-      // ignore
-    }
-    router.push("/host");
+    setFormStatus("done");
   }
 
   if (formStatus === "done") {
@@ -227,6 +184,13 @@ export default function BecomeSitterForm() {
         <p className="mt-3 text-sm text-slate-600">
           Votre inscription a bien été enregistrée. Chaque profil est validé manuellement avant publication.
         </p>
+        <button
+          type="button"
+          onClick={() => router.push("/become-sitter")}
+          className="mt-6 inline-flex w-full items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-6 py-3 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition hover:bg-[var(--dogshift-blue-hover)]"
+        >
+          Retour
+        </button>
       </div>
     );
   }
