@@ -63,7 +63,7 @@ export default function LoginForm() {
       // - Completion lands on /post-login (which routes to next or /account).
       await signIn.authenticateWithRedirect({
         strategy: "oauth_google",
-        redirectUrl: "/login",
+        redirectUrl: "/auth/google",
         redirectUrlComplete: redirectAfterAuth,
       });
     } catch (err) {
