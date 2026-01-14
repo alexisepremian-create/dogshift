@@ -7,37 +7,160 @@ const nodemailer = require("nodemailer") as any;
 
 export const runtime = "nodejs";
 
-const AUTO_REPLY_TEXT = "Nous avons bien reçu votre message. Notre équipe support vous répondra dans les plus brefs délais. — DogShift";
+const AUTO_REPLY_TEXT = `Nous avons bien reçu votre message
 
-const AUTO_REPLY_HTML = `<!doctype html>
-<html lang="fr">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>DogShift — Support</title>
-  </head>
-  <body style="margin:0;padding:0;background:#f8fafc;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;">
-    <div style="padding:28px 16px;">
-      <div style="max-width:560px;margin:0 auto;background:#ffffff;border:1px solid #e2e8f0;border-radius:18px;overflow:hidden;">
-        <div style="padding:22px 22px 0 22px;">
-          <div style="font-size:13px;letter-spacing:0.06em;text-transform:uppercase;color:#64748b;font-weight:700;">DogShift</div>
-          <h1 style="margin:12px 0 0 0;font-size:22px;line-height:1.25;color:#0f172a;">Nous avons bien reçu votre message</h1>
-          <p style="margin:10px 0 0 0;font-size:14px;line-height:1.6;color:#334155;">
-            Merci de nous avoir contactés. Notre équipe support vous répondra dans les plus brefs délais.
-          </p>
-        </div>
-        <div style="padding:18px 22px 22px 22px;">
-          <div style="margin-top:18px;border-top:1px solid #e2e8f0;padding-top:14px;">
-            <p style="margin:0;font-size:12px;line-height:1.6;color:#64748b;">
-              Vous pouvez aussi nous écrire à <a href="mailto:support@dogshift.ch" style="color:#0f172a;text-decoration:underline;">support@dogshift.ch</a>.
-            </p>
-            <p style="margin:10px 0 0 0;font-size:12px;line-height:1.6;color:#64748b;">— DogShift</p>
-          </div>
-        </div>
-      </div>
-    </div>
-  </body>
-</html>`;
+Notre équipe vous répondra au plus vite avec une réponse personnalisée.
+
+Bonjour,
+
+Merci pour votre message et pour l’intérêt que vous portez à DogShift.
+
+Ce qui se passe maintenant :
+1. Nous analysons votre message
+2. Nous revenons vers vous par email dès que possible
+3. Si des informations manquent, nous vous recontacterons
+
+Pour traiter votre demande plus vite, vous pouvez répondre à cet email en indiquant :
+- Votre ville / région
+- Le sujet (propriétaire / dog-sitter / réservation / autre)
+- Toute information utile (dates, contraintes, etc.)
+
+Découvrir DogShift :
+https://dogshift.ch
+
+DogShift · Suisse
+support@dogshift.ch`;
+
+const AUTO_REPLY_HTML = `
+  
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f5f7fb;">
+      <tbody><tr>
+        <td align="center" style="padding:32px 16px;">
+
+          
+          <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:600px;max-width:600px;">
+
+            
+            <tbody><tr>
+              <td align="center" style="padding-bottom:20px;">
+                <img src="https://dogshift.ch/dogshift-logo.png" alt="DogShift" width="120" style="display:block;margin:0 auto;border:0;outline:none;text-decoration:none;height:auto;">
+              </td>
+            </tr>
+
+            
+            <tr>
+              <td style="background:#ffffff;border-radius:16px;border:1px solid #e6ebf2;">
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+
+                  
+                  <tbody><tr>
+                    <td style="padding:24px 24px 8px 24px;
+                               font-family:Arial,Helvetica,sans-serif;
+                               color:#111827;">
+                      <h1 style="margin:0;font-size:20px;line-height:28px;">
+                        Nous avons bien reçu votre message
+                      </h1>
+                      <p style="margin:6px 0 0 0;
+                                font-size:14px;
+                                line-height:22px;
+                                color:#4b5563;">
+                        Notre équipe vous répondra au plus vite avec une réponse personnalisée.
+                      </p>
+                    </td>
+                  </tr>
+
+                  
+                  <tr>
+                    <td style="padding:16px 24px;
+                               font-family:Arial,Helvetica,sans-serif;
+                               font-size:14px;
+                               line-height:22px;
+                               color:#111827;">
+                      Bonjour,<br><br>
+                      Merci pour votre message et pour l’intérêt que vous portez à
+                      <strong>DogShift</strong>.
+                    </td>
+                  </tr>
+
+                  
+                  <tr>
+                    <td style="padding:0 24px 16px 24px;">
+                      <div style="background:#f8fafc;
+                                  border:1px solid #e6ebf2;
+                                  border-radius:12px;
+                                  padding:16px;
+                                  font-family:Arial,Helvetica,sans-serif;">
+                        <strong style="display:block;margin-bottom:6px;">
+                          Ce qui se passe maintenant
+                        </strong>
+                        <ol style="margin:0;padding-left:18px;
+                                   font-size:13px;
+                                   line-height:20px;
+                                   color:#374151;">
+                          <li>Nous analysons votre message</li>
+                          <li>Nous revenons vers vous par email dès que possible</li>
+                          <li>Si des informations manquent, nous vous recontacterons</li>
+                        </ol>
+                      </div>
+                    </td>
+                  </tr>
+
+                  
+                  <tr>
+                    <td style="padding:0 24px 16px 24px;
+                               font-family:Arial,Helvetica,sans-serif;
+                               font-size:13px;
+                               line-height:20px;
+                               color:#374151;">
+                      Pour traiter votre demande plus vite, vous pouvez répondre à cet email
+                      en indiquant :
+                      <ul style="margin:6px 0 0 0;padding-left:18px;">
+                        <li>Votre ville / région</li>
+                        <li>Le sujet (propriétaire / dog-sitter / réservation / autre)</li>
+                        <li>Toute information utile (dates, contraintes, etc.)</li>
+                      </ul>
+                    </td>
+                  </tr>
+
+                  
+                  <tr>
+                    <td align="center" style="padding:8px 24px 20px 24px;">
+                      <a href="https://dogshift.ch" style="background:#111827;
+                                color:#ffffff;
+                                text-decoration:none;
+                                font-family:Arial,Helvetica,sans-serif;
+                                font-size:14px;
+                                padding:12px 20px;
+                                border-radius:10px;
+                                display:inline-block;">
+                        Découvrir DogShift
+                      </a>
+                    </td>
+                  </tr>
+
+                </tbody></table>
+              </td>
+            </tr>
+
+            
+            <tr>
+              <td align="center" style="padding:16px 8px 0 8px;
+                         font-family:Arial,Helvetica,sans-serif;
+                         font-size:12px;
+                         line-height:18px;
+                         color:#6b7280;">
+                DogShift • Suisse<br>
+                <a href="https://dogshift.ch" style="color:#6b7280;">dogshift.ch</a> ·
+                <a href="mailto:support@dogshift.ch" style="color:#6b7280;">support@dogshift.ch</a>
+              </td>
+            </tr>
+
+          </tbody></table>
+        </td>
+      </tr>
+    </tbody></table>
+  
+`;
 
 function requiredEnv(name: string) {
   const value = process.env[name];
