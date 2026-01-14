@@ -80,7 +80,7 @@ export default function LoginForm() {
       <h1 className="text-2xl font-semibold tracking-tight text-slate-900">S’identifier</h1>
       <p className="mt-2 text-sm text-slate-600">Accède à ton espace DogShift.</p>
 
-      <div className="mt-6">
+      <div className="mt-6 flex flex-col gap-6">
         <button
           type="button"
           onClick={handleGoogle}
@@ -89,18 +89,17 @@ export default function LoginForm() {
         >
           Continuer avec Google
         </button>
-      </div>
 
-      <div className="my-6 flex items-center gap-3">
-        <div className="h-px flex-1 bg-slate-200" />
-        <span className="text-xs font-medium text-slate-500">ou</span>
-        <div className="h-px flex-1 bg-slate-200" />
-      </div>
+        <div className="flex items-center gap-3">
+          <div className="h-px flex-1 bg-slate-200" />
+          <span className="text-xs font-medium text-slate-500">ou</span>
+          <div className="h-px flex-1 bg-slate-200" />
+        </div>
 
-      <form onSubmit={handleEmailLogin} className="space-y-4">
+        <form onSubmit={handleEmailLogin} className="space-y-5">
         <div>
           <label className="block text-sm font-medium text-slate-700" htmlFor="email">
-            Email
+            E-mail
           </label>
           <input
             id="email"
@@ -120,7 +119,7 @@ export default function LoginForm() {
           disabled={disabled}
           className="inline-flex w-full items-center justify-center rounded-full bg-slate-900 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {loading ? "Envoi…" : "Se connecter par email"}
+          {loading ? "Envoi…" : "Se connecter par e-mail"}
         </button>
 
         {sent ? (
@@ -130,7 +129,8 @@ export default function LoginForm() {
         {error ? (
           <p className="text-sm text-rose-600">{error}</p>
         ) : null}
-      </form>
+        </form>
+      </div>
 
       <p className="mt-6 text-xs text-slate-500">
         En continuant, tu acceptes nos{" "}
