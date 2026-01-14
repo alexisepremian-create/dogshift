@@ -19,6 +19,15 @@ function isValidEmail(email: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
+function maskEmail(email: string) {
+  const at = email.indexOf("@");
+  if (at <= 1) return "***";
+  const local = email.slice(0, at);
+  const domain = email.slice(at + 1);
+  const maskedLocal = `${local[0]}***${local[local.length - 1] ?? ""}`;
+  return `${maskedLocal}@${domain}`;
+}
+
 async function sendAutoReplyWithResend(input: { to: string }) {
   const apiKey = (process.env.RESEND_API_KEY || "").trim();
   if (!apiKey) return { ok: false as const, skipped: true as const, reason: "RESEND_API_KEY_MISSING" };
@@ -36,27 +45,38 @@ async function sendAutoReplyWithResend(input: { to: string }) {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      from: "support@dogshift.ch",
+      from: "DogShift Support <support@dogshift.ch>",
       to: input.to,
+      reply_to: "support@dogshift.ch",
       // Keep subject here for compatibility even if the template includes one.
       subject: "DogShift — Nous avons bien reçu ta demande",
       // Published template name: dogshift-auto-reply-support-copy
       template_id: templateId,
+      template_data: {},
     }),
   });
 
+  const rawText = await res.text().catch(() => "");
+
   if (!res.ok) {
-    const text = await res.text().catch(() => "");
     let details: unknown = null;
     try {
-      details = text ? (JSON.parse(text) as unknown) : null;
+      details = rawText ? (JSON.parse(rawText) as unknown) : null;
     } catch {
-      details = text;
+      details = rawText;
     }
     return { ok: false as const, skipped: false as const, status: res.status, details };
   }
 
-  return { ok: true as const };
+  let data: unknown = null;
+  try {
+    data = rawText ? (JSON.parse(rawText) as unknown) : null;
+  } catch {
+    data = rawText;
+  }
+
+  const id = typeof (data as any)?.id === "string" ? (data as any).id : null;
+  return { ok: true as const, id };
 }
 
 export async function POST(request: Request) {
@@ -64,6 +84,16 @@ export async function POST(request: Request) {
     const body = (await request.json()) as { message?: unknown; email?: unknown };
     const message = typeof body.message === "string" ? body.message.trim() : "";
     const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
+    const emailValid = Boolean(email) && isValidEmail(email);
+
+    console.info("[support/contact] request", {
+      messageLength: message.length,
+      hasEmail: Boolean(email),
+      emailMasked: email ? maskEmail(email) : null,
+      emailValid,
+      hasResendKey: Boolean((process.env.RESEND_API_KEY || "").trim()),
+      hasTemplateId: Boolean((process.env.RESEND_SUPPORT_AUTOREPLY_TEMPLATE_ID || "").trim()),
+    });
 
     if (!message) {
       return NextResponse.json({ ok: false, error: "MESSAGE_REQUIRED" }, { status: 400 });
@@ -85,7 +115,7 @@ export async function POST(request: Request) {
     const smtpPass = requiredEnv("SMTP_PASS");
 
     const fromAddress = process.env.SMTP_FROM || smtpUser;
-    const toAddress = "contact@dogshift.ch";
+    const toAddress = "support@dogshift.ch";
 
     const secure = smtpPort === 465;
     const requireTLS = smtpPort === 587;
@@ -115,32 +145,49 @@ export async function POST(request: Request) {
       `x-forwarded-for: ${forwardedFor}\n` +
       `user-agent: ${userAgent}\n`;
 
+    console.info("[support/contact] smtp sending", {
+      toAddress,
+      fromAddress,
+      replyTo: emailValid ? maskEmail(email) : fromAddress,
+    });
+
     await transporter.sendMail({
       from: fromAddress,
       to: toAddress,
       subject: "[DogShift] Nouvelle demande – Centre d’aide",
       text: textBody,
-      replyTo: fromAddress,
+      replyTo: emailValid ? email : fromAddress,
     });
 
-    // Best-effort auto-reply to the user (must not block the internal email).
-    if (email) {
-      if (!isValidEmail(email)) {
-        console.warn("[support/contact] invalid email for auto-reply", { email });
-      } else {
-        try {
-          const autoReply = await sendAutoReplyWithResend({ to: email });
+    console.info("[support/contact] smtp sent", { toAddress });
 
-          if (!autoReply.ok) {
-            console.warn("[support/contact] auto-reply failed", autoReply);
+    // Best-effort auto-reply to the user (must not block the internal email).
+    let autoReply: "skipped" | "sent" | "failed" = "skipped";
+
+    if (email) {
+      if (!emailValid) {
+        console.info("[support/contact] auto-reply skipped (invalid email)", { emailMasked: maskEmail(email) });
+      } else if (!(process.env.RESEND_SUPPORT_AUTOREPLY_TEMPLATE_ID || "").trim()) {
+        console.info("[support/contact] auto-reply skipped (missing template id)", { emailMasked: maskEmail(email) });
+      } else {
+        console.info("[support/contact] auto-reply attempting", { emailMasked: maskEmail(email) });
+        try {
+          const res = await sendAutoReplyWithResend({ to: email });
+          if (res.ok) {
+            autoReply = "sent";
+            console.info("[support/contact] auto-reply sent", { emailMasked: maskEmail(email), id: (res as any).id ?? null });
+          } else {
+            autoReply = "failed";
+            console.error("[support/contact] auto-reply failed", res);
           }
         } catch (err) {
-          console.warn("[support/contact] auto-reply threw", err);
+          autoReply = "failed";
+          console.error("[support/contact] auto-reply threw", err);
         }
       }
     }
 
-    return NextResponse.json({ ok: true }, { status: 200 });
+    return NextResponse.json({ ok: true, autoReply }, { status: 200 });
   } catch (err: unknown) {
     const e = err as {
       name?: string;
