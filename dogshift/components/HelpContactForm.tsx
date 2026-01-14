@@ -1,8 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import { useUser } from "@clerk/nextjs";
 
 export default function HelpContactForm() {
+  const { isLoaded, isSignedIn, user } = useUser();
+  const userEmail = user?.primaryEmailAddress?.emailAddress ?? "";
+
   const [message, setMessage] = useState("");
   const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
   const [errorText, setErrorText] = useState<string | null>(null);
@@ -22,13 +26,19 @@ export default function HelpContactForm() {
       return;
     }
 
+    if (trimmed.length > 5000) {
+      setErrorText("Votre message est trop long. Merci de le raccourcir.");
+      setStatus("error");
+      return;
+    }
+
     setErrorText(null);
     setStatus("sending");
     try {
       const res = await fetch("/api/support/contact", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ message: trimmed }),
+        body: JSON.stringify({ message: trimmed, email: userEmail }),
       });
 
       if (!res.ok) {
@@ -56,6 +66,29 @@ export default function HelpContactForm() {
       setErrorText("Impossible d’envoyer votre message pour le moment.");
       setStatus("error");
     }
+  }
+
+  if (!isLoaded) {
+    return null;
+  }
+
+  const canUseForm = isSignedIn && Boolean(userEmail);
+
+  if (!canUseForm) {
+    return (
+      <div className="mt-6">
+        <p className="text-sm font-semibold text-slate-900">Contacter le support</p>
+        <p className="mt-2 text-sm leading-relaxed text-slate-600">
+          Pour contacter le support DogShift, écris-nous à support@dogshift.ch
+        </p>
+        <a
+          href="mailto:support@dogshift.ch"
+          className="mt-4 inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50"
+        >
+          Écrire au support
+        </a>
+      </div>
+    );
   }
 
   return (
