@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import Image from "next/image";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
 import MiniStepRing from "@/components/MiniStepRing";
@@ -42,12 +43,12 @@ export default function BecomeSitterForm() {
   const DAILY_MIN = 70;
   const DAILY_MAX = 140;
 
-  useEffect(() => {
-    if (!isLoaded || !isSignedIn) return;
-    const sessionEmail = user?.primaryEmailAddress?.emailAddress;
-    if (!sessionEmail) return;
-    setEmail(sessionEmail);
+  const sessionEmail = useMemo(() => {
+    if (!isLoaded || !isSignedIn) return "";
+    return user?.primaryEmailAddress?.emailAddress ?? "";
   }, [isLoaded, isSignedIn, user]);
+
+  const effectiveEmail = sessionStatus === "authenticated" ? sessionEmail : email;
 
   const step1Errors = useMemo(() => {
     if (sessionStatus === "authenticated") return {};
@@ -156,7 +157,7 @@ export default function BecomeSitterForm() {
         body: JSON.stringify({
           firstName,
           city,
-          email,
+          email: effectiveEmail,
           services,
           hourlyRate,
           pricePerDay,
@@ -174,22 +175,22 @@ export default function BecomeSitterForm() {
       return;
     }
 
-    setFormStatus("done");
+    router.push("/host");
   }
 
   if (formStatus === "done") {
     return (
       <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-[0_18px_60px_-40px_rgba(2,6,23,0.35)] sm:p-10">
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">Merci, votre profil a été soumis</h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">Votre compte sitter est prêt</h1>
         <p className="mt-3 text-sm text-slate-600">
-          Votre inscription a bien été enregistrée. Chaque profil est validé manuellement avant publication.
+          Votre profil sitter a été créé. Vous pouvez maintenant accéder à votre espace.
         </p>
         <button
           type="button"
-          onClick={() => router.push("/become-sitter")}
+          onClick={() => router.push("/host")}
           className="mt-6 inline-flex w-full items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-6 py-3 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition hover:bg-[var(--dogshift-blue-hover)]"
         >
-          Retour
+          Accéder à mon espace
         </button>
       </div>
     );
@@ -217,19 +218,16 @@ export default function BecomeSitterForm() {
                 </label>
                 <input
                   id="email"
-                  value={email}
+                  value={effectiveEmail}
+                  disabled={sessionStatus === "authenticated" || formStatus === "submitting"}
                   onChange={(e) => {
+                    if (sessionStatus === "authenticated") return;
                     setAuthError(null);
                     setEmail(e.target.value);
                   }}
-                  className={
-                    step1Errors.email
-                      ? "mt-2 w-full rounded-2xl border border-rose-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition focus:border-rose-400 focus:ring-4 focus:ring-rose-100"
-                      : "mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition focus:border-[var(--dogshift-blue)] focus:ring-4 focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_85%)]"
-                  }
-                  placeholder="vous@exemple.com"
+                  className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:ring-4 focus:ring-slate-200"
+                  placeholder="email@exemple.com"
                   autoComplete="email"
-                  inputMode="email"
                 />
                 {step1Errors.email ? (
                   <p className="mt-2 text-xs font-medium text-rose-600">{step1Errors.email}</p>
@@ -503,9 +501,11 @@ export default function BecomeSitterForm() {
 
               {avatarDataUrl ? (
                 <div className="mt-3 flex items-center gap-3">
-                  <img
+                  <Image
                     src={avatarDataUrl}
                     alt="Aperçu avatar"
+                    width={48}
+                    height={48}
                     className="h-12 w-12 rounded-full object-cover ring-1 ring-slate-200"
                   />
                   <button

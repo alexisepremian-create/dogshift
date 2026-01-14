@@ -26,7 +26,7 @@ export async function POST(req: Request) {
 
     const now = new Date();
 
-    const invite = await (prisma as any).inviteCode.findUnique({
+    const invite = await prisma.inviteCode.findUnique({
       where: { code },
       select: { id: true, type: true, usedAt: true, expiresAt: true },
     });
@@ -46,23 +46,22 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "CODE_ALREADY_USED" }, { status: 409 });
     }
 
-    let isNewUnlock = false;
-
-    if (invite.type === "single_use") {
-      await (prisma as any).inviteCode.update({
-        where: { id: invite.id },
-        data: { usedAt: now },
-        select: { id: true },
-      });
-      isNewUnlock = true;
-    }
-
-    const res = NextResponse.json({ ok: true, isNewUnlock }, { status: 200 });
+    const res = NextResponse.json({ ok: true, inviteId: invite.id }, { status: 200 });
 
     const sevenDaysSeconds = 7 * 24 * 60 * 60;
     res.cookies.set({
       name: "dogsitter_invite",
       value: "ok",
+      httpOnly: true,
+      secure: true,
+      sameSite: "lax",
+      maxAge: sevenDaysSeconds,
+      path: "/",
+    });
+
+    res.cookies.set({
+      name: "dogsitter_invite_id",
+      value: invite.id,
       httpOnly: true,
       secure: true,
       sameSite: "lax",
