@@ -1,24 +1,16 @@
 "use client";
 
-import { SignIn } from "@clerk/nextjs";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useSearchParams } from "next/navigation";
-import AuthCenteredWrapper from "@/components/AuthCenteredWrapper";
-import { clerkAppearance } from "@/lib/clerkAppearance";
 
 export default function LoginCatchAllPage() {
+  const router = useRouter();
   const searchParams = useSearchParams();
-  const next = (searchParams?.get("next") ?? "").trim();
-  const after = next ? `/post-login?next=${encodeURIComponent(next)}` : "/post-login";
+  useEffect(() => {
+    const qs = searchParams?.toString() ?? "";
+    router.replace(qs ? `/login?${qs}` : "/login");
+  }, [router, searchParams]);
 
-  return (
-    <AuthCenteredWrapper>
-      <SignIn
-        routing="path"
-        path="/login"
-        signUpUrl="/signup"
-        afterSignInUrl={after}
-        appearance={clerkAppearance}
-      />
-    </AuthCenteredWrapper>
-  );
+  return null;
 }
