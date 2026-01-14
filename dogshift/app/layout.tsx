@@ -96,6 +96,9 @@ export default async function RootLayout({
                       CGU
                     </Link>
                     <p className="font-medium text-slate-700">© {new Date().getFullYear()} DogShift</p>
+                    <a href="mailto:support@dogshift.ch" className="font-medium text-slate-700">
+                      Support : support@dogshift.ch
+                    </a>
                   </div>
                 </div>
               </div>
