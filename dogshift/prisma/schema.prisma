@@ -6,8 +6,8 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
   directUrl = env("DIRECT_URL")
 }
 
@@ -40,30 +40,32 @@ enum InviteCodeType {
 }
 
 model User {
-  id        String   @id @default(cuid())
-  clerkUserId String? @unique
-  email     String   @unique
-  name      String?
-  image     String?
-  emailVerified DateTime?
-  passwordHash String?
+  id              String    @id @default(cuid())
+  clerkUserId     String?   @unique
+  email           String    @unique
+  name            String?
+  image           String?
+  emailVerified   DateTime?
+  passwordHash    String?
   hostProfileJson String?
-  role      Role     @default(OWNER)
-  sitterId   String?  @unique
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  role            Role      @default(OWNER)
+  sitterId        String?   @unique
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
   accounts Account[]
   sessions Session[]
 
-  bookings Booking[] @relation("UserBookings")
+  bookings       Booking[] @relation("UserBookings")
   sitterBookings Booking[] @relation("SitterBookings")
 
-  ownerConversations Conversation[] @relation("OwnerConversations")
+  ownerConversations  Conversation[] @relation("OwnerConversations")
   sitterConversations Conversation[] @relation("SitterConversations")
-  sentMessages Message[]
+  sentMessages        Message[]
 
   sitterProfile SitterProfile?
+
+  sitterApplications SitterApplication[]
 
   notifications Notification[]
 }
@@ -72,34 +74,34 @@ model Notification {
   id String @id @default(cuid())
 
   userId String
-  type NotificationType
+  type   NotificationType
 
-  title String
-  body String?
+  title    String
+  body     String?
   entityId String?
-  url String?
+  url      String?
   metadata Json?
 
   idempotencyKey String
 
-  createdAt DateTime @default(now())
-  readAt DateTime?
+  createdAt DateTime  @default(now())
+  readAt    DateTime?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@unique([userId, idempotencyKey])
   @@index([userId, readAt])
   @@index([userId, createdAt])
-  @@unique([userId, idempotencyKey])
 }
 
 model InviteCode {
   id String @id @default(cuid())
 
-  code String @unique
-  type InviteCodeType
-  usedAt DateTime?
+  code      String         @unique
+  type      InviteCodeType
+  usedAt    DateTime?
   expiresAt DateTime?
-  note String?
+  note      String?
 
   createdAt DateTime @default(now())
 }
@@ -108,7 +110,7 @@ model SitterApplication {
   id String @id @default(cuid())
 
   userId String
-  data Json
+  data   Json
 
   createdAt DateTime @default(now())
 
@@ -120,23 +122,23 @@ model SitterApplication {
 model SitterProfile {
   id String @id @default(cuid())
 
-  userId String @unique
+  userId   String @unique
   sitterId String @unique
 
-  published Boolean @default(false)
+  published   Boolean   @default(false)
   publishedAt DateTime?
 
   displayName String?
-  city String?
-  postalCode String?
-  bio String?
-  avatarUrl String?
+  city        String?
+  postalCode  String?
+  bio         String?
+  avatarUrl   String?
 
   lat Float?
   lng Float?
 
   services Json?
-  pricing Json?
+  pricing  Json?
   dogSizes Json?
 
   createdAt DateTime @default(now())
@@ -152,22 +154,22 @@ model SitterProfile {
 model Booking {
   id String @id @default(cuid())
 
-  userId String
+  userId   String
   sitterId String
 
-  service String?
+  service   String?
   startDate DateTime?
-  endDate DateTime?
+  endDate   DateTime?
 
   message String?
 
-  status BookingStatus @default(PENDING_PAYMENT)
-  canceledAt DateTime?
-  amount Int
-  currency String @default("chf")
+  status            BookingStatus @default(PENDING_PAYMENT)
+  canceledAt        DateTime?
+  amount            Int
+  currency          String        @default("chf")
   platformFeeAmount Int
 
-  stripeSessionId String?
+  stripeSessionId       String?
   stripePaymentIntentId String?
 
   archivedAt DateTime?
@@ -175,7 +177,7 @@ model Booking {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  user User @relation("UserBookings", fields: [userId], references: [id], onDelete: Cascade)
+  user   User @relation("UserBookings", fields: [userId], references: [id], onDelete: Cascade)
   sitter User @relation("SitterBookings", fields: [sitterId], references: [sitterId], onDelete: Restrict)
 
   conversations Conversation[] @relation("BookingConversations")
@@ -189,18 +191,18 @@ model Booking {
 model Conversation {
   id String @id @default(cuid())
 
-  ownerId String
-  sitterId String
+  ownerId   String
+  sitterId  String
   bookingId String?
 
-  lastMessageAt DateTime?
+  lastMessageAt      DateTime?
   lastMessagePreview String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  owner User @relation("OwnerConversations", fields: [ownerId], references: [id], onDelete: Cascade)
-  sitter User @relation("SitterConversations", fields: [sitterId], references: [sitterId], onDelete: Restrict)
+  owner   User     @relation("OwnerConversations", fields: [ownerId], references: [id], onDelete: Cascade)
+  sitter  User     @relation("SitterConversations", fields: [sitterId], references: [sitterId], onDelete: Restrict)
   booking Booking? @relation("BookingConversations", fields: [bookingId], references: [id], onDelete: SetNull)
 
   messages Message[]
@@ -216,14 +218,14 @@ model Message {
   id String @id @default(cuid())
 
   conversationId String
-  senderId String
-  body String
-  readAt DateTime?
+  senderId       String
+  body           String
+  readAt         DateTime?
 
   createdAt DateTime @default(now())
 
   conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  sender User @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  sender       User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
 
   @@index([conversationId])
   @@index([senderId])
