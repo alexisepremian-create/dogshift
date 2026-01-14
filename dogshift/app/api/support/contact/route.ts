@@ -13,10 +13,57 @@ function requiredEnv(name: string) {
   return value;
 }
 
+function isValidEmail(email: string) {
+  // Simple validation (enough for a contact form).
+  // Avoid over-strict rules that reject valid addresses.
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+async function sendAutoReplyWithResend(input: { to: string }) {
+  const apiKey = (process.env.RESEND_API_KEY || "").trim();
+  if (!apiKey) return { ok: false as const, skipped: true as const, reason: "RESEND_API_KEY_MISSING" };
+
+  // Resend Templates are addressed by template_id in the send API.
+  // The published template name is: dogshift-auto-reply-support-copy
+  // Keep the ID in env to avoid hardcoding and allow changes without redeploying.
+  const templateId = (process.env.RESEND_SUPPORT_AUTOREPLY_TEMPLATE_ID || "").trim();
+  if (!templateId) return { ok: false as const, skipped: true as const, reason: "TEMPLATE_ID_MISSING" };
+
+  const res = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      from: "support@dogshift.ch",
+      to: input.to,
+      // Keep subject here for compatibility even if the template includes one.
+      subject: "DogShift — Nous avons bien reçu ta demande",
+      // Published template name: dogshift-auto-reply-support-copy
+      template_id: templateId,
+    }),
+  });
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    let details: unknown = null;
+    try {
+      details = text ? (JSON.parse(text) as unknown) : null;
+    } catch {
+      details = text;
+    }
+    return { ok: false as const, skipped: false as const, status: res.status, details };
+  }
+
+  return { ok: true as const };
+}
+
 export async function POST(request: Request) {
   try {
-    const body = (await request.json()) as { message?: unknown };
+    const body = (await request.json()) as { message?: unknown; email?: unknown };
     const message = typeof body.message === "string" ? body.message.trim() : "";
+    const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
 
     if (!message) {
       return NextResponse.json({ ok: false, error: "MESSAGE_REQUIRED" }, { status: 400 });
@@ -75,6 +122,23 @@ export async function POST(request: Request) {
       text: textBody,
       replyTo: fromAddress,
     });
+
+    // Best-effort auto-reply to the user (must not block the internal email).
+    if (email) {
+      if (!isValidEmail(email)) {
+        console.warn("[support/contact] invalid email for auto-reply", { email });
+      } else {
+        try {
+          const autoReply = await sendAutoReplyWithResend({ to: email });
+
+          if (!autoReply.ok) {
+            console.warn("[support/contact] auto-reply failed", autoReply);
+          }
+        } catch (err) {
+          console.warn("[support/contact] auto-reply threw", err);
+        }
+      }
+    }
 
     return NextResponse.json({ ok: true }, { status: 200 });
   } catch (err: unknown) {
