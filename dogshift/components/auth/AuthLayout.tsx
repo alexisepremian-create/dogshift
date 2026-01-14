@@ -4,14 +4,23 @@ import type { ReactNode } from "react";
 export default function AuthLayout({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen bg-white text-slate-900">
-      <div className="mx-auto flex min-h-screen w-full max-w-[480px] flex-col px-6 py-10">
+      <div className="mx-auto flex min-h-screen w-full max-w-[480px] flex-col px-6 py-8">
         <div className="flex items-center justify-center">
-          <Image src="/dogshift-logo.png" alt="DogShift" width={140} height={32} priority />
+          <div className="flex h-14 w-14 items-center justify-center rounded-full border border-slate-200 bg-slate-50">
+            <Image
+              src="/dogshift-logo.png"
+              alt="DogShift"
+              width={64}
+              height={64}
+              priority
+              className="h-8 w-auto"
+            />
+          </div>
         </div>
 
-        <div className="mt-10 flex flex-1 flex-col">{children}</div>
+        <div className="flex flex-1 flex-col justify-center py-10">{children}</div>
 
-        <div className="mt-10 border-t border-slate-200 pt-6 text-center text-xs text-slate-500">
+        <div className="border-t border-slate-200 pt-5 text-center text-xs text-slate-500">
           <p>DogShift</p>
         </div>
       </div>
