@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useSignIn } from "@clerk/nextjs";
+import Link from "next/link";
 
 function normalizeEmail(input: string) {
   return input.replace(/\s+/g, "").trim().toLowerCase();
@@ -79,7 +80,7 @@ export default function LoginForm() {
       <h1 className="text-2xl font-semibold tracking-tight text-slate-900">S’identifier</h1>
       <p className="mt-2 text-sm text-slate-600">Accède à ton espace DogShift.</p>
 
-      <div className="mt-8">
+      <div className="mt-6">
         <button
           type="button"
           onClick={handleGoogle}
@@ -90,7 +91,7 @@ export default function LoginForm() {
         </button>
       </div>
 
-      <div className="my-8 flex items-center gap-3">
+      <div className="my-6 flex items-center gap-3">
         <div className="h-px flex-1 bg-slate-200" />
         <span className="text-xs font-medium text-slate-500">ou</span>
         <div className="h-px flex-1 bg-slate-200" />
@@ -131,8 +132,12 @@ export default function LoginForm() {
         ) : null}
       </form>
 
-      <p className="mt-8 text-xs text-slate-500">
-        En continuant, tu acceptes nos conditions d’utilisation.
+      <p className="mt-6 text-xs text-slate-500">
+        En continuant, tu acceptes nos{" "}
+        <Link href="/cgu" className="underline underline-offset-2 hover:text-slate-700">
+          conditions d’utilisation
+        </Link>
+        .
       </p>
     </div>
   );
