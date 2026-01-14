@@ -63,8 +63,8 @@ export default async function RootLayout({
         <ClerkProvider
           signInUrl="/login"
           signUpUrl="/signup"
-          afterSignInUrl="/account"
-          afterSignUpUrl="/account"
+          afterSignInUrl="/post-login"
+          afterSignUpUrl="/post-login"
           localization={frFR}
         >
           <Suspense fallback={null}>

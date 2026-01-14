@@ -1,27 +1,49 @@
-"use client";
+import { redirect } from "next/navigation";
+import { currentUser } from "@clerk/nextjs/server";
+import { auth } from "@clerk/nextjs/server";
 
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { useSearchParams } from "next/navigation";
-import { useUser } from "@clerk/nextjs";
+import { ensureDbUserByClerkUserId } from "@/lib/auth/resolveDbUserId";
 
-export default function PostLoginPage() {
-  const { isLoaded, isSignedIn } = useUser();
-  const router = useRouter();
-  const searchParams = useSearchParams();
+export default async function PostLoginPage({
+  searchParams,
+}: {
+  searchParams?: Record<string, string | string[] | undefined>;
+}) {
+  const { userId } = await auth();
+  if (!userId) {
+    redirect("/login");
+  }
 
-  useEffect(() => {
-    if (!isLoaded) return;
-    if (!isSignedIn) return;
+  const clerkUser = await currentUser();
+  const email = clerkUser?.primaryEmailAddress?.emailAddress ?? "";
+  if (!email) {
+    console.warn("[auth][post-login] missing primary email", { clerkUserId: userId });
+    redirect("/login");
+  }
 
-    const next = (searchParams?.get("next") ?? "").trim();
-    if (next) {
-      router.replace(next);
-      return;
-    }
+  const name = typeof clerkUser?.fullName === "string" ? clerkUser.fullName : null;
 
-    router.replace("/account");
-  }, [isLoaded, isSignedIn, router, searchParams]);
+  const ensured = await ensureDbUserByClerkUserId({
+    clerkUserId: userId,
+    email,
+    name,
+  });
 
-  return null;
+  if (!ensured) {
+    console.error("[auth][post-login] db user ensure failed", { clerkUserId: userId });
+    redirect("/login");
+  }
+
+  if (ensured.created) {
+    console.info("[auth][post-login] db user created", { clerkUserId: userId, dbUserId: ensured.id });
+    redirect("/onboarding");
+  }
+
+  const nextRaw = searchParams?.next;
+  const next = typeof nextRaw === "string" ? nextRaw.trim() : "";
+  if (next) {
+    redirect(next);
+  }
+
+  redirect("/dashboard");
 }
