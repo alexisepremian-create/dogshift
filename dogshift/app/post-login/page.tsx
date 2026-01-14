@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { currentUser } from "@clerk/nextjs/server";
 import { auth } from "@clerk/nextjs/server";
+import { headers } from "next/headers";
 
 import { ensureDbUserByClerkUserId } from "@/lib/auth/resolveDbUserId";
 
@@ -11,6 +12,16 @@ export default async function PostLoginPage({
 }) {
   const { userId } = await auth();
   if (!userId) {
+    const h = await headers();
+    console.warn("[auth][post-login] clerk signed-out", {
+      clerkAuthReason: h.get("x-clerk-auth-reason"),
+      clerkAudStatus: h.get("x-clerk-aud-status"),
+      clerkRequestId: h.get("x-clerk-request-id"),
+      host: h.get("host"),
+      forwardedProto: h.get("x-forwarded-proto"),
+      forwardedHost: h.get("x-forwarded-host"),
+      forwardedFor: h.get("x-forwarded-for"),
+    });
     redirect("/login");
   }
 
