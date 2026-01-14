@@ -2,7 +2,7 @@ import { auth, currentUser } from "@clerk/nextjs/server";
 import { unstable_cache as cache } from "next/cache";
 
 import { prisma } from "@/lib/prisma";
-import { ensureDbUserByEmail } from "@/lib/auth/resolveDbUserId";
+import { ensureDbUserByClerkUserId } from "@/lib/auth/resolveDbUserId";
 
 export type HostUserData = {
   sitterId: string | null;
@@ -25,7 +25,8 @@ export async function getHostUserData(): Promise<HostUserData> {
 
   const load = cache(
     async (email: string): Promise<HostUserData> => {
-      const ensured = await ensureDbUserByEmail({
+      const ensured = await ensureDbUserByClerkUserId({
+        clerkUserId: userId,
         email,
         name: typeof clerkUser?.fullName === "string" ? clerkUser.fullName : null,
       });

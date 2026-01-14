@@ -2,7 +2,7 @@ import { auth, clerkClient, currentUser } from "@clerk/nextjs/server";
 import { unstable_noStore as noStore } from "next/cache";
 
 import { prisma } from "@/lib/prisma";
-import { ensureDbUserByEmail } from "@/lib/auth/resolveDbUserId";
+import { ensureDbUserByClerkUserId } from "@/lib/auth/resolveDbUserId";
 
 export type UserContexts = {
   userId: string;
@@ -28,7 +28,7 @@ export async function getUserContexts(): Promise<UserContexts> {
 
   const rawName = typeof clerkUser?.fullName === "string" ? clerkUser.fullName : "";
 
-  const ensured = await ensureDbUserByEmail({ email: primaryEmail, name: rawName || null });
+  const ensured = await ensureDbUserByClerkUserId({ clerkUserId: userId, email: primaryEmail, name: rawName || null });
   if (!ensured) {
     throw new Error("DB_USER_UNAVAILABLE");
   }

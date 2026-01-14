@@ -8,7 +8,8 @@ END $$;
 
 -- Convert existing column to enum (was TEXT in initial migrations)
 ALTER TABLE "User"
+  ALTER COLUMN "role" DROP DEFAULT,
   ALTER COLUMN "role" TYPE "Role" USING ("role"::"Role");
 
 ALTER TABLE "User"
-  ALTER COLUMN "role" SET DEFAULT 'OWNER';
+  ALTER COLUMN "role" SET DEFAULT 'OWNER'::"Role";

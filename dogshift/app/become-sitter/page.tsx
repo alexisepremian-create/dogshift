@@ -2,7 +2,7 @@ import Link from "next/link";
 import { auth, currentUser } from "@clerk/nextjs/server";
 
 import { prisma } from "@/lib/prisma";
-import { ensureDbUserByEmail } from "@/lib/auth/resolveDbUserId";
+import { ensureDbUserByClerkUserId } from "@/lib/auth/resolveDbUserId";
 
 export default async function BecomeSitterPage() {
   const { userId } = await auth();
@@ -30,7 +30,8 @@ export default async function BecomeSitterPage() {
   const clerkUser = await currentUser();
   const primaryEmail = clerkUser?.primaryEmailAddress?.emailAddress ?? "";
   const dbUser = primaryEmail
-    ? await ensureDbUserByEmail({
+    ? await ensureDbUserByClerkUserId({
+        clerkUserId: userId,
         email: primaryEmail,
         name: typeof clerkUser?.fullName === "string" ? clerkUser.fullName : null,
       })

@@ -3,16 +3,21 @@
 import "dotenv/config";
 import dotenv from "dotenv";
 import { defineConfig } from "prisma/config";
+import path from "path";
+import { fileURLToPath } from "url";
 
-dotenv.config({ path: ".env.local" });
-dotenv.config({ path: ".env" });
+const configDir = path.dirname(fileURLToPath(import.meta.url));
+
+dotenv.config({ path: path.resolve(configDir, ".env.local") });
+dotenv.config({ path: path.resolve(configDir, ".env") });
 
 export default defineConfig({
-  schema: "prisma/schema.prisma",
+  schema: path.resolve(configDir, "prisma/schema.prisma"),
   migrations: {
-    path: "prisma/migrations",
+    path: path.resolve(configDir, "prisma/migrations"),
   },
   datasource: {
     url: process.env.DATABASE_URL!,
+    ...(process.env.DIRECT_URL ? { directUrl: process.env.DIRECT_URL } : null),
   },
 });

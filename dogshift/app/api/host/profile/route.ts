@@ -3,7 +3,7 @@ import type { NextRequest } from "next/server";
 import { auth, currentUser } from "@clerk/nextjs/server";
 
 import { prisma } from "@/lib/prisma";
-import { ensureDbUserByEmail } from "@/lib/auth/resolveDbUserId";
+import { ensureDbUserByClerkUserId } from "@/lib/auth/resolveDbUserId";
 
 export const runtime = "nodejs";
 
@@ -28,7 +28,8 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
     }
 
-    const ensured = await ensureDbUserByEmail({
+    const ensured = await ensureDbUserByClerkUserId({
+      clerkUserId: userId,
       email: primaryEmail,
       name: typeof clerkUser?.fullName === "string" ? clerkUser.fullName : null,
     });
@@ -140,7 +141,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
     }
 
-    const ensured = await ensureDbUserByEmail({
+    const ensured = await ensureDbUserByClerkUserId({
+      clerkUserId: userId,
       email: primaryEmail,
       name: typeof clerkUser?.fullName === "string" ? clerkUser.fullName : null,
     });
@@ -225,7 +227,18 @@ export async function POST(req: NextRequest) {
     const existingProfile = sitterProfileDelegate
       ? await sitterProfileDelegate.findUnique({
           where: { userId: uid },
-          select: { published: true, publishedAt: true },
+          select: {
+            published: true,
+            publishedAt: true,
+            displayName: true,
+            city: true,
+            postalCode: true,
+            bio: true,
+            avatarUrl: true,
+            services: true,
+            pricing: true,
+            dogSizes: true,
+          },
         })
       : null;
 
@@ -233,6 +246,22 @@ export async function POST(req: NextRequest) {
     const publishedAt = willPublish
       ? (existingProfile?.publishedAt ?? new Date())
       : null;
+
+    const updateData: Record<string, unknown> = {
+      sitterId,
+      published: willPublish,
+      publishedAt,
+    };
+
+    // Non-destructive updates: only apply if client actually provided meaningful values.
+    if (displayName) updateData.displayName = displayName;
+    if (city) updateData.city = city;
+    if (postalCode) updateData.postalCode = postalCode;
+    if (bio) updateData.bio = bio;
+    if (avatarUrl) updateData.avatarUrl = avatarUrl;
+    if (Array.isArray(enabledServices) && enabledServices.length > 0) updateData.services = enabledServices;
+    if (pricingObj && typeof pricingObj === "object" && Object.keys(pricingObj as any).length > 0) updateData.pricing = pricingObj;
+    if (Array.isArray(enabledDogSizes) && enabledDogSizes.length > 0) updateData.dogSizes = enabledDogSizes;
 
     if (sitterProfileDelegate) {
       await sitterProfileDelegate.upsert({
@@ -251,19 +280,7 @@ export async function POST(req: NextRequest) {
           pricing: pricingObj,
           dogSizes: enabledDogSizes,
         },
-        update: {
-          sitterId,
-          published: willPublish,
-          publishedAt,
-          displayName,
-          city,
-          postalCode,
-          bio,
-          avatarUrl,
-          services: enabledServices,
-          pricing: pricingObj,
-          dogSizes: enabledDogSizes,
-        },
+        update: updateData,
         select: { id: true },
       });
     }

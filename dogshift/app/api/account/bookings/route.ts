@@ -3,7 +3,7 @@ import type { NextRequest } from "next/server";
 import { auth, currentUser } from "@clerk/nextjs/server";
 
 import { prisma } from "@/lib/prisma";
-import { ensureDbUserByEmail } from "@/lib/auth/resolveDbUserId";
+import { ensureDbUserByClerkUserId } from "@/lib/auth/resolveDbUserId";
 
 export const runtime = "nodejs";
 
@@ -51,7 +51,8 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
     }
 
-    const ensured = await ensureDbUserByEmail({
+    const ensured = await ensureDbUserByClerkUserId({
+      clerkUserId,
       email: primaryEmail,
       name: typeof clerkUser?.fullName === "string" ? clerkUser.fullName : null,
     });
