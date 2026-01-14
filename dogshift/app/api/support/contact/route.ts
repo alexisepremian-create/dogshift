@@ -7,6 +7,38 @@ const nodemailer = require("nodemailer") as any;
 
 export const runtime = "nodejs";
 
+const AUTO_REPLY_TEXT = "Nous avons bien reçu votre message. Notre équipe support vous répondra dans les plus brefs délais. — DogShift";
+
+const AUTO_REPLY_HTML = `<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>DogShift — Support</title>
+  </head>
+  <body style="margin:0;padding:0;background:#f8fafc;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;">
+    <div style="padding:28px 16px;">
+      <div style="max-width:560px;margin:0 auto;background:#ffffff;border:1px solid #e2e8f0;border-radius:18px;overflow:hidden;">
+        <div style="padding:22px 22px 0 22px;">
+          <div style="font-size:13px;letter-spacing:0.06em;text-transform:uppercase;color:#64748b;font-weight:700;">DogShift</div>
+          <h1 style="margin:12px 0 0 0;font-size:22px;line-height:1.25;color:#0f172a;">Nous avons bien reçu votre message</h1>
+          <p style="margin:10px 0 0 0;font-size:14px;line-height:1.6;color:#334155;">
+            Merci de nous avoir contactés. Notre équipe support vous répondra dans les plus brefs délais.
+          </p>
+        </div>
+        <div style="padding:18px 22px 22px 22px;">
+          <div style="margin-top:18px;border-top:1px solid #e2e8f0;padding-top:14px;">
+            <p style="margin:0;font-size:12px;line-height:1.6;color:#64748b;">
+              Vous pouvez aussi nous écrire à <a href="mailto:support@dogshift.ch" style="color:#0f172a;text-decoration:underline;">support@dogshift.ch</a>.
+            </p>
+            <p style="margin:10px 0 0 0;font-size:12px;line-height:1.6;color:#64748b;">— DogShift</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>`;
+
 function requiredEnv(name: string) {
   const value = process.env[name];
   if (!value) throw new Error(`Missing env var: ${name}`);
@@ -32,12 +64,6 @@ async function sendAutoReplyWithResend(input: { to: string }) {
   const apiKey = (process.env.RESEND_API_KEY || "").trim();
   if (!apiKey) return { ok: false as const, skipped: true as const, reason: "RESEND_API_KEY_MISSING" };
 
-  // Resend Templates are addressed by template_id in the send API.
-  // The published template name is: dogshift-auto-reply-support-copy
-  // Keep the ID in env to avoid hardcoding and allow changes without redeploying.
-  const templateId = (process.env.RESEND_SUPPORT_AUTOREPLY_TEMPLATE_ID || "").trim();
-  if (!templateId) return { ok: false as const, skipped: true as const, reason: "TEMPLATE_ID_MISSING" };
-
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: {
@@ -48,11 +74,9 @@ async function sendAutoReplyWithResend(input: { to: string }) {
       from: "DogShift Support <support@dogshift.ch>",
       to: input.to,
       reply_to: "support@dogshift.ch",
-      // Keep subject here for compatibility even if the template includes one.
-      subject: "DogShift — Nous avons bien reçu ta demande",
-      // Published template name: dogshift-auto-reply-support-copy
-      template_id: templateId,
-      template_data: {},
+      subject: "Nous avons bien reçu votre message — DogShift",
+      html: AUTO_REPLY_HTML,
+      text: AUTO_REPLY_TEXT,
     }),
   });
 
@@ -92,7 +116,6 @@ export async function POST(request: Request) {
       emailMasked: email ? maskEmail(email) : null,
       emailValid,
       hasResendKey: Boolean((process.env.RESEND_API_KEY || "").trim()),
-      hasTemplateId: Boolean((process.env.RESEND_SUPPORT_AUTOREPLY_TEMPLATE_ID || "").trim()),
     });
 
     if (!message) {
@@ -167,15 +190,13 @@ export async function POST(request: Request) {
     if (email) {
       if (!emailValid) {
         console.info("[support/contact] auto-reply skipped (invalid email)", { emailMasked: maskEmail(email) });
-      } else if (!(process.env.RESEND_SUPPORT_AUTOREPLY_TEMPLATE_ID || "").trim()) {
-        console.info("[support/contact] auto-reply skipped (missing template id)", { emailMasked: maskEmail(email) });
       } else {
         console.info("[support/contact] auto-reply attempting", { emailMasked: maskEmail(email) });
         try {
           const res = await sendAutoReplyWithResend({ to: email });
           if (res.ok) {
             autoReply = "sent";
-            console.info("[support/contact] auto-reply sent", { emailMasked: maskEmail(email), id: (res as any).id ?? null });
+            console.info("[support/contact] autoresponder ok", { emailMasked: maskEmail(email), id: (res as any).id ?? null });
           } else {
             autoReply = "failed";
             console.error("[support/contact] auto-reply failed", res);
