@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { SignInButton, SignUpButton } from "@clerk/nextjs";
 import { useUser } from "@clerk/nextjs";
 import MiniStepRing from "@/components/MiniStepRing";
 
@@ -167,6 +168,10 @@ export default function BecomeSitterForm() {
         }),
       });
       if (!res.ok) {
+        const json = (await res.json().catch(() => null)) as { code?: string } | null;
+        if (res.status === 401 && json?.code === "AUTH_REQUIRED") {
+          setAuthError("Connecte-toi ou crée un compte pour finaliser.");
+        }
         setFormStatus("error");
         return;
       }
@@ -528,6 +533,33 @@ export default function BecomeSitterForm() {
           </div>
         ) : null}
 
+        {sessionStatus !== "authenticated" ? (
+          <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5">
+            <p className="text-sm font-semibold text-slate-900">Crée ton compte pour finaliser</p>
+            <p className="mt-2 text-sm text-slate-600">
+              Tu peux remplir le formulaire, mais tu devras te connecter (ou créer un compte) avant de soumettre.
+            </p>
+            <div className="mt-4 flex flex-col gap-3 sm:flex-row">
+              <SignInButton mode="modal">
+                <button
+                  type="button"
+                  className="inline-flex w-full items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-6 py-3 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition hover:bg-[var(--dogshift-blue-hover)]"
+                >
+                  Se connecter
+                </button>
+              </SignInButton>
+              <SignUpButton mode="modal">
+                <button
+                  type="button"
+                  className="inline-flex w-full items-center justify-center rounded-2xl border border-slate-300 bg-white px-6 py-3 text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50"
+                >
+                  Créer un compte
+                </button>
+              </SignUpButton>
+            </div>
+          </div>
+        ) : null}
+
         {formStatus === "error" ? <p className="text-sm font-medium text-rose-600">Une erreur est survenue. Merci de réessayer.</p> : null}
 
         <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -562,7 +594,7 @@ export default function BecomeSitterForm() {
             <button
               type="button"
               onClick={() => void onSubmit()}
-              disabled={!canSubmit || formStatus === "submitting"}
+              disabled={!canSubmit || formStatus === "submitting" || sessionStatus !== "authenticated"}
               className="inline-flex items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-6 py-3 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition hover:bg-[var(--dogshift-blue-hover)] disabled:cursor-not-allowed disabled:opacity-60"
             >
               {formStatus === "submitting" ? "Envoi…" : "Soumettre"}

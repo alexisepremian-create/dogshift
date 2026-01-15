@@ -6,8 +6,10 @@ const isPublicRoute = createRouteMatcher([
   "/login(.*)",
   "/signup(.*)",
   "/become-sitter",
+  "/become-sitter/form",
   "/api/webhooks(.*)",
   "/api/clerk(.*)",
+  "/api/become-sitter/apply",
   "/api/invites/verify",
 ]);
 
@@ -68,7 +70,7 @@ export default clerkMiddleware(async (auth, req) => {
   }
 
   if (isBecomeSitterInviteProtectedRoute(req)) {
-    const unlocked = req.cookies.get("ds_invite_unlocked")?.value;
+    const unlocked = req.cookies.get("ds_invite_unlocked")?.value ?? req.cookies.get("ds_invite")?.value;
     if (unlocked !== "1") {
       const pathname = String(req?.nextUrl?.pathname ?? "");
       if (pathname.startsWith("/api/")) {

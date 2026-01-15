@@ -49,11 +49,22 @@ export async function POST(req: Request) {
     const res = NextResponse.json({ ok: true, inviteId: invite.id }, { status: 200 });
 
     const sevenDaysSeconds = 7 * 24 * 60 * 60;
+    const secure = process.env.NODE_ENV === "production";
     res.cookies.set({
       name: "ds_invite_unlocked",
       value: "1",
       httpOnly: true,
-      secure: true,
+      secure,
+      sameSite: "lax",
+      maxAge: sevenDaysSeconds,
+      path: "/",
+    });
+
+    res.cookies.set({
+      name: "ds_invite",
+      value: "1",
+      httpOnly: true,
+      secure,
       sameSite: "lax",
       maxAge: sevenDaysSeconds,
       path: "/",
@@ -63,7 +74,7 @@ export async function POST(req: Request) {
       name: "dogsitter_invite_id",
       value: invite.id,
       httpOnly: true,
-      secure: true,
+      secure,
       sameSite: "lax",
       maxAge: sevenDaysSeconds,
       path: "/",

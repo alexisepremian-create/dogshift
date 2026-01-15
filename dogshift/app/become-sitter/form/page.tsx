@@ -15,40 +15,22 @@ export default async function BecomeSitterFormPage() {
   }
 
   const { userId } = await auth();
-  if (!userId) {
-    return (
-      <div className="min-h-screen bg-white text-slate-900">
-        <main className="mx-auto max-w-6xl px-4 py-14 sm:px-6">
-          <div className="mx-auto max-w-3xl">
-            <div className="relative rounded-3xl border border-slate-200 bg-white p-8 shadow-[0_18px_60px_-40px_rgba(2,6,23,0.35)] sm:p-10">
-              <p className="text-base font-semibold text-slate-900">Connexion requise</p>
-              <p className="mt-2 text-sm text-slate-600">Connecte-toi pour continuer.</p>
-              <Link
-                href="/login"
-                className="mt-5 inline-flex w-full items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-6 py-3 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition hover:bg-[var(--dogshift-blue-hover)]"
-              >
-                Se connecter
-              </Link>
-            </div>
-          </div>
-        </main>
-      </div>
-    );
+  let isAlreadySitter = false;
+  if (userId) {
+    const clerkUser = await currentUser();
+    const primaryEmail = clerkUser?.primaryEmailAddress?.emailAddress ?? "";
+    const dbUser = primaryEmail
+      ? await ensureDbUserByClerkUserId({
+          clerkUserId: userId,
+          email: primaryEmail,
+          name: typeof clerkUser?.fullName === "string" ? clerkUser.fullName : null,
+        })
+      : null;
+
+    isAlreadySitter = dbUser
+      ? Boolean(await prisma.sitterProfile.findUnique({ where: { userId: dbUser.id }, select: { id: true } }))
+      : false;
   }
-
-  const clerkUser = await currentUser();
-  const primaryEmail = clerkUser?.primaryEmailAddress?.emailAddress ?? "";
-  const dbUser = primaryEmail
-    ? await ensureDbUserByClerkUserId({
-        clerkUserId: userId,
-        email: primaryEmail,
-        name: typeof clerkUser?.fullName === "string" ? clerkUser.fullName : null,
-      })
-    : null;
-
-  const isAlreadySitter = dbUser
-    ? Boolean(await prisma.sitterProfile.findUnique({ where: { userId: dbUser.id }, select: { id: true } }))
-    : false;
 
   return (
     <div className="min-h-screen bg-white text-slate-900">

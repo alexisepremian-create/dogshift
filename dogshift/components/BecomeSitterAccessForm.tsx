@@ -1,14 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 
 export default function BecomeSitterAccessForm({
   onUnlocked,
 }: {
   onUnlocked?: () => void;
 }) {
-  const router = useRouter();
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -42,7 +40,7 @@ export default function BecomeSitterAccessForm({
       }
 
       if (typeof onUnlocked === "function") onUnlocked();
-      router.replace("/become-sitter/form");
+      window.location.assign("/become-sitter/form");
     } catch {
       setError("Impossible de vérifier le code. Réessaie.");
       setLoading(false);
