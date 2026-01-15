@@ -193,7 +193,7 @@ export default function HostDashboardPage() {
                 {profileCompletion < 100 ? (
                   <div className="ml-0 w-full sm:ml-3 sm:w-auto">
                     <div className="flex w-full items-center justify-center sm:justify-end">
-                      <div className="w-full max-w-[420px] overflow-hidden border border-amber-200 bg-amber-50 px-3 py-2 shadow-sm [border-radius:48%_52%_45%_55%/55%_45%_55%_45%] sm:px-4">
+                      <div className="w-full max-w-[420px] overflow-hidden rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 shadow-sm sm:px-4">
                         <div className="flex items-center gap-3">
                           <div className="min-w-0 flex-1 text-left">
                             <p className="text-[11px] font-semibold text-slate-900">Complète ton profil pour publier</p>
