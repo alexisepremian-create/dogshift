@@ -13,7 +13,6 @@ import { loadReviewsFromStorage, type DogShiftReview } from "@/lib/reviews";
 import { getUnreadHostMessageCount } from "@/lib/hostMessages";
 import {
   getDefaultHostProfile,
-  getHostCompletion,
   getHostTodos,
   loadHostProfileFromStorage,
   type HostProfileV1,
@@ -136,7 +135,6 @@ export default function HostDashboardPage() {
 
   const rating = averageRating === null ? "—" : formatRating(averageRating);
 
-  const completion = useMemo(() => getHostCompletion(profile), [profile]);
   const todos = useMemo(() => getHostTodos(profile), [profile]);
 
   const bookings = useMemo(() => (sitterId ? loadHostBookings(sitterId) : []), [sitterId]);
@@ -211,7 +209,7 @@ export default function HostDashboardPage() {
             <div className="mt-3 flex min-h-[32px] flex-wrap items-center gap-2">
               <StatusBadge status={profile.verificationStatus} />
               <span className="inline-flex items-center rounded-full bg-white px-3 py-1 text-xs font-medium text-slate-600 ring-1 ring-slate-200">
-                Profil {completion.percent}%
+                Profil {profileCompletion}%
               </span>
             </div>
           </div>
@@ -279,10 +277,10 @@ export default function HostDashboardPage() {
             <div className="mt-5">
               <div className="flex items-center justify-between">
                 <p className="text-xs font-semibold text-slate-600">Progression</p>
-                <p className="text-xs font-semibold text-slate-600">{completion.percent}%</p>
+                <p className="text-xs font-semibold text-slate-600">{profileCompletion}%</p>
               </div>
               <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-slate-100">
-                <div className="h-full rounded-full bg-[var(--dogshift-blue)]" style={{ width: `${completion.percent}%` }} />
+                <div className="h-full rounded-full bg-[var(--dogshift-blue)]" style={{ width: `${profileCompletion}%` }} />
               </div>
             </div>
           </section>

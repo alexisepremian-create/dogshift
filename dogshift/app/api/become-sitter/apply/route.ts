@@ -5,6 +5,7 @@ import { Prisma } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
 import { ensureDbUserByClerkUserId } from "@/lib/auth/resolveDbUserId";
+import { computeSitterProfileCompletion } from "@/lib/sitterCompletion";
 
 export const runtime = "nodejs";
 
@@ -73,6 +74,36 @@ export async function POST(req: NextRequest) {
       ? existingUser.sitterId.trim()
       : `s-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 
+    const hostProfile: Record<string, unknown> = {
+      profileVersion: 1,
+      sitterId,
+      firstName,
+      city,
+      postalCode: "",
+      avatarDataUrl,
+      bio,
+      services: {
+        Promenade: Array.isArray(services) ? services.includes("Promenade") : false,
+        Garde: Array.isArray(services) ? services.includes("Garde") : false,
+        Pension: Array.isArray(services) ? services.includes("Pension") : false,
+      },
+      pricing: {
+        Promenade: Array.isArray(services) && services.includes("Promenade") && typeof hourlyRate === "number" ? hourlyRate : undefined,
+        Garde: Array.isArray(services) && services.includes("Garde") && typeof hourlyRate === "number" ? hourlyRate : undefined,
+        Pension: Array.isArray(services) && services.includes("Pension") && typeof pricePerDay === "number" ? pricePerDay : undefined,
+      },
+      dogSizes: { Petit: false, Moyen: false, Grand: false },
+      cancellationFlexible: true,
+      boardingDetails: undefined,
+      verificationStatus: "unverified",
+      listingStatus: "draft",
+      publishedAt: undefined,
+      updatedAt: new Date().toISOString(),
+    };
+
+    const completion = computeSitterProfileCompletion(hostProfile);
+    const hostProfileJson = JSON.stringify(hostProfile);
+
     await prisma.$transaction(async (tx) => {
       if (invite.type === "single_use") {
         const updated = await tx.inviteCode.updateMany({
@@ -86,7 +117,7 @@ export async function POST(req: NextRequest) {
 
       await tx.user.update({
         where: { id: ensured.id },
-        data: { role: "SITTER", sitterId } as unknown as { role: "SITTER"; sitterId: string },
+        data: { role: "SITTER", sitterId, hostProfileJson } as unknown as Record<string, unknown>,
         select: { id: true },
       });
 
@@ -97,23 +128,25 @@ export async function POST(req: NextRequest) {
           sitterId,
           published: false,
           publishedAt: null,
-          profileCompletion: 0,
+          profileCompletion: completion,
           displayName: firstName || null,
           city: city || null,
           bio: bio || null,
           avatarUrl: avatarDataUrl,
           services: services as Prisma.InputJsonValue,
           pricing: { hourlyRate, pricePerDay } as Prisma.InputJsonValue,
+          dogSizes: [] as unknown as Prisma.InputJsonValue,
         },
         update: {
           sitterId,
-          profileCompletion: 0,
+          profileCompletion: completion,
           displayName: firstName || null,
           city: city || null,
           bio: bio || null,
           avatarUrl: avatarDataUrl,
           services: services as Prisma.InputJsonValue,
           pricing: { hourlyRate, pricePerDay } as Prisma.InputJsonValue,
+          dogSizes: [] as unknown as Prisma.InputJsonValue,
         },
         select: { id: true },
       });

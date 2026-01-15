@@ -14,7 +14,6 @@ import { CURRENT_TERMS_VERSION } from "@/lib/terms";
 import type { DogSize, ServiceType } from "@/lib/mockSitters";
 import {
   getDefaultHostProfile,
-  getHostCompletion,
   loadHostProfileFromStorage,
   saveHostProfileToStorage,
   type HostProfileV1,
@@ -137,8 +136,6 @@ export default function HostProfileEditPage() {
     }
   }
 
-  const completion = useMemo(() => getHostCompletion(profile), [profile]);
-
   const activeServices = useMemo(
     () => (Object.keys(profile.services) as ServiceType[]).filter((svc) => profile.services[svc]),
     [profile.services]
@@ -229,7 +226,7 @@ export default function HostProfileEditPage() {
             </h1>
             <div className="mt-3 flex min-h-[32px] flex-wrap items-center gap-2">
               <span className="inline-flex items-center rounded-full bg-white px-3 py-1 text-xs font-medium text-slate-600 ring-1 ring-slate-200">
-                Profil {completion.percent}%
+                Profil {profileCompletion}%
               </span>
             </div>
           </div>
