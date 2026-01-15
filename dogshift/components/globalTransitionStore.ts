@@ -3,11 +3,13 @@
 export type GlobalTransitionState = {
   navigating: boolean;
   hostReadyLatched: boolean;
+  hostMountedLatched: boolean;
 };
 
 let state: GlobalTransitionState = {
   navigating: false,
   hostReadyLatched: false,
+  hostMountedLatched: false,
 };
 
 const listeners = new Set<() => void>();
@@ -40,5 +42,11 @@ export function endGlobalNavigation() {
 export function latchHostReady() {
   if (state.hostReadyLatched) return;
   state = { ...state, hostReadyLatched: true };
+  emitChange();
+}
+
+export function markHostMounted() {
+  if (state.hostMountedLatched) return;
+  state = { ...state, hostMountedLatched: true };
   emitChange();
 }

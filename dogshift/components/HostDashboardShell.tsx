@@ -8,6 +8,7 @@ import { Menu, X } from "lucide-react";
 import HostSidebar from "@/components/HostSidebar";
 import HostTermsModal from "@/components/HostTermsModal";
 import NotificationBell from "@/components/NotificationBell";
+import { markHostMounted } from "@/components/globalTransitionStore";
 
 export default function HostDashboardShell({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -16,6 +17,10 @@ export default function HostDashboardShell({ children }: { children: React.React
 
   const mode = (searchParams?.get("mode") ?? "").trim();
   const isPublicPreview = pathname?.startsWith("/sitter/") && mode === "preview";
+
+  useEffect(() => {
+    markHostMounted();
+  }, []);
 
   useEffect(() => {
     if (!mobileOpen) return;
