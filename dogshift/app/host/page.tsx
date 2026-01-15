@@ -178,20 +178,6 @@ export default function HostDashboardPage() {
     <div className="relative grid gap-6 overflow-hidden" data-testid="host-dashboard">
       <SunCornerGlow variant="sitterDashboard" />
 
-      {profileCompletion < 100 ? (
-        <div className="relative z-10 rounded-3xl border border-amber-200 bg-amber-50 p-6">
-          <p className="text-sm font-semibold text-slate-900">Complète ton profil pour publier</p>
-          <p className="mt-2 text-sm text-slate-700">
-            Ton profil est à {profileCompletion}%. Certaines actions restent bloquées tant que le profil n’est pas complet.
-          </p>
-          <div className="mt-4">
-            <Link href="/host/profile/edit" className="text-sm font-semibold text-[var(--dogshift-blue)]">
-              Compléter mon profil
-            </Link>
-          </div>
-        </div>
-      ) : null}
-
       <div className="relative z-10">
         <div className="grid gap-4 sm:grid-cols-[1fr_auto] sm:items-end">
           <div>
@@ -204,6 +190,15 @@ export default function HostDashboardPage() {
               <h1 className="flex flex-wrap items-center gap-2 text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">
                 <span>Bonjour {greetingName ?? ""}</span>
                 {greetingName ? <FilledSunIcon className="h-7 w-7" /> : null}
+                {profileCompletion < 100 ? (
+                  <Link
+                    href="/host/profile/edit"
+                    className="inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-900 shadow-sm transition hover:bg-amber-100"
+                  >
+                    <span>Complète ton profil</span>
+                    <span className="text-amber-900/70">{profileCompletion}%</span>
+                  </Link>
+                ) : null}
               </h1>
             </div>
             <div className="mt-3 flex min-h-[32px] flex-wrap items-center gap-2">
