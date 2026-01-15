@@ -89,7 +89,7 @@ export async function GET(req: NextRequest) {
       update: {
         sitterId,
       },
-      select: { published: true, publishedAt: true },
+      select: { published: true, publishedAt: true, profileCompletion: true, termsAcceptedAt: true, termsVersion: true },
     });
 
     return NextResponse.json(
@@ -98,6 +98,9 @@ export async function GET(req: NextRequest) {
         sitterId,
         published: Boolean(sitterProfile?.published),
         publishedAt: sitterProfile?.publishedAt instanceof Date ? sitterProfile.publishedAt.toISOString() : null,
+        profileCompletion: typeof sitterProfile?.profileCompletion === "number" ? sitterProfile.profileCompletion : 0,
+        termsAcceptedAt: sitterProfile?.termsAcceptedAt instanceof Date ? sitterProfile.termsAcceptedAt.toISOString() : null,
+        termsVersion: typeof sitterProfile?.termsVersion === "string" ? sitterProfile.termsVersion : null,
         profile,
       },
       { status: 200 }

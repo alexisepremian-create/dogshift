@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { usePathname, useSearchParams } from "next/navigation";
 import { Menu, X } from "lucide-react";
 
 import HostSidebar from "@/components/HostSidebar";
@@ -10,6 +11,11 @@ import NotificationBell from "@/components/NotificationBell";
 
 export default function HostDashboardShell({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  const mode = (searchParams?.get("mode") ?? "").trim();
+  const isPublicPreview = pathname?.startsWith("/sitter/") && mode === "preview";
 
   useEffect(() => {
     if (!mobileOpen) return;
@@ -22,7 +28,7 @@ export default function HostDashboardShell({ children }: { children: React.React
 
   return (
     <div className="min-h-screen bg-white text-slate-900">
-      <HostTermsModal />
+      {isPublicPreview ? null : <HostTermsModal />}
       <div className="flex min-h-screen">
         <div className="hidden w-[240px] shrink-0 lg:block">
           <HostSidebar className="sticky top-0 h-screen" />

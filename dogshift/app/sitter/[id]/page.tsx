@@ -41,6 +41,15 @@ function formatRating(rating: number) {
   return rating % 1 === 0 ? rating.toFixed(0) : rating.toFixed(1);
 }
 
+function Spinner({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" aria-hidden="true">
+      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+    </svg>
+  );
+}
+
 function formatRatingMaybe(rating: number | null) {
   if (typeof rating !== "number" || !Number.isFinite(rating)) return "—";
   return formatRating(rating);
@@ -137,6 +146,7 @@ export default function SitterProfilePage() {
 
   const [hydrated, setHydrated] = useState(false);
   const [currentHostId, setCurrentHostId] = useState<string | null>(null);
+  const [hostProfileCompletion, setHostProfileCompletion] = useState<number>(0);
 
   const [apiSitter, setApiSitter] = useState<SitterCard | null>(null);
   const [apiLoaded, setApiLoaded] = useState(false);
@@ -151,16 +161,21 @@ export default function SitterProfilePage() {
   const [previewSitter, setPreviewSitter] = useState<SitterCard | null>(null);
   const [profileData, setProfileData] = useState<HostProfileV1 | null>(null);
 
+  const [finalizeModalOpen, setFinalizeModalOpen] = useState(true);
+  const [finalizeLoading, setFinalizeLoading] = useState(false);
+
   const sessionName = typeof user?.fullName === "string" ? user.fullName : "";
   const sessionImage = typeof user?.imageUrl === "string" ? user.imageUrl : null;
 
   function buildSitterFromProfile(profile: HostProfileV1): SitterCard {
-    const services = profile.services && typeof profile.services === "object" ? profile.services : ({} as any);
-    const enabledServices = Object.keys(services).filter((k) => Boolean((services as any)[k]));
-    const pricing = profile.pricing && typeof profile.pricing === "object" ? profile.pricing : {};
+    const servicesRaw = profile.services && typeof profile.services === "object" ? profile.services : {};
+    const services = servicesRaw as Record<string, unknown>;
+    const enabledServices = Object.keys(services).filter((k) => Boolean(services[k]));
+    const pricing = profile.pricing && typeof profile.pricing === "object" ? (profile.pricing as Record<string, unknown>) : {};
 
-    const pension = typeof (pricing as any).Pension === "number" && Number.isFinite((pricing as any).Pension) && (pricing as any).Pension > 0 ? ((pricing as any).Pension as number) : null;
-    const hourlyCandidates = ([(pricing as any).Promenade, (pricing as any).Garde] as Array<number | undefined>).filter(
+    const pensionRaw = pricing.Pension;
+    const pension = typeof pensionRaw === "number" && Number.isFinite(pensionRaw) && pensionRaw > 0 ? pensionRaw : null;
+    const hourlyCandidates = ([pricing.Promenade, pricing.Garde] as Array<unknown>).filter(
       (n): n is number => typeof n === "number" && Number.isFinite(n) && n > 0
     );
     const pricePerDay = pension ?? (hourlyCandidates.length ? Math.min(...hourlyCandidates) : 0);
@@ -218,7 +233,7 @@ export default function SitterProfilePage() {
           | { ok: false; error: string };
 
         if (!res.ok || !payload.ok) {
-          const err = (payload as any)?.error;
+          const err = (payload as unknown as { error?: unknown })?.error;
           setApiError(typeof err === "string" ? err : res.status === 403 ? "FORBIDDEN" : "NOT_FOUND");
           setApiSitter(null);
           setProfileData(null);
@@ -273,6 +288,7 @@ export default function SitterProfilePage() {
     setHydrated(true);
     if (!isLoaded || !isSignedIn) {
       setCurrentHostId(null);
+      setHostProfileCompletion(0);
       setPreviewLoaded(false);
       setPreviewSitter(null);
       setProfileData(null);
@@ -281,9 +297,15 @@ export default function SitterProfilePage() {
     void (async () => {
       try {
         const res = await fetch("/api/host/profile", { method: "GET", cache: "no-store" });
-        const payload = (await res.json()) as { ok?: boolean; sitterId?: string | null; profile?: unknown };
+        const payload = (await res.json()) as {
+          ok?: boolean;
+          sitterId?: string | null;
+          profile?: unknown;
+          profileCompletion?: number;
+        };
         if (!res.ok || !payload.ok) {
           setCurrentHostId(null);
+          setHostProfileCompletion(0);
           setPreviewLoaded(false);
           setPreviewSitter(null);
           setProfileData(null);
@@ -292,6 +314,8 @@ export default function SitterProfilePage() {
         const sitterId = typeof payload.sitterId === "string" ? payload.sitterId : null;
         const normalizedSitterId = sitterId && sitterId.trim() ? sitterId.trim() : null;
         setCurrentHostId(normalizedSitterId);
+
+        setHostProfileCompletion(typeof payload.profileCompletion === "number" ? payload.profileCompletion : 0);
 
         if (!id || !normalizedSitterId) {
           setPreviewLoaded(false);
@@ -327,6 +351,7 @@ export default function SitterProfilePage() {
         setPreviewLoaded(true);
       } catch {
         setCurrentHostId(null);
+        setHostProfileCompletion(0);
         setPreviewLoaded(false);
         setPreviewSitter(null);
         setProfileData(null);
@@ -434,7 +459,7 @@ export default function SitterProfilePage() {
   const fromPricing = useMemo(() => {
     if (!sitter) return null as null | { price: number; unit: "/ jour" | "/ heure" };
     const candidates = sitter.services
-      .map((svc) => ({ svc, price: (sitter.pricing as any)?.[svc] }))
+      .map((svc) => ({ svc, price: (sitter.pricing as unknown as Record<string, unknown> | null)?.[svc] }))
       .filter((row) => typeof row.price === "number" && Number.isFinite(row.price) && row.price > 0) as Array<{
       svc: (typeof sitter.services)[number];
       price: number;
@@ -558,6 +583,7 @@ export default function SitterProfilePage() {
   );
 
   const isHostPreview = showHostChrome && isPreviewMode;
+  const shouldShowFinalizeModal = isHostPreview && hostProfileCompletion < 100;
 
   if (process.env.NODE_ENV !== "production") {
     console.log("[sitter][render]", {
@@ -651,6 +677,51 @@ export default function SitterProfilePage() {
     <div className="relative grid gap-6 overflow-hidden" data-testid="sitter-public-profile">
       <SunCornerGlow variant="sitterPublicPreview" />
       <div className="relative z-10">
+        {shouldShowFinalizeModal ? (
+          <Modal
+            title="Finalisez votre profil"
+            open={finalizeModalOpen}
+            onClose={() => {
+              if (finalizeLoading) return;
+              setFinalizeModalOpen(false);
+            }}
+          >
+            <p className="text-sm leading-relaxed text-slate-600">Complétez votre profil à 100% pour pouvoir publier votre annonce.</p>
+            <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
+              <button
+                type="button"
+                onClick={() => {
+                  if (finalizeLoading) return;
+                  setFinalizeLoading(true);
+                  router.push("/host/profile/edit");
+                }}
+                disabled={finalizeLoading}
+                className="inline-flex items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-6 py-3 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition hover:bg-[var(--dogshift-blue-hover)] disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {finalizeLoading ? (
+                  <span className="inline-flex items-center gap-2">
+                    <Spinner className="h-4 w-4 animate-spin" />
+                    Chargement…
+                  </span>
+                ) : (
+                  "Compléter mon profil"
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (finalizeLoading) return;
+                  setFinalizeModalOpen(false);
+                }}
+                disabled={finalizeLoading}
+                className="inline-flex items-center justify-center rounded-2xl border border-slate-300 bg-white px-6 py-3 text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                Plus tard
+              </button>
+            </div>
+          </Modal>
+        ) : null}
+
         {showHostChrome ? (
           <div className="grid gap-4 sm:grid-cols-[1fr_auto] sm:items-end">
             <div>
@@ -706,7 +777,10 @@ export default function SitterProfilePage() {
                         <span className="text-sm font-medium text-slate-600">À partir de</span>
                         <span className="text-base font-semibold">CHF</span>
                         <span className="text-2xl font-semibold">{fromPricing?.price ?? sitter.pricePerDay}</span>
-                        <span className="text-sm font-medium text-slate-500">{fromPricing?.unit ?? (typeof (sitter.pricing as any)?.Pension === "number" ? "/ jour" : "/ heure")}</span>
+                        <span className="text-sm font-medium text-slate-500">
+                          {fromPricing?.unit ??
+                            (typeof (sitter.pricing as unknown as Record<string, unknown> | null)?.Pension === "number" ? "/ jour" : " / heure")}
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -1009,7 +1083,10 @@ export default function SitterProfilePage() {
                       <span className="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
                         <span className="text-slate-600">À partir de </span>
                         <span className="text-slate-900">CHF {fromPricing?.price ?? sitter.pricePerDay}</span>
-                        <span className="text-slate-600">{fromPricing?.unit ?? (typeof (sitter.pricing as any)?.Pension === "number" ? " / jour" : " / heure")}</span>
+                        <span className="text-slate-600">
+                          {fromPricing?.unit ??
+                            (typeof (sitter.pricing as unknown as Record<string, unknown> | null)?.Pension === "number" ? " / jour" : " / heure")}
+                        </span>
                       </span>
                       {sitter.services.slice(0, 3).map((svc) => (
                         <span

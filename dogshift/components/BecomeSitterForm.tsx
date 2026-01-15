@@ -8,6 +8,23 @@ import MiniStepRing from "@/components/MiniStepRing";
 
 const SERVICE_OPTIONS = ["Promenade", "Garde", "Pension"] as const;
 
+function Spinner({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+    >
+      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+      <path
+        className="opacity-75"
+        fill="currentColor"
+        d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+      />
+    </svg>
+  );
+}
+
 // Pricing rules priority:
 // 1) Pension only => pricePerDay
 // 2) Promenade or Garde selected (with/without Pension) => hourlyRate; if Pension also selected => + pricePerDay
@@ -25,9 +42,6 @@ export default function BecomeSitterForm() {
   const [authInlineStatus, setAuthInlineStatus] = useState<"idle" | "creating" | "needs_code" | "verifying">("idle");
   const [emailCode, setEmailCode] = useState("");
 
-  const isAuthBusy = authInlineStatus === "creating" || authInlineStatus === "verifying";
-  const showEmailCode = authInlineStatus === "needs_code" || authInlineStatus === "verifying";
-
   const [firstName, setFirstName] = useState("");
   const [city, setCity] = useState("");
   const [email, setEmail] = useState("");
@@ -40,6 +54,22 @@ export default function BecomeSitterForm() {
   const [bio, setBio] = useState("");
   const [avatarDataUrl, setAvatarDataUrl] = useState<string | null>(null);
   const [avatarError, setAvatarError] = useState<string | null>(null);
+
+  const isAuthBusy = authInlineStatus === "creating" || authInlineStatus === "verifying";
+  const showEmailCode = authInlineStatus === "needs_code" || authInlineStatus === "verifying";
+
+  const showPasswordMismatch = useMemo(() => {
+    if (sessionStatus === "authenticated") return false;
+    if (!password || !passwordConfirm) return false;
+    return passwordConfirm !== password;
+  }, [password, passwordConfirm, sessionStatus]);
+
+  const isContinueLoading = useMemo(() => {
+    if (formStatus === "submitting") return true;
+    if (step !== 1) return false;
+    if (sessionStatus === "authenticated") return false;
+    return authInlineStatus === "creating" || authInlineStatus === "verifying";
+  }, [authInlineStatus, formStatus, sessionStatus, step]);
 
   const [step2Attempted, setStep2Attempted] = useState(false);
   const [step1Attempted, setStep1Attempted] = useState(false);
@@ -352,7 +382,7 @@ export default function BecomeSitterForm() {
                     }}
                     disabled={formStatus === "submitting" || isAuthBusy}
                     className={
-                      step1Attempted && step1Errors.passwordConfirm
+                      showPasswordMismatch || (step1Attempted && step1Errors.passwordConfirm)
                         ? "mt-2 w-full rounded-2xl border border-rose-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition focus:border-rose-400 focus:ring-4 focus:ring-rose-100"
                         : "mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition focus:border-[var(--dogshift-blue)] focus:ring-4 focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_85%)]"
                     }
@@ -360,7 +390,9 @@ export default function BecomeSitterForm() {
                     type="password"
                     autoComplete="new-password"
                   />
-                  {step1Attempted && step1Errors.passwordConfirm ? (
+                  {showPasswordMismatch ? (
+                    <p className="mt-2 text-xs font-medium text-rose-600">Les mots de passe ne correspondent pas.</p>
+                  ) : step1Attempted && step1Errors.passwordConfirm ? (
                     <p className="mt-2 text-xs font-medium text-rose-600">{step1Errors.passwordConfirm}</p>
                   ) : null}
                 </div>
@@ -672,13 +704,20 @@ export default function BecomeSitterForm() {
               disabled={(step === 1 && !canNext1) || (step === 2 && !canNext2) || formStatus === "submitting" || isAuthBusy}
               className="inline-flex items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-6 py-3 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition hover:bg-[var(--dogshift-blue-hover)] disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {step === 1 && sessionStatus !== "authenticated"
-                ? authInlineStatus === "creating"
-                  ? "Création…"
-                  : authInlineStatus === "needs_code" || authInlineStatus === "verifying"
-                    ? "Vérifier l’email"
-                    : "Continuer"
-                : "Continuer"}
+              {isContinueLoading ? (
+                <span className="inline-flex items-center gap-2">
+                  <Spinner className="h-4 w-4 animate-spin" />
+                  Chargement…
+                </span>
+              ) : step === 1 && sessionStatus !== "authenticated" ? (
+                authInlineStatus === "needs_code" || authInlineStatus === "verifying" ? (
+                  "Vérifier l’email"
+                ) : (
+                  "Continuer"
+                )
+              ) : (
+                "Continuer"
+              )}
             </button>
           ) : (
             <button
