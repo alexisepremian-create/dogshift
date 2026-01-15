@@ -8,6 +8,7 @@ import { User } from "lucide-react";
 import { loadHostProfileFromStorage, type HostProfileV1 } from "@/lib/hostProfile";
 import HostDashboardShell from "@/components/HostDashboardShell";
 import { HostUserProvider } from "@/components/HostUserProvider";
+import { makeHostUserValuePreview } from "@/lib/hostUser";
 import SunCornerGlow from "@/components/SunCornerGlow";
 import { appendHostMessage } from "@/lib/hostMessages";
 
@@ -553,7 +554,7 @@ export default function SitterProfilePage() {
   }, [shouldAutoStartChat, id, isLoggedIn, disableSelfActions]);
 
   const hostUserValue = useMemo(
-    () => ({ sitterId: currentHostId, published: false, publishedAt: null, profile: profileData }),
+    () => makeHostUserValuePreview({ sitterId: currentHostId, profile: profileData }),
     [currentHostId, profileData]
   );
 

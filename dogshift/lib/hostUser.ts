@@ -14,6 +14,21 @@ export type HostUserData = {
   profileCompletion: number;
 };
 
+export function makeHostUserValuePreview(args: {
+  sitterId: string | null;
+  profile: unknown;
+}): HostUserData {
+  return {
+    sitterId: args.sitterId,
+    published: false,
+    publishedAt: null,
+    profile: args.profile,
+    termsAcceptedAt: null,
+    termsVersion: null,
+    profileCompletion: 0,
+  };
+}
+
 export async function getHostUserData(): Promise<HostUserData> {
   const { userId } = await auth();
   if (!userId) {
