@@ -130,7 +130,7 @@ export default function BecomeSitterForm() {
     const pwValid = password.length >= 8;
     const pwConfirmValid = passwordConfirm.length > 0 && passwordConfirm === password;
 
-    if (!emailTrimmed) errors.email = "L’email est requis.";
+    if (!emailTrimmed) errors.email = "L’e-mail est requis.";
     else if (!emailValid) errors.email = "Format email invalide.";
 
     if (!password) errors.password = "Le mot de passe est requis.";
@@ -298,7 +298,7 @@ export default function BecomeSitterForm() {
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
                   <label htmlFor="email" className="block text-sm font-medium text-slate-700">
-                    Email
+                    E-mail
                   </label>
                   <input
                     id="email"
@@ -309,7 +309,7 @@ export default function BecomeSitterForm() {
                       setEmail(e.target.value);
                     }}
                     className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:ring-4 focus:ring-slate-200"
-                    placeholder="email@exemple.com"
+                    placeholder="e-mail@exemple.com"
                     autoComplete="email"
                   />
                   {step1Errors.email ? <p className="mt-2 text-xs font-medium text-rose-600">{step1Errors.email}</p> : null}
