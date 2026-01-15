@@ -1,4 +1,5 @@
-import HostDashboardShell from "@/components/HostDashboardShell";
+
+import HostShellWithAuth from "@/components/HostShellWithAuth";
 import { HostUserProvider } from "@/components/HostUserProvider";
 import { getHostUserData } from "@/lib/hostUser";
 import { redirect } from "next/navigation";
@@ -16,7 +17,7 @@ export default async function HostLayout({
   }
   return (
     <HostUserProvider value={hostUser}>
-      <HostDashboardShell>{children}</HostDashboardShell>
+      <HostShellWithAuth>{children}</HostShellWithAuth>
     </HostUserProvider>
   );
 }

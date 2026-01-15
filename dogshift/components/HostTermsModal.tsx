@@ -1,27 +1,29 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 
 import { useHostUser } from "@/components/HostUserProvider";
+import Spinner from "@/components/ui/Spinner";
 import { CURRENT_TERMS_VERSION } from "@/lib/terms";
 
 export default function HostTermsModal() {
   const host = useHostUser();
-  const router = useRouter();
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [acceptedOverride, setAcceptedOverride] = useState(false);
 
   const needsAcceptance = useMemo(() => {
+    if (acceptedOverride) return false;
     if (!host.termsAcceptedAt) return true;
     if (!host.termsVersion) return true;
     return host.termsVersion !== CURRENT_TERMS_VERSION;
-  }, [host.termsAcceptedAt, host.termsVersion]);
+  }, [acceptedOverride, host.termsAcceptedAt, host.termsVersion]);
 
   if (!needsAcceptance) return null;
 
   async function accept() {
+    if (submitting) return;
     setError(null);
     setSubmitting(true);
     try {
@@ -32,7 +34,7 @@ export default function HostTermsModal() {
         setSubmitting(false);
         return;
       }
-      router.refresh();
+      setAcceptedOverride(true);
       setSubmitting(false);
     } catch {
       setError("Impossible d’enregistrer votre acceptation. Réessayez.");
@@ -68,7 +70,13 @@ export default function HostTermsModal() {
           disabled={submitting}
           className="mt-5 inline-flex w-full items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-6 py-3 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition hover:bg-[var(--dogshift-blue-hover)] disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {submitting ? "Enregistrement…" : "J’accepte"}
+          {submitting ? (
+            <span className="inline-flex items-center justify-center">
+              <Spinner className="h-4 w-4 animate-spin" />
+            </span>
+          ) : (
+            "J’accepte"
+          )}
         </button>
       </div>
     </div>
