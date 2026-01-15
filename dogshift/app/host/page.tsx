@@ -193,14 +193,29 @@ export default function HostDashboardPage() {
                 {profileCompletion < 100 ? (
                   <div className="ml-0 w-full sm:ml-3 sm:w-auto">
                     <div className="w-full max-w-[420px] rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-center shadow-sm">
-                      <p className="text-xs font-semibold text-slate-900">Complète ton profil pour publier</p>
-                      <p className="mt-1 text-xs font-medium text-slate-700">
-                        Ton profil est à {profileCompletion}%. Certaines actions restent bloquées tant que le profil n’est pas complet.
-                      </p>
-                      <div className="mt-2">
-                        <Link href="/host/profile/edit" className="text-xs font-semibold text-[var(--dogshift-blue)]">
-                          Compléter mon profil
-                        </Link>
+                      <div className="flex items-center gap-3">
+                        <div className="flex-1 text-center">
+                          <p className="text-xs font-semibold text-slate-900">Complète ton profil pour publier</p>
+                          <p className="mt-1 text-xs font-medium text-slate-700">
+                            Ton profil est à {profileCompletion}%. Certaines actions restent bloquées tant que le profil n’est pas complet.
+                          </p>
+                          <div className="mt-2">
+                            <Link href="/host/profile/edit" className="text-xs font-semibold text-[var(--dogshift-blue)]">
+                              Compléter mon profil
+                            </Link>
+                          </div>
+                        </div>
+
+                        <div className="shrink-0">
+                          <Image
+                            src="/dogshifit%20logo%20idee.jpg"
+                            alt="Compléter mon profil"
+                            width={56}
+                            height={56}
+                            className="h-14 w-14"
+                            priority
+                          />
+                        </div>
                       </div>
                     </div>
                   </div>
