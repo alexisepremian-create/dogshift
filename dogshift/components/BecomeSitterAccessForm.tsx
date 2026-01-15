@@ -1,13 +1,30 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
-export default function BecomeSitterAccessForm() {
+export default function BecomeSitterAccessForm({
+  isUnlocked,
+  children,
+}: {
+  isUnlocked: boolean;
+  children: React.ReactNode;
+}) {
   const router = useRouter();
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (isUnlocked) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [isUnlocked]);
+
+  const locked = useMemo(() => !isUnlocked, [isUnlocked]);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -45,34 +62,55 @@ export default function BecomeSitterAccessForm() {
   }
 
   return (
-    <form onSubmit={onSubmit} className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)] sm:p-8">
-      <h1 className="text-xl font-semibold tracking-tight text-slate-900">Accès sur invitation</h1>
-      <p className="mt-2 text-sm text-slate-600">Entre ton code d’invitation pour déverrouiller le formulaire.</p>
+    <div className="relative">
+      <div className={locked ? "blur-sm opacity-60 pointer-events-none select-none" : ""}>{children}</div>
 
-      <div className="mt-6">
-        <label htmlFor="invite" className="block text-sm font-medium text-slate-700">
-          Code d’invitation
-        </label>
-        <input
-          id="invite"
-          value={code}
-          onChange={(e) => setCode(e.target.value)}
-          disabled={loading}
-          className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:ring-4 focus:ring-slate-200 disabled:cursor-not-allowed disabled:opacity-60"
-          placeholder="DS-XXXX-XXXX"
-          autoComplete="one-time-code"
-        />
-      </div>
+      {locked ? (
+        <div className="absolute inset-0">
+          <div className="absolute inset-0 z-10 bg-white/40 backdrop-blur-[2px]" aria-hidden="true" />
+          <div className="absolute inset-0 z-20 flex items-center justify-center p-6" role="dialog" aria-modal="true">
+            <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white/90 p-6 shadow-xl">
+              <h2 className="text-xl font-semibold tracking-tight text-slate-900">DogShift est en phase pilote</h2>
+              <p className="mt-2 text-sm text-slate-600">
+                Nous ouvrons l’accès progressivement. Chaque dogsitter est sélectionné manuellement pour garantir un niveau de confiance maximal dès les
+                premières réservations.
+              </p>
 
-      {error ? <p className="mt-3 text-sm font-medium text-rose-600">{error}</p> : null}
+              <form onSubmit={onSubmit} className="mt-6">
+                <label htmlFor="invite" className="block text-sm font-medium text-slate-700">
+                  Code d’accès
+                </label>
+                <input
+                  id="invite"
+                  aria-label="Code d’accès"
+                  value={code}
+                  onChange={(e) => setCode(e.target.value)}
+                  disabled={loading}
+                  className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:ring-4 focus:ring-slate-200 disabled:cursor-not-allowed disabled:opacity-60"
+                  placeholder="DS-XXXX-XXXX"
+                  autoComplete="one-time-code"
+                />
 
-      <button
-        type="submit"
-        disabled={loading}
-        className="mt-5 inline-flex w-full items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-6 py-3 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition hover:bg-[var(--dogshift-blue-hover)] disabled:cursor-not-allowed disabled:opacity-60"
-      >
-        {loading ? "Vérification…" : "Déverrouiller le formulaire"}
-      </button>
-    </form>
+                {error ? <p className="mt-3 text-sm font-medium text-rose-600">{error}</p> : null}
+
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="mt-5 inline-flex w-full items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-6 py-3 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition hover:bg-[var(--dogshift-blue-hover)] disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {loading ? "Vérification…" : "Déverrouiller"}
+                </button>
+
+                <div className="mt-4 text-center">
+                  <a href="mailto:support@dogshift.ch" className="text-sm font-semibold text-[var(--dogshift-blue)]">
+                    Je n’ai pas de code
+                  </a>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      ) : null}
+    </div>
   );
 }
