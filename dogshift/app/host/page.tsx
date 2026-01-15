@@ -191,13 +191,19 @@ export default function HostDashboardPage() {
                 <span>Bonjour {greetingName ?? ""}</span>
                 {greetingName ? <FilledSunIcon className="h-7 w-7" /> : null}
                 {profileCompletion < 100 ? (
-                  <Link
-                    href="/host/profile/edit"
-                    className="inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-900 shadow-sm transition hover:bg-amber-100"
-                  >
-                    <span>Complète ton profil</span>
-                    <span className="text-amber-900/70">{profileCompletion}%</span>
-                  </Link>
+                  <div className="ml-0 w-full sm:ml-3 sm:w-auto">
+                    <div className="w-full max-w-[420px] rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-left shadow-sm">
+                      <p className="text-xs font-semibold text-slate-900">Complète ton profil pour publier</p>
+                      <p className="mt-1 text-xs font-medium text-slate-700">
+                        Ton profil est à {profileCompletion}%. Certaines actions restent bloquées tant que le profil n’est pas complet.
+                      </p>
+                      <div className="mt-2">
+                        <Link href="/host/profile/edit" className="text-xs font-semibold text-[var(--dogshift-blue)]">
+                          Compléter mon profil
+                        </Link>
+                      </div>
+                    </div>
+                  </div>
                 ) : null}
               </h1>
             </div>
