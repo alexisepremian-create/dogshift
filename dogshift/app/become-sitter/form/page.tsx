@@ -9,7 +9,7 @@ import { ensureDbUserByClerkUserId } from "@/lib/auth/resolveDbUserId";
 
 export default async function BecomeSitterFormPage() {
   const c = await cookies();
-  const unlocked = c.get("dogsitter_invite")?.value === "ok";
+  const unlocked = c.get("ds_invite_unlocked")?.value === "1";
   if (!unlocked) {
     redirect("/become-sitter");
   }

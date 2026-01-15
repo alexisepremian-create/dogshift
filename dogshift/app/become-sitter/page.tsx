@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 
 import { prisma } from "@/lib/prisma";
 import { ensureDbUserByClerkUserId } from "@/lib/auth/resolveDbUserId";
@@ -9,7 +10,10 @@ import BecomeSitterAccessForm from "@/components/BecomeSitterAccessForm";
 export default async function BecomeSitterPage() {
   const { userId } = await auth();
   const c = await cookies();
-  const hasInvite = c.get("dogsitter_invite")?.value === "ok";
+  const hasInvite = c.get("ds_invite_unlocked")?.value === "1";
+  if (hasInvite) {
+    redirect("/become-sitter/form");
+  }
   const startHref = "/become-sitter/form";
 
   let isAlreadySitter = false;
@@ -56,9 +60,7 @@ export default async function BecomeSitterPage() {
                 className={
                   isAlreadySitter
                     ? "pointer-events-none blur-sm"
-                    : !hasInvite
-                      ? "pointer-events-none select-none blur-sm opacity-70"
-                      : ""
+                    : "pointer-events-none select-none blur-md opacity-70"
                 }
               >
                 <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-[0_18px_60px_-40px_rgba(2,6,23,0.35)] sm:p-10">
@@ -99,9 +101,9 @@ export default async function BecomeSitterPage() {
               </div>
               </div>
 
-              {!isAlreadySitter && !hasInvite ? (
-                <div className="absolute inset-0 z-20 flex items-center justify-center px-4" aria-hidden="false">
-                  <div className="absolute inset-0 rounded-3xl bg-white/60 backdrop-blur-sm" aria-hidden="true" />
+              {!isAlreadySitter ? (
+                <div className="fixed inset-0 z-50 flex items-center justify-center px-4" role="dialog" aria-modal="true">
+                  <div className="absolute inset-0 bg-black/20" aria-hidden="true" />
                   <div className="relative z-10">
                     <BecomeSitterAccessForm />
                   </div>

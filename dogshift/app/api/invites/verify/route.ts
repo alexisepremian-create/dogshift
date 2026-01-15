@@ -50,8 +50,8 @@ export async function POST(req: Request) {
 
     const sevenDaysSeconds = 7 * 24 * 60 * 60;
     res.cookies.set({
-      name: "dogsitter_invite",
-      value: "ok",
+      name: "ds_invite_unlocked",
+      value: "1",
       httpOnly: true,
       secure: true,
       sameSite: "lax",

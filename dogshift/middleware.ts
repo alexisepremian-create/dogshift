@@ -6,7 +6,6 @@ const isPublicRoute = createRouteMatcher([
   "/login(.*)",
   "/signup(.*)",
   "/become-sitter",
-  "/become-sitter/access",
   "/api/webhooks(.*)",
   "/api/clerk(.*)",
   "/api/invites/verify",
@@ -69,8 +68,8 @@ export default clerkMiddleware(async (auth, req) => {
   }
 
   if (isBecomeSitterInviteProtectedRoute(req)) {
-    const inviteCookie = req.cookies.get("dogsitter_invite")?.value;
-    if (inviteCookie !== "ok") {
+    const unlocked = req.cookies.get("ds_invite_unlocked")?.value;
+    if (unlocked !== "1") {
       const pathname = String(req?.nextUrl?.pathname ?? "");
       if (pathname.startsWith("/api/")) {
         return NextResponse.json({ ok: false, error: "INVITE_REQUIRED" }, { status: 403 });
