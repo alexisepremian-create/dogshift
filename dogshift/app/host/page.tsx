@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { useUser } from "@clerk/nextjs";
 
 import SunCornerGlow from "@/components/SunCornerGlow";
@@ -22,6 +22,9 @@ import { loadHostBookings, loadHostRequestStatus } from "@/lib/hostBookings";
 function formatRating(rating: number) {
   return rating % 1 === 0 ? rating.toFixed(0) : rating.toFixed(1);
 }
+
+const HOST_COMPLETION_CARD_DISMISSED_KEY = "ds_host_completion_card_dismissed_v1";
+const HOST_COMPLETION_CARD_DISMISSED_EVENT = "ds_host_completion_card_dismissed";
 
 function StarIcon({ className }: { className?: string }) {
   return (
@@ -83,6 +86,35 @@ export default function HostDashboardPage() {
   const { isLoaded, isSignedIn, user } = useUser();
   const { sitterId, profile: remoteProfile, profileCompletion } = useHostUser();
   const [unreadTick, setUnreadTick] = useState(0);
+
+  const completionCardDismissed = useSyncExternalStore(
+    (onStoreChange) => {
+      if (typeof window === "undefined") return () => {};
+
+      const onCustom = () => onStoreChange();
+      window.addEventListener(HOST_COMPLETION_CARD_DISMISSED_EVENT, onCustom);
+
+      const onStorage = (e: StorageEvent) => {
+        if (e.key === HOST_COMPLETION_CARD_DISMISSED_KEY) {
+          onStoreChange();
+        }
+      };
+      window.addEventListener("storage", onStorage);
+
+      return () => {
+        window.removeEventListener(HOST_COMPLETION_CARD_DISMISSED_EVENT, onCustom);
+        window.removeEventListener("storage", onStorage);
+      };
+    },
+    () => {
+      try {
+        return window.localStorage.getItem(HOST_COMPLETION_CARD_DISMISSED_KEY) === "1";
+      } catch {
+        return false;
+      }
+    },
+    () => false
+  );
 
   useEffect(() => {
     if (!isLoaded) return;
@@ -190,11 +222,35 @@ export default function HostDashboardPage() {
               <h1 className="flex flex-wrap items-center gap-2 text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">
                 <span>Bonjour {greetingName ?? ""}</span>
                 {greetingName ? <FilledSunIcon className="h-7 w-7" /> : null}
-                {profileCompletion < 100 ? (
+                {profileCompletion < 100 && !completionCardDismissed ? (
                   <div className="ml-0 w-full sm:ml-3 sm:w-auto">
                     <div className="flex w-full items-center justify-center sm:justify-end">
-                      <div className="w-full max-w-[420px] overflow-hidden rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 shadow-sm sm:px-4">
-                        <div className="flex items-center gap-3">
+                      <div className="relative w-full max-w-[420px] overflow-hidden rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 shadow-sm sm:px-3">
+                        <button
+                          type="button"
+                          aria-label="Fermer"
+                          onClick={() => {
+                            try {
+                              window.localStorage.setItem(HOST_COMPLETION_CARD_DISMISSED_KEY, "1");
+                              window.dispatchEvent(new Event(HOST_COMPLETION_CARD_DISMISSED_EVENT));
+                            } catch {
+                              // ignore
+                            }
+                          }}
+                          className="absolute right-2 top-2 inline-flex h-7 w-7 items-center justify-center rounded-full text-slate-500 transition hover:text-slate-700"
+                        >
+                          <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4">
+                            <path
+                              d="M6 6l12 12M18 6L6 18"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                            />
+                          </svg>
+                        </button>
+
+                        <div className="flex items-center gap-2">
                           <div className="min-w-0 flex-1 text-left">
                             <p className="text-[14px] font-semibold leading-snug text-slate-900">Complète ton profil pour publier</p>
                             <p className="mt-0.5 text-[12.5px] font-normal leading-snug text-slate-700">
