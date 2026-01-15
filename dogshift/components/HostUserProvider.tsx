@@ -7,6 +7,9 @@ export type HostUser = {
   published: boolean;
   publishedAt: string | null;
   profile: unknown;
+  termsAcceptedAt: string | null;
+  termsVersion: string | null;
+  profileCompletion: number;
 };
 
 const HostUserContext = createContext<HostUser | null>(null);

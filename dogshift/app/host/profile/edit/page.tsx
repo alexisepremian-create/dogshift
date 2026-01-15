@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
@@ -8,6 +9,7 @@ import { Pencil } from "lucide-react";
 
 import SunCornerGlow from "@/components/SunCornerGlow";
 import { useHostUser } from "@/components/HostUserProvider";
+import { CURRENT_TERMS_VERSION } from "@/lib/terms";
 
 import type { DogSize, ServiceType } from "@/lib/mockSitters";
 import {
@@ -41,11 +43,22 @@ function parsePrice(raw: string) {
 export default function HostProfileEditPage() {
   const router = useRouter();
   const { isLoaded, isSignedIn } = useUser();
-  const { sitterId, profile: remoteProfile, published: remotePublished } = useHostUser();
+  const { sitterId, profile: remoteProfile, published: remotePublished, termsAcceptedAt, termsVersion, profileCompletion } = useHostUser();
 
-  const [published, setPublished] = useState(false);
+  const termsOk = Boolean(termsAcceptedAt) && termsVersion === CURRENT_TERMS_VERSION;
+  const canPublish = termsOk && profileCompletion >= 100;
 
-  const [profile, setProfile] = useState<HostProfileV1>(() => getDefaultHostProfile(""));
+  const [published, setPublished] = useState(() => Boolean(remotePublished));
+
+  const [profile, setProfile] = useState<HostProfileV1>(() => {
+    if (!sitterId) return getDefaultHostProfile("");
+    const remote = remoteProfile as Partial<HostProfileV1> | null | undefined;
+    if (remote && typeof remote === "object" && remote.profileVersion === 1 && remote.sitterId === sitterId) {
+      return remote as HostProfileV1;
+    }
+    const stored = loadHostProfileFromStorage(sitterId);
+    return stored ?? getDefaultHostProfile(sitterId);
+  });
   const [avatarFileName, setAvatarFileName] = useState<string | null>(null);
   const [verificationIdFileName, setVerificationIdFileName] = useState<string | null>(null);
   const [verificationSelfieFileName, setVerificationSelfieFileName] = useState<string | null>(null);
@@ -62,22 +75,8 @@ export default function HostProfileEditPage() {
   }, [isLoaded, isSignedIn, router]);
 
   useEffect(() => {
-    if (!sitterId) return;
-
-    const remote = remoteProfile as Partial<HostProfileV1> | null | undefined;
-    if (remote && typeof remote === "object" && remote.profileVersion === 1 && remote.sitterId === sitterId) {
-      setProfile(remote as HostProfileV1);
-    } else {
-      const stored = loadHostProfileFromStorage(sitterId);
-      setProfile(stored ?? getDefaultHostProfile(sitterId));
-    }
-
-    setPublished(Boolean(remotePublished));
-    setAvatarFileName(null);
-    setVerificationIdFileName(null);
-    setVerificationSelfieFileName(null);
-    setVerificationError(null);
-  }, [sitterId, remoteProfile, remotePublished]);
+    return;
+  }, []);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -109,9 +108,6 @@ export default function HostProfileEditPage() {
     window.addEventListener("hashchange", onHashChange);
     return () => window.removeEventListener("hashchange", onHashChange);
   }, []);
-
-  if (!isLoaded) return null;
-  if (!isSignedIn) return null;
 
   async function persistProfile(nextProfile: HostProfileV1) {
     if (!sitterId) return;
@@ -152,6 +148,9 @@ export default function HostProfileEditPage() {
     () => activeServices.every((svc) => typeof profile.pricing?.[svc] === "number"),
     [activeServices, profile.pricing]
   );
+
+  if (!isLoaded) return null;
+  if (!isSignedIn) return null;
 
   function onSave() {
     setSaved(false);
@@ -320,9 +319,11 @@ export default function HostProfileEditPage() {
                     </p>
                   </div>
                   {profile.avatarDataUrl ? (
-                    <img
+                    <Image
                       src={profile.avatarDataUrl}
                       alt="Aperçu"
+                      width={64}
+                      height={64}
                       className="mt-3 h-16 w-16 rounded-2xl object-cover ring-1 ring-slate-200"
                     />
                   ) : null}
@@ -535,10 +536,19 @@ export default function HostProfileEditPage() {
                     <p className="mt-1 text-sm text-slate-600">
                       {published ? "Votre annonce est visible dans la recherche." : "Votre annonce est cachée (brouillon)."}
                     </p>
+                    {!canPublish ? (
+                      <p className="mt-2 text-sm font-semibold text-slate-700">
+                        Complète ton profil et accepte le règlement pour publier.
+                      </p>
+                    ) : null}
                   </div>
                   <button
                     type="button"
-                    onClick={() => setPublished((v) => !v)}
+                    onClick={() => {
+                      if (!canPublish) return;
+                      setPublished((v) => !v);
+                    }}
+                    disabled={!canPublish}
                     className={
                       published
                         ? "inline-flex h-9 w-14 items-center rounded-full bg-[var(--dogshift-blue)] p-1 transition"

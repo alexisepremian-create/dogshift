@@ -141,6 +141,10 @@ model SitterProfile {
   pricing  Json?
   dogSizes Json?
 
+  termsAcceptedAt   DateTime?
+  termsVersion      String?
+  profileCompletion Int       @default(0)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

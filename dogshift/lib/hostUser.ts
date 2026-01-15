@@ -9,18 +9,37 @@ export type HostUserData = {
   published: boolean;
   publishedAt: string | null;
   profile: unknown;
+  termsAcceptedAt: string | null;
+  termsVersion: string | null;
+  profileCompletion: number;
 };
 
 export async function getHostUserData(): Promise<HostUserData> {
   const { userId } = await auth();
   if (!userId) {
-    return { sitterId: null, published: false, publishedAt: null, profile: null };
+    return {
+      sitterId: null,
+      published: false,
+      publishedAt: null,
+      profile: null,
+      termsAcceptedAt: null,
+      termsVersion: null,
+      profileCompletion: 0,
+    };
   }
 
   const clerkUser = await currentUser();
   const primaryEmail = clerkUser?.primaryEmailAddress?.emailAddress ?? "";
   if (!primaryEmail) {
-    return { sitterId: null, published: false, publishedAt: null, profile: null };
+    return {
+      sitterId: null,
+      published: false,
+      publishedAt: null,
+      profile: null,
+      termsAcceptedAt: null,
+      termsVersion: null,
+      profileCompletion: 0,
+    };
   }
 
   const load = cache(
@@ -31,28 +50,67 @@ export async function getHostUserData(): Promise<HostUserData> {
         name: typeof clerkUser?.fullName === "string" ? clerkUser.fullName : null,
       });
       if (!ensured) {
-        return { sitterId: null, published: false, publishedAt: null, profile: null };
+        return {
+          sitterId: null,
+          published: false,
+          publishedAt: null,
+          profile: null,
+          termsAcceptedAt: null,
+          termsVersion: null,
+          profileCompletion: 0,
+        };
       }
 
       const user = await prisma.user.findUnique({ where: { id: ensured.id } });
       if (!user) {
-        return { sitterId: null, published: false, publishedAt: null, profile: null };
+        return {
+          sitterId: null,
+          published: false,
+          publishedAt: null,
+          profile: null,
+          termsAcceptedAt: null,
+          termsVersion: null,
+          profileCompletion: 0,
+        };
       }
 
       const sitterProfile = await prisma.sitterProfile.findUnique({
         where: { userId: user.id },
-        select: { sitterId: true, published: true, publishedAt: true },
+        select: {
+          sitterId: true,
+          published: true,
+          publishedAt: true,
+          termsAcceptedAt: true,
+          termsVersion: true,
+          profileCompletion: true,
+        },
       });
 
       // Authorization rule: allow /host ONLY if a SitterProfile exists for this DB user.
       if (!sitterProfile) {
-        return { sitterId: null, published: false, publishedAt: null, profile: null };
+        return {
+          sitterId: null,
+          published: false,
+          publishedAt: null,
+          profile: null,
+          termsAcceptedAt: null,
+          termsVersion: null,
+          profileCompletion: 0,
+        };
       }
 
       const sitterId = typeof sitterProfile.sitterId === "string" && sitterProfile.sitterId.trim() ? sitterProfile.sitterId.trim() : null;
 
       if (!sitterId) {
-        return { sitterId: null, published: false, publishedAt: null, profile: null };
+        return {
+          sitterId: null,
+          published: false,
+          publishedAt: null,
+          profile: null,
+          termsAcceptedAt: null,
+          termsVersion: null,
+          profileCompletion: 0,
+        };
       }
 
       const userSitterId = (user as unknown as { sitterId?: string | null }).sitterId ?? null;
@@ -83,6 +141,9 @@ export async function getHostUserData(): Promise<HostUserData> {
         published: Boolean(sitterProfile?.published),
         publishedAt: sitterProfile?.publishedAt instanceof Date ? sitterProfile.publishedAt.toISOString() : null,
         profile,
+        termsAcceptedAt: sitterProfile?.termsAcceptedAt instanceof Date ? sitterProfile.termsAcceptedAt.toISOString() : null,
+        termsVersion: typeof sitterProfile?.termsVersion === "string" ? sitterProfile.termsVersion : null,
+        profileCompletion: typeof sitterProfile?.profileCompletion === "number" ? sitterProfile.profileCompletion : 0,
       };
     },
     ["hostUserData", primaryEmail],

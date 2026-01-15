@@ -1,9 +1,13 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { auth, currentUser } from "@clerk/nextjs/server";
+import { Prisma } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
 import { ensureDbUserByClerkUserId } from "@/lib/auth/resolveDbUserId";
+import { computeSitterProfileCompletion } from "@/lib/sitterCompletion";
+import { checkSitterSensitiveActionGate } from "@/lib/sitterGuards";
+import { CURRENT_TERMS_VERSION } from "@/lib/terms";
 
 export const runtime = "nodejs";
 
@@ -14,6 +18,7 @@ function generateSitterId() {
 
 export async function GET(req: NextRequest) {
   try {
+    void req;
     const { userId } = await auth();
     if (!userId) {
       if (process.env.NODE_ENV !== "production") {
@@ -39,7 +44,7 @@ export async function GET(req: NextRequest) {
 
     const uid = ensured.id;
 
-    const hasSitterProfile = await (prisma as any).sitterProfile.findUnique({ where: { userId: uid }, select: { id: true } });
+    const hasSitterProfile = await prisma.sitterProfile.findUnique({ where: { userId: uid }, select: { id: true } });
     if (!hasSitterProfile) {
       return NextResponse.json({ ok: false, error: "FORBIDDEN" }, { status: 403 });
     }
@@ -73,27 +78,19 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    const sitterProfileDelegate = (prisma as any)?.sitterProfile as
-      | {
-          upsert: (args: any) => Promise<{ published: boolean; publishedAt: Date | null }>;
-        }
-      | undefined;
-
-    const sitterProfile = sitterProfileDelegate
-      ? await sitterProfileDelegate.upsert({
-          where: { userId: uid },
-          create: {
-            userId: uid,
-            sitterId,
-            published: false,
-            publishedAt: null,
-          },
-          update: {
-            sitterId,
-          },
-          select: { published: true, publishedAt: true },
-        })
-      : null;
+    const sitterProfile = await prisma.sitterProfile.upsert({
+      where: { userId: uid },
+      create: {
+        userId: uid,
+        sitterId,
+        published: false,
+        publishedAt: null,
+      },
+      update: {
+        sitterId,
+      },
+      select: { published: true, publishedAt: true },
+    });
 
     return NextResponse.json(
       {
@@ -108,7 +105,7 @@ export async function GET(req: NextRequest) {
   } catch (err) {
     console.error("[api][host][profile][GET] error", err);
     const message = err instanceof Error ? err.message : "";
-    const code = (err as any)?.code as string | undefined;
+    const code = (typeof err === "object" && err ? (err as Record<string, unknown>).code : undefined) as string | undefined;
 
     if (typeof message === "string" && /no such column/i.test(message)) {
       return NextResponse.json({ ok: false, error: "DB_SCHEMA_MISMATCH", details: message }, { status: 500 });
@@ -151,7 +148,7 @@ export async function POST(req: NextRequest) {
     }
     const uid = ensured.id;
 
-    const hasSitterProfile = await (prisma as any).sitterProfile.findUnique({ where: { userId: uid }, select: { id: true } });
+    const hasSitterProfile = await prisma.sitterProfile.findUnique({ where: { userId: uid }, select: { id: true } });
     if (!hasSitterProfile) {
       return NextResponse.json({ ok: false, error: "FORBIDDEN" }, { status: 403 });
     }
@@ -196,53 +193,64 @@ export async function POST(req: NextRequest) {
       data: { hostProfileJson } as unknown as Record<string, unknown>,
     });
 
-    const publishedFlagRaw = (b as any)?.published;
+    const publishedFlagRaw = (b as Record<string, unknown>)?.published;
     const publishedFlag = typeof publishedFlagRaw === "boolean"
       ? publishedFlagRaw
-      : (b as any)?.listingStatus === "published" || Boolean((b as any)?.publishedAt);
+      : (b as Record<string, unknown>)?.listingStatus === "published" || Boolean((b as Record<string, unknown>)?.publishedAt);
 
-    const servicesObj = (b as any)?.services && typeof (b as any).services === "object" ? (b as any).services : {};
+    const servicesObjRaw = (b as Record<string, unknown>)?.services;
+    const servicesObj = servicesObjRaw && typeof servicesObjRaw === "object" ? (servicesObjRaw as Record<string, unknown>) : {};
     const enabledServices = Object.keys(servicesObj).filter((k) => Boolean(servicesObj[k]));
-    const pricingObj = (b as any)?.pricing && typeof (b as any).pricing === "object" ? (b as any).pricing : {};
-    const dogSizesObj = (b as any)?.dogSizes && typeof (b as any).dogSizes === "object" ? (b as any).dogSizes : {};
+    const pricingObjRaw = (b as Record<string, unknown>)?.pricing;
+    const pricingObj = pricingObjRaw && typeof pricingObjRaw === "object" ? (pricingObjRaw as Record<string, unknown>) : {};
+    const dogSizesObjRaw = (b as Record<string, unknown>)?.dogSizes;
+    const dogSizesObj = dogSizesObjRaw && typeof dogSizesObjRaw === "object" ? (dogSizesObjRaw as Record<string, unknown>) : {};
     const enabledDogSizes = Object.keys(dogSizesObj).filter((k) => Boolean(dogSizesObj[k]));
 
-    const avatarDataUrl = typeof (b as any)?.avatarDataUrl === "string" ? String((b as any).avatarDataUrl) : "";
+    const avatarDataUrl = typeof (b as Record<string, unknown>)?.avatarDataUrl === "string" ? String((b as Record<string, unknown>).avatarDataUrl) : "";
     const avatarUrl = avatarDataUrl.trim() ? avatarDataUrl.trim() : null;
 
-    const displayName = typeof (b as any)?.firstName === "string" && String((b as any).firstName).trim()
-      ? String((b as any).firstName).trim()
+    const displayName = typeof (b as Record<string, unknown>)?.firstName === "string" && String((b as Record<string, unknown>).firstName).trim()
+      ? String((b as Record<string, unknown>).firstName).trim()
       : null;
-    const city = typeof (b as any)?.city === "string" ? String((b as any).city).trim() : null;
-    const postalCode = typeof (b as any)?.postalCode === "string" ? String((b as any).postalCode).trim() : null;
-    const bio = typeof (b as any)?.bio === "string" ? String((b as any).bio).trim() : null;
+    const city = typeof (b as Record<string, unknown>)?.city === "string" ? String((b as Record<string, unknown>).city).trim() : null;
+    const postalCode = typeof (b as Record<string, unknown>)?.postalCode === "string" ? String((b as Record<string, unknown>).postalCode).trim() : null;
+    const bio = typeof (b as Record<string, unknown>)?.bio === "string" ? String((b as Record<string, unknown>).bio).trim() : null;
 
-    const sitterProfileDelegate = (prisma as any)?.sitterProfile as
-      | {
-          findUnique: (args: any) => Promise<{ published: boolean; publishedAt: Date | null } | null>;
-          upsert: (args: any) => Promise<{ id: string }>;
-        }
-      | undefined;
+    const existingProfile = await prisma.sitterProfile.findUnique({
+      where: { userId: uid },
+      select: {
+        published: true,
+        publishedAt: true,
+        termsAcceptedAt: true,
+        termsVersion: true,
+        profileCompletion: true,
+      },
+    });
 
-    const existingProfile = sitterProfileDelegate
-      ? await sitterProfileDelegate.findUnique({
-          where: { userId: uid },
-          select: {
-            published: true,
-            publishedAt: true,
-            displayName: true,
-            city: true,
-            postalCode: true,
-            bio: true,
-            avatarUrl: true,
-            services: true,
-            pricing: true,
-            dogSizes: true,
+    const completion = computeSitterProfileCompletion(normalized);
+
+    const wantsPublish = Boolean(publishedFlag);
+    if (wantsPublish) {
+      const gate = checkSitterSensitiveActionGate({
+        termsAcceptedAt: existingProfile?.termsAcceptedAt ?? null,
+        termsVersion: existingProfile?.termsVersion ?? null,
+        profileCompletion: completion,
+      });
+      if (!gate.ok) {
+        return NextResponse.json(
+          {
+            ok: false,
+            error: gate.error,
+            ...(gate.error === "PROFILE_INCOMPLETE" ? { profileCompletion: gate.profileCompletion } : null),
+            termsVersion: CURRENT_TERMS_VERSION,
           },
-        })
-      : null;
+          { status: gate.status }
+        );
+      }
+    }
 
-    const willPublish = Boolean(publishedFlag);
+    const willPublish = wantsPublish;
     const publishedAt = willPublish
       ? (existingProfile?.publishedAt ?? new Date())
       : null;
@@ -251,6 +259,7 @@ export async function POST(req: NextRequest) {
       sitterId,
       published: willPublish,
       publishedAt,
+      profileCompletion: completion,
     };
 
     // Non-destructive updates: only apply if client actually provided meaningful values.
@@ -259,37 +268,36 @@ export async function POST(req: NextRequest) {
     if (postalCode) updateData.postalCode = postalCode;
     if (bio) updateData.bio = bio;
     if (avatarUrl) updateData.avatarUrl = avatarUrl;
-    if (Array.isArray(enabledServices) && enabledServices.length > 0) updateData.services = enabledServices;
-    if (pricingObj && typeof pricingObj === "object" && Object.keys(pricingObj as any).length > 0) updateData.pricing = pricingObj;
-    if (Array.isArray(enabledDogSizes) && enabledDogSizes.length > 0) updateData.dogSizes = enabledDogSizes;
+    if (Array.isArray(enabledServices) && enabledServices.length > 0) updateData.services = enabledServices as Prisma.InputJsonValue;
+    if (pricingObj && typeof pricingObj === "object" && Object.keys(pricingObj).length > 0) updateData.pricing = pricingObj as Prisma.InputJsonValue;
+    if (Array.isArray(enabledDogSizes) && enabledDogSizes.length > 0) updateData.dogSizes = enabledDogSizes as Prisma.InputJsonValue;
 
-    if (sitterProfileDelegate) {
-      await sitterProfileDelegate.upsert({
-        where: { userId: uid },
-        create: {
-          userId: uid,
-          sitterId,
-          published: willPublish,
-          publishedAt,
-          displayName,
-          city,
-          postalCode,
-          bio,
-          avatarUrl,
-          services: enabledServices,
-          pricing: pricingObj,
-          dogSizes: enabledDogSizes,
-        },
-        update: updateData,
-        select: { id: true },
-      });
-    }
+    await prisma.sitterProfile.upsert({
+      where: { userId: uid },
+      create: {
+        userId: uid,
+        sitterId,
+        published: willPublish,
+        publishedAt,
+        displayName,
+        city,
+        postalCode,
+        bio,
+        avatarUrl,
+        services: enabledServices as Prisma.InputJsonValue,
+        pricing: pricingObj as Prisma.InputJsonValue,
+        dogSizes: enabledDogSizes as Prisma.InputJsonValue,
+        profileCompletion: completion,
+      },
+      update: updateData,
+      select: { id: true },
+    });
 
     return NextResponse.json({ ok: true, sitterId, profile: normalized }, { status: 200 });
   } catch (err) {
     console.error("[api][host][profile][POST] error", err);
     const message = err instanceof Error ? err.message : "";
-    const code = (err as any)?.code as string | undefined;
+    const code = (typeof err === "object" && err ? (err as Record<string, unknown>).code : undefined) as string | undefined;
 
     if (typeof message === "string" && /no such column/i.test(message)) {
       return NextResponse.json({ ok: false, error: "DB_SCHEMA_MISMATCH", details: message }, { status: 500 });

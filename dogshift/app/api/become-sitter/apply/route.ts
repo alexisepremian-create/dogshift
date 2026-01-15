@@ -97,6 +97,7 @@ export async function POST(req: NextRequest) {
           sitterId,
           published: false,
           publishedAt: null,
+          profileCompletion: 0,
           displayName: firstName || null,
           city: city || null,
           bio: bio || null,
@@ -106,6 +107,7 @@ export async function POST(req: NextRequest) {
         },
         update: {
           sitterId,
+          profileCompletion: 0,
           displayName: firstName || null,
           city: city || null,
           bio: bio || null,

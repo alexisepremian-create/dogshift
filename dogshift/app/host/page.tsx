@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 import { useUser } from "@clerk/nextjs";
 
@@ -15,11 +16,9 @@ import {
   getHostCompletion,
   getHostTodos,
   loadHostProfileFromStorage,
-  saveHostProfileToStorage,
   type HostProfileV1,
 } from "@/lib/hostProfile";
 import { loadHostBookings, loadHostRequestStatus } from "@/lib/hostBookings";
-import { addToPublicSittersIndex } from "@/lib/publicSitters";
 
 function formatRating(rating: number) {
   return rating % 1 === 0 ? rating.toFixed(0) : rating.toFixed(1);
@@ -77,19 +76,14 @@ function HostAvatar({ src, alt }: { src: string | null; alt: string }) {
   }
 
   return (
-    <img
-      src={src}
-      alt={alt}
-      className="h-14 w-14 rounded-full border border-slate-200 object-cover"
-      referrerPolicy="no-referrer"
-    />
+    <Image src={src} alt={alt} width={56} height={56} className="h-14 w-14 rounded-full border border-slate-200 object-cover" />
   );
 }
 
 export default function HostDashboardPage() {
   const { isLoaded, isSignedIn, user } = useUser();
-  const { sitterId, profile: remoteProfile } = useHostUser();
-  const [unreadMessages, setUnreadMessages] = useState(0);
+  const { sitterId, profile: remoteProfile, profileCompletion } = useHostUser();
+  const [unreadTick, setUnreadTick] = useState(0);
 
   useEffect(() => {
     if (!isLoaded) return;
@@ -101,11 +95,7 @@ export default function HostDashboardPage() {
   useEffect(() => {
     const onStorage = (e: StorageEvent) => {
       if (sitterId && e.key === `ds_host_messages_${sitterId}`) {
-        try {
-          setUnreadMessages(getUnreadHostMessageCount(sitterId));
-        } catch {
-          setUnreadMessages(0);
-        }
+        setUnreadTick((v) => v + 1);
       }
     };
     window.addEventListener("storage", onStorage);
@@ -113,54 +103,31 @@ export default function HostDashboardPage() {
   }, [sitterId]);
 
   const baseSitter = useMemo(() => (sitterId ? getSitterById(sitterId) : null), [sitterId]);
-  const [profile, setProfile] = useState<HostProfileV1>(() => getDefaultHostProfile(""));
-  const [storedReviews, setStoredReviews] = useState<DogShiftReview[]>([]);
 
-  useEffect(() => {
-    if (!sitterId) return;
+  const profile = useMemo<HostProfileV1>(() => {
+    if (!sitterId) return getDefaultHostProfile("");
     const remote = remoteProfile as Partial<HostProfileV1> | null | undefined;
     if (remote && typeof remote === "object" && remote.profileVersion === 1 && remote.sitterId === sitterId) {
-      setProfile(remote as HostProfileV1);
-      return;
+      return remote as HostProfileV1;
     }
     const stored = loadHostProfileFromStorage(sitterId);
-    setProfile(stored ?? getDefaultHostProfile(sitterId));
+    return stored ?? getDefaultHostProfile(sitterId);
   }, [sitterId, remoteProfile]);
 
-  useEffect(() => {
-    if (!sitterId) return;
-    const stored = loadHostProfileFromStorage(sitterId);
-    if (!stored) return;
-    if (stored.listingStatus === "published" || Boolean(stored.publishedAt)) return;
-    const now = new Date().toISOString();
-    const next: HostProfileV1 = {
-      ...stored,
-      listingStatus: "published",
-      publishedAt: stored.publishedAt ?? now,
-      updatedAt: now,
-    };
-    try {
-      saveHostProfileToStorage(next);
-      addToPublicSittersIndex(sitterId);
-      setProfile(next);
-    } catch {
-      // ignore
-    }
+  const storedReviews = useMemo<DogShiftReview[]>(() => {
+    if (!sitterId) return [];
+    return loadReviewsFromStorage(sitterId);
   }, [sitterId]);
 
-  useEffect(() => {
-    if (!sitterId) return;
-    setStoredReviews(loadReviewsFromStorage(sitterId));
-  }, [sitterId]);
-
-  useEffect(() => {
-    if (!sitterId) return;
+  const unreadMessages = useMemo(() => {
+    void unreadTick;
+    if (!sitterId) return 0;
     try {
-      setUnreadMessages(getUnreadHostMessageCount(sitterId));
+      return getUnreadHostMessageCount(sitterId);
     } catch {
-      setUnreadMessages(0);
+      return 0;
     }
-  }, [sitterId]);
+  }, [sitterId, unreadTick]);
 
   const reviewCount = storedReviews.length;
   const averageRating = reviewCount
@@ -212,6 +179,20 @@ export default function HostDashboardPage() {
   return (
     <div className="relative grid gap-6 overflow-hidden" data-testid="host-dashboard">
       <SunCornerGlow variant="sitterDashboard" />
+
+      {profileCompletion < 100 ? (
+        <div className="relative z-10 rounded-3xl border border-amber-200 bg-amber-50 p-6">
+          <p className="text-sm font-semibold text-slate-900">Complète ton profil pour publier</p>
+          <p className="mt-2 text-sm text-slate-700">
+            Ton profil est à {profileCompletion}%. Certaines actions restent bloquées tant que le profil n’est pas complet.
+          </p>
+          <div className="mt-4">
+            <Link href="/host/profile/edit" className="text-sm font-semibold text-[var(--dogshift-blue)]">
+              Compléter mon profil
+            </Link>
+          </div>
+        </div>
+      ) : null}
 
       <div className="relative z-10">
         <div className="grid gap-4 sm:grid-cols-[1fr_auto] sm:items-end">
