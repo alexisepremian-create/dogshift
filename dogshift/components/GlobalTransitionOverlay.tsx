@@ -74,7 +74,7 @@ export default function GlobalTransitionOverlay() {
   const rawShouldShow = navigating || (protectedNeedsAuth && (!authReady || !hostReady || !hostMountedReady));
 
   const [show, setShow] = useState(rawShouldShow);
-  const [fallbackLabel, setFallbackLabel] = useState<string | null>(null);
+  const stableLabel = "Chargement…";
   const hideTokenRef = useRef(0);
 
   useEffect(() => {
@@ -112,15 +112,10 @@ export default function GlobalTransitionOverlay() {
   }, [rawShouldShow]);
 
   useEffect(() => {
-    if (!show) {
-      const rafId = window.requestAnimationFrame(() => setFallbackLabel(null));
-      return () => window.cancelAnimationFrame(rafId);
-    }
-
+    if (!show) return;
     const t = window.setTimeout(() => {
-      setFallbackLabel("Ça prend un peu plus de temps…");
+      // keep a stable label; this is only a safety timer to avoid infinite loaders in the future
     }, 10000);
-
     return () => window.clearTimeout(t);
   }, [show]);
 
@@ -187,8 +182,8 @@ export default function GlobalTransitionOverlay() {
   if (!show) return null;
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-white/70 backdrop-blur-sm">
-      <PageLoader label={fallbackLabel ?? (isPostLogin ? "Connexion en cours…" : "Chargement…")} />
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-white" role="dialog" aria-modal="true">
+      <PageLoader label={stableLabel} />
     </div>
   );
 }
