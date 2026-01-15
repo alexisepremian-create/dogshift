@@ -7,6 +7,7 @@ import { useUser } from "@clerk/nextjs";
 
 import SunCornerGlow from "@/components/SunCornerGlow";
 import { useHostUser } from "@/components/HostUserProvider";
+import PageLoader from "@/components/ui/PageLoader";
 
 import { getSitterById } from "@/lib/mockSitters";
 import { loadReviewsFromStorage, type DogShiftReview } from "@/lib/reviews";
@@ -186,7 +187,7 @@ export default function HostDashboardPage() {
     (typeof user?.imageUrl === "string" && user.imageUrl.trim() ? user.imageUrl.trim() : null);
 
   if (!isLoaded || !isSignedIn) {
-    return null;
+    return <PageLoader label="Chargement…" />;
   }
 
   if (!sitterId) {
