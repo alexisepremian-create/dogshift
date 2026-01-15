@@ -7,8 +7,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { User } from "lucide-react";
 import { loadHostProfileFromStorage, type HostProfileV1 } from "@/lib/hostProfile";
 import HostDashboardShell from "@/components/HostDashboardShell";
-import { HostUserProvider } from "@/components/HostUserProvider";
-import { makeHostUserValuePreview } from "@/lib/hostUser";
+import { HostUserProvider, makeHostUserValuePreview } from "@/components/HostUserProvider";
 import SunCornerGlow from "@/components/SunCornerGlow";
 import { appendHostMessage } from "@/lib/hostMessages";
 

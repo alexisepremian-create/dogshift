@@ -12,6 +12,18 @@ export type HostUser = {
   profileCompletion: number;
 };
 
+export function makeHostUserValuePreview(args: { sitterId: string | null; profile: unknown }): HostUser {
+  return {
+    sitterId: args.sitterId,
+    published: false,
+    publishedAt: null,
+    profile: args.profile,
+    termsAcceptedAt: null,
+    termsVersion: null,
+    profileCompletion: 0,
+  };
+}
+
 const HostUserContext = createContext<HostUser | null>(null);
 
 export function HostUserProvider({ value, children }: { value: HostUser; children: React.ReactNode }) {

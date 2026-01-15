@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
 
-import SunCornerGlow, { type SunCornerGlowVariant } from "@/components/SunCornerGlow";
+import SunCornerGlow from "@/components/SunCornerGlow";
 import {
   AlertTriangle,
   Bell,
@@ -87,12 +87,11 @@ function defaultSettings(): SettingsState {
   };
 }
 
-export default function AccountSettingsPage(
-  {
-    glowVariant = "ownerSettings",
-    basePath = "/account/settings",
-  }: { glowVariant?: SunCornerGlowVariant; basePath?: string } = {}
-) {
+export default function AccountSettingsPage() {
+  const pathname = usePathname();
+  const isHost = typeof pathname === "string" && pathname.startsWith("/host/");
+  const glowVariant = isHost ? "sitterSettings" : "ownerSettings";
+  const basePath = isHost ? "/host/settings" : "/account/settings";
   const router = useRouter();
   const searchParams = useSearchParams();
   const { isLoaded, isSignedIn, user } = useUser();
