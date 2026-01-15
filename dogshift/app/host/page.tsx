@@ -196,14 +196,14 @@ export default function HostDashboardPage() {
                       <div className="w-full max-w-[420px] overflow-hidden rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 shadow-sm sm:px-4">
                         <div className="flex items-center gap-3">
                           <div className="min-w-0 flex-1 text-left">
-                            <p className="text-base font-semibold leading-snug text-slate-900">Complète ton profil pour publier</p>
-                            <p className="mt-1 text-base font-medium leading-relaxed text-slate-800">
+                            <p className="text-[15px] font-medium leading-snug text-slate-900">Complète ton profil pour publier</p>
+                            <p className="mt-0.5 text-[13px] font-normal leading-relaxed text-slate-700">
                               Ton profil est à {profileCompletion}%. Certaines actions restent bloquées tant que le profil n’est pas complet.
                             </p>
-                            <div className="mt-1">
+                            <div className="mt-0.5">
                               <Link
                                 href="/host/profile/edit"
-                                className="text-base font-semibold leading-relaxed text-[var(--dogshift-blue)] underline"
+                                className="text-[13px] font-medium leading-relaxed text-[var(--dogshift-blue)] underline"
                               >
                                 Compléter mon profil
                               </Link>
