@@ -193,9 +193,9 @@ export default function HostDashboardPage() {
                 {profileCompletion < 100 ? (
                   <div className="ml-0 w-full sm:ml-3 sm:w-auto">
                     <div className="flex w-full items-center justify-center sm:justify-end">
-                      <div className="flex items-end gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 shadow-sm">
-                        <div className="relative w-full max-w-[320px] text-right">
-                          <div className="relative rounded-[28px] bg-amber-50 px-3 py-2 before:absolute before:-right-2 before:bottom-4 before:h-4 before:w-4 before:rounded-full before:bg-amber-50 after:absolute after:-right-4 after:bottom-2 after:h-3 after:w-3 after:rounded-full after:bg-amber-50">
+                      <div className="w-full max-w-[420px] overflow-hidden border border-amber-200 bg-amber-50 px-3 py-2 shadow-sm [border-radius:48%_52%_45%_55%/55%_45%_55%_45%] sm:px-4">
+                        <div className="flex items-center gap-3">
+                          <div className="min-w-0 flex-1 text-left">
                             <p className="text-[11px] font-semibold text-slate-900">Complète ton profil pour publier</p>
                             <p className="mt-1 text-[11px] font-medium text-slate-700">
                               Ton profil est à {profileCompletion}%. Certaines actions restent bloquées tant que le profil n’est pas complet.
@@ -206,17 +206,17 @@ export default function HostDashboardPage() {
                               </Link>
                             </div>
                           </div>
-                        </div>
 
-                        <div className="shrink-0">
-                          <Image
-                            src="/5F5E93D5-C27A-4D9D-96D2-894DD1015732.png"
-                            alt="Compléter mon profil"
-                            width={96}
-                            height={96}
-                            className="h-20 w-20 object-contain"
-                            priority
-                          />
+                          <div className="shrink-0">
+                            <Image
+                              src="/5F5E93D5-C27A-4D9D-96D2-894DD1015732.png"
+                              alt="Compléter mon profil"
+                              width={140}
+                              height={140}
+                              className="h-16 w-auto object-contain sm:h-20 md:h-24"
+                              priority
+                            />
+                          </div>
                         </div>
                       </div>
                     </div>
