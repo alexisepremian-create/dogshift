@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 export default function BecomeSitterAccessForm({
@@ -14,15 +14,6 @@ export default function BecomeSitterAccessForm({
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (isUnlocked) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = prev;
-    };
-  }, [isUnlocked]);
 
   const locked = useMemo(() => !isUnlocked, [isUnlocked]);
 
@@ -66,9 +57,9 @@ export default function BecomeSitterAccessForm({
       <div className={locked ? "blur-sm opacity-60 pointer-events-none select-none" : ""}>{children}</div>
 
       {locked ? (
-        <div className="fixed inset-0 z-50">
-          <div className="absolute inset-0 bg-white/40 backdrop-blur-[2px]" aria-hidden="true" />
-          <div className="absolute inset-0 flex items-center justify-center p-6" role="dialog" aria-modal="true">
+        <div className="absolute inset-0">
+          <div className="absolute inset-0 z-10 bg-white/40 backdrop-blur-[2px]" aria-hidden="true" />
+          <div className="absolute inset-0 z-20 flex items-center justify-center p-6" role="dialog" aria-modal="true">
             <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white/90 p-6 shadow-xl">
               <h2 className="text-xl font-semibold tracking-tight text-slate-900">DogShift est en phase pilote</h2>
               <p className="mt-2 text-sm text-slate-600">
