@@ -118,13 +118,6 @@ export default function HostDashboardPage() {
   );
 
   useEffect(() => {
-    if (!isLoaded) return;
-    if (!isSignedIn) {
-      window.location.assign("/login");
-    }
-  }, [isLoaded, isSignedIn]);
-
-  useEffect(() => {
     const onStorage = (e: StorageEvent) => {
       if (sitterId && e.key === `ds_host_messages_${sitterId}`) {
         setUnreadTick((v) => v + 1);
