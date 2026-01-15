@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 
 export default function BecomeSitterAccessForm({
@@ -88,6 +89,13 @@ export default function BecomeSitterAccessForm({
             Je n’ai pas de code
           </a>
         </div>
+
+        <Link
+          href="/"
+          className="mt-3 inline-flex w-full items-center justify-center rounded-2xl border border-slate-300 bg-white px-6 py-3 text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50"
+        >
+          Retour à l’accueil
+        </Link>
       </form>
     </div>
   );
