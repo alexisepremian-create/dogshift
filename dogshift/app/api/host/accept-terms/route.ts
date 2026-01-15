@@ -38,10 +38,18 @@ export async function POST() {
     }
 
     const now = new Date();
+    console.info("[api][host][accept-terms] before", { clerkUserId: userId, dbUserId: ensured.id, now: now.toISOString() });
     await prisma.sitterProfile.update({
       where: { userId: ensured.id },
       data: { termsAcceptedAt: now, termsVersion: CURRENT_TERMS_VERSION },
       select: { id: true },
+    });
+
+    console.info("[api][host][accept-terms] after", {
+      clerkUserId: userId,
+      dbUserId: ensured.id,
+      termsVersion: CURRENT_TERMS_VERSION,
+      termsAcceptedAt: now.toISOString(),
     });
 
     return NextResponse.json({ ok: true, termsVersion: CURRENT_TERMS_VERSION }, { status: 200 });

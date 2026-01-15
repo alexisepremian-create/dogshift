@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 
 import { useHostUser } from "@/components/HostUserProvider";
@@ -8,6 +9,7 @@ import { CURRENT_TERMS_VERSION } from "@/lib/terms";
 
 export default function HostTermsModal() {
   const host = useHostUser();
+  const router = useRouter();
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -30,7 +32,8 @@ export default function HostTermsModal() {
         setSubmitting(false);
         return;
       }
-      window.location.reload();
+      router.refresh();
+      setSubmitting(false);
     } catch {
       setError("Impossible d’enregistrer votre acceptation. Réessayez.");
       setSubmitting(false);

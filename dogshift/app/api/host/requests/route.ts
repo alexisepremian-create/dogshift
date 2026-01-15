@@ -3,6 +3,22 @@ import type { NextRequest } from "next/server";
 import { auth, currentUser } from "@clerk/nextjs/server";
 
 import { prisma } from "@/lib/prisma";
+import { CURRENT_TERMS_VERSION } from "@/lib/terms";
+
+type PrismaBookingDelegate = {
+  findMany: (args: unknown) => Promise<unknown>;
+};
+
+type PrismaConversationDelegate = {
+  findMany: (args: unknown) => Promise<unknown>;
+};
+
+type PrismaClientLike = {
+  booking: PrismaBookingDelegate;
+  conversation: PrismaConversationDelegate;
+};
+
+const prismaAny = prisma as unknown as PrismaClientLike;
 
 export const runtime = "nodejs";
 
@@ -33,10 +49,16 @@ async function resolveDbUserAndSitterId() {
   const dbUser = await prisma.user.findUnique({ where: { email: primaryEmail }, select: { id: true, sitterId: true } });
   if (!dbUser) return { uid: null as string | null, sitterId: null as string | null };
 
-  const sitterProfile = await prisma.sitterProfile.findUnique({ where: { userId: dbUser.id }, select: { sitterId: true } });
+  const sitterProfile = await prisma.sitterProfile.findUnique({
+    where: { userId: dbUser.id },
+    select: { sitterId: true, termsAcceptedAt: true, termsVersion: true },
+  });
   const sitterId = typeof sitterProfile?.sitterId === "string" && sitterProfile.sitterId.trim() ? sitterProfile.sitterId.trim() : null;
 
-  return { uid: dbUser.id, sitterId };
+  const termsOk = Boolean(sitterProfile?.termsAcceptedAt) && sitterProfile?.termsVersion === CURRENT_TERMS_VERSION;
+  if (!termsOk) return { uid: dbUser.id, sitterId, termsBlocked: true as const };
+
+  return { uid: dbUser.id, sitterId, termsBlocked: false as const };
 }
 
 function isMigrationMissingError(err: unknown) {
@@ -56,7 +78,8 @@ function isSchemaMismatchError(err: unknown) {
 
 export async function GET(req: NextRequest) {
   try {
-    const { uid, sitterId } = await resolveDbUserAndSitterId();
+    void req;
+    const { uid, sitterId, termsBlocked } = await resolveDbUserAndSitterId();
     if (!uid) {
       if (process.env.NODE_ENV !== "production") {
         console.error("[api][host][requests][GET] UNAUTHORIZED", { hasUser: false });
@@ -71,7 +94,11 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
     }
 
-    const bookings = await (prisma as any).booking.findMany({
+    if (termsBlocked) {
+      return NextResponse.json({ ok: false, error: "TERMS_NOT_ACCEPTED", termsVersion: CURRENT_TERMS_VERSION }, { status: 403 });
+    }
+
+    const bookingsRaw = await prismaAny.booking.findMany({
       where: {
         sitterId,
         status: { in: ["PENDING_PAYMENT", "PENDING_ACCEPTANCE", "PAID", "CONFIRMED", "PAYMENT_FAILED", "CANCELLED", "DRAFT"] },
@@ -93,18 +120,25 @@ export async function GET(req: NextRequest) {
       },
     });
 
-    const bookingIds = bookings.map((b: any) => String(b.id));
-    const ownerIds = bookings.map((b: any) => String(b?.user?.id)).filter(Boolean);
+    const bookings = (Array.isArray(bookingsRaw) ? bookingsRaw : []) as unknown[];
 
-    const [conversationPairs, ownerPairs] = await Promise.all([
-      (prisma as any).conversation.findMany({
+    const bookingIds = bookings.map((b) => String((b as Record<string, unknown>)?.id ?? ""));
+    const ownerIds = bookings
+      .map((b) => {
+        const user = (b as Record<string, unknown>)?.user as Record<string, unknown> | null;
+        return String(user?.id ?? "");
+      })
+      .filter(Boolean);
+
+    const [conversationPairsRaw, ownerPairsRaw] = await Promise.all([
+      prismaAny.conversation.findMany({
         where: {
           sitterId,
           bookingId: { in: bookingIds },
         },
         select: { id: true, bookingId: true },
       }),
-      (prisma as any).conversation.findMany({
+      prismaAny.conversation.findMany({
         where: {
           sitterId,
           ownerId: { in: ownerIds },
@@ -113,38 +147,52 @@ export async function GET(req: NextRequest) {
       }),
     ]);
 
+    const conversationPairs = (Array.isArray(conversationPairsRaw) ? conversationPairsRaw : []) as unknown[];
+    const ownerPairs = (Array.isArray(ownerPairsRaw) ? ownerPairsRaw : []) as unknown[];
+
     const conversationByBookingId = new Map<string, string>();
-    for (const c of conversationPairs as any[]) {
-      const bId = typeof c?.bookingId === "string" ? c.bookingId : "";
-      const cId = typeof c?.id === "string" ? c.id : "";
+    for (const c of conversationPairs) {
+      const rec = c as Record<string, unknown>;
+      const bId = typeof rec?.bookingId === "string" ? String(rec.bookingId) : "";
+      const cId = typeof rec?.id === "string" ? String(rec.id) : "";
       if (bId && cId) conversationByBookingId.set(bId, cId);
     }
 
     const conversationByOwnerId = new Map<string, string>();
-    for (const c of ownerPairs as any[]) {
-      const oId = typeof c?.ownerId === "string" ? c.ownerId : "";
-      const cId = typeof c?.id === "string" ? c.id : "";
+    for (const c of ownerPairs) {
+      const rec = c as Record<string, unknown>;
+      const oId = typeof rec?.ownerId === "string" ? String(rec.ownerId) : "";
+      const cId = typeof rec?.id === "string" ? String(rec.id) : "";
       if (oId && cId && !conversationByOwnerId.has(oId)) conversationByOwnerId.set(oId, cId);
     }
 
-    const items: BookingListItem[] = bookings.map((b: any) => {
-      const ownerName = typeof b?.user?.name === "string" && b.user.name.trim() ? b.user.name.trim() : "Client";
-      const avatarUrl = typeof b?.user?.image === "string" && b.user.image.trim() ? b.user.image.trim() : null;
+    const items: BookingListItem[] = bookings.map((b) => {
+      const rec = b as Record<string, unknown>;
+      const userRec = (rec.user as Record<string, unknown> | null) ?? null;
+      const ownerName = typeof userRec?.name === "string" && String(userRec.name).trim() ? String(userRec.name).trim() : "Client";
+      const avatarUrl = typeof userRec?.image === "string" && String(userRec.image).trim() ? String(userRec.image).trim() : null;
+
+      const createdAt = rec.createdAt;
+      const updatedAt = rec.updatedAt;
+      const archivedAt = rec.archivedAt;
+      const startDate = rec.startDate;
+      const endDate = rec.endDate;
 
       return {
-        id: String(b.id),
-        createdAt: b.createdAt instanceof Date ? b.createdAt.toISOString() : new Date(b.createdAt).toISOString(),
-        updatedAt: b.updatedAt instanceof Date ? b.updatedAt.toISOString() : new Date(b.updatedAt).toISOString(),
-        archivedAt: b.archivedAt instanceof Date ? b.archivedAt.toISOString() : b.archivedAt ? new Date(b.archivedAt).toISOString() : null,
-        conversationId: conversationByBookingId.get(String(b.id)) ?? conversationByOwnerId.get(String(b.user.id)) ?? null,
-        status: String(b.status),
-        service: typeof b.service === "string" ? b.service : null,
-        startDate: b.startDate instanceof Date ? b.startDate.toISOString() : b.startDate ? new Date(b.startDate).toISOString() : null,
-        endDate: b.endDate instanceof Date ? b.endDate.toISOString() : b.endDate ? new Date(b.endDate).toISOString() : null,
-        message: typeof b.message === "string" ? b.message : null,
-        amount: typeof b.amount === "number" ? b.amount : Number(b.amount ?? 0),
-        currency: typeof b.currency === "string" ? b.currency : "chf",
-        owner: { id: String(b.user.id), name: ownerName, avatarUrl },
+        id: String(rec.id ?? ""),
+        createdAt: createdAt instanceof Date ? createdAt.toISOString() : new Date(String(createdAt ?? "")).toISOString(),
+        updatedAt: updatedAt instanceof Date ? updatedAt.toISOString() : new Date(String(updatedAt ?? "")).toISOString(),
+        archivedAt:
+          archivedAt instanceof Date ? archivedAt.toISOString() : archivedAt ? new Date(String(archivedAt)).toISOString() : null,
+        conversationId: conversationByBookingId.get(String(rec.id ?? "")) ?? conversationByOwnerId.get(String(userRec?.id ?? "")) ?? null,
+        status: String(rec.status ?? ""),
+        service: typeof rec.service === "string" ? String(rec.service) : null,
+        startDate: startDate instanceof Date ? startDate.toISOString() : startDate ? new Date(String(startDate)).toISOString() : null,
+        endDate: endDate instanceof Date ? endDate.toISOString() : endDate ? new Date(String(endDate)).toISOString() : null,
+        message: typeof rec.message === "string" ? String(rec.message) : null,
+        amount: typeof rec.amount === "number" ? rec.amount : Number(rec.amount ?? 0),
+        currency: typeof rec.currency === "string" ? String(rec.currency) : "chf",
+        owner: { id: String(userRec?.id ?? ""), name: ownerName, avatarUrl },
       };
     });
 

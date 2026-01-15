@@ -3,6 +3,18 @@ import type { NextRequest } from "next/server";
 import { auth, currentUser } from "@clerk/nextjs/server";
 
 import { prisma } from "@/lib/prisma";
+import { CURRENT_TERMS_VERSION } from "@/lib/terms";
+
+type PrismaBookingDelegate = {
+  findUnique: (args: unknown) => Promise<unknown>;
+  update: (args: unknown) => Promise<unknown>;
+};
+
+type PrismaClientLike = {
+  booking: PrismaBookingDelegate;
+};
+
+const prismaAny = prisma as unknown as PrismaClientLike;
 
 export const runtime = "nodejs";
 
@@ -17,10 +29,16 @@ async function resolveDbUserAndSitterId() {
   const dbUser = await prisma.user.findUnique({ where: { email: primaryEmail }, select: { id: true, sitterId: true } });
   if (!dbUser) return { uid: null as string | null, sitterId: null as string | null };
 
-  const sitterProfile = await prisma.sitterProfile.findUnique({ where: { userId: dbUser.id }, select: { sitterId: true } });
+  const sitterProfile = await prisma.sitterProfile.findUnique({
+    where: { userId: dbUser.id },
+    select: { sitterId: true, termsAcceptedAt: true, termsVersion: true },
+  });
   const sitterId = typeof sitterProfile?.sitterId === "string" && sitterProfile.sitterId.trim() ? sitterProfile.sitterId.trim() : null;
 
-  return { uid: dbUser.id, sitterId };
+  const termsOk = Boolean(sitterProfile?.termsAcceptedAt) && sitterProfile?.termsVersion === CURRENT_TERMS_VERSION;
+  if (!termsOk) return { uid: dbUser.id, sitterId, termsBlocked: true as const };
+
+  return { uid: dbUser.id, sitterId, termsBlocked: false as const };
 }
 
 function isMigrationMissingError(err: unknown) {
@@ -36,7 +54,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       return NextResponse.json({ ok: false, error: "INVALID_ID" }, { status: 400 });
     }
 
-    const { uid, sitterId } = await resolveDbUserAndSitterId();
+    const { uid, sitterId, termsBlocked } = await resolveDbUserAndSitterId();
     if (!uid) {
       if (process.env.NODE_ENV !== "production") {
         console.error("[api][host][requests][archive][POST] UNAUTHORIZED", { hasUser: false });
@@ -51,30 +69,42 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
     }
 
-    const booking = await (prisma as any).booking.findUnique({
+    if (termsBlocked) {
+      return NextResponse.json({ ok: false, error: "TERMS_NOT_ACCEPTED", termsVersion: CURRENT_TERMS_VERSION }, { status: 403 });
+    }
+
+    const bookingRaw = await prismaAny.booking.findUnique({
       where: { id: bookingId },
       select: { id: true, sitterId: true, status: true, archivedAt: true },
     });
 
-    if (!booking || String(booking.sitterId) !== sitterId) {
+    const booking = (bookingRaw as Record<string, unknown> | null) ?? null;
+
+    if (!booking || String(booking.sitterId ?? "") !== sitterId) {
       return NextResponse.json({ ok: false, error: "NOT_FOUND" }, { status: 404 });
     }
 
-    const status = String(booking.status);
+    const status = String(booking.status ?? "");
     if (status === "CONFIRMED" || status === "PAID" || status === "PENDING_ACCEPTANCE") {
       return NextResponse.json({ ok: false, error: "FORBIDDEN" }, { status: 403 });
     }
 
     const now = new Date();
 
-    const updated = await (prisma as any).booking.update({
+    const updatedRaw = await prismaAny.booking.update({
       where: { id: bookingId },
       data: { archivedAt: now },
       select: { id: true, archivedAt: true },
     });
 
+    const updated = (updatedRaw as Record<string, unknown> | null) ?? null;
+
     return NextResponse.json(
-      { ok: true, id: String(updated.id), archivedAt: updated.archivedAt instanceof Date ? updated.archivedAt.toISOString() : String(updated.archivedAt) },
+      {
+        ok: true,
+        id: String(updated?.id ?? ""),
+        archivedAt: updated?.archivedAt instanceof Date ? updated.archivedAt.toISOString() : String(updated?.archivedAt ?? ""),
+      },
       { status: 200 }
     );
   } catch (err) {
