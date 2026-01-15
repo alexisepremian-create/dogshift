@@ -1,11 +1,19 @@
 import BecomeSitterForm from "@/components/BecomeSitterForm";
 import Link from "next/link";
 import { auth, currentUser } from "@clerk/nextjs/server";
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 
 import { prisma } from "@/lib/prisma";
 import { ensureDbUserByClerkUserId } from "@/lib/auth/resolveDbUserId";
 
 export default async function BecomeSitterFormPage() {
+  const c = await cookies();
+  const unlocked = c.get("dogsitter_invite")?.value === "ok";
+  if (!unlocked) {
+    redirect("/become-sitter");
+  }
+
   const { userId } = await auth();
   if (!userId) {
     return (

@@ -5,13 +5,12 @@ import { cookies } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { ensureDbUserByClerkUserId } from "@/lib/auth/resolveDbUserId";
 import BecomeSitterAccessForm from "@/components/BecomeSitterAccessForm";
-import BecomeSitterFormPreview from "@/components/BecomeSitterFormPreview";
 
 export default async function BecomeSitterPage() {
   const { userId } = await auth();
   const c = await cookies();
   const hasInvite = c.get("dogsitter_invite")?.value === "ok";
-  const startHref = hasInvite ? "/become-sitter/form" : "/become-sitter/access";
+  const startHref = "/become-sitter/form";
 
   let isAlreadySitter = false;
   if (userId) {
@@ -52,8 +51,17 @@ export default async function BecomeSitterPage() {
               </div>
             ) : null}
 
-            <div className={isAlreadySitter ? "pointer-events-none blur-sm" : ""}>
-              <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-[0_18px_60px_-40px_rgba(2,6,23,0.35)] sm:p-10">
+            <div className="relative">
+              <div
+                className={
+                  isAlreadySitter
+                    ? "pointer-events-none blur-sm"
+                    : !hasInvite
+                      ? "pointer-events-none select-none blur-sm opacity-70"
+                      : ""
+                }
+              >
+                <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-[0_18px_60px_-40px_rgba(2,6,23,0.35)] sm:p-10">
                 <h1 className="text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl">Devenir sitter sur DogShift</h1>
                 <p className="mt-4 text-base leading-relaxed text-slate-600">
                   Rejoignez une communauté premium. Nous vérifions chaque profil pour garantir une expérience impeccable aux propriétaires comme aux chiens.
@@ -89,12 +97,16 @@ export default async function BecomeSitterPage() {
                   </Link>
                 </div>
               </div>
-
-              <div className="mt-10">
-                <BecomeSitterAccessForm isUnlocked={hasInvite}>
-                  <BecomeSitterFormPreview />
-                </BecomeSitterAccessForm>
               </div>
+
+              {!isAlreadySitter && !hasInvite ? (
+                <div className="absolute inset-0 z-20 flex items-center justify-center px-4" aria-hidden="false">
+                  <div className="absolute inset-0 rounded-3xl bg-white/60 backdrop-blur-sm" aria-hidden="true" />
+                  <div className="relative z-10">
+                    <BecomeSitterAccessForm />
+                  </div>
+                </div>
+              ) : null}
             </div>
           </div>
         </div>

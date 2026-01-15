@@ -27,7 +27,14 @@ const isLockBypassRoute = createRouteMatcher([
   "/images(.*)",
 ]);
 
-function isPublicSitterRoute(req: any) {
+type MiddlewareReqLike = {
+  nextUrl?: {
+    pathname?: unknown;
+    searchParams?: URLSearchParams;
+  };
+};
+
+function isPublicSitterRoute(req: MiddlewareReqLike) {
   const pathname = String(req?.nextUrl?.pathname ?? "");
   if (!pathname.startsWith("/sitter/")) return false;
   const mode = String(req?.nextUrl?.searchParams?.get("mode") ?? "");
@@ -70,7 +77,7 @@ export default clerkMiddleware(async (auth, req) => {
       }
 
       const url = req.nextUrl.clone();
-      url.pathname = "/become-sitter/access";
+      url.pathname = "/become-sitter";
       url.search = "";
       return addLockHeaders(NextResponse.redirect(url));
     }
