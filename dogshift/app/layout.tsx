@@ -7,6 +7,7 @@ import { headers } from "next/headers";
 import { ClerkProvider } from "@clerk/nextjs";
 import { frFR } from "@clerk/localizations";
 import DogShiftBot from "@/components/DogShiftBot";
+import GlobalTransitionOverlay from "@/components/GlobalTransitionOverlay";
 import PageTopOffset from "@/components/PageTopOffset";
 import SessionAuthProvider from "@/components/SessionAuthProvider";
 import SiteHeader from "@/components/SiteHeader";
@@ -69,6 +70,7 @@ export default async function RootLayout({
         >
           <Suspense fallback={null}>
             <SessionAuthProvider>
+              {isAccess ? null : <GlobalTransitionOverlay />}
               {isAccess ? children : <SiteHeader />}
               {isAccess ? null : <PageTopOffset>{children}</PageTopOffset>}
               {isAccess ? null : <DogShiftBot />}
