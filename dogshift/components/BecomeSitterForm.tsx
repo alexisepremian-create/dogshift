@@ -3,8 +3,7 @@
 import Image from "next/image";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { SignInButton, SignUpButton } from "@clerk/nextjs";
-import { useUser } from "@clerk/nextjs";
+import { useSignUp, useUser } from "@clerk/nextjs";
 import MiniStepRing from "@/components/MiniStepRing";
 
 const SERVICE_OPTIONS = ["Promenade", "Garde", "Pension"] as const;
@@ -17,11 +16,17 @@ const SERVICE_OPTIONS = ["Promenade", "Garde", "Pension"] as const;
 export default function BecomeSitterForm() {
   const router = useRouter();
   const { isLoaded, isSignedIn, user } = useUser();
+  const { isLoaded: isSignUpLoaded, signUp, setActive } = useSignUp();
   const sessionStatus = !isLoaded ? "loading" : isSignedIn ? "authenticated" : "unauthenticated";
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [formStatus, setFormStatus] = useState<"idle" | "submitting" | "done" | "error">("idle");
 
   const [authError, setAuthError] = useState<string | null>(null);
+  const [authInlineStatus, setAuthInlineStatus] = useState<"idle" | "creating" | "needs_code" | "verifying">("idle");
+  const [emailCode, setEmailCode] = useState("");
+
+  const isAuthBusy = authInlineStatus === "creating" || authInlineStatus === "verifying";
+  const showEmailCode = authInlineStatus === "needs_code" || authInlineStatus === "verifying";
 
   const [firstName, setFirstName] = useState("");
   const [city, setCity] = useState("");
@@ -50,6 +55,72 @@ export default function BecomeSitterForm() {
   }, [isLoaded, isSignedIn, user]);
 
   const effectiveEmail = sessionStatus === "authenticated" ? sessionEmail : email;
+
+  async function ensureInlineSignUp(): Promise<boolean> {
+    if (sessionStatus === "authenticated") return true;
+    if (!isSignUpLoaded || !signUp || !setActive) {
+      setAuthError("Chargement… Réessaie dans un instant.");
+      return false;
+    }
+
+    const emailTrimmed = email.trim();
+    if (!emailTrimmed || !password) {
+      setAuthError("Email et mot de passe requis.");
+      return false;
+    }
+    if (passwordConfirm !== password) {
+      setAuthError("Les mots de passe ne correspondent pas.");
+      return false;
+    }
+
+    setAuthError(null);
+    setAuthInlineStatus("creating");
+    try {
+      await signUp.create({ emailAddress: emailTrimmed, password });
+      if (signUp.createdSessionId) {
+        await setActive({ session: signUp.createdSessionId });
+        setAuthInlineStatus("idle");
+        return true;
+      }
+
+      await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
+      setAuthInlineStatus("needs_code");
+      return false;
+    } catch {
+      setAuthInlineStatus("idle");
+      setAuthError("Impossible de créer le compte. Vérifie l’email et le mot de passe.");
+      return false;
+    }
+  }
+
+  async function verifyInlineEmailCode(): Promise<boolean> {
+    if (sessionStatus === "authenticated") return true;
+    if (!isSignUpLoaded || !signUp || !setActive) return false;
+    const codeTrimmed = emailCode.trim();
+    if (!codeTrimmed) {
+      setAuthError("Entre le code reçu par email.");
+      return false;
+    }
+
+    setAuthError(null);
+    setAuthInlineStatus("verifying");
+    try {
+      const result = await signUp.attemptEmailAddressVerification({ code: codeTrimmed });
+      if (result.createdSessionId) {
+        await setActive({ session: result.createdSessionId });
+        setAuthInlineStatus("idle");
+        setStep(2);
+        return true;
+      }
+      setAuthInlineStatus("needs_code");
+      setAuthError("Code invalide. Réessaie.");
+      return false;
+    } catch {
+      setAuthInlineStatus("needs_code");
+      setAuthError("Code invalide. Réessaie.");
+      return false;
+    }
+  }
 
   const step1Errors = useMemo(() => {
     if (sessionStatus === "authenticated") return {};
@@ -213,84 +284,116 @@ export default function BecomeSitterForm() {
         <MiniStepRing current={step} total={3} className="self-end sm:self-auto" />
       </div>
 
+      {sessionStatus === "authenticated" ? (
+        <div className="mt-6 rounded-3xl border border-slate-200 bg-slate-50 p-4">
+          <p className="text-sm font-semibold text-slate-900">Connecté</p>
+          <p className="mt-1 text-sm text-slate-600">{sessionEmail || "Session active"}</p>
+        </div>
+      ) : null}
+
       <div className="mt-8 space-y-6">
         {step === 1 ? (
           <div className="space-y-5">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div>
-                <label htmlFor="email" className="block text-sm font-medium text-slate-700">
-                  Email
-                </label>
-                <input
-                  id="email"
-                  value={effectiveEmail}
-                  disabled={sessionStatus === "authenticated" || formStatus === "submitting"}
-                  onChange={(e) => {
-                    if (sessionStatus === "authenticated") return;
-                    setAuthError(null);
-                    setEmail(e.target.value);
-                  }}
-                  className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:ring-4 focus:ring-slate-200"
-                  placeholder="email@exemple.com"
-                  autoComplete="email"
-                />
-                {step1Errors.email ? (
-                  <p className="mt-2 text-xs font-medium text-rose-600">{step1Errors.email}</p>
-                ) : null}
-              </div>
+            {sessionStatus !== "authenticated" ? (
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label htmlFor="email" className="block text-sm font-medium text-slate-700">
+                    Email
+                  </label>
+                  <input
+                    id="email"
+                    value={effectiveEmail}
+                    disabled={formStatus === "submitting" || isAuthBusy}
+                    onChange={(e) => {
+                      setAuthError(null);
+                      setEmail(e.target.value);
+                    }}
+                    className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:ring-4 focus:ring-slate-200"
+                    placeholder="email@exemple.com"
+                    autoComplete="email"
+                  />
+                  {step1Errors.email ? <p className="mt-2 text-xs font-medium text-rose-600">{step1Errors.email}</p> : null}
+                </div>
 
-              <div>
-                <label htmlFor="password" className="block text-sm font-medium text-slate-700">
-                  Mot de passe
-                </label>
-                <input
-                  id="password"
-                  value={password}
-                  onChange={(e) => {
-                    setAuthError(null);
-                    setPassword(e.target.value);
-                  }}
-                  className={
-                    step1Attempted && step1Errors.password
-                      ? "mt-2 w-full rounded-2xl border border-rose-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition focus:border-rose-400 focus:ring-4 focus:ring-rose-100"
-                      : "mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition focus:border-[var(--dogshift-blue)] focus:ring-4 focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_85%)]"
-                  }
-                  placeholder="••••••••"
-                  type="password"
-                  autoComplete="new-password"
-                />
-                {step1Attempted && step1Errors.password ? (
-                  <p className="mt-2 text-xs font-medium text-rose-600">{step1Errors.password}</p>
-                ) : null}
-              </div>
+                <div>
+                  <label htmlFor="password" className="block text-sm font-medium text-slate-700">
+                    Mot de passe
+                  </label>
+                  <input
+                    id="password"
+                    value={password}
+                    onChange={(e) => {
+                      setAuthError(null);
+                      setPassword(e.target.value);
+                    }}
+                    disabled={formStatus === "submitting" || isAuthBusy}
+                    className={
+                      step1Attempted && step1Errors.password
+                        ? "mt-2 w-full rounded-2xl border border-rose-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition focus:border-rose-400 focus:ring-4 focus:ring-rose-100"
+                        : "mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition focus:border-[var(--dogshift-blue)] focus:ring-4 focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_85%)]"
+                    }
+                    placeholder="••••••••"
+                    type="password"
+                    autoComplete="new-password"
+                  />
+                  {step1Attempted && step1Errors.password ? <p className="mt-2 text-xs font-medium text-rose-600">{step1Errors.password}</p> : null}
+                </div>
 
-              <div className="sm:col-span-2">
-                <label htmlFor="passwordConfirm" className="block text-sm font-medium text-slate-700">
-                  Confirmer mot de passe
-                </label>
-                <input
-                  id="passwordConfirm"
-                  value={passwordConfirm}
-                  onChange={(e) => {
-                    setAuthError(null);
-                    setPasswordConfirm(e.target.value);
-                  }}
-                  className={
-                    step1Attempted && step1Errors.passwordConfirm
-                      ? "mt-2 w-full rounded-2xl border border-rose-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition focus:border-rose-400 focus:ring-4 focus:ring-rose-100"
-                      : "mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition focus:border-[var(--dogshift-blue)] focus:ring-4 focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_85%)]"
-                  }
-                  placeholder="••••••••"
-                  type="password"
-                  autoComplete="new-password"
-                />
-                {step1Attempted && step1Errors.passwordConfirm ? (
-                  <p className="mt-2 text-xs font-medium text-rose-600">{step1Errors.passwordConfirm}</p>
-                ) : null}
+                <div className="sm:col-span-2">
+                  <label htmlFor="passwordConfirm" className="block text-sm font-medium text-slate-700">
+                    Confirmer mot de passe
+                  </label>
+                  <input
+                    id="passwordConfirm"
+                    value={passwordConfirm}
+                    onChange={(e) => {
+                      setAuthError(null);
+                      setPasswordConfirm(e.target.value);
+                    }}
+                    disabled={formStatus === "submitting" || isAuthBusy}
+                    className={
+                      step1Attempted && step1Errors.passwordConfirm
+                        ? "mt-2 w-full rounded-2xl border border-rose-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition focus:border-rose-400 focus:ring-4 focus:ring-rose-100"
+                        : "mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition focus:border-[var(--dogshift-blue)] focus:ring-4 focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_85%)]"
+                    }
+                    placeholder="••••••••"
+                    type="password"
+                    autoComplete="new-password"
+                  />
+                  {step1Attempted && step1Errors.passwordConfirm ? (
+                    <p className="mt-2 text-xs font-medium text-rose-600">{step1Errors.passwordConfirm}</p>
+                  ) : null}
+                </div>
               </div>
-            </div>
+            ) : null}
 
             {authError ? <p className="text-sm font-medium text-rose-600">{authError}</p> : null}
+
+            {sessionStatus !== "authenticated" && showEmailCode ? (
+              <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5">
+                <p className="text-sm font-semibold text-slate-900">Vérifie ton email</p>
+                <p className="mt-2 text-sm text-slate-600">Entre le code reçu par email pour activer ton compte.</p>
+                <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">
+                  <input
+                    value={emailCode}
+                    onChange={(e) => setEmailCode(e.target.value)}
+                    className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:ring-4 focus:ring-slate-200"
+                    placeholder="Code email"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    disabled={isAuthBusy}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => void verifyInlineEmailCode()}
+                    disabled={isAuthBusy}
+                    className="inline-flex w-full items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-6 py-3 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition hover:bg-[var(--dogshift-blue-hover)] disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {authInlineStatus === "verifying" ? "Vérification…" : "Valider"}
+                  </button>
+                </div>
+              </div>
+            ) : null}
 
             <div className="grid gap-4 sm:grid-cols-2">
             <div>
@@ -533,33 +636,6 @@ export default function BecomeSitterForm() {
           </div>
         ) : null}
 
-        {sessionStatus !== "authenticated" ? (
-          <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5">
-            <p className="text-sm font-semibold text-slate-900">Crée ton compte pour finaliser</p>
-            <p className="mt-2 text-sm text-slate-600">
-              Tu peux remplir le formulaire, mais tu devras te connecter (ou créer un compte) avant de soumettre.
-            </p>
-            <div className="mt-4 flex flex-col gap-3 sm:flex-row">
-              <SignInButton mode="modal">
-                <button
-                  type="button"
-                  className="inline-flex w-full items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-6 py-3 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition hover:bg-[var(--dogshift-blue-hover)]"
-                >
-                  Se connecter
-                </button>
-              </SignInButton>
-              <SignUpButton mode="modal">
-                <button
-                  type="button"
-                  className="inline-flex w-full items-center justify-center rounded-2xl border border-slate-300 bg-white px-6 py-3 text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50"
-                >
-                  Créer un compte
-                </button>
-              </SignUpButton>
-            </div>
-          </div>
-        ) : null}
-
         {formStatus === "error" ? <p className="text-sm font-medium text-rose-600">Une erreur est survenue. Merci de réessayer.</p> : null}
 
         <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -580,15 +656,29 @@ export default function BecomeSitterForm() {
                   setStep1Attempted(true);
                   setAuthError(null);
                   if (!canNext1) return;
+
+                  if (sessionStatus !== "authenticated") {
+                    void (async () => {
+                      const ok = await ensureInlineSignUp();
+                      if (ok) setStep(2);
+                    })();
+                    return;
+                  }
                 }
                 if (step === 2) setStep2Attempted(true);
                 if (step === 2 && !canNext2) return;
                 setStep((s) => (s === 3 ? 3 : ((s + 1) as 1 | 2 | 3)));
               }}
-              disabled={(step === 1 && !canNext1) || (step === 2 && !canNext2) || formStatus === "submitting"}
+              disabled={(step === 1 && !canNext1) || (step === 2 && !canNext2) || formStatus === "submitting" || isAuthBusy}
               className="inline-flex items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-6 py-3 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition hover:bg-[var(--dogshift-blue-hover)] disabled:cursor-not-allowed disabled:opacity-60"
             >
-              Continuer
+              {step === 1 && sessionStatus !== "authenticated"
+                ? authInlineStatus === "creating"
+                  ? "Création…"
+                  : authInlineStatus === "needs_code" || authInlineStatus === "verifying"
+                    ? "Vérifier l’email"
+                    : "Continuer"
+                : "Continuer"}
             </button>
           ) : (
             <button
