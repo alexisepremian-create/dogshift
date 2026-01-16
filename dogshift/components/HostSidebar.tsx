@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useMemo } from "react";
 import { useClerk, useUser } from "@clerk/nextjs";
 import { LayoutDashboard, MessageSquare, Pencil, User, LogOut, CalendarDays, Settings, Wallet } from "lucide-react";
@@ -25,6 +25,7 @@ type NavItem = {
 export default function HostSidebar({ onNavigate, className }: HostSidebarProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const router = useRouter();
   const clerk = useClerk();
   const { isLoaded, isSignedIn } = useUser();
   const { sitterId } = useHostUser();
@@ -175,6 +176,18 @@ export default function HostSidebar({ onNavigate, className }: HostSidebarProps)
                 prefetch={!disablePrefetch}
                 className={item.active ? activeLink : inactiveLink}
                 onClick={onNavigate}
+                onMouseEnter={() => {
+                  if (disablePrefetch) return;
+                  if (item.key !== "public") return;
+                  if (!item.href.startsWith("/sitter/")) return;
+                  void router.prefetch(item.href);
+                }}
+                onFocus={() => {
+                  if (disablePrefetch) return;
+                  if (item.key !== "public") return;
+                  if (!item.href.startsWith("/sitter/")) return;
+                  void router.prefetch(item.href);
+                }}
               >
                 <span className={"text-slate-500 group-hover:text-slate-700" + (item.active ? " text-slate-700" : "")}>{item.icon}</span>
                 <span>{item.label}</span>

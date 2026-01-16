@@ -10,6 +10,7 @@ import HostDashboardShell from "@/components/HostDashboardShell";
 import { HostUserProvider, makeHostUserValuePreview } from "@/components/HostUserProvider";
 import SunCornerGlow from "@/components/SunCornerGlow";
 import { appendHostMessage } from "@/lib/hostMessages";
+import PageLoader from "@/components/ui/PageLoader";
 
 type ServiceType = "Promenade" | "Garde" | "Pension";
 
@@ -600,39 +601,7 @@ export default function SitterProfilePage() {
   }
 
   if (sitter === undefined) {
-    return (
-      <div className="min-h-screen bg-white text-slate-900">
-        {isHostPreview ? (
-          <HostUserProvider value={hostUserValue}>
-            <HostDashboardShell>
-              <div className="grid gap-4">
-                <div>
-                  <p className="text-sm font-semibold text-slate-600">Tableau de bord</p>
-                  <h1 className="mt-2 flex items-center gap-2 text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">
-                    <User className="h-6 w-6 text-slate-700" aria-hidden="true" />
-                    <span>Profil public</span>
-                  </h1>
-                  <div className="mt-3 flex min-h-[32px] items-center" />
-                </div>
-
-                <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-[0_18px_60px_-40px_rgba(2,6,23,0.35)]">
-                  <div className="h-6 w-40 rounded bg-slate-100" />
-                  <div className="mt-6 h-24 w-full rounded-2xl bg-slate-50" />
-                  <div className="mt-4 h-24 w-full rounded-2xl bg-slate-50" />
-                </div>
-              </div>
-            </HostDashboardShell>
-          </HostUserProvider>
-        ) : (
-          <main className="mx-auto max-w-6xl px-4 py-14 sm:px-6">
-            <div className="mx-auto max-w-xl rounded-3xl border border-slate-200 bg-white p-8 text-center shadow-[0_18px_60px_-40px_rgba(2,6,23,0.35)]">
-              <p className="text-sm font-semibold text-slate-900">Chargement…</p>
-              <p className="mt-2 text-sm text-slate-600">Nous préparons votre annonce.</p>
-            </div>
-          </main>
-        )}
-      </div>
-    );
+    return <PageLoader label="Chargement…" />;
   }
 
   if (sitter === null) {
