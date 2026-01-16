@@ -118,11 +118,16 @@ export async function ensureDbUserFromClerkAuth(): Promise<(DbUserEnsured & { cr
   const { userId } = await auth();
   if (!userId) return null;
 
-  const clerkUser = await currentUser();
-  const email = clerkUser?.primaryEmailAddress?.emailAddress ?? "";
+  let email = "";
+  let name: string | null = null;
+  for (let i = 0; i < 6; i += 1) {
+    const clerkUser = await currentUser();
+    email = clerkUser?.primaryEmailAddress?.emailAddress ?? "";
+    name = typeof clerkUser?.fullName === "string" ? clerkUser.fullName : null;
+    if (email) break;
+    await new Promise((r) => setTimeout(r, 1000));
+  }
   if (!email) return null;
-
-  const name = typeof clerkUser?.fullName === "string" ? clerkUser.fullName : null;
 
   return ensureDbUserByClerkUserId({ clerkUserId: userId, email, name });
 }

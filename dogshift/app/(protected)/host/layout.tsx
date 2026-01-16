@@ -24,7 +24,12 @@ export default async function HostLayout({
     redirect("/login");
   }
 
-  const hostUser = await getHostUserData();
+  let hostUser: Awaited<ReturnType<typeof getHostUserData>>;
+  try {
+    hostUser = await getHostUserData();
+  } catch {
+    return <PageLoader label="Chargement…" />;
+  }
 
   if (!hostUser.sitterId) {
     redirect("/become-sitter");

@@ -42,39 +42,30 @@ export async function getHostUserData(): Promise<HostUserData> {
     };
   }
 
-  const clerkUser = await currentUser();
-  const primaryEmail = clerkUser?.primaryEmailAddress?.emailAddress ?? "";
-  if (!primaryEmail) {
-    return {
-      sitterId: null,
-      published: false,
-      publishedAt: null,
-      profile: null,
-      termsAcceptedAt: null,
-      termsVersion: null,
-      profileCompletion: 0,
-    };
-  }
+  let user = (await (prisma as any).user.findUnique({ where: { clerkUserId: userId } })) as
+    | ({ id: string; sitterId?: string | null; hostProfileJson?: string | null } & Record<string, unknown>)
+    | null;
 
-  const ensured = await ensureDbUserByClerkUserId({
-    clerkUserId: userId,
-    email: primaryEmail,
-    name: typeof clerkUser?.fullName === "string" ? clerkUser.fullName : null,
-  });
-  if (!ensured) {
-    return {
-      sitterId: null,
-      published: false,
-      publishedAt: null,
-      profile: null,
-      termsAcceptedAt: null,
-      termsVersion: null,
-      profileCompletion: 0,
-    };
-  }
-
-  const user = await prisma.user.findUnique({ where: { id: ensured.id } });
   if (!user) {
+    const clerkUser = await currentUser();
+    const primaryEmail = clerkUser?.primaryEmailAddress?.emailAddress ?? "";
+    if (!primaryEmail) {
+      throw new Error("[hostUser] missing primary email for ensureDbUser");
+    }
+
+    const ensured = await ensureDbUserByClerkUserId({
+      clerkUserId: userId,
+      email: primaryEmail,
+      name: typeof clerkUser?.fullName === "string" ? clerkUser.fullName : null,
+    });
+    if (ensured?.id) {
+      user = (await (prisma as any).user.findUnique({ where: { id: ensured.id } })) as
+        | ({ id: string; sitterId?: string | null; hostProfileJson?: string | null } & Record<string, unknown>)
+        | null;
+    }
+  }
+
+  if (!user?.id) {
     return {
       sitterId: null,
       published: false,
