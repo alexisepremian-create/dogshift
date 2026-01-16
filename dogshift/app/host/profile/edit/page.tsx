@@ -3,8 +3,6 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
-import { useUser } from "@clerk/nextjs";
 import { Pencil } from "lucide-react";
 
 import SunCornerGlow from "@/components/SunCornerGlow";
@@ -40,8 +38,6 @@ function parsePrice(raw: string) {
 }
 
 export default function HostProfileEditPage() {
-  const router = useRouter();
-  const { isLoaded, isSignedIn } = useUser();
   const { sitterId, profile: remoteProfile, published: remotePublished, termsAcceptedAt, termsVersion, profileCompletion } = useHostUser();
 
   const termsOk = Boolean(termsAcceptedAt) && termsVersion === CURRENT_TERMS_VERSION;
@@ -64,14 +60,6 @@ export default function HostProfileEditPage() {
   const [verificationError, setVerificationError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!isLoaded) return;
-    if (!isSignedIn) {
-      router.replace("/login");
-      return;
-    }
-  }, [isLoaded, isSignedIn, router]);
 
   useEffect(() => {
     return;
@@ -145,9 +133,6 @@ export default function HostProfileEditPage() {
     () => activeServices.every((svc) => typeof profile.pricing?.[svc] === "number"),
     [activeServices, profile.pricing]
   );
-
-  if (!isLoaded) return null;
-  if (!isSignedIn) return null;
 
   function onSave() {
     setSaved(false);

@@ -4,8 +4,6 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
-import { useUser } from "@clerk/nextjs";
 import { MessageCircle } from "lucide-react";
 
 import SunCornerGlow from "@/components/SunCornerGlow";
@@ -58,8 +56,6 @@ function formatDateOnly(iso: string) {
 
 export default function HostMessagesLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const router = useRouter();
-  const { isLoaded, isSignedIn } = useUser();
 
   const [conversations, setConversations] = useState<ConversationListItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -106,14 +102,8 @@ export default function HostMessagesLayout({ children }: { children: React.React
   }
 
   useEffect(() => {
-    if (!isLoaded) return;
-    if (!isSignedIn) {
-      router.replace("/login");
-      return;
-    }
     void loadConversations();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isLoaded, isSignedIn, router]);
+  }, []);
 
   useEffect(() => {
     const m = pathname.match(/^\/host\/messages\/([^/?#]+)/);
@@ -129,9 +119,6 @@ export default function HostMessagesLayout({ children }: { children: React.React
       return (Number.isNaN(tb) ? 0 : tb) - (Number.isNaN(ta) ? 0 : ta);
     });
   }, [conversations]);
-
-  if (!isLoaded) return null;
-  if (!isSignedIn) return null;
 
   return (
     <div className="relative grid gap-6 overflow-hidden" data-testid="host-messages-layout">

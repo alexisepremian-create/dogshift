@@ -10,6 +10,10 @@ export default async function PostLoginPage({
 }: {
   searchParams?: Record<string, string | string[] | undefined>;
 }) {
+  if (process.env.NODE_ENV !== "production" && process.env.NEXT_PUBLIC_DS_DEBUG_ROUTING === "1") {
+    console.log("[POST_LOGIN_RENDER]", { searchParams });
+  }
+
   const { userId } = await auth();
   if (!userId) {
     const h = await headers();
@@ -53,8 +57,14 @@ export default async function PostLoginPage({
   const nextRaw = searchParams?.next;
   const next = typeof nextRaw === "string" ? nextRaw.trim() : "";
   if (next) {
+    if (process.env.NODE_ENV !== "production" && process.env.NEXT_PUBLIC_DS_DEBUG_ROUTING === "1") {
+      console.log("[POST_LOGIN_REDIRECT]", { to: next });
+    }
     redirect(next);
   }
 
-  redirect("/dashboard");
+  if (process.env.NODE_ENV !== "production" && process.env.NEXT_PUBLIC_DS_DEBUG_ROUTING === "1") {
+    console.log("[POST_LOGIN_REDIRECT]", { to: "/host" });
+  }
+  redirect("/host");
 }

@@ -13,6 +13,10 @@ export default async function HostLayout({
 }: {
   children: React.ReactNode;
 }) {
+  if (process.env.NODE_ENV !== "production" && process.env.NEXT_PUBLIC_DS_DEBUG_ROUTING === "1") {
+    console.log("[HOST_LAYOUT_RENDER]");
+  }
+
   const { userId } = await auth();
   if (!userId) {
     redirect("/login");

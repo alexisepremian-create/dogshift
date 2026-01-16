@@ -1,11 +1,8 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
-import { useRouter } from "next/navigation";
-import { useUser } from "@clerk/nextjs";
 
 type ConversationHeader = {
   id: string;
@@ -21,24 +18,6 @@ type MessageItem = {
   readAt: string | null;
 };
 
-function avatarIsSafe(src: string) {
-  const trimmed = src.trim();
-  if (!trimmed) return false;
-  if (trimmed.startsWith("/")) return true;
-  try {
-    const url = new URL(trimmed);
-    return url.protocol === "https:" && url.hostname === "lh3.googleusercontent.com";
-  } catch {
-    return false;
-  }
-}
-
-function initialForName(name: string) {
-  const cleaned = (name ?? "").trim();
-  if (!cleaned) return "?";
-  return cleaned.slice(0, 1).toUpperCase();
-}
-
 function formatDateTime(value: string) {
   const dt = new Date(value);
   if (Number.isNaN(dt.getTime())) return value;
@@ -52,8 +31,6 @@ function formatDateTime(value: string) {
 
 export default function HostMessageThreadPage() {
   const params = useParams<{ id: string }>();
-  const router = useRouter();
-  const { isLoaded, isSignedIn } = useUser();
   const conversationId = typeof params?.id === "string" ? params.id : "";
 
   const [header, setHeader] = useState<ConversationHeader | null>(null);
@@ -66,11 +43,8 @@ export default function HostMessageThreadPage() {
   const [sending, setSending] = useState(false);
 
   useEffect(() => {
-    if (!isLoaded) return;
-    if (!isSignedIn) {
-      router.replace("/login");
-    }
-  }, [isLoaded, isSignedIn, router]);
+    return;
+  }, []);
 
   async function loadThread() {
     if (!conversationId) return;
@@ -118,10 +92,10 @@ export default function HostMessageThreadPage() {
   }
 
   useEffect(() => {
-    if (!isLoaded || !isSignedIn) return;
+    if (!conversationId) return;
     void loadThread();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [conversationId, isLoaded, isSignedIn]);
+  }, [conversationId]);
 
   const canSend = text.trim().length > 0 && !sending;
 
@@ -158,9 +132,6 @@ export default function HostMessageThreadPage() {
       setSending(false);
     }
   }
-
-  if (!isLoaded) return null;
-  if (!isSignedIn) return null;
 
   if (error) {
     return (

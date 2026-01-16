@@ -1,15 +1,10 @@
 "use client";
 
-import { useUser } from "@clerk/nextjs";
 import { ArrowDownRight, ArrowUpRight, Wallet } from "lucide-react";
 
 import SunCornerGlow from "@/components/SunCornerGlow";
 
 export default function HostWalletPage() {
-  const { isLoaded, isSignedIn } = useUser();
-
-  if (!isLoaded || !isSignedIn) return null;
-
   return (
     <div className="relative grid gap-6 overflow-hidden" data-testid="host-wallet-page">
       <SunCornerGlow variant="sitterDashboard" />
