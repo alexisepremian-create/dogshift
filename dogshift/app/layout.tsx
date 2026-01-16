@@ -7,7 +7,6 @@ import { headers } from "next/headers";
 import { ClerkProvider } from "@clerk/nextjs";
 import { frFR } from "@clerk/localizations";
 import DogShiftBot from "@/components/DogShiftBot";
-import GlobalTransitionOverlay from "@/components/GlobalTransitionOverlay";
 import PageTopOffset from "@/components/PageTopOffset";
 import SessionAuthProvider from "@/components/SessionAuthProvider";
 import SiteHeader from "@/components/SiteHeader";
@@ -61,30 +60,6 @@ export default async function RootLayout({
             SITE_LOCK=ON
           </div>
         ) : null}
-        {isAccess ? null : (
-          <div
-            id="ds-preloader"
-            className="pointer-events-auto fixed inset-0 flex items-center justify-center bg-white"
-            style={{ zIndex: 2147483647, minHeight: "100dvh" }}
-            aria-busy="true"
-            aria-live="polite"
-          >
-            <div className="flex flex-col items-center justify-center">
-              <svg className="block h-12 w-12 animate-spin text-slate-700" viewBox="0 0 24 24" aria-hidden="true">
-                <circle className="opacity-20" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" />
-                <path
-                  className="opacity-80"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  d="M12 2a10 10 0 0 1 10 10"
-                />
-              </svg>
-              <p className="text-sm font-medium text-slate-700">Chargement…</p>
-            </div>
-          </div>
-        )}
         <ClerkProvider
           signInUrl="/login"
           signUpUrl="/signup"
@@ -94,7 +69,6 @@ export default async function RootLayout({
         >
           <Suspense fallback={null}>
             <SessionAuthProvider>
-              {isAccess ? null : <GlobalTransitionOverlay />}
               {isAccess ? children : <SiteHeader />}
               {isAccess ? null : <PageTopOffset>{children}</PageTopOffset>}
               {isAccess ? null : <DogShiftBot />}

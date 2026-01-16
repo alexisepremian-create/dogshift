@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from "react";
 
 import { useHostUser } from "@/components/HostUserProvider";
 import PageLoader from "@/components/ui/PageLoader";
-import { latchHostReady } from "@/components/globalTransitionStore";
 
 export default function HostDataGate({ children }: { children: React.ReactNode }) {
   const host = useHostUser();
@@ -18,8 +17,6 @@ export default function HostDataGate({ children }: { children: React.ReactNode }
 
   useEffect(() => {
     if (!hostReady) return;
-
-    latchHostReady();
 
     let rafId = 0;
     const t = window.setTimeout(() => {
