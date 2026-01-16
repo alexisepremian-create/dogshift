@@ -31,10 +31,6 @@ export default async function HostLayout({
     return <PageLoader label="Chargement…" />;
   }
 
-  if (!hostUser.sitterId) {
-    redirect("/become-sitter");
-  }
-
   return (
     <HostUserProvider value={hostUser}>
       <Suspense fallback={<PageLoader label="Chargement…" />}>

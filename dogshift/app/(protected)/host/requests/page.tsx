@@ -1,11 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 
 import { RequestsSplitView, type HostRequest } from "@/components/host/requests/RequestsSplitView";
 import SunCornerGlow from "@/components/SunCornerGlow";
+import { useHostUser } from "@/components/HostUserProvider";
 
 export default function HostRequestsPage() {
+  const { sitterId } = useHostUser();
   const [rows, setRows] = useState<HostRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -53,8 +56,26 @@ export default function HostRequestsPage() {
   }
 
   useEffect(() => {
+    if (!sitterId) return;
     void loadRequests();
-  }, []);
+  }, [sitterId]);
+
+  if (!sitterId) {
+    return (
+      <div className="relative grid gap-6 overflow-hidden" data-testid="host-requests-page">
+        <SunCornerGlow variant="sitterRequests" />
+        <div className="relative z-10 rounded-3xl border border-slate-200 bg-white p-6">
+          <p className="text-sm font-semibold text-slate-900">Accès réservé aux dogsitters</p>
+          <p className="mt-2 text-sm text-slate-600">Crée ton profil dogsitter pour accéder aux demandes & réservations.</p>
+          <div className="mt-4">
+            <Link href="/become-sitter" className="text-sm font-semibold text-[var(--dogshift-blue)]">
+              Devenir dogsitter
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="relative grid gap-6 overflow-hidden" data-testid="host-requests-page">

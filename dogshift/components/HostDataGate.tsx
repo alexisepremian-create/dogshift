@@ -19,7 +19,7 @@ export default function HostDataGate({ children }: { children: React.ReactNode }
   const warnedTimeoutRef = useRef(false);
 
   const hostReady = useMemo(() => {
-    if (!host.sitterId) return false;
+    if (!host.sitterId) return true;
     if (typeof host.profileCompletion !== "number") return false;
     return true;
   }, [host.profileCompletion, host.sitterId]);
@@ -37,20 +37,7 @@ export default function HostDataGate({ children }: { children: React.ReactNode }
   useEffect(() => {
     if (!isLoaded) return;
     if (!isSignedIn) return;
-    if (host.sitterId) return;
-
-    console.log("[HostDataGate] redirect/fallback", {
-      userId,
-      isLoaded,
-      isSignedIn,
-      hostReady,
-      hasHost: Boolean(host),
-      hostUserDataKeys: Object.keys(host ?? {}),
-      latched,
-      reason: "SIGNED_IN_BUT_NOT_HOST",
-    });
-
-    router.replace("/become-sitter");
+    void host;
   }, [host, hostReady, isLoaded, isSignedIn, latched, router, userId]);
 
   useEffect(() => {
