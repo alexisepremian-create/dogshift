@@ -114,6 +114,19 @@ export async function ensureDbUserByClerkUserId(params: {
   return result;
 }
 
+export async function ensureDbUserFromClerkAuth(): Promise<(DbUserEnsured & { created: boolean }) | null> {
+  const { userId } = await auth();
+  if (!userId) return null;
+
+  const clerkUser = await currentUser();
+  const email = clerkUser?.primaryEmailAddress?.emailAddress ?? "";
+  if (!email) return null;
+
+  const name = typeof clerkUser?.fullName === "string" ? clerkUser.fullName : null;
+
+  return ensureDbUserByClerkUserId({ clerkUserId: userId, email, name });
+}
+
 function tokenUserId(token: RoleJwt | null) {
   const uid = typeof token?.uid === "string" ? token.uid : null;
   const sub = typeof token?.sub === "string" ? token.sub : null;

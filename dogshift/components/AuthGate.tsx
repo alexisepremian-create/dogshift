@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 import { getAuthRole, getAuthUser, type DogShiftAuthRole } from "@/lib/auth";
+import PageLoader from "@/components/ui/PageLoader";
 
 type AuthGateProps = {
   children: React.ReactNode;
@@ -58,9 +59,9 @@ export default function AuthGate({ children, requireAuth = false, allowedRoles }
     }
   }, [hydrated, requireAuth, authed, roleAllowed, role, router]);
 
-  if (!hydrated) return null;
-  if (requireAuth && !authed) return null;
-  if (requireAuth && authed && !roleAllowed) return null;
+  if (!hydrated) return <PageLoader label="Chargement…" />;
+  if (requireAuth && !authed) return <PageLoader label="Connexion en cours…" />;
+  if (requireAuth && authed && !roleAllowed) return <PageLoader label="Chargement…" />;
 
   return <>{children}</>;
 }
