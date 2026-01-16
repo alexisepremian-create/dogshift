@@ -13,6 +13,8 @@ export default function HostTermsModal() {
   const [error, setError] = useState<string | null>(null);
   const [acceptedOverride, setAcceptedOverride] = useState(false);
 
+  if (!host.sitterId) return null;
+
   const needsAcceptance = useMemo(() => {
     if (acceptedOverride) return false;
     if (!host.termsAcceptedAt) return true;
@@ -30,6 +32,11 @@ export default function HostTermsModal() {
       const res = await fetch("/api/host/accept-terms", { method: "POST" });
       const json = (await res.json().catch(() => null)) as { ok?: boolean } | null;
       if (!res.ok || !json?.ok) {
+        if (res.status === 403) {
+          setError("Créez d’abord votre profil dogsitter pour accepter ces CGU.");
+          setSubmitting(false);
+          return;
+        }
         setError("Impossible d’enregistrer votre acceptation. Réessayez.");
         setSubmitting(false);
         return;
