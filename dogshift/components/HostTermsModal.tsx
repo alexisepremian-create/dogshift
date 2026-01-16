@@ -2,12 +2,14 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 
 import { useHostUser } from "@/components/HostUserProvider";
 import Spinner from "@/components/ui/Spinner";
 import { CURRENT_TERMS_VERSION } from "@/lib/terms";
 
 export default function HostTermsModal() {
+  const router = useRouter();
   const host = useHostUser();
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -36,6 +38,7 @@ export default function HostTermsModal() {
       }
       setAcceptedOverride(true);
       setSubmitting(false);
+      router.refresh();
     } catch {
       setError("Impossible d’enregistrer votre acceptation. Réessayez.");
       setSubmitting(false);

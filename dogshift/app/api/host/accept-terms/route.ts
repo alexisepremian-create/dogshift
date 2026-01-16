@@ -14,23 +14,30 @@ export async function POST() {
       return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
     }
 
-    const clerkUser = await currentUser();
-    const primaryEmail = clerkUser?.primaryEmailAddress?.emailAddress ?? "";
-    if (!primaryEmail) {
-      return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
-    }
+    const existingUser = await (prisma as any).user.findUnique({ where: { clerkUserId: userId }, select: { id: true } });
+    const dbUserId = typeof existingUser?.id === "string" ? existingUser.id : "";
 
-    const ensured = await ensureDbUserByClerkUserId({
-      clerkUserId: userId,
-      email: primaryEmail,
-      name: typeof clerkUser?.fullName === "string" ? clerkUser.fullName : null,
-    });
-    if (!ensured) {
-      return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
+    let ensuredId = dbUserId;
+    if (!ensuredId) {
+      const clerkUser = await currentUser();
+      const primaryEmail = clerkUser?.primaryEmailAddress?.emailAddress ?? "";
+      if (!primaryEmail) {
+        return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
+      }
+
+      const ensured = await ensureDbUserByClerkUserId({
+        clerkUserId: userId,
+        email: primaryEmail,
+        name: typeof clerkUser?.fullName === "string" ? clerkUser.fullName : null,
+      });
+      if (!ensured?.id) {
+        return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
+      }
+      ensuredId = ensured.id;
     }
 
     const sitterProfile = await prisma.sitterProfile.findUnique({
-      where: { userId: ensured.id },
+      where: { userId: ensuredId },
       select: { id: true },
     });
     if (!sitterProfile) {
@@ -38,16 +45,16 @@ export async function POST() {
     }
 
     const now = new Date();
-    console.info("[api][host][accept-terms] before", { clerkUserId: userId, dbUserId: ensured.id, now: now.toISOString() });
+    console.info("[api][host][accept-terms] before", { clerkUserId: userId, dbUserId: ensuredId, now: now.toISOString() });
     await prisma.sitterProfile.update({
-      where: { userId: ensured.id },
+      where: { userId: ensuredId },
       data: { termsAcceptedAt: now, termsVersion: CURRENT_TERMS_VERSION },
       select: { id: true },
     });
 
     console.info("[api][host][accept-terms] after", {
       clerkUserId: userId,
-      dbUserId: ensured.id,
+      dbUserId: ensuredId,
       termsVersion: CURRENT_TERMS_VERSION,
       termsAcceptedAt: now.toISOString(),
     });
