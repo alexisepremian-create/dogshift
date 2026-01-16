@@ -50,15 +50,7 @@ export async function getHostUserData(): Promise<HostUserData> {
     const clerkUser = await currentUser();
     const primaryEmail = clerkUser?.primaryEmailAddress?.emailAddress ?? "";
     if (!primaryEmail) {
-      return {
-        sitterId: null,
-        published: false,
-        publishedAt: null,
-        profile: null,
-        termsAcceptedAt: null,
-        termsVersion: null,
-        profileCompletion: 0,
-      };
+      throw new Error("[hostUser] missing primary email for ensureDbUser");
     }
 
     const ensured = await ensureDbUserByClerkUserId({
