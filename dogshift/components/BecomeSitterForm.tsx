@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSignUp, useUser } from "@clerk/nextjs";
@@ -37,6 +38,8 @@ export default function BecomeSitterForm() {
   const sessionStatus = !isLoaded ? "loading" : isSignedIn ? "authenticated" : "unauthenticated";
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [formStatus, setFormStatus] = useState<"idle" | "submitting" | "done" | "error">("idle");
+
+  const [termsAccepted, setTermsAccepted] = useState(false);
 
   const [authError, setAuthError] = useState<string | null>(null);
   const [authInlineStatus, setAuthInlineStatus] = useState<"idle" | "creating" | "needs_code" | "verifying">("idle");
@@ -252,6 +255,11 @@ export default function BecomeSitterForm() {
       return;
     }
 
+    if (!termsAccepted) {
+      setFormStatus("error");
+      return;
+    }
+
     try {
       const res = await fetch("/api/become-sitter/apply", {
         method: "POST",
@@ -266,6 +274,7 @@ export default function BecomeSitterForm() {
           availability,
           bio,
           avatarDataUrl,
+          termsAccepted: true,
         }),
       });
       if (!res.ok) {
@@ -304,6 +313,33 @@ export default function BecomeSitterForm() {
 
   return (
     <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-[0_18px_60px_-40px_rgba(2,6,23,0.35)] sm:p-10">
+      {!termsAccepted ? (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center px-4 py-8" role="dialog" aria-modal="true">
+          <button type="button" className="absolute inset-0 bg-slate-900/40" aria-label="Modal" disabled />
+          <div className="relative w-full max-w-lg rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_25px_80px_-45px_rgba(2,6,23,0.6)] sm:p-8">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Règlement / CGU sitter</p>
+            <h2 className="mt-2 text-xl font-semibold tracking-tight text-slate-900">Avant de créer votre profil</h2>
+            <p className="mt-3 text-sm leading-relaxed text-slate-600">
+              Pour devenir dogsitter sur DogShift, vous devez lire et accepter le règlement et les CGU sitters.
+            </p>
+
+            <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <Link href="/cgu" className="text-sm font-semibold text-[var(--dogshift-blue)]" target="_blank" rel="noreferrer">
+                Lire les CGU
+              </Link>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setTermsAccepted(true)}
+              className="mt-5 inline-flex w-full items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-6 py-3 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition hover:bg-[var(--dogshift-blue-hover)]"
+            >
+              J’accepte
+            </button>
+          </div>
+        </div>
+      ) : null}
+
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl">Créer votre profil dogsitter</h1>

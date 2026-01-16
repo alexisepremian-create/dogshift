@@ -14,6 +14,42 @@ export async function POST() {
       return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
     }
 
+    const existingUser = await (prisma as any).user.findUnique({
+      where: { clerkUserId: userId },
+      select: { id: true },
+    });
+
+    if (existingUser?.id) {
+      const sitterProfile = await prisma.sitterProfile.findUnique({
+        where: { userId: existingUser.id },
+        select: { id: true },
+      });
+
+      if (!sitterProfile) {
+        return NextResponse.json(
+          { ok: false, error: "SITTER_PROFILE_REQUIRED", message: "Créez d’abord votre profil dogsitter." },
+          { status: 403 },
+        );
+      }
+
+      const now = new Date();
+      console.info("[api][host][accept-terms] before", { clerkUserId: userId, dbUserId: existingUser.id, now: now.toISOString() });
+      await prisma.sitterProfile.update({
+        where: { userId: existingUser.id },
+        data: { termsAcceptedAt: now, termsVersion: CURRENT_TERMS_VERSION },
+        select: { id: true },
+      });
+
+      console.info("[api][host][accept-terms] after", {
+        clerkUserId: userId,
+        dbUserId: existingUser.id,
+        termsVersion: CURRENT_TERMS_VERSION,
+        termsAcceptedAt: now.toISOString(),
+      });
+
+      return NextResponse.json({ ok: true, termsVersion: CURRENT_TERMS_VERSION }, { status: 200 });
+    }
+
     const clerkUser = await currentUser();
     const primaryEmail = clerkUser?.primaryEmailAddress?.emailAddress ?? "";
     if (!primaryEmail) {
@@ -34,7 +70,10 @@ export async function POST() {
       select: { id: true },
     });
     if (!sitterProfile) {
-      return NextResponse.json({ ok: false, error: "FORBIDDEN" }, { status: 403 });
+      return NextResponse.json(
+        { ok: false, error: "SITTER_PROFILE_REQUIRED", message: "Créez d’abord votre profil dogsitter." },
+        { status: 403 },
+      );
     }
 
     const now = new Date();
