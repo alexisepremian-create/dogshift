@@ -15,6 +15,8 @@ export default function HostTermsModal() {
   const [error, setError] = useState<string | null>(null);
   const [acceptedOverride, setAcceptedOverride] = useState(false);
 
+  if (!host.sitterId) return null;
+
   const needsAcceptance = useMemo(() => {
     if (acceptedOverride) return false;
     if (!host.termsAcceptedAt) return true;
