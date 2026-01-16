@@ -1,7 +1,7 @@
 "use client";
 
-import AccountSettingsPage from "@/app/account/settings/page";
+import AccountSettingsClient from "@/components/AccountSettingsClient";
 
 export default function HostSettingsPage() {
-  return <AccountSettingsPage />;
+  return <AccountSettingsClient glowVariant="sitterSettings" basePath="/host/settings" />;
 }
