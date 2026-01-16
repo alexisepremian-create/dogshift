@@ -32,7 +32,7 @@ export default async function HostLayout({
   }
 
   if (!hostUser.sitterId) {
-    redirect("/become-sitter");
+    redirect("/account");
   }
 
   return (

@@ -50,7 +50,7 @@ export default function HostDataGate({ children }: { children: React.ReactNode }
       reason: "SIGNED_IN_BUT_NOT_HOST",
     });
 
-    router.replace("/become-sitter");
+    router.replace("/account");
   }, [host, hostReady, isLoaded, isSignedIn, latched, router, userId]);
 
   useEffect(() => {

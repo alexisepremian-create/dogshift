@@ -17,7 +17,7 @@ export default async function PostLoginPage({
 
   let dbUserId: string;
   let hasSitterProfile: boolean;
-  let decidedRedirect: "/host" | "/become-sitter";
+  let decidedRedirect: "/host" | "/account";
 
   try {
     let dbUser = await (prisma as any).user.findUnique({ where: { clerkUserId: userId }, select: { id: true } });
@@ -32,7 +32,7 @@ export default async function PostLoginPage({
     dbUserId = dbUser.id;
     const sitterProfile = await prisma.sitterProfile.findUnique({ where: { userId: dbUserId }, select: { id: true } });
     hasSitterProfile = Boolean(sitterProfile?.id);
-    decidedRedirect = hasSitterProfile ? "/host" : "/become-sitter";
+    decidedRedirect = hasSitterProfile ? "/host" : "/account";
   } catch (e) {
     console.log("[post-login] db check failed", { userId });
     return <PageLoader label="Chargement…" />;
