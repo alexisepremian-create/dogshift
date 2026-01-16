@@ -153,6 +153,26 @@ export default function GlobalTransitionOverlay() {
   }, [show]);
 
   useEffect(() => {
+    if (!show) return;
+
+    const html = document.documentElement;
+    const body = document.body;
+    const prevHtmlOverflow = html.style.overflow;
+    const prevBodyOverflow = body.style.overflow;
+    const prevBodyBg = body.style.backgroundColor;
+
+    html.style.overflow = "hidden";
+    body.style.overflow = "hidden";
+    body.style.backgroundColor = "#fff";
+
+    return () => {
+      html.style.overflow = prevHtmlOverflow;
+      body.style.overflow = prevBodyOverflow;
+      body.style.backgroundColor = prevBodyBg;
+    };
+  }, [show]);
+
+  useEffect(() => {
     let debugOn = false;
     try {
       debugOn = window.localStorage.getItem("ds_debug_flash") === "1";
@@ -182,7 +202,12 @@ export default function GlobalTransitionOverlay() {
   if (!show) return null;
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-white" role="dialog" aria-modal="true">
+    <div
+      className="pointer-events-auto fixed inset-0 flex items-center justify-center bg-white"
+      style={{ zIndex: 2147483647, minHeight: "100dvh" }}
+      role="dialog"
+      aria-modal="true"
+    >
       <PageLoader label={stableLabel} />
     </div>
   );

@@ -3,7 +3,7 @@
 export default function Spinner({ className }: { className?: string }) {
   return (
     <svg
-      className={className}
+      className={["block", className].filter(Boolean).join(" ")}
       viewBox="0 0 24 24"
       aria-hidden="true"
     >
