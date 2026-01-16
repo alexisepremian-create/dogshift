@@ -1,4 +1,5 @@
 import HostDashboardShell from "@/components/HostDashboardShell";
+import HostDataGate from "@/components/HostDataGate";
 import HostHydrationGate from "@/components/HostHydrationGate";
 import { HostUserProvider } from "@/components/HostUserProvider";
 import PageLoader from "@/components/ui/PageLoader";
@@ -25,20 +26,18 @@ export default async function HostLayout({
 
   const hostUser = await getHostUserData();
 
-  const hostDataReady =
-    Boolean(hostUser.sitterId) &&
-    typeof hostUser.profileCompletion === "number" &&
-    hostUser.termsAcceptedAt !== null;
-
-  if (!hostDataReady) {
-    return <PageLoader label="Chargement…" />;
+  if (!hostUser.sitterId) {
+    redirect("/become-sitter");
   }
+
   return (
     <HostUserProvider value={hostUser}>
       <Suspense fallback={<PageLoader label="Chargement…" />}>
-        <HostHydrationGate>
-          <HostDashboardShell>{children}</HostDashboardShell>
-        </HostHydrationGate>
+        <HostDataGate>
+          <HostHydrationGate>
+            <HostDashboardShell>{children}</HostDashboardShell>
+          </HostHydrationGate>
+        </HostDataGate>
       </Suspense>
     </HostUserProvider>
   );
