@@ -84,12 +84,6 @@ export default function BecomeSitterAccessForm({
           {loading ? "Vérification…" : "Déverrouiller"}
         </button>
 
-        <div className="mt-4 text-center">
-          <a href="mailto:support@dogshift.ch" className="text-sm font-semibold text-[var(--dogshift-blue)]">
-            Je n’ai pas de code
-          </a>
-        </div>
-
         <Link
           href="/"
           className="mt-3 inline-flex w-full items-center justify-center rounded-2xl border border-slate-300 bg-white px-6 py-3 text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50"
