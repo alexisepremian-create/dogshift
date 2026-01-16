@@ -6,7 +6,6 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { ensureDbUserByClerkUserId } from "@/lib/auth/resolveDbUserId";
 import { computeSitterProfileCompletion } from "@/lib/sitterCompletion";
-import { CURRENT_TERMS_VERSION } from "@/lib/terms";
 
 export const runtime = "nodejs";
 
@@ -69,11 +68,6 @@ export async function POST(req: NextRequest) {
     const services = typeof payload.services === "object" && payload.services ? payload.services : null;
     const hourlyRate = typeof payload.hourlyRate === "number" ? payload.hourlyRate : null;
     const pricePerDay = typeof payload.pricePerDay === "number" ? payload.pricePerDay : null;
-    const termsAccepted = payload.termsAccepted === true;
-
-    if (!termsAccepted) {
-      return NextResponse.json({ ok: false, error: "TERMS_REQUIRED" }, { status: 400 });
-    }
 
     const existingUser = await prisma.user.findUnique({ where: { id: ensured.id }, select: { sitterId: true } });
     const sitterId = (existingUser?.sitterId && existingUser.sitterId.trim())
@@ -134,8 +128,6 @@ export async function POST(req: NextRequest) {
           sitterId,
           published: false,
           publishedAt: null,
-          termsAcceptedAt: now,
-          termsVersion: CURRENT_TERMS_VERSION,
           profileCompletion: completion,
           displayName: firstName || null,
           city: city || null,
@@ -147,8 +139,6 @@ export async function POST(req: NextRequest) {
         },
         update: {
           sitterId,
-          termsAcceptedAt: now,
-          termsVersion: CURRENT_TERMS_VERSION,
           profileCompletion: completion,
           displayName: firstName || null,
           city: city || null,

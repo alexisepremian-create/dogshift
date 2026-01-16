@@ -8,10 +8,8 @@ import { Menu, X } from "lucide-react";
 import HostSidebar from "@/components/HostSidebar";
 import HostTermsModal from "@/components/HostTermsModal";
 import NotificationBell from "@/components/NotificationBell";
-import { useHostUser } from "@/components/HostUserProvider";
 
 export default function HostDashboardShell({ children }: { children: React.ReactNode }) {
-  const host = useHostUser();
   const [mobileOpen, setMobileOpen] = useState(false);
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -30,7 +28,7 @@ export default function HostDashboardShell({ children }: { children: React.React
 
   return (
     <div className="min-h-screen bg-white text-slate-900">
-      {isPublicPreview || !host.sitterId ? null : <HostTermsModal />}
+      {isPublicPreview ? null : <HostTermsModal />}
       <div className="flex min-h-screen">
         <div className="hidden w-[240px] shrink-0 lg:block">
           <HostSidebar className="sticky top-0 h-screen" />
