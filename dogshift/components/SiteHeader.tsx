@@ -34,7 +34,7 @@ export default function SiteHeader() {
   const ctaClassName = useMemo(() => {
     const size = scrolled ? "text-sm" : "text-base";
     const pad = scrolled ? "px-4 py-2" : "px-5 py-3";
-    return `inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white ${pad} ${size} font-semibold text-slate-900 transition-all duration-200 ease-out hover:bg-slate-50 active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)]`;
+    return `items-center gap-2 rounded-full border border-slate-200 bg-white ${pad} ${size} font-semibold text-slate-900 transition-all duration-200 ease-out hover:bg-slate-50 active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)]`;
   }, [scrolled]);
 
   const ctaIconClassName = useMemo(() => (scrolled ? "h-4 w-4" : "h-5 w-5"), [scrolled]);
@@ -118,7 +118,7 @@ export default function SiteHeader() {
               onClick={() => setMobileNavOpen(true)}
               aria-haspopup="dialog"
               aria-expanded={mobileNavOpen}
-              className={ctaClassName + " md:hidden"}
+              className={"inline-flex " + ctaClassName + " md:hidden"}
             >
               <Menu className={ctaIconClassName} aria-hidden="true" />
               Menu
@@ -129,7 +129,7 @@ export default function SiteHeader() {
               onClick={() => setUserMenuOpen((v) => !v)}
               aria-haspopup="menu"
               aria-expanded={userMenuOpen}
-              className={ctaClassName + " hidden md:inline-flex"}
+              className={"hidden md:inline-flex " + ctaClassName}
             >
               <Menu className={ctaIconClassName} aria-hidden="true" />
               Menu
