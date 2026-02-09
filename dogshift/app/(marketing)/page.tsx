@@ -347,10 +347,10 @@ function HeroPetsittingStyle() {
   return (
     <section className="relative w-full overflow-hidden pt-0">
       <div
-        className="relative min-h-[100vh] w-full"
+        className="relative min-h-[100vh] w-full bg-white sm:bg-transparent"
       >
         <div
-          className="absolute inset-0 z-0"
+          className="absolute inset-0 z-0 hidden sm:block"
           style={{
             backgroundImage: "url('/image%20dogshift%20premium.png')",
             backgroundRepeat: "no-repeat",
@@ -361,7 +361,7 @@ function HeroPetsittingStyle() {
         />
 
         <div
-          className="pointer-events-none absolute inset-0 z-10"
+          className="pointer-events-none absolute inset-0 z-10 hidden sm:block"
           style={{
             background:
               "linear-gradient(90deg, rgba(248,250,252,0.98) 0%, rgba(248,250,252,0.96) 22%, rgba(248,250,252,0.82) 42%, rgba(248,250,252,0.25) 66%, rgba(248,250,252,0) 82%)",
