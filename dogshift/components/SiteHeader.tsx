@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { Menu, LogOut, HelpCircle, LayoutDashboard, User } from "lucide-react";
+import Image from "next/image";
+import { Menu, LogOut, HelpCircle, LayoutDashboard, User, Search, ShoppingBag, UserPlus, MoreHorizontal } from "lucide-react";
 import { useClerk, useUser } from "@clerk/nextjs";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
@@ -95,7 +96,9 @@ export default function SiteHeader() {
 
   return (
     <>
-      <div className="pointer-events-none absolute inset-x-0 top-0 z-40">
+      <div
+        className={(isHome ? "hidden md:block " : "") + "pointer-events-none absolute inset-x-0 top-0 z-40"}
+      >
         <div
           className={
             "pointer-events-auto flex items-center justify-between px-4 transition-all duration-200 ease-out sm:px-6" +
@@ -240,7 +243,7 @@ export default function SiteHeader() {
       {mobileNavMounted ? (
         <div
           className={
-            "fixed inset-0 z-[60] md:hidden transition-opacity duration-200 ease-out" +
+            "fixed inset-0 z-[80] md:hidden transition-opacity duration-200 ease-out" +
             (mobileNavOpen ? " opacity-100" : " pointer-events-none opacity-0")
           }
           role="dialog"
@@ -358,6 +361,58 @@ export default function SiteHeader() {
                 )}
               </div>
             </nav>
+          </div>
+        </div>
+      ) : null}
+
+      {isHome ? (
+        <div
+          className="fixed inset-x-0 bottom-0 z-[70] border-t border-slate-200 bg-white/95 backdrop-blur md:hidden"
+          style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
+        >
+          <div className="mx-auto flex max-w-[520px] items-center justify-between px-4 pt-2">
+            <Link
+              href="/"
+              aria-label="DogShift"
+              className="flex flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2 text-xs font-semibold text-slate-700"
+            >
+              <Image src="/dogshift-logo.png" alt="DogShift" width={96} height={24} className="h-5 w-auto" priority={false} />
+            </Link>
+
+            <Link
+              href="/search"
+              className="flex flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2 text-xs font-semibold text-slate-700"
+            >
+              <Search className="h-5 w-5" aria-hidden="true" />
+              Explorer
+            </Link>
+
+            <Link
+              href="/become-sitter"
+              className="flex flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2 text-xs font-semibold text-slate-700"
+            >
+              <UserPlus className="h-5 w-5" aria-hidden="true" />
+              Sitter
+            </Link>
+
+            <Link
+              href="/shop"
+              className="flex flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2 text-xs font-semibold text-slate-700"
+            >
+              <ShoppingBag className="h-5 w-5" aria-hidden="true" />
+              Shop
+            </Link>
+
+            <button
+              type="button"
+              onClick={() => setMobileNavOpen(true)}
+              aria-haspopup="dialog"
+              aria-expanded={mobileNavOpen}
+              className="flex flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2 text-xs font-semibold text-slate-700"
+            >
+              <MoreHorizontal className="h-5 w-5" aria-hidden="true" />
+              Plus
+            </button>
           </div>
         </div>
       ) : null}

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { BadgeCheck, Briefcase, CheckCircle2, FileText, Handshake, Lock, MapPin, ShieldCheck, Umbrella, UserCheck, UserPlus, Wallet } from "lucide-react";
+import { BadgeCheck, Briefcase, CheckCircle2, FileText, Handshake, Lock, MapPin, Search, ShieldCheck, Umbrella, UserCheck, UserPlus, Wallet } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import MapPreview from "@/components/MapPreview";
@@ -607,7 +607,22 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
-      <main>
+      <div className="sticky top-0 z-[65] border-b border-slate-200 bg-white/95 backdrop-blur md:hidden">
+        <div className="mx-auto max-w-[820px] px-4 pb-3 pt-3">
+          <Link
+            href="/search"
+            className="flex items-center gap-3 rounded-full border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 shadow-sm"
+          >
+            <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-slate-50 text-slate-700 ring-1 ring-slate-200">
+              <Search className="h-5 w-5" aria-hidden="true" />
+            </span>
+            Rechercher un sitter…
+          </Link>
+        </div>
+      </div>
+
+      <main className="pb-24 md:pb-0">
+        <div className="md:hidden" style={{ paddingTop: "12px" }} />
         <HeroPetsittingStyle />
 
         <div ref={howReveal.ref} style={howReveal.style}>
