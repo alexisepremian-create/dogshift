@@ -10,7 +10,9 @@ import NotificationBell from "@/components/NotificationBell";
 
 export default function SiteHeader() {
   const [scrolled, setScrolled] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [mobileNavMounted, setMobileNavMounted] = useState(false);
   const { isLoaded, isSignedIn } = useUser();
   const clerk = useClerk();
   const pathname = usePathname();
@@ -45,15 +47,15 @@ export default function SiteHeader() {
   }, []);
 
   useEffect(() => {
-    if (!menuOpen) return;
+    if (!userMenuOpen) return;
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setMenuOpen(false);
+      if (e.key === "Escape") setUserMenuOpen(false);
     };
     const onPointerDown = (e: PointerEvent) => {
       const el = menuRef.current;
       if (!el) return;
       if (e.target instanceof Node && el.contains(e.target)) return;
-      setMenuOpen(false);
+      setUserMenuOpen(false);
     };
     window.addEventListener("keydown", onKeyDown);
     window.addEventListener("pointerdown", onPointerDown);
@@ -61,7 +63,31 @@ export default function SiteHeader() {
       window.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("pointerdown", onPointerDown);
     };
-  }, [menuOpen]);
+  }, [userMenuOpen]);
+
+  useEffect(() => {
+    if (!mobileNavOpen) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMobileNavOpen(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [mobileNavOpen]);
+
+  useEffect(() => {
+    if (mobileNavOpen) {
+      setMobileNavMounted(true);
+      return;
+    }
+    if (!mobileNavMounted) return;
+    const t = window.setTimeout(() => setMobileNavMounted(false), 180);
+    return () => window.clearTimeout(t);
+  }, [mobileNavMounted, mobileNavOpen]);
 
   if (isHostArea || isAccountArea || isHostPreview) return null;
 
@@ -86,18 +112,30 @@ export default function SiteHeader() {
             className={authMenuOffset + " relative flex items-center gap-2 transition-all duration-200 ease-out"}
           >
             {isLoaded && isSignedIn ? <NotificationBell /> : null}
+
             <button
               type="button"
-              onClick={() => setMenuOpen((v) => !v)}
-              aria-haspopup="menu"
-              aria-expanded={menuOpen}
-              className={ctaClassName}
+              onClick={() => setMobileNavOpen(true)}
+              aria-haspopup="dialog"
+              aria-expanded={mobileNavOpen}
+              className={ctaClassName + " md:hidden"}
             >
               <Menu className={ctaIconClassName} aria-hidden="true" />
               Menu
             </button>
 
-            {menuOpen ? (
+            <button
+              type="button"
+              onClick={() => setUserMenuOpen((v) => !v)}
+              aria-haspopup="menu"
+              aria-expanded={userMenuOpen}
+              className={ctaClassName + " hidden md:inline-flex"}
+            >
+              <Menu className={ctaIconClassName} aria-hidden="true" />
+              Menu
+            </button>
+
+            {userMenuOpen ? (
               <div
                 role="menu"
                 aria-label="Menu utilisateur"
@@ -109,7 +147,7 @@ export default function SiteHeader() {
                       role="menuitem"
                       href={accountHref}
                       prefetch={false}
-                      onClick={() => setMenuOpen(false)}
+                      onClick={() => setUserMenuOpen(false)}
                       className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50"
                     >
                       <LayoutDashboard className="h-4 w-4 text-slate-500" aria-hidden="true" />
@@ -118,7 +156,7 @@ export default function SiteHeader() {
                     <Link
                       role="menuitem"
                       href="/help"
-                      onClick={() => setMenuOpen(false)}
+                      onClick={() => setUserMenuOpen(false)}
                       className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50"
                     >
                       <HelpCircle className="h-4 w-4 text-slate-500" aria-hidden="true" />
@@ -129,7 +167,7 @@ export default function SiteHeader() {
                       role="menuitem"
                       type="button"
                       onClick={() => {
-                        setMenuOpen(false);
+                        setUserMenuOpen(false);
                         void clerk.signOut({ redirectUrl: "/login" });
                       }}
                       className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-medium text-slate-700 hover:bg-slate-50"
@@ -143,7 +181,7 @@ export default function SiteHeader() {
                     <Link
                       role="menuitem"
                       href="/login"
-                      onClick={() => setMenuOpen(false)}
+                      onClick={() => setUserMenuOpen(false)}
                       className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50"
                     >
                       <User className="h-4 w-4 text-slate-500" aria-hidden="true" />
@@ -152,7 +190,7 @@ export default function SiteHeader() {
                     <Link
                       role="menuitem"
                       href="/help"
-                      onClick={() => setMenuOpen(false)}
+                      onClick={() => setUserMenuOpen(false)}
                       className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50"
                     >
                       <HelpCircle className="h-4 w-4 text-slate-500" aria-hidden="true" />
@@ -198,6 +236,131 @@ export default function SiteHeader() {
           </Link>
         </nav>
       </div>
+
+      {mobileNavMounted ? (
+        <div
+          className={
+            "fixed inset-0 z-[60] md:hidden transition-opacity duration-200 ease-out" +
+            (mobileNavOpen ? " opacity-100" : " pointer-events-none opacity-0")
+          }
+          role="dialog"
+          aria-modal="true"
+          aria-label="Menu"
+        >
+          <button
+            type="button"
+            className={
+              "absolute inset-0 bg-slate-950/35 transition-opacity duration-200 ease-out" +
+              (mobileNavOpen ? " opacity-100" : " opacity-0")
+            }
+            aria-label="Fermer le menu"
+            onClick={() => setMobileNavOpen(false)}
+          />
+
+          <div
+            className={
+              "absolute inset-x-0 bottom-0 max-h-[85vh] overflow-auto rounded-t-3xl border border-slate-200 bg-white shadow-[0_-18px_60px_-44px_rgba(2,6,23,0.45)] transition-transform duration-200 ease-out" +
+              (mobileNavOpen ? " translate-y-0" : " translate-y-6")
+            }
+            style={{ paddingBottom: "max(1rem, env(safe-area-inset-bottom))" }}
+          >
+            <div className="flex items-center justify-between gap-3 px-5 pb-3 pt-4">
+              <p className="text-sm font-semibold text-slate-900">Menu</p>
+              <button
+                type="button"
+                onClick={() => setMobileNavOpen(false)}
+                className="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-900"
+              >
+                Fermer
+              </button>
+            </div>
+
+            <nav aria-label="Navigation principale" className="px-5 pb-4">
+              <div className="grid gap-2">
+                <Link
+                  href="/"
+                  onClick={() => setMobileNavOpen(false)}
+                  className="rounded-2xl px-4 py-3 text-base font-semibold text-slate-900 ring-1 ring-slate-200"
+                >
+                  Accueil
+                </Link>
+                <Link
+                  href="/search"
+                  onClick={() => setMobileNavOpen(false)}
+                  className="rounded-2xl px-4 py-3 text-base font-semibold text-slate-900 ring-1 ring-slate-200"
+                >
+                  Trouver un sitter
+                </Link>
+                <Link
+                  href="/become-sitter"
+                  onClick={() => setMobileNavOpen(false)}
+                  className="rounded-2xl px-4 py-3 text-base font-semibold text-slate-900 ring-1 ring-slate-200"
+                >
+                  Devenir dogsitter
+                </Link>
+                <Link
+                  href="/shop"
+                  onClick={() => setMobileNavOpen(false)}
+                  className="rounded-2xl px-4 py-3 text-base font-semibold text-slate-900 ring-1 ring-slate-200"
+                >
+                  Boutique
+                </Link>
+              </div>
+
+              <div className="mt-4 h-px w-full bg-slate-200" />
+
+              <div className="mt-4 grid gap-2">
+                {isLoaded && isSignedIn ? (
+                  <>
+                    <Link
+                      href={accountHref}
+                      prefetch={false}
+                      onClick={() => setMobileNavOpen(false)}
+                      className="rounded-2xl px-4 py-3 text-sm font-semibold text-slate-900 ring-1 ring-slate-200"
+                    >
+                      Mon espace
+                    </Link>
+                    <Link
+                      href="/help"
+                      onClick={() => setMobileNavOpen(false)}
+                      className="rounded-2xl px-4 py-3 text-sm font-semibold text-slate-900 ring-1 ring-slate-200"
+                    >
+                      Centre d’aide
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMobileNavOpen(false);
+                        void clerk.signOut({ redirectUrl: "/login" });
+                      }}
+                      className="rounded-2xl px-4 py-3 text-left text-sm font-semibold text-slate-900 ring-1 ring-slate-200"
+                    >
+                      Se déconnecter
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <Link
+                      href="/login"
+                      onClick={() => setMobileNavOpen(false)}
+                      className="rounded-2xl px-4 py-3 text-sm font-semibold text-slate-900 ring-1 ring-slate-200"
+                    >
+                      Connexion
+                    </Link>
+                    <Link
+                      href="/help"
+                      onClick={() => setMobileNavOpen(false)}
+                      className="rounded-2xl px-4 py-3 text-sm font-semibold text-slate-900 ring-1 ring-slate-200"
+                    >
+                      Centre d’aide
+                    </Link>
+                  </>
+                )}
+              </div>
+            </nav>
+          </div>
+        </div>
+      ) : null}
     </>
   );
 }

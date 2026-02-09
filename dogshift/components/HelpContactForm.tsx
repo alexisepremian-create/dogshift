@@ -83,7 +83,7 @@ export default function HelpContactForm() {
         </p>
         <a
           href="mailto:support@dogshift.ch"
-          className="mt-4 inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50"
+          className="mt-4 inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-900 shadow-sm transition md:hover:bg-slate-50"
         >
           Écrire au support
         </a>
@@ -116,7 +116,7 @@ export default function HelpContactForm() {
         <button
           type="submit"
           disabled={disabled}
-          className="inline-flex items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-5 py-2.5 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition-all duration-200 ease-out hover:bg-[var(--dogshift-blue-hover)] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
+          className="inline-flex items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-5 py-2.5 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition-all duration-200 ease-out md:hover:bg-[var(--dogshift-blue-hover)] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
         >
           {status === "sending" ? "Envoi…" : "Envoyer"}
         </button>

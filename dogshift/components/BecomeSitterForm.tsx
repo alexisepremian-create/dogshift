@@ -368,6 +368,9 @@ export default function BecomeSitterForm() {
                   </label>
                   <input
                     id="email"
+                    type="email"
+                    inputMode="email"
+                    autoCapitalize="none"
                     value={effectiveEmail}
                     disabled={formStatus === "submitting" || isAuthBusy}
                     onChange={(e) => {
@@ -509,7 +512,7 @@ export default function BecomeSitterForm() {
                       className={
                         active
                           ? "rounded-full bg-[var(--dogshift-blue)] px-4 py-2 text-xs font-semibold text-white shadow-sm"
-                          : "rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
+                          : "rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 shadow-sm md:hover:bg-slate-50"
                       }
                     >
                       {svc}
@@ -642,7 +645,7 @@ export default function BecomeSitterForm() {
                 id="avatar"
                 type="file"
                 accept="image/png,image/jpeg,image/webp"
-                className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition file:mr-4 file:rounded-xl file:border-0 file:bg-slate-100 file:px-4 file:py-2 file:text-xs file:font-semibold file:text-slate-700 hover:file:bg-slate-200 focus:border-[var(--dogshift-blue)] focus:ring-4 focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_85%)]"
+                className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition file:mr-4 file:rounded-xl file:border-0 file:bg-slate-100 file:px-4 file:py-2 file:text-xs file:font-semibold file:text-slate-700 md:hover:file:bg-slate-200 focus:border-[var(--dogshift-blue)] focus:ring-4 focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_85%)]"
                 onChange={(e) => {
                   const file = e.target.files?.[0];
                   if (!file) {
@@ -692,7 +695,7 @@ export default function BecomeSitterForm() {
                       const el = document.getElementById("avatar") as HTMLInputElement | null;
                       if (el) el.value = "";
                     }}
-                    className="rounded-2xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50"
+                    className="rounded-2xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-900 shadow-sm transition md:hover:bg-slate-50"
                   >
                     Retirer
                   </button>
@@ -711,7 +714,7 @@ export default function BecomeSitterForm() {
             type="button"
             onClick={() => setStep((s) => (s === 1 ? 1 : ((s - 1) as 1 | 2 | 3)))}
             disabled={step === 1 || formStatus === "submitting"}
-            className="inline-flex items-center justify-center rounded-2xl border border-slate-300 bg-white px-6 py-3 text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex items-center justify-center rounded-2xl border border-slate-300 bg-white px-6 py-3 text-sm font-semibold text-slate-900 shadow-sm transition md:hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
           >
             Retour
           </button>

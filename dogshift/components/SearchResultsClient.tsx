@@ -407,7 +407,7 @@ export default function SearchResultsClient() {
                 id="filter-sort"
                 value={sort}
                 onChange={(e) => setSort(e.target.value as SortKey)}
-                className="rounded-2xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-900 shadow-sm outline-none transition hover:bg-slate-50 focus:border-[var(--dogshift-blue)] focus:ring-4 focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_85%)]"
+                className="rounded-2xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-900 shadow-sm outline-none transition md:hover:bg-slate-50 focus:border-[var(--dogshift-blue)] focus:ring-4 focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_85%)]"
               >
                 <option value="rating_desc">Note</option>
                 <option value="verified_first">Profil vérifié</option>
@@ -438,7 +438,7 @@ export default function SearchResultsClient() {
                 return (
               <article
                 key={sitter.id}
-                className="group relative flex h-full flex-col rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_12px_40px_-28px_rgba(2,6,23,0.3)] transition will-change-transform hover:-translate-y-0.5 hover:shadow-[0_18px_60px_-40px_rgba(2,6,23,0.45)]"
+                className="group relative flex h-full flex-col rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_12px_40px_-28px_rgba(2,6,23,0.3)] transition will-change-transform md:hover:-translate-y-0.5 md:hover:shadow-[0_18px_60px_-40px_rgba(2,6,23,0.45)]"
               >
                 {sitter.verified ? (
                   <div className="absolute right-5 top-5 z-10 inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[11px] font-semibold text-emerald-800 shadow-sm">
@@ -458,7 +458,7 @@ export default function SearchResultsClient() {
                     />
                     <div>
                       <h2 className="text-base font-semibold text-slate-900">
-                        <Link href={`/sitter/${sitter.id}?mode=public`} className="hover:underline">
+                        <Link href={`/sitter/${sitter.id}?mode=public`} className="md:hover:underline">
                           {sitter.name}
                         </Link>
                       </h2>
@@ -503,7 +503,7 @@ export default function SearchResultsClient() {
                   </p>
                   <Link
                     href={`/sitter/${sitter.id}?mode=public`}
-                    className="inline-flex items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition hover:bg-[var(--dogshift-blue-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)]"
+                    className="inline-flex items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition md:hover:bg-[var(--dogshift-blue-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)]"
                     aria-label={`Contacter ${sitter.name}`}
                   >
                     Contacter
