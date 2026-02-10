@@ -336,56 +336,10 @@ export default function MapboxMap({
   const effectiveActiveId = activeId && sitters.some((s) => s.id === activeId) ? activeId : null;
   const active = effectiveActiveId ? sitters.find((s) => s.id === effectiveActiveId) : undefined;
 
-  const bounds = useMemo(() => {
-    if (!sitters.length) return null;
-    const lats = sitters.map((s) => s.lat);
-    const lngs = sitters.map((s) => s.lng);
-
-    const minLat = Math.min(...lats);
-    const maxLat = Math.max(...lats);
-    const minLng = Math.min(...lngs);
-    const maxLng = Math.max(...lngs);
-
-    return {
-      minLng,
-      minLat,
-      maxLng,
-      maxLat,
-    };
-  }, [sitters]);
-
   const initialViewState = useMemo(
-    () =>
-      bounds
-        ? {
-            latitude: (bounds.minLat + bounds.maxLat) / 2,
-            longitude: (bounds.minLng + bounds.maxLng) / 2,
-            zoom: variant === "preview" ? 9 : 10,
-          }
-        : { latitude: 46.8182, longitude: 8.2275, zoom: variant === "preview" ? 7 : 7.5 },
-    [bounds, variant]
+    () => ({ latitude: 46.8182, longitude: 8.2275, zoom: variant === "preview" ? 7 : 7.5 }),
+    [variant]
   );
-
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map) return;
-    if (!bounds) return;
-
-    try {
-      map.fitBounds(
-        [
-          [bounds.minLng, bounds.minLat],
-          [bounds.maxLng, bounds.maxLat],
-        ],
-        {
-          padding: variant === "preview" ? 50 : 80,
-          duration: 0,
-        }
-      );
-    } catch {
-      // noop
-    }
-  }, [bounds, variant, key, styleUrl]);
 
   if (!key) {
     return (

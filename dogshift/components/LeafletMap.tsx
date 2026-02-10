@@ -161,19 +161,6 @@ export default function LeafletMap({
     })();
   }, []);
 
-  const bounds = useMemo(() => {
-    if (!sitters.length) return null;
-    const lats = sitters.map((s) => s.lat);
-    const lngs = sitters.map((s) => s.lng);
-
-    const minLat = Math.min(...lats);
-    const maxLat = Math.max(...lats);
-    const minLng = Math.min(...lngs);
-    const maxLng = Math.max(...lngs);
-
-    return L.latLngBounds([minLat, minLng], [maxLat, maxLng]);
-  }, [sitters]);
-
   const mapProps =
     variant === "preview"
       ? {
@@ -217,14 +204,14 @@ export default function LeafletMap({
     );
   }
 
-  if (!sittersLoaded || !bounds) {
+  if (!sittersLoaded) {
     return <div className="h-full w-full bg-slate-50" />;
   }
 
   return (
     <MapContainer
-      bounds={bounds}
-      boundsOptions={{ padding: [40, 40] }}
+      center={[46.8182, 8.2275]}
+      zoom={variant === "preview" ? 7 : 7.5}
       className="h-full w-full"
       {...mapProps}
     >
