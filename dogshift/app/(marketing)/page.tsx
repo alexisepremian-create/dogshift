@@ -92,7 +92,7 @@ function SearchBar({ embedded = false }: { embedded?: boolean }) {
         <button
           type="button"
           onClick={onSearch}
-          className="w-full whitespace-nowrap rounded-2xl bg-[var(--dogshift-blue)] px-6 py-1 text-sm font-semibold leading-none text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition-all duration-200 ease-out hover:bg-[var(--dogshift-blue-hover)] hover:shadow-[0_14px_40px_-26px_rgba(2,6,23,0.35)] active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)] md:w-auto md:px-4"
+          className="w-full whitespace-nowrap rounded-2xl bg-[var(--dogshift-blue)] px-6 py-3 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition-all duration-200 ease-out hover:bg-[var(--dogshift-blue-hover)] hover:shadow-[0_14px_40px_-26px_rgba(2,6,23,0.35)] active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)] md:w-auto md:px-4"
         >
           Rechercher
         </button>
@@ -385,7 +385,14 @@ function HeroPetsittingStyle() {
             <div className="max-w-[640px]">
               <div className="flex justify-center md:hidden">
                 <div className="flex h-24 w-24 items-center justify-center rounded-full border border-slate-200 bg-slate-50">
-                  <Image src="/dogshift-logo.png" alt="DogShift" width={96} height={96} priority className="h-14 w-auto" />
+                  <Image
+                    src="/dogshift-logo.png"
+                    alt="DogShift"
+                    width={96}
+                    height={96}
+                    priority
+                    className="h-20 w-auto max-h-full"
+                  />
                 </div>
               </div>
               <h1 className="mt-6 text-balance text-4xl font-semibold tracking-tight text-slate-900 sm:text-5xl md:text-6xl">
