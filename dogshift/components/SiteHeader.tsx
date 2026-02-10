@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
 import { Menu, LogOut, HelpCircle, LayoutDashboard, User, Search, ShoppingBag, UserPlus, MoreHorizontal } from "lucide-react";
 import { useClerk, useUser } from "@clerk/nextjs";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -371,14 +370,6 @@ export default function SiteHeader() {
           style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
         >
           <div className="mx-auto flex max-w-[520px] items-center justify-between px-4 pt-2">
-            <Link
-              href="/"
-              aria-label="DogShift"
-              className="flex flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2 text-xs font-semibold text-slate-700"
-            >
-              <Image src="/dogshift-logo.png" alt="DogShift" width={96} height={24} className="h-5 w-auto" priority={false} />
-            </Link>
-
             <Link
               href="/search"
               className="flex flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2 text-xs font-semibold text-slate-700"

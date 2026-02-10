@@ -1,7 +1,8 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
-import { BadgeCheck, Briefcase, CheckCircle2, FileText, Handshake, Lock, MapPin, Search, ShieldCheck, Umbrella, UserCheck, UserPlus, Wallet } from "lucide-react";
+import { BadgeCheck, Briefcase, CheckCircle2, FileText, Handshake, Lock, MapPin, ShieldCheck, Umbrella, UserCheck, UserPlus, Wallet } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import MapPreview from "@/components/MapPreview";
@@ -382,6 +383,11 @@ function HeroPetsittingStyle() {
         <div className="relative z-20 mx-auto max-w-[1200px] px-4 pb-10 sm:px-6 sm:pb-12">
           <div className="pt-20 sm:pt-24 lg:pt-28">
             <div className="max-w-[640px]">
+              <div className="md:hidden">
+                <div className="flex h-14 w-14 items-center justify-center rounded-full border border-slate-200 bg-slate-50">
+                  <Image src="/dogshift-logo.png" alt="DogShift" width={64} height={64} priority className="h-9 w-auto" />
+                </div>
+              </div>
               <h1 className="mt-6 text-balance text-4xl font-semibold tracking-tight text-slate-900 sm:text-5xl md:text-6xl">
                 L&apos;expérience Premium pour votre Chien.
               </h1>
@@ -607,22 +613,7 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
-      <div className="sticky top-0 z-[65] border-b border-slate-200 bg-white/95 backdrop-blur md:hidden">
-        <div className="mx-auto max-w-[820px] px-4 pb-3 pt-3">
-          <Link
-            href="/search"
-            className="flex items-center gap-3 rounded-full border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 shadow-sm"
-          >
-            <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-slate-50 text-slate-700 ring-1 ring-slate-200">
-              <Search className="h-5 w-5" aria-hidden="true" />
-            </span>
-            Rechercher un sitter…
-          </Link>
-        </div>
-      </div>
-
       <main className="pb-24 md:pb-0">
-        <div className="md:hidden" style={{ paddingTop: "12px" }} />
         <HeroPetsittingStyle />
 
         <div ref={howReveal.ref} style={howReveal.style}>
