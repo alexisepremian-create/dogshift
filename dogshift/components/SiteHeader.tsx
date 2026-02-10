@@ -60,7 +60,8 @@ export default function SiteHeader() {
         return;
       }
 
-      const raw = Math.round(vv.offsetTop + vv.height - window.innerHeight);
+      const baseHeight = document.documentElement?.clientHeight || window.innerHeight;
+      const raw = Math.round(vv.offsetTop + vv.height - baseHeight);
       const delta = Number.isFinite(raw) ? Math.max(0, raw) : 0;
       setMobileBottomOffset(delta);
     };
