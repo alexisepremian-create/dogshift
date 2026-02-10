@@ -4,11 +4,82 @@ import "leaflet/dist/leaflet.css";
 
 import L from "leaflet";
 import Link from "next/link";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { MapContainer, Marker, Popup, TileLayer } from "react-leaflet";
 
-import { MOCK_SITTERS } from "@/lib/mockSitters";
-import { applyHostProfileToMockSitter, loadHostProfileFromStorage } from "@/lib/hostProfile";
+type ServiceType = "Promenade" | "Garde" | "Pension";
+
+type SitterListItem = {
+  sitterId: string;
+  name: string;
+  city: string;
+  postalCode: string;
+  bio: string;
+  avatarUrl: string | null;
+  lat: number | null;
+  lng: number | null;
+  services: unknown;
+  pricing: unknown;
+  dogSizes: unknown;
+  updatedAt: string;
+};
+
+type UiSitter = {
+  id: string;
+  name: string;
+  city: string;
+  rating: number | null;
+  pricePerDay: number;
+  services: ServiceType[];
+  pricing: Partial<Record<ServiceType, number>>;
+  lat: number;
+  lng: number;
+};
+
+function parseServices(value: unknown): ServiceType[] {
+  if (!Array.isArray(value)) return [];
+  const cleaned: ServiceType[] = [];
+  for (const v of value) {
+    if (v === "Promenade" || v === "Garde" || v === "Pension") cleaned.push(v);
+  }
+  return cleaned;
+}
+
+function parsePricing(value: unknown): Partial<Record<ServiceType, number>> {
+  if (!value || typeof value !== "object") return {};
+  const obj = value as Record<string, unknown>;
+  const out: Partial<Record<ServiceType, number>> = {};
+  for (const key of ["Promenade", "Garde", "Pension"] as const) {
+    const n = obj[key];
+    if (typeof n === "number" && Number.isFinite(n) && n > 0) out[key] = n;
+  }
+  return out;
+}
+
+function toUiSitter(row: SitterListItem): UiSitter | null {
+  const sitterId = String(row.sitterId ?? "").trim();
+  if (!sitterId) return null;
+  const lat = typeof row.lat === "number" && Number.isFinite(row.lat) ? row.lat : null;
+  const lng = typeof row.lng === "number" && Number.isFinite(row.lng) ? row.lng : null;
+  if (lat == null || lng == null) return null;
+
+  const services = parseServices(row.services);
+  const pricing = parsePricing(row.pricing);
+  const priceCandidates = Object.values(pricing).filter((n): n is number => typeof n === "number" && Number.isFinite(n) && n > 0);
+  const pricePerDay = priceCandidates.length ? Math.min(...priceCandidates) : 0;
+
+  return {
+    id: sitterId,
+    name: row.name,
+    city: row.city,
+    rating: null,
+    pricePerDay,
+    services,
+    pricing,
+    lat,
+    lng,
+  };
+}
 
 function formatRatingMaybe(rating: number | null) {
   if (typeof rating !== "number" || !Number.isFinite(rating)) return "—";
@@ -36,16 +107,32 @@ export default function LeafletMap({
 }: {
   variant: "preview" | "expanded";
 }) {
-  const sitters = useMemo(() => {
-    return MOCK_SITTERS.map((s) => {
-      const host = loadHostProfileFromStorage(s.id);
-      if (!host) return s;
-      if (!(host.listingStatus === "published" || Boolean(host.publishedAt))) return s;
-      return applyHostProfileToMockSitter(s, host);
-    });
+  const [sittersLoaded, setSittersLoaded] = useState(false);
+  const [sitters, setSitters] = useState<UiSitter[]>([]);
+
+  useEffect(() => {
+    setSittersLoaded(false);
+    void (async () => {
+      try {
+        const res = await fetch("/api/sitters", { method: "GET", cache: "no-store" });
+        const payload = (await res.json()) as { ok?: boolean; sitters?: SitterListItem[] };
+        if (!res.ok || !payload?.ok || !Array.isArray(payload.sitters)) {
+          setSitters([]);
+          setSittersLoaded(true);
+          return;
+        }
+        const next = payload.sitters.map(toUiSitter).filter(Boolean) as UiSitter[];
+        setSitters(next);
+        setSittersLoaded(true);
+      } catch {
+        setSitters([]);
+        setSittersLoaded(true);
+      }
+    })();
   }, []);
 
   const bounds = useMemo(() => {
+    if (!sitters.length) return null;
     const lats = sitters.map((s) => s.lat);
     const lngs = sitters.map((s) => s.lng);
 
@@ -73,6 +160,23 @@ export default function LeafletMap({
           doubleClickZoom: true,
           attributionControl: true,
         };
+
+  if (sittersLoaded && !sitters.length) {
+    return (
+      <div className="flex h-full w-full items-center justify-center bg-slate-50">
+        <div className="mx-auto max-w-md rounded-2xl border border-slate-200 bg-white p-6 text-center shadow-sm">
+          <p className="text-sm font-semibold text-slate-900">Aucun sitter publié</p>
+          <p className="mt-2 text-sm text-slate-600">
+            La carte affichera automatiquement les sitters dont l’annonce est publiée.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!sittersLoaded || !bounds) {
+    return <div className="h-full w-full bg-slate-50" />;
+  }
 
   return (
     <MapContainer

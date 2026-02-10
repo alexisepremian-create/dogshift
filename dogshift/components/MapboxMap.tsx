@@ -7,8 +7,101 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Map, { type MapRef, type MarkerEvent, Marker, Popup } from "react-map-gl/maplibre";
 
 import LeafletMap from "@/components/LeafletMap";
-import { MOCK_SITTERS } from "@/lib/mockSitters";
-import { applyHostProfileToMockSitter, loadHostProfileFromStorage } from "@/lib/hostProfile";
+
+type ServiceType = "Promenade" | "Garde" | "Pension";
+
+type SitterListItem = {
+  sitterId: string;
+  name: string;
+  city: string;
+  postalCode: string;
+  bio: string;
+  avatarUrl: string | null;
+  lat: number | null;
+  lng: number | null;
+  services: unknown;
+  pricing: unknown;
+  dogSizes: unknown;
+  updatedAt: string;
+};
+
+type UiSitter = {
+  id: string;
+  name: string;
+  city: string;
+  postalCode: string;
+  rating: number | null;
+  reviewCount: number;
+  pricePerDay: number;
+  services: ServiceType[];
+  dogSizes: string[];
+  pricing: Partial<Record<ServiceType, number>>;
+  bio: string;
+  responseTime: string;
+  verified: boolean;
+  lat: number;
+  lng: number;
+  avatarUrl: string;
+};
+
+function parseServices(value: unknown): ServiceType[] {
+  if (!Array.isArray(value)) return [];
+  const cleaned: ServiceType[] = [];
+  for (const v of value) {
+    if (v === "Promenade" || v === "Garde" || v === "Pension") cleaned.push(v);
+  }
+  return cleaned;
+}
+
+function parsePricing(value: unknown): Partial<Record<ServiceType, number>> {
+  if (!value || typeof value !== "object") return {};
+  const obj = value as Record<string, unknown>;
+  const out: Partial<Record<ServiceType, number>> = {};
+  for (const key of ["Promenade", "Garde", "Pension"] as const) {
+    const n = obj[key];
+    if (typeof n === "number" && Number.isFinite(n) && n > 0) out[key] = n;
+  }
+  return out;
+}
+
+function parseDogSizes(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter((v): v is string => typeof v === "string" && v.trim().length > 0);
+}
+
+function toUiSitter(row: SitterListItem): UiSitter | null {
+  const sitterId = String(row.sitterId ?? "").trim();
+  if (!sitterId) return null;
+
+  const lat = typeof row.lat === "number" && Number.isFinite(row.lat) ? row.lat : null;
+  const lng = typeof row.lng === "number" && Number.isFinite(row.lng) ? row.lng : null;
+  if (lat == null || lng == null) return null;
+
+  const services = parseServices(row.services);
+  const pricing = parsePricing(row.pricing);
+  const dogSizes = parseDogSizes(row.dogSizes);
+  const priceCandidates = Object.values(pricing).filter((n): n is number => typeof n === "number" && Number.isFinite(n) && n > 0);
+  const pricePerDay = priceCandidates.length ? Math.min(...priceCandidates) : 0;
+
+  return {
+    id: sitterId,
+    name: row.name,
+    city: row.city,
+    postalCode: row.postalCode,
+    rating: null,
+    reviewCount: 0,
+    pricePerDay,
+    services,
+    dogSizes,
+    pricing,
+    bio: row.bio,
+    responseTime: "~1h",
+    verified: false,
+    lat,
+    lng,
+    avatarUrl: row.avatarUrl ?? "https://i.pravatar.cc/160?img=7",
+  };
+}
 
 function formatRating(rating: number) {
   return rating % 1 === 0 ? rating.toFixed(0) : rating.toFixed(1);
@@ -150,10 +243,34 @@ export default function MapboxMap({
   const mapRef = useRef<MapRef | null>(null);
   const [mapLoaded, setMapLoaded] = useState(false);
   const [hasError, setHasError] = useState(false);
+  const [sittersLoaded, setSittersLoaded] = useState(false);
+  const [allSitters, setAllSitters] = useState<UiSitter[]>([]);
 
   useEffect(() => {
     setHasError(false);
   }, [key, styleUrl]);
+
+  useEffect(() => {
+    setSittersLoaded(false);
+    void (async () => {
+      try {
+        const res = await fetch("/api/sitters", { method: "GET", cache: "no-store" });
+        const payload = (await res.json()) as { ok?: boolean; sitters?: SitterListItem[] };
+        if (!res.ok || !payload?.ok || !Array.isArray(payload.sitters)) {
+          setAllSitters([]);
+          setSittersLoaded(true);
+          return;
+        }
+
+        const next = payload.sitters.map(toUiSitter).filter(Boolean) as UiSitter[];
+        setAllSitters(next);
+        setSittersLoaded(true);
+      } catch {
+        setAllSitters([]);
+        setSittersLoaded(true);
+      }
+    })();
+  }, []);
 
   function zoomBy(delta: number) {
     const map = mapRef.current;
@@ -173,14 +290,7 @@ export default function MapboxMap({
     const serviceLower = service.toLowerCase();
     const locationLower = location.toLowerCase();
 
-    const base = MOCK_SITTERS.map((s) => {
-      const host = loadHostProfileFromStorage(s.id);
-      if (!host) return s;
-      if (!(host.listingStatus === "published" || Boolean(host.publishedAt))) return s;
-      return applyHostProfileToMockSitter(s, host);
-    });
-
-    const filtered = base.filter((sitter) => {
+    const filtered = allSitters.filter((sitter) => {
       const matchesService = service
         ? sitter.services.some((s) => s.toLowerCase() === serviceLower)
         : true;
@@ -190,13 +300,14 @@ export default function MapboxMap({
       return matchesService && matchesLocation;
     });
 
-    return filtered.length > 0 ? filtered : base;
-  }, [service, location]);
+    return filtered;
+  }, [allSitters, service, location]);
 
   const effectiveActiveId = activeId && sitters.some((s) => s.id === activeId) ? activeId : null;
   const active = effectiveActiveId ? sitters.find((s) => s.id === effectiveActiveId) : undefined;
 
   const bounds = useMemo(() => {
+    if (!sitters.length) return null;
     const lats = sitters.map((s) => s.lat);
     const lngs = sitters.map((s) => s.lng);
 
@@ -214,17 +325,21 @@ export default function MapboxMap({
   }, [sitters]);
 
   const initialViewState = useMemo(
-    () => ({
-      latitude: (bounds.minLat + bounds.maxLat) / 2,
-      longitude: (bounds.minLng + bounds.maxLng) / 2,
-      zoom: variant === "preview" ? 9 : 10,
-    }),
+    () =>
+      bounds
+        ? {
+            latitude: (bounds.minLat + bounds.maxLat) / 2,
+            longitude: (bounds.minLng + bounds.maxLng) / 2,
+            zoom: variant === "preview" ? 9 : 10,
+          }
+        : { latitude: 46.8182, longitude: 8.2275, zoom: variant === "preview" ? 7 : 7.5 },
     [bounds, variant]
   );
 
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
+    if (!bounds) return;
 
     try {
       map.fitBounds(
@@ -257,6 +372,19 @@ export default function MapboxMap({
 
   if (hasError) {
     return <LeafletMap variant={variant} />;
+  }
+
+  if (sittersLoaded && !allSitters.length) {
+    return (
+      <div className="flex h-full w-full items-center justify-center bg-slate-50">
+        <div className="mx-auto max-w-md rounded-2xl border border-slate-200 bg-white p-6 text-center shadow-sm">
+          <p className="text-sm font-semibold text-slate-900">Aucun sitter publié</p>
+          <p className="mt-2 text-sm text-slate-600">
+            La carte affichera automatiquement les sitters dont l’annonce est publiée.
+          </p>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -321,7 +449,7 @@ export default function MapboxMap({
         </div>
       ) : null}
 
-      {mapLoaded ? (
+      {mapLoaded && sittersLoaded ? (
         <>
           {sitters.map((sitter) => {
             const isActive = sitter.id === effectiveActiveId;
