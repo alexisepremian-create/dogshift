@@ -11,6 +11,34 @@ import { CURRENT_TERMS_VERSION } from "@/lib/terms";
 
 export const runtime = "nodejs";
 
+async function geocodeSwissLocation({ city, postalCode }: { city: string; postalCode: string }) {
+  const key = process.env.NEXT_PUBLIC_MAPTILER_KEY;
+  const parts = [postalCode, city, "Switzerland"].map((v) => String(v ?? "").trim()).filter(Boolean);
+  const query = parts.join(" ");
+  if (!key || !query) return null;
+
+  try {
+    const url = `https://api.maptiler.com/geocoding/${encodeURIComponent(query)}.json?key=${encodeURIComponent(key)}&limit=1`;
+    const res = await fetch(url, {
+      method: "GET",
+      headers: { Accept: "application/json" },
+      cache: "no-store",
+    });
+    if (!res.ok) return null;
+    const data = (await res.json().catch(() => null)) as {
+      features?: Array<{ center?: [number, number] }>;
+    } | null;
+
+    const center = data?.features?.[0]?.center;
+    if (!Array.isArray(center) || center.length !== 2) return null;
+    const [lng, lat] = center;
+    if (typeof lat !== "number" || typeof lng !== "number" || !Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+    return { lat, lng };
+  } catch (err) {
+    console.error("[api][host][profile][geocode] error", err);
+    return null;
+  }
+}
 
 function generateSitterId() {
   return `s-${Date.now()}-${Math.random().toString(16).slice(2)}`;
@@ -220,6 +248,11 @@ export async function POST(req: NextRequest) {
     const postalCode = typeof (b as Record<string, unknown>)?.postalCode === "string" ? String((b as Record<string, unknown>).postalCode).trim() : null;
     const bio = typeof (b as Record<string, unknown>)?.bio === "string" ? String((b as Record<string, unknown>).bio).trim() : null;
 
+    const latRaw = (b as Record<string, unknown>)?.lat;
+    const lngRaw = (b as Record<string, unknown>)?.lng;
+    const latProvided = typeof latRaw === "number" && Number.isFinite(latRaw) ? latRaw : null;
+    const lngProvided = typeof lngRaw === "number" && Number.isFinite(lngRaw) ? lngRaw : null;
+
     const existingProfile = await prisma.sitterProfile.findUnique({
       where: { userId: uid },
       select: {
@@ -258,6 +291,35 @@ export async function POST(req: NextRequest) {
       ? (existingProfile?.publishedAt ?? new Date())
       : null;
 
+    let finalLat: number | null = latProvided;
+    let finalLng: number | null = lngProvided;
+
+    if (finalLat == null || finalLng == null) {
+      if (willPublish && city && postalCode) {
+        const existingCoords = await prisma.sitterProfile.findUnique({
+          where: { userId: uid },
+          select: { lat: true, lng: true },
+        });
+
+        const hasCoords =
+          typeof existingCoords?.lat === "number" &&
+          Number.isFinite(existingCoords.lat) &&
+          typeof existingCoords?.lng === "number" &&
+          Number.isFinite(existingCoords.lng);
+
+        if (hasCoords) {
+          finalLat = existingCoords?.lat ?? null;
+          finalLng = existingCoords?.lng ?? null;
+        } else {
+          const coords = await geocodeSwissLocation({ city, postalCode });
+          if (coords) {
+            finalLat = coords.lat;
+            finalLng = coords.lng;
+          }
+        }
+      }
+    }
+
     const updateData: Record<string, unknown> = {
       sitterId,
       published: willPublish,
@@ -275,6 +337,11 @@ export async function POST(req: NextRequest) {
     if (pricingObj && typeof pricingObj === "object" && Object.keys(pricingObj).length > 0) updateData.pricing = pricingObj as Prisma.InputJsonValue;
     if (Array.isArray(enabledDogSizes) && enabledDogSizes.length > 0) updateData.dogSizes = enabledDogSizes as Prisma.InputJsonValue;
 
+    if (finalLat != null && finalLng != null) {
+      updateData.lat = finalLat;
+      updateData.lng = finalLng;
+    }
+
     await prisma.sitterProfile.upsert({
       where: { userId: uid },
       create: {
@@ -287,6 +354,8 @@ export async function POST(req: NextRequest) {
         postalCode,
         bio,
         avatarUrl,
+        lat: finalLat,
+        lng: finalLng,
         services: enabledServices as Prisma.InputJsonValue,
         pricing: pricingObj as Prisma.InputJsonValue,
         dogSizes: enabledDogSizes as Prisma.InputJsonValue,
