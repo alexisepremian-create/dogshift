@@ -13,6 +13,7 @@ export default function SiteHeader() {
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [mobileNavMounted, setMobileNavMounted] = useState(false);
+  const [mobileBottomOffset, setMobileBottomOffset] = useState(0);
   const { isLoaded, isSignedIn } = useUser();
   const clerk = useClerk();
   const pathname = usePathname();
@@ -45,6 +46,38 @@ export default function SiteHeader() {
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
+
+  useEffect(() => {
+    if (!isHome) {
+      setMobileBottomOffset(0);
+      return;
+    }
+
+    const update = () => {
+      const vv = window.visualViewport;
+      if (!vv) {
+        setMobileBottomOffset(0);
+        return;
+      }
+
+      const raw = Math.round(vv.offsetTop + vv.height - window.innerHeight);
+      const delta = Number.isFinite(raw) ? Math.max(0, raw) : 0;
+      setMobileBottomOffset(delta);
+    };
+
+    update();
+    window.addEventListener("resize", update);
+    window.addEventListener("scroll", update, { passive: true });
+    window.visualViewport?.addEventListener("resize", update);
+    window.visualViewport?.addEventListener("scroll", update);
+
+    return () => {
+      window.removeEventListener("resize", update);
+      window.removeEventListener("scroll", update);
+      window.visualViewport?.removeEventListener("resize", update);
+      window.visualViewport?.removeEventListener("scroll", update);
+    };
+  }, [isHome]);
 
   useEffect(() => {
     if (!userMenuOpen) return;
@@ -367,6 +400,7 @@ export default function SiteHeader() {
       {isHome ? (
         <div
           className="fixed inset-x-0 bottom-0 z-[70] border-t border-slate-200 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden"
+          style={{ transform: mobileBottomOffset ? `translateY(${mobileBottomOffset}px)` : undefined, willChange: "transform" }}
         >
           <div className="mx-auto flex max-w-[520px] items-center justify-between px-4 pt-2">
             <Link
