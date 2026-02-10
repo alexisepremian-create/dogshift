@@ -13,7 +13,7 @@ export default function SiteHeader() {
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [mobileNavMounted, setMobileNavMounted] = useState(false);
-  const [mobileBottomOffset, setMobileBottomOffset] = useState(0);
+  const [mobileBottomHidden, setMobileBottomHidden] = useState(false);
   const { isLoaded, isSignedIn } = useUser();
   const clerk = useClerk();
   const pathname = usePathname();
@@ -49,35 +49,28 @@ export default function SiteHeader() {
 
   useEffect(() => {
     if (!isHome) {
-      setMobileBottomOffset(0);
+      setMobileBottomHidden(false);
       return;
     }
 
-    const update = () => {
-      const vv = window.visualViewport;
-      if (!vv) {
-        setMobileBottomOffset(0);
+    let lastY = window.scrollY;
+
+    const onScroll = () => {
+      const y = window.scrollY;
+      const delta = y - lastY;
+      lastY = y;
+
+      if (y < 20) {
+        setMobileBottomHidden(false);
         return;
       }
 
-      const baseHeight = document.documentElement?.clientHeight || window.innerHeight;
-      const raw = Math.round(vv.offsetTop + vv.height - baseHeight);
-      const delta = Number.isFinite(raw) ? Math.max(0, raw) : 0;
-      setMobileBottomOffset(delta);
+      if (delta > 6) setMobileBottomHidden(true);
+      if (delta < -6) setMobileBottomHidden(false);
     };
 
-    update();
-    window.addEventListener("resize", update);
-    window.addEventListener("scroll", update, { passive: true });
-    window.visualViewport?.addEventListener("resize", update);
-    window.visualViewport?.addEventListener("scroll", update);
-
-    return () => {
-      window.removeEventListener("resize", update);
-      window.removeEventListener("scroll", update);
-      window.visualViewport?.removeEventListener("resize", update);
-      window.visualViewport?.removeEventListener("scroll", update);
-    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
   }, [isHome]);
 
   useEffect(() => {
@@ -400,8 +393,10 @@ export default function SiteHeader() {
 
       {isHome ? (
         <div
-          className="fixed inset-x-0 bottom-0 z-[70] border-t border-slate-200 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden"
-          style={{ transform: mobileBottomOffset ? `translateY(${mobileBottomOffset}px)` : undefined, willChange: "transform" }}
+          className={
+            "fixed inset-x-0 bottom-0 z-[70] border-t border-slate-200 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur transition-transform duration-200 ease-out md:hidden" +
+            (mobileBottomHidden ? " translate-y-full" : " translate-y-0")
+          }
         >
           <div className="mx-auto flex max-w-[520px] items-center justify-between px-4 pt-2">
             <Link
