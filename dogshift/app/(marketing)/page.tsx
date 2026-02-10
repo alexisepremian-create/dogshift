@@ -381,9 +381,9 @@ function HeroPetsittingStyle() {
         />
 
         <div className="relative z-20 mx-auto max-w-[1200px] px-4 pb-10 sm:px-6 sm:pb-12">
-          <div className="pt-20 sm:pt-24 lg:pt-28">
+          <div className="pt-12 sm:pt-24 lg:pt-28">
             <div className="max-w-[640px]">
-              <div className="md:hidden">
+              <div className="flex justify-center md:hidden">
                 <div className="flex h-14 w-14 items-center justify-center rounded-full border border-slate-200 bg-slate-50">
                   <Image src="/dogshift-logo.png" alt="DogShift" width={64} height={64} priority className="h-9 w-auto" />
                 </div>
