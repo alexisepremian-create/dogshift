@@ -366,8 +366,7 @@ export default function SiteHeader() {
 
       {isHome ? (
         <div
-          className="fixed inset-x-0 bottom-0 z-[70] border-t border-slate-200 bg-white/95 backdrop-blur md:hidden"
-          style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
+          className="fixed inset-x-0 bottom-0 z-[70] border-t border-slate-200 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden"
         >
           <div className="mx-auto flex max-w-[520px] items-center justify-between px-4 pt-2">
             <Link
