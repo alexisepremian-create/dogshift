@@ -267,26 +267,28 @@ export async function POST(req: NextRequest) {
     const completion = computeSitterProfileCompletion(normalized);
 
     const wantsPublish = Boolean(publishedFlag);
-    if (wantsPublish) {
+    const isCurrentlyPublished = Boolean(existingProfile?.published);
+    const attemptingFirstPublish = wantsPublish && !isCurrentlyPublished;
+    let publishBlocked: null | { error: string; status: number; profileCompletion?: number; termsVersion: string } = null;
+
+    if (attemptingFirstPublish) {
       const gate = checkSitterSensitiveActionGate({
         termsAcceptedAt: existingProfile?.termsAcceptedAt ?? null,
         termsVersion: existingProfile?.termsVersion ?? null,
         profileCompletion: completion,
       });
+
       if (!gate.ok) {
-        return NextResponse.json(
-          {
-            ok: false,
-            error: gate.error,
-            ...(gate.error === "PROFILE_INCOMPLETE" ? { profileCompletion: gate.profileCompletion } : null),
-            termsVersion: CURRENT_TERMS_VERSION,
-          },
-          { status: gate.status }
-        );
+        publishBlocked = {
+          error: gate.error,
+          status: gate.status,
+          ...(gate.error === "PROFILE_INCOMPLETE" ? { profileCompletion: gate.profileCompletion } : null),
+          termsVersion: CURRENT_TERMS_VERSION,
+        };
       }
     }
 
-    const willPublish = wantsPublish;
+    const willPublish = wantsPublish && !(attemptingFirstPublish && publishBlocked);
     const publishedAt = willPublish
       ? (existingProfile?.publishedAt ?? new Date())
       : null;
@@ -365,7 +367,17 @@ export async function POST(req: NextRequest) {
       select: { id: true },
     });
 
-    return NextResponse.json({ ok: true, sitterId, profile: normalized }, { status: 200 });
+    return NextResponse.json(
+      {
+        ok: true,
+        sitterId,
+        published: willPublish,
+        profileCompletion: completion,
+        publishBlocked,
+        profile: normalized,
+      },
+      { status: 200 }
+    );
   } catch (err) {
     console.error("[api][host][profile][POST] error", err);
     const message = err instanceof Error ? err.message : "";
