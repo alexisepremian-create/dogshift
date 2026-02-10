@@ -25,6 +25,29 @@ type SitterListItem = {
   updatedAt: string;
 };
 
+const FALLBACK_COORDS: Record<string, { lat: number; lng: number }> = {
+  geneve: { lat: 46.2044, lng: 6.1432 },
+  lausanne: { lat: 46.5197, lng: 6.6323 },
+  nyon: { lat: 46.3833, lng: 6.2396 },
+  "1201": { lat: 46.2046, lng: 6.1432 },
+  "1207": { lat: 46.2102, lng: 6.1589 },
+  "1003": { lat: 46.5191, lng: 6.6323 },
+  "1006": { lat: 46.5334, lng: 6.6645 },
+  "1260": { lat: 46.3833, lng: 6.2396 },
+};
+
+function resolveCoords(city: string, postalCode: string) {
+  const pc = String(postalCode ?? "").trim();
+  if (pc && FALLBACK_COORDS[pc]) return FALLBACK_COORDS[pc];
+  const c = String(city ?? "")
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "");
+  if (c && FALLBACK_COORDS[c]) return FALLBACK_COORDS[c];
+  return null;
+}
+
 type UiSitter = {
   id: string;
   name: string;
@@ -73,8 +96,11 @@ function toUiSitter(row: SitterListItem): UiSitter | null {
   const sitterId = String(row.sitterId ?? "").trim();
   if (!sitterId) return null;
 
-  const lat = typeof row.lat === "number" && Number.isFinite(row.lat) ? row.lat : null;
-  const lng = typeof row.lng === "number" && Number.isFinite(row.lng) ? row.lng : null;
+  const rawLat = typeof row.lat === "number" && Number.isFinite(row.lat) ? row.lat : null;
+  const rawLng = typeof row.lng === "number" && Number.isFinite(row.lng) ? row.lng : null;
+  const fallback = rawLat == null || rawLng == null ? resolveCoords(row.city, row.postalCode) : null;
+  const lat = rawLat ?? fallback?.lat ?? null;
+  const lng = rawLng ?? fallback?.lng ?? null;
   if (lat == null || lng == null) return null;
 
   const services = parseServices(row.services);
@@ -244,6 +270,7 @@ export default function MapboxMap({
   const [mapLoaded, setMapLoaded] = useState(false);
   const [hasError, setHasError] = useState(false);
   const [sittersLoaded, setSittersLoaded] = useState(false);
+  const [publishedCount, setPublishedCount] = useState(0);
   const [allSitters, setAllSitters] = useState<UiSitter[]>([]);
 
   useEffect(() => {
@@ -257,15 +284,18 @@ export default function MapboxMap({
         const res = await fetch("/api/sitters", { method: "GET", cache: "no-store" });
         const payload = (await res.json()) as { ok?: boolean; sitters?: SitterListItem[] };
         if (!res.ok || !payload?.ok || !Array.isArray(payload.sitters)) {
+          setPublishedCount(0);
           setAllSitters([]);
           setSittersLoaded(true);
           return;
         }
 
+        setPublishedCount(payload.sitters.length);
         const next = payload.sitters.map(toUiSitter).filter(Boolean) as UiSitter[];
         setAllSitters(next);
         setSittersLoaded(true);
       } catch {
+        setPublishedCount(0);
         setAllSitters([]);
         setSittersLoaded(true);
       }
@@ -374,13 +404,26 @@ export default function MapboxMap({
     return <LeafletMap variant={variant} />;
   }
 
-  if (sittersLoaded && !allSitters.length) {
+  if (sittersLoaded && publishedCount === 0) {
     return (
       <div className="flex h-full w-full items-center justify-center bg-slate-50">
         <div className="mx-auto max-w-md rounded-2xl border border-slate-200 bg-white p-6 text-center shadow-sm">
           <p className="text-sm font-semibold text-slate-900">Aucun sitter publié</p>
           <p className="mt-2 text-sm text-slate-600">
             La carte affichera automatiquement les sitters dont l’annonce est publiée.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (sittersLoaded && publishedCount > 0 && !allSitters.length) {
+    return (
+      <div className="flex h-full w-full items-center justify-center bg-slate-50">
+        <div className="mx-auto max-w-md rounded-2xl border border-slate-200 bg-white p-6 text-center shadow-sm">
+          <p className="text-sm font-semibold text-slate-900">Localisation manquante</p>
+          <p className="mt-2 text-sm text-slate-600">
+            Des annonces sont publiées, mais aucune n’a de coordonnées (ou un lieu reconnu) pour être placée sur la carte.
           </p>
         </div>
       </div>
