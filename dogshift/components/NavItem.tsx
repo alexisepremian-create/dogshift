@@ -35,8 +35,8 @@ export default function NavItem({
   const activeClasses = " bg-[#F7F3EA] text-slate-900";
   const inactiveClasses = " text-slate-600 hover:bg-slate-50 hover:text-slate-900";
 
-  const linkLayout = collapsed ? "h-10 w-10 justify-center" : "w-full";
-  const iconWrap = collapsed ? "flex items-center justify-center" : "flex min-h-[40px] items-center gap-3 px-3 py-2";
+  const linkLayout = collapsed ? "h-12 w-12 justify-center" : "w-full";
+  const iconWrap = collapsed ? "flex items-center justify-center" : "flex min-h-[48px] items-center gap-3 px-3 py-2";
 
   return (
     <div className="group/item relative">
@@ -68,16 +68,15 @@ export default function NavItem({
       {collapsed ? (
         <div
           className={
-            "pointer-events-none absolute left-full top-1/2 z-50 ml-3 w-max -translate-y-1/2 translate-x-2 opacity-0 " +
+            "pointer-events-none absolute left-10 top-1/2 z-[9999] -translate-y-1/2 translate-x-2 opacity-0 " +
             "transition-all duration-[180ms] ease-out " +
             "group-hover/item:translate-x-0 group-hover/item:opacity-100 " +
             "group-focus-within/item:translate-x-0 group-focus-within/item:opacity-100"
           }
           aria-hidden="true"
         >
-          <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.25)]">
-            <p className="text-sm font-semibold text-slate-900">{label}</p>
-            {description ? <p className="mt-1 text-xs font-medium text-slate-500">{description}</p> : null}
+          <div className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.25)]">
+            <p className="whitespace-nowrap text-sm font-semibold text-slate-900">{label}</p>
           </div>
         </div>
       ) : null}

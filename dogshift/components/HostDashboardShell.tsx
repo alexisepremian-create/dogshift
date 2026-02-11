@@ -32,11 +32,11 @@ export default function HostDashboardShell({ children }: { children: React.React
     <div className="min-h-screen bg-white text-slate-900">
       {isPublicPreview || !host.sitterId ? null : <HostTermsModal />}
       <div className="flex min-h-screen">
-        <div className="hidden shrink-0 lg:block">
+        <div className="relative z-40 hidden shrink-0 lg:block">
           <HostSidebar className="sticky top-0 h-screen" />
         </div>
 
-        <div className="flex min-w-0 flex-1 flex-col">
+        <div className="relative z-0 flex min-w-0 flex-1 flex-col">
           <header className="sticky top-0 z-20 bg-white/80 backdrop-blur lg:hidden">
             <div className="flex items-center justify-between px-4 py-3 sm:px-6">
               <div className="flex items-center gap-3">
