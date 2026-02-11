@@ -10,6 +10,80 @@ import { resolveBookingParticipants, sendNotificationEmail } from "@/lib/notific
 
 export const runtime = "nodejs";
 
+function getStripeAccountHeader(req: NextRequest) {
+  return req.headers.get("stripe-account") || req.headers.get("Stripe-Account") || "";
+}
+
+function safeObjectKeys(obj: unknown) {
+  try {
+    if (!obj || typeof obj !== "object") return [] as string[];
+    return Object.keys(obj as Record<string, unknown>);
+  } catch {
+    return [] as string[];
+  }
+}
+
+async function markBookingPaid({
+  req,
+  bookingId,
+  paymentIntentId,
+  sessionId,
+  transferId,
+  chargeId,
+  eventId,
+  eventType,
+  livemode,
+}: {
+  req: NextRequest;
+  bookingId: string;
+  paymentIntentId?: string;
+  sessionId?: string;
+  transferId?: string;
+  chargeId?: string;
+  eventId: string;
+  eventType: string;
+  livemode: boolean;
+}) {
+  const stripeAccount = getStripeAccountHeader(req);
+
+  console.log("[webhook][stripe] reconcile:markPaid", {
+    eventId,
+    eventType,
+    livemode,
+    stripeAccount: stripeAccount || null,
+    bookingId,
+    paymentIntentId: paymentIntentId || null,
+    sessionId: sessionId || null,
+    transferId: transferId || null,
+    chargeId: chargeId || null,
+  });
+
+  const data: Record<string, unknown> = {
+    status: "PAID",
+  };
+
+  if (paymentIntentId) data.stripePaymentIntentId = paymentIntentId;
+  if (sessionId) data.stripeSessionId = sessionId;
+  if (transferId) data.stripeTransferId = transferId;
+
+  const res = await (prisma as any).booking.updateMany({
+    where: {
+      id: bookingId,
+      status: { notIn: ["CONFIRMED", "CANCELLED", "REFUNDED"] },
+    },
+    data,
+  });
+
+  console.log("[webhook][stripe] reconcile:markPaid:db", {
+    bookingId,
+    count: res?.count ?? null,
+  });
+
+  if (Number(res?.count ?? 0) > 0) {
+    await notifyPendingAcceptance(req, bookingId);
+  }
+}
+
 function computeConnectStatus(account: Stripe.Account) {
   const chargesEnabled = Boolean(account.charges_enabled);
   const payoutsEnabled = Boolean(account.payouts_enabled);
@@ -118,7 +192,13 @@ export async function POST(req: NextRequest) {
 
     const body = await req.text();
 
-    console.log(`[webhook][stripe] received signature=${signature.slice(0, 16)}... bytes=${body.length}`);
+    const stripeAccount = getStripeAccountHeader(req);
+
+    console.log("[webhook][stripe] received", {
+      signaturePrefix: `${signature.slice(0, 16)}...`,
+      bytes: body.length,
+      stripeAccount: stripeAccount || null,
+    });
 
     let event: Stripe.Event;
     try {
@@ -128,7 +208,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, error: "INVALID_SIGNATURE" }, { status: 400 });
     }
 
-    console.log(`[webhook][stripe] event type=${event.type} id=${event.id} livemode=${event.livemode}`);
+    console.log("[webhook][stripe] event", {
+      id: event.id,
+      type: event.type,
+      livemode: event.livemode,
+      stripeAccount: stripeAccount || null,
+    });
 
     if (event.type === "account.updated") {
       const account = event.data.object as Stripe.Account;
@@ -161,27 +246,35 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ received: true, ignored: true, reason: "MISSING_BOOKING_ID" }, { status: 200 });
       }
 
-      console.log(
-        `[webhook][stripe] event=checkout.session.completed bookingId=${bookingId || "?"} session=${sessionId || "?"} -> PENDING_ACCEPTANCE`
-      );
+      if (bookingId) {
+        await markBookingPaid({
+          req,
+          bookingId,
+          paymentIntentId: paymentIntentId || undefined,
+          sessionId: sessionId || undefined,
+          eventId: event.id,
+          eventType: event.type,
+          livemode: event.livemode,
+        });
+      } else if (sessionId || paymentIntentId) {
+        const res = await (prisma as any).booking.updateMany({
+          where: {
+            ...(sessionId ? { stripeSessionId: sessionId } : {}),
+            ...(paymentIntentId ? { stripePaymentIntentId: paymentIntentId } : {}),
+            status: { notIn: ["CONFIRMED", "CANCELLED", "REFUNDED"] },
+          },
+          data: {
+            status: "PAID",
+            ...(paymentIntentId ? { stripePaymentIntentId: paymentIntentId } : {}),
+            ...(sessionId ? { stripeSessionId: sessionId } : {}),
+          },
+        });
 
-      const res = await (prisma as any).booking.updateMany({
-        where: {
-          ...(bookingId ? { id: bookingId } : {}),
-          ...(sessionId ? { stripeSessionId: sessionId } : {}),
-          status: { notIn: ["CONFIRMED", "CANCELLED"] },
-        },
-        data: {
-          status: "PENDING_ACCEPTANCE",
-          ...(paymentIntentId ? { stripePaymentIntentId: paymentIntentId } : {}),
-          ...(sessionId ? { stripeSessionId: sessionId } : {}),
-        },
-      });
-
-      console.log(`[webhook][stripe] booking.updateMany count=${res?.count ?? "?"}`);
-
-      if (bookingId && Number(res?.count ?? 0) > 0) {
-        await notifyPendingAcceptance(req, bookingId);
+        console.log("[webhook][stripe] checkout.session.completed fallback updateMany", {
+          sessionId: sessionId || null,
+          paymentIntentId: paymentIntentId || null,
+          count: res?.count ?? null,
+        });
       }
 
       return NextResponse.json({ received: true }, { status: 200 });
@@ -196,7 +289,11 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ received: true, ignored: true, reason: "MISSING_BOOKING_ID" }, { status: 200 });
       }
 
-      console.log(`[webhook][stripe] event=payment_intent.succeeded bookingId=${bookingId} -> PENDING_ACCEPTANCE`);
+      console.log("[webhook][stripe] payment_intent.succeeded", {
+        bookingId,
+        intentId: intent.id,
+        livemode: event.livemode,
+      });
 
       let transferId = "";
       try {
@@ -209,23 +306,63 @@ export async function POST(req: NextRequest) {
         console.error("[api][stripe][webhook] expand transfer failed", { intentId: intent.id, err });
       }
 
-      const res = await (prisma as any).booking.updateMany({
-        where: {
-          id: bookingId,
-          status: { notIn: ["CONFIRMED", "CANCELLED"] },
-        },
-        data: {
-          status: "PENDING_ACCEPTANCE",
-          stripePaymentIntentId: intent.id,
-          ...(transferId ? { stripeTransferId: transferId } : {}),
-        },
+      await markBookingPaid({
+        req,
+        bookingId,
+        paymentIntentId: intent.id,
+        transferId: transferId || undefined,
+        eventId: event.id,
+        eventType: event.type,
+        livemode: event.livemode,
       });
 
-      console.log(`[webhook][stripe] booking.updateMany count=${res?.count ?? "?"}`);
+      return NextResponse.json({ received: true }, { status: 200 });
+    }
 
-      if (Number(res?.count ?? 0) > 0) {
-        await notifyPendingAcceptance(req, bookingId);
+    if (event.type === "charge.succeeded") {
+      const charge = event.data.object as Stripe.Charge;
+      const paymentIntentId = typeof charge.payment_intent === "string" ? charge.payment_intent : "";
+      const chargeId = typeof charge.id === "string" ? charge.id : "";
+      const bookingId = typeof (charge.metadata as any)?.bookingId === "string" ? (charge.metadata as any).bookingId : "";
+
+      if (!paymentIntentId && !bookingId) {
+        console.warn("[webhook][stripe] charge.succeeded missing paymentIntentId+bookingId", {
+          chargeId: chargeId || null,
+          objectKeys: safeObjectKeys(charge),
+        });
+        return NextResponse.json({ received: true, ignored: true, reason: "MISSING_PAYMENT_INTENT" }, { status: 200 });
       }
+
+      let resolvedBookingId = bookingId;
+      if (!resolvedBookingId && paymentIntentId) {
+        try {
+          const intent = await stripe.paymentIntents.retrieve(paymentIntentId);
+          resolvedBookingId = typeof intent.metadata?.bookingId === "string" ? intent.metadata.bookingId : "";
+        } catch (err) {
+          console.error("[api][stripe][webhook] charge.succeeded retrieve intent failed", {
+            paymentIntentId,
+            err,
+          });
+        }
+      }
+
+      if (!resolvedBookingId) {
+        console.warn("[webhook][stripe] charge.succeeded bookingId missing", {
+          chargeId: chargeId || null,
+          paymentIntentId: paymentIntentId || null,
+        });
+        return NextResponse.json({ received: true, ignored: true, reason: "MISSING_BOOKING_ID" }, { status: 200 });
+      }
+
+      await markBookingPaid({
+        req,
+        bookingId: resolvedBookingId,
+        paymentIntentId: paymentIntentId || undefined,
+        chargeId: chargeId || undefined,
+        eventId: event.id,
+        eventType: event.type,
+        livemode: event.livemode,
+      });
 
       return NextResponse.json({ received: true }, { status: 200 });
     }

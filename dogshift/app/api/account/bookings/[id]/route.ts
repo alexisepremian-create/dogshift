@@ -3,6 +3,7 @@ import type { NextRequest } from "next/server";
 
 import { prisma } from "@/lib/prisma";
 import { resolveDbUserId } from "@/lib/auth/resolveDbUserId";
+import { stripe } from "@/lib/stripe";
 
 export const runtime = "nodejs";
 
@@ -32,6 +33,61 @@ type BookingDetailResponse = {
     avatarUrl: string | null;
   };
 };
+
+async function reconcileBookingPaymentIfNeeded(booking: { id: string; status: string; stripePaymentIntentId: string | null }) {
+  const status = String(booking.status ?? "");
+  const paymentIntentId = typeof booking.stripePaymentIntentId === "string" ? booking.stripePaymentIntentId : "";
+
+  if (status !== "PENDING_PAYMENT" || !paymentIntentId) return null;
+
+  console.log("[api][account][bookings][id][GET] reconcile start", {
+    bookingId: booking.id,
+    paymentIntentId,
+  });
+
+  try {
+    const intent = await stripe.paymentIntents.retrieve(paymentIntentId);
+    const intentStatus = typeof intent.status === "string" ? intent.status : "";
+
+    if (intentStatus !== "succeeded") {
+      console.log("[api][account][bookings][id][GET] reconcile skip", {
+        bookingId: booking.id,
+        paymentIntentId,
+        intentStatus: intentStatus || null,
+      });
+      return null;
+    }
+
+    const res = await (prisma as any).booking.updateMany({
+      where: {
+        id: booking.id,
+        status: "PENDING_PAYMENT",
+      },
+      data: {
+        status: "PAID",
+        stripePaymentIntentId: paymentIntentId,
+      },
+    });
+
+    console.log("[api][account][bookings][id][GET] reconcile updated", {
+      bookingId: booking.id,
+      paymentIntentId,
+      count: res?.count ?? null,
+    });
+
+    if (Number(res?.count ?? 0) > 0) {
+      return "PAID";
+    }
+  } catch (err) {
+    console.error("[api][account][bookings][id][GET] reconcile error", {
+      bookingId: booking.id,
+      paymentIntentId,
+      err,
+    });
+  }
+
+  return null;
+}
 
 export async function GET(req: NextRequest, { params }: { params: { id: string } | Promise<{ id: string }> }) {
   try {
@@ -81,6 +137,12 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
       return NextResponse.json({ ok: false, error: "FORBIDDEN" }, { status: 403 });
     }
 
+    const reconciledStatus = await reconcileBookingPaymentIfNeeded({
+      id: String(booking.id),
+      status: String(booking.status ?? ""),
+      stripePaymentIntentId: typeof booking.stripePaymentIntentId === "string" ? booking.stripePaymentIntentId : null,
+    });
+
     const sitterKey = typeof booking?.sitterId === "string" ? booking.sitterId.trim() : "";
     const sitterUser = await (prisma as any).user.findFirst({
       where: {
@@ -116,7 +178,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
       startDate: booking.startDate instanceof Date ? booking.startDate.toISOString() : booking.startDate ? new Date(booking.startDate).toISOString() : null,
       endDate: booking.endDate instanceof Date ? booking.endDate.toISOString() : booking.endDate ? new Date(booking.endDate).toISOString() : null,
       message: typeof booking.message === "string" ? booking.message : null,
-      status: String(booking.status ?? "PENDING_PAYMENT"),
+      status: reconciledStatus ?? String(booking.status ?? "PENDING_PAYMENT"),
       canceledAt: booking.canceledAt instanceof Date ? booking.canceledAt.toISOString() : booking.canceledAt ? new Date(booking.canceledAt).toISOString() : null,
       amount: typeof booking.amount === "number" ? booking.amount : 0,
       currency: typeof booking.currency === "string" ? booking.currency : "chf",
