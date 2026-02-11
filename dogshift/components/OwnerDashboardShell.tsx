@@ -1,23 +1,17 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Menu, X } from "lucide-react";
+import { MoreHorizontal } from "lucide-react";
+import { useClerk } from "@clerk/nextjs";
 
+import DashboardMobileNav from "@/components/DashboardMobileNav";
 import OwnerSidebar from "@/components/OwnerSidebar";
 import NotificationBell from "@/components/NotificationBell";
+import { useOwnerDashboardNavItems } from "@/components/dashboardNavItems";
 
 export default function OwnerDashboardShell({ children }: { children: React.ReactNode }) {
-  const [mobileOpen, setMobileOpen] = useState(false);
-
-  useEffect(() => {
-    if (!mobileOpen) return;
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setMobileOpen(false);
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [mobileOpen]);
+  const clerk = useClerk();
+  const { items } = useOwnerDashboardNavItems();
 
   return (
     <div className="min-h-screen bg-white text-slate-900">
@@ -30,15 +24,6 @@ export default function OwnerDashboardShell({ children }: { children: React.Reac
           <header className="sticky top-0 z-20 bg-white/80 backdrop-blur lg:hidden">
             <div className="flex items-center justify-between px-4 py-3 sm:px-6">
               <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => setMobileOpen(true)}
-                  className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-900 transition hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)]"
-                  aria-label="Ouvrir le menu"
-                >
-                  <Menu className="h-5 w-5" aria-hidden="true" />
-                </button>
-
                 <Link href="/" className="text-sm font-semibold text-slate-700 hover:text-slate-900">
                   DogShift
                 </Link>
@@ -48,7 +33,7 @@ export default function OwnerDashboardShell({ children }: { children: React.Reac
             </div>
           </header>
 
-          <main className="flex-1 px-4 py-8 sm:px-6 lg:px-10">
+          <main className="flex-1 px-4 pb-28 pt-8 sm:px-6 lg:px-10 lg:pb-8">
             <div className="mx-auto w-full max-w-6xl">
               {children}
             </div>
@@ -56,53 +41,21 @@ export default function OwnerDashboardShell({ children }: { children: React.Reac
         </div>
       </div>
 
-      <div
-        className={
-          "fixed inset-0 z-50 lg:hidden transition " +
-          (mobileOpen ? "pointer-events-auto" : "pointer-events-none")
-        }
-        role="dialog"
-        aria-modal="true"
-        aria-hidden={!mobileOpen}
-      >
-        <button
-          type="button"
-          className={
-            "absolute inset-0 bg-slate-900/35 transition-opacity duration-[250ms] ease-in-out " +
-            (mobileOpen ? "opacity-100" : "opacity-0")
+      <DashboardMobileNav
+        primaryItems={items.filter((item) => ["dashboard", "messages", "settings"].includes(item.key))}
+        moreItems={items.filter((item) => !["dashboard", "messages", "settings"].includes(item.key))}
+        moreLabel="Plus"
+        moreIcon={<MoreHorizontal className="h-5 w-5" aria-hidden="true" />}
+        onSignOut={() => {
+          try {
+            window.localStorage.removeItem("ds_auth_user");
+          } catch {
+            // ignore
           }
-          aria-label="Fermer le menu"
-          onClick={() => setMobileOpen(false)}
-          tabIndex={mobileOpen ? 0 : -1}
-        />
-
-        <div
-          className={
-            "absolute left-0 top-0 h-full w-[280px] bg-white shadow-[0_20px_60px_-35px_rgba(2,6,23,0.45)] transition-transform duration-[250ms] ease-in-out " +
-            (mobileOpen ? "translate-x-0" : "-translate-x-full")
-          }
-        >
-          <div className="flex items-center justify-end px-4 pt-3">
-            <button
-              type="button"
-              onClick={() => setMobileOpen(false)}
-              className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-900 transition hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)]"
-              aria-label="Fermer"
-              tabIndex={mobileOpen ? 0 : -1}
-            >
-              <X className="h-5 w-5" aria-hidden="true" />
-            </button>
-          </div>
-
-          <OwnerSidebar
-            className="h-[calc(100%-56px)] border-r-0"
-            forceExpanded
-            onNavigate={() => {
-              setMobileOpen(false);
-            }}
-          />
-        </div>
-      </div>
+          void clerk.signOut({ redirectUrl: "/login?force=1" });
+        }}
+        signOutLabel="Déconnexion"
+      />
     </div>
   );
 }

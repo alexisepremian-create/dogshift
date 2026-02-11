@@ -1,11 +1,10 @@
 "use client";
 
-import { usePathname } from "next/navigation";
 import { useClerk } from "@clerk/nextjs";
-import { useMemo } from "react";
-import { LayoutDashboard, CalendarDays, MessageSquare, Settings, LogOut, Wallet } from "lucide-react";
+import { LogOut } from "lucide-react";
 
 import Sidebar from "@/components/Sidebar";
+import { useOwnerDashboardNavItems } from "@/components/dashboardNavItems";
 
 type OwnerSidebarProps = {
   onNavigate?: () => void;
@@ -13,72 +12,9 @@ type OwnerSidebarProps = {
   forceExpanded?: boolean;
 };
 
-type NavItem = {
-  key: string;
-  label: string;
-  description?: string;
-  href: string;
-  icon: React.ReactNode;
-  active: boolean;
-};
-
 export default function OwnerSidebar({ onNavigate, className, forceExpanded }: OwnerSidebarProps) {
   const clerk = useClerk();
-  const pathname = usePathname();
-
-  const activeKey = useMemo(() => {
-    if (pathname === "/account") return "dashboard";
-    if (pathname?.startsWith("/account/bookings")) return "bookings";
-    if (pathname?.startsWith("/account/messages")) return "messages";
-    if (pathname?.startsWith("/account/wallet")) return "wallet";
-    if (pathname?.startsWith("/account/settings")) return "settings";
-    return "dashboard";
-  }, [pathname]);
-
-  const items = useMemo<NavItem[]>(() => {
-    return [
-      {
-        key: "dashboard",
-        label: "Tableau de bord",
-        description: "Réservations, messages et activités.",
-        href: "/account",
-        icon: <LayoutDashboard className="h-4 w-4" aria-hidden="true" />,
-        active: activeKey === "dashboard",
-      },
-      {
-        key: "bookings",
-        label: "Réservations",
-        description: "Historique et statut des gardes.",
-        href: "/account/bookings",
-        icon: <CalendarDays className="h-4 w-4" aria-hidden="true" />,
-        active: activeKey === "bookings",
-      },
-      {
-        key: "messages",
-        label: "Messages",
-        description: "Conversations avec les sitters.",
-        href: "/account/messages",
-        icon: <MessageSquare className="h-4 w-4" aria-hidden="true" />,
-        active: activeKey === "messages",
-      },
-      {
-        key: "wallet",
-        label: "Portefeuille",
-        description: "Paiements et factures.",
-        href: "/account/wallet",
-        icon: <Wallet className="h-4 w-4" aria-hidden="true" />,
-        active: activeKey === "wallet",
-      },
-      {
-        key: "settings",
-        label: "Paramètres",
-        description: "Compte et sécurité.",
-        href: "/account/settings",
-        icon: <Settings className="h-4 w-4" aria-hidden="true" />,
-        active: activeKey === "settings",
-      },
-    ];
-  }, [activeKey]);
+  const { items } = useOwnerDashboardNavItems();
 
   const footer = (
     <div className="relative">

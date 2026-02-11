@@ -1,12 +1,11 @@
 "use client";
 
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useMemo } from "react";
-import { useClerk, useUser } from "@clerk/nextjs";
-import { LayoutDashboard, MessageSquare, Pencil, User, LogOut, CalendarDays, Settings, Wallet } from "lucide-react";
+import { useClerk } from "@clerk/nextjs";
+import { LogOut } from "lucide-react";
 
 import Sidebar from "@/components/Sidebar";
-import { useHostUser } from "@/components/HostUserProvider";
+import { useHostDashboardNavItems } from "@/components/dashboardNavItems";
 
 type HostSidebarProps = {
   onNavigate?: () => void;
@@ -14,124 +13,9 @@ type HostSidebarProps = {
   forceExpanded?: boolean;
 };
 
-type NavItem = {
-  key: string;
-  label: string;
-  description?: string;
-  href: string;
-  icon: React.ReactNode;
-  active: boolean;
-};
-
 export default function HostSidebar({ onNavigate, className, forceExpanded }: HostSidebarProps) {
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
-  const router = useRouter();
   const clerk = useClerk();
-  const { isLoaded, isSignedIn } = useUser();
-  const { sitterId } = useHostUser();
-
-  const disablePrefetch = useMemo(() => (searchParams?.get("mode") ?? "") === "preview", [searchParams]);
-
-  const publicHref = useMemo(() => {
-    if (!isLoaded || !isSignedIn) return "/login";
-    return sitterId ? `/sitter/${encodeURIComponent(sitterId)}?mode=preview` : "/host/profile/edit";
-  }, [sitterId, isLoaded, isSignedIn]);
-
-  const activeKey = useMemo(() => {
-    if (pathname === "/host") return "dashboard";
-    if (pathname?.startsWith("/host/messages")) return "messages";
-    if (pathname?.startsWith("/host/requests")) return "requests";
-    if (pathname?.startsWith("/host/profile")) return "profile";
-    if (pathname?.startsWith("/host/wallet")) return "wallet";
-    if (pathname?.startsWith("/host/settings")) return "settings";
-    const mode = searchParams?.get("mode") ?? "";
-    if (pathname?.startsWith("/sitter/") && mode === "preview") return "public";
-    return "dashboard";
-  }, [pathname, searchParams]);
-
-  const items = useMemo<NavItem[]>(() => {
-    return [
-      {
-        key: "dashboard",
-        label: "Tableau de bord",
-        description: "Vue d’ensemble de ton activité.",
-        href: "/host",
-        icon: <LayoutDashboard className="h-4 w-4" aria-hidden="true" />,
-        active: activeKey === "dashboard",
-      },
-      {
-        key: "public",
-        label: "Profil public",
-        description: "Aperçu de ta page sitter.",
-        href: publicHref,
-        icon: <User className="h-4 w-4" aria-hidden="true" />,
-        active: activeKey === "public",
-      },
-      {
-        key: "messages",
-        label: "Messages",
-        description: "Conversations avec les clients.",
-        href: "/host/messages",
-        icon: <MessageSquare className="h-4 w-4" aria-hidden="true" />,
-        active: activeKey === "messages",
-      },
-      {
-        key: "requests",
-        label: "Demandes & réservations",
-        description: "Demandes, confirmations et annulations.",
-        href: "/host/requests",
-        icon: <CalendarDays className="h-4 w-4" aria-hidden="true" />,
-        active: activeKey === "requests",
-      },
-      {
-        key: "wallet",
-        label: "Portefeuille",
-        description: "Paiements et revenus.",
-        href: "/host/wallet",
-        icon: <Wallet className="h-4 w-4" aria-hidden="true" />,
-        active: activeKey === "wallet",
-      },
-      {
-        key: "profile",
-        label: "Modifier le profil",
-        description: "Infos, photos et préférences.",
-        href: "/host/profile/edit",
-        icon: <Pencil className="h-4 w-4" aria-hidden="true" />,
-        active: activeKey === "profile",
-      },
-      {
-        key: "settings",
-        label: "Paramètres",
-        description: "Compte et préférences.",
-        href: "/host/settings",
-        icon: <Settings className="h-4 w-4" aria-hidden="true" />,
-        active: activeKey === "settings",
-      },
-    ];
-  }, [activeKey, publicHref]);
-
-  const mappedItems = useMemo(() => {
-    return items.map((item) => {
-      const shouldPrefetch = item.key === "public" ? !disablePrefetch : true;
-      return {
-        ...item,
-        prefetch: shouldPrefetch,
-        onMouseEnter: () => {
-          if (disablePrefetch) return;
-          if (item.key !== "public") return;
-          if (!item.href.startsWith("/sitter/")) return;
-          void router.prefetch(item.href);
-        },
-        onFocus: () => {
-          if (disablePrefetch) return;
-          if (item.key !== "public") return;
-          if (!item.href.startsWith("/sitter/")) return;
-          void router.prefetch(item.href);
-        },
-      };
-    });
-  }, [items, disablePrefetch, router]);
+  const { items: mappedItems, isLoaded } = useHostDashboardNavItems();
 
   if (!isLoaded) {
     return (
