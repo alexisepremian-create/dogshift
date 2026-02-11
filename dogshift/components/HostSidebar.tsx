@@ -17,6 +17,7 @@ type HostSidebarProps = {
 type NavItem = {
   key: string;
   label: string;
+  description?: string;
   href: string;
   icon: React.ReactNode;
   active: boolean;
@@ -54,6 +55,7 @@ export default function HostSidebar({ onNavigate, className, forceExpanded }: Ho
       {
         key: "dashboard",
         label: "Tableau de bord",
+        description: "Vue d’ensemble de ton activité.",
         href: "/host",
         icon: <LayoutDashboard className="h-4 w-4" aria-hidden="true" />,
         active: activeKey === "dashboard",
@@ -61,6 +63,7 @@ export default function HostSidebar({ onNavigate, className, forceExpanded }: Ho
       {
         key: "public",
         label: "Profil public",
+        description: "Aperçu de ta page sitter.",
         href: publicHref,
         icon: <User className="h-4 w-4" aria-hidden="true" />,
         active: activeKey === "public",
@@ -68,6 +71,7 @@ export default function HostSidebar({ onNavigate, className, forceExpanded }: Ho
       {
         key: "messages",
         label: "Messages",
+        description: "Conversations avec les clients.",
         href: "/host/messages",
         icon: <MessageSquare className="h-4 w-4" aria-hidden="true" />,
         active: activeKey === "messages",
@@ -75,6 +79,7 @@ export default function HostSidebar({ onNavigate, className, forceExpanded }: Ho
       {
         key: "requests",
         label: "Demandes & réservations",
+        description: "Demandes, confirmations et annulations.",
         href: "/host/requests",
         icon: <CalendarDays className="h-4 w-4" aria-hidden="true" />,
         active: activeKey === "requests",
@@ -82,6 +87,7 @@ export default function HostSidebar({ onNavigate, className, forceExpanded }: Ho
       {
         key: "wallet",
         label: "Portefeuille",
+        description: "Paiements et revenus.",
         href: "/host/wallet",
         icon: <Wallet className="h-4 w-4" aria-hidden="true" />,
         active: activeKey === "wallet",
@@ -89,6 +95,7 @@ export default function HostSidebar({ onNavigate, className, forceExpanded }: Ho
       {
         key: "profile",
         label: "Modifier le profil",
+        description: "Infos, photos et préférences.",
         href: "/host/profile/edit",
         icon: <Pencil className="h-4 w-4" aria-hidden="true" />,
         active: activeKey === "profile",
@@ -96,6 +103,7 @@ export default function HostSidebar({ onNavigate, className, forceExpanded }: Ho
       {
         key: "settings",
         label: "Paramètres",
+        description: "Compte et préférences.",
         href: "/host/settings",
         icon: <Settings className="h-4 w-4" aria-hidden="true" />,
         active: activeKey === "settings",
@@ -157,31 +165,43 @@ export default function HostSidebar({ onNavigate, className, forceExpanded }: Ho
   }
 
   const footer = (
-    <button
-      type="button"
-      onClick={() => {
-        try {
-          window.localStorage.removeItem("ds_auth_user");
-        } catch {
-          // ignore
-        }
-        void clerk.signOut({ redirectUrl: "/login?force=1" });
-      }}
-      className={
-        "group/item flex w-full items-center gap-3 rounded-2xl px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-50 hover:text-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)]"
-      }
-      title={!forceExpanded ? "Déconnexion" : undefined}
-    >
-      <LogOut className="h-4 w-4 shrink-0 text-slate-500 transition group-hover/item:text-slate-700" aria-hidden="true" />
-      <span
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => {
+          try {
+            window.localStorage.removeItem("ds_auth_user");
+          } catch {
+            // ignore
+          }
+          void clerk.signOut({ redirectUrl: "/login?force=1" });
+        }}
         className={
-          "overflow-hidden whitespace-nowrap transition-[max-width,opacity] duration-[250ms] ease-in-out " +
-          (forceExpanded ? "max-w-[160px] opacity-100" : "max-w-0 opacity-0 group-hover/sidebar:max-w-[160px] group-hover/sidebar:opacity-100")
+          "group/item relative flex items-center rounded-2xl text-sm font-medium text-slate-600 transition hover:bg-slate-50 hover:text-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)] " +
+          (forceExpanded ? "w-full gap-3 px-3 py-2" : "h-10 w-10 justify-center")
         }
+        title={!forceExpanded ? "Déconnexion" : undefined}
       >
-        Déconnexion
-      </span>
-    </button>
+        <LogOut className="h-4 w-4 shrink-0 text-slate-500 transition group-hover/item:text-slate-700" aria-hidden="true" />
+        {forceExpanded ? <span className="whitespace-nowrap">Déconnexion</span> : null}
+      </button>
+
+      {!forceExpanded ? (
+        <div
+          className={
+            "pointer-events-none absolute left-full top-1/2 z-50 ml-3 w-max -translate-y-1/2 translate-x-2 opacity-0 " +
+            "transition-all duration-[180ms] ease-out " +
+            "group-hover/item:translate-x-0 group-hover/item:opacity-100 " +
+            "group-focus-within/item:translate-x-0 group-focus-within/item:opacity-100"
+          }
+          aria-hidden="true"
+        >
+          <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.25)]">
+            <p className="text-sm font-semibold text-slate-900">Déconnexion</p>
+          </div>
+        </div>
+      ) : null}
+    </div>
   );
 
   return (

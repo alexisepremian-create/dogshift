@@ -8,6 +8,7 @@ import NavItem from "@/components/NavItem";
 type SidebarItem = {
   key: string;
   label: string;
+  description?: string;
   href: string;
   icon: React.ReactNode;
   active: boolean;
@@ -29,43 +30,45 @@ type SidebarProps = {
 export default function Sidebar({ ariaLabel, items, footer, onNavigate, className, forceExpanded, headerHref = "/" }: SidebarProps) {
   const asideBase = "group/sidebar flex h-full flex-col border-r border-slate-200 bg-white";
 
-  const widthClasses = forceExpanded
-    ? "w-[240px]"
-    : "w-[72px] transition-[width] duration-[250ms] ease-in-out hover:w-[240px]";
-
-  const brandTextClasses = forceExpanded
-    ? "max-w-[160px] opacity-100"
-    : "max-w-0 opacity-0 group-hover/sidebar:max-w-[160px] group-hover/sidebar:opacity-100";
+  const widthClasses = forceExpanded ? "w-[240px]" : "w-16";
 
   return (
     <aside className={asideBase + " " + widthClasses + (className ? ` ${className}` : "")}>
-      <div className="px-4 pt-2.5">
+      <div className={forceExpanded ? "px-4 pt-2.5" : "px-2 pt-2.5"}>
         <Link
           href={headerHref}
           aria-label="DogShift"
-          className="flex items-center gap-3 rounded-2xl px-2 py-2 transition hover:bg-slate-50"
+          className={
+            "flex items-center rounded-2xl px-2 py-2 transition hover:bg-slate-50 " +
+            (forceExpanded ? "gap-3" : "justify-center")
+          }
           onClick={onNavigate}
         >
           <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#F7F3EA] ring-1 ring-slate-200">
-            <Image src="/dogshift-logo.png" alt="DogShift" width={64} height={64} className="h-6 w-auto" priority />
+            <Image
+              src="/dogshift-logo.png"
+              alt="DogShift"
+              width={64}
+              height={64}
+              className="h-6 w-6 object-contain"
+              priority
+            />
           </span>
-          <span
-            className={
-              "overflow-hidden whitespace-nowrap text-sm font-semibold tracking-tight text-slate-900 transition-[max-width,opacity] duration-[250ms] ease-in-out " +
-              brandTextClasses
-            }
-          >
-            DogShift
-          </span>
+          {forceExpanded ? (
+            <span className="overflow-hidden whitespace-nowrap text-sm font-semibold tracking-tight text-slate-900">
+              DogShift
+            </span>
+          ) : null}
         </Link>
       </div>
 
-      <div className="px-3 pt-6">
-        <nav aria-label={ariaLabel} className="space-y-1">
+      <div className={forceExpanded ? "px-3 pt-6" : "px-2 pt-6"}>
+        <nav aria-label={ariaLabel} className={forceExpanded ? "space-y-1" : "flex flex-col items-center gap-1"}>
           {items.map((item) => (
             <NavItem
               key={item.key}
               label={item.label}
+              description={item.description}
               href={item.href}
               icon={item.icon}
               active={item.active}
@@ -81,7 +84,7 @@ export default function Sidebar({ ariaLabel, items, footer, onNavigate, classNam
         {footer ? (
           <>
             <div className="mt-6 border-t border-slate-200" />
-            <div className="pt-4">{footer}</div>
+            <div className={forceExpanded ? "pt-4" : "flex justify-center pt-4"}>{footer}</div>
           </>
         ) : null}
       </div>
