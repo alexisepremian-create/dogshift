@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { useSignIn } from "@clerk/nextjs";
+import { useSignIn, useUser } from "@clerk/nextjs";
 import Link from "next/link";
 
 function normalizeEmail(input: string) {
@@ -11,6 +11,7 @@ function normalizeEmail(input: string) {
 
 export default function LoginForm() {
   const { isLoaded, signIn } = useSignIn();
+  const { isLoaded: userLoaded, isSignedIn } = useUser();
   const searchParams = useSearchParams();
 
   const next = (searchParams?.get("next") ?? "").trim();
@@ -92,10 +93,12 @@ export default function LoginForm() {
     if (!startGoogleMode) return;
     if (autoGoogleStarted) return;
     if (!isLoaded || !signIn) return;
+    if (!userLoaded) return;
+    if (isSignedIn) return;
     setAutoGoogleStarted(true);
     void handleGoogle();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoGoogleStarted, isLoaded, signIn, startGoogleMode]);
+  }, [autoGoogleStarted, isLoaded, signIn, startGoogleMode, userLoaded, isSignedIn]);
 
   return (
     <div className="flex flex-col">
