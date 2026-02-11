@@ -353,7 +353,7 @@ function HeroPetsittingStyle() {
         <div
           className="absolute inset-0 z-0 sm:hidden"
           style={{
-            backgroundImage: "url('/image%20dogshift%20premium.png')",
+            backgroundImage: "url('/image%20mobile.png')",
             backgroundRepeat: "no-repeat",
             backgroundPosition: "85% -60px",
             backgroundSize: "cover",
