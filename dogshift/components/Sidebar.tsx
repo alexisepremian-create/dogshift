@@ -33,21 +33,32 @@ export default function Sidebar({ ariaLabel, items, footer, onNavigate, classNam
   const widthClasses = forceExpanded ? "w-[240px]" : "w-[88px]";
 
   return (
-    <aside className={asideBase + " " + widthClasses + (className ? ` ${className}` : "")}>
-      <div className={forceExpanded ? "px-4 pt-3" : "px-3 pt-3"}>
+    <aside
+      className={
+        asideBase +
+        " " +
+        widthClasses +
+        (className ? ` ${className}` : "") +
+        (forceExpanded ? "" : " items-center")
+      }
+    >
+      <div className={forceExpanded ? "w-full px-4 pt-3" : "flex h-[84px] w-full items-center justify-center px-3"}>
         <Link
           href={headerHref}
           aria-label="DogShift"
           className={
-            "flex w-full items-center rounded-2xl px-2 py-2 transition hover:bg-slate-50 " +
-            (forceExpanded ? "gap-3" : "justify-center")
+            (forceExpanded
+              ? "flex w-full items-center gap-3 rounded-2xl px-2 py-2 transition hover:bg-slate-50"
+              : "flex items-center justify-center")
           }
           onClick={onNavigate}
         >
-          <span className={
-            (forceExpanded ? "h-16 w-16" : "h-14 w-14") +
-            " flex shrink-0 items-center justify-center rounded-full bg-white ring-1 ring-slate-200"
-          }>
+          <span
+            className={
+              (forceExpanded ? "h-16 w-16" : "h-14 w-14") +
+              " flex shrink-0 items-center justify-center rounded-full bg-white ring-1 ring-slate-200"
+            }
+          >
             <Image
               src="/dogshift-logo.png"
               alt="DogShift"
@@ -65,8 +76,15 @@ export default function Sidebar({ ariaLabel, items, footer, onNavigate, classNam
         </Link>
       </div>
 
-      <div className={forceExpanded ? "px-3 pt-6" : "px-3 pt-6"}>
-        <nav aria-label={ariaLabel} className={forceExpanded ? "space-y-1" : "flex flex-col items-center gap-1"}>
+      <div className={forceExpanded ? "w-full px-3 pt-6" : "flex w-full flex-1 items-center justify-center"}>
+        <nav
+          aria-label={ariaLabel}
+          className={
+            forceExpanded
+              ? "w-full space-y-1"
+              : "flex flex-col items-center justify-center gap-[14px]"
+          }
+        >
           {items.map((item) => (
             <NavItem
               key={item.key}
@@ -83,14 +101,19 @@ export default function Sidebar({ ariaLabel, items, footer, onNavigate, classNam
             />
           ))}
         </nav>
-
-        {footer ? (
-          <>
-            <div className="mt-6 border-t border-slate-200" />
-            <div className={forceExpanded ? "pt-4" : "flex justify-center pt-4"}>{footer}</div>
-          </>
-        ) : null}
       </div>
+
+      {footer ? (
+        <div
+          className={
+            forceExpanded
+              ? "w-full px-3 pb-4 pt-4"
+              : "flex h-[84px] w-full items-center justify-center border-t border-slate-200"
+          }
+        >
+          {footer}
+        </div>
+      ) : null}
     </aside>
   );
 }

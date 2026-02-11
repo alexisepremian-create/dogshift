@@ -50,9 +50,11 @@ export default function NavItem({
     "bg-transparent text-slate-700 " +
     "hover:bg-[#111827] hover:text-white hover:shadow-[0_18px_60px_-46px_rgba(2,6,23,0.35)] " +
     "focus-visible:bg-[#111827] focus-visible:text-white focus-visible:shadow-[0_18px_60px_-46px_rgba(2,6,23,0.35)]" +
-    (active
-      ? " ring-1 ring-[color:var(--dogshift-blue)]/45"
-      : "");
+    (active ? "" : "");
+
+  const compactActiveCircle =
+    "before:content-[''] before:absolute before:inset-0 before:rounded-full before:pointer-events-none " +
+    "before:shadow-[0_0_0_2px_rgba(15,23,42,0.18)]";
 
   const labelMotion =
     "whitespace-nowrap opacity-0 transition-all duration-[220ms] " +
@@ -75,7 +77,12 @@ export default function NavItem({
           onFocus={onFocus}
           title={label}
         >
-          <span className="flex h-[52px] w-[52px] items-center justify-center">
+          <span
+            className={
+              "relative flex h-[52px] w-[52px] items-center justify-center rounded-full " +
+              (active ? compactActiveCircle : "")
+            }
+          >
             <span
               className={
                 "text-slate-600 transition " +
