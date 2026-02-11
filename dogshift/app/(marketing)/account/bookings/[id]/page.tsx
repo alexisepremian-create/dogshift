@@ -277,7 +277,7 @@ export default function AccountBookingDetailPage() {
   }, [booking]);
 
   async function refreshBooking() {
-    if (status !== "authenticated") return;
+    if (!isLoaded || !isSignedIn) return;
     if (!bookingId) return;
     try {
       const res = await fetch(`/api/account/bookings/${encodeURIComponent(bookingId)}`, { method: "GET" });
@@ -328,8 +328,8 @@ export default function AccountBookingDetailPage() {
     }
   }
 
-  if (status === "loading") return null;
-  if (status !== "authenticated") {
+  if (!isLoaded) return null;
+  if (!isSignedIn) {
     return (
       <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)] sm:p-8">
         <p className="text-sm font-semibold text-slate-900">Connexion requise (401).</p>
