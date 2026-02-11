@@ -10,6 +10,16 @@ import { resolveBookingParticipants, sendNotificationEmail } from "@/lib/notific
 
 export const runtime = "nodejs";
 
+function computeConnectStatus(account: Stripe.Account) {
+  const chargesEnabled = Boolean(account.charges_enabled);
+  const payoutsEnabled = Boolean(account.payouts_enabled);
+  const disabledReason = typeof account.requirements?.disabled_reason === "string" ? account.requirements.disabled_reason : "";
+  const currentlyDue = Array.isArray(account.requirements?.currently_due) ? account.requirements.currently_due : [];
+  if (chargesEnabled && payoutsEnabled) return "ENABLED" as const;
+  if (disabledReason || currentlyDue.length > 0) return "RESTRICTED" as const;
+  return "PENDING" as const;
+}
+
 async function notifyPendingAcceptance(req: NextRequest, bookingId: string) {
   try {
     const participants = await resolveBookingParticipants(bookingId);
@@ -120,6 +130,26 @@ export async function POST(req: NextRequest) {
 
     console.log(`[webhook][stripe] event type=${event.type} id=${event.id} livemode=${event.livemode}`);
 
+    if (event.type === "account.updated") {
+      const account = event.data.object as Stripe.Account;
+      const accountId = typeof account.id === "string" ? account.id : "";
+      if (!accountId) {
+        return NextResponse.json({ received: true, ignored: true, reason: "MISSING_ACCOUNT_ID" }, { status: 200 });
+      }
+
+      const status = computeConnectStatus(account);
+      const db = prisma as any;
+      await db.sitterProfile.updateMany({
+        where: { stripeAccountId: accountId },
+        data: {
+          stripeAccountStatus: status,
+          ...(status === "ENABLED" ? { stripeOnboardingCompletedAt: new Date() } : null),
+        },
+      });
+
+      return NextResponse.json({ received: true }, { status: 200 });
+    }
+
     if (event.type === "checkout.session.completed") {
       const session = event.data.object as Stripe.Checkout.Session;
       const bookingId = typeof session.metadata?.bookingId === "string" ? session.metadata.bookingId : "";
@@ -168,6 +198,17 @@ export async function POST(req: NextRequest) {
 
       console.log(`[webhook][stripe] event=payment_intent.succeeded bookingId=${bookingId} -> PENDING_ACCEPTANCE`);
 
+      let transferId = "";
+      try {
+        const expanded = (await stripe.paymentIntents.retrieve(intent.id, { expand: ["charges.data.transfer"] })) as any;
+        const charge = expanded?.charges?.data?.[0];
+        const transfer = (charge as any)?.transfer;
+        if (typeof transfer === "string") transferId = transfer;
+        else if (transfer && typeof transfer.id === "string") transferId = transfer.id;
+      } catch (err) {
+        console.error("[api][stripe][webhook] expand transfer failed", { intentId: intent.id, err });
+      }
+
       const res = await (prisma as any).booking.updateMany({
         where: {
           id: bookingId,
@@ -176,6 +217,7 @@ export async function POST(req: NextRequest) {
         data: {
           status: "PENDING_ACCEPTANCE",
           stripePaymentIntentId: intent.id,
+          ...(transferId ? { stripeTransferId: transferId } : {}),
         },
       });
 

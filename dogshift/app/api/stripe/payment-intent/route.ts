@@ -13,6 +13,7 @@ type Body = {
 
 export async function POST(req: NextRequest) {
   try {
+    const db = prisma as any;
     const userId = await resolveDbUserId(req);
     if (!userId) {
       return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
@@ -22,7 +23,7 @@ export async function POST(req: NextRequest) {
     const bookingId = typeof body?.bookingId === "string" ? body.bookingId.trim() : "";
     if (!bookingId) return NextResponse.json({ ok: false, error: "INVALID_BOOKING" }, { status: 400 });
 
-    const booking = await (prisma as any).booking.findUnique({
+    const booking = await db.booking.findUnique({
       where: { id: bookingId },
       select: {
         id: true,
@@ -55,6 +56,20 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, error: "INVALID_AMOUNT" }, { status: 400 });
     }
 
+    const sitterProfile = await db.sitterProfile.findUnique({
+      where: { sitterId: booking.sitterId },
+      select: { stripeAccountId: true, stripeAccountStatus: true },
+    });
+
+    const destination = typeof sitterProfile?.stripeAccountId === "string" ? sitterProfile.stripeAccountId.trim() : "";
+    const destinationStatus = typeof sitterProfile?.stripeAccountStatus === "string" ? sitterProfile.stripeAccountStatus.trim() : "";
+    if (!destination) {
+      return NextResponse.json({ ok: false, error: "SITTER_STRIPE_NOT_CONNECTED" }, { status: 409 });
+    }
+    if (destinationStatus !== "ENABLED") {
+      return NextResponse.json({ ok: false, error: "SITTER_STRIPE_NOT_READY" }, { status: 409 });
+    }
+
     if (typeof booking.stripePaymentIntentId === "string" && booking.stripePaymentIntentId.trim()) {
       try {
         const existing = await stripe.paymentIntents.retrieve(booking.stripePaymentIntentId);
@@ -73,6 +88,10 @@ export async function POST(req: NextRequest) {
       amount: booking.amount,
       currency: "chf",
       automatic_payment_methods: { enabled: true },
+      application_fee_amount: 0,
+      transfer_data: {
+        destination,
+      },
       metadata: {
         bookingId: booking.id,
         sitterId: booking.sitterId,
@@ -85,9 +104,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, error: "MISSING_CLIENT_SECRET" }, { status: 500 });
     }
 
-    await (prisma as any).booking.update({
+    await db.booking.update({
       where: { id: booking.id },
-      data: { stripePaymentIntentId: intent.id },
+      data: { stripePaymentIntentId: intent.id, stripeApplicationFeeAmount: 0 },
       select: { id: true },
     });
 

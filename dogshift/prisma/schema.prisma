@@ -163,6 +163,10 @@ model SitterProfile {
 
   verificationAccessLogs VerificationAccessLog[]
 
+  stripeAccountId               String?
+  stripeAccountStatus           String?
+  stripeOnboardingCompletedAt   DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -214,6 +218,9 @@ model Booking {
 
   stripeSessionId       String?
   stripePaymentIntentId String?
+
+  stripeTransferId            String?
+  stripeApplicationFeeAmount  Int           @default(0)
 
   stripeRefundId String?
   refundedAt     DateTime?

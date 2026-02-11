@@ -83,6 +83,13 @@ export default function HostProfileEditPage() {
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const [stripeConnect, setStripeConnect] = useState<{
+    loading: boolean;
+    status: "PENDING" | "ENABLED" | "RESTRICTED" | null;
+    stripeAccountId: string | null;
+    error: string | null;
+  }>({ loading: true, status: null, stripeAccountId: null, error: null });
+
   useEffect(() => {
     return;
   }, []);
@@ -112,6 +119,91 @@ export default function HostProfileEditPage() {
       canceled = true;
     };
   }, [sitterId]);
+
+  useEffect(() => {
+    if (!sitterId) return;
+    let canceled = false;
+    void (async () => {
+      try {
+        setStripeConnect((s) => ({ ...s, loading: true, error: null }));
+        const res = await fetch("/api/host/stripe/connect/status", { method: "GET" });
+        const payload = (await res.json().catch(() => null)) as any;
+        if (canceled) return;
+        if (!res.ok || !payload?.ok) {
+          setStripeConnect({ loading: false, status: null, stripeAccountId: null, error: "Impossible de charger le statut Stripe." });
+          return;
+        }
+        const st = typeof payload?.status === "string" ? payload.status : null;
+        const accountId = typeof payload?.stripeAccountId === "string" ? payload.stripeAccountId : null;
+        setStripeConnect({
+          loading: false,
+          status: st === "PENDING" || st === "ENABLED" || st === "RESTRICTED" ? st : null,
+          stripeAccountId: accountId,
+          error: null,
+        });
+      } catch {
+        if (canceled) return;
+        setStripeConnect({ loading: false, status: null, stripeAccountId: null, error: "Impossible de charger le statut Stripe." });
+      }
+    })();
+    return () => {
+      canceled = true;
+    };
+  }, [sitterId]);
+
+  async function startStripeOnboarding() {
+    try {
+      setStripeConnect((s) => ({ ...s, loading: true, error: null }));
+      const createRes = await fetch("/api/host/stripe/connect/create", { method: "POST" });
+      const createPayload = (await createRes.json().catch(() => null)) as any;
+      if (!createRes.ok || !createPayload?.ok) {
+        setStripeConnect((s) => ({ ...s, loading: false, error: "Impossible de créer le compte Stripe." }));
+        return;
+      }
+
+      const linkRes = await fetch("/api/host/stripe/connect/link", { method: "POST" });
+      const linkPayload = (await linkRes.json().catch(() => null)) as any;
+      if (!linkRes.ok || !linkPayload?.ok || typeof linkPayload?.url !== "string") {
+        setStripeConnect((s) => ({ ...s, loading: false, error: "Impossible de générer le lien d’onboarding Stripe." }));
+        return;
+      }
+
+      window.location.href = linkPayload.url;
+    } catch {
+      setStripeConnect((s) => ({ ...s, loading: false, error: "Impossible de démarrer l’onboarding Stripe." }));
+    }
+  }
+
+  async function continueStripeOnboarding() {
+    try {
+      setStripeConnect((s) => ({ ...s, loading: true, error: null }));
+      const linkRes = await fetch("/api/host/stripe/connect/link", { method: "POST" });
+      const linkPayload = (await linkRes.json().catch(() => null)) as any;
+      if (!linkRes.ok || !linkPayload?.ok || typeof linkPayload?.url !== "string") {
+        setStripeConnect((s) => ({ ...s, loading: false, error: "Impossible de générer le lien d’onboarding Stripe." }));
+        return;
+      }
+      window.location.href = linkPayload.url;
+    } catch {
+      setStripeConnect((s) => ({ ...s, loading: false, error: "Impossible de continuer l’onboarding Stripe." }));
+    }
+  }
+
+  async function openStripeDashboard() {
+    try {
+      setStripeConnect((s) => ({ ...s, loading: true, error: null }));
+      const res = await fetch("/api/host/stripe/connect/login-link", { method: "POST" });
+      const payload = (await res.json().catch(() => null)) as any;
+      if (!res.ok || !payload?.ok || typeof payload?.url !== "string") {
+        setStripeConnect((s) => ({ ...s, loading: false, error: "Impossible d’ouvrir le dashboard Stripe." }));
+        return;
+      }
+      window.open(payload.url, "_blank", "noopener,noreferrer");
+      setStripeConnect((s) => ({ ...s, loading: false, error: null }));
+    } catch {
+      setStripeConnect((s) => ({ ...s, loading: false, error: "Impossible d’ouvrir le dashboard Stripe." }));
+    }
+  }
 
   useEffect(() => {
     if (typeof window === "undefined") return;
