@@ -16,8 +16,9 @@ export default function HostWalletPage() {
     stripeAccountId: string | null;
     onboardingCompletedAt: string | null;
     balance: { availableCents: number; pendingCents: number } | null;
+    nextPayoutArrivalDate: string | null;
     error: string | null;
-  }>({ loading: true, status: null, stripeAccountId: null, onboardingCompletedAt: null, balance: null, error: null });
+  }>({ loading: true, status: null, stripeAccountId: null, onboardingCompletedAt: null, balance: null, nextPayoutArrivalDate: null, error: null });
 
   async function refreshStripeStatus() {
     try {
@@ -33,6 +34,7 @@ export default function HostWalletPage() {
       const accountId = typeof payload?.stripeAccountId === "string" ? payload.stripeAccountId : null;
       const onboardingCompletedAt = typeof payload?.stripeOnboardingCompletedAt === "string" ? payload.stripeOnboardingCompletedAt : null;
       const balance = payload?.balance && typeof payload.balance === "object" ? payload.balance : null;
+      const nextPayoutArrivalDate = typeof payload?.nextPayoutArrivalDate === "string" ? payload.nextPayoutArrivalDate : null;
 
       setStripeConnect({
         loading: false,
@@ -40,6 +42,7 @@ export default function HostWalletPage() {
         stripeAccountId: accountId,
         onboardingCompletedAt,
         balance,
+        nextPayoutArrivalDate,
         error: null,
       });
     } catch {
@@ -229,25 +232,39 @@ export default function HostWalletPage() {
                 ? formatCents(stripeConnect.balance.availableCents)
                 : "—"}
             </p>
-            <p className="mt-2 text-xs font-medium text-slate-500">À venir</p>
+            <p className="mt-2 text-xs font-medium text-slate-500">Solde disponible</p>
           </div>
 
           <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)]">
             <div className="flex items-center justify-between">
-              <p className="text-sm font-semibold text-slate-800">Revenus</p>
+              <p className="text-sm font-semibold text-slate-800">En attente</p>
               <ArrowUpRight className="h-5 w-5 text-slate-400" aria-hidden="true" />
             </div>
-            <p className="mt-2 text-3xl font-semibold tracking-tight text-slate-900">—</p>
-            <p className="mt-2 text-xs font-medium text-slate-500">À venir</p>
+            <p className="mt-2 text-3xl font-semibold tracking-tight text-slate-900">
+              {stripeConnect.status === "ENABLED" && stripeConnect.balance
+                ? formatCents(stripeConnect.balance.pendingCents)
+                : "—"}
+            </p>
+            {stripeConnect.status === "ENABLED" && stripeConnect.balance && stripeConnect.balance.pendingCents > 0 && stripeConnect.nextPayoutArrivalDate ? (
+              <p className="mt-2 text-xs font-medium text-slate-500">
+                Prochain virement estimé: {new Date(stripeConnect.nextPayoutArrivalDate).toLocaleDateString("fr-CH")}
+              </p>
+            ) : (
+              <p className="mt-2 text-xs font-medium text-slate-500">Solde en attente</p>
+            )}
           </div>
 
           <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)]">
             <div className="flex items-center justify-between">
-              <p className="text-sm font-semibold text-slate-800">Virements</p>
+              <p className="text-sm font-semibold text-slate-800">Total gagné</p>
               <ArrowDownRight className="h-5 w-5 text-slate-400" aria-hidden="true" />
             </div>
-            <p className="mt-2 text-3xl font-semibold tracking-tight text-slate-900">—</p>
-            <p className="mt-2 text-xs font-medium text-slate-500">À venir</p>
+            <p className="mt-2 text-3xl font-semibold tracking-tight text-slate-900">
+              {stripeConnect.status === "ENABLED" && stripeConnect.balance
+                ? formatCents(stripeConnect.balance.availableCents + stripeConnect.balance.pendingCents)
+                : "—"}
+            </p>
+            <p className="mt-2 text-xs font-medium text-slate-500">Disponible + en attente</p>
           </div>
         </div>
 

@@ -79,6 +79,7 @@ export async function GET(req: NextRequest) {
     });
 
     let balance: { availableCents: number; pendingCents: number } | null = null;
+    let nextPayoutArrivalDate: string | null = null;
     if (status === "ENABLED") {
       try {
         const b = (await stripe.balance.retrieve({ stripeAccount: accountId })) as any;
@@ -92,6 +93,31 @@ export async function GET(req: NextRequest) {
       } catch (err) {
         console.error("[api][host][stripe][connect][status] balance retrieve failed", err);
       }
+
+      try {
+        const candidateArrivalDates: number[] = [];
+
+        const pendingPayouts = await stripe.payouts.list({ limit: 10, status: "pending" }, { stripeAccount: accountId });
+        for (const p of pendingPayouts.data ?? []) {
+          if (typeof (p as any)?.arrival_date === "number") {
+            candidateArrivalDates.push((p as any).arrival_date);
+          }
+        }
+
+        const inTransitPayouts = await stripe.payouts.list({ limit: 10, status: "in_transit" }, { stripeAccount: accountId });
+        for (const p of inTransitPayouts.data ?? []) {
+          if (typeof (p as any)?.arrival_date === "number") {
+            candidateArrivalDates.push((p as any).arrival_date);
+          }
+        }
+
+        if (candidateArrivalDates.length > 0) {
+          const next = Math.min(...candidateArrivalDates);
+          nextPayoutArrivalDate = new Date(next * 1000).toISOString();
+        }
+      } catch (err) {
+        console.error("[api][host][stripe][connect][status] payouts list failed", err);
+      }
     }
 
     return NextResponse.json(
@@ -102,6 +128,7 @@ export async function GET(req: NextRequest) {
         status,
         stripeOnboardingCompletedAt: onboardingCompletedAt ? onboardingCompletedAt.toISOString() : null,
         balance,
+        nextPayoutArrivalDate,
         charges_enabled: Boolean((account as any)?.charges_enabled),
         payouts_enabled: Boolean((account as any)?.payouts_enabled),
         details: {
