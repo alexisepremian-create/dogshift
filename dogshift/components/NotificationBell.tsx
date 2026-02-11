@@ -156,7 +156,7 @@ export default function NotificationBell({ className }: { className?: string }) 
         <div
           role="menu"
           aria-label="Notifications"
-          className="absolute right-0 mt-2 w-[360px] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_18px_60px_-40px_rgba(2,6,23,0.25)]"
+          className="absolute right-0 mt-2 w-[320px] max-w-[calc(100vw-24px)] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_18px_60px_-40px_rgba(2,6,23,0.25)] sm:w-[340px]"
         >
           <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-4 py-3">
             <p className="text-sm font-semibold text-slate-900">Notifications</p>
