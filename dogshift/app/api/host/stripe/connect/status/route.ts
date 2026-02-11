@@ -60,11 +60,16 @@ export async function GET(req: NextRequest) {
     const account = await stripe.accounts.retrieve(accountId);
     const status = computeStatus(account);
 
+    let onboardingCompletedAt: Date | null = sitterProfile.stripeOnboardingCompletedAt ? new Date(sitterProfile.stripeOnboardingCompletedAt) : null;
+    if (status === "ENABLED" && !onboardingCompletedAt) {
+      onboardingCompletedAt = new Date();
+    }
+
     const updateData: Record<string, unknown> = {
       stripeAccountStatus: status,
     };
     if (status === "ENABLED") {
-      updateData.stripeOnboardingCompletedAt = new Date();
+      updateData.stripeOnboardingCompletedAt = onboardingCompletedAt;
     }
 
     await db.sitterProfile.update({
@@ -73,12 +78,30 @@ export async function GET(req: NextRequest) {
       select: { id: true },
     });
 
+    let balance: { availableCents: number; pendingCents: number } | null = null;
+    if (status === "ENABLED") {
+      try {
+        const b = (await stripe.balance.retrieve({ stripeAccount: accountId })) as any;
+        const available = Array.isArray(b?.available) ? b.available : [];
+        const pending = Array.isArray(b?.pending) ? b.pending : [];
+        const sum = (items: any[]) =>
+          items
+            .filter((it) => String(it?.currency ?? "").toLowerCase() === "chf")
+            .reduce((acc, it) => acc + (typeof it?.amount === "number" ? it.amount : 0), 0);
+        balance = { availableCents: sum(available), pendingCents: sum(pending) };
+      } catch (err) {
+        console.error("[api][host][stripe][connect][status] balance retrieve failed", err);
+      }
+    }
+
     return NextResponse.json(
       {
         ok: true,
         hasAccount: true,
         stripeAccountId: accountId,
         status,
+        stripeOnboardingCompletedAt: onboardingCompletedAt ? onboardingCompletedAt.toISOString() : null,
+        balance,
         charges_enabled: Boolean((account as any)?.charges_enabled),
         payouts_enabled: Boolean((account as any)?.payouts_enabled),
         details: {

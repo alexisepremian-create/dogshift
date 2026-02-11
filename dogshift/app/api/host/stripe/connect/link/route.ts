@@ -51,8 +51,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, error: "MISSING_STRIPE_ACCOUNT" }, { status: 409 });
     }
 
-    const refresh_url = `${baseUrl}/host/profile/edit#payments`;
-    const return_url = `${baseUrl}/host/profile/edit#payments`;
+    const refresh_url = `${baseUrl}/host/wallet`;
+    const return_url = `${baseUrl}/host/wallet`;
 
     const link = await stripe.accountLinks.create({
       account,

@@ -83,13 +83,6 @@ export default function HostProfileEditPage() {
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [stripeConnect, setStripeConnect] = useState<{
-    loading: boolean;
-    status: "PENDING" | "ENABLED" | "RESTRICTED" | null;
-    stripeAccountId: string | null;
-    error: string | null;
-  }>({ loading: true, status: null, stripeAccountId: null, error: null });
-
   useEffect(() => {
     return;
   }, []);
@@ -119,91 +112,6 @@ export default function HostProfileEditPage() {
       canceled = true;
     };
   }, [sitterId]);
-
-  useEffect(() => {
-    if (!sitterId) return;
-    let canceled = false;
-    void (async () => {
-      try {
-        setStripeConnect((s) => ({ ...s, loading: true, error: null }));
-        const res = await fetch("/api/host/stripe/connect/status", { method: "GET" });
-        const payload = (await res.json().catch(() => null)) as any;
-        if (canceled) return;
-        if (!res.ok || !payload?.ok) {
-          setStripeConnect({ loading: false, status: null, stripeAccountId: null, error: "Impossible de charger le statut Stripe." });
-          return;
-        }
-        const st = typeof payload?.status === "string" ? payload.status : null;
-        const accountId = typeof payload?.stripeAccountId === "string" ? payload.stripeAccountId : null;
-        setStripeConnect({
-          loading: false,
-          status: st === "PENDING" || st === "ENABLED" || st === "RESTRICTED" ? st : null,
-          stripeAccountId: accountId,
-          error: null,
-        });
-      } catch {
-        if (canceled) return;
-        setStripeConnect({ loading: false, status: null, stripeAccountId: null, error: "Impossible de charger le statut Stripe." });
-      }
-    })();
-    return () => {
-      canceled = true;
-    };
-  }, [sitterId]);
-
-  async function startStripeOnboarding() {
-    try {
-      setStripeConnect((s) => ({ ...s, loading: true, error: null }));
-      const createRes = await fetch("/api/host/stripe/connect/create", { method: "POST" });
-      const createPayload = (await createRes.json().catch(() => null)) as any;
-      if (!createRes.ok || !createPayload?.ok) {
-        setStripeConnect((s) => ({ ...s, loading: false, error: "Impossible de créer le compte Stripe." }));
-        return;
-      }
-
-      const linkRes = await fetch("/api/host/stripe/connect/link", { method: "POST" });
-      const linkPayload = (await linkRes.json().catch(() => null)) as any;
-      if (!linkRes.ok || !linkPayload?.ok || typeof linkPayload?.url !== "string") {
-        setStripeConnect((s) => ({ ...s, loading: false, error: "Impossible de générer le lien d’onboarding Stripe." }));
-        return;
-      }
-
-      window.location.href = linkPayload.url;
-    } catch {
-      setStripeConnect((s) => ({ ...s, loading: false, error: "Impossible de démarrer l’onboarding Stripe." }));
-    }
-  }
-
-  async function continueStripeOnboarding() {
-    try {
-      setStripeConnect((s) => ({ ...s, loading: true, error: null }));
-      const linkRes = await fetch("/api/host/stripe/connect/link", { method: "POST" });
-      const linkPayload = (await linkRes.json().catch(() => null)) as any;
-      if (!linkRes.ok || !linkPayload?.ok || typeof linkPayload?.url !== "string") {
-        setStripeConnect((s) => ({ ...s, loading: false, error: "Impossible de générer le lien d’onboarding Stripe." }));
-        return;
-      }
-      window.location.href = linkPayload.url;
-    } catch {
-      setStripeConnect((s) => ({ ...s, loading: false, error: "Impossible de continuer l’onboarding Stripe." }));
-    }
-  }
-
-  async function openStripeDashboard() {
-    try {
-      setStripeConnect((s) => ({ ...s, loading: true, error: null }));
-      const res = await fetch("/api/host/stripe/connect/login-link", { method: "POST" });
-      const payload = (await res.json().catch(() => null)) as any;
-      if (!res.ok || !payload?.ok || typeof payload?.url !== "string") {
-        setStripeConnect((s) => ({ ...s, loading: false, error: "Impossible d’ouvrir le dashboard Stripe." }));
-        return;
-      }
-      window.open(payload.url, "_blank", "noopener,noreferrer");
-      setStripeConnect((s) => ({ ...s, loading: false, error: null }));
-    } catch {
-      setStripeConnect((s) => ({ ...s, loading: false, error: "Impossible d’ouvrir le dashboard Stripe." }));
-    }
-  }
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -386,100 +294,6 @@ export default function HostProfileEditPage() {
 
         <div className="mt-8">
           <section className="relative rounded-3xl border border-slate-200 bg-white shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)]">
-              <div id="payments" className="scroll-mt-24 border-b border-slate-200 p-6 sm:p-8">
-                <h2 className="text-base font-semibold text-slate-900">Paiements</h2>
-                <p className="mt-1 text-sm text-slate-600">Active Stripe Connect pour recevoir automatiquement les paiements.</p>
-
-                <div className="mt-4 flex flex-wrap items-center gap-3">
-                  {stripeConnect.status === "ENABLED" ? (
-                    <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-800">
-                      Paiements activés
-                    </span>
-                  ) : stripeConnect.status === "RESTRICTED" ? (
-                    <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-800">
-                      Action requise
-                    </span>
-                  ) : stripeConnect.status === "PENDING" ? (
-                    <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-700">
-                      En attente
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-700">
-                      Non activé
-                    </span>
-                  )}
-
-                  {stripeConnect.stripeAccountId ? (
-                    <span className="inline-flex items-center rounded-full bg-white px-3 py-1 text-xs font-medium text-slate-600 ring-1 ring-slate-200">
-                      {stripeConnect.stripeAccountId}
-                    </span>
-                  ) : null}
-                </div>
-
-                {stripeConnect.error ? <p className="mt-3 text-sm font-medium text-rose-600">{stripeConnect.error}</p> : null}
-
-                <div className="mt-4 flex flex-wrap gap-3">
-                  {!stripeConnect.stripeAccountId ? (
-                    <button
-                      type="button"
-                      disabled={stripeConnect.loading}
-                      onClick={() => void startStripeOnboarding()}
-                      className="inline-flex items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[var(--dogshift-blue-hover)] disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                      Activer les paiements
-                    </button>
-                  ) : stripeConnect.status === "ENABLED" ? (
-                    <button
-                      type="button"
-                      disabled={stripeConnect.loading}
-                      onClick={() => void openStripeDashboard()}
-                      className="inline-flex items-center justify-center rounded-2xl border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                      Ouvrir Stripe
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      disabled={stripeConnect.loading}
-                      onClick={() => void continueStripeOnboarding()}
-                      className="inline-flex items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[var(--dogshift-blue-hover)] disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                      Continuer la vérification
-                    </button>
-                  )}
-
-                  <button
-                    type="button"
-                    disabled={stripeConnect.loading}
-                    onClick={() => {
-                      void (async () => {
-                        try {
-                          setStripeConnect((s) => ({ ...s, loading: true, error: null }));
-                          const res = await fetch("/api/host/stripe/connect/status", { method: "GET" });
-                          const payload = (await res.json().catch(() => null)) as any;
-                          if (!res.ok || !payload?.ok) {
-                            setStripeConnect((s) => ({ ...s, loading: false, error: "Impossible de rafraîchir le statut Stripe." }));
-                            return;
-                          }
-                          const st = typeof payload?.status === "string" ? payload.status : null;
-                          const accountId = typeof payload?.stripeAccountId === "string" ? payload.stripeAccountId : null;
-                          setStripeConnect({
-                            loading: false,
-                            status: st === "PENDING" || st === "ENABLED" || st === "RESTRICTED" ? st : null,
-                            stripeAccountId: accountId,
-                            error: null,
-                          });
-                        } catch {
-                          setStripeConnect((s) => ({ ...s, loading: false, error: "Impossible de rafraîchir le statut Stripe." }));
-                        }
-                      })();
-                    }}
-                    className="inline-flex items-center justify-center rounded-2xl border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    Rafraîchir
-                  </button>
-                </div>
-              </div>
               <div id="identity" className="scroll-mt-24 p-6 sm:p-8">
                 <h2 className="text-base font-semibold text-slate-900">Identité du profil public</h2>
                 <p className="mt-1 text-sm text-slate-600">Ces informations sont visibles par tous sur ton profil public.</p>
