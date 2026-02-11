@@ -22,7 +22,7 @@ export default function OwnerDashboardShell({ children }: { children: React.Reac
   return (
     <div className="min-h-screen bg-white text-slate-900">
       <div className="flex min-h-screen">
-        <div className="hidden w-[240px] shrink-0 lg:block">
+        <div className="hidden shrink-0 lg:block">
           <OwnerSidebar className="sticky top-0 h-screen" />
         </div>
 
@@ -56,36 +56,53 @@ export default function OwnerDashboardShell({ children }: { children: React.Reac
         </div>
       </div>
 
-      {mobileOpen ? (
-        <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true">
-          <button
-            type="button"
-            className="absolute inset-0 bg-slate-900/35"
-            aria-label="Fermer le menu"
-            onClick={() => setMobileOpen(false)}
-          />
+      <div
+        className={
+          "fixed inset-0 z-50 lg:hidden transition " +
+          (mobileOpen ? "pointer-events-auto" : "pointer-events-none")
+        }
+        role="dialog"
+        aria-modal="true"
+        aria-hidden={!mobileOpen}
+      >
+        <button
+          type="button"
+          className={
+            "absolute inset-0 bg-slate-900/35 transition-opacity duration-[250ms] ease-in-out " +
+            (mobileOpen ? "opacity-100" : "opacity-0")
+          }
+          aria-label="Fermer le menu"
+          onClick={() => setMobileOpen(false)}
+          tabIndex={mobileOpen ? 0 : -1}
+        />
 
-          <div className="absolute left-0 top-0 h-full w-[280px] bg-white shadow-[0_20px_60px_-35px_rgba(2,6,23,0.45)]">
-            <div className="flex items-center justify-end px-4 pt-3">
-              <button
-                type="button"
-                onClick={() => setMobileOpen(false)}
-                className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-900 transition hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)]"
-                aria-label="Fermer"
-              >
-                <X className="h-5 w-5" aria-hidden="true" />
-              </button>
-            </div>
-
-            <OwnerSidebar
-              className="h-[calc(100%-56px)] border-r-0"
-              onNavigate={() => {
-                setMobileOpen(false);
-              }}
-            />
+        <div
+          className={
+            "absolute left-0 top-0 h-full w-[280px] bg-white shadow-[0_20px_60px_-35px_rgba(2,6,23,0.45)] transition-transform duration-[250ms] ease-in-out " +
+            (mobileOpen ? "translate-x-0" : "-translate-x-full")
+          }
+        >
+          <div className="flex items-center justify-end px-4 pt-3">
+            <button
+              type="button"
+              onClick={() => setMobileOpen(false)}
+              className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-900 transition hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)]"
+              aria-label="Fermer"
+              tabIndex={mobileOpen ? 0 : -1}
+            >
+              <X className="h-5 w-5" aria-hidden="true" />
+            </button>
           </div>
+
+          <OwnerSidebar
+            className="h-[calc(100%-56px)] border-r-0"
+            forceExpanded
+            onNavigate={() => {
+              setMobileOpen(false);
+            }}
+          />
         </div>
-      ) : null}
+      </div>
     </div>
   );
 }

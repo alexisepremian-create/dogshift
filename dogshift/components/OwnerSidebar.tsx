@@ -1,15 +1,16 @@
 "use client";
 
-import Image from "next/image";
-import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useClerk } from "@clerk/nextjs";
 import { useMemo } from "react";
 import { LayoutDashboard, CalendarDays, MessageSquare, Settings, LogOut, Wallet } from "lucide-react";
 
+import Sidebar from "@/components/Sidebar";
+
 type OwnerSidebarProps = {
   onNavigate?: () => void;
   className?: string;
+  forceExpanded?: boolean;
 };
 
 type NavItem = {
@@ -20,7 +21,7 @@ type NavItem = {
   active: boolean;
 };
 
-export default function OwnerSidebar({ onNavigate, className }: OwnerSidebarProps) {
+export default function OwnerSidebar({ onNavigate, className, forceExpanded }: OwnerSidebarProps) {
   const clerk = useClerk();
   const pathname = usePathname();
 
@@ -73,72 +74,42 @@ export default function OwnerSidebar({ onNavigate, className }: OwnerSidebarProp
     ];
   }, [activeKey]);
 
-  const linkBase =
-    "group flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)]";
-  const activeLink = linkBase + " bg-slate-50 text-slate-900";
-  const inactiveLink = linkBase + " text-slate-600 hover:bg-slate-50 hover:text-slate-900";
+  const footer = (
+    <button
+      type="button"
+      onClick={() => {
+        try {
+          window.localStorage.removeItem("ds_auth_user");
+        } catch {
+          // ignore
+        }
+        void clerk.signOut({ redirectUrl: "/login?force=1" });
+      }}
+      className={
+        "group/item flex w-full items-center gap-3 rounded-2xl px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-50 hover:text-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)]"
+      }
+      title={!forceExpanded ? "Déconnexion" : undefined}
+    >
+      <LogOut className="h-4 w-4 shrink-0 text-slate-500 transition group-hover/item:text-slate-700" aria-hidden="true" />
+      <span
+        className={
+          "overflow-hidden whitespace-nowrap transition-[max-width,opacity] duration-[250ms] ease-in-out " +
+          (forceExpanded ? "max-w-[160px] opacity-100" : "max-w-0 opacity-0 group-hover/sidebar:max-w-[160px] group-hover/sidebar:opacity-100")
+        }
+      >
+        Déconnexion
+      </span>
+    </button>
+  );
 
   return (
-    <aside
-      className={
-        "flex h-full w-full flex-col border-r border-slate-200 bg-white" + (className ? ` ${className}` : "")
-      }
-    >
-      <div className="px-4 pt-2.5">
-        <Link
-          href="/"
-          aria-label="DogShift"
-          className="inline-flex items-center gap-3 rounded-xl px-2 py-2 transition hover:bg-slate-50"
-          onClick={onNavigate}
-        >
-          <Image
-            src="/dogshift-logo.png"
-            alt="DogShift"
-            width={320}
-            height={96}
-            className="h-16 w-auto max-w-[220px]"
-            priority
-          />
-        </Link>
-      </div>
-
-      <div className="px-4 pt-6">
-        <nav aria-label="Navigation Owner" className="space-y-1">
-          {items.map((item) => (
-            <div key={item.key} className="relative">
-              {item.active ? (
-                <div className="pointer-events-none absolute left-0 top-1/2 h-6 w-[2px] -translate-y-1/2 rounded-full bg-[var(--dogshift-blue)]" />
-              ) : null}
-              <Link href={item.href} prefetch={false} className={item.active ? activeLink : inactiveLink} onClick={onNavigate}>
-                <span className={"text-slate-500 group-hover:text-slate-700" + (item.active ? " text-slate-700" : "")}>{item.icon}</span>
-                <span>{item.label}</span>
-              </Link>
-            </div>
-          ))}
-        </nav>
-
-        <div className="mt-6 border-t border-slate-200" />
-
-        <div className="pt-4">
-          <button
-            type="button"
-            onClick={() => {
-              try {
-                window.localStorage.removeItem("ds_auth_user");
-              } catch {
-                // ignore
-              }
-              void clerk.signOut({ redirectUrl: "/login?force=1" });
-            }}
-            className={
-              "flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-50 hover:text-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)]"
-            }
-          >
-            <LogOut className="h-4 w-4 text-slate-500" aria-hidden="true" />
-            <span>Déconnexion</span>
-          </button>
-        </div>
-      </div>
-    </aside>
+    <Sidebar
+      ariaLabel="Navigation Owner"
+      items={items.map((item) => ({ ...item, prefetch: false }))}
+      footer={footer}
+      onNavigate={onNavigate}
+      className={className}
+      forceExpanded={forceExpanded}
+    />
   );
 }
