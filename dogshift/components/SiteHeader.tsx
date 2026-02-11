@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Menu, LogOut, HelpCircle, LayoutDashboard, User, Search, ShoppingBag, UserPlus, MoreHorizontal } from "lucide-react";
+import { Menu, LogOut, HelpCircle, LayoutDashboard, User, Search, ShoppingBag, UserPlus, MoreHorizontal, House } from "lucide-react";
 import { useClerk, useUser } from "@clerk/nextjs";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
@@ -314,30 +314,34 @@ export default function SiteHeader() {
                 <Link
                   href="/"
                   onClick={() => setMobileNavOpen(false)}
-                  className="rounded-2xl px-4 py-3 text-base font-semibold text-slate-900 ring-1 ring-slate-200"
+                  className="flex items-center gap-3 rounded-2xl px-4 py-3 text-base font-semibold text-slate-900 ring-1 ring-slate-200"
                 >
-                  Accueil
+                  <House className="h-5 w-5 text-slate-500" aria-hidden="true" />
+                  <span className="min-w-0 flex-1 truncate">Accueil</span>
                 </Link>
                 <Link
                   href="/search"
                   onClick={() => setMobileNavOpen(false)}
-                  className="rounded-2xl px-4 py-3 text-base font-semibold text-slate-900 ring-1 ring-slate-200"
+                  className="flex items-center gap-3 rounded-2xl px-4 py-3 text-base font-semibold text-slate-900 ring-1 ring-slate-200"
                 >
-                  Trouver un sitter
+                  <Search className="h-5 w-5 text-slate-500" aria-hidden="true" />
+                  <span className="min-w-0 flex-1 truncate">Trouver un sitter</span>
                 </Link>
                 <Link
                   href="/become-sitter"
                   onClick={() => setMobileNavOpen(false)}
-                  className="rounded-2xl px-4 py-3 text-base font-semibold text-slate-900 ring-1 ring-slate-200"
+                  className="flex items-center gap-3 rounded-2xl px-4 py-3 text-base font-semibold text-slate-900 ring-1 ring-slate-200"
                 >
-                  Devenir dogsitter
+                  <UserPlus className="h-5 w-5 text-slate-500" aria-hidden="true" />
+                  <span className="min-w-0 flex-1 truncate">Devenir dogsitter</span>
                 </Link>
                 <Link
                   href="/shop"
                   onClick={() => setMobileNavOpen(false)}
-                  className="rounded-2xl px-4 py-3 text-base font-semibold text-slate-900 ring-1 ring-slate-200"
+                  className="flex items-center gap-3 rounded-2xl px-4 py-3 text-base font-semibold text-slate-900 ring-1 ring-slate-200"
                 >
-                  Boutique
+                  <ShoppingBag className="h-5 w-5 text-slate-500" aria-hidden="true" />
+                  <span className="min-w-0 flex-1 truncate">Boutique</span>
                 </Link>
               </div>
 
@@ -350,16 +354,18 @@ export default function SiteHeader() {
                       href={accountHref}
                       prefetch={false}
                       onClick={() => setMobileNavOpen(false)}
-                      className="rounded-2xl px-4 py-3 text-sm font-semibold text-slate-900 ring-1 ring-slate-200"
+                      className="flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold text-slate-900 ring-1 ring-slate-200"
                     >
-                      Mon espace
+                      <LayoutDashboard className="h-5 w-5 text-slate-500" aria-hidden="true" />
+                      <span className="min-w-0 flex-1 truncate">Mon espace</span>
                     </Link>
                     <Link
                       href="/help"
                       onClick={() => setMobileNavOpen(false)}
-                      className="rounded-2xl px-4 py-3 text-sm font-semibold text-slate-900 ring-1 ring-slate-200"
+                      className="flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold text-slate-900 ring-1 ring-slate-200"
                     >
-                      Centre d’aide
+                      <HelpCircle className="h-5 w-5 text-slate-500" aria-hidden="true" />
+                      <span className="min-w-0 flex-1 truncate">Centre d’aide</span>
                     </Link>
                     <button
                       type="button"
@@ -367,9 +373,10 @@ export default function SiteHeader() {
                         setMobileNavOpen(false);
                         void clerk.signOut({ redirectUrl: "/login" });
                       }}
-                      className="rounded-2xl px-4 py-3 text-left text-sm font-semibold text-slate-900 ring-1 ring-slate-200"
+                      className="flex items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm font-semibold text-slate-900 ring-1 ring-slate-200"
                     >
-                      Se déconnecter
+                      <LogOut className="h-5 w-5 text-slate-500" aria-hidden="true" />
+                      <span className="min-w-0 flex-1 truncate">Se déconnecter</span>
                     </button>
                   </>
                 ) : (
@@ -377,16 +384,18 @@ export default function SiteHeader() {
                     <Link
                       href="/login"
                       onClick={() => setMobileNavOpen(false)}
-                      className="rounded-2xl px-4 py-3 text-sm font-semibold text-slate-900 ring-1 ring-slate-200"
+                      className="flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold text-slate-900 ring-1 ring-slate-200"
                     >
-                      Connexion
+                      <User className="h-5 w-5 text-slate-500" aria-hidden="true" />
+                      <span className="min-w-0 flex-1 truncate">Connexion</span>
                     </Link>
                     <Link
                       href="/help"
                       onClick={() => setMobileNavOpen(false)}
-                      className="rounded-2xl px-4 py-3 text-sm font-semibold text-slate-900 ring-1 ring-slate-200"
+                      className="flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold text-slate-900 ring-1 ring-slate-200"
                     >
-                      Centre d’aide
+                      <HelpCircle className="h-5 w-5 text-slate-500" aria-hidden="true" />
+                      <span className="min-w-0 flex-1 truncate">Centre d’aide</span>
                     </Link>
                   </>
                 )}
