@@ -5,7 +5,7 @@ import { statusMeta, type BookingStatus } from "./status";
 import type { HostRequest } from "./RequestListItem";
 
 function formatDateHuman(value: string) {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return value || "—";
+  if (!/^(\d{4})-(\d{2})-(\d{2})$/.test(value)) return value || "—";
   const [y, m, d] = value.split("-").map((n) => Number(n));
   const dt = new Date(Date.UTC(y, m - 1, d));
   if (Number.isNaN(dt.getTime())) return value;
@@ -15,6 +15,31 @@ function formatDateHuman(value: string) {
     year: "numeric",
     timeZone: "UTC",
   }).format(dt);
+}
+
+function formatDateTimeHuman(iso: string) {
+  if (!iso) return "—";
+  const dt = new Date(iso);
+  if (Number.isNaN(dt.getTime())) return iso;
+
+  const hours = dt.getHours();
+  const minutes = dt.getMinutes();
+  const hasTime = hours !== 0 || minutes !== 0;
+
+  const datePart = new Intl.DateTimeFormat("fr-CH", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  }).format(dt);
+
+  if (!hasTime) return datePart;
+
+  const timePart = new Intl.DateTimeFormat("fr-CH", {
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(dt);
+
+  return `${datePart} à ${timePart}`;
 }
 
 function formatChfCents(amount: number) {
@@ -71,12 +96,13 @@ export function RequestDetailPanel({
 
     const effectiveStatus = (localStatus ?? request.status) as BookingStatus;
     const meta = statusMeta(effectiveStatus);
-    const start = request.startDate ? request.startDate.slice(0, 10) : "";
-    const end = request.endDate ? request.endDate.slice(0, 10) : "";
-    const when = start ? `${formatDateHuman(start)}${end ? ` → ${formatDateHuman(end)}` : ""}` : "—";
     const service = request.service?.trim() ? request.service.trim() : "Service";
 
-    return { meta, when, service };
+    const start = request.startDate ? formatDateTimeHuman(request.startDate) : "—";
+    const end = request.endDate ? formatDateTimeHuman(request.endDate) : "—";
+    const createdAt = request.createdAt ? formatDateTimeHuman(request.createdAt) : "—";
+
+    return { meta, service, start, end, createdAt };
   }, [request, localStatus]);
 
   if (!request || !content) {
@@ -123,7 +149,9 @@ export function RequestDetailPanel({
           <p className="text-sm font-semibold text-slate-900">Résumé</p>
           <div className="mt-3 space-y-2">
             <SummaryRow label="Service" value={content.service} />
-            <SummaryRow label="Dates" value={content.when} />
+            <SummaryRow label="Début" value={content.start} />
+            <SummaryRow label="Fin" value={content.end} />
+            <SummaryRow label="Créée" value={content.createdAt} />
           </div>
         </section>
 
