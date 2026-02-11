@@ -30,11 +30,11 @@ type SidebarProps = {
 export default function Sidebar({ ariaLabel, items, footer, onNavigate, className, forceExpanded, headerHref = "/" }: SidebarProps) {
   const asideBase = "group/sidebar relative z-40 flex h-full flex-col overflow-visible border-r border-slate-200 bg-white";
 
-  const widthClasses = forceExpanded ? "w-[240px]" : "w-24";
+  const widthClasses = forceExpanded ? "w-[240px]" : "w-20";
 
   return (
     <aside className={asideBase + " " + widthClasses + (className ? ` ${className}` : "")}>
-      <div className={forceExpanded ? "px-4 pt-3" : "px-4 pt-3"}>
+      <div className={forceExpanded ? "px-4 pt-3" : "px-3 pt-3"}>
         <Link
           href={headerHref}
           aria-label="DogShift"
@@ -44,13 +44,16 @@ export default function Sidebar({ ariaLabel, items, footer, onNavigate, classNam
           }
           onClick={onNavigate}
         >
-          <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-[#F7F3EA] ring-1 ring-slate-200">
+          <span className={
+            (forceExpanded ? "h-16 w-16" : "h-14 w-14") +
+            " flex shrink-0 items-center justify-center rounded-full bg-[#F7F3EA] ring-1 ring-slate-200"
+          }>
             <Image
               src="/dogshift-logo.png"
               alt="DogShift"
               width={64}
               height={64}
-              className="h-11 w-11 object-contain"
+              className={(forceExpanded ? "h-11 w-11" : "h-10 w-10") + " object-contain"}
               priority
             />
           </span>
@@ -62,7 +65,7 @@ export default function Sidebar({ ariaLabel, items, footer, onNavigate, classNam
         </Link>
       </div>
 
-      <div className={forceExpanded ? "px-3 pt-6" : "px-4 pt-6"}>
+      <div className={forceExpanded ? "px-3 pt-6" : "px-2 pt-6"}>
         <nav aria-label={ariaLabel} className={forceExpanded ? "space-y-1" : "flex flex-col items-center gap-1"}>
           {items.map((item) => (
             <NavItem
