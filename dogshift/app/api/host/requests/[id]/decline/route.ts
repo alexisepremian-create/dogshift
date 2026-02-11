@@ -4,6 +4,7 @@ import { auth, currentUser } from "@clerk/nextjs/server";
 
 import { prisma } from "@/lib/prisma";
 import { CURRENT_TERMS_VERSION } from "@/lib/terms";
+import { stripe } from "@/lib/stripe";
 
 type PrismaBookingDelegate = {
   findUnique: (args: unknown) => Promise<unknown>;
@@ -63,7 +64,15 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
 
     const bookingRaw = await prismaAny.booking.findUnique({
       where: { id: bookingId },
-      select: { id: true, sitterId: true, status: true, archivedAt: true },
+      select: {
+        id: true,
+        sitterId: true,
+        status: true,
+        archivedAt: true,
+        stripePaymentIntentId: true,
+        stripeRefundId: true,
+        refundedAt: true,
+      },
     });
 
     const booking = (bookingRaw as Record<string, unknown> | null) ?? null;
@@ -79,6 +88,107 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     const status = String(booking.status ?? "");
     if (status !== "PENDING_ACCEPTANCE" && status !== "PAID") {
       return NextResponse.json({ ok: false, error: "INVALID_STATUS" }, { status: 409 });
+    }
+
+    const paymentIntentId = typeof booking.stripePaymentIntentId === "string" ? booking.stripePaymentIntentId.trim() : "";
+    const existingRefundId = typeof booking.stripeRefundId === "string" ? booking.stripeRefundId.trim() : "";
+    const existingRefundedAt = booking.refundedAt ? new Date(String(booking.refundedAt)) : null;
+    const alreadyRefunded = Boolean(existingRefundId || (existingRefundedAt && Number.isFinite(existingRefundedAt.getTime())));
+
+    if (paymentIntentId && alreadyRefunded) {
+      const updatedRaw = await prismaAny.booking.update({
+        where: { id: bookingId },
+        data: { status: "REFUNDED", canceledAt: new Date() },
+        select: { id: true, status: true, canceledAt: true, stripeRefundId: true, refundedAt: true },
+      });
+
+      const updated = (updatedRaw as Record<string, unknown> | null) ?? null;
+
+      return NextResponse.json(
+        {
+          ok: true,
+          id: String(updated?.id ?? ""),
+          status: String(updated?.status ?? ""),
+          canceledAt:
+            updated?.canceledAt instanceof Date
+              ? updated.canceledAt.toISOString()
+              : updated?.canceledAt
+                ? String(updated.canceledAt)
+                : null,
+          stripeRefundId: typeof updated?.stripeRefundId === "string" ? updated.stripeRefundId : existingRefundId || null,
+          refundedAt:
+            updated?.refundedAt instanceof Date
+              ? updated.refundedAt.toISOString()
+              : updated?.refundedAt
+                ? String(updated.refundedAt)
+                : null,
+        },
+        { status: 200 }
+      );
+    }
+
+    if (paymentIntentId) {
+      try {
+        const refund = await stripe.refunds.create(
+          {
+            payment_intent: paymentIntentId,
+            reason: "requested_by_customer",
+          },
+          {
+            idempotencyKey: `refund:${bookingId}:${paymentIntentId}`,
+          }
+        );
+
+        const updatedRaw = await prismaAny.booking.update({
+          where: { id: bookingId },
+          data: {
+            status: "REFUNDED",
+            canceledAt: new Date(),
+            stripeRefundId: refund.id,
+            refundedAt: new Date(),
+          },
+          select: { id: true, status: true, canceledAt: true, stripeRefundId: true, refundedAt: true },
+        });
+
+        const updated = (updatedRaw as Record<string, unknown> | null) ?? null;
+
+        return NextResponse.json(
+          {
+            ok: true,
+            id: String(updated?.id ?? ""),
+            status: String(updated?.status ?? ""),
+            canceledAt:
+              updated?.canceledAt instanceof Date
+                ? updated.canceledAt.toISOString()
+                : updated?.canceledAt
+                  ? String(updated.canceledAt)
+                  : null,
+            stripeRefundId: typeof updated?.stripeRefundId === "string" ? updated.stripeRefundId : refund.id,
+            refundedAt:
+              updated?.refundedAt instanceof Date
+                ? updated.refundedAt.toISOString()
+                : updated?.refundedAt
+                  ? String(updated.refundedAt)
+                  : null,
+          },
+          { status: 200 }
+        );
+      } catch (err) {
+        console.error("[api][host][requests][decline][POST] refund failed", { bookingId, paymentIntentId, err });
+        try {
+          await prismaAny.booking.update({
+            where: { id: bookingId },
+            data: { status: "REFUND_FAILED", canceledAt: new Date() },
+            select: { id: true },
+          });
+        } catch {
+          // ignore
+        }
+        return NextResponse.json(
+          { ok: false, error: "REFUND_FAILED", message: "La réservation a été refusée, mais le remboursement a échoué. Contacte le support." },
+          { status: 502 }
+        );
+      }
     }
 
     const updatedRaw = await prismaAny.booking.update({

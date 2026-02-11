@@ -24,6 +24,8 @@ enum BookingStatus {
   CONFIRMED
   PAYMENT_FAILED
   CANCELLED
+  REFUNDED
+  REFUND_FAILED
 }
 
 enum NotificationType {
@@ -212,6 +214,9 @@ model Booking {
 
   stripeSessionId       String?
   stripePaymentIntentId String?
+
+  stripeRefundId String?
+  refundedAt     DateTime?
 
   archivedAt DateTime?
 
