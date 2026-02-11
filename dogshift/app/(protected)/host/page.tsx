@@ -87,6 +87,9 @@ export default function HostDashboardPage() {
   const { isLoaded, isSignedIn, user } = useUser();
   const { sitterId, profile: remoteProfile, profileCompletion } = useHostUser();
   const [unreadTick, setUnreadTick] = useState(0);
+  const [verificationStatus, setVerificationStatus] = useState<"not_verified" | "pending" | "approved" | "rejected">(
+    "not_verified"
+  );
 
   const completionCardDismissed = useSyncExternalStore(
     (onStoreChange) => {
@@ -127,6 +130,30 @@ export default function HostDashboardPage() {
     return () => window.removeEventListener("storage", onStorage);
   }, [sitterId]);
 
+  useEffect(() => {
+    if (!sitterId) return;
+    let canceled = false;
+    void (async () => {
+      try {
+        const res = await fetch("/api/host/verification/status", { method: "GET" });
+        const payload = (await res.json().catch(() => null)) as any;
+        if (canceled) return;
+        if (!res.ok || !payload?.ok || !payload?.verification) return;
+        const st = String(payload.verification.status ?? "not_verified");
+        if (st === "pending" || st === "approved" || st === "rejected" || st === "not_verified") {
+          setVerificationStatus(st);
+        } else {
+          setVerificationStatus("not_verified");
+        }
+      } catch {
+        // ignore
+      }
+    })();
+    return () => {
+      canceled = true;
+    };
+  }, [sitterId]);
+
   const baseSitter = useMemo(() => (sitterId ? getSitterById(sitterId) : null), [sitterId]);
 
   const profile = useMemo<HostProfileV1>(() => {
@@ -138,6 +165,14 @@ export default function HostDashboardPage() {
     const stored = loadHostProfileFromStorage(sitterId);
     return stored ?? getDefaultHostProfile(sitterId);
   }, [sitterId, remoteProfile]);
+
+  const badgeStatus = useMemo<"verified" | "pending" | "unverified">(() => {
+    if (verificationStatus === "approved") return "verified";
+    if (verificationStatus === "pending") return "pending";
+    if (profile.verificationStatus === "verified") return "verified";
+    if (profile.verificationStatus === "pending") return "pending";
+    return "unverified";
+  }, [profile.verificationStatus, verificationStatus]);
 
   const storedReviews = useMemo<DogShiftReview[]>(() => {
     if (!sitterId) return [];
@@ -278,7 +313,7 @@ export default function HostDashboardPage() {
               </h1>
             </div>
             <div className="mt-3 flex min-h-[32px] flex-wrap items-center gap-2">
-              <StatusBadge status={profile.verificationStatus} />
+              <StatusBadge status={badgeStatus} />
               <span className="inline-flex items-center rounded-full bg-white px-3 py-1 text-xs font-medium text-slate-600 ring-1 ring-slate-200">
                 Profil {profileCompletion}%
               </span>
