@@ -82,7 +82,7 @@ export default function Sidebar({ ariaLabel, items, footer, onNavigate, classNam
           className={
             forceExpanded
               ? "w-full space-y-1"
-              : "flex flex-col items-center justify-center gap-4"
+              : "flex flex-col items-center justify-center gap-[18px]"
           }
         >
           {items.map((item) => (

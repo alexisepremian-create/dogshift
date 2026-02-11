@@ -29,7 +29,7 @@ export default function NavItem({
 }: NavItemProps) {
   const collapsed = !forceExpanded;
 
-  const ease = "ease-[cubic-bezier(0.175,0.885,0.32,1.275)]";
+  const ease = "ease-[cubic-bezier(0.4,0,0.2,1)]";
 
   const expandedBase =
     "relative flex w-full items-center rounded-2xl px-3 py-2 text-sm font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)]";
@@ -37,21 +37,29 @@ export default function NavItem({
   const expandedActive = " bg-slate-50 text-slate-900";
   const expandedInactive = " text-slate-600 hover:bg-slate-50 hover:text-slate-900";
 
-  const compactWrapper = "relative h-[52px] w-[52px]";
+  const compactWrapper = "group relative h-12 w-12";
 
-  const iconButtonBase =
-    "relative grid h-[52px] w-[52px] place-items-center rounded-full bg-transparent transition-colors duration-200";
+  const compactLinkBase =
+    "absolute left-0 top-0 z-[9999] flex h-12 items-center overflow-hidden rounded-full bg-transparent " +
+    "transition-[width,background-color,border-radius] duration-[350ms] " +
+    ease +
+    " focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)]";
 
-  const iconButtonState =
-    "group-hover:bg-slate-100 group-focus-visible:bg-slate-100" +
+  const compactLinkSizing = "w-12 group-hover:w-[160px] group-focus-visible:w-[160px]";
+
+  const compactLinkHover =
+    "group-hover:bg-[#0F172A] group-hover:rounded-[24px] " +
+    "group-focus-visible:bg-[#0F172A] group-focus-visible:rounded-[24px]";
+
+  const iconCircle =
+    "relative flex h-12 w-12 shrink-0 items-center justify-center rounded-full box-border" +
     (active ? " ring-2 ring-slate-900/40 ring-inset" : "");
 
-  const pillMotion =
-    "pointer-events-none absolute left-[60px] top-1/2 z-[9999] -translate-y-1/2 " +
-    "flex h-[52px] items-center rounded-2xl bg-[#0F172A] px-4 text-sm font-semibold text-white " +
-    "opacity-0 scale-95 transition-[opacity,transform] duration-[320ms] " +
+  const labelMotion =
+    "whitespace-nowrap text-sm font-semibold text-white opacity-0 translate-x-[-4px] " +
+    "transition-[opacity,transform] duration-[350ms] " +
     ease +
-    " group-hover:opacity-100 group-hover:scale-100 group-focus-visible:opacity-100 group-focus-visible:scale-100";
+    " group-hover:opacity-100 group-hover:translate-x-0 group-focus-visible:opacity-100 group-focus-visible:translate-x-0";
 
   return (
     <div className={collapsed ? compactWrapper : "group/item relative"}>
@@ -60,7 +68,7 @@ export default function NavItem({
           href={href}
           prefetch={prefetch}
           aria-label={label}
-          className="group relative flex items-center justify-center"
+          className={compactLinkBase + " " + compactLinkSizing + " " + compactLinkHover}
           onClick={(e) => {
             (e.currentTarget as HTMLAnchorElement).blur();
             onNavigate?.();
@@ -69,13 +77,13 @@ export default function NavItem({
           onFocus={onFocus}
           title={label}
         >
-          <span className={iconButtonBase + " " + iconButtonState}>
-            <span className={"text-slate-700 transition group-hover:text-slate-900 group-focus-visible:text-slate-900" + (active ? " text-slate-900" : "")}>
+          <span className={iconCircle}>
+            <span className="text-slate-700 transition group-hover:text-white group-focus-visible:text-white">
               {icon}
             </span>
           </span>
 
-          <span className={pillMotion}>{label}</span>
+          <span className={"pr-4 " + labelMotion}>{label}</span>
         </Link>
       ) : (
         <Link
