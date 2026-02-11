@@ -107,6 +107,15 @@ export default function CguPage() {
                 réalisées via la plateforme. Les conditions tarifaires et les taux de commission peuvent être ajustés.
               </p>
               <p className="mt-3">
+                Encadrement tarifaire (phase pilote) : pendant la phase pilote, DogShift peut définir des fourchettes de prix applicables à certains Services afin de
+                préserver une cohérence du marché et d’éviter toute concurrence déloyale. Cet encadrement est temporaire et peut être modifié, suspendu ou retiré par
+                DogShift à tout moment.
+              </p>
+              <p className="mt-3">
+                DogShift peut demander la modification de tarifs non conformes, limiter la publication d’une annonce, ou refuser l’affichage de prix ne respectant pas
+                les fourchettes en vigueur.
+              </p>
+              <p className="mt-3">
                 Les utilisateurs s’engagent à ne pas contourner le système de paiement de la plateforme (paiement hors plateforme) lorsque la réservation a été initiée
                 via DogShift, sauf accord écrit explicite de DogShift.
               </p>

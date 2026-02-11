@@ -29,12 +29,28 @@ const DOG_SIZE_LABELS: Record<DogSize, string> = {
   Grand: "Grand",
 };
 
+const TARIFF_RANGES: Record<ServiceType, { min: number; max: number }> = {
+  Promenade: { min: 15, max: 25 },
+  Garde: { min: 18, max: 30 },
+  Pension: { min: 35, max: 60 },
+};
+
 function parsePrice(raw: string) {
   const cleaned = raw.replace(",", ".").trim();
   if (!cleaned) return null;
   const n = Number(cleaned);
   if (!Number.isFinite(n) || n <= 0) return null;
   return Math.round(n * 100) / 100;
+}
+
+function getTariffRangeError(service: ServiceType, price: number) {
+  const r = TARIFF_RANGES[service];
+  if (!r) return null;
+  if (!Number.isFinite(price)) return null;
+  if (price < r.min || price > r.max) {
+    return `Tarif ${SERVICE_LABELS[service]} : le prix doit être compris entre ${r.min} et ${r.max} CHF.`;
+  }
+  return null;
 }
 
 export default function HostProfileEditPage() {
@@ -166,6 +182,23 @@ export default function HostProfileEditPage() {
     [activeServices, profile.pricing]
   );
 
+  const pricingRangeErrors = useMemo(() => {
+    const errors: Partial<Record<ServiceType, string>> = {};
+    for (const svc of activeServices) {
+      const v = profile.pricing?.[svc];
+      if (typeof v === "number") {
+        const msg = getTariffRangeError(svc, v);
+        if (msg) errors[svc] = msg;
+      }
+    }
+    return errors;
+  }, [activeServices, profile.pricing]);
+
+  const pricingWithinRanges = useMemo(
+    () => Object.keys(pricingRangeErrors).length === 0,
+    [pricingRangeErrors]
+  );
+
   function onSave() {
     setSaved(false);
     setError(null);
@@ -177,6 +210,12 @@ export default function HostProfileEditPage() {
 
     if (!pricingValid) {
       setError("Ajoute un prix pour chaque service activé.");
+      return;
+    }
+
+    if (!pricingWithinRanges) {
+      const first = (Object.keys(pricingRangeErrors) as ServiceType[]).find((k) => Boolean(pricingRangeErrors[k]));
+      setError(first ? pricingRangeErrors[first] ?? "Tarifs hors fourchettes autorisées." : "Tarifs hors fourchettes autorisées.");
       return;
     }
 
@@ -197,9 +236,13 @@ export default function HostProfileEditPage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ ...nextProfile, published }),
         });
-        const payload = (await res.json()) as { ok?: boolean; error?: string; profile?: unknown };
+        const payload = (await res.json()) as { ok?: boolean; error?: string; details?: string; profile?: unknown };
         if (!res.ok || !payload.ok || !payload.profile) {
-          setError(payload?.error ? `Impossible d’enregistrer le profil (${payload.error}).` : "Impossible d’enregistrer le profil.");
+          if (typeof payload?.details === "string" && payload.details.trim()) {
+            setError(payload.details.trim());
+          } else {
+            setError(payload?.error ? `Impossible d’enregistrer le profil (${payload.error}).` : "Impossible d’enregistrer le profil.");
+          }
           setSaved(false);
           return;
         }
@@ -358,6 +401,13 @@ export default function HostProfileEditPage() {
               </div>
 
               <div id="services" className="scroll-mt-24 border-t border-slate-200 p-6 sm:p-8">
+                <div className="mb-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                  <p className="text-sm font-semibold text-slate-900">Encadrement tarifaire – Phase pilote</p>
+                  <p className="mt-2 text-sm text-slate-700">
+                    Dans le cadre de la phase pilote DogShift, les tarifs sont encadrés afin de garantir une cohérence du marché et d’éviter toute concurrence
+                    déloyale. Les prix doivent respecter les fourchettes définies par la plateforme.
+                  </p>
+                </div>
                 <h2 className="text-base font-semibold text-slate-900">Services & tarifs</h2>
 
                 <div className="mt-4 grid gap-3 sm:grid-cols-3">
@@ -386,6 +436,7 @@ export default function HostProfileEditPage() {
                   {(Object.keys(SERVICE_LABELS) as ServiceType[]).map((svc) => {
                     const enabled = profile.services[svc];
                     const current = profile.pricing?.[svc];
+                    const range = TARIFF_RANGES[svc];
                     return (
                       <div key={svc} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                         <p className="text-xs font-semibold text-slate-700">
@@ -405,6 +456,14 @@ export default function HostProfileEditPage() {
                           placeholder={enabled ? "ex. 35" : "Désactivé"}
                           className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition focus:border-[var(--dogshift-blue)] focus:ring-4 focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_85%)] disabled:cursor-not-allowed disabled:bg-slate-100"
                         />
+
+                        {enabled && range ? (
+                          <p className="mt-2 text-xs text-slate-600">Fourchette pilote : {range.min}–{range.max} CHF</p>
+                        ) : null}
+
+                        {enabled && typeof current === "number" && pricingRangeErrors[svc] ? (
+                          <p className="mt-2 text-xs font-medium text-rose-600">{pricingRangeErrors[svc]}</p>
+                        ) : null}
                       </div>
                     );
                   })}
@@ -412,6 +471,19 @@ export default function HostProfileEditPage() {
 
                 {!pricingValid && activeServices.length > 0 ? (
                   <p className="mt-3 text-sm font-medium text-rose-600">Prix manquant pour un service activé.</p>
+                ) : null}
+
+                {!pricingWithinRanges ? (
+                  <div className="mt-3 rounded-2xl border border-rose-200 bg-rose-50 p-4">
+                    <p className="text-sm font-semibold text-rose-700">Tarifs hors fourchettes autorisées</p>
+                    <div className="mt-2 space-y-1 text-sm text-rose-700">
+                      {(Object.keys(pricingRangeErrors) as ServiceType[])
+                        .filter((svc) => Boolean(pricingRangeErrors[svc]))
+                        .map((svc) => (
+                          <p key={svc}>{pricingRangeErrors[svc]}</p>
+                        ))}
+                    </div>
+                  </div>
                 ) : null}
               </div>
 
@@ -832,8 +904,9 @@ export default function HostProfileEditPage() {
 
                 <button
                   type="button"
+                  disabled={activeServices.length === 0 || !pricingValid || !pricingWithinRanges}
                   onClick={onSave}
-                  className="mt-5 w-full rounded-2xl bg-[var(--dogshift-blue)] px-6 py-3 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition hover:bg-[var(--dogshift-blue-hover)]"
+                  className="mt-5 w-full rounded-2xl bg-[var(--dogshift-blue)] px-6 py-3 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition hover:bg-[var(--dogshift-blue-hover)] disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   Enregistrer
                 </button>

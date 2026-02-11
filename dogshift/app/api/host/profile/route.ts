@@ -11,6 +11,29 @@ import { CURRENT_TERMS_VERSION } from "@/lib/terms";
 
 export const runtime = "nodejs";
 
+const PILOT_TARIFF_RANGES: Record<string, { min: number; max: number }> = {
+  Promenade: { min: 15, max: 25 },
+  Garde: { min: 18, max: 30 },
+  Pension: { min: 35, max: 60 },
+};
+
+function validatePilotTariffs({ enabledServices, pricingObj }: { enabledServices: string[]; pricingObj: Record<string, unknown> }) {
+  for (const svc of enabledServices) {
+    const range = PILOT_TARIFF_RANGES[svc];
+    if (!range) continue;
+    const raw = pricingObj?.[svc];
+    if (typeof raw !== "number" || !Number.isFinite(raw)) continue;
+    if (raw < range.min || raw > range.max) {
+      return {
+        ok: false as const,
+        error: "TARIFF_OUT_OF_RANGE" as const,
+        details: `Tarif ${svc} : le prix doit être compris entre ${range.min} et ${range.max} CHF.`,
+      };
+    }
+  }
+  return { ok: true as const };
+}
+
 async function geocodeSwissLocation({ city, postalCode }: { city: string; postalCode: string }) {
   const key = process.env.NEXT_PUBLIC_MAPTILER_KEY;
   const parts = [postalCode, city, "Switzerland"].map((v) => String(v ?? "").trim()).filter(Boolean);
@@ -265,6 +288,20 @@ export async function POST(req: NextRequest) {
     });
 
     const completion = computeSitterProfileCompletion(normalized);
+
+    if (pricingObj && typeof pricingObj === "object" && Object.keys(pricingObj).length > 0) {
+      const pilotCheck = validatePilotTariffs({ enabledServices, pricingObj });
+      if (!pilotCheck.ok) {
+        return NextResponse.json(
+          {
+            ok: false,
+            error: pilotCheck.error,
+            details: pilotCheck.details,
+          },
+          { status: 400 }
+        );
+      }
+    }
 
     const wantsPublish = Boolean(publishedFlag);
     const isCurrentlyPublished = Boolean(existingProfile?.published);
