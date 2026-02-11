@@ -47,7 +47,7 @@ export default function LoginPage() {
                   // ignore
                 }
                 void clerk
-                  .signOut({ redirectUrl: "/login?force=1" })
+                  .signOut({ redirectUrl: "/login?force=1&startGoogle=1" })
                   .catch(() => setSwitchError("Impossible de se déconnecter. Réessaie."))
                   .finally(() => setSwitching(false));
               }}

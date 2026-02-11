@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useSignIn } from "@clerk/nextjs";
 import Link from "next/link";
@@ -16,12 +16,15 @@ export default function LoginForm() {
   const next = (searchParams?.get("next") ?? "").trim();
   const force = (searchParams?.get("force") ?? "").trim();
   const forceMode = force === "1" || force.toLowerCase() === "true";
+  const startGoogle = (searchParams?.get("startGoogle") ?? "").trim();
+  const startGoogleMode = startGoogle === "1" || startGoogle.toLowerCase() === "true";
   const redirectAfterAuth = next ? `/post-login?next=${encodeURIComponent(next)}` : "/post-login";
 
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [autoGoogleStarted, setAutoGoogleStarted] = useState(false);
 
   async function handleEmailLogin(e: React.FormEvent) {
     e.preventDefault();
@@ -56,6 +59,7 @@ export default function LoginForm() {
 
   async function handleGoogle() {
     if (!isLoaded || !signIn) return;
+    if (loading) return;
 
     setError(null);
     setLoading(true);
@@ -83,6 +87,15 @@ export default function LoginForm() {
   }
 
   const disabled = !isLoaded || loading;
+
+  useEffect(() => {
+    if (!startGoogleMode) return;
+    if (autoGoogleStarted) return;
+    if (!isLoaded || !signIn) return;
+    setAutoGoogleStarted(true);
+    void handleGoogle();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoGoogleStarted, isLoaded, signIn, startGoogleMode]);
 
   return (
     <div className="flex flex-col">
