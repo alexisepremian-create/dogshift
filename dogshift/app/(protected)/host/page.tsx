@@ -196,7 +196,13 @@ export default function HostDashboardPage() {
 
   const rating = averageRating === null ? "—" : formatRating(averageRating);
 
-  const todos = useMemo(() => getHostTodos(profile), [profile]);
+  const todos = useMemo(() => {
+    const base = getHostTodos(profile);
+    if (verificationStatus === "approved") {
+      return base.filter((item) => item.id !== "verify");
+    }
+    return base;
+  }, [profile, verificationStatus]);
 
   const bookings = useMemo(() => (sitterId ? loadHostBookings(sitterId) : []), [sitterId]);
   const statuses = useMemo(() => (sitterId ? loadHostRequestStatus(sitterId) : {}), [sitterId]);
