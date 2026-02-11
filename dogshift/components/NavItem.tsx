@@ -51,7 +51,7 @@ export default function NavItem({
     "hover:bg-[#111827] hover:text-white hover:shadow-[0_18px_60px_-46px_rgba(2,6,23,0.35)] " +
     "focus-visible:bg-[#111827] focus-visible:text-white focus-visible:shadow-[0_18px_60px_-46px_rgba(2,6,23,0.35)]" +
     (active
-      ? " ring-1 ring-[color:var(--dogshift-blue)]/40 shadow-[0_10px_30px_-26px_rgba(2,6,23,0.18)]"
+      ? " ring-1 ring-[color:var(--dogshift-blue)]/45"
       : "");
 
   const labelMotion =

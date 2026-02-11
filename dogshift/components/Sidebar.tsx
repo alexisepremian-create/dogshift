@@ -30,7 +30,7 @@ type SidebarProps = {
 export default function Sidebar({ ariaLabel, items, footer, onNavigate, className, forceExpanded, headerHref = "/" }: SidebarProps) {
   const asideBase = "group/sidebar relative z-40 flex h-full flex-col overflow-visible border-r border-slate-200 bg-white";
 
-  const widthClasses = forceExpanded ? "w-[240px]" : "w-[84px]";
+  const widthClasses = forceExpanded ? "w-[240px]" : "w-[88px]";
 
   return (
     <aside className={asideBase + " " + widthClasses + (className ? ` ${className}` : "")}>
@@ -39,7 +39,7 @@ export default function Sidebar({ ariaLabel, items, footer, onNavigate, classNam
           href={headerHref}
           aria-label="DogShift"
           className={
-            "flex items-center rounded-2xl px-2 py-2 transition hover:bg-slate-50 " +
+            "flex w-full items-center rounded-2xl px-2 py-2 transition hover:bg-slate-50 " +
             (forceExpanded ? "gap-3" : "justify-center")
           }
           onClick={onNavigate}
