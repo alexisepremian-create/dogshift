@@ -46,7 +46,7 @@ export default function Sidebar({ ariaLabel, items, footer, onNavigate, classNam
         >
           <span className={
             (forceExpanded ? "h-16 w-16" : "h-14 w-14") +
-            " flex shrink-0 items-center justify-center rounded-full bg-[#F7F3EA] ring-1 ring-slate-200"
+            " flex shrink-0 items-center justify-center rounded-full bg-white ring-1 ring-slate-200"
           }>
             <Image
               src="/dogshift-logo.png"

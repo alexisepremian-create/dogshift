@@ -40,15 +40,19 @@ export default function NavItem({
   const compactWrapper = "group/item relative h-12 w-12";
 
   const compactLinkBase =
-    "absolute left-0 top-0 z-[9999] flex h-12 items-center overflow-hidden rounded-[22px] transition-[width,background-color,box-shadow] duration-[280ms] " +
+    "absolute left-0 top-0 z-[9999] flex h-12 items-center overflow-hidden rounded-[22px] transition-[width,background-color,box-shadow] duration-[300ms] " +
     ease +
     " focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)]";
 
   const compactLinkSizing = " w-12 group-hover/item:w-[180px] group-focus-within/item:w-[180px]";
 
-  const compactLinkState = active
-    ? " bg-[#EAF2FF] text-slate-900 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.25)]"
-    : " bg-transparent text-slate-700 hover:bg-[#F2F7FF] hover:shadow-[0_18px_60px_-46px_rgba(2,6,23,0.22)]";
+  const compactLinkState =
+    "bg-transparent text-slate-700 " +
+    "hover:bg-[#111827] hover:text-white hover:shadow-[0_18px_60px_-46px_rgba(2,6,23,0.35)] " +
+    "focus-visible:bg-[#111827] focus-visible:text-white focus-visible:shadow-[0_18px_60px_-46px_rgba(2,6,23,0.35)]" +
+    (active
+      ? " ring-1 ring-[color:var(--dogshift-blue)]/40 shadow-[0_10px_30px_-26px_rgba(2,6,23,0.18)]"
+      : "");
 
   const labelMotion =
     "whitespace-nowrap opacity-0 transition-all duration-[220ms] " +
@@ -74,14 +78,15 @@ export default function NavItem({
           <span className="flex h-12 w-12 items-center justify-center">
             <span
               className={
-                "text-slate-600 transition group-hover/item:text-[var(--dogshift-blue)] group-focus-within/item:text-[var(--dogshift-blue)]" +
-                (active ? " text-[var(--dogshift-blue)]" : "")
+                "text-slate-600 transition " +
+                "group-hover/item:text-white group-focus-within/item:text-white " +
+                (active ? " text-[var(--dogshift-blue)] group-hover/item:text-white group-focus-within/item:text-white" : "")
               }
             >
               {icon}
             </span>
           </span>
-          <span className={"-ml-1 translate-x-[-4px] pr-5 text-sm font-semibold text-slate-900 " + labelMotion}>{label}</span>
+          <span className={"-ml-1 translate-x-[-4px] pr-5 text-sm font-semibold text-white " + labelMotion}>{label}</span>
         </Link>
       ) : (
         <Link
