@@ -14,6 +14,7 @@ import { loadReviewsFromStorage, type DogShiftReview } from "@/lib/reviews";
 import { getUnreadHostMessageCount } from "@/lib/hostMessages";
 import {
   getDefaultHostProfile,
+  getHostCompletion,
   getHostTodos,
   loadHostProfileFromStorage,
   type HostProfileV1,
@@ -85,7 +86,7 @@ function HostAvatar({ src, alt }: { src: string | null; alt: string }) {
 
 export default function HostDashboardPage() {
   const { isLoaded, isSignedIn, user } = useUser();
-  const { sitterId, profile: remoteProfile, profileCompletion } = useHostUser();
+  const { sitterId, profile: remoteProfile } = useHostUser();
   const [unreadTick, setUnreadTick] = useState(0);
   const [verificationStatus, setVerificationStatus] = useState<"not_verified" | "pending" | "approved" | "rejected">(
     "not_verified"
@@ -174,6 +175,14 @@ export default function HostDashboardPage() {
     return "unverified";
   }, [profile.verificationStatus, verificationStatus]);
 
+  const completionPercent = useMemo(() => {
+    const effectiveProfile: HostProfileV1 = {
+      ...profile,
+      verificationStatus: verificationStatus === "approved" ? "verified" : profile.verificationStatus,
+    };
+    return getHostCompletion(effectiveProfile).percent;
+  }, [profile, verificationStatus]);
+
   const storedReviews = useMemo<DogShiftReview[]>(() => {
     if (!sitterId) return [];
     return loadReviewsFromStorage(sitterId);
@@ -257,7 +266,7 @@ export default function HostDashboardPage() {
               <h1 className="flex flex-wrap items-center gap-2 text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">
                 <span>Bonjour {greetingName ?? ""}</span>
                 {greetingName ? <FilledSunIcon className="h-7 w-7" /> : null}
-                {profileCompletion < 100 && !completionCardDismissed ? (
+                {completionPercent < 100 && !completionCardDismissed ? (
                   <div className="ml-0 hidden w-full md:block md:w-auto md:ml-3">
                     <div className="flex w-full items-center justify-center sm:justify-end">
                       <div className="relative w-full max-w-[420px] overflow-hidden rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 shadow-sm sm:px-3">
@@ -289,7 +298,7 @@ export default function HostDashboardPage() {
                           <div className="min-w-0 flex-1 text-left">
                             <p className="text-[14px] font-semibold leading-snug text-slate-900">Complète ton profil pour publier</p>
                             <p className="mt-0.5 text-[12.5px] font-normal leading-snug text-slate-700">
-                              Ton profil est à {profileCompletion}%. Certaines actions restent bloquées tant que le profil n’est pas complet.
+                              Ton profil est à {completionPercent}%. Certaines actions restent bloquées tant que le profil n’est pas complet.
                             </p>
                             <div className="mt-0.5">
                               <Link
@@ -321,7 +330,7 @@ export default function HostDashboardPage() {
             <div className="mt-3 flex min-h-[32px] flex-wrap items-center gap-2">
               <StatusBadge status={badgeStatus} />
               <span className="inline-flex items-center rounded-full bg-white px-3 py-1 text-xs font-medium text-slate-600 ring-1 ring-slate-200">
-                Profil {profileCompletion}%
+                Profil {completionPercent}%
               </span>
             </div>
           </div>
@@ -389,10 +398,10 @@ export default function HostDashboardPage() {
             <div className="mt-5">
               <div className="flex items-center justify-between">
                 <p className="text-xs font-semibold text-slate-600">Progression</p>
-                <p className="text-xs font-semibold text-slate-600">{profileCompletion}%</p>
+                <p className="text-xs font-semibold text-slate-600">{completionPercent}%</p>
               </div>
               <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-slate-100">
-                <div className="h-full rounded-full bg-[var(--dogshift-blue)]" style={{ width: `${profileCompletion}%` }} />
+                <div className="h-full rounded-full bg-[var(--dogshift-blue)]" style={{ width: `${completionPercent}%` }} />
               </div>
             </div>
           </section>
