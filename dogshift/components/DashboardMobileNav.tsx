@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { House } from "lucide-react";
 
 type NavItem = {
   key: string;
@@ -179,18 +180,29 @@ export default function DashboardMobileNav({
 
             <nav aria-label={moreLabel} className="px-5 pb-4">
               <div className="grid gap-2">
+                <Link
+                  href="/"
+                  onClick={() => setOpen(false)}
+                  className="flex items-center gap-3 rounded-2xl px-4 py-3 text-base font-semibold text-slate-900 ring-1 ring-slate-200 transition hover:bg-slate-50"
+                  prefetch={false}
+                >
+                  <House className="h-5 w-5 text-slate-500" aria-hidden="true" />
+                  <span className="min-w-0 flex-1 truncate">Accueil</span>
+                </Link>
+
                 {moreItems.map((item) => (
                   <Link
                     key={item.key}
                     href={item.href}
                     onClick={() => setOpen(false)}
                     className={
-                      "rounded-2xl px-4 py-3 text-base font-semibold ring-1 ring-slate-200 transition " +
+                      "flex items-center gap-3 rounded-2xl px-4 py-3 text-base font-semibold ring-1 ring-slate-200 transition " +
                       (item.active ? "bg-slate-50 text-slate-900" : "bg-white text-slate-900 hover:bg-slate-50")
                     }
                     prefetch={false}
                   >
-                    {item.label}
+                    <span className="text-slate-500">{item.icon}</span>
+                    <span className="min-w-0 flex-1 truncate">{item.label}</span>
                   </Link>
                 ))}
               </div>
