@@ -23,7 +23,12 @@ export default function OwnerShell({ children }: { children: React.ReactNode }) 
           <button
             type="button"
             onClick={() => {
-              void clerk.signOut({ redirectUrl: "/login" });
+              try {
+                window.localStorage.removeItem("ds_auth_user");
+              } catch {
+                // ignore
+              }
+              void clerk.signOut({ redirectUrl: "/login?force=1" });
             }}
             className={logoutBtn}
           >

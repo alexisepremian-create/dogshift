@@ -123,7 +123,12 @@ export default function OwnerSidebar({ onNavigate, className }: OwnerSidebarProp
           <button
             type="button"
             onClick={() => {
-              void clerk.signOut({ redirectUrl: "/login" });
+              try {
+                window.localStorage.removeItem("ds_auth_user");
+              } catch {
+                // ignore
+              }
+              void clerk.signOut({ redirectUrl: "/login?force=1" });
             }}
             className={
               "flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-50 hover:text-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)]"

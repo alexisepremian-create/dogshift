@@ -197,7 +197,12 @@ export default function SiteHeader() {
                       type="button"
                       onClick={() => {
                         setUserMenuOpen(false);
-                        void clerk.signOut({ redirectUrl: "/login" });
+                        try {
+                          window.localStorage.removeItem("ds_auth_user");
+                        } catch {
+                          // ignore
+                        }
+                        void clerk.signOut({ redirectUrl: "/login?force=1" });
                       }}
                       className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-medium text-slate-700 hover:bg-slate-50"
                     >
