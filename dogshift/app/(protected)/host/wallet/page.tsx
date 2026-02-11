@@ -202,7 +202,7 @@ export default function HostWalletPage() {
         </div>
 
         <div className="grid gap-4 sm:grid-cols-3">
-          <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)]">
+          <div className="rounded-3xl border border-emerald-200 bg-emerald-50/40 p-5 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)]">
             <p className="text-sm font-semibold text-slate-800">Disponible</p>
             <p className="mt-2 text-3xl font-semibold tracking-tight text-slate-900">
               {stripeConnect.status === "ENABLED" && stripeConnect.balance
@@ -212,7 +212,7 @@ export default function HostWalletPage() {
             <p className="mt-2 text-xs font-medium text-slate-500">Solde disponible</p>
           </div>
 
-          <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)]">
+          <div className="rounded-3xl border border-amber-200 bg-amber-50/40 p-5 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)]">
             <div className="flex items-center justify-between">
               <p className="text-sm font-semibold text-slate-800">En attente</p>
               <ArrowUpRight className="h-5 w-5 text-slate-400" aria-hidden="true" />
@@ -231,7 +231,7 @@ export default function HostWalletPage() {
             )}
           </div>
 
-          <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)]">
+          <div className="rounded-3xl border border-[color-mix(in_srgb,var(--dogshift-blue),white_65%)] bg-[color-mix(in_srgb,var(--dogshift-blue),white_92%)] p-5 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)]">
             <div className="flex items-center justify-between">
               <p className="text-sm font-semibold text-slate-800">Total gagné</p>
               <ArrowDownRight className="h-5 w-5 text-slate-400" aria-hidden="true" />
