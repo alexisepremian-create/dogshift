@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ArrowDownRight, ArrowUpRight, Wallet } from "lucide-react";
+import { ArrowDownRight, ArrowUpRight, Info, Wallet } from "lucide-react";
 
 import SunCornerGlow from "@/components/SunCornerGlow";
 
@@ -160,9 +160,20 @@ export default function HostWalletPage() {
                 <span className="font-semibold">Onboarding complété:</span> {stripeConnect.onboardingCompletedAt ?? "—"}
               </p>
               {stripeConnect.balance ? (
-                <p>
-                  <span className="font-semibold">Solde:</span> {formatCents(stripeConnect.balance.availableCents)} disponible, {formatCents(stripeConnect.balance.pendingCents)} en attente
-                </p>
+                <div className="grid gap-3">
+                  <p>
+                    <span className="font-semibold">Solde:</span> {formatCents(stripeConnect.balance.availableCents)} disponible, {formatCents(stripeConnect.balance.pendingCents)} en attente
+                  </p>
+
+                  {stripeConnect.balance.pendingCents > 0 ? (
+                    <div className="flex gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                      <Info className="mt-0.5 h-4 w-4 flex-none text-slate-400" aria-hidden="true" />
+                      <p className="text-xs font-medium leading-relaxed text-slate-600">
+                        Les virements Stripe peuvent prendre quelques jours ouvrables avant d’être versés sur ton compte bancaire.
+                      </p>
+                    </div>
+                  ) : null}
+                </div>
               ) : null}
             </div>
           ) : null}
