@@ -14,6 +14,8 @@ export default function LoginForm() {
   const searchParams = useSearchParams();
 
   const next = (searchParams?.get("next") ?? "").trim();
+  const force = (searchParams?.get("force") ?? "").trim();
+  const forceMode = force === "1" || force.toLowerCase() === "true";
   const redirectAfterAuth = next ? `/post-login?next=${encodeURIComponent(next)}` : "/post-login";
 
   const [email, setEmail] = useState("");
@@ -65,6 +67,13 @@ export default function LoginForm() {
         strategy: "oauth_google",
         redirectUrl: "/auth/google",
         redirectUrlComplete: redirectAfterAuth,
+        ...(forceMode
+          ? {
+              oauthOptions: {
+                prompt: "select_account",
+              },
+            }
+          : null),
       });
     } catch (err) {
       const message = err instanceof Error ? err.message : "";
