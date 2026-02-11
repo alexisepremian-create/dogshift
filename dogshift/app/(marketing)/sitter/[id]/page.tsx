@@ -397,6 +397,8 @@ export default function SitterProfilePage() {
   const [startingChat, setStartingChat] = useState(false);
   const [chatError, setChatError] = useState<string | null>(null);
 
+  const [bookingCtaError, setBookingCtaError] = useState<string | null>(null);
+
   const shouldAutoStartChat = useMemo(() => {
     const v = (searchParams?.get("startChat") ?? "").trim();
     return v === "1" || v.toLowerCase() === "true";
@@ -408,6 +410,13 @@ export default function SitterProfilePage() {
       setPayError(null);
     }
   }, [bookingEnd, bookingStart, payError, selectedService]);
+
+  useEffect(() => {
+    if (!bookingCtaError) return;
+    if (isLoaded && isSignedIn) {
+      setBookingCtaError(null);
+    }
+  }, [bookingCtaError, isLoaded, isSignedIn]);
 
   async function pay() {
     if (paying) return;
@@ -939,8 +948,7 @@ export default function SitterProfilePage() {
                             return;
                           }
                           if (!isSignedIn) {
-                            const next = `/sitter/${encodeURIComponent(id)}?mode=public&startChat=1`;
-                            router.push(`/login?next=${encodeURIComponent(next)}`);
+                            setChatError("Veuillez vous connecter pour envoyer un message.");
                             return;
                           }
 
@@ -963,9 +971,7 @@ export default function SitterProfilePage() {
                               const conversationId = typeof payload?.conversationId === "string" ? payload.conversationId : "";
                               if (!res.ok || !payload.ok || !conversationId) {
                                 if (res.status === 401 || payload.error === "UNAUTHORIZED") {
-                                  setChatError("Tu dois être connecté (401).");
-                                  const next = `/sitter/${encodeURIComponent(id)}?mode=public&startChat=1`;
-                                  router.push(`/login?next=${encodeURIComponent(next)}`);
+                                  setChatError("Veuillez vous connecter pour envoyer un message.");
                                   return;
                                 }
                                 setChatError(`Erreur serveur: ${payload.error ?? res.status}`);
@@ -992,7 +998,12 @@ export default function SitterProfilePage() {
 
                     {chatError ? (
                       <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4">
-                        <p className="text-sm font-medium text-rose-900">{chatError}</p>
+                        <p className="text-sm font-medium text-rose-900">
+                          {chatError}{" "}
+                          <Link href="/login" className="font-semibold underline underline-offset-2">
+                            Se connecter
+                          </Link>
+                        </p>
                       </div>
                     ) : null}
 
@@ -1005,13 +1016,38 @@ export default function SitterProfilePage() {
                         Demander une réservation
                       </button>
                     ) : (
-                      <Link
-                        href={`/sitter/${encodeURIComponent(id)}/reservation`}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          if (!isLoaded) {
+                            setBookingCtaError("Chargement de la session… Réessaie dans une seconde.");
+                            return;
+                          }
+                          if (!isSignedIn) {
+                            setBookingCtaError("Veuillez vous connecter pour demander une réservation.");
+                            return;
+                          }
+                          setBookingCtaError(null);
+                          router.push(`/sitter/${encodeURIComponent(id)}/reservation`);
+                        }}
                         className="inline-flex w-full items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-6 py-3 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition hover:bg-[var(--dogshift-blue-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)]"
                       >
                         Demander une réservation
-                      </Link>
+                      </button>
                     )}
+
+                    {bookingCtaError ? (
+                      <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4">
+                        <p className="text-sm font-medium text-rose-900">
+                          {bookingCtaError}{" "}
+                          <Link href="/login" className="font-semibold underline underline-offset-2">
+                            Se connecter
+                          </Link>
+                        </p>
+                      </div>
+                    ) : null}
 
                     {disableSelfActions ? (
                       <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
