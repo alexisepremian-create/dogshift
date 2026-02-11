@@ -756,7 +756,7 @@ export default function Home() {
                 </div>
 
                 <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                  <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_18px_60px_-50px_rgba(2,6,23,0.16)]">
+                  <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_18px_60px_-50px_rgba(2,6,23,0.16)] transition-transform duration-200 ease-out md:hover:-translate-y-1 md:hover:scale-[1.03]">
                     <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-50 text-slate-700 ring-1 ring-slate-200">
                       <BadgeCheck className="h-5 w-5" aria-hidden="true" />
                     </span>
@@ -766,7 +766,7 @@ export default function Home() {
                     </p>
                   </div>
 
-                  <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_18px_60px_-50px_rgba(2,6,23,0.16)]">
+                  <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_18px_60px_-50px_rgba(2,6,23,0.16)] transition-transform duration-200 ease-out md:hover:-translate-y-1 md:hover:scale-[1.03]">
                     <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-50 text-slate-700 ring-1 ring-slate-200">
                       <UserCheck className="h-5 w-5" aria-hidden="true" />
                     </span>
@@ -776,7 +776,7 @@ export default function Home() {
                     </p>
                   </div>
 
-                  <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_18px_60px_-50px_rgba(2,6,23,0.16)]">
+                  <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_18px_60px_-50px_rgba(2,6,23,0.16)] transition-transform duration-200 ease-out md:hover:-translate-y-1 md:hover:scale-[1.03]">
                     <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-50 text-slate-700 ring-1 ring-slate-200">
                       <Wallet className="h-5 w-5" aria-hidden="true" />
                     </span>
@@ -786,7 +786,7 @@ export default function Home() {
                     </p>
                   </div>
 
-                  <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_18px_60px_-50px_rgba(2,6,23,0.16)]">
+                  <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_18px_60px_-50px_rgba(2,6,23,0.16)] transition-transform duration-200 ease-out md:hover:-translate-y-1 md:hover:scale-[1.03]">
                     <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-50 text-slate-700 ring-1 ring-slate-200">
                       <MapPin className="h-5 w-5" aria-hidden="true" />
                     </span>
