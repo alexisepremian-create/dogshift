@@ -1,11 +1,12 @@
 import PaymentSuccessClient from "./PaymentSuccessClient";
 
-export default function PaymentSuccessPage({
+export default async function PaymentSuccessPage({
   searchParams,
 }: {
-  searchParams?: Record<string, string | string[] | undefined>;
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const raw = searchParams?.bookingId;
+  const sp = await searchParams;
+  const raw = sp?.bookingId;
   const bookingId = typeof raw === "string" ? raw : Array.isArray(raw) ? raw[0] ?? "" : "";
 
   return <PaymentSuccessClient bookingId={bookingId} />;

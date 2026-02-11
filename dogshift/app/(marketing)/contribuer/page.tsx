@@ -1,11 +1,12 @@
 import Link from "next/link";
 
-export default function ContribuerPage({
+export default async function ContribuerPage({
   searchParams,
 }: {
-  searchParams?: { canceled?: string };
+  searchParams?: Promise<{ canceled?: string }>;
 }) {
-  const canceled = searchParams?.canceled === "1";
+  const sp = await searchParams;
+  const canceled = sp?.canceled === "1";
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-14 sm:px-6">

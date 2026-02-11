@@ -46,8 +46,9 @@ function FilledSunIcon({ className }: { className?: string }) {
 export default async function AccountDashboardPage({
   searchParams,
 }: {
-  searchParams?: Record<string, string | string[] | undefined>;
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }) {
+  void (await searchParams);
   let contexts: Awaited<ReturnType<typeof getUserContexts>>;
   try {
     contexts = await getUserContexts();

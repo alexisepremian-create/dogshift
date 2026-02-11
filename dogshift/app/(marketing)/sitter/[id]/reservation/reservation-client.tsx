@@ -215,7 +215,28 @@ function DogShiftTimePicker({
   id: string;
 }) {
   const [open, setOpen] = useState(false);
-  const options = useMemo(() => timeOptions15m(), []);
+  const hours = useMemo(() => Array.from({ length: 24 }, (_, i) => pad2(i)), []);
+  const minutes = useMemo(() => ["00", "15", "30", "45"], []);
+
+  const parsed = useMemo(() => {
+    if (!value) return null;
+    const parts = value.split(":");
+    if (parts.length !== 2) return null;
+    const hh = parts[0] ?? "";
+    const mm = parts[1] ?? "";
+    if (!hours.includes(hh)) return null;
+    if (!minutes.includes(mm)) return null;
+    return { hh, mm };
+  }, [hours, minutes, value]);
+
+  const [draftHour, setDraftHour] = useState<string>(() => parsed?.hh ?? pad2(new Date().getHours()));
+  const [draftMinute, setDraftMinute] = useState<string>(() => parsed?.mm ?? "00");
+
+  useEffect(() => {
+    if (!open) return;
+    setDraftHour(parsed?.hh ?? pad2(new Date().getHours()));
+    setDraftMinute(parsed?.mm ?? "00");
+  }, [open, parsed]);
 
   const display = value ?? "";
 
@@ -241,7 +262,6 @@ function DogShiftTimePicker({
         <div className="absolute left-0 top-full z-20 mt-3 w-[min(360px,calc(100vw-32px))]">
           <div className="rounded-[20px] border border-slate-200 bg-white p-3 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.18)]">
             <div className="flex items-center justify-between gap-3 px-1 pb-2">
-              <p className="text-sm font-semibold tracking-tight text-slate-900">Heure de début</p>
               <button
                 type="button"
                 onClick={() => setOpen(false)}
@@ -251,50 +271,87 @@ function DogShiftTimePicker({
               </button>
             </div>
 
-            <div
-              role="listbox"
-              aria-label="Choisir une heure"
-              className="max-h-64 overflow-auto rounded-2xl border border-slate-200 bg-slate-50 p-2"
-            >
-              <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
-                {options.map((t) => {
-                  const selected = t === value;
-                  return (
-                    <button
-                      key={t}
-                      type="button"
-                      role="option"
-                      aria-selected={selected}
-                      onClick={() => {
-                        onChange(t);
-                        setOpen(false);
-                      }}
-                      className={
-                        "inline-flex items-center justify-center rounded-full px-3 py-2 text-sm font-semibold transition duration-150 " +
-                        (selected
-                          ? "bg-[var(--dogshift-blue)] text-white shadow-sm"
-                          : "bg-white text-slate-900 ring-1 ring-slate-200 hover:bg-[color-mix(in_srgb,var(--dogshift-blue),white_88%)]")
-                      }
-                    >
-                      {t}
-                    </button>
-                  );
-                })}
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-2">
+              <div className="grid grid-cols-2 gap-2">
+                <div className="rounded-2xl border border-slate-200 bg-white p-2">
+                  <p className="px-2 pb-2 text-[11px] font-semibold text-slate-500">Heures</p>
+                  <div className="max-h-56 overflow-auto">
+                    <div className="grid gap-1">
+                      {hours.map((hh) => {
+                        const selected = hh === draftHour;
+                        return (
+                          <button
+                            key={hh}
+                            type="button"
+                            onClick={() => setDraftHour(hh)}
+                            className={
+                              "flex w-full items-center justify-center rounded-xl px-3 py-2 text-sm font-semibold transition duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)] " +
+                              (selected
+                                ? "bg-[color-mix(in_srgb,var(--dogshift-blue),white_85%)] text-[var(--dogshift-blue)]"
+                                : "text-slate-900 hover:bg-[color-mix(in_srgb,var(--dogshift-blue),white_92%)]")
+                            }
+                          >
+                            {hh}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-slate-200 bg-white p-2">
+                  <p className="px-2 pb-2 text-[11px] font-semibold text-slate-500">Minutes</p>
+                  <div className="max-h-56 overflow-auto">
+                    <div className="grid gap-1">
+                      {minutes.map((mm) => {
+                        const selected = mm === draftMinute;
+                        return (
+                          <button
+                            key={mm}
+                            type="button"
+                            onClick={() => setDraftMinute(mm)}
+                            className={
+                              "flex w-full items-center justify-center rounded-xl px-3 py-2 text-sm font-semibold transition duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)] " +
+                              (selected
+                                ? "bg-[color-mix(in_srgb,var(--dogshift-blue),white_85%)] text-[var(--dogshift-blue)]"
+                                : "text-slate-900 hover:bg-[color-mix(in_srgb,var(--dogshift-blue),white_92%)]")
+                            }
+                          >
+                            {mm}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    onChange(`${draftHour}:${draftMinute}`);
+                    setOpen(false);
+                  }}
+                  className="inline-flex items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-4 py-2.5 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition duration-150 hover:bg-[var(--dogshift-blue-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)]"
+                >
+                  Valider
+                </button>
+
+                {value ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onChange(null);
+                      setOpen(false);
+                    }}
+                    className="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition duration-150 hover:bg-slate-50"
+                  >
+                    Effacer
+                  </button>
+                ) : null}
               </div>
             </div>
-
-            {value ? (
-              <button
-                type="button"
-                onClick={() => {
-                  onChange(null);
-                  setOpen(false);
-                }}
-                className="mt-3 w-full rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
-              >
-                Effacer
-              </button>
-            ) : null}
           </div>
         </div>
       ) : null}
@@ -608,20 +665,15 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
               >
                 <p className="text-sm font-semibold text-slate-900">Détails (horaire)</p>
                 <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-600" htmlFor="start_time">
-                      Heure de début
-                    </label>
-                    <DogShiftTimePicker
-                      id="start_time"
-                      label="Heure de début"
-                      value={startTime}
-                      onChange={(next) => {
-                        setStartTime(next);
-                        setError(null);
-                      }}
-                    />
-                  </div>
+                  <DogShiftTimePicker
+                    id="start_time"
+                    label="Heure de début"
+                    value={startTime}
+                    onChange={(next) => {
+                      setStartTime(next);
+                      setError(null);
+                    }}
+                  />
                   <div>
                     <label className="block text-xs font-semibold text-slate-600" htmlFor="duration_hours">
                       Durée
