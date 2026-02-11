@@ -30,11 +30,11 @@ type SidebarProps = {
 export default function Sidebar({ ariaLabel, items, footer, onNavigate, className, forceExpanded, headerHref = "/" }: SidebarProps) {
   const asideBase = "group/sidebar flex h-full flex-col border-r border-slate-200 bg-white";
 
-  const widthClasses = forceExpanded ? "w-[240px]" : "w-16";
+  const widthClasses = forceExpanded ? "w-[240px]" : "w-20";
 
   return (
     <aside className={asideBase + " " + widthClasses + (className ? ` ${className}` : "")}>
-      <div className={forceExpanded ? "px-4 pt-2.5" : "px-2 pt-2.5"}>
+      <div className={forceExpanded ? "px-4 pt-2.5" : "px-3 pt-2.5"}>
         <Link
           href={headerHref}
           aria-label="DogShift"
@@ -44,13 +44,13 @@ export default function Sidebar({ ariaLabel, items, footer, onNavigate, classNam
           }
           onClick={onNavigate}
         >
-          <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#F7F3EA] ring-1 ring-slate-200">
+          <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#F7F3EA] ring-1 ring-slate-200">
             <Image
               src="/dogshift-logo.png"
               alt="DogShift"
               width={64}
               height={64}
-              className="h-6 w-6 object-contain"
+              className="h-9 w-9 object-contain"
               priority
             />
           </span>
@@ -62,7 +62,7 @@ export default function Sidebar({ ariaLabel, items, footer, onNavigate, classNam
         </Link>
       </div>
 
-      <div className={forceExpanded ? "px-3 pt-6" : "px-2 pt-6"}>
+      <div className={forceExpanded ? "px-3 pt-6" : "px-3 pt-6"}>
         <nav aria-label={ariaLabel} className={forceExpanded ? "space-y-1" : "flex flex-col items-center gap-1"}>
           {items.map((item) => (
             <NavItem

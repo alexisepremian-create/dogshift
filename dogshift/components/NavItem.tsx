@@ -30,7 +30,7 @@ export default function NavItem({
   const collapsed = !forceExpanded;
 
   const base =
-    "group/item relative flex items-center rounded-2xl text-sm font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)]";
+    "relative flex items-center rounded-2xl text-sm font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)]";
 
   const activeClasses = " bg-[#F7F3EA] text-slate-900";
   const inactiveClasses = " text-slate-600 hover:bg-slate-50 hover:text-slate-900";
@@ -39,7 +39,7 @@ export default function NavItem({
   const iconWrap = collapsed ? "flex items-center justify-center" : "flex min-h-[40px] items-center gap-3 px-3 py-2";
 
   return (
-    <div className="relative">
+    <div className="group/item relative">
       <Link
         href={href}
         prefetch={prefetch}
