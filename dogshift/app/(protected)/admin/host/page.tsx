@@ -1,13 +1,45 @@
 import AdminHostClient from "./AdminHostClient";
+import { unstable_noStore as noStore } from "next/cache";
+import crypto from "crypto";
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+export const fetchCache = "force-no-store";
+
+function safeEqual(a: string, b: string) {
+  const bufA = Buffer.from(a);
+  const bufB = Buffer.from(b);
+  if (bufA.length !== bufB.length) return false;
+  return crypto.timingSafeEqual(bufA, bufB);
+}
 
 export default async function AdminHostPage({
   searchParams,
 }: {
-  searchParams?: Record<string, string | string[] | undefined>;
+  searchParams?: Record<string, string | string[] | undefined> | Promise<Record<string, string | string[] | undefined>>;
 }) {
+  noStore();
+
+  const resolvedSearchParams = (typeof (searchParams as any)?.then === "function"
+    ? await (searchParams as Promise<Record<string, string | string[] | undefined>>)
+    : (searchParams as Record<string, string | string[] | undefined> | undefined)) as
+    | Record<string, string | string[] | undefined>
+    | undefined;
+
   const expected = (process.env.HOST_ADMIN_CODE ?? "").trim();
-  const supplied = typeof searchParams?.code === "string" ? searchParams.code.trim() : "";
-  const authorized = expected.length > 0 && supplied.length > 0 && supplied === expected;
+  const raw = resolvedSearchParams?.code;
+  const rawString = Array.isArray(raw) ? (typeof raw[0] === "string" ? raw[0] : "") : typeof raw === "string" ? raw : "";
+  const supplied = decodeURIComponent(rawString).trim();
+
+  if (process.env.NODE_ENV !== "production") {
+    console.log("[admin/host] supplied code:", supplied);
+    console.log("[admin/host] expected HOST_ADMIN_CODE:", expected);
+  } else {
+    console.log("[admin/host] supplied code:", supplied);
+    console.log("[admin/host] expected HOST_ADMIN_CODE:", expected);
+  }
+
+  const authorized = expected.length > 0 && supplied.length > 0 && safeEqual(supplied, expected);
 
   return (
     <div className="min-h-screen bg-white text-slate-900">
