@@ -53,7 +53,7 @@ export default function Sidebar({ ariaLabel, items, footer, onNavigate, classNam
               alt="DogShift"
               width={64}
               height={64}
-              className={(forceExpanded ? "h-11 w-11" : "h-10 w-10") + " object-contain"}
+              className={(forceExpanded ? "h-11 w-11" : "h-11 w-11") + " object-contain"}
               priority
             />
           </span>

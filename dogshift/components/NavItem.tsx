@@ -38,58 +38,51 @@ export default function NavItem({
   const expandedInactive = " text-slate-600 hover:bg-slate-50 hover:text-slate-900";
 
   const compactWrapper = "group/item relative h-12 w-12";
+
   const compactLinkBase =
-    "relative flex h-12 w-12 items-center justify-center rounded-2xl transition-[background-color,box-shadow] duration-[280ms] " +
+    "absolute left-0 top-0 z-[9999] flex h-12 items-center overflow-hidden rounded-[22px] transition-[width,background-color,box-shadow] duration-[280ms] " +
     ease +
     " focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)]";
 
-  const compactLinkState = active
-    ? " bg-white text-slate-900 shadow-[0_10px_30px_-24px_rgba(2,6,23,0.25)] ring-1 ring-slate-200"
-    : " bg-transparent text-slate-700 hover:bg-white hover:shadow-[0_10px_30px_-24px_rgba(2,6,23,0.22)] hover:ring-1 hover:ring-slate-200";
+  const compactLinkSizing = " w-12 group-hover/item:w-[180px] group-focus-within/item:w-[180px]";
 
-  const overlayMotion =
-    "pointer-events-none absolute left-full top-1/2 z-[9999] ml-3 w-max -translate-y-1/2 translate-x-2 opacity-0 " +
-    "transition-all duration-[300ms] " +
+  const compactLinkState = active
+    ? " bg-[#EAF2FF] text-slate-900 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.25)]"
+    : " bg-transparent text-slate-700 hover:bg-[#F2F7FF] hover:shadow-[0_18px_60px_-46px_rgba(2,6,23,0.22)]";
+
+  const labelMotion =
+    "whitespace-nowrap opacity-0 transition-all duration-[220ms] " +
     ease +
-    " group-hover/item:translate-x-0 group-hover/item:opacity-100 " +
-    "group-focus-within/item:translate-x-0 group-focus-within/item:opacity-100";
+    " group-hover/item:translate-x-0 group-hover/item:opacity-100 group-focus-within/item:translate-x-0 group-focus-within/item:opacity-100";
 
   return (
     <div className={collapsed ? compactWrapper : "group/item relative"}>
       {collapsed ? (
-        <>
-          <Link
-            href={href}
-            prefetch={prefetch}
-            aria-label={label}
-            className={compactLinkBase + " " + compactLinkState}
-            onClick={(e) => {
-              (e.currentTarget as HTMLAnchorElement).blur();
-              onNavigate?.();
-            }}
-            onMouseEnter={onMouseEnter}
-            onFocus={onFocus}
-            title={label}
-          >
+        <Link
+          href={href}
+          prefetch={prefetch}
+          aria-label={label}
+          className={compactLinkBase + compactLinkSizing + " " + compactLinkState}
+          onClick={(e) => {
+            (e.currentTarget as HTMLAnchorElement).blur();
+            onNavigate?.();
+          }}
+          onMouseEnter={onMouseEnter}
+          onFocus={onFocus}
+          title={label}
+        >
+          <span className="flex h-12 w-12 items-center justify-center">
             <span
               className={
-                "text-slate-500 transition group-hover/item:text-slate-700 group-focus-within/item:text-slate-700" +
-                (active ? " text-slate-800" : "")
+                "text-slate-600 transition group-hover/item:text-[var(--dogshift-blue)] group-focus-within/item:text-[var(--dogshift-blue)]" +
+                (active ? " text-[var(--dogshift-blue)]" : "")
               }
             >
               {icon}
             </span>
-          </Link>
-
-          <div className={overlayMotion} aria-hidden="true">
-            <div className="flex items-center gap-3 rounded-[22px] border border-slate-200 bg-white/90 px-4 py-3 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.25)] backdrop-blur">
-              <span className="text-slate-700" aria-hidden="true">
-                {icon}
-              </span>
-              <p className="whitespace-nowrap text-sm font-semibold text-slate-900">{label}</p>
-            </div>
-          </div>
-        </>
+          </span>
+          <span className={"-ml-1 translate-x-[-4px] pr-5 text-sm font-semibold text-slate-900 " + labelMotion}>{label}</span>
+        </Link>
       ) : (
         <Link
           href={href}
