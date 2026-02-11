@@ -235,6 +235,8 @@ export default function AccountBookingDetailPage() {
     const normalizedStatus = normalizeStatus(String(booking.status ?? ""), booking.endDate);
     const cancellable = canCancelBooking(booking, normalizedStatus);
 
+    const canPay = String(booking.status ?? "") === "PENDING_PAYMENT";
+
     const dateLine = (() => {
       if (!booking.startDate) return "—";
       if (pricingUnit === "HOURLY") {
@@ -263,12 +265,14 @@ export default function AccountBookingDetailPage() {
     return {
       service,
       pricingUnit,
-      dateLine,
       normalizedStatus,
       cancellable,
+      canPay,
+      dateLine,
       fee,
       amount,
       total,
+      totalLabel: formatChfCents(total),
     };
   }, [booking]);
 
@@ -463,6 +467,15 @@ export default function AccountBookingDetailPage() {
               </div>
               <p className="text-xs text-slate-500">Devise: {(booking.currency ?? "chf").toUpperCase()}</p>
             </div>
+
+            {computed.canPay ? (
+              <Link
+                href={`/checkout/${encodeURIComponent(booking.id)}`}
+                className="mt-5 inline-flex w-full items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-6 py-3 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition hover:bg-[var(--dogshift-blue-hover)]"
+              >
+                Payer
+              </Link>
+            ) : null}
 
             <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
               <p className="text-xs font-semibold text-slate-600">PaymentIntent</p>

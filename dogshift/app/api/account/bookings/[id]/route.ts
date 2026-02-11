@@ -1,18 +1,10 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { getToken } from "next-auth/jwt";
 
 import { prisma } from "@/lib/prisma";
+import { resolveDbUserId } from "@/lib/auth/resolveDbUserId";
 
 export const runtime = "nodejs";
-
-type RoleJwt = { uid?: string; sub?: string };
-
-function tokenUserId(token: RoleJwt | null) {
-  const uid = typeof token?.uid === "string" ? token.uid : null;
-  const sub = typeof token?.sub === "string" ? token.sub : null;
-  return uid ?? sub;
-}
 
 function isPrismaInconsistentResultError(err: unknown) {
   const msg = err instanceof Error ? err.message : String(err);
@@ -43,11 +35,10 @@ type BookingDetailResponse = {
 
 export async function GET(req: NextRequest, { params }: { params: { id: string } | Promise<{ id: string }> }) {
   try {
-    const token = (await getToken({ req, secret: process.env.NEXTAUTH_SECRET })) as RoleJwt | null;
-    const userId = tokenUserId(token);
+    const userId = await resolveDbUserId(req);
     if (!userId) {
       if (process.env.NODE_ENV !== "production") {
-        console.error("[api][account][bookings][id][GET] UNAUTHORIZED", { hasToken: Boolean(token) });
+        console.error("[api][account][bookings][id][GET] UNAUTHORIZED");
       }
       return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
     }
