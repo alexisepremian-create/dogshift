@@ -1,19 +1,11 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { getToken } from "next-auth/jwt";
 
 import { prisma } from "@/lib/prisma";
 import { DOGSHIFT_COMMISSION_RATE } from "@/lib/commission";
+import { resolveDbUserId } from "@/lib/auth/resolveDbUserId";
 
 export const runtime = "nodejs";
-
-type RoleJwt = { uid?: string; sub?: string };
-
-function tokenUserId(token: RoleJwt | null) {
-  const uid = typeof token?.uid === "string" ? token.uid : null;
-  const sub = typeof token?.sub === "string" ? token.sub : null;
-  return uid ?? sub;
-}
 
 type CreateBookingBody = {
   sitterId?: unknown;
@@ -60,11 +52,10 @@ function hoursRoundedToHalf(startAtIso: string, endAtIso: string) {
 
 export async function POST(req: NextRequest) {
   try {
-    const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
-    const userId = tokenUserId((token as unknown as RoleJwt | null) ?? null);
+    const userId = await resolveDbUserId(req);
     if (!userId) {
       if (process.env.NODE_ENV !== "production") {
-        console.error("[api][bookings][POST] UNAUTHORIZED", { hasToken: Boolean(token) });
+        console.error("[api][bookings][POST] UNAUTHORIZED");
       }
       return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
     }

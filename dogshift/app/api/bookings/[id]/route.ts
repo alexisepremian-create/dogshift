@@ -1,19 +1,10 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { getToken } from "next-auth/jwt";
 
 import { prisma } from "@/lib/prisma";
+import { resolveDbUserId } from "@/lib/auth/resolveDbUserId";
 
 export const runtime = "nodejs";
-
-type RoleJwt = { uid?: string };
-
-async function requireUserId(req: NextRequest) {
-  const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
-  const userId = (token as unknown as RoleJwt | null)?.uid;
-  if (!userId || typeof userId !== "string") return null;
-  return userId;
-}
 
 export async function GET(
   req: NextRequest,
@@ -30,7 +21,7 @@ export async function GET(
       return NextResponse.json({ ok: false, error: "INVALID_ID" }, { status: 400 });
     }
 
-    const userId = await requireUserId(req);
+    const userId = await resolveDbUserId(req);
     if (!userId) {
       return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
     }

@@ -1,13 +1,11 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { getToken } from "next-auth/jwt";
 
 import { stripe } from "@/lib/stripe";
 import { prisma } from "@/lib/prisma";
+import { resolveDbUserId } from "@/lib/auth/resolveDbUserId";
 
 export const runtime = "nodejs";
-
-type RoleJwt = { uid?: string };
 
 type Body = {
   bookingId?: unknown;
@@ -15,9 +13,8 @@ type Body = {
 
 export async function POST(req: NextRequest) {
   try {
-    const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
-    const userId = (token as unknown as RoleJwt | null)?.uid;
-    if (!userId || typeof userId !== "string") {
+    const userId = await resolveDbUserId(req);
+    if (!userId) {
       return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
     }
 
