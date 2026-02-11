@@ -37,14 +37,14 @@ export default function NavItem({
   const expandedActive = " bg-slate-50 text-slate-900";
   const expandedInactive = " text-slate-600 hover:bg-slate-50 hover:text-slate-900";
 
-  const compactWrapper = "group/item relative h-12 w-12";
+  const compactWrapper = "group/item relative h-[52px] w-[52px]";
 
   const compactLinkBase =
-    "absolute left-0 top-0 z-[9999] flex h-12 items-center overflow-hidden rounded-[22px] transition-[width,background-color,box-shadow] duration-[300ms] " +
+    "absolute left-0 top-0 z-[9999] flex h-[52px] items-center overflow-hidden rounded-[22px] transition-[width,background-color,box-shadow] duration-[300ms] " +
     ease +
     " focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)]";
 
-  const compactLinkSizing = " w-12 group-hover/item:w-[180px] group-focus-within/item:w-[180px]";
+  const compactLinkSizing = " w-[52px] group-hover/item:w-[184px] group-focus-within/item:w-[184px]";
 
   const compactLinkState =
     "bg-transparent text-slate-700 " +
@@ -75,7 +75,7 @@ export default function NavItem({
           onFocus={onFocus}
           title={label}
         >
-          <span className="flex h-12 w-12 items-center justify-center">
+          <span className="flex h-[52px] w-[52px] items-center justify-center">
             <span
               className={
                 "text-slate-600 transition " +
