@@ -32,7 +32,10 @@ export default function DashboardMobileNav({
 }: DashboardMobileNavProps) {
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [bottomHidden, setBottomHidden] = useState(false);
   const panelRef = useRef<HTMLDivElement | null>(null);
+  const lastScrollYRef = useRef(0);
+  const rafRef = useRef<number | null>(null);
 
   const bottomItems = useMemo(() => primaryItems.slice(0, 3), [primaryItems]);
 
@@ -61,22 +64,64 @@ export default function DashboardMobileNav({
     return () => window.clearTimeout(t);
   }, [mounted, open, onCloseMore]);
 
+  useEffect(() => {
+    lastScrollYRef.current = window.scrollY || 0;
+
+    const onScroll = () => {
+      if (rafRef.current != null) return;
+      rafRef.current = window.requestAnimationFrame(() => {
+        rafRef.current = null;
+        const y = window.scrollY || 0;
+        const prev = lastScrollYRef.current;
+
+        if (y <= 8) {
+          setBottomHidden(false);
+          lastScrollYRef.current = y;
+          return;
+        }
+
+        const delta = y - prev;
+        if (Math.abs(delta) < 6) {
+          lastScrollYRef.current = y;
+          return;
+        }
+
+        if (delta > 0) setBottomHidden(true);
+        else setBottomHidden(false);
+
+        lastScrollYRef.current = y;
+      });
+    };
+
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      if (rafRef.current != null) window.cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    };
+  }, []);
+
   return (
     <>
-      <div className="fixed inset-x-0 bottom-0 z-[70] border-t border-slate-200 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden">
-        <div className="mx-auto flex max-w-[520px] items-center justify-between px-4 pt-2">
+      <div
+        className={
+          "fixed inset-x-0 bottom-0 z-[70] border-t border-slate-200 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden transition-transform duration-300 ease-out" +
+          (bottomHidden ? " translate-y-full" : " translate-y-0")
+        }
+      >
+        <div className="mx-auto flex w-full max-w-[520px] items-center justify-between px-4 pt-2">
           {bottomItems.map((item) => (
             <Link
               key={item.key}
               href={item.href}
               className={
-                "flex flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2 text-xs font-semibold transition " +
+                "flex min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2 text-center text-xs font-semibold transition " +
                 (item.active ? "text-slate-900" : "text-slate-700")
               }
               prefetch={false}
             >
               {item.icon}
-              {item.label}
+              <span className="w-full truncate">{item.label}</span>
             </Link>
           ))}
 
@@ -85,10 +130,10 @@ export default function DashboardMobileNav({
             onClick={() => setOpen(true)}
             aria-haspopup="dialog"
             aria-expanded={open}
-            className="flex flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2 text-xs font-semibold text-slate-700"
+            className="flex min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2 text-center text-xs font-semibold text-slate-700"
           >
             {moreIcon}
-            {moreLabel}
+            <span className="w-full truncate">{moreLabel}</span>
           </button>
         </div>
       </div>

@@ -217,7 +217,7 @@ export default function HostDashboardPage() {
                 <span>Bonjour {greetingName ?? ""}</span>
                 {greetingName ? <FilledSunIcon className="h-7 w-7" /> : null}
                 {profileCompletion < 100 && !completionCardDismissed ? (
-                  <div className="ml-0 w-full sm:ml-3 sm:w-auto">
+                  <div className="ml-0 hidden w-full md:block md:w-auto md:ml-3">
                     <div className="flex w-full items-center justify-center sm:justify-end">
                       <div className="relative w-full max-w-[420px] overflow-hidden rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 shadow-sm sm:px-3">
                         <button
