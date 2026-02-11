@@ -70,7 +70,7 @@ export default function LoginForm() {
         ...(forceMode
           ? {
               oauthOptions: {
-                prompt: "select_account",
+                prompt: "consent select_account",
               },
             }
           : null),
