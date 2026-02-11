@@ -193,6 +193,115 @@ function DogShiftCalendar({ selected, onSelect }: { selected: string; onSelect: 
   );
 }
 
+function timeOptions15m() {
+  const out: string[] = [];
+  for (let h = 0; h < 24; h += 1) {
+    for (let m = 0; m < 60; m += 15) {
+      out.push(`${pad2(h)}:${pad2(m)}`);
+    }
+  }
+  return out;
+}
+
+function DogShiftTimePicker({
+  value,
+  onChange,
+  label,
+  id,
+}: {
+  value: string | null;
+  onChange: (next: string | null) => void;
+  label: string;
+  id: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const options = useMemo(() => timeOptions15m(), []);
+
+  const display = value ?? "";
+
+  return (
+    <div className="relative">
+      <label className="block text-xs font-semibold text-slate-600" htmlFor={id}>
+        {label}
+      </label>
+
+      <button
+        id={id}
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="mt-2 inline-flex w-full items-center justify-between gap-3 rounded-2xl border border-slate-300 bg-white px-4 py-3 text-left text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)]"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+      >
+        <span className={display ? "text-slate-900" : "text-slate-500"}>{display || "Choisir une heure"}</span>
+        <span className="text-xs font-semibold text-slate-500">15 min</span>
+      </button>
+
+      {open ? (
+        <div className="absolute left-0 top-full z-20 mt-3 w-[min(360px,calc(100vw-32px))]">
+          <div className="rounded-[20px] border border-slate-200 bg-white p-3 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.18)]">
+            <div className="flex items-center justify-between gap-3 px-1 pb-2">
+              <p className="text-sm font-semibold tracking-tight text-slate-900">Heure de début</p>
+              <button
+                type="button"
+                onClick={() => setOpen(false)}
+                className="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)]"
+              >
+                Fermer
+              </button>
+            </div>
+
+            <div
+              role="listbox"
+              aria-label="Choisir une heure"
+              className="max-h-64 overflow-auto rounded-2xl border border-slate-200 bg-slate-50 p-2"
+            >
+              <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+                {options.map((t) => {
+                  const selected = t === value;
+                  return (
+                    <button
+                      key={t}
+                      type="button"
+                      role="option"
+                      aria-selected={selected}
+                      onClick={() => {
+                        onChange(t);
+                        setOpen(false);
+                      }}
+                      className={
+                        "inline-flex items-center justify-center rounded-full px-3 py-2 text-sm font-semibold transition duration-150 " +
+                        (selected
+                          ? "bg-[var(--dogshift-blue)] text-white shadow-sm"
+                          : "bg-white text-slate-900 ring-1 ring-slate-200 hover:bg-[color-mix(in_srgb,var(--dogshift-blue),white_88%)]")
+                      }
+                    >
+                      {t}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {value ? (
+              <button
+                type="button"
+                onClick={() => {
+                  onChange(null);
+                  setOpen(false);
+                }}
+                className="mt-3 w-full rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
+              >
+                Effacer
+              </button>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function DogShiftDatePicker({
   value,
   onChange,
@@ -503,15 +612,14 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
                     <label className="block text-xs font-semibold text-slate-600" htmlFor="start_time">
                       Heure de début
                     </label>
-                    <input
+                    <DogShiftTimePicker
                       id="start_time"
-                      type="time"
-                      value={startTime ?? ""}
-                      onChange={(e) => {
-                        setStartTime(e.target.value || null);
+                      label="Heure de début"
+                      value={startTime}
+                      onChange={(next) => {
+                        setStartTime(next);
                         setError(null);
                       }}
-                      className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition focus:border-[var(--dogshift-blue)] focus:ring-4 focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_85%)]"
                     />
                   </div>
                   <div>
