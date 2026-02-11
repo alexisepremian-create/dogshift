@@ -604,6 +604,45 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
             </div>
 
             <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.12)] sm:p-8">
+              <p className="text-sm font-semibold text-slate-900">Dates</p>
+              {unit === "DAILY" ? (
+                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                  <DogShiftDatePicker
+                    id="date_start"
+                    label="Début"
+                    value={dateStart}
+                    onChange={(next) => {
+                      setDateStart(next);
+                      setError(null);
+                    }}
+                  />
+                  <DogShiftDatePicker
+                    id="date_end"
+                    label="Fin"
+                    value={dateEnd}
+                    onChange={(next) => {
+                      setDateEnd(next);
+                      setError(null);
+                    }}
+                  />
+                </div>
+              ) : (
+                <div className="mt-4">
+                  <DogShiftDatePicker
+                    id="date_hourly"
+                    label="Date"
+                    value={dateStart}
+                    onChange={(next) => {
+                      setDateStart(next);
+                      setDateEnd(next);
+                      setError(null);
+                    }}
+                  />
+                </div>
+              )}
+            </div>
+
+            <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.12)] sm:p-8">
               <p className="text-sm font-semibold text-slate-900">Service</p>
               <div className="mt-4 grid gap-2">
                 {pricingRows.map((row) => {
@@ -704,45 +743,6 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
                 </div>
               </div>
             ) : null}
-
-            <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.12)] sm:p-8">
-              <p className="text-sm font-semibold text-slate-900">Dates</p>
-              {unit === "DAILY" ? (
-                <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                  <DogShiftDatePicker
-                    id="date_start"
-                    label="Début"
-                    value={dateStart}
-                    onChange={(next) => {
-                      setDateStart(next);
-                      setError(null);
-                    }}
-                  />
-                  <DogShiftDatePicker
-                    id="date_end"
-                    label="Fin"
-                    value={dateEnd}
-                    onChange={(next) => {
-                      setDateEnd(next);
-                      setError(null);
-                    }}
-                  />
-                </div>
-              ) : (
-                <div className="mt-4">
-                  <DogShiftDatePicker
-                    id="date_hourly"
-                    label="Date"
-                    value={dateStart}
-                    onChange={(next) => {
-                      setDateStart(next);
-                      setDateEnd(next);
-                      setError(null);
-                    }}
-                  />
-                </div>
-              )}
-            </div>
 
             <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.12)] sm:p-8">
               <p className="text-sm font-semibold text-slate-900">Message (optionnel)</p>
