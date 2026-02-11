@@ -24,7 +24,7 @@ export default async function AdminHostPage({
               </p>
             </div>
           ) : (
-            <AdminHostClient />
+            <AdminHostClient adminCode={supplied} />
           )}
         </div>
       </main>

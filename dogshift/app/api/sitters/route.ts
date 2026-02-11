@@ -12,6 +12,7 @@ type SitterListItem = {
   postalCode: string;
   bio: string;
   avatarUrl: string | null;
+  verified: boolean;
   lat: number | null;
   lng: number | null;
   services: unknown;
@@ -27,6 +28,7 @@ type DbRow = {
   postalCode: string | null;
   bio: string | null;
   avatarUrl: string | null;
+  verificationStatus?: string | null;
   lat: number | null;
   lng: number | null;
   services: unknown;
@@ -49,6 +51,7 @@ export async function GET(_req: NextRequest) {
         postalCode: true,
         bio: true,
         avatarUrl: true,
+        verificationStatus: true,
         lat: true,
         lng: true,
         services: true,
@@ -74,6 +77,7 @@ export async function GET(_req: NextRequest) {
         postalCode: s.postalCode ?? "",
         bio: s.bio ?? "",
         avatarUrl: s.avatarUrl ?? s.user?.image ?? null,
+        verified: typeof s.verificationStatus === "string" ? s.verificationStatus === "approved" : false,
         lat: typeof s.lat === "number" && Number.isFinite(s.lat) ? s.lat : null,
         lng: typeof s.lng === "number" && Number.isFinite(s.lng) ? s.lng : null,
         services: s.services ?? null,

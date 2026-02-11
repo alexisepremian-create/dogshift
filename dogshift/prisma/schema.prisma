@@ -39,6 +39,13 @@ enum InviteCodeType {
   master
 }
 
+enum VerificationStatus {
+  not_verified
+  pending
+  approved
+  rejected
+}
+
 model User {
   id              String    @id @default(cuid())
   clerkUserId     String?   @unique
@@ -145,6 +152,15 @@ model SitterProfile {
   termsVersion      String?
   profileCompletion Int       @default(0)
 
+  verificationStatus      VerificationStatus @default(not_verified)
+  idDocumentUrl           String?
+  selfieUrl               String?
+  verificationSubmittedAt DateTime?
+  verificationReviewedAt  DateTime?
+  verificationNotes       String?
+
+  verificationAccessLogs VerificationAccessLog[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -153,6 +169,27 @@ model SitterProfile {
   @@index([published])
   @@index([city])
   @@index([postalCode])
+  @@index([verificationStatus])
+}
+
+model VerificationAccessLog {
+  id String @id @default(cuid())
+
+  sitterProfileId String
+  sitterId        String
+
+  action  String
+  fileKey String?
+
+  adminClerkUserId String?
+  userAgent        String?
+
+  createdAt DateTime @default(now())
+
+  sitterProfile SitterProfile @relation(fields: [sitterProfileId], references: [id], onDelete: Cascade)
+
+  @@index([sitterProfileId, createdAt])
+  @@index([sitterId, createdAt])
 }
 
 model Booking {

@@ -58,12 +58,44 @@ export default function HostProfileEditPage() {
   const [verificationIdFileName, setVerificationIdFileName] = useState<string | null>(null);
   const [verificationSelfieFileName, setVerificationSelfieFileName] = useState<string | null>(null);
   const [verificationError, setVerificationError] = useState<string | null>(null);
+  const [verificationStatus, setVerificationStatus] = useState<"not_verified" | "pending" | "approved" | "rejected">("not_verified");
+  const [verificationNotes, setVerificationNotes] = useState<string | null>(null);
+  const [verificationIdFile, setVerificationIdFile] = useState<File | null>(null);
+  const [verificationSelfieFile, setVerificationSelfieFile] = useState<File | null>(null);
+  const [verificationUploading, setVerificationUploading] = useState(false);
+  const [verificationSubmittedAt, setVerificationSubmittedAt] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     return;
   }, []);
+
+  useEffect(() => {
+    if (!sitterId) return;
+    let canceled = false;
+    void (async () => {
+      try {
+        const res = await fetch("/api/host/verification/status", { method: "GET" });
+        const payload = (await res.json().catch(() => null)) as any;
+        if (canceled) return;
+        if (!res.ok || !payload?.ok || !payload?.verification) return;
+        const st = String(payload.verification.status ?? "not_verified");
+        if (st === "pending" || st === "approved" || st === "rejected" || st === "not_verified") {
+          setVerificationStatus(st);
+        } else {
+          setVerificationStatus("not_verified");
+        }
+        setVerificationNotes(typeof payload.verification.notes === "string" ? payload.verification.notes : null);
+        setVerificationSubmittedAt(typeof payload.verification.submittedAt === "string" ? payload.verification.submittedAt : null);
+      } catch {
+        // ignore
+      }
+    })();
+    return () => {
+      canceled = true;
+    };
+  }, [sitterId]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -550,32 +582,58 @@ export default function HostProfileEditPage() {
 
                 <div id="verification" className="mt-8 rounded-2xl border border-slate-200 bg-white p-5">
                   <p className="text-sm font-semibold text-slate-900">Vérification</p>
-                  {profile.verificationStatus === "verified" ? (
+                  {verificationStatus === "approved" ? (
                     <div className="mt-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
                       <p className="text-sm font-semibold text-emerald-900">Vérifié</p>
-                      <p className="mt-1 text-sm text-emerald-900/80">Votre profil est vérifié (mock).</p>
+                      <p className="mt-1 text-sm text-emerald-900/80">Votre profil est vérifié.</p>
+                      <p className="mt-2 text-xs text-emerald-900/70">Nouvelle demande désactivée.</p>
                     </div>
-                  ) : profile.verificationStatus === "pending" ? (
+                  ) : verificationStatus === "pending" ? (
                     <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 p-4">
-                      <p className="text-sm font-semibold text-amber-900">En cours</p>
-                      <p className="mt-1 text-sm text-amber-900/80">Votre demande est en cours de vérification (mock).</p>
+                      <p className="text-sm font-semibold text-amber-900">Vérification en cours</p>
+                      <p className="mt-1 text-sm text-amber-900/80">Votre demande est en cours de vérification.</p>
+                      {verificationSubmittedAt ? (
+                        <p className="mt-2 text-xs font-medium text-amber-900/70">Soumise le {new Date(verificationSubmittedAt).toLocaleString()}</p>
+                      ) : null}
                       <button
                         type="button"
-                        onClick={() => {
-                          const next: HostProfileV1 = { ...profile, verificationStatus: "unverified" };
-                          setVerificationIdFileName(null);
-                          setVerificationSelfieFileName(null);
+                        disabled={verificationUploading}
+                        onClick={async () => {
                           setVerificationError(null);
-                          void persistProfile(next);
+                          setVerificationUploading(true);
+                          try {
+                            const res = await fetch("/api/host/verification/delete", { method: "POST" });
+                            const payload = (await res.json().catch(() => null)) as any;
+                            if (!res.ok || !payload?.ok) {
+                              setVerificationError("Impossible de supprimer la demande.");
+                              return;
+                            }
+                            setVerificationStatus("not_verified");
+                            setVerificationNotes(null);
+                            setVerificationIdFileName(null);
+                            setVerificationSelfieFileName(null);
+                            setVerificationIdFile(null);
+                            setVerificationSelfieFile(null);
+                          } finally {
+                            setVerificationUploading(false);
+                          }
                         }}
-                        className="mt-4 inline-flex items-center justify-center rounded-2xl border border-amber-300 bg-white px-5 py-2 text-sm font-semibold text-amber-900 shadow-sm transition hover:bg-amber-50"
+                        className="mt-4 inline-flex items-center justify-center rounded-2xl border border-amber-300 bg-white px-5 py-2 text-sm font-semibold text-amber-900 shadow-sm transition hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-60"
                       >
-                        Annuler la demande
+                        Supprimer ma demande
                       </button>
                     </div>
                   ) : (
                     <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                      <p className="text-sm text-slate-600">Demandez la vérification pour rassurer les clients. (mock).</p>
+                      <p className="text-sm text-slate-600">Demandez la vérification pour rassurer les clients.</p>
+
+                      {verificationStatus === "rejected" ? (
+                        <div className="mt-3 rounded-2xl border border-rose-200 bg-rose-50 p-4">
+                          <p className="text-sm font-semibold text-rose-900">Demande refusée</p>
+                          <p className="mt-1 text-sm text-rose-900/80">Vous pouvez soumettre une nouvelle demande.</p>
+                          {verificationNotes ? <p className="mt-2 text-xs text-rose-900/70">Notes: {verificationNotes}</p> : null}
+                        </div>
+                      ) : null}
 
                       <div className="mt-4 grid gap-3 sm:grid-cols-2">
                         <div>
@@ -584,12 +642,13 @@ export default function HostProfileEditPage() {
                             <input
                               id="host_verification_id"
                               type="file"
-                              accept="image/*,application/pdf"
+                              accept="image/jpeg,image/png,application/pdf"
                               className="sr-only"
                               onChange={(e) => {
-                                const file = e.target.files?.[0];
+                                const file = e.target.files?.[0] ?? null;
                                 setVerificationError(null);
                                 setVerificationIdFileName(file ? file.name : null);
+                                setVerificationIdFile(file);
                               }}
                             />
                             <label
@@ -600,6 +659,7 @@ export default function HostProfileEditPage() {
                             </label>
                             <p className="text-xs font-medium text-slate-600">{verificationIdFileName ?? "Aucun fichier choisi"}</p>
                           </div>
+                          <p className="mt-2 text-xs text-slate-500">JPG/PNG/PDF • max 5MB</p>
                         </div>
 
                         <div>
@@ -608,12 +668,13 @@ export default function HostProfileEditPage() {
                             <input
                               id="host_verification_selfie"
                               type="file"
-                              accept="image/*"
+                              accept="image/jpeg,image/png"
                               className="sr-only"
                               onChange={(e) => {
-                                const file = e.target.files?.[0];
+                                const file = e.target.files?.[0] ?? null;
                                 setVerificationError(null);
                                 setVerificationSelfieFileName(file ? file.name : null);
+                                setVerificationSelfieFile(file);
                               }}
                             />
                             <label
@@ -624,26 +685,143 @@ export default function HostProfileEditPage() {
                             </label>
                             <p className="text-xs font-medium text-slate-600">{verificationSelfieFileName ?? "Aucun fichier choisi"}</p>
                           </div>
+                          <p className="mt-2 text-xs text-slate-500">JPG/PNG • max 5MB</p>
                         </div>
                       </div>
 
                       {verificationError ? <p className="mt-3 text-sm font-medium text-rose-600">{verificationError}</p> : null}
 
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (!verificationIdFileName) {
-                            setVerificationError("Ajoutez votre pièce d’identité pour demander la vérification.");
-                            return;
-                          }
+                      <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center">
+                        <button
+                          type="button"
+                          disabled={verificationUploading}
+                          onClick={async () => {
+                            if (!verificationIdFile) {
+                              setVerificationError("Ajoutez votre pièce d’identité pour demander la vérification.");
+                              return;
+                            }
+                            if (verificationIdFile.size > 5 * 1024 * 1024) {
+                              setVerificationError("Fichier trop volumineux (max 5MB).");
+                              return;
+                            }
+                            if (verificationSelfieFile && verificationSelfieFile.size > 5 * 1024 * 1024) {
+                              setVerificationError("Selfie trop volumineux (max 5MB).");
+                              return;
+                            }
 
-                          const next: HostProfileV1 = { ...profile, verificationStatus: "pending" };
-                          void persistProfile(next);
-                        }}
-                        className="mt-4 inline-flex items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-5 py-2 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition hover:bg-[var(--dogshift-blue-hover)]"
-                      >
-                        Demander la vérification
-                      </button>
+                            setVerificationUploading(true);
+                            setVerificationError(null);
+                            try {
+                              const presignIdRes = await fetch("/api/host/verification/presign", {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({
+                                  kind: "id",
+                                  contentType: verificationIdFile.type,
+                                  sizeBytes: verificationIdFile.size,
+                                }),
+                              });
+                              const presignId = (await presignIdRes.json().catch(() => null)) as any;
+                              if (!presignIdRes.ok || !presignId?.ok || !presignId?.uploadUrl || !presignId?.key) {
+                                setVerificationError("Impossible de préparer l’upload du document.");
+                                return;
+                              }
+
+                              const putIdRes = await fetch(String(presignId.uploadUrl), {
+                                method: "PUT",
+                                headers: { "Content-Type": verificationIdFile.type },
+                                body: verificationIdFile,
+                              });
+                              if (!putIdRes.ok) {
+                                setVerificationError("Upload du document refusé.");
+                                return;
+                              }
+
+                              let selfieKey: string | null = null;
+                              if (verificationSelfieFile) {
+                                const presignSelfieRes = await fetch("/api/host/verification/presign", {
+                                  method: "POST",
+                                  headers: { "Content-Type": "application/json" },
+                                  body: JSON.stringify({
+                                    kind: "selfie",
+                                    contentType: verificationSelfieFile.type,
+                                    sizeBytes: verificationSelfieFile.size,
+                                  }),
+                                });
+                                const presignSelfie = (await presignSelfieRes.json().catch(() => null)) as any;
+                                if (!presignSelfieRes.ok || !presignSelfie?.ok || !presignSelfie?.uploadUrl || !presignSelfie?.key) {
+                                  setVerificationError("Impossible de préparer l’upload du selfie.");
+                                  return;
+                                }
+                                const putSelfieRes = await fetch(String(presignSelfie.uploadUrl), {
+                                  method: "PUT",
+                                  headers: { "Content-Type": verificationSelfieFile.type },
+                                  body: verificationSelfieFile,
+                                });
+                                if (!putSelfieRes.ok) {
+                                  setVerificationError("Upload du selfie refusé.");
+                                  return;
+                                }
+                                selfieKey = String(presignSelfie.key);
+                              }
+
+                              const submitRes = await fetch("/api/host/verification/submit", {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({
+                                  idDocumentKey: String(presignId.key),
+                                  selfieKey,
+                                }),
+                              });
+                              const submitPayload = (await submitRes.json().catch(() => null)) as any;
+                              if (!submitRes.ok || !submitPayload?.ok) {
+                                setVerificationError("Impossible de soumettre la demande.");
+                                return;
+                              }
+
+                              setVerificationStatus("pending");
+                              setVerificationNotes(null);
+                              setVerificationSubmittedAt(new Date().toISOString());
+                            } catch {
+                              setVerificationError("Impossible de soumettre la demande.");
+                            } finally {
+                              setVerificationUploading(false);
+                            }
+                          }}
+                          className="inline-flex items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-5 py-2 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition hover:bg-[var(--dogshift-blue-hover)] disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          {verificationUploading ? "Envoi…" : "Demander la vérification"}
+                        </button>
+
+                        <button
+                          type="button"
+                          disabled={verificationUploading}
+                          onClick={async () => {
+                            setVerificationError(null);
+                            setVerificationUploading(true);
+                            try {
+                              const res = await fetch("/api/host/verification/delete", { method: "POST" });
+                              const payload = (await res.json().catch(() => null)) as any;
+                              if (!res.ok || !payload?.ok) {
+                                setVerificationError("Impossible de supprimer les documents.");
+                                return;
+                              }
+                              setVerificationStatus("not_verified");
+                              setVerificationNotes(null);
+                              setVerificationIdFileName(null);
+                              setVerificationSelfieFileName(null);
+                              setVerificationIdFile(null);
+                              setVerificationSelfieFile(null);
+                              setVerificationSubmittedAt(null);
+                            } finally {
+                              setVerificationUploading(false);
+                            }
+                          }}
+                          className="inline-flex items-center justify-center rounded-2xl border border-slate-300 bg-white px-5 py-2 text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          Supprimer mes documents
+                        </button>
+                      </div>
                     </div>
                   )}
                 </div>

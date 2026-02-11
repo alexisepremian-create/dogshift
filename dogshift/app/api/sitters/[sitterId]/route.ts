@@ -16,6 +16,7 @@ type SitterDetail = {
   services: unknown;
   pricing: unknown;
   dogSizes: unknown;
+  verified: boolean;
   lat: number | null;
   lng: number | null;
 };
@@ -71,6 +72,7 @@ export async function GET(
         postalCode: true,
         bio: true,
         avatarUrl: true,
+        verificationStatus: true,
         lat: true,
         lng: true,
         services: true,
@@ -113,6 +115,7 @@ export async function GET(
       services: sitterProfile.services ?? null,
       pricing: sitterProfile.pricing ?? null,
       dogSizes: sitterProfile.dogSizes ?? null,
+      verified: typeof (sitterProfile as any)?.verificationStatus === "string" ? (sitterProfile as any).verificationStatus === "approved" : false,
       lat: typeof sitterProfile.lat === "number" && Number.isFinite(sitterProfile.lat) ? sitterProfile.lat : null,
       lng: typeof sitterProfile.lng === "number" && Number.isFinite(sitterProfile.lng) ? sitterProfile.lng : null,
     };

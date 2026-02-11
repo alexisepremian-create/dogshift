@@ -227,6 +227,7 @@ export default function SitterProfilePage() {
                 services: unknown;
                 pricing: unknown;
                 dogSizes: unknown;
+                verified?: boolean;
                 lat: number | null;
                 lng: number | null;
               };
@@ -263,7 +264,7 @@ export default function SitterProfilePage() {
           pricing,
           bio: payload.sitter.bio ?? "",
           responseTime: "~1h",
-          verified: false,
+          verified: typeof payload.sitter.verified === "boolean" ? payload.sitter.verified : false,
           lat: typeof payload.sitter.lat === "number" && Number.isFinite(payload.sitter.lat) ? payload.sitter.lat : 0,
           lng: typeof payload.sitter.lng === "number" && Number.isFinite(payload.sitter.lng) ? payload.sitter.lng : 0,
           avatarUrl: payload.sitter.avatarUrl ?? "https://i.pravatar.cc/160?img=7",
