@@ -355,7 +355,7 @@ function HeroPetsittingStyle() {
           style={{
             backgroundImage: "url('/image%20dogshift%20premium.png')",
             backgroundRepeat: "no-repeat",
-            backgroundPosition: "85% top",
+            backgroundPosition: "85% -60px",
             backgroundSize: "cover",
           }}
           aria-hidden="true"
