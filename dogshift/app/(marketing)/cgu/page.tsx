@@ -190,9 +190,44 @@ export default function CguPage() {
                 respectés.
               </p>
               <p className="mt-3">
-                Une politique de confidentialité dédiée sera publiée et précisera les traitements (finalités, durées, droits). En attendant sa publication,
-                les utilisateurs peuvent contacter DogShift pour toute question relative à leurs données.
+                Une politique de confidentialité dédiée précise les traitements (finalités, bases légales, durées, droits). Pour toute question relative à vos données,
+                vous pouvez contacter DogShift.
               </p>
+
+
+              <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-5">
+                <p className="text-sm font-semibold text-slate-900">13.1 Profil vérifié – Vérification d’identité (dogsitter)</p>
+                <p className="mt-3">
+                  DogShift peut proposer aux Dogsitters, sur une base volontaire, de soumettre une copie d’une pièce d’identité et, le cas échéant, un selfie, afin
+                  d’obtenir l’affichage d’un badge « Profil vérifié ».
+                </p>
+                <p className="mt-3">
+                  La vérification est effectuée manuellement par l’équipe DogShift au moyen d’un contrôle visuel de cohérence des documents fournis. DogShift ne
+                  procède à aucune authentification biométrique, vérification auprès d’autorités publiques, analyse automatisée anti-fraude ou expertise documentaire.
+                  La vérification ne constitue pas une certification officielle de l’identité au sens légal.
+                </p>
+                <p className="mt-3">
+                  DogShift ne garantit pas l’authenticité, la validité juridique, l’exactitude ni l’absence de falsification des documents transmis. Le Dogsitter
+                  reconnaît que des documents peuvent être falsifiés ou usurpés.
+                </p>
+                <p className="mt-3">
+                  Dans toute la mesure permise par le droit suisse, et sous réserve des cas de dol ou de faute grave, DogShift décline toute responsabilité en cas de
+                  fraude documentaire, usurpation d’identité, ou dommage lié à la confiance accordée au badge « Profil vérifié ».
+                </p>
+                <p className="mt-3">
+                  Le traitement de ces données d’identité est fondé sur l’exécution du contrat d’utilisation de la plateforme et sur l’intérêt légitime de DogShift à
+                  assurer la sécurité, la confiance et la prévention des abus sur la plateforme. Les documents d’identité ne sont jamais utilisés à des fins commerciales,
+                  marketing, de prospection, ni de profilage.
+                </p>
+                <p className="mt-3">
+                  Les documents sont stockés de manière sécurisée dans un espace privé et ne sont accessibles que par des personnes autorisées au sein de DogShift, le
+                  cas échéant via des liens temporaires sécurisés.
+                </p>
+                <p className="mt-3">
+                  Sauf obligation légale, prévention de la fraude ou gestion d’un litige, DogShift supprime définitivement les documents au plus tard trente (30)
+                  jours après la décision de vérification (approbation ou refus).
+                </p>
+              </div>
             </section>
 
             <section>

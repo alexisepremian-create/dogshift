@@ -31,6 +31,12 @@ export default function MarketingLayout({ children }: { children: React.ReactNod
               >
                 CGU
               </Link>
+              <Link
+                href="/confidentialite"
+                className="font-semibold text-[var(--dogshift-blue)] hover:text-[var(--dogshift-blue-hover)]"
+              >
+                Confidentialité
+              </Link>
               <p className="font-medium text-slate-700">© {new Date().getFullYear()} DogShift</p>
               <a href="mailto:support@dogshift.ch" className="font-medium text-slate-700">
                 Support : support@dogshift.ch

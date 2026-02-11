@@ -793,6 +793,10 @@ export default function HostProfileEditPage() {
                           {verificationUploading ? "Envoi…" : "Demander la vérification"}
                         </button>
 
+                        <p className="text-xs text-slate-500 sm:max-w-[360px]">
+                          DogShift effectue un contrôle visuel des documents. Cette vérification ne constitue pas une authentification officielle.
+                        </p>
+
                         <button
                           type="button"
                           disabled={verificationUploading}
