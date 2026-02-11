@@ -36,8 +36,8 @@ function formatCents(amount: number) {
 }
 
 function estimateServiceFeeCents(totalCents: number) {
-  const fee = Math.round(totalCents * 0.06);
-  return Math.min(Math.max(fee, 150), 900);
+  void totalCents;
+  return 0;
 }
 
 function formatDateLabel(value?: string) {
@@ -349,9 +349,9 @@ const stripeReact = await import("@stripe/react-stripe-js");
                   </div>
 
                   <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-5">
-                    <SummaryRow label="Sous-total" value={formatCents(Math.max(booking.amount - serviceFeeCents, 0))} />
+                    <SummaryRow label="Sous-total" value={formatCents(booking.amount)} />
                     <div className="mt-2" />
-                    <SummaryRow label="Frais de service" value={formatCents(serviceFeeCents)} />
+                    <SummaryRow label="Frais de service" value="0 CHF (phase pilote)" />
                     <div className="mt-4 h-px w-full bg-slate-200" />
                     <div className="mt-4 flex items-start justify-between gap-6">
                       <p className="text-sm font-semibold text-slate-900">Total</p>
