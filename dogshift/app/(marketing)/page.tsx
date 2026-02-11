@@ -355,7 +355,7 @@ function HeroPetsittingStyle() {
           style={{
             backgroundImage: "url('/image%20dogshift%20premium.png')",
             backgroundRepeat: "no-repeat",
-            backgroundPosition: "left 20% top",
+            backgroundPosition: "left top",
             backgroundSize: "cover",
           }}
           aria-hidden="true"
@@ -365,7 +365,7 @@ function HeroPetsittingStyle() {
           className="pointer-events-none absolute inset-0 z-10 sm:hidden"
           style={{
             background:
-              "linear-gradient(180deg, rgba(248,250,252,0.96) 0%, rgba(248,250,252,0.88) 18%, rgba(248,250,252,0.62) 42%, rgba(248,250,252,0.92) 100%)",
+              "linear-gradient(180deg, rgba(248,250,252,0.78) 0%, rgba(248,250,252,0.52) 22%, rgba(248,250,252,0.28) 48%, rgba(248,250,252,0.78) 100%)",
           }}
         />
 
