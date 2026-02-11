@@ -34,7 +34,7 @@ export default function Sidebar({ ariaLabel, items, footer, onNavigate, classNam
 
   return (
     <aside className={asideBase + " " + widthClasses + (className ? ` ${className}` : "")}>
-      <div className={forceExpanded ? "px-4 pt-3" : "px-3 pt-3"}>
+      <div className={forceExpanded ? "px-4 pt-3" : "px-4 pt-3"}>
         <Link
           href={headerHref}
           aria-label="DogShift"
@@ -65,7 +65,7 @@ export default function Sidebar({ ariaLabel, items, footer, onNavigate, classNam
         </Link>
       </div>
 
-      <div className={forceExpanded ? "px-3 pt-6" : "px-2 pt-6"}>
+      <div className={forceExpanded ? "px-3 pt-6" : "px-4 pt-6"}>
         <nav aria-label={ariaLabel} className={forceExpanded ? "space-y-1" : "flex flex-col items-center gap-1"}>
           {items.map((item) => (
             <NavItem
