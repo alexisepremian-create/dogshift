@@ -125,8 +125,20 @@ export default function HostWalletPage() {
         </div>
 
         <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)]">
-          <p className="text-sm font-semibold text-slate-800">Paiements Stripe</p>
-          <p className="mt-2 text-sm text-slate-600">Connecte Stripe pour recevoir automatiquement les paiements.</p>
+          <div className="flex items-start justify-between gap-4">
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-slate-800">Paiements Stripe</p>
+              <p className="mt-2 text-sm text-slate-600">Connecte Stripe pour recevoir automatiquement les paiements.</p>
+            </div>
+            <button
+              type="button"
+              disabled={stripeConnect.loading}
+              onClick={() => void refreshStripeStatus()}
+              className="inline-flex shrink-0 items-center justify-center rounded-2xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              Rafraîchir
+            </button>
+          </div>
 
           <div className="mt-4 flex flex-wrap items-center gap-3">
             {stripeConnect.status === "ENABLED" ? (
@@ -146,42 +158,16 @@ export default function HostWalletPage() {
                 NON ACTIVÉ
               </span>
             )}
-
-            {stripeConnect.stripeAccountId ? (
-              <span className="inline-flex items-center rounded-full bg-white px-3 py-1 text-xs font-medium text-slate-600 ring-1 ring-slate-200">
-                {stripeConnect.stripeAccountId}
-              </span>
-            ) : null}
           </div>
 
-          {stripeConnect.status === "ENABLED" ? (
-            <div className="mt-4 grid gap-2 text-sm text-slate-700">
-              <p>
-                <span className="font-semibold">stripeAccountStatus:</span> {stripeConnect.status}
+          {stripeConnect.status === "ENABLED" && stripeConnect.balance && stripeConnect.balance.pendingCents > 0 ? (
+            <div className="mt-4 flex gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+              <Info className="mt-0.5 h-4 w-4 flex-none text-slate-400" aria-hidden="true" />
+              <p className="text-xs font-medium leading-relaxed text-slate-600">
+                Les virements Stripe peuvent prendre quelques jours ouvrables avant d’être versés sur ton compte bancaire.
               </p>
-              <p>
-                <span className="font-semibold">Onboarding complété:</span> {stripeConnect.onboardingCompletedAt ?? "—"}
-              </p>
-              {stripeConnect.balance ? (
-                <div className="grid gap-3">
-                  <p>
-                    <span className="font-semibold">Solde:</span> {formatCents(stripeConnect.balance.availableCents)} disponible, {formatCents(stripeConnect.balance.pendingCents)} en attente
-                  </p>
-
-                  {stripeConnect.balance.pendingCents > 0 ? (
-                    <div className="flex gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                      <Info className="mt-0.5 h-4 w-4 flex-none text-slate-400" aria-hidden="true" />
-                      <p className="text-xs font-medium leading-relaxed text-slate-600">
-                        Les virements Stripe peuvent prendre quelques jours ouvrables avant d’être versés sur ton compte bancaire.
-                      </p>
-                    </div>
-                  ) : null}
-                </div>
-              ) : null}
             </div>
           ) : null}
-
-          {stripeConnect.error ? <p className="mt-3 text-sm font-medium text-rose-600">{stripeConnect.error}</p> : null}
 
           <div className="mt-4 flex flex-wrap gap-3">
             {!stripeConnect.stripeAccountId ? (
@@ -212,15 +198,6 @@ export default function HostWalletPage() {
                 Continuer la vérification
               </button>
             )}
-
-            <button
-              type="button"
-              disabled={stripeConnect.loading}
-              onClick={() => void refreshStripeStatus()}
-              className="inline-flex items-center justify-center rounded-2xl border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              Rafraîchir
-            </button>
           </div>
         </div>
 
