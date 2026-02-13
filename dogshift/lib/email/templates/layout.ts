@@ -80,18 +80,28 @@ export function renderEmailLayout(params: {
       <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
         <tr>
           <td align="center" style="padding:18px 0 0 0;text-align:center;">
-            <a href="${escapeHtml(ctaUrl)}" style="display:inline-block;background:#111827;color:#ffffff;text-decoration:none;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:700;padding:12px 18px;border-radius:10px;">
-              ${ctaLabel}
-            </a>
+            <center>
+              <table role="presentation" cellpadding="0" cellspacing="0" align="center" style="border-collapse:separate;">
+                <tr>
+                  <td align="center" bgcolor="#111827" style="border-radius:10px;">
+                    <a href="${escapeHtml(ctaUrl)}" style="display:block;background:#111827;color:#ffffff;text-decoration:none;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:700;line-height:16px;padding:12px 18px;border-radius:10px;text-align:center;">
+                      ${ctaLabel}
+                    </a>
+                  </td>
+                </tr>
+              </table>
+            </center>
           </td>
         </tr>
         ${secondaryLinkUrl && secondaryLinkLabel
           ? `
         <tr>
           <td align="center" style="padding:14px 0 0 0;font-family:Arial,Helvetica,sans-serif;text-align:center;">
-            <a href="${escapeHtml(secondaryLinkUrl)}" style="color:#6b7280;text-decoration:underline;font-size:12px;line-height:16px;">
-              ${secondaryLinkLabel}
-            </a>
+            <center>
+              <a href="${escapeHtml(secondaryLinkUrl)}" style="color:#6b7280;text-decoration:underline;font-size:12px;line-height:16px;text-align:center;">
+                ${secondaryLinkLabel}
+              </a>
+            </center>
           </td>
         </tr>
         `
@@ -104,22 +114,30 @@ export function renderEmailLayout(params: {
     ? `<table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
         <tr>
           <td align="center" style="padding:0;text-align:center;">
-            <img src="${escapeHtml(logoUrl)}" width="120" alt="${escapeHtml(brandName)}" style="display:inline-block;border:0;outline:none;text-decoration:none;width:120px;height:auto;max-width:120px;" />
+            <center>
+              <img src="${escapeHtml(logoUrl)}" width="160" alt="${escapeHtml(brandName)}" style="display:block;border:0;outline:none;text-decoration:none;width:160px;max-width:200px;height:auto;" />
+            </center>
           </td>
         </tr>
       </table>`
     : `<div style="font-family:Arial,Helvetica,sans-serif;font-size:18px;font-weight:800;color:#111827;">${escapeHtml(brandName)}</div>`;
 
   const footerLinksHtml = footerLinks.length
-    ? `<div style="margin-top:10px;">
-        ${footerLinks
-          .map((l) => {
-            const label = escapeHtml(l.label);
-            const url = escapeHtml(safeUrl(l.url));
-            return `<a href="${url}" style="color:#6b7280;text-decoration:underline;">${label}</a>`;
-          })
-          .join("<span style=\"padding:0 8px;\">•</span>")}
-      </div>`
+    ? `<table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;margin-top:10px;">
+        <tr>
+          <td align="center" style="text-align:center;">
+            <center>
+              ${footerLinks
+                .map((l) => {
+                  const label = escapeHtml(l.label);
+                  const url = escapeHtml(safeUrl(l.url));
+                  return `<a href="${url}" style="color:#6b7280;text-decoration:underline;">${label}</a>`;
+                })
+                .join("<span style=\"padding:0 8px;\">•</span>")}
+            </center>
+          </td>
+        </tr>
+      </table>`
     : "";
 
   const subtitleHtml = subtitle
