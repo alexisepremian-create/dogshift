@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useUser } from "@clerk/nextjs";
-import { ArrowDownRight, ArrowUpRight, Wallet } from "lucide-react";
+import { ArrowDownRight, ArrowUpRight, Briefcase, CreditCard, RefreshCw, Wallet } from "lucide-react";
 
 import SunCornerGlow from "@/components/SunCornerGlow";
 
@@ -151,28 +151,43 @@ export default function OwnerWalletPage() {
 
         {!loading && !error ? (
           <div className="grid gap-4 sm:grid-cols-3">
-          <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)]">
-            <p className="text-sm font-semibold text-slate-800">Solde</p>
-            <p className="mt-2 text-3xl font-semibold tracking-tight text-slate-900">{formatChfCents(summary.netBalance)}</p>
-            <p className="mt-2 text-xs font-medium text-slate-500">Net (paiements – remboursements)</p>
+          <div className="rounded-3xl border border-[rgba(37,99,235,0.2)] bg-[rgba(37,99,235,0.08)] p-5 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.18)]">
+            <div className="flex items-center gap-2">
+              <span className="inline-flex h-8 w-8 items-center justify-center rounded-2xl border border-[rgba(37,99,235,0.22)] bg-[rgba(255,255,255,0.65)]">
+                <Briefcase className="h-4 w-4 text-[rgb(37,99,235)]" aria-hidden="true" />
+              </span>
+              <p className="text-sm font-semibold text-slate-900">Solde</p>
+            </div>
+            <p className="mt-3 text-3xl font-semibold tracking-tight text-slate-900">{formatChfCents(summary.netBalance)}</p>
+            <p className="mt-2 text-xs font-medium text-slate-600">Net (paiements – remboursements)</p>
           </div>
 
-          <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)]">
+          <div className="rounded-3xl border border-[rgba(16,185,129,0.2)] bg-[rgba(16,185,129,0.08)] p-5 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.18)]">
             <div className="flex items-center justify-between">
-              <p className="text-sm font-semibold text-slate-800">Paiements</p>
+              <div className="flex items-center gap-2">
+                <span className="inline-flex h-8 w-8 items-center justify-center rounded-2xl border border-[rgba(16,185,129,0.22)] bg-[rgba(255,255,255,0.65)]">
+                  <CreditCard className="h-4 w-4 text-[rgb(16,185,129)]" aria-hidden="true" />
+                </span>
+                <p className="text-sm font-semibold text-slate-900">Paiements</p>
+              </div>
               <ArrowUpRight className="h-5 w-5 text-slate-400" aria-hidden="true" />
             </div>
-            <p className="mt-2 text-3xl font-semibold tracking-tight text-slate-900">{formatChfCents(summary.totalPaid)}</p>
-            <p className="mt-2 text-xs font-medium text-slate-500">Total payé</p>
+            <p className="mt-3 text-3xl font-semibold tracking-tight text-emerald-800">{formatChfCents(summary.totalPaid)}</p>
+            <p className="mt-2 text-xs font-medium text-slate-600">Total payé</p>
           </div>
 
-          <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)]">
+          <div className="rounded-3xl border border-[rgba(239,68,68,0.2)] bg-[rgba(239,68,68,0.08)] p-5 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.18)]">
             <div className="flex items-center justify-between">
-              <p className="text-sm font-semibold text-slate-800">Remboursements</p>
+              <div className="flex items-center gap-2">
+                <span className="inline-flex h-8 w-8 items-center justify-center rounded-2xl border border-[rgba(239,68,68,0.22)] bg-[rgba(255,255,255,0.65)]">
+                  <RefreshCw className="h-4 w-4 text-[rgb(239,68,68)]" aria-hidden="true" />
+                </span>
+                <p className="text-sm font-semibold text-slate-900">Remboursements</p>
+              </div>
               <ArrowDownRight className="h-5 w-5 text-slate-400" aria-hidden="true" />
             </div>
-            <p className="mt-2 text-3xl font-semibold tracking-tight text-slate-900">{formatChfCents(summary.totalRefunded)}</p>
-            <p className="mt-2 text-xs font-medium text-slate-500">Total remboursé</p>
+            <p className="mt-3 text-3xl font-semibold tracking-tight text-rose-700">{formatChfCents(summary.totalRefunded)}</p>
+            <p className="mt-2 text-xs font-medium text-slate-600">Total remboursé</p>
           </div>
         </div>
 
