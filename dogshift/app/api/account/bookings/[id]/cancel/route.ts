@@ -8,6 +8,23 @@ import { stripe } from "@/lib/stripe";
 
 export const runtime = "nodejs";
 
+function warn409(params: {
+  bookingId: string;
+  status: string;
+  startDate: unknown;
+  endDate: unknown;
+  error: string;
+}) {
+  console.warn("[api][account][bookings][id][cancel][PATCH] 409", {
+    bookingId: params.bookingId,
+    status: params.status,
+    startDate: params.startDate instanceof Date ? params.startDate.toISOString() : params.startDate ?? null,
+    endDate: params.endDate instanceof Date ? params.endDate.toISOString() : params.endDate ?? null,
+    now: new Date().toISOString(),
+    error: params.error,
+  });
+}
+
 function isCompleted(status: string, endDateIso: string | null) {
   if (status !== "PAID" && status !== "CONFIRMED") return false;
   if (!endDateIso) return false;
@@ -60,24 +77,38 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     const status = String(booking.status ?? "");
 
     const startIso = booking.startDate instanceof Date ? booking.startDate.toISOString() : booking.startDate ? new Date(booking.startDate).toISOString() : null;
+    if (status === "CONFIRMED" && !startIso) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: "MISSING_START_DATE",
+          message: "Impossible d’annuler cette réservation car sa date de début est manquante. Contacte le support.",
+        },
+        { status: 400 }
+      );
+    }
     const startTs = startIso ? new Date(startIso).getTime() : NaN;
     const limit = Number.isFinite(startTs) ? startTs - 24 * 60 * 60 * 1000 : NaN;
     const isTooLateByStartDate = Number.isFinite(limit) ? Date.now() > limit : false;
 
     if (status === "CONFIRMED" && isTooLateByStartDate) {
+      warn409({ bookingId, status, startDate: booking.startDate, endDate: booking.endDate, error: "CANNOT_CANCEL_TOO_LATE" });
       return NextResponse.json({ ok: false, error: "CANNOT_CANCEL_TOO_LATE" }, { status: 409 });
     }
 
     if (status === "CANCELLED") {
+      warn409({ bookingId, status, startDate: booking.startDate, endDate: booking.endDate, error: "ALREADY_CANCELED" });
       return NextResponse.json({ ok: false, error: "ALREADY_CANCELED" }, { status: 409 });
     }
 
     const endIso = booking.endDate instanceof Date ? booking.endDate.toISOString() : booking.endDate ? new Date(booking.endDate).toISOString() : null;
     if (isCompleted(status, endIso)) {
+      warn409({ bookingId, status, startDate: booking.startDate, endDate: booking.endDate, error: "ALREADY_COMPLETED" });
       return NextResponse.json({ ok: false, error: "ALREADY_COMPLETED" }, { status: 409 });
     }
 
     if (status !== "CONFIRMED" && isTooLateByStartDate) {
+      warn409({ bookingId, status, startDate: booking.startDate, endDate: booking.endDate, error: "TOO_LATE" });
       return NextResponse.json({ ok: false, error: "TOO_LATE" }, { status: 409 });
     }
 
@@ -114,6 +145,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
         (typeof booking.stripeRefundId === "string" && booking.stripeRefundId.trim()) || Boolean(booking.refundedAt);
 
       if (!paymentIntentId) {
+        warn409({ bookingId, status, startDate: booking.startDate, endDate: booking.endDate, error: "MISSING_PAYMENT_INTENT" });
         return NextResponse.json({ ok: false, error: "MISSING_PAYMENT_INTENT" }, { status: 409 });
       }
 
@@ -144,6 +176,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
         const intent = (await stripe.paymentIntents.retrieve(paymentIntentId, { expand: ["charges.data.transfer"] })) as any;
         const chargeId = typeof intent?.charges?.data?.[0]?.id === "string" ? String(intent.charges.data[0].id) : "";
         if (!chargeId) {
+          warn409({ bookingId, status, startDate: booking.startDate, endDate: booking.endDate, error: "MISSING_CHARGE" });
           return NextResponse.json({ ok: false, error: "MISSING_CHARGE" }, { status: 409 });
         }
 
@@ -208,6 +241,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       }
     }
 
+    warn409({ bookingId, status, startDate: booking.startDate, endDate: booking.endDate, error: "INVALID_STATUS" });
     return NextResponse.json({ ok: false, error: "INVALID_STATUS" }, { status: 409 });
   } catch (err) {
     console.error("[api][account][bookings][id][cancel][PATCH] error", err);

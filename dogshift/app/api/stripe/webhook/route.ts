@@ -73,6 +73,13 @@ async function markBookingPaid({
   });
 
   const res = await setBookingStatus(bookingId, "PAID" as any, { req });
+  if (!res.ok) {
+    console.error("[webhook][stripe] reconcile:markPaid:setBookingStatus failed", {
+      bookingId,
+      error: res.error,
+    });
+    return;
+  }
 
   console.log("[webhook][stripe] reconcile:markPaid:db", {
     bookingId,

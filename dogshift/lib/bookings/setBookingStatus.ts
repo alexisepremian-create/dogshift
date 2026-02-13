@@ -17,10 +17,29 @@ export async function setBookingStatus(
 
   const booking = await (prisma as any).booking.findUnique({
     where: { id },
-    select: { id: true, status: true },
+    select: { id: true, status: true, startDate: true, endDate: true },
   });
 
   if (!booking) return { ok: false as const, error: "NOT_FOUND" as const };
+
+  if (nextStatus === "PAID" || nextStatus === "CONFIRMED") {
+    if (!booking.startDate) {
+      console.error("[bookings][setBookingStatus] missing startDate for status transition", {
+        bookingId: id,
+        nextStatus,
+        currentStatus: String(booking.status ?? ""),
+      });
+      return { ok: false as const, error: "MISSING_START_DATE" as const };
+    }
+    if (!booking.endDate) {
+      console.error("[bookings][setBookingStatus] missing endDate for status transition", {
+        bookingId: id,
+        nextStatus,
+        currentStatus: String(booking.status ?? ""),
+      });
+      return { ok: false as const, error: "MISSING_END_DATE" as const };
+    }
+  }
 
   const currentStatus = String(booking.status ?? "") as BookingStatus;
 

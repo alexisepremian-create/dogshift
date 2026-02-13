@@ -321,7 +321,11 @@ export default function AccountBookingDetailPage() {
           return;
         }
         if (payload.error === "CANNOT_CANCEL_TOO_LATE") {
-          setCancelError("Annulation possible jusqu’à 24h avant le début de la prestation.");
+          setCancelError("Cette réservation est confirmée et ne peut plus être annulée en ligne (moins de 24h avant le début).");
+          return;
+        }
+        if (payload.error === "MISSING_START_DATE") {
+          setCancelError("Impossible d’annuler cette réservation (date de début manquante). Contacte le support.");
           return;
         }
         if (payload.error === "ALREADY_COMPLETED") {
