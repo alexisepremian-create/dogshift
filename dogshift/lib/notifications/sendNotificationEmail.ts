@@ -2,6 +2,7 @@ import type { NextRequest } from "next/server";
 
 import { prisma } from "@/lib/prisma";
 import { sendEmail } from "@/lib/email/sendEmail";
+import { renderEmailLayout, type EmailSummaryRow } from "@/lib/email/templates/layout";
 import {
   hasNotificationAlreadySent,
   markNotificationSent,
@@ -47,6 +48,54 @@ async function resolveSitterEmailBySitterId(sitterId: string) {
     select: { id: true, email: true, name: true },
   });
   return sitter?.email ? { id: sitter.id, email: sitter.email, name: sitter?.name ?? null } : null;
+}
+
+function formatMoney(amount: unknown, currency: unknown) {
+  const a = typeof amount === "number" && Number.isFinite(amount) ? amount : NaN;
+  const c = typeof currency === "string" && currency.trim() ? currency.trim().toUpperCase() : "CHF";
+  if (!Number.isFinite(a)) return "";
+  return `${(a / 100).toFixed(2)} ${c}`;
+}
+
+function formatDateTime(value: unknown) {
+  const d = value instanceof Date ? value : value ? new Date(String(value)) : null;
+  if (!d) return "";
+  const ts = d.getTime();
+  if (!Number.isFinite(ts)) return "";
+  try {
+    return new Intl.DateTimeFormat("fr-CH", {
+      weekday: "short",
+      year: "numeric",
+      month: "short",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    }).format(d);
+  } catch {
+    return d.toISOString();
+  }
+}
+
+async function resolveBookingSummaryRows(bookingId: string): Promise<EmailSummaryRow[]> {
+  const booking = await (prisma as any).booking.findUnique({
+    where: { id: bookingId },
+    select: { id: true, service: true, startDate: true, endDate: true, amount: true, currency: true },
+  });
+  if (!booking) return [{ label: "Référence", value: bookingId }];
+
+  const rows: EmailSummaryRow[] = [];
+  const service = typeof booking.service === "string" && booking.service.trim() ? booking.service.trim() : "";
+  const start = formatDateTime(booking.startDate);
+  const end = formatDateTime(booking.endDate);
+  const amount = formatMoney(booking.amount, booking.currency);
+
+  if (service) rows.push({ label: "Service", value: service });
+  if (start) rows.push({ label: "Début", value: start });
+  if (end) rows.push({ label: "Fin", value: end });
+  if (amount) rows.push({ label: "Montant", value: amount });
+  rows.push({ label: "Référence", value: String(booking.id) });
+
+  return rows;
 }
 
 export type NotificationPayload =
@@ -106,6 +155,8 @@ export async function sendNotificationEmail(params: {
     if (dashboard === "host") return `${baseUrl}/host/requests?id=${encodeURIComponent(bookingId)}`;
     return `${baseUrl}/account/bookings?id=${encodeURIComponent(bookingId)}`;
   };
+
+  const logoUrl = baseUrl ? `${baseUrl}/dogshift-logo.png` : "";
 
   const text = (() => {
     switch (payload.kind) {
@@ -187,11 +238,120 @@ export async function sendNotificationEmail(params: {
     }
   })();
 
+  const html = await (async () => {
+    switch (payload.kind) {
+      case "newMessage": {
+        const url = baseUrl ? `${baseUrl}/account/messages?conversationId=${encodeURIComponent(payload.conversationId)}` : "";
+        const rows: EmailSummaryRow[] = [
+          { label: "De", value: payload.fromName },
+          { label: "Aperçu", value: payload.messagePreview },
+        ];
+        return renderEmailLayout({
+          logoUrl,
+          title: "Nouveau message",
+          subtitle: "Tu as reçu un nouveau message.",
+          summaryRows: rows,
+          ctaLabel: url ? "Voir la conversation" : undefined,
+          ctaUrl: url || undefined,
+        }).html;
+      }
+      case "bookingRequest": {
+        const url = bookingUrl(payload.bookingId, "host");
+        const rows = await resolveBookingSummaryRows(payload.bookingId);
+        return renderEmailLayout({
+          logoUrl,
+          title: "Nouvelle demande de réservation",
+          subtitle: "Tu as reçu une nouvelle demande.",
+          summaryRows: rows,
+          ctaLabel: url ? "Voir la réservation" : undefined,
+          ctaUrl: url || undefined,
+        }).html;
+      }
+      case "bookingConfirmed": {
+        const url = bookingUrl(payload.bookingId, "account");
+        const rows = await resolveBookingSummaryRows(payload.bookingId);
+        return renderEmailLayout({
+          logoUrl,
+          title: "Réservation confirmée",
+          subtitle: "Ta réservation a été confirmée.",
+          summaryRows: rows,
+          ctaLabel: url ? "Voir la réservation" : undefined,
+          ctaUrl: url || undefined,
+        }).html;
+      }
+      case "paymentReceived": {
+        const url = bookingUrl(payload.bookingId, "account");
+        const rows = await resolveBookingSummaryRows(payload.bookingId);
+        return renderEmailLayout({
+          logoUrl,
+          title: "Paiement reçu",
+          subtitle: "Le paiement a bien été reçu.",
+          summaryRows: rows,
+          ctaLabel: url ? "Voir la réservation" : undefined,
+          ctaUrl: url || undefined,
+        }).html;
+      }
+      case "bookingReminder": {
+        const url = bookingUrl(payload.bookingId, "account");
+        const rows = await resolveBookingSummaryRows(payload.bookingId);
+        const starts = payload.startsAtIso ? formatDateTime(payload.startsAtIso) : "";
+        const nextRows = starts ? [{ label: "Début", value: starts }, ...rows.filter((r) => r.label !== "Début") ] : rows;
+        return renderEmailLayout({
+          logoUrl,
+          title: "Rappel de réservation",
+          subtitle: "Une réservation approche.",
+          summaryRows: nextRows,
+          ctaLabel: url ? "Voir la réservation" : undefined,
+          ctaUrl: url || undefined,
+        }).html;
+      }
+      case "bookingCancelled": {
+        const url = bookingUrl(payload.bookingId, payload.dashboard);
+        const rows = await resolveBookingSummaryRows(payload.bookingId);
+        return renderEmailLayout({
+          logoUrl,
+          title: "Réservation annulée",
+          subtitle: "Une réservation a été annulée.",
+          summaryRows: rows,
+          ctaLabel: url ? "Voir la réservation" : undefined,
+          ctaUrl: url || undefined,
+        }).html;
+      }
+      case "bookingRefunded": {
+        const url = bookingUrl(payload.bookingId, payload.dashboard);
+        const rows = await resolveBookingSummaryRows(payload.bookingId);
+        return renderEmailLayout({
+          logoUrl,
+          title: "Remboursement effectué",
+          subtitle: "Le remboursement a été effectué.",
+          summaryRows: rows,
+          ctaLabel: url ? "Voir la réservation" : undefined,
+          ctaUrl: url || undefined,
+        }).html;
+      }
+      case "bookingRefundFailed": {
+        const url = bookingUrl(payload.bookingId, payload.dashboard);
+        const rows = await resolveBookingSummaryRows(payload.bookingId);
+        return renderEmailLayout({
+          logoUrl,
+          title: "Remboursement impossible",
+          subtitle: "Le remboursement a échoué. Notre équipe peut t’aider.",
+          summaryRows: rows,
+          ctaLabel: url ? "Voir la réservation" : undefined,
+          ctaUrl: url || undefined,
+        }).html;
+      }
+      default:
+        return renderEmailLayout({ logoUrl, title: "Notification", subtitle: "DogShift" }).html;
+    }
+  })();
+
   try {
     const res = await sendEmail({
       to: recipient.email,
       subject,
       text,
+      html,
     });
 
     await markNotificationSent(recipientUserId, key, entityId, nowIso());
