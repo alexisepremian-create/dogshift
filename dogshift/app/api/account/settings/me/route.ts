@@ -21,6 +21,7 @@ function readLastEmailVerificationSentAt(hostProfileJson: string | null) {
 type SettingsState = {
   notifications: {
     newMessages: boolean;
+    messageReceived: boolean;
     newBookingRequest: boolean;
     bookingConfirmed: boolean;
     paymentReceived: boolean;
@@ -46,6 +47,7 @@ function defaultSettings(): SettingsState {
   return {
     notifications: {
       newMessages: true,
+      messageReceived: true,
       newBookingRequest: true,
       bookingConfirmed: true,
       paymentReceived: true,
@@ -72,6 +74,8 @@ function readSettingsFromHostProfileJson(hostProfileJson: string | null): Settin
     return {
       notifications: {
         newMessages: typeof notifications.newMessages === "boolean" ? notifications.newMessages : defaults.notifications.newMessages,
+        messageReceived:
+          typeof notifications.messageReceived === "boolean" ? notifications.messageReceived : defaults.notifications.messageReceived,
         newBookingRequest:
           typeof notifications.newBookingRequest === "boolean"
             ? notifications.newBookingRequest

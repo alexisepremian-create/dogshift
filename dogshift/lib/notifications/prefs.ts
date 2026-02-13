@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 
 export type NotificationKey =
   | "newMessages"
+  | "messageReceived"
   | "newBookingRequest"
   | "bookingConfirmed"
   | "paymentReceived"
@@ -15,6 +16,7 @@ export type NotificationPrefs = Record<NotificationKey, boolean>;
 function defaultNotificationPrefs(): NotificationPrefs {
   return {
     newMessages: true,
+    messageReceived: true,
     newBookingRequest: true,
     bookingConfirmed: true,
     paymentReceived: true,
@@ -40,6 +42,8 @@ export function readNotificationPrefsFromHostProfileJson(hostProfileJson: string
   const notifications = parsed?.accountSettings?.notifications;
   return {
     newMessages: typeof notifications?.newMessages === "boolean" ? notifications.newMessages : defaults.newMessages,
+    messageReceived:
+      typeof notifications?.messageReceived === "boolean" ? notifications.messageReceived : defaults.messageReceived,
     newBookingRequest:
       typeof notifications?.newBookingRequest === "boolean" ? notifications.newBookingRequest : defaults.newBookingRequest,
     bookingConfirmed:

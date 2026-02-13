@@ -25,6 +25,7 @@ import {
 type SettingsState = {
   notifications: {
     newMessages: boolean;
+    messageReceived: boolean;
     newBookingRequest: boolean;
     bookingConfirmed: boolean;
     paymentReceived: boolean;
@@ -74,6 +75,7 @@ function defaultSettings(): SettingsState {
   return {
     notifications: {
       newMessages: true,
+      messageReceived: true,
       newBookingRequest: true,
       bookingConfirmed: true,
       paymentReceived: true,
@@ -262,7 +264,7 @@ export default function AccountSettingsClient({
 
     try {
       const res = await fetch("/api/account/settings/me", {
-        method: "POST",
+        method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ notifications: { [key]: nextValue } }),
       });

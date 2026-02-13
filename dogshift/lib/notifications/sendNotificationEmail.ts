@@ -108,6 +108,13 @@ export type NotificationPayload =
   | { kind: "bookingRefunded"; bookingId: string; dashboard: "account" | "host" }
   | { kind: "bookingRefundFailed"; bookingId: string; dashboard: "account" | "host" };
 
+function messageSnippet(value: string) {
+  const trimmed = (value || "").trim();
+  if (!trimmed) return "";
+  if (trimmed.length <= 80) return trimmed;
+  return trimmed.slice(0, 80);
+}
+
 export async function sendNotificationEmail(params: {
   req?: NextRequest;
   recipientUserId: string;
@@ -130,7 +137,7 @@ export async function sendNotificationEmail(params: {
   const subject = (() => {
     switch (payload.kind) {
       case "newMessage":
-        return "Nouveau message – DogShift";
+        return "Nouveau message sur DogShift";
       case "bookingRequest":
         return "Nouvelle demande de réservation – DogShift";
       case "bookingConfirmed":
@@ -162,11 +169,12 @@ export async function sendNotificationEmail(params: {
     switch (payload.kind) {
       case "newMessage": {
         const url = baseUrl ? `${baseUrl}/account/messages?conversationId=${encodeURIComponent(payload.conversationId)}` : "";
+        const snippet = messageSnippet(payload.messagePreview);
         return (
           `Bonjour,\n\n` +
-          `Tu as reçu un nouveau message de ${payload.fromName}.\n\n` +
-          `${payload.messagePreview}\n\n` +
-          (url ? `Voir la conversation : ${url}\n\n` : "") +
+          `Vous avez reçu un nouveau message.\n\n` +
+          (snippet ? `${snippet}\n\n` : "") +
+          (url ? `Voir le message : ${url}\n\n` : "") +
           `— DogShift\n`
         );
       }
@@ -242,16 +250,17 @@ export async function sendNotificationEmail(params: {
     switch (payload.kind) {
       case "newMessage": {
         const url = baseUrl ? `${baseUrl}/account/messages?conversationId=${encodeURIComponent(payload.conversationId)}` : "";
+        const snippet = messageSnippet(payload.messagePreview);
         const rows: EmailSummaryRow[] = [
           { label: "De", value: payload.fromName },
-          { label: "Aperçu", value: payload.messagePreview },
+          ...(snippet ? [{ label: "Aperçu", value: snippet }] : []),
         ];
         return renderEmailLayout({
           logoUrl,
           title: "Nouveau message",
-          subtitle: "Tu as reçu un nouveau message.",
+          subtitle: "Vous avez reçu un nouveau message.",
           summaryRows: rows,
-          ctaLabel: url ? "Voir la conversation" : undefined,
+          ctaLabel: url ? "Voir le message" : undefined,
           ctaUrl: url || undefined,
         }).html;
       }

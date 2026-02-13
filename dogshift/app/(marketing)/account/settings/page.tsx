@@ -25,6 +25,7 @@ import {
 type SettingsState = {
   notifications: {
     newMessages: boolean;
+    messageReceived: boolean;
     newBookingRequest: boolean;
     bookingConfirmed: boolean;
     paymentReceived: boolean;
@@ -74,6 +75,7 @@ function defaultSettings(): SettingsState {
   return {
     notifications: {
       newMessages: true,
+      messageReceived: true,
       newBookingRequest: true,
       bookingConfirmed: true,
       paymentReceived: true,
@@ -744,6 +746,7 @@ export default function AccountSettingsPage() {
           {(
             [
               ["newMessages", "Nouveaux messages", "messages"],
+              ["messageReceived", "Emails de messages", "messages"],
               ["newBookingRequest", "Nouvelle demande de réservation", "booking"],
               ["bookingConfirmed", "Réservation confirmée", "booking"],
               ["paymentReceived", "Paiement reçu", "payment"],

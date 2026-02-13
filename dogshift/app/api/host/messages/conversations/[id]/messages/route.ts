@@ -43,6 +43,10 @@ function previewOf(text: string) {
   return trimmed.slice(0, 140);
 }
 
+function throttleBucket10Min() {
+  return Math.floor(Date.now() / (10 * 60 * 1000));
+}
+
 export async function POST(req: NextRequest, { params }: { params: { id: string } | Promise<{ id: string }> }) {
   try {
     const { uid, sitterId } = await resolveDbUserAndSitterId();
@@ -144,8 +148,9 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
         await sendNotificationEmail({
           recipientUserId: recipient.recipientUserId,
-          key: "newMessages",
-          entityId: String(msg.id),
+          key: "messageReceived",
+          entityId: `${conversationId}:${throttleBucket10Min()}`,
+          req,
           payload: {
             kind: "newMessage",
             conversationId,
