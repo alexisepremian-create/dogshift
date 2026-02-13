@@ -120,6 +120,8 @@ export default function OwnerWalletPage() {
 
   if (!isLoaded || !isSignedIn) return null;
 
+  const cardBase = "relative overflow-hidden rounded-3xl border p-5 shadow-sm";
+
   return (
     <div className="relative grid gap-6 overflow-hidden" data-testid="owner-wallet-page">
       <SunCornerGlow variant="ownerDashboard" />
@@ -151,9 +153,11 @@ export default function OwnerWalletPage() {
 
         {!loading && !error ? (
           <div className="grid gap-4 sm:grid-cols-3">
-          <div className="rounded-3xl border border-[rgba(37,99,235,0.28)] bg-[rgba(37,99,235,0.14)] p-5 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.18)]">
+          <div
+            className={`${cardBase} border-[color-mix(in_srgb,var(--dogshift-blue),white_55%)] bg-[color-mix(in_srgb,var(--dogshift-blue),white_92%)]`}
+          >
             <div className="flex items-center gap-2">
-              <span className="inline-flex h-8 w-8 items-center justify-center rounded-2xl border border-[rgba(37,99,235,0.22)] bg-[rgba(255,255,255,0.65)]">
+              <span className="inline-flex h-8 w-8 items-center justify-center rounded-2xl border border-[color-mix(in_srgb,var(--dogshift-blue),white_70%)] bg-white/70">
                 <Briefcase className="h-4 w-4 text-[rgb(37,99,235)]" aria-hidden="true" />
               </span>
               <p className="text-sm font-semibold text-slate-900">Solde</p>
@@ -162,10 +166,10 @@ export default function OwnerWalletPage() {
             <p className="mt-2 text-xs font-medium text-slate-600">Net (paiements – remboursements)</p>
           </div>
 
-          <div className="rounded-3xl border border-[rgba(16,185,129,0.28)] bg-[rgba(16,185,129,0.14)] p-5 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.18)]">
+          <div className={`${cardBase} border-emerald-200 bg-emerald-50`}>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <span className="inline-flex h-8 w-8 items-center justify-center rounded-2xl border border-[rgba(16,185,129,0.22)] bg-[rgba(255,255,255,0.65)]">
+                <span className="inline-flex h-8 w-8 items-center justify-center rounded-2xl border border-emerald-200 bg-white/70">
                   <CreditCard className="h-4 w-4 text-[rgb(16,185,129)]" aria-hidden="true" />
                 </span>
                 <p className="text-sm font-semibold text-slate-900">Paiements</p>
@@ -176,10 +180,10 @@ export default function OwnerWalletPage() {
             <p className="mt-2 text-xs font-medium text-slate-600">Total payé</p>
           </div>
 
-          <div className="rounded-3xl border border-[rgba(239,68,68,0.28)] bg-[rgba(239,68,68,0.14)] p-5 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.18)]">
+          <div className={`${cardBase} border-rose-200 bg-rose-50`}>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <span className="inline-flex h-8 w-8 items-center justify-center rounded-2xl border border-[rgba(239,68,68,0.22)] bg-[rgba(255,255,255,0.65)]">
+                <span className="inline-flex h-8 w-8 items-center justify-center rounded-2xl border border-rose-200 bg-white/70">
                   <RefreshCw className="h-4 w-4 text-[rgb(239,68,68)]" aria-hidden="true" />
                 </span>
                 <p className="text-sm font-semibold text-slate-900">Remboursements</p>
