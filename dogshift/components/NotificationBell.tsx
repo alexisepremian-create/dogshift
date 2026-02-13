@@ -96,6 +96,24 @@ export default function NotificationBell({ className }: { className?: string }) 
     }
   }
 
+  async function markOneRead(id: string) {
+    const now = new Date().toISOString();
+    setItems((prev) => prev.map((n) => (n.id === id ? { ...n, readAt: n.readAt ?? now } : n)));
+    setUnread((prev) => Math.max(0, (Number.isFinite(prev) ? prev : 0) - 1));
+    try {
+      const res = await fetch("/api/notifications/mark-read", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id }),
+      });
+      const payload = (await res.json()) as { ok?: boolean };
+      if (!res.ok || !payload.ok) return;
+      await refreshUnread();
+    } catch {
+      // ignore
+    }
+  }
+
   useEffect(() => {
     void refreshUnread();
     const i = window.setInterval(() => {
@@ -201,7 +219,15 @@ export default function NotificationBell({ className }: { className?: string }) 
                   );
 
                   return n.url ? (
-                    <Link key={n.id} href={n.url} onClick={() => setOpen(false)} className="block">
+                    <Link
+                      key={n.id}
+                      href={n.url}
+                      onClick={() => {
+                        if (!n.readAt) void markOneRead(n.id);
+                        setOpen(false);
+                      }}
+                      className="block"
+                    >
                       {content}
                     </Link>
                   ) : (

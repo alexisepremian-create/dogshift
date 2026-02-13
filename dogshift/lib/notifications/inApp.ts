@@ -233,3 +233,11 @@ export async function markAllRead(userId: string) {
   });
   return Number(res?.count ?? 0);
 }
+
+export async function markOneRead(userId: string, notificationId: string) {
+  const res = await (prisma as any).notification.updateMany({
+    where: { userId, id: notificationId, readAt: null },
+    data: { readAt: new Date() },
+  });
+  return Number(res?.count ?? 0);
+}
