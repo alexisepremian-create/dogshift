@@ -1,10 +1,7 @@
 import { NextResponse } from "next/server";
-import { getToken } from "next-auth/jwt";
-import type { JWT } from "next-auth/jwt";
+import { auth, currentUser } from "@clerk/nextjs/server";
 
 import { prisma } from "@/lib/prisma";
-
-type EmailToken = JWT & { email?: string };
 
 export async function POST(req: Request) {
   const expected = (process.env.DOGSHIFT_ADMIN_SECRET || "").trim();
@@ -13,8 +10,11 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false }, { status: 403 });
   }
 
-  const token = (await getToken({ req: req as never, secret: process.env.NEXTAUTH_SECRET })) as EmailToken | null;
-  const email = token?.email;
+  const { userId } = await auth();
+  if (!userId) return NextResponse.json({ ok: false }, { status: 401 });
+
+  const clerkUser = await currentUser();
+  const email = clerkUser?.primaryEmailAddress?.emailAddress ?? "";
   if (!email) return NextResponse.json({ ok: false }, { status: 401 });
 
   const existing = await prisma.user.findUnique({ where: { email } });

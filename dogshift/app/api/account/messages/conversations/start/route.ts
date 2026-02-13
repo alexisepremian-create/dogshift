@@ -1,19 +1,11 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { getToken } from "next-auth/jwt";
 import { Prisma } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
+import { resolveDbUserId } from "@/lib/auth/resolveDbUserId";
 
 export const runtime = "nodejs";
-
-type RoleJwt = { uid?: string; sub?: string };
-
-function tokenUserId(token: RoleJwt | null) {
-  const uid = typeof token?.uid === "string" ? token.uid : null;
-  const sub = typeof token?.sub === "string" ? token.sub : null;
-  return uid ?? sub;
-}
 
 function isMigrationMissingError(err: unknown) {
   if (err instanceof Prisma.PrismaClientKnownRequestError) {
@@ -58,18 +50,10 @@ type Body = { sitterId?: unknown; bookingId?: unknown };
 
 export async function POST(req: NextRequest) {
   try {
-    if (!process.env.NEXTAUTH_SECRET) {
-      if (process.env.NODE_ENV !== "production") {
-        console.error("[api][account][messages][start][POST] NEXTAUTH_SECRET_MISSING");
-      }
-      return NextResponse.json({ ok: false, error: "CONFIG_ERROR", message: "NEXTAUTH_SECRET is missing" }, { status: 500 });
-    }
-
-    const token = (await getToken({ req, secret: process.env.NEXTAUTH_SECRET })) as RoleJwt | null;
-    const ownerId = tokenUserId(token);
+    const ownerId = await resolveDbUserId(req);
     if (!ownerId) {
       if (process.env.NODE_ENV !== "production") {
-        console.error("[api][account][messages][start][POST] UNAUTHORIZED", { hasToken: Boolean(token) });
+        console.error("[api][account][messages][start][POST] UNAUTHORIZED");
       }
       return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
     }

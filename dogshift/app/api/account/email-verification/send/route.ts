@@ -1,23 +1,14 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { getToken } from "next-auth/jwt";
 import crypto from "crypto";
 
 import { prisma } from "@/lib/prisma";
+import { resolveDbUserId } from "@/lib/auth/resolveDbUserId";
 
 export const runtime = "nodejs";
-
-type RoleJwt = { uid?: string; sub?: string };
-
 type HostProfileJson = {
   accountSettings?: unknown;
 };
-
-function tokenUserId(token: RoleJwt | null) {
-  const uid = typeof token?.uid === "string" ? token.uid : null;
-  const sub = typeof token?.sub === "string" ? token.sub : null;
-  return uid ?? sub;
-}
 
 function nowIso() {
   return new Date().toISOString();
@@ -192,8 +183,7 @@ async function sendEmail({ to, url }: { to: string; url: string }) {
 
 export async function POST(req: NextRequest) {
   try {
-    const token = (await getToken({ req, secret: process.env.NEXTAUTH_SECRET })) as RoleJwt | null;
-    const uid = tokenUserId(token);
+    const uid = await resolveDbUserId(req);
     if (!uid) {
       return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
     }

@@ -1,9 +1,9 @@
-import NextAuth from "next-auth";
-
-import { authOptions } from "@/lib/nextauth";
-
 export const runtime = "nodejs";
 
-const handler = NextAuth(authOptions);
+export async function GET() {
+  return new Response("Not Found", { status: 404 });
+}
 
-export { handler as GET, handler as POST };
+export async function POST() {
+  return new Response("Not Found", { status: 404 });
+}

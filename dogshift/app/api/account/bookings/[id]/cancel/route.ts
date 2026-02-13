@@ -1,20 +1,12 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { getToken } from "next-auth/jwt";
 
 import { prisma } from "@/lib/prisma";
+import { resolveDbUserId } from "@/lib/auth/resolveDbUserId";
 import { setBookingStatus } from "@/lib/bookings/setBookingStatus";
 import { stripe } from "@/lib/stripe";
 
 export const runtime = "nodejs";
-
-type RoleJwt = { uid?: string; sub?: string };
-
-function tokenUserId(token: RoleJwt | null) {
-  const uid = typeof token?.uid === "string" ? token.uid : null;
-  const sub = typeof token?.sub === "string" ? token.sub : null;
-  return uid ?? sub;
-}
 
 function isCompleted(status: string, endDateIso: string | null) {
   if (status !== "PAID" && status !== "CONFIRMED") return false;
@@ -26,11 +18,10 @@ function isCompleted(status: string, endDateIso: string | null) {
 
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } | Promise<{ id: string }> }) {
   try {
-    const token = (await getToken({ req, secret: process.env.NEXTAUTH_SECRET })) as RoleJwt | null;
-    const userId = tokenUserId(token);
+    const userId = await resolveDbUserId(req);
     if (!userId) {
       if (process.env.NODE_ENV !== "production") {
-        console.error("[api][account][bookings][id][cancel][PATCH] UNAUTHORIZED", { hasToken: Boolean(token) });
+        console.error("[api][account][bookings][id][cancel][PATCH] UNAUTHORIZED");
       }
       return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
     }
