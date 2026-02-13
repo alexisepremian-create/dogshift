@@ -73,6 +73,13 @@ export function RequestListItem({
   dragging?: boolean;
 }) {
   const meta = statusMeta(request.status);
+  const status = String(request.status);
+  const refundNote =
+    status === "REFUNDED"
+      ? "Remboursée au propriétaire"
+      : status === "REFUND_FAILED"
+        ? "Remboursement au propriétaire: échoué"
+        : null;
   const start = request.startDate ? request.startDate.slice(0, 10) : "";
   const end = request.endDate ? request.endDate.slice(0, 10) : "";
   const when = start ? `${formatDateHuman(start)}${end ? ` → ${formatDateHuman(end)}` : ""}` : "—";
@@ -85,7 +92,6 @@ export function RequestListItem({
 
   const canShowArchive = Boolean(onArchive);
   const canShowDelete = Boolean(onDelete);
-  const status = String(request.status);
   const canArchiveThis = status !== "PENDING_ACCEPTANCE" && status !== "CONFIRMED";
 
   return (
@@ -186,6 +192,7 @@ export function RequestListItem({
               <div className="mt-2 flex justify-end">
                 <span className={meta.classes}>{meta.label}</span>
               </div>
+              {refundNote ? <p className="mt-1 text-[11px] font-medium text-slate-500">{refundNote}</p> : null}
             </div>
           </div>
         </div>

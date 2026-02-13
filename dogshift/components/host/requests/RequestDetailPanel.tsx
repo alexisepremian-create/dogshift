@@ -122,6 +122,13 @@ export function RequestDetailPanel({
   const isDone = effectiveStatus === "CANCELLED" || effectiveStatus === "REFUNDED" || effectiveStatus === "REFUND_FAILED";
   const hasActions = isToAccept || isPendingPayment || isDone;
 
+  const refundNote =
+    effectiveStatus === "REFUNDED"
+      ? "Remboursée au propriétaire"
+      : effectiveStatus === "REFUND_FAILED"
+        ? "Remboursement au propriétaire: échoué"
+        : null;
+
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
       <div className="flex items-start justify-between gap-4">
@@ -133,6 +140,7 @@ export function RequestDetailPanel({
               {formatChfCents(request.amount)}
             </span>
           </div>
+          {refundNote ? <p className="mt-2 text-xs font-medium text-slate-500">{refundNote}</p> : null}
         </div>
 
         {onCloseMobile ? (
