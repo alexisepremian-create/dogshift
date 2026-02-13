@@ -4,6 +4,7 @@ import { getToken } from "next-auth/jwt";
 
 import { prisma } from "@/lib/prisma";
 import { setBookingStatus } from "@/lib/bookings/setBookingStatus";
+import { stripe } from "@/lib/stripe";
 
 export const runtime = "nodejs";
 
@@ -51,6 +52,9 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
         status: true,
         startDate: true,
         endDate: true,
+        stripePaymentIntentId: true,
+        stripeRefundId: true,
+        refundedAt: true,
       },
     });
 
@@ -63,6 +67,10 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     }
 
     const status = String(booking.status ?? "");
+
+    if (status === "CONFIRMED") {
+      return NextResponse.json({ ok: false, error: "CANNOT_CANCEL_CONFIRMED" }, { status: 409 });
+    }
 
     if (status === "CANCELLED") {
       return NextResponse.json({ ok: false, error: "ALREADY_CANCELED" }, { status: 409 });
@@ -84,26 +92,100 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       }
     }
 
-    const updated = await (prisma as any).booking.update({
-      where: { id: bookingId },
-      data: {
-        canceledAt: new Date(),
-      },
-      select: {
-        id: true,
-        startDate: true,
-        endDate: true,
-        updatedAt: true,
-        canceledAt: true,
-      },
-    });
+    const canceledAt = new Date();
 
-    const res = await setBookingStatus(bookingId, "CANCELLED" as any, { req });
-    if (!res.ok) return NextResponse.json({ ok: false, error: res.error }, { status: 500 });
+    if (status === "DRAFT" || status === "PENDING_PAYMENT" || status === "PAYMENT_FAILED") {
+      const updated = await (prisma as any).booking.update({
+        where: { id: bookingId },
+        data: {
+          canceledAt,
+        },
+        select: {
+          id: true,
+          startDate: true,
+          endDate: true,
+          updatedAt: true,
+          canceledAt: true,
+        },
+      });
 
-    // TODO: handle Stripe refund (not in MVP)
+      const res = await setBookingStatus(bookingId, "CANCELLED" as any, { req });
+      if (!res.ok) return NextResponse.json({ ok: false, error: res.error }, { status: 500 });
 
-    return NextResponse.json({ ok: true, booking: { ...updated, status: "CANCELLED" } }, { status: 200 });
+      return NextResponse.json({ ok: true, booking: { ...updated, status: "CANCELLED" } }, { status: 200 });
+    }
+
+    if (status === "PAID" || status === "PENDING_ACCEPTANCE") {
+      const paymentIntentId =
+        typeof booking.stripePaymentIntentId === "string" && booking.stripePaymentIntentId.trim()
+          ? booking.stripePaymentIntentId.trim()
+          : "";
+
+      if (!paymentIntentId) {
+        return NextResponse.json({ ok: false, error: "MISSING_PAYMENT_INTENT" }, { status: 409 });
+      }
+
+      try {
+        const refund = await stripe.refunds.create(
+          {
+            payment_intent: paymentIntentId,
+            reason: "requested_by_customer",
+          },
+          {
+            idempotencyKey: `refund:owner_cancel:${bookingId}:${paymentIntentId}`,
+          }
+        );
+
+        const updated = await (prisma as any).booking.update({
+          where: { id: bookingId },
+          data: {
+            canceledAt,
+            stripeRefundId: refund.id,
+            refundedAt: new Date(),
+          },
+          select: {
+            id: true,
+            startDate: true,
+            endDate: true,
+            updatedAt: true,
+            canceledAt: true,
+            stripeRefundId: true,
+            refundedAt: true,
+          },
+        });
+
+        const res = await setBookingStatus(bookingId, "REFUNDED" as any, { req });
+        if (!res.ok) return NextResponse.json({ ok: false, error: res.error }, { status: 500 });
+
+        return NextResponse.json({ ok: true, booking: { ...updated, status: "REFUNDED" } }, { status: 200 });
+      } catch (err) {
+        console.error("[api][account][bookings][id][cancel][PATCH] refund failed", { bookingId, err });
+
+        const updated = await (prisma as any).booking.update({
+          where: { id: bookingId },
+          data: {
+            canceledAt,
+          },
+          select: {
+            id: true,
+            startDate: true,
+            endDate: true,
+            updatedAt: true,
+            canceledAt: true,
+          },
+        });
+
+        const res = await setBookingStatus(bookingId, "REFUND_FAILED" as any, { req });
+        if (!res.ok) return NextResponse.json({ ok: false, error: res.error }, { status: 500 });
+
+        return NextResponse.json(
+          { ok: false, error: "REFUND_FAILED", booking: { ...updated, status: "REFUND_FAILED" } },
+          { status: 502 }
+        );
+      }
+    }
+
+    return NextResponse.json({ ok: false, error: "INVALID_STATUS" }, { status: 409 });
   } catch (err) {
     console.error("[api][account][bookings][id][cancel][PATCH] error", err);
     return NextResponse.json({ ok: false, error: "INTERNAL_ERROR" }, { status: 500 });

@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
 import { CalendarDays, Clock3 } from "lucide-react";
 
@@ -109,6 +109,7 @@ function normalizeStatus(status: string, endDateIso: string | null) {
 function canCancelBooking(booking: BookingDetail, normalizedStatus: string) {
   if (normalizedStatus === "CANCELED" || normalizedStatus === "COMPLETED") return false;
   if (String(booking.status ?? "") === "CANCELLED") return false;
+  if (String(booking.status ?? "") === "CONFIRMED") return false;
 
   const startIso = booking.startDate;
   if (!startIso) return true;
@@ -153,6 +154,7 @@ function StatusPill({ status }: { status: string }) {
 
 export default function AccountBookingDetailPage() {
   const params = useParams<{ id: string }>();
+  const router = useRouter();
   const { isLoaded, isSignedIn } = useUser();
 
   const bookingId = typeof params?.id === "string" ? params.id : "";
@@ -296,10 +298,14 @@ export default function AccountBookingDetailPage() {
     setCancelError(null);
     try {
       const res = await fetch(`/api/account/bookings/${encodeURIComponent(bookingId)}/cancel`, { method: "PATCH" });
-      const payload = (await res.json()) as { ok?: boolean; error?: string };
+      const payload = (await res.json()) as { ok?: boolean; error?: string; booking?: { status?: string } };
       if (!res.ok || !payload.ok) {
         if (payload.error === "TOO_LATE") {
           setCancelError("Impossible d’annuler une réservation déjà imminente (moins de 24h avant le début). ");
+          return;
+        }
+        if (payload.error === "CANNOT_CANCEL_CONFIRMED") {
+          setCancelError("Pour annuler une réservation confirmée, contacte le sitter ou le support.");
           return;
         }
         if (payload.error === "ALREADY_COMPLETED") {
@@ -314,13 +320,24 @@ export default function AccountBookingDetailPage() {
           setCancelError("Accès refusé.");
           return;
         }
+        if (payload.error === "MISSING_PAYMENT_INTENT") {
+          setCancelError("Impossible de rembourser cette réservation (paiement introuvable). Contacte le support.");
+          return;
+        }
+        if (payload.error === "REFUND_FAILED") {
+          setCancelError("La réservation a été annulée, mais le remboursement a échoué. Contacte le support.");
+          return;
+        }
         setCancelError("Impossible d’annuler la réservation. Réessaie.");
         return;
       }
 
       await refreshBooking();
+      router.refresh();
       setCancelOpen(false);
-      setToast("Réservation annulée");
+      const nextStatus = String(payload.booking?.status ?? "");
+      if (nextStatus === "REFUNDED") setToast("Réservation annulée et remboursée");
+      else setToast("Réservation annulée");
     } catch {
       setCancelError("Impossible d’annuler la réservation. Réessaie.");
     } finally {
@@ -408,18 +425,19 @@ export default function AccountBookingDetailPage() {
 
                 <div className="flex items-center gap-3">
                   <StatusPill status={computed.normalizedStatus} />
-                  {computed.cancellable ? (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setCancelError(null);
-                        setCancelOpen(true);
-                      }}
-                      className="inline-flex items-center justify-center rounded-2xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50"
-                    >
-                      Annuler
-                    </button>
-                  ) : null}
+                  <button
+                    type="button"
+                    disabled={!computed.cancellable}
+                    title={!computed.cancellable ? "Pour annuler une réservation confirmée, contacte le sitter/support." : undefined}
+                    onClick={() => {
+                      if (!computed.cancellable) return;
+                      setCancelError(null);
+                      setCancelOpen(true);
+                    }}
+                    className="inline-flex items-center justify-center rounded-2xl border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-900 shadow-sm transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    Annuler la réservation
+                  </button>
                 </div>
               </div>
 
