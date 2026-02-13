@@ -7,7 +7,7 @@ export type SendEmailInput = {
 
 function baseFromEnv() {
   const fromEnv = (process.env.EMAIL_FROM || "").trim();
-  return fromEnv || "DogShift no-reply@dogshift.ch";
+  return fromEnv || "DogShift <no-reply@dogshift.ch>";
 }
 
 async function sendWithResend(input: SendEmailInput) {

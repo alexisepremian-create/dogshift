@@ -5,6 +5,7 @@ import { auth, currentUser } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
 import { CURRENT_TERMS_VERSION } from "@/lib/terms";
 import { stripe } from "@/lib/stripe";
+import { setBookingStatus } from "@/lib/bookings/setBookingStatus";
 
 type PrismaBookingDelegate = {
   findUnique: (args: unknown) => Promise<unknown>;
@@ -98,17 +99,19 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     if (paymentIntentId && alreadyRefunded) {
       const updatedRaw = await prismaAny.booking.update({
         where: { id: bookingId },
-        data: { status: "REFUNDED", canceledAt: new Date() },
-        select: { id: true, status: true, canceledAt: true, stripeRefundId: true, refundedAt: true },
+        data: { canceledAt: new Date() },
+        select: { id: true, stripeRefundId: true, refundedAt: true, canceledAt: true },
       });
 
       const updated = (updatedRaw as Record<string, unknown> | null) ?? null;
+
+      await setBookingStatus(bookingId, "REFUNDED" as any, { req });
 
       return NextResponse.json(
         {
           ok: true,
           id: String(updated?.id ?? ""),
-          status: String(updated?.status ?? ""),
+          status: "REFUNDED",
           canceledAt:
             updated?.canceledAt instanceof Date
               ? updated.canceledAt.toISOString()
@@ -142,21 +145,22 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
         const updatedRaw = await prismaAny.booking.update({
           where: { id: bookingId },
           data: {
-            status: "REFUNDED",
             canceledAt: new Date(),
             stripeRefundId: refund.id,
             refundedAt: new Date(),
           },
-          select: { id: true, status: true, canceledAt: true, stripeRefundId: true, refundedAt: true },
+          select: { id: true, canceledAt: true, stripeRefundId: true, refundedAt: true },
         });
 
         const updated = (updatedRaw as Record<string, unknown> | null) ?? null;
+
+        await setBookingStatus(bookingId, "REFUNDED" as any, { req });
 
         return NextResponse.json(
           {
             ok: true,
             id: String(updated?.id ?? ""),
-            status: String(updated?.status ?? ""),
+            status: "REFUNDED",
             canceledAt:
               updated?.canceledAt instanceof Date
                 ? updated.canceledAt.toISOString()
@@ -178,12 +182,14 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
         try {
           await prismaAny.booking.update({
             where: { id: bookingId },
-            data: { status: "REFUND_FAILED", canceledAt: new Date() },
+            data: { canceledAt: new Date() },
             select: { id: true },
           });
         } catch {
           // ignore
         }
+
+        await setBookingStatus(bookingId, "REFUND_FAILED" as any, { req });
         return NextResponse.json(
           { ok: false, error: "REFUND_FAILED", message: "La réservation a été refusée, mais le remboursement a échoué. Contacte le support." },
           { status: 502 }
@@ -193,17 +199,19 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
 
     const updatedRaw = await prismaAny.booking.update({
       where: { id: bookingId },
-      data: { status: "CANCELLED", canceledAt: new Date() },
-      select: { id: true, status: true, canceledAt: true },
+      data: { canceledAt: new Date() },
+      select: { id: true, canceledAt: true },
     });
 
     const updated = (updatedRaw as Record<string, unknown> | null) ?? null;
+
+    await setBookingStatus(bookingId, "CANCELLED" as any, { req });
 
     return NextResponse.json(
       {
         ok: true,
         id: String(updated?.id ?? ""),
-        status: String(updated?.status ?? ""),
+        status: "CANCELLED",
         canceledAt:
           updated?.canceledAt instanceof Date
             ? updated.canceledAt.toISOString()

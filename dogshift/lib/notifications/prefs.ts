@@ -5,7 +5,10 @@ export type NotificationKey =
   | "newBookingRequest"
   | "bookingConfirmed"
   | "paymentReceived"
-  | "bookingReminder";
+  | "bookingReminder"
+  | "bookingCancelled"
+  | "bookingRefunded"
+  | "bookingRefundFailed";
 
 export type NotificationPrefs = Record<NotificationKey, boolean>;
 
@@ -16,6 +19,9 @@ function defaultNotificationPrefs(): NotificationPrefs {
     bookingConfirmed: true,
     paymentReceived: true,
     bookingReminder: true,
+    bookingCancelled: true,
+    bookingRefunded: true,
+    bookingRefundFailed: true,
   };
 }
 
@@ -42,6 +48,12 @@ export function readNotificationPrefsFromHostProfileJson(hostProfileJson: string
       typeof notifications?.paymentReceived === "boolean" ? notifications.paymentReceived : defaults.paymentReceived,
     bookingReminder:
       typeof notifications?.bookingReminder === "boolean" ? notifications.bookingReminder : defaults.bookingReminder,
+    bookingCancelled:
+      typeof notifications?.bookingCancelled === "boolean" ? notifications.bookingCancelled : defaults.bookingCancelled,
+    bookingRefunded:
+      typeof notifications?.bookingRefunded === "boolean" ? notifications.bookingRefunded : defaults.bookingRefunded,
+    bookingRefundFailed:
+      typeof notifications?.bookingRefundFailed === "boolean" ? notifications.bookingRefundFailed : defaults.bookingRefundFailed,
   };
 }
 

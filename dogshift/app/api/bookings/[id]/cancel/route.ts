@@ -3,6 +3,7 @@ import type { NextRequest } from "next/server";
 
 import { prisma } from "@/lib/prisma";
 import { resolveDbUserId } from "@/lib/auth/resolveDbUserId";
+import { setBookingStatus } from "@/lib/bookings/setBookingStatus";
 
 export const runtime = "nodejs";
 
@@ -44,11 +45,16 @@ export async function POST(
       return NextResponse.json({ ok: false, error: "CANNOT_CANCEL_PAID" }, { status: 409 });
     }
 
-    const updated = await db.booking.update({
+    await db.booking.update({
       where: { id: bookingId },
-      data: { status: "CANCELLED" },
-      select: { id: true, status: true },
+      data: { canceledAt: new Date() },
+      select: { id: true },
     });
+
+    const res = await setBookingStatus(bookingId, "CANCELLED" as any, { req });
+    if (!res.ok) return NextResponse.json({ ok: false, error: res.error }, { status: 500 });
+
+    const updated = { id: bookingId, status: "CANCELLED" };
 
     return NextResponse.json({ ok: true, booking: updated }, { status: 200 });
   } catch (err) {

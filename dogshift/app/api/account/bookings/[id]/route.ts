@@ -4,6 +4,7 @@ import type { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { resolveDbUserId } from "@/lib/auth/resolveDbUserId";
 import { stripe } from "@/lib/stripe";
+import { setBookingStatus } from "@/lib/bookings/setBookingStatus";
 
 export const runtime = "nodejs";
 
@@ -34,7 +35,10 @@ type BookingDetailResponse = {
   };
 };
 
-async function reconcileBookingPaymentIfNeeded(booking: { id: string; status: string; stripePaymentIntentId: string | null }) {
+async function reconcileBookingPaymentIfNeeded(
+  booking: { id: string; status: string; stripePaymentIntentId: string | null },
+  req: NextRequest
+) {
   const status = String(booking.status ?? "");
   const paymentIntentId = typeof booking.stripePaymentIntentId === "string" ? booking.stripePaymentIntentId : "";
 
@@ -58,24 +62,23 @@ async function reconcileBookingPaymentIfNeeded(booking: { id: string; status: st
       return null;
     }
 
-    const res = await (prisma as any).booking.updateMany({
-      where: {
-        id: booking.id,
-        status: "PENDING_PAYMENT",
-      },
+    await (prisma as any).booking.update({
+      where: { id: booking.id },
       data: {
-        status: "PAID",
         stripePaymentIntentId: paymentIntentId,
       },
+      select: { id: true },
     });
+
+    const res = await setBookingStatus(booking.id, "PAID" as any, { req });
 
     console.log("[api][account][bookings][id][GET] reconcile updated", {
       bookingId: booking.id,
       paymentIntentId,
-      count: res?.count ?? null,
+      changed: res.ok ? res.changed : null,
     });
 
-    if (Number(res?.count ?? 0) > 0) {
+    if (res.ok && res.changed) {
       return "PAID";
     }
   } catch (err) {
@@ -137,11 +140,14 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
       return NextResponse.json({ ok: false, error: "FORBIDDEN" }, { status: 403 });
     }
 
-    const reconciledStatus = await reconcileBookingPaymentIfNeeded({
-      id: String(booking.id),
-      status: String(booking.status ?? ""),
-      stripePaymentIntentId: typeof booking.stripePaymentIntentId === "string" ? booking.stripePaymentIntentId : null,
-    });
+    const reconciledStatus = await reconcileBookingPaymentIfNeeded(
+      {
+        id: String(booking.id),
+        status: String(booking.status ?? ""),
+        stripePaymentIntentId: typeof booking.stripePaymentIntentId === "string" ? booking.stripePaymentIntentId : null,
+      },
+      req
+    );
 
     const sitterKey = typeof booking?.sitterId === "string" ? booking.sitterId.trim() : "";
     const sitterUser = await (prisma as any).user.findFirst({

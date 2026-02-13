@@ -4,7 +4,8 @@ import { auth, currentUser } from "@clerk/nextjs/server";
 
 import { prisma } from "@/lib/prisma";
 import { createNotification } from "@/lib/notifications/inApp";
-import { resolveBookingParticipants, sendNotificationEmail } from "@/lib/notifications/sendNotificationEmail";
+import { resolveBookingParticipants } from "@/lib/notifications/sendNotificationEmail";
+import { setBookingStatus } from "@/lib/bookings/setBookingStatus";
 import { CURRENT_TERMS_VERSION } from "@/lib/terms";
 
 type PrismaBookingDelegate = {
@@ -83,14 +84,6 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       return NextResponse.json({ ok: false, error: "INVALID_STATUS" }, { status: 409 });
     }
 
-    const updatedRaw = await prismaAny.booking.update({
-      where: { id: bookingId },
-      data: { status: "CONFIRMED" },
-      select: { id: true, status: true },
-    });
-
-    const updated = (updatedRaw as Record<string, unknown> | null) ?? null;
-
     try {
       const participants = await resolveBookingParticipants(bookingId);
       if (participants?.owner?.id) {
@@ -108,13 +101,6 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
         } catch (err) {
           console.error("[api][host][requests][accept][POST] in-app notification failed (owner)", err);
         }
-
-        await sendNotificationEmail({
-          recipientUserId: participants.owner.id,
-          key: "bookingConfirmed",
-          entityId: bookingId,
-          payload: { kind: "bookingConfirmed", bookingId },
-        });
       }
       if (participants?.sitter?.id) {
         try {
@@ -131,19 +117,17 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
         } catch (err) {
           console.error("[api][host][requests][accept][POST] in-app notification failed (sitter)", err);
         }
-
-        await sendNotificationEmail({
-          recipientUserId: participants.sitter.id,
-          key: "bookingConfirmed",
-          entityId: bookingId,
-          payload: { kind: "bookingConfirmed", bookingId },
-        });
       }
     } catch (err) {
       console.error("[api][host][requests][accept][POST] notification failed", err);
     }
 
-    return NextResponse.json({ ok: true, id: String(updated?.id ?? ""), status: String(updated?.status ?? "") }, { status: 200 });
+    const res = await setBookingStatus(bookingId, "CONFIRMED" as any, { req });
+    if (!res.ok) {
+      return NextResponse.json({ ok: false, error: res.error }, { status: 500 });
+    }
+
+    return NextResponse.json({ ok: true, id: bookingId, status: "CONFIRMED" }, { status: 200 });
   } catch (err) {
     if (isMigrationMissingError(err)) {
       return NextResponse.json(

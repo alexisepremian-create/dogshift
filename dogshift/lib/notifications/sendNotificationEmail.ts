@@ -14,6 +14,12 @@ function nowIso() {
 }
 
 function baseUrlFromRequest(req?: NextRequest) {
+  const appUrl = (process.env.APP_URL || "").trim();
+  if (appUrl) return appUrl.replace(/\/$/, "");
+
+  const publicAppUrl = (process.env.NEXT_PUBLIC_APP_URL || "").trim();
+  if (publicAppUrl) return publicAppUrl.replace(/\/$/, "");
+
   const env = (process.env.NEXTAUTH_URL || "").trim();
   if (env) return env.replace(/\/$/, "");
   if (!req) return "";
@@ -48,7 +54,10 @@ export type NotificationPayload =
   | { kind: "bookingRequest"; bookingId: string }
   | { kind: "bookingConfirmed"; bookingId: string }
   | { kind: "paymentReceived"; bookingId: string }
-  | { kind: "bookingReminder"; bookingId: string; startsAtIso: string };
+  | { kind: "bookingReminder"; bookingId: string; startsAtIso: string }
+  | { kind: "bookingCancelled"; bookingId: string; dashboard: "account" | "host" }
+  | { kind: "bookingRefunded"; bookingId: string; dashboard: "account" | "host" }
+  | { kind: "bookingRefundFailed"; bookingId: string; dashboard: "account" | "host" };
 
 export async function sendNotificationEmail(params: {
   req?: NextRequest;
@@ -81,10 +90,22 @@ export async function sendNotificationEmail(params: {
         return "Paiement reçu – DogShift";
       case "bookingReminder":
         return "Rappel de réservation – DogShift";
+      case "bookingCancelled":
+        return "Réservation annulée – DogShift";
+      case "bookingRefunded":
+        return "Remboursement effectué – DogShift";
+      case "bookingRefundFailed":
+        return "Remboursement impossible – DogShift";
       default:
         return "Notification – DogShift";
     }
   })();
+
+  const bookingUrl = (bookingId: string, dashboard: "account" | "host") => {
+    if (!baseUrl) return "";
+    if (dashboard === "host") return `${baseUrl}/host/requests?id=${encodeURIComponent(bookingId)}`;
+    return `${baseUrl}/account/bookings?id=${encodeURIComponent(bookingId)}`;
+  };
 
   const text = (() => {
     switch (payload.kind) {
@@ -99,7 +120,7 @@ export async function sendNotificationEmail(params: {
         );
       }
       case "bookingRequest": {
-        const url = baseUrl ? `${baseUrl}/host/requests` : "";
+        const url = bookingUrl(payload.bookingId, "host");
         return (
           `Bonjour,\n\n` +
           `Tu as reçu une nouvelle demande de réservation.\n\n` +
@@ -108,7 +129,7 @@ export async function sendNotificationEmail(params: {
         );
       }
       case "bookingConfirmed": {
-        const url = baseUrl ? `${baseUrl}/account/bookings` : "";
+        const url = bookingUrl(payload.bookingId, "account");
         return (
           `Bonjour,\n\n` +
           `Ta réservation a été confirmée.\n\n` +
@@ -117,7 +138,7 @@ export async function sendNotificationEmail(params: {
         );
       }
       case "paymentReceived": {
-        const url = baseUrl ? `${baseUrl}/account/bookings` : "";
+        const url = bookingUrl(payload.bookingId, "account");
         return (
           `Bonjour,\n\n` +
           `Le paiement a bien été reçu.\n\n` +
@@ -126,10 +147,37 @@ export async function sendNotificationEmail(params: {
         );
       }
       case "bookingReminder": {
-        const url = baseUrl ? `${baseUrl}/account/bookings` : "";
+        const url = bookingUrl(payload.bookingId, "account");
         return (
           `Bonjour,\n\n` +
           `Petit rappel : une réservation approche (${payload.startsAtIso}).\n\n` +
+          (url ? `Voir la réservation : ${url}\n\n` : "") +
+          `— DogShift\n`
+        );
+      }
+      case "bookingCancelled": {
+        const url = bookingUrl(payload.bookingId, payload.dashboard);
+        return (
+          `Bonjour,\n\n` +
+          `Une réservation a été annulée.\n\n` +
+          (url ? `Voir la réservation : ${url}\n\n` : "") +
+          `— DogShift\n`
+        );
+      }
+      case "bookingRefunded": {
+        const url = bookingUrl(payload.bookingId, payload.dashboard);
+        return (
+          `Bonjour,\n\n` +
+          `Un remboursement a été effectué pour une réservation.\n\n` +
+          (url ? `Voir la réservation : ${url}\n\n` : "") +
+          `— DogShift\n`
+        );
+      }
+      case "bookingRefundFailed": {
+        const url = bookingUrl(payload.bookingId, payload.dashboard);
+        return (
+          `Bonjour,\n\n` +
+          `Le remboursement d’une réservation a échoué.\n\n` +
           (url ? `Voir la réservation : ${url}\n\n` : "") +
           `— DogShift\n`
         );

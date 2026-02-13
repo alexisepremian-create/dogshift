@@ -6,7 +6,8 @@ import Stripe from "stripe";
 import { stripe } from "@/lib/stripe";
 import { prisma } from "@/lib/prisma";
 import { createNotification } from "@/lib/notifications/inApp";
-import { resolveBookingParticipants, sendNotificationEmail } from "@/lib/notifications/sendNotificationEmail";
+import { resolveBookingParticipants } from "@/lib/notifications/sendNotificationEmail";
+import { setBookingStatus } from "@/lib/bookings/setBookingStatus";
 
 export const runtime = "nodejs";
 
@@ -59,27 +60,26 @@ async function markBookingPaid({
   });
 
   const data: Record<string, unknown> = {
-    status: "PAID",
   };
 
   if (paymentIntentId) data.stripePaymentIntentId = paymentIntentId;
   if (sessionId) data.stripeSessionId = sessionId;
   if (transferId) data.stripeTransferId = transferId;
 
-  const res = await (prisma as any).booking.updateMany({
-    where: {
-      id: bookingId,
-      status: { notIn: ["CONFIRMED", "CANCELLED", "REFUNDED"] },
-    },
+  await (prisma as any).booking.update({
+    where: { id: bookingId },
     data,
+    select: { id: true },
   });
+
+  const res = await setBookingStatus(bookingId, "PAID" as any, { req });
 
   console.log("[webhook][stripe] reconcile:markPaid:db", {
     bookingId,
-    count: res?.count ?? null,
+    changed: res.ok ? res.changed : null,
   });
 
-  if (Number(res?.count ?? 0) > 0) {
+  if (res.ok && res.changed) {
     await notifyPendingAcceptance(req, bookingId);
   }
 }
@@ -115,13 +115,6 @@ async function notifyPendingAcceptance(req: NextRequest, bookingId: string) {
         console.error("[api][stripe][webhook] in-app notification failed (newBookingRequest)", err);
       }
 
-      await sendNotificationEmail({
-        req,
-        recipientUserId: participants.sitter.id,
-        key: "newBookingRequest",
-        entityId: `${bookingId}:pending_acceptance`,
-        payload: { kind: "bookingRequest", bookingId },
-      });
     }
 
     if (participants.owner?.id) {
@@ -140,13 +133,6 @@ async function notifyPendingAcceptance(req: NextRequest, bookingId: string) {
         console.error("[api][stripe][webhook] in-app notification failed (paymentReceived owner)", err);
       }
 
-      await sendNotificationEmail({
-        req,
-        recipientUserId: participants.owner.id,
-        key: "paymentReceived",
-        entityId: `${bookingId}:payment_received`,
-        payload: { kind: "paymentReceived", bookingId },
-      });
     }
 
     if (participants.sitter?.id) {
@@ -165,13 +151,6 @@ async function notifyPendingAcceptance(req: NextRequest, bookingId: string) {
         console.error("[api][stripe][webhook] in-app notification failed (paymentReceived sitter)", err);
       }
 
-      await sendNotificationEmail({
-        req,
-        recipientUserId: participants.sitter.id,
-        key: "paymentReceived",
-        entityId: `${bookingId}:payment_received`,
-        payload: { kind: "paymentReceived", bookingId },
-      });
     }
   } catch (err) {
     console.error("[api][stripe][webhook] notifyPendingAcceptance failed", { bookingId, err });
@@ -257,24 +236,27 @@ export async function POST(req: NextRequest) {
           livemode: event.livemode,
         });
       } else if (sessionId || paymentIntentId) {
-        const res = await (prisma as any).booking.updateMany({
+        const fallback = await (prisma as any).booking.findFirst({
           where: {
-            ...(sessionId ? { stripeSessionId: sessionId } : {}),
-            ...(paymentIntentId ? { stripePaymentIntentId: paymentIntentId } : {}),
-            status: { notIn: ["CONFIRMED", "CANCELLED", "REFUNDED"] },
+            OR: [
+              ...(sessionId ? [{ stripeSessionId: sessionId }] : []),
+              ...(paymentIntentId ? [{ stripePaymentIntentId: paymentIntentId }] : []),
+            ],
           },
-          data: {
-            status: "PAID",
-            ...(paymentIntentId ? { stripePaymentIntentId: paymentIntentId } : {}),
-            ...(sessionId ? { stripeSessionId: sessionId } : {}),
-          },
+          select: { id: true },
         });
 
-        console.log("[webhook][stripe] checkout.session.completed fallback updateMany", {
-          sessionId: sessionId || null,
-          paymentIntentId: paymentIntentId || null,
-          count: res?.count ?? null,
-        });
+        if (fallback?.id) {
+          await markBookingPaid({
+            req,
+            bookingId: String(fallback.id),
+            paymentIntentId: paymentIntentId || undefined,
+            sessionId: sessionId || undefined,
+            eventId: event.id,
+            eventType: event.type,
+            livemode: event.livemode,
+          });
+        }
       }
 
       return NextResponse.json({ received: true }, { status: 200 });

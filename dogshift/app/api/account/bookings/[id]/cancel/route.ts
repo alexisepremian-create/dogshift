@@ -3,6 +3,7 @@ import type { NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
 
 import { prisma } from "@/lib/prisma";
+import { setBookingStatus } from "@/lib/bookings/setBookingStatus";
 
 export const runtime = "nodejs";
 
@@ -86,22 +87,23 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     const updated = await (prisma as any).booking.update({
       where: { id: bookingId },
       data: {
-        status: "CANCELLED",
         canceledAt: new Date(),
       },
       select: {
         id: true,
-        status: true,
-        canceledAt: true,
         startDate: true,
         endDate: true,
         updatedAt: true,
+        canceledAt: true,
       },
     });
 
+    const res = await setBookingStatus(bookingId, "CANCELLED" as any, { req });
+    if (!res.ok) return NextResponse.json({ ok: false, error: res.error }, { status: 500 });
+
     // TODO: handle Stripe refund (not in MVP)
 
-    return NextResponse.json({ ok: true, booking: updated }, { status: 200 });
+    return NextResponse.json({ ok: true, booking: { ...updated, status: "CANCELLED" } }, { status: 200 });
   } catch (err) {
     console.error("[api][account][bookings][id][cancel][PATCH] error", err);
     return NextResponse.json({ ok: false, error: "INTERNAL_ERROR" }, { status: 500 });
