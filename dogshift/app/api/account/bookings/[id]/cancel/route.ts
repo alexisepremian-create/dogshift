@@ -68,8 +68,13 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 
     const status = String(booking.status ?? "");
 
-    if (status === "CONFIRMED") {
-      return NextResponse.json({ ok: false, error: "CANNOT_CANCEL_CONFIRMED" }, { status: 409 });
+    const startIso = booking.startDate instanceof Date ? booking.startDate.toISOString() : booking.startDate ? new Date(booking.startDate).toISOString() : null;
+    const startTs = startIso ? new Date(startIso).getTime() : NaN;
+    const limit = Number.isFinite(startTs) ? startTs - 24 * 60 * 60 * 1000 : NaN;
+    const isTooLateByStartDate = Number.isFinite(limit) ? Date.now() > limit : false;
+
+    if (status === "CONFIRMED" && isTooLateByStartDate) {
+      return NextResponse.json({ ok: false, error: "CANNOT_CANCEL_TOO_LATE" }, { status: 409 });
     }
 
     if (status === "CANCELLED") {
@@ -81,15 +86,8 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       return NextResponse.json({ ok: false, error: "ALREADY_COMPLETED" }, { status: 409 });
     }
 
-    const startIso = booking.startDate instanceof Date ? booking.startDate.toISOString() : booking.startDate ? new Date(booking.startDate).toISOString() : null;
-    if (startIso) {
-      const startTs = new Date(startIso).getTime();
-      if (Number.isFinite(startTs)) {
-        const limit = startTs - 24 * 60 * 60 * 1000;
-        if (Date.now() > limit) {
-          return NextResponse.json({ ok: false, error: "TOO_LATE" }, { status: 409 });
-        }
-      }
+    if (status !== "CONFIRMED" && isTooLateByStartDate) {
+      return NextResponse.json({ ok: false, error: "TOO_LATE" }, { status: 409 });
     }
 
     const canceledAt = new Date();
@@ -115,7 +113,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       return NextResponse.json({ ok: true, booking: { ...updated, status: "CANCELLED" } }, { status: 200 });
     }
 
-    if (status === "PAID" || status === "PENDING_ACCEPTANCE") {
+    if (status === "PAID" || status === "PENDING_ACCEPTANCE" || status === "CONFIRMED") {
       const paymentIntentId =
         typeof booking.stripePaymentIntentId === "string" && booking.stripePaymentIntentId.trim()
           ? booking.stripePaymentIntentId.trim()

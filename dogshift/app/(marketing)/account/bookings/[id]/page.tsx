@@ -109,7 +109,6 @@ function normalizeStatus(status: string, endDateIso: string | null) {
 function canCancelBooking(booking: BookingDetail, normalizedStatus: string) {
   if (normalizedStatus === "CANCELED" || normalizedStatus === "COMPLETED") return false;
   if (String(booking.status ?? "") === "CANCELLED") return false;
-  if (String(booking.status ?? "") === "CONFIRMED") return false;
 
   const startIso = booking.startDate;
   if (!startIso) return true;
@@ -118,6 +117,23 @@ function canCancelBooking(booking: BookingDetail, normalizedStatus: string) {
 
   const limit = startTs - 24 * 60 * 60 * 1000;
   return Date.now() <= limit;
+}
+
+function cancelTooltip(booking: BookingDetail, cancellable: boolean) {
+  if (cancellable) return undefined;
+
+  const startIso = booking.startDate;
+  if (startIso) {
+    const startTs = new Date(startIso).getTime();
+    if (Number.isFinite(startTs)) {
+      const limit = startTs - 24 * 60 * 60 * 1000;
+      if (Date.now() > limit) {
+        return "Annulation possible jusqu’à 24h avant le début de la prestation";
+      }
+    }
+  }
+
+  return "Pour annuler une réservation confirmée, contacte le sitter/support.";
 }
 
 function statusLabel(status: string) {
@@ -301,11 +317,11 @@ export default function AccountBookingDetailPage() {
       const payload = (await res.json()) as { ok?: boolean; error?: string; booking?: { status?: string } };
       if (!res.ok || !payload.ok) {
         if (payload.error === "TOO_LATE") {
-          setCancelError("Impossible d’annuler une réservation déjà imminente (moins de 24h avant le début). ");
+          setCancelError("Annulation possible jusqu’à 24h avant le début de la prestation.");
           return;
         }
-        if (payload.error === "CANNOT_CANCEL_CONFIRMED") {
-          setCancelError("Pour annuler une réservation confirmée, contacte le sitter ou le support.");
+        if (payload.error === "CANNOT_CANCEL_TOO_LATE") {
+          setCancelError("Annulation possible jusqu’à 24h avant le début de la prestation.");
           return;
         }
         if (payload.error === "ALREADY_COMPLETED") {
@@ -428,7 +444,7 @@ export default function AccountBookingDetailPage() {
                   <button
                     type="button"
                     disabled={!computed.cancellable}
-                    title={!computed.cancellable ? "Pour annuler une réservation confirmée, contacte le sitter/support." : undefined}
+                    title={cancelTooltip(booking, computed.cancellable)}
                     onClick={() => {
                       if (!computed.cancellable) return;
                       setCancelError(null);
