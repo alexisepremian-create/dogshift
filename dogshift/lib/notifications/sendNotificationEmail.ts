@@ -196,7 +196,7 @@ export async function sendNotificationEmail(params: {
       case "bookingCancelled":
         return "Réservation annulée – DogShift";
       case "bookingRefunded":
-        return "Remboursement effectué – DogShift";
+        return payload.dashboard === "host" ? "Réservation annulée – DogShift" : "Remboursement effectué – DogShift";
       case "bookingRefundFailed":
         return "Remboursement impossible – DogShift";
       default:
@@ -270,6 +270,15 @@ export async function sendNotificationEmail(params: {
       }
       case "bookingRefunded": {
         const url = bookingUrl(payload.bookingId, payload.dashboard);
+        if (payload.dashboard === "host") {
+          return (
+            `Bonjour,\n\n` +
+            `Une réservation a été annulée.\n` +
+            `Le remboursement du propriétaire a été traité conformément aux conditions applicables.\n\n` +
+            (url ? `Voir les détails de la réservation : ${url}\n\n` : "") +
+            `— DogShift\n`
+          );
+        }
         return (
           `Bonjour,\n\n` +
           `Un remboursement a été effectué pour une réservation.\n\n` +
@@ -387,8 +396,10 @@ export async function sendNotificationEmail(params: {
         const rows = await resolveBookingSummaryRows(payload.bookingId);
         return renderEmailLayout({
           logoUrl,
-          title: "Remboursement effectué",
-          subtitle: "Le remboursement a été effectué.",
+          title: payload.dashboard === "host" ? "Réservation annulée" : "Remboursement effectué",
+          subtitle: payload.dashboard === "host"
+            ? "Une réservation a été annulée. Le remboursement du propriétaire a été traité conformément aux conditions applicables."
+            : "Le remboursement a été effectué.",
           summaryRows: rows,
           ctaLabel: url ? "Voir la réservation" : undefined,
           ctaUrl: url || undefined,
