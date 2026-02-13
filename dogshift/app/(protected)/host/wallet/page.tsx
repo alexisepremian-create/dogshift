@@ -247,7 +247,10 @@ export default function HostWalletPage() {
               if (e.target === e.currentTarget) setStripeInfoOpen(false);
             }}
           >
-            <div className="fixed inset-x-4 bottom-24 top-8 mx-auto flex max-w-[520px] flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-[0_30px_100px_-60px_rgba(2,6,23,0.45)] sm:static sm:inset-auto sm:bottom-auto sm:top-auto sm:max-h-none sm:w-full sm:max-w-xl sm:rounded-3xl">
+            <div
+              className="fixed inset-x-4 top-8 mx-auto flex max-w-[520px] flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-[0_30px_100px_-60px_rgba(2,6,23,0.45)] sm:static sm:inset-auto sm:bottom-auto sm:top-auto sm:max-h-none sm:w-full sm:max-w-xl sm:rounded-3xl"
+              style={{ bottom: "calc(6rem + env(safe-area-inset-bottom))" }}
+            >
               <div className="sticky top-0 flex items-start justify-between gap-4 border-b border-slate-100 bg-white px-4 pb-4 pt-5 sm:p-6">
                 <div className="min-w-0">
                   <p className="text-base font-semibold text-slate-900">Comment fonctionnent les paiements sur DogShift</p>
@@ -266,7 +269,7 @@ export default function HostWalletPage() {
 
               <div
                 className="grid flex-1 gap-5 overflow-y-auto p-4 pr-3 pb-24 text-sm text-slate-700 sm:max-h-[75vh] sm:p-6 sm:pr-6 sm:pb-6"
-                style={{ WebkitOverflowScrolling: "touch" }}
+                style={{ WebkitOverflowScrolling: "touch", paddingBottom: "calc(6rem + env(safe-area-inset-bottom))" }}
               >
                 <section className="grid gap-2">
                   <p className="font-semibold text-slate-900">1. Pourquoi connecter Stripe ?</p>
