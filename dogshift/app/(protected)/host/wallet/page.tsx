@@ -302,6 +302,13 @@ export default function HostWalletPage() {
                   </ul>
                   <p>Directement dans votre tableau de bord Stripe via le bouton “Ouvrir Stripe”.</p>
                 </section>
+
+                <section className="grid gap-2">
+                  <p className="font-semibold text-slate-900">Pendant la phase pilote : 0% de commission DogShift</p>
+                  <p>
+                    DogShift ne prélève aucune commission pendant la phase pilote. Vous conservez 100% du montant des réservations (hors frais Stripe).
+                  </p>
+                </section>
               </div>
             </div>
           </div>
@@ -351,6 +358,14 @@ export default function HostWalletPage() {
             </p>
             <p className="mt-2 text-xs font-medium text-slate-500">Disponible + en attente</p>
           </div>
+        </div>
+
+        <div className="flex gap-3 rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)]">
+          <p className="text-sm leading-relaxed text-slate-600">
+            🎉 <span className="font-semibold text-slate-900">Phase pilote : 0% de commission DogShift</span>
+            <br />
+            Vous conservez 100% du montant des réservations (hors frais Stripe).
+          </p>
         </div>
 
         <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)]">

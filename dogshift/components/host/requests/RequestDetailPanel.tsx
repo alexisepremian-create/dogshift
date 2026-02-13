@@ -169,6 +169,7 @@ export function RequestDetailPanel({
           <p className="text-sm font-semibold text-slate-900">Montant</p>
           <div className="mt-3 space-y-2">
             <SummaryRow label="Total" value={formatChfCents(request.amount)} />
+            <SummaryRow label="Commission DogShift" value="CHF 0.00 (phase pilote)" />
           </div>
         </section>
 
