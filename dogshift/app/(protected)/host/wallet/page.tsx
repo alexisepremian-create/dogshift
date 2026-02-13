@@ -238,7 +238,7 @@ export default function HostWalletPage() {
               if (e.target === e.currentTarget) setStripeInfoOpen(false);
             }}
           >
-            <div className="w-full max-w-xl rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_30px_100px_-60px_rgba(2,6,23,0.45)]">
+            <div className="flex w-full max-w-xl flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_30px_100px_-60px_rgba(2,6,23,0.45)] sm:p-6">
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0">
                   <p className="text-base font-semibold text-slate-900">Comment fonctionnent les paiements sur DogShift</p>
@@ -255,7 +255,7 @@ export default function HostWalletPage() {
                 </button>
               </div>
 
-              <div className="mt-5 grid gap-5 text-sm text-slate-700">
+              <div className="mt-5 grid max-h-[70vh] gap-5 overflow-y-auto pr-1 text-sm text-slate-700 sm:max-h-[75vh]">
                 <section className="grid gap-2">
                   <p className="font-semibold text-slate-900">1. Pourquoi connecter Stripe ?</p>
                   <p>
