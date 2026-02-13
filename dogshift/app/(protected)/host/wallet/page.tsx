@@ -122,7 +122,7 @@ export default function HostWalletPage() {
   }
 
   return (
-    <div className="relative grid gap-6 overflow-hidden" data-testid="host-wallet-page">
+    <div className="relative grid gap-6 overflow-x-hidden" data-testid="host-wallet-page">
       <SunCornerGlow variant="sitterDashboard" />
 
       <div className="relative z-10 grid gap-6">
@@ -238,7 +238,7 @@ export default function HostWalletPage() {
               if (e.target === e.currentTarget) setStripeInfoOpen(false);
             }}
           >
-            <div className="flex w-full max-w-xl flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_30px_100px_-60px_rgba(2,6,23,0.45)] sm:p-6">
+            <div className="flex w-[calc(100vw-32px)] max-w-xl flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_30px_100px_-60px_rgba(2,6,23,0.45)] sm:w-full sm:p-6">
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0">
                   <p className="text-base font-semibold text-slate-900">Comment fonctionnent les paiements sur DogShift</p>

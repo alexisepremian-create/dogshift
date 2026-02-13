@@ -166,7 +166,7 @@ export function RequestListItem({
                 {service} • {when}
               </p>
               <div className="mt-2 flex items-center gap-2">
-                <p className="truncate font-mono text-[11px] text-slate-400" title={request.id}>
+                <p className="break-all font-mono text-[11px] text-slate-400" title={request.id}>
                   {request.id}
                 </p>
                 <button

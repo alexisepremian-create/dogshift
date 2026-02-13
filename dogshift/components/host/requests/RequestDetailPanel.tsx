@@ -130,7 +130,7 @@ export function RequestDetailPanel({
         : null;
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
           <p className="truncate text-lg font-semibold tracking-tight text-slate-900">{request.owner.name}</p>
@@ -155,7 +155,7 @@ export function RequestDetailPanel({
       </div>
 
       <div className="mt-5 space-y-3">
-        <section className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+        <section className="rounded-2xl border border-slate-200 bg-slate-50 p-3 sm:p-4">
           <p className="text-sm font-semibold text-slate-900">Résumé</p>
           <div className="mt-3 space-y-2">
             <SummaryRow label="Service" value={content.service} />
@@ -165,18 +165,18 @@ export function RequestDetailPanel({
           </div>
         </section>
 
-        <section className="rounded-2xl border border-slate-200 bg-white p-4">
+        <section className="rounded-2xl border border-slate-200 bg-white p-3 sm:p-4">
           <p className="text-sm font-semibold text-slate-900">Montant</p>
           <div className="mt-3 space-y-2">
             <SummaryRow label="Total" value={formatChfCents(request.amount)} />
           </div>
         </section>
 
-        <section className="rounded-2xl border border-slate-200 bg-white p-4">
+        <section className="rounded-2xl border border-slate-200 bg-white p-3 sm:p-4">
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="text-sm font-semibold text-slate-900">Référence</p>
-              <p className="mt-2 font-mono text-xs text-slate-600">{request.id}</p>
+              <p className="mt-2 break-all font-mono text-xs text-slate-600">{request.id}</p>
             </div>
             <button
               type="button"
@@ -192,13 +192,13 @@ export function RequestDetailPanel({
         </section>
 
         {request.message?.trim() ? (
-          <section className="rounded-2xl border border-slate-200 bg-white p-4">
+          <section className="rounded-2xl border border-slate-200 bg-white p-3 sm:p-4">
             <p className="text-sm font-semibold text-slate-900">Message</p>
             <p className="mt-3 whitespace-pre-line text-sm text-slate-600">{request.message}</p>
           </section>
         ) : null}
 
-        <section className="rounded-2xl border border-slate-200 bg-white p-4">
+        <section className="rounded-2xl border border-slate-200 bg-white p-3 sm:p-4">
           <p className="text-sm font-semibold text-slate-900">Messages</p>
           <p className="mt-2 text-sm text-slate-600">Ouvre la conversation avec ce client.</p>
           <p className="mt-1 text-xs text-slate-500">Dernière activité: —</p>
@@ -239,7 +239,7 @@ export function RequestDetailPanel({
         </section>
 
         {hasActions ? (
-          <section className="rounded-2xl border border-slate-200 bg-white p-4">
+          <section className="rounded-2xl border border-slate-200 bg-white p-3 sm:p-4">
             <p className="text-sm font-semibold text-slate-900">Actions</p>
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
               {isToAccept ? (

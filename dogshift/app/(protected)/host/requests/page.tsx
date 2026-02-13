@@ -57,8 +57,10 @@ export default function HostRequestsPage() {
   }, []);
 
   return (
-    <div className="relative grid gap-6 overflow-hidden" data-testid="host-requests-page">
-      <SunCornerGlow variant="sitterRequests" />
+    <div className="relative grid min-h-screen gap-6 overflow-x-hidden" data-testid="host-requests-page">
+      <div className="hidden sm:block">
+        <SunCornerGlow variant="sitterRequests" />
+      </div>
 
       <div className="relative z-10">
         <RequestsSplitView rows={rows} loading={loading} error={error} onRetry={() => void loadRequests()} />

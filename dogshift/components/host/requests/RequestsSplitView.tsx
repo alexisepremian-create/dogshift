@@ -378,7 +378,7 @@ export function RequestsSplitView({
             </div>
           ) : (
             <div className="mt-6">
-              <div className="max-h-[calc(100vh-220px)] space-y-2 overflow-auto pr-1 pt-3 pl-3">
+              <div className="max-h-[calc(100vh-220px)] space-y-2 overflow-auto px-1 pt-3 sm:pr-1 sm:pl-3">
                 <div role="listbox" aria-label="Liste des demandes" className="space-y-2">
                   {filtered.map((r) => (
                     <DraggableRequestRow
