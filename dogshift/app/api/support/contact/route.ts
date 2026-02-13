@@ -7,29 +7,27 @@ const nodemailer = require("nodemailer") as any;
 
 export const runtime = "nodejs";
 
-const AUTO_REPLY_TEXT = `Nous avons bien reçu votre message
+const AUTO_REPLY_TEXT = `Bonjour,
 
+Nous avons bien reçu votre message.
 Notre équipe vous répondra au plus vite avec une réponse personnalisée.
 
-Bonjour,
-
-Merci pour votre message et pour l’intérêt que vous portez à DogShift.
-
 Ce qui se passe maintenant :
-1. Nous analysons votre message
-2. Nous revenons vers vous par email dès que possible
-3. Si des informations manquent, nous vous recontacterons
+1) Nous analysons votre message
+2) Nous revenons vers vous par email dès que possible
+3) Si des informations manquent, nous vous recontacterons
 
 Pour traiter votre demande plus vite, vous pouvez répondre à cet email en indiquant :
 - Votre ville / région
 - Le sujet (propriétaire / dog-sitter / réservation / autre)
 - Toute information utile (dates, contraintes, etc.)
 
-Découvrir DogShift :
-https://dogshift.ch
+Découvrir DogShift : https://dogshift.ch
 
-DogShift · Suisse
-support@dogshift.ch`;
+— DogShift
+dogshift.ch
+support@dogshift.ch
+`;
 
 const AUTO_REPLY_HTML = `
   
@@ -183,6 +181,26 @@ function maskEmail(email: string) {
   return `${maskedLocal}@${domain}`;
 }
 
+type AutoReplySkipResult =
+  | { skip: true; reason: "EMPTY_SENDER" | "MAILER_DAEMON" | "SENDER_IS_SUPPORT" | "AUTO_SUBMITTED" | "PRECEDENCE_BULK" }
+  | { skip: false; reason: null };
+
+function shouldSkipAutoReply(params: { senderEmail: string; headers: Headers }): AutoReplySkipResult {
+  const sender = (params.senderEmail || "").trim().toLowerCase();
+  if (!sender) return { skip: true, reason: "EMPTY_SENDER" };
+
+  if (sender.includes("mailer-daemon")) return { skip: true, reason: "MAILER_DAEMON" };
+  if (sender === "support@dogshift.ch") return { skip: true, reason: "SENDER_IS_SUPPORT" };
+
+  const autoSubmitted = (params.headers.get("auto-submitted") || "").trim();
+  if (autoSubmitted) return { skip: true, reason: "AUTO_SUBMITTED" };
+
+  const precedence = (params.headers.get("precedence") || "").trim().toLowerCase();
+  if (precedence.includes("bulk")) return { skip: true, reason: "PRECEDENCE_BULK" };
+
+  return { skip: false, reason: null };
+}
+
 async function sendAutoReplyWithResend(input: { to: string }) {
   const apiKey = (process.env.RESEND_API_KEY || "").trim();
   if (!apiKey) return { ok: false as const, skipped: true as const, reason: "RESEND_API_KEY_MISSING" };
@@ -314,6 +332,13 @@ export async function POST(request: Request) {
       if (!emailValid) {
         console.info("[support/contact] auto-reply skipped (invalid email)", { emailMasked: maskEmail(email) });
       } else {
+        const skip = shouldSkipAutoReply({ senderEmail: email, headers: request.headers });
+        if (skip.skip) {
+          console.info("[support/contact] auto-reply skipped (loop guard)", {
+            emailMasked: maskEmail(email),
+            reason: skip.reason,
+          });
+        } else {
         console.info("[support/contact] auto-reply attempting", { emailMasked: maskEmail(email) });
         try {
           const res = await sendAutoReplyWithResend({ to: email });
@@ -327,6 +352,7 @@ export async function POST(request: Request) {
         } catch (err) {
           autoReply = "failed";
           console.error("[support/contact] auto-reply threw", err);
+        }
         }
       }
     }
