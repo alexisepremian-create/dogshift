@@ -5,6 +5,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Calendar, ChevronLeft, ChevronRight } from "lucide-react";
 
+type AvailabilityPayload = { ok?: boolean; dates?: string[]; error?: string };
+
 type PricingUnit = "HOURLY" | "DAILY";
 
 type SitterDto = {
@@ -87,6 +89,35 @@ function parseIsoDateString(value: string) {
   return date;
 }
 
+function formatZurichIsoDate(date: Date) {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/Zurich",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(date);
+}
+
+function todayZurichIsoDate() {
+  return formatZurichIsoDate(new Date());
+}
+
+function addDaysLocal(d: Date, delta: number) {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate() + delta);
+}
+
+function dateRangeIsoInclusive(startIso: string, endIso: string) {
+  const a = parseIsoDateString(startIso);
+  const b = parseIsoDateString(endIso);
+  if (!a || !b) return null;
+  if (b.getTime() < a.getTime()) return null;
+  const out: string[] = [];
+  for (let d = a; d.getTime() <= b.getTime(); d = addDaysLocal(d, 1)) {
+    out.push(toIsoDateString(d));
+  }
+  return out;
+}
+
 function monthTitle(date: Date) {
   return new Intl.DateTimeFormat("fr-CH", { month: "long", year: "numeric" }).format(date);
 }
@@ -118,7 +149,15 @@ function getMonthGrid(month: Date) {
   return cells;
 }
 
-function DogShiftCalendar({ selected, onSelect }: { selected: string; onSelect: (next: string) => void }) {
+function DogShiftCalendar({
+  selected,
+  onSelect,
+  isDisabled,
+}: {
+  selected: string;
+  onSelect: (next: string) => void;
+  isDisabled?: (iso: string) => boolean;
+}) {
   const [month, setMonth] = useState<Date>(() => {
     const parsed = selected ? parseIsoDateString(selected) : null;
     const base = parsed ?? new Date();
@@ -170,14 +209,20 @@ function DogShiftCalendar({ selected, onSelect }: { selected: string; onSelect: 
         {grid.map((cell) => {
           const iso = toIsoDateString(cell.date);
           const isSelected = selectedTs != null && cell.date.getTime() === selectedTs;
+          const disabled = Boolean(isDisabled?.(iso));
           return (
             <button
               key={iso}
               type="button"
-              onClick={() => onSelect(iso)}
+              disabled={disabled}
+              onClick={() => {
+                if (disabled) return;
+                onSelect(iso);
+              }}
               className={
                 "group inline-flex h-9 w-9 items-center justify-center rounded-full text-sm font-semibold transition duration-150 " +
                 (cell.inMonth ? "text-slate-900" : "text-slate-400") +
+                (disabled ? " cursor-not-allowed bg-slate-100 text-slate-400" : "") +
                 (isSelected
                   ? " bg-[var(--dogshift-blue)] text-white shadow-sm"
                   : " hover:bg-[color-mix(in_srgb,var(--dogshift-blue),white_88%)]")
@@ -364,11 +409,13 @@ function DogShiftDatePicker({
   onChange,
   label,
   id,
+  isDisabled,
 }: {
   value: string;
   onChange: (next: string) => void;
   label: string;
   id: string;
+  isDisabled?: (iso: string) => boolean;
 }) {
   const [open, setOpen] = useState(false);
 
@@ -394,6 +441,7 @@ function DogShiftDatePicker({
         <div className="absolute left-0 top-full z-20 mt-3 w-[min(360px,calc(100vw-32px))]">
           <DogShiftCalendar
             selected={value}
+            isDisabled={isDisabled}
             onSelect={(next) => {
               onChange(next);
               setOpen(false);
@@ -417,6 +465,37 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const [availableDates, setAvailableDates] = useState<Set<string>>(() => new Set());
+  const [availabilityLoaded, setAvailabilityLoaded] = useState(false);
+
+  const todayIso = useMemo(() => todayZurichIsoDate(), []);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetch(`/api/sitters/${encodeURIComponent(sitter.sitterId)}/availability`, { method: "GET" });
+        const payload = (await res.json().catch(() => null)) as AvailabilityPayload | null;
+        if (cancelled) return;
+        if (!res.ok || !payload?.ok || !Array.isArray(payload.dates)) {
+          setAvailableDates(new Set());
+          setAvailabilityLoaded(true);
+          return;
+        }
+        const rows = payload.dates.filter((d): d is string => typeof d === "string" && d.trim().length > 0);
+        setAvailableDates(new Set(rows));
+        setAvailabilityLoaded(true);
+      } catch {
+        if (cancelled) return;
+        setAvailableDates(new Set());
+        setAvailabilityLoaded(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [sitter.sitterId]);
 
   const [shouldRenderHourlyDetails, setShouldRenderHourlyDetails] = useState(false);
   const [hourlyDetailsOpen, setHourlyDetailsOpen] = useState(false);
@@ -473,6 +552,15 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
     return Boolean(dateStart && startTime && durationHours && selectedUnitPrice);
   }, [dateEnd, dateStart, durationHours, selectedService, selectedUnitPrice, startTime, unit]);
 
+  const isDateDisabled = useMemo(() => {
+    return (iso: string) => {
+      if (!iso) return true;
+      if (iso < todayIso) return true;
+      if (!availabilityLoaded) return true;
+      return !availableDates.has(iso);
+    };
+  }, [availabilityLoaded, availableDates, todayIso]);
+
   const endTime = useMemo(() => {
     if (!startTime || !durationHours) return null;
     return computeEndTime(startTime, durationHours);
@@ -498,6 +586,24 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
           setError("La date de fin doit être après la date de début.");
           return;
         }
+
+        if (!availabilityLoaded) {
+          setError("Chargement des disponibilités…");
+          return;
+        }
+        const span = dateRangeIsoInclusive(dateStart, dateEnd);
+        if (!span || span.length === 0) {
+          setError("Choisis des dates.");
+          return;
+        }
+        if (span.some((d) => d < todayIso)) {
+          setError("Impossible de choisir une date passée.");
+          return;
+        }
+        if (span.some((d) => !availableDates.has(d))) {
+          setError("Une ou plusieurs dates ne sont pas disponibles.");
+          return;
+        }
       } else {
         if (!dateStart) {
           setError("Choisis une date.");
@@ -505,6 +611,19 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
         }
         if (!startTime || !durationHours) {
           setError("Choisis une heure et une durée.");
+          return;
+        }
+
+        if (!availabilityLoaded) {
+          setError("Chargement des disponibilités…");
+          return;
+        }
+        if (dateStart < todayIso) {
+          setError("Impossible de choisir une date passée.");
+          return;
+        }
+        if (!availableDates.has(dateStart)) {
+          setError("Cette date n’est pas disponible.");
           return;
         }
 
@@ -611,6 +730,7 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
                     id="date_start"
                     label="Début"
                     value={dateStart}
+                    isDisabled={isDateDisabled}
                     onChange={(next) => {
                       setDateStart(next);
                       setError(null);
@@ -620,6 +740,7 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
                     id="date_end"
                     label="Fin"
                     value={dateEnd}
+                    isDisabled={isDateDisabled}
                     onChange={(next) => {
                       setDateEnd(next);
                       setError(null);
@@ -632,6 +753,7 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
                     id="date_hourly"
                     label="Date"
                     value={dateStart}
+                    isDisabled={isDateDisabled}
                     onChange={(next) => {
                       setDateStart(next);
                       setDateEnd(next);

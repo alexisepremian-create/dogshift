@@ -80,6 +80,8 @@ model User {
 
   reviewsWritten  Review[] @relation("ReviewOwner")
   reviewsReceived Review[] @relation("ReviewSitter")
+
+  availabilities Availability[] @relation("SitterAvailabilities")
 }
 
 model Notification {
@@ -268,6 +270,22 @@ model Review {
 
   @@index([sitterId, createdAt])
   @@index([ownerId, createdAt])
+}
+
+model Availability {
+  id String @id @default(cuid())
+
+  sitterId String
+  date DateTime
+  isAvailable Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  sitter User @relation("SitterAvailabilities", fields: [sitterId], references: [sitterId], onDelete: Cascade)
+
+  @@unique([sitterId, date])
+  @@index([sitterId, date])
 }
 
 model Conversation {

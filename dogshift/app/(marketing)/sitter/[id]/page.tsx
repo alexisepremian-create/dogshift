@@ -38,6 +38,8 @@ type SitterCard = {
 
 type BookingStep = "form" | "confirm" | "sent";
 
+type AvailabilityPayload = { ok?: boolean; dates?: string[]; error?: string };
+
 function formatRating(rating: number) {
   return rating % 1 === 0 ? rating.toFixed(0) : rating.toFixed(1);
 }
@@ -54,6 +56,18 @@ function Spinner({ className }: { className?: string }) {
 function formatRatingMaybe(rating: number | null) {
   if (typeof rating !== "number" || !Number.isFinite(rating)) return "—";
   return formatRating(rating);
+}
+
+function formatDateFr(iso: string) {
+  const parts = iso.split("-");
+  if (parts.length !== 3) return iso;
+  const y = Number(parts[0]);
+  const m = Number(parts[1]);
+  const d = Number(parts[2]);
+  if (!Number.isFinite(y) || !Number.isFinite(m) || !Number.isFinite(d)) return iso;
+  const dt = new Date(Date.UTC(y, m - 1, d, 0, 0, 0, 0));
+  if (Number.isNaN(dt.getTime())) return iso;
+  return new Intl.DateTimeFormat("fr-CH", { day: "numeric", month: "short" }).format(dt);
 }
 
 function safeStringArray(value: unknown) {
@@ -133,7 +147,7 @@ function Modal({
   );
 }
 
-export default function SitterProfilePage() {
+export default function SitterPublicProfile() {
   const router = useRouter();
   const params = useParams<{ id: string }>();
   const searchParams = useSearchParams();
@@ -151,6 +165,9 @@ export default function SitterProfilePage() {
 
   const [apiSitter, setApiSitter] = useState<SitterCard | null>(null);
   const [apiLoaded, setApiLoaded] = useState(false);
+
+  const [availabilityLoaded, setAvailabilityLoaded] = useState(false);
+  const [availableDates, setAvailableDates] = useState<string[]>([]);
   const [apiError, setApiError] = useState<string | null>(null);
 
   const viewMode = (searchParams?.get("mode") ?? "public").trim() || "public";
@@ -281,6 +298,34 @@ export default function SitterProfilePage() {
         setApiLoaded(true);
       }
     })();
+  }, [id]);
+
+  useEffect(() => {
+    if (!id) return;
+    let cancelled = false;
+    void (async () => {
+      setAvailabilityLoaded(false);
+      try {
+        const res = await fetch(`/api/sitters/${encodeURIComponent(id)}/availability`, { method: "GET" });
+        const payload = (await res.json().catch(() => null)) as AvailabilityPayload | null;
+        if (cancelled) return;
+        if (!res.ok || !payload?.ok || !Array.isArray(payload.dates)) {
+          setAvailableDates([]);
+          setAvailabilityLoaded(true);
+          return;
+        }
+        const rows = payload.dates.filter((d): d is string => typeof d === "string" && d.trim().length > 0);
+        setAvailableDates(rows);
+        setAvailabilityLoaded(true);
+      } catch {
+        if (cancelled) return;
+        setAvailableDates([]);
+        setAvailabilityLoaded(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [id]);
 
   useEffect(() => {
@@ -654,6 +699,11 @@ export default function SitterProfilePage() {
   const ratingLabel = formatRatingMaybe(sitter.rating);
   const reviewCountLabel = sitter.reviewCount ?? 0;
 
+  const nextAvail = useMemo(() => {
+    const rows = Array.isArray(availableDates) ? availableDates : [];
+    return rows.slice(0, 3);
+  }, [availableDates]);
+
   const content = (
     <div className="relative grid gap-6 overflow-hidden" data-testid="sitter-public-profile">
       <SunCornerGlow variant="sitterPublicPreview" />
@@ -842,7 +892,25 @@ export default function SitterProfilePage() {
                       <h2 className="text-sm font-semibold text-slate-900">Disponibilités</h2>
                       <div className="mt-3">
                         <p className="text-sm font-medium text-slate-900">Prochaines disponibilités</p>
-                        <p className="mt-1 text-sm text-slate-600">Disponibilités à confirmer lors de la demande.</p>
+                        {!availabilityLoaded ? (
+                          <p className="mt-1 text-sm text-slate-600">Chargement…</p>
+                        ) : nextAvail.length ? (
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            {nextAvail.map((d) => (
+                              <span
+                                key={d}
+                                className="inline-flex items-center rounded-full bg-white px-3 py-1 text-xs font-semibold text-emerald-800 ring-1 ring-emerald-200"
+                              >
+                                {formatDateFr(d)}
+                              </span>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="mt-2">
+                            <p className="text-sm text-slate-600">Aucune disponibilité renseignée pour le moment.</p>
+                            <p className="mt-2 text-sm font-semibold text-[var(--dogshift-blue)]">Envoie un message pour demander une date.</p>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
