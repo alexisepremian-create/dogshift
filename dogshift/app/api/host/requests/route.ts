@@ -101,7 +101,7 @@ export async function GET(req: NextRequest) {
     const bookingsRaw = await prismaAny.booking.findMany({
       where: {
         sitterId,
-        status: { in: ["PENDING_PAYMENT", "PENDING_ACCEPTANCE", "PAID", "CONFIRMED", "PAYMENT_FAILED", "CANCELLED", "DRAFT"] },
+        status: { in: ["PENDING_ACCEPTANCE", "PAID", "CONFIRMED", "CANCELLED", "REFUNDED", "REFUND_FAILED"] },
       },
       orderBy: [{ updatedAt: "desc" }, { createdAt: "desc" }],
       select: {

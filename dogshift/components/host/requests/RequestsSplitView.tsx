@@ -17,13 +17,11 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { RequestDetailPanel } from "./RequestDetailPanel";
 import { RequestListItem, type HostRequest } from "./RequestListItem";
 
-type FilterKey = "ALL" | "PENDING" | "TO_ACCEPT" | "CONFIRMED" | "FAILED" | "CANCELLED" | "ARCHIVED";
+type FilterKey = "ALL" | "TO_ACCEPT" | "CONFIRMED" | "CANCELLED" | "ARCHIVED";
 
 function filterLabel(key: FilterKey) {
-  if (key === "PENDING") return "En attente paiement";
   if (key === "TO_ACCEPT") return "En attente d’acceptation";
   if (key === "CONFIRMED") return "Confirmées";
-  if (key === "FAILED") return "Refusées";
   if (key === "CANCELLED") return "Terminées";
   if (key === "ARCHIVED") return "Archivées";
   return "Tous";
@@ -31,11 +29,9 @@ function filterLabel(key: FilterKey) {
 
 function filterMatches(key: FilterKey, status: string) {
   if (key === "ALL") return true;
-  if (key === "PENDING") return status === "PENDING_PAYMENT" || status === "DRAFT";
   if (key === "TO_ACCEPT") return status === "PENDING_ACCEPTANCE" || status === "PAID";
   if (key === "CONFIRMED") return status === "CONFIRMED";
-  if (key === "FAILED") return status === "PAYMENT_FAILED";
-  if (key === "CANCELLED") return status === "CANCELLED";
+  if (key === "CANCELLED") return status === "CANCELLED" || status === "REFUNDED" || status === "REFUND_FAILED";
   if (key === "ARCHIVED") return true;
   return true;
 }
@@ -89,7 +85,7 @@ export function RequestsSplitView({
       localRows.filter(
         (b) =>
           !b.archivedAt &&
-          (b.status === "PENDING_PAYMENT" || b.status === "DRAFT" || b.status === "PENDING_ACCEPTANCE" || b.status === "PAID")
+          (b.status === "PENDING_ACCEPTANCE" || b.status === "PAID")
       ).length,
     [localRows]
   );
@@ -210,7 +206,7 @@ export function RequestsSplitView({
   function canArchive(r: HostRequest) {
     const status = String(r.status);
     if (status === "CONFIRMED" || status === "PAID" || status === "PENDING_ACCEPTANCE") return false;
-    return status === "PAYMENT_FAILED" || status === "CANCELLED" || status === "PENDING_PAYMENT" || status === "DRAFT";
+    return status === "CANCELLED" || status === "REFUNDED" || status === "REFUND_FAILED";
   }
 
   function ArchiveDropZone({ active }: { active: boolean }) {
@@ -316,7 +312,7 @@ export function RequestsSplitView({
                     }}
                     className="h-10 w-full rounded-2xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-900 shadow-sm outline-none focus:border-[var(--dogshift-blue)] focus:ring-2 focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)]"
                   >
-                    {(["ALL", "PENDING", "TO_ACCEPT", "CONFIRMED", "FAILED", "CANCELLED"] as const).map((k) => (
+                    {(["ALL", "TO_ACCEPT", "CONFIRMED", "CANCELLED"] as const).map((k) => (
                       <option key={k} value={k}>
                         {filterLabel(k)}
                       </option>
