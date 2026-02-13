@@ -19,6 +19,7 @@ import {
 } from "@/lib/hostProfile";
 
 type AvailabilityPayload = { ok?: boolean; dates?: string[]; error?: string };
+type BulkAvailabilityPayload = { ok?: boolean; created?: number; deleted?: number; error?: string };
 
 const SERVICE_LABELS: Record<ServiceType, string> = {
   Promenade: "Promenade",
@@ -147,11 +148,19 @@ export default function HostProfileEditPage() {
   const [availError, setAvailError] = useState<string | null>(null);
   const [availSaved, setAvailSaved] = useState(false);
 
+  const [availToast, setAvailToast] = useState<{ kind: "success" | "error"; message: string } | null>(null);
+
   const todayIso = useMemo(() => todayZurichIsoDate(), []);
 
   useEffect(() => {
     return;
   }, []);
+
+  useEffect(() => {
+    if (!availToast) return;
+    const t = window.setTimeout(() => setAvailToast(null), 3200);
+    return () => window.clearTimeout(t);
+  }, [availToast]);
 
   useEffect(() => {
     if (!sitterId) return;
@@ -604,7 +613,9 @@ export default function HostProfileEditPage() {
                   <div>
                     <h2 className="text-base font-semibold text-slate-900">Disponibilités</h2>
                     <p className="mt-1 text-sm text-slate-600">Clique sur une date pour la rendre disponible / indisponible.</p>
-                    <p className="mt-1 text-xs font-medium text-slate-500">Ces disponibilités sont globales (un seul calendrier par sitter).</p>
+                    <p className="mt-1 text-xs font-medium text-slate-500">
+                      Ces disponibilités s’appliquent à tous vos services. Les horaires se règlent dans Horaires & règles.
+                    </p>
                   </div>
                   <button
                     type="button"
@@ -721,6 +732,7 @@ export default function HostProfileEditPage() {
                       disabled={availSaving}
                       onClick={async () => {
                         if (availSaving) return;
+                        const before = new Set(availRemote);
                         setAvailSaving(true);
                         setAvailError(null);
                         setAvailSaved(false);
@@ -729,36 +741,30 @@ export default function HostProfileEditPage() {
                           const toAdd = Array.from(next).filter((d) => !availRemote.has(d));
                           const toRemove = Array.from(availRemote).filter((d) => !next.has(d));
 
-                          if (toAdd.length) {
-                            const res = await fetch("/api/sitter/availability", {
-                              method: "POST",
-                              headers: { "Content-Type": "application/json" },
-                              body: JSON.stringify({ dates: toAdd }),
-                            });
-                            const payload = (await res.json().catch(() => null)) as AvailabilityPayload | null;
-                            if (!res.ok || !payload?.ok) {
-                              setAvailError("Impossible d’enregistrer les disponibilités.");
-                              return;
-                            }
-                          }
-
-                          if (toRemove.length) {
-                            const res = await fetch("/api/sitter/availability", {
-                              method: "DELETE",
-                              headers: { "Content-Type": "application/json" },
-                              body: JSON.stringify({ dates: toRemove }),
-                            });
-                            const payload = (await res.json().catch(() => null)) as AvailabilityPayload | null;
-                            if (!res.ok || !payload?.ok) {
-                              setAvailError("Impossible d’enregistrer les disponibilités.");
-                              return;
-                            }
-                          }
-
+                          // Optimistic: assume success and update remote state immediately.
                           setAvailRemote(new Set(next));
+
+                          const res = await fetch("/api/availability", {
+                            method: "PUT",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ added: toAdd, removed: toRemove }),
+                          });
+                          const payload = (await res.json().catch(() => null)) as BulkAvailabilityPayload | null;
+                          if (!res.ok || !payload?.ok) {
+                            setAvailRemote(before);
+                            setAvailDraft(before);
+                            setAvailError("Impossible d’enregistrer les disponibilités.");
+                            setAvailToast({ kind: "error", message: "Erreur: enregistrement des disponibilités." });
+                            return;
+                          }
+
                           setAvailSaved(true);
+                          setAvailToast({ kind: "success", message: "Disponibilités enregistrées." });
                         } catch {
+                          setAvailRemote(before);
+                          setAvailDraft(before);
                           setAvailError("Impossible d’enregistrer les disponibilités.");
+                          setAvailToast({ kind: "error", message: "Erreur: enregistrement des disponibilités." });
                         } finally {
                           setAvailSaving(false);
                         }
@@ -783,6 +789,14 @@ export default function HostProfileEditPage() {
                     </div>
                   ) : null}
                 </div>
+              </div>
+
+              <div id="horaires" className="scroll-mt-24 border-t border-slate-200 p-6 sm:p-8">
+                <h2 className="text-base font-semibold text-slate-900">Horaires & règles</h2>
+                <p className="mt-2 text-sm text-slate-600">
+                  Les disponibilités (calendrier) sont globales. Cette section servira à définir les horaires (ex. promenades) et les règles (min/max stay)
+                  par service.
+                </p>
               </div>
 
               <div id="dogSizes" className="scroll-mt-24 border-t border-slate-200 p-6 sm:p-8">
@@ -1221,6 +1235,17 @@ export default function HostProfileEditPage() {
           </section>
         </div>
       </div>
+
+      {availToast ? (
+        <div
+          className={
+            "fixed bottom-5 left-1/2 z-50 -translate-x-1/2 rounded-full border px-5 py-3 text-sm font-semibold shadow-[0_18px_60px_-46px_rgba(2,6,23,0.35)] " +
+            (availToast.kind === "success" ? "border-emerald-200 bg-white text-emerald-900" : "border-rose-200 bg-white text-rose-900")
+          }
+        >
+          {availToast.message}
+        </div>
+      ) : null}
     </div>
   );
 }

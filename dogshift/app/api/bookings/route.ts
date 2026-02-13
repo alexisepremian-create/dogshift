@@ -72,6 +72,19 @@ function dateRangeUtcMidnightsInclusive(startIso: string, endIso: string) {
   return out;
 }
 
+function dateRangeIsoInclusive(startIso: string, endIso: string) {
+  if (!isValidIsoDate(startIso) || !isValidIsoDate(endIso)) return null;
+  const start = isoDateToUtcMidnight(startIso);
+  const end = isoDateToUtcMidnight(endIso);
+  if (!start || !end) return null;
+  if (end.getTime() < start.getTime()) return null;
+  const out: string[] = [];
+  for (let d = start; d.getTime() <= end.getTime(); d = addDaysUtc(d, 1)) {
+    out.push(d.toISOString().slice(0, 10));
+  }
+  return out;
+}
+
 function daysBetweenInclusive(start: string, end: string) {
   if (!isValidIsoDate(start) || !isValidIsoDate(end)) return 1;
   const a = new Date(`${start}T00:00:00Z`).getTime();
@@ -210,7 +223,7 @@ export async function POST(req: NextRequest) {
     let totalChf: number | null = null;
     let startDateTime: Date | null = null;
     let endDateTime: Date | null = null;
-    let requiredAvailabilityDates: Date[] | null = null;
+    let requiredAvailabilityKeys: string[] | null = null;
 
     if (isDailyService) {
       if (!hasDailyDates) {
@@ -220,7 +233,7 @@ export async function POST(req: NextRequest) {
       totalChf = unit * days;
       startDateTime = new Date(`${startDate}T00:00:00Z`);
       endDateTime = new Date(`${endDate}T00:00:00Z`);
-      requiredAvailabilityDates = dateRangeUtcMidnightsInclusive(startDate, endDate);
+      requiredAvailabilityKeys = dateRangeIsoInclusive(startDate, endDate);
     } else if (hasHourlyDates) {
       const hours = hoursRoundedToHalf(startAt, endAt);
       if (hours === null) {
@@ -231,8 +244,7 @@ export async function POST(req: NextRequest) {
       endDateTime = new Date(endAt);
 
       const startLocalIso = formatZurichIsoDate(startDateTime);
-      const utcMidnight = isoDateToUtcMidnight(startLocalIso);
-      requiredAvailabilityDates = utcMidnight ? [utcMidnight] : null;
+      requiredAvailabilityKeys = [startLocalIso];
     } else {
       return NextResponse.json({ ok: false, error: "INVALID_DATES" }, { status: 400 });
     }
@@ -246,17 +258,17 @@ export async function POST(req: NextRequest) {
     }
 
     // Availability gating: require sitter to have marked those dates as available.
-    if (!requiredAvailabilityDates || requiredAvailabilityDates.length === 0) {
+    if (!requiredAvailabilityKeys || requiredAvailabilityKeys.length === 0) {
       return NextResponse.json({ ok: false, error: "INVALID_DATES" }, { status: 400 });
     }
     const availCount = await (prisma as any).availability.count({
       where: {
         sitterId,
         isAvailable: true,
-        date: { in: requiredAvailabilityDates },
+        dateKey: { in: requiredAvailabilityKeys },
       },
     });
-    if (availCount !== requiredAvailabilityDates.length) {
+    if (availCount !== requiredAvailabilityKeys.length) {
       return NextResponse.json({ ok: false, error: "DATE_NOT_AVAILABLE" }, { status: 400 });
     }
 

@@ -276,7 +276,7 @@ model Availability {
   id String @id @default(cuid())
 
   sitterId String
-  date DateTime
+  dateKey String
   isAvailable Boolean @default(true)
 
   createdAt DateTime @default(now())
@@ -284,8 +284,8 @@ model Availability {
 
   sitter User @relation("SitterAvailabilities", fields: [sitterId], references: [sitterId], onDelete: Cascade)
 
-  @@unique([sitterId, date])
-  @@index([sitterId, date])
+  @@unique([sitterId, dateKey])
+  @@index([sitterId, dateKey])
 }
 
 model Conversation {
