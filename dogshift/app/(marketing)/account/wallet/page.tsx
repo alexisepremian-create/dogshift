@@ -151,7 +151,7 @@ export default function OwnerWalletPage() {
 
         {!loading && !error ? (
           <div className="grid gap-4 sm:grid-cols-3">
-          <div className="rounded-3xl border border-[rgba(37,99,235,0.2)] bg-[rgba(37,99,235,0.08)] p-5 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.18)]">
+          <div className="rounded-3xl border border-[rgba(37,99,235,0.28)] bg-[rgba(37,99,235,0.14)] p-5 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.18)]">
             <div className="flex items-center gap-2">
               <span className="inline-flex h-8 w-8 items-center justify-center rounded-2xl border border-[rgba(37,99,235,0.22)] bg-[rgba(255,255,255,0.65)]">
                 <Briefcase className="h-4 w-4 text-[rgb(37,99,235)]" aria-hidden="true" />
@@ -162,7 +162,7 @@ export default function OwnerWalletPage() {
             <p className="mt-2 text-xs font-medium text-slate-600">Net (paiements – remboursements)</p>
           </div>
 
-          <div className="rounded-3xl border border-[rgba(16,185,129,0.2)] bg-[rgba(16,185,129,0.08)] p-5 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.18)]">
+          <div className="rounded-3xl border border-[rgba(16,185,129,0.28)] bg-[rgba(16,185,129,0.14)] p-5 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.18)]">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="inline-flex h-8 w-8 items-center justify-center rounded-2xl border border-[rgba(16,185,129,0.22)] bg-[rgba(255,255,255,0.65)]">
@@ -176,7 +176,7 @@ export default function OwnerWalletPage() {
             <p className="mt-2 text-xs font-medium text-slate-600">Total payé</p>
           </div>
 
-          <div className="rounded-3xl border border-[rgba(239,68,68,0.2)] bg-[rgba(239,68,68,0.08)] p-5 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.18)]">
+          <div className="rounded-3xl border border-[rgba(239,68,68,0.28)] bg-[rgba(239,68,68,0.14)] p-5 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.18)]">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="inline-flex h-8 w-8 items-center justify-center rounded-2xl border border-[rgba(239,68,68,0.22)] bg-[rgba(255,255,255,0.65)]">
