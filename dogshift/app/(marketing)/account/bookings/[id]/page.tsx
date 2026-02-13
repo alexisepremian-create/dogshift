@@ -537,10 +537,12 @@ export default function AccountBookingDetailPage() {
               </Link>
             ) : null}
 
-            <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-              <p className="text-xs font-semibold text-slate-600">PaymentIntent</p>
-              <p className="mt-1 break-all text-xs font-medium text-slate-700">{booking.stripePaymentIntentId ?? "—"}</p>
-            </div>
+            {booking.stripePaymentIntentId ? (
+              <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                <p className="text-xs font-semibold text-slate-600">Référence de paiement</p>
+                <p className="mt-1 break-all text-xs font-medium text-slate-700">{booking.stripePaymentIntentId}</p>
+              </div>
+            ) : null}
           </div>
         </div>
       )}
