@@ -20,7 +20,7 @@ type BookingListItem = {
   amount: number;
   currency: string;
   platformFeeAmount: number;
-  sitter: { sitterId: string; name: string; avatarUrl: string | null };
+  sitter: { sitterId: string; name: string; avatarUrl: string | null; city?: string | null; postalCode?: string | null };
 };
 
 type BookingDetail = {
@@ -38,8 +38,15 @@ type BookingDetail = {
   currency: string;
   platformFeeAmount: number;
   stripePaymentIntentId: string | null;
-  sitter: { sitterId: string; name: string; avatarUrl: string | null };
+  sitter: { sitterId: string; name: string; avatarUrl: string | null; city?: string | null; postalCode?: string | null };
 };
+
+function sitterLocation(sitter: { city?: string | null; postalCode?: string | null } | null | undefined) {
+  const city = typeof sitter?.city === "string" && sitter.city.trim() ? sitter.city.trim() : "";
+  const pc = typeof sitter?.postalCode === "string" && sitter.postalCode.trim() ? sitter.postalCode.trim() : "";
+  if (pc && city) return `${pc} ${city}`;
+  return city || pc || "—";
+}
 
 function avatarIsSafe(src: string) {
   const trimmed = src.trim();
@@ -506,6 +513,7 @@ export default function AccountBookingsPage() {
                     const isCancelled = b.status === "CANCELLED" || b.status === "PAYMENT_FAILED";
                     const isSelected = b.id === selectedId;
                     const blocking = pendingBlockingReason(b.status);
+                    const location = sitterLocation(b.sitter);
 
                     const when = (() => {
                       if (!b.startDate) return "—";
@@ -550,7 +558,7 @@ export default function AccountBookingsPage() {
                             <div className="min-w-0">
                               <p className="truncate text-sm font-semibold text-slate-900">{b.sitter.name}</p>
                               <p className="mt-1 truncate text-xs text-slate-600">
-                                {service} • {when}
+                                {service} • {when}{location !== "—" ? ` • ${location}` : ""}
                               </p>
                               {blocking ? (
                                 <p className="mt-2 truncate text-xs font-medium text-slate-500">{blocking}</p>
@@ -638,7 +646,7 @@ export default function AccountBookingsPage() {
                     </div>
                     <div className="flex items-start justify-between gap-4">
                       <p className="text-slate-600">Lieu</p>
-                      <p className="text-right font-semibold text-slate-900">—</p>
+                      <p className="text-right font-semibold text-slate-900">{sitterLocation(detail?.sitter ?? selected?.sitter)}</p>
                     </div>
                   </div>
                 </div>

@@ -22,8 +22,15 @@ type BookingDetail = {
   currency: string;
   platformFeeAmount: number;
   stripePaymentIntentId: string | null;
-  sitter: { sitterId: string; name: string; avatarUrl: string | null };
+  sitter: { sitterId: string; name: string; avatarUrl: string | null; city?: string | null; postalCode?: string | null };
 };
+
+function sitterLocation(sitter: { city?: string | null; postalCode?: string | null } | null | undefined) {
+  const city = typeof sitter?.city === "string" && sitter.city.trim() ? sitter.city.trim() : "";
+  const pc = typeof sitter?.postalCode === "string" && sitter.postalCode.trim() ? sitter.postalCode.trim() : "";
+  if (pc && city) return `${pc} ${city}`;
+  return city || pc || "";
+}
 
 function avatarIsSafe(src: string) {
   const trimmed = src.trim();
@@ -460,6 +467,9 @@ export default function AccountBookingDetailPage() {
                   <div>
                     <p className="text-sm font-semibold text-slate-900">{booking.sitter.name}</p>
                     <p className="mt-1 text-sm text-slate-600">{computed.service}</p>
+                    {sitterLocation(booking.sitter) ? (
+                      <p className="mt-1 text-sm text-slate-600">{sitterLocation(booking.sitter)}</p>
+                    ) : null}
                   </div>
                 </div>
 

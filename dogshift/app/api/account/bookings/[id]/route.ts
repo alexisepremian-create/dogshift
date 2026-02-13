@@ -32,6 +32,8 @@ type BookingDetailResponse = {
     sitterId: string;
     name: string;
     avatarUrl: string | null;
+    city: string | null;
+    postalCode: string | null;
   };
 };
 
@@ -159,7 +161,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
         sitterId: true,
         name: true,
         image: true,
-        sitterProfile: { select: { displayName: true, avatarUrl: true } },
+        sitterProfile: { select: { displayName: true, avatarUrl: true, city: true, postalCode: true } },
       },
     });
 
@@ -174,6 +176,15 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
         ? sitterUser.sitterProfile.avatarUrl.trim()
         : null) ??
       (typeof sitterUser?.image === "string" && sitterUser.image.trim() ? sitterUser.image.trim() : null);
+
+    const city =
+      typeof sitterUser?.sitterProfile?.city === "string" && sitterUser.sitterProfile.city.trim()
+        ? sitterUser.sitterProfile.city.trim()
+        : null;
+    const postalCode =
+      typeof sitterUser?.sitterProfile?.postalCode === "string" && sitterUser.sitterProfile.postalCode.trim()
+        ? sitterUser.sitterProfile.postalCode.trim()
+        : null;
 
     const payload: BookingDetailResponse = {
       id: String(booking.id),
@@ -194,6 +205,8 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
         sitterId: String((typeof sitterUser?.sitterId === "string" && sitterUser.sitterId) || booking.sitterId || ""),
         name: displayName,
         avatarUrl: avatarUrlRaw,
+        city,
+        postalCode,
       },
     };
 

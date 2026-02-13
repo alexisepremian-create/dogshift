@@ -32,6 +32,8 @@ type AccountBookingListItem = {
     sitterId: string;
     name: string;
     avatarUrl: string | null;
+    city: string | null;
+    postalCode: string | null;
   };
 };
 
@@ -102,7 +104,7 @@ export async function GET(req: NextRequest) {
         sitterId: true,
         name: true,
         image: true,
-        sitterProfile: { select: { displayName: true, avatarUrl: true } },
+        sitterProfile: { select: { displayName: true, avatarUrl: true, city: true, postalCode: true } },
       },
     });
 
@@ -128,6 +130,12 @@ export async function GET(req: NextRequest) {
           : null) ??
         (typeof sitter?.image === "string" && sitter.image.trim() ? sitter.image.trim() : null);
 
+      const city = typeof sitter?.sitterProfile?.city === "string" && sitter.sitterProfile.city.trim() ? sitter.sitterProfile.city.trim() : null;
+      const postalCode =
+        typeof sitter?.sitterProfile?.postalCode === "string" && sitter.sitterProfile.postalCode.trim()
+          ? sitter.sitterProfile.postalCode.trim()
+          : null;
+
       return {
         id: String(b.id),
         createdAt: b.createdAt instanceof Date ? b.createdAt.toISOString() : new Date(b.createdAt).toISOString(),
@@ -143,6 +151,8 @@ export async function GET(req: NextRequest) {
           sitterId: String((typeof sitter?.sitterId === "string" && sitter.sitterId) || sitterKey),
           name: displayName,
           avatarUrl: avatarUrlRaw,
+          city,
+          postalCode,
         },
       };
     });
