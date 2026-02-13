@@ -109,6 +109,8 @@ function normalizeStatus(status: string, endDateIso: string | null) {
 function canCancelBooking(booking: BookingDetail, normalizedStatus: string) {
   if (normalizedStatus === "CANCELED" || normalizedStatus === "COMPLETED") return false;
   if (String(booking.status ?? "") === "CANCELLED") return false;
+  if (String(booking.status ?? "") === "REFUNDED") return false;
+  if (String(booking.status ?? "") === "REFUND_FAILED") return false;
 
   const startIso = booking.startDate;
   if (!startIso) return true;
@@ -150,6 +152,10 @@ function statusLabel(status: string) {
       return { label: "Terminée", tone: "slate" as const };
     case "CANCELED":
       return { label: "Annulée", tone: "slate" as const };
+    case "REFUNDED":
+      return { label: "Remboursée", tone: "slate" as const };
+    case "REFUND_FAILED":
+      return { label: "Remboursement échoué", tone: "rose" as const };
     case "PAYMENT_FAILED":
       return { label: "Paiement refusé", tone: "rose" as const };
     case "DRAFT":
@@ -252,6 +258,11 @@ export default function AccountBookingDetailPage() {
 
     const normalizedStatus = normalizeStatus(String(booking.status ?? ""), booking.endDate);
     const cancellable = canCancelBooking(booking, normalizedStatus);
+    const cancelHidden =
+      normalizedStatus === "COMPLETED" ||
+      String(booking.status ?? "") === "CANCELLED" ||
+      String(booking.status ?? "") === "REFUNDED" ||
+      String(booking.status ?? "") === "REFUND_FAILED";
 
     const canPay = String(booking.status ?? "") === "PENDING_PAYMENT";
 
@@ -285,6 +296,7 @@ export default function AccountBookingDetailPage() {
       pricingUnit,
       normalizedStatus,
       cancellable,
+      cancelHidden,
       canPay,
       dateLine,
       fee,
@@ -453,19 +465,21 @@ export default function AccountBookingDetailPage() {
 
                 <div className="flex items-center gap-3">
                   <StatusPill status={computed.normalizedStatus} />
-                  <button
-                    type="button"
-                    disabled={!computed.cancellable}
-                    title={cancelTooltip(booking, computed.cancellable)}
-                    onClick={() => {
-                      if (!computed.cancellable) return;
-                      setCancelError(null);
-                      setCancelOpen(true);
-                    }}
-                    className="inline-flex items-center justify-center rounded-2xl border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-900 shadow-sm transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    Annuler la réservation
-                  </button>
+                  {!computed.cancelHidden ? (
+                    <button
+                      type="button"
+                      disabled={!computed.cancellable}
+                      title={cancelTooltip(booking, computed.cancellable)}
+                      onClick={() => {
+                        if (!computed.cancellable) return;
+                        setCancelError(null);
+                        setCancelOpen(true);
+                      }}
+                      className="inline-flex items-center justify-center rounded-2xl border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-900 shadow-sm transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      Annuler la réservation
+                    </button>
+                  ) : null}
                 </div>
               </div>
 

@@ -99,6 +99,10 @@ function statusLabel(status: string) {
       return { label: "Paiement refusé", tone: "rose" as const };
     case "CANCELLED":
       return { label: "Annulée", tone: "slate" as const };
+    case "REFUNDED":
+      return { label: "Remboursée", tone: "slate" as const };
+    case "REFUND_FAILED":
+      return { label: "Remboursement échoué", tone: "rose" as const };
     case "DRAFT":
       return { label: "Brouillon", tone: "slate" as const };
     default:
@@ -150,7 +154,7 @@ function matchesTab(b: BookingListItem, tab: TabKey) {
     return status === "PENDING_PAYMENT" || status === "DRAFT" || status === "PENDING_ACCEPTANCE" || status === "PAID";
   }
   if (tab === "CONFIRMED") return status === "CONFIRMED";
-  if (tab === "CANCELLED") return status === "CANCELLED" || status === "PAYMENT_FAILED";
+  if (tab === "CANCELLED") return status === "CANCELLED" || status === "PAYMENT_FAILED" || status === "REFUNDED" || status === "REFUND_FAILED";
   return true;
 }
 
