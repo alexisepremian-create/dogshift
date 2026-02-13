@@ -409,6 +409,7 @@ export function RequestsSplitView({
                 onStatusChange={(id: string, status: string) => {
                   setLocalRows((prev) => prev.map((r) => (r.id === id ? { ...r, status } : r)));
                 }}
+                onRefresh={onRetry}
               />
             </div>
           </aside>
@@ -427,6 +428,7 @@ export function RequestsSplitView({
             onStatusChange={(id: string, status: string) => {
               setLocalRows((prev) => prev.map((r) => (r.id === id ? { ...r, status } : r)));
             }}
+            onRefresh={onRetry}
             onCloseMobile={() => {
               setMobileOpen(false);
             }}

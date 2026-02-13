@@ -69,10 +69,12 @@ export function RequestDetailPanel({
   request,
   onCloseMobile,
   onStatusChange,
+  onRefresh,
 }: {
   request: HostRequest | null;
   onCloseMobile?: () => void;
   onStatusChange?: (id: string, status: string) => void;
+  onRefresh?: () => void;
 }) {
   const [copied, setCopied] = useState(false);
   const [opening, setOpening] = useState(false);
@@ -117,7 +119,7 @@ export function RequestDetailPanel({
   const effectiveStatus = localStatus ?? request.status;
   const isPendingPayment = effectiveStatus === "PENDING_PAYMENT" || effectiveStatus === "DRAFT";
   const isToAccept = effectiveStatus === "PENDING_ACCEPTANCE" || effectiveStatus === "PAID";
-  const isDone = effectiveStatus === "CANCELLED";
+  const isDone = effectiveStatus === "CANCELLED" || effectiveStatus === "REFUNDED" || effectiveStatus === "REFUND_FAILED";
   const hasActions = isToAccept || isPendingPayment || isDone;
 
   return (
@@ -248,7 +250,10 @@ export function RequestDetailPanel({
                           setLocalStatus(null);
                           return;
                         }
-                        onStatusChange?.(request.id, "CONFIRMED");
+                        const nextStatus = typeof payload.status === "string" && payload.status.trim() ? payload.status.trim() : "CONFIRMED";
+                        onStatusChange?.(request.id, nextStatus);
+                        setLocalStatus(nextStatus);
+                        onRefresh?.();
                       } catch {
                         setLocalStatus(null);
                       } finally {
@@ -273,7 +278,10 @@ export function RequestDetailPanel({
                           setLocalStatus(null);
                           return;
                         }
-                        onStatusChange?.(request.id, "CANCELLED");
+                        const nextStatus = typeof payload.status === "string" && payload.status.trim() ? payload.status.trim() : "CANCELLED";
+                        onStatusChange?.(request.id, nextStatus);
+                        setLocalStatus(nextStatus);
+                        onRefresh?.();
                       } catch {
                         setLocalStatus(null);
                       } finally {

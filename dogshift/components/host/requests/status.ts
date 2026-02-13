@@ -6,6 +6,8 @@ export type BookingStatus =
   | "CONFIRMED"
   | "PAYMENT_FAILED"
   | "CANCELLED"
+  | "REFUNDED"
+  | "REFUND_FAILED"
   | string;
 
 export type StatusMeta = {
@@ -17,6 +19,14 @@ export function statusMeta(status: BookingStatus): StatusMeta {
   if (status === "PENDING_ACCEPTANCE" || status === "PAID") {
     return {
       label: "En attente d’acceptation",
+      classes:
+        "inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-semibold leading-5 text-amber-800",
+    };
+  }
+
+  if (status === "PENDING_PAYMENT") {
+    return {
+      label: "En attente paiement",
       classes:
         "inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-semibold leading-5 text-amber-800",
     };
@@ -46,6 +56,22 @@ export function statusMeta(status: BookingStatus): StatusMeta {
     };
   }
 
+  if (status === "REFUNDED") {
+    return {
+      label: "Remboursée",
+      classes:
+        "inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-semibold leading-5 text-slate-700",
+    };
+  }
+
+  if (status === "REFUND_FAILED") {
+    return {
+      label: "Remboursement échoué",
+      classes:
+        "inline-flex items-center rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-[11px] font-semibold leading-5 text-rose-800",
+    };
+  }
+
   if (status === "DRAFT") {
     return {
       label: "Brouillon",
@@ -55,8 +81,8 @@ export function statusMeta(status: BookingStatus): StatusMeta {
   }
 
   return {
-    label: "En attente paiement",
+    label: String(status || "—"),
     classes:
-      "inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-semibold leading-5 text-amber-800",
+      "inline-flex items-center rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[11px] font-semibold leading-5 text-slate-700",
   };
 }
