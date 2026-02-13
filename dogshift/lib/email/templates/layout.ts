@@ -79,7 +79,7 @@ export function renderEmailLayout(params: {
     ? `
       <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
         <tr>
-          <td align="center" style="padding:18px 0 0 0;">
+          <td align="center" style="padding:18px 0 0 0;text-align:center;">
             <a href="${escapeHtml(ctaUrl)}" style="display:inline-block;background:#111827;color:#ffffff;text-decoration:none;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:700;padding:12px 18px;border-radius:10px;">
               ${ctaLabel}
             </a>
@@ -88,7 +88,7 @@ export function renderEmailLayout(params: {
         ${secondaryLinkUrl && secondaryLinkLabel
           ? `
         <tr>
-          <td align="center" style="padding:12px 0 0 0;font-family:Arial,Helvetica,sans-serif;">
+          <td align="center" style="padding:14px 0 0 0;font-family:Arial,Helvetica,sans-serif;text-align:center;">
             <a href="${escapeHtml(secondaryLinkUrl)}" style="color:#6b7280;text-decoration:underline;font-size:12px;line-height:16px;">
               ${secondaryLinkLabel}
             </a>
@@ -101,7 +101,13 @@ export function renderEmailLayout(params: {
     : "";
 
   const logoHtml = logoUrl
-    ? `<img src="${escapeHtml(logoUrl)}" width="120" alt="${escapeHtml(brandName)}" style="display:block;border:0;outline:none;text-decoration:none;width:120px;height:auto;max-width:120px;" />`
+    ? `<table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
+        <tr>
+          <td align="center" style="padding:0;text-align:center;">
+            <img src="${escapeHtml(logoUrl)}" width="120" alt="${escapeHtml(brandName)}" style="display:inline-block;border:0;outline:none;text-decoration:none;width:120px;height:auto;max-width:120px;" />
+          </td>
+        </tr>
+      </table>`
     : `<div style="font-family:Arial,Helvetica,sans-serif;font-size:18px;font-weight:800;color:#111827;">${escapeHtml(brandName)}</div>`;
 
   const footerLinksHtml = footerLinks.length
@@ -147,7 +153,7 @@ export function renderEmailLayout(params: {
               </td>
             </tr>
             <tr>
-              <td style="padding:16px 4px 0 4px;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:18px;color:#6b7280;">
+              <td align="center" style="padding:16px 4px 0 4px;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:18px;color:#6b7280;text-align:center;">
                 ${footerText}
                 ${footerLinksHtml}
               </td>

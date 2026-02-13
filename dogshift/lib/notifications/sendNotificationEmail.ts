@@ -42,6 +42,47 @@ async function resolveUserEmail(userId: string) {
   return user?.email ? { id: user.id, email: user.email, name: user?.name ?? null } : null;
 }
 
+function displayNameFromHostProfileJson(hostProfileJson: unknown) {
+  const raw = typeof hostProfileJson === "string" ? hostProfileJson : "";
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as any;
+    const firstName = typeof parsed?.firstName === "string" ? parsed.firstName.trim() : "";
+    return firstName || null;
+  } catch {
+    return null;
+  }
+}
+
+async function resolveSenderDisplayName(senderUserId: string) {
+  const u = await prisma.user.findUnique({
+    where: { id: senderUserId },
+    select: {
+      id: true,
+      email: true,
+      name: true,
+      hostProfileJson: true,
+      sitterProfile: { select: { displayName: true } },
+    },
+  });
+  if (!u) return "Utilisateur DogShift";
+
+  const sitterDisplayName =
+    typeof (u as any)?.sitterProfile?.displayName === "string" ? String((u as any).sitterProfile.displayName).trim() : "";
+  if (sitterDisplayName) return sitterDisplayName;
+
+  const firstName = displayNameFromHostProfileJson((u as any).hostProfileJson);
+  if (firstName) return firstName;
+
+  const fullName = typeof (u as any).name === "string" ? String((u as any).name).trim() : "";
+  if (fullName) return fullName;
+
+  const email = typeof (u as any).email === "string" ? String((u as any).email).trim() : "";
+  if (email) return email;
+
+  return "Utilisateur DogShift";
+}
+
 async function resolveSitterEmailBySitterId(sitterId: string) {
   const sitter = await prisma.user.findFirst({
     where: { sitterId },
@@ -398,15 +439,17 @@ export async function resolveNotificationRecipientForConversation(params: {
 
   if (!conversation) return null;
 
+  const fromName = await resolveSenderDisplayName(params.senderUserId);
+
   if (conversation.ownerId === params.senderUserId) {
     const sitter = await resolveSitterEmailBySitterId(String(conversation.sitterId));
     if (!sitter) return null;
-    return { recipientUserId: sitter.id, fromName: "Client" };
+    return { recipientUserId: sitter.id, fromName };
   }
 
   const owner = await resolveUserEmail(String(conversation.ownerId));
   if (!owner) return null;
-  return { recipientUserId: owner.id, fromName: "Dogsitter" };
+  return { recipientUserId: owner.id, fromName };
 }
 
 export async function resolveBookingParticipants(bookingId: string) {
