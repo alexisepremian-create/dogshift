@@ -344,8 +344,16 @@ export default function AccountBookingDetailPage() {
           setCancelError("Impossible de rembourser cette réservation (paiement introuvable). Contacte le support.");
           return;
         }
+        if (payload.error === "MISSING_CHARGE") {
+          setCancelError("Impossible de rembourser cette réservation (charge Stripe introuvable). Contacte le support.");
+          return;
+        }
         if (payload.error === "REFUND_FAILED") {
           setCancelError("La réservation a été annulée, mais le remboursement a échoué. Contacte le support.");
+          return;
+        }
+        if (payload.error === "INVALID_STATUS") {
+          setCancelError("Impossible d’annuler cette réservation (statut invalide). Réessaie ou contacte le support.");
           return;
         }
         setCancelError("Impossible d’annuler la réservation. Réessaie.");

@@ -174,15 +174,33 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 
       try {
         const intent = (await stripe.paymentIntents.retrieve(paymentIntentId, { expand: ["charges.data.transfer"] })) as any;
-        const chargeId = typeof intent?.charges?.data?.[0]?.id === "string" ? String(intent.charges.data[0].id) : "";
-        if (!chargeId) {
+        const expandedChargeId = typeof intent?.charges?.data?.[0]?.id === "string" ? String(intent.charges.data[0].id) : "";
+        const latestChargeId = typeof intent?.latest_charge === "string" ? intent.latest_charge : "";
+
+        const chargeId = (() => {
+          if (expandedChargeId) return expandedChargeId;
+          if (latestChargeId) return latestChargeId;
+          return "";
+        })();
+
+        let resolvedChargeId = chargeId;
+        if (!resolvedChargeId) {
+          try {
+            const charges = await stripe.charges.list({ payment_intent: paymentIntentId, limit: 1 });
+            resolvedChargeId = typeof charges?.data?.[0]?.id === "string" ? charges.data[0].id : "";
+          } catch (err) {
+            console.error("[api][account][bookings][id][cancel][PATCH] charges.list failed", { bookingId, paymentIntentId, err });
+          }
+        }
+
+        if (!resolvedChargeId) {
           warn409({ bookingId, status, startDate: booking.startDate, endDate: booking.endDate, error: "MISSING_CHARGE" });
           return NextResponse.json({ ok: false, error: "MISSING_CHARGE" }, { status: 409 });
         }
 
         const refund = await stripe.refunds.create(
           {
-            charge: chargeId,
+            charge: resolvedChargeId,
             reason: "requested_by_customer",
             reverse_transfer: true,
             refund_application_fee: true,
