@@ -309,18 +309,20 @@ export default function HostWalletPage() {
 
         <div className="grid gap-4 sm:grid-cols-3">
           <div className="rounded-3xl border border-emerald-200 bg-emerald-50/40 p-5 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)]">
-            <p className="text-sm font-semibold text-slate-800">Disponible</p>
+            <p className="text-sm font-semibold text-slate-800">Prêt au virement</p>
             <p className="mt-2 text-3xl font-semibold tracking-tight text-slate-900">
               {stripeConnect.status === "ENABLED" && stripeConnect.balance
                 ? formatCents(stripeConnect.balance.availableCents)
                 : "—"}
             </p>
-            <p className="mt-2 text-xs font-medium text-slate-500">Solde disponible</p>
+            <p className="mt-2 text-xs font-medium text-slate-500">
+              Montant validé par Stripe et prêt à être transféré sur votre compte bancaire.
+            </p>
           </div>
 
           <div className="rounded-3xl border border-amber-200 bg-amber-50/40 p-5 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)]">
             <div className="flex items-center justify-between">
-              <p className="text-sm font-semibold text-slate-800">En attente</p>
+              <p className="text-sm font-semibold text-slate-800">En cours de traitement</p>
               <ArrowUpRight className="h-5 w-5 text-slate-400" aria-hidden="true" />
             </div>
             <p className="mt-2 text-3xl font-semibold tracking-tight text-slate-900">
@@ -333,7 +335,7 @@ export default function HostWalletPage() {
                 Prochain virement estimé: {new Date(stripeConnect.nextPayoutArrivalDate).toLocaleDateString("fr-CH")}
               </p>
             ) : (
-              <p className="mt-2 text-xs font-medium text-slate-500">Solde en attente</p>
+              <p className="mt-2 text-xs font-medium text-slate-500">Paiements récents encore en délai de sécurité.</p>
             )}
           </div>
 
