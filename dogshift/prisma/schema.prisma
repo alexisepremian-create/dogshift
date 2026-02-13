@@ -77,6 +77,9 @@ model User {
   sitterApplications SitterApplication[]
 
   notifications Notification[]
+
+  reviewsWritten  Review[] @relation("ReviewOwner")
+  reviewsReceived Review[] @relation("ReviewSitter")
 }
 
 model Notification {
@@ -225,6 +228,8 @@ model Booking {
   stripeRefundId String?
   refundedAt     DateTime?
 
+  reviewRequestEmailSentAt DateTime?
+
   archivedAt DateTime?
 
   createdAt DateTime @default(now())
@@ -235,10 +240,34 @@ model Booking {
 
   conversations Conversation[] @relation("BookingConversations")
 
+  review Review?
+
   @@index([userId])
   @@index([sitterId])
   @@index([stripeSessionId])
   @@index([stripePaymentIntentId])
+}
+
+model Review {
+  id String @id @default(cuid())
+
+  bookingId String @unique
+  ownerId   String
+  sitterId  String
+
+  rating  Int
+  comment String?
+  anonymous Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  owner   User    @relation("ReviewOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  sitter  User    @relation("ReviewSitter", fields: [sitterId], references: [sitterId], onDelete: Restrict)
+
+  @@index([sitterId, createdAt])
+  @@index([ownerId, createdAt])
 }
 
 model Conversation {

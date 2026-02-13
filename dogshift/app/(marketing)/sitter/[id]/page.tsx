@@ -222,6 +222,8 @@ export default function SitterProfilePage() {
                 name: string;
                 city: string;
                 postalCode: string;
+                countReviews?: number;
+                averageRating?: number | null;
                 bio: string;
                 avatarUrl: string | null;
                 services: unknown;
@@ -255,8 +257,8 @@ export default function SitterProfilePage() {
           name: payload.sitter.name ?? "",
           city: payload.sitter.city ?? "",
           postalCode: payload.sitter.postalCode ?? "",
-          rating: null,
-          reviewCount: 0,
+          rating: typeof payload.sitter.averageRating === "number" && Number.isFinite(payload.sitter.averageRating) ? payload.sitter.averageRating : null,
+          reviewCount: typeof payload.sitter.countReviews === "number" && Number.isFinite(payload.sitter.countReviews) ? payload.sitter.countReviews : 0,
           pricePerDay,
           services,
           dogSizes: safeStringArray(payload.sitter.dogSizes),

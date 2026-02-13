@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
 import { CalendarDays, Clock3 } from "lucide-react";
 
@@ -24,6 +25,45 @@ type BookingDetail = {
   stripePaymentIntentId: string | null;
   sitter: { sitterId: string; name: string; avatarUrl: string | null; city?: string | null; postalCode?: string | null };
 };
+
+type ReviewEligibilityPayload = {
+  ok?: boolean;
+  eligible?: boolean;
+  reason?: string;
+  alreadyReviewed?: boolean;
+  canEdit?: boolean;
+};
+
+type ReviewDto = {
+  id: string;
+  bookingId: string;
+  sitterId: string;
+  rating: number;
+  comment: string | null;
+  anonymous: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+type ReviewGetPayload = {
+  ok?: boolean;
+  review?: ReviewDto | null;
+  error?: string;
+};
+
+type ReviewPostPayload = {
+  ok?: boolean;
+  review?: ReviewDto;
+  error?: string;
+};
+
+function Star({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true" className={className}>
+      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.286 3.957a1 1 0 00.95.69h4.16c.969 0 1.371 1.24.588 1.81l-3.366 2.447a1 1 0 00-.364 1.118l1.286 3.957c.3.921-.755 1.688-1.54 1.118l-3.366-2.447a1 1 0 00-1.176 0l-3.366 2.447c-.784.57-1.838-.197-1.54-1.118l1.286-3.957a1 1 0 00-.364-1.118L2.102 9.384c-.783-.57-.38-1.81.588-1.81h4.16a1 1 0 00.95-.69l1.286-3.957z" />
+    </svg>
+  );
+}
 
 function sitterLocation(sitter: { city?: string | null; postalCode?: string | null } | null | undefined) {
   const city = typeof sitter?.city === "string" && sitter.city.trim() ? sitter.city.trim() : "";
@@ -184,6 +224,7 @@ function StatusPill({ status }: { status: string }) {
 export default function AccountBookingDetailPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
+  const sp = useSearchParams();
   const { isLoaded, isSignedIn } = useUser();
 
   const bookingId = typeof params?.id === "string" ? params.id : "";
@@ -191,6 +232,20 @@ export default function AccountBookingDetailPage() {
   const [booking, setBooking] = useState<BookingDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const [reviewOpen, setReviewOpen] = useState(false);
+  const [eligibility, setEligibility] = useState<ReviewEligibilityPayload | null>(null);
+  const [eligibilityLoading, setEligibilityLoading] = useState(false);
+
+  const [existingReview, setExistingReview] = useState<ReviewDto | null>(null);
+  const [reviewLoading, setReviewLoading] = useState(false);
+
+  const [rating, setRating] = useState<number>(0);
+  const [comment, setComment] = useState<string>("");
+  const [anonymous, setAnonymous] = useState(false);
+  const [reviewSubmitting, setReviewSubmitting] = useState(false);
+  const [reviewError, setReviewError] = useState<string | null>(null);
+  const [reviewSent, setReviewSent] = useState(false);
 
   const [cancelOpen, setCancelOpen] = useState(false);
   const [cancelSubmitting, setCancelSubmitting] = useState(false);
@@ -245,6 +300,77 @@ export default function AccountBookingDetailPage() {
     void loadBooking();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bookingId, isLoaded, isSignedIn]);
+
+  useEffect(() => {
+    const wantsOpen = (sp?.get("review") ?? "").trim() === "1";
+    if (wantsOpen) setReviewOpen(true);
+  }, [sp]);
+
+  useEffect(() => {
+    if (!isLoaded || !isSignedIn) return;
+    if (!bookingId) return;
+
+    let cancelled = false;
+    async function loadEligibility() {
+      setEligibilityLoading(true);
+      setReviewError(null);
+      try {
+        const res = await fetch(`/api/reviews/eligibility?bookingId=${encodeURIComponent(bookingId)}`, { method: "GET" });
+        const payload = (await res.json().catch(() => null)) as ReviewEligibilityPayload | null;
+        if (cancelled) return;
+        if (!res.ok || !payload?.ok) {
+          setEligibility({ ok: false, eligible: false, reason: "ERROR" });
+          return;
+        }
+        setEligibility(payload);
+      } catch {
+        if (cancelled) return;
+        setEligibility({ ok: false, eligible: false, reason: "ERROR" });
+      } finally {
+        if (!cancelled) setEligibilityLoading(false);
+      }
+    }
+
+    void loadEligibility();
+    return () => {
+      cancelled = true;
+    };
+  }, [bookingId, isLoaded, isSignedIn]);
+
+  useEffect(() => {
+    if (!isLoaded || !isSignedIn) return;
+    if (!bookingId) return;
+    if (!eligibility?.alreadyReviewed) {
+      setExistingReview(null);
+      return;
+    }
+
+    let cancelled = false;
+    async function loadExisting() {
+      setReviewLoading(true);
+      try {
+        const res = await fetch(`/api/reviews?bookingId=${encodeURIComponent(bookingId)}`, { method: "GET" });
+        const payload = (await res.json().catch(() => null)) as ReviewGetPayload | null;
+        if (cancelled) return;
+        if (!res.ok || !payload?.ok) {
+          setExistingReview(null);
+          return;
+        }
+        setExistingReview(payload.review ?? null);
+        if (payload.review) {
+          setRating(Math.round(payload.review.rating));
+          setComment(payload.review.comment ?? "");
+          setAnonymous(Boolean(payload.review.anonymous));
+        }
+      } finally {
+        if (!cancelled) setReviewLoading(false);
+      }
+    }
+    void loadExisting();
+    return () => {
+      cancelled = true;
+    };
+  }, [bookingId, eligibility?.alreadyReviewed, isLoaded, isSignedIn]);
 
   useEffect(() => {
     if (!toast) return;
@@ -553,6 +679,159 @@ export default function AccountBookingDetailPage() {
                 <p className="mt-1 break-all text-xs font-medium text-slate-700">{booking.stripePaymentIntentId}</p>
               </div>
             ) : null}
+
+            <div className="mt-6 rounded-2xl border border-slate-200 bg-white px-4 py-4">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-sm font-semibold text-slate-900">Laisser un avis</p>
+                  <p className="mt-1 text-sm text-slate-600">Votre avis aide la communauté DogShift.</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setReviewOpen((v) => !v)}
+                  className="inline-flex h-9 items-center justify-center rounded-2xl border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50"
+                >
+                  {reviewOpen ? "Masquer" : "Ouvrir"}
+                </button>
+              </div>
+
+              {reviewOpen ? (
+                <div className="mt-4">
+                  {eligibilityLoading ? (
+                    <p className="text-sm font-medium text-slate-600">Chargement…</p>
+                  ) : eligibility?.ok && eligibility.eligible ? (
+                    <div className="space-y-4">
+                      {eligibility.alreadyReviewed && !eligibility.canEdit ? (
+                        <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                          <p className="text-sm font-semibold text-slate-900">Merci, avis déjà envoyé</p>
+                          <p className="mt-1 text-sm text-slate-600">Cet avis est en lecture seule.</p>
+                        </div>
+                      ) : null}
+
+                      {reviewSent ? (
+                        <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3">
+                          <p className="text-sm font-semibold text-emerald-900">Merci pour votre avis</p>
+                          <p className="mt-1 text-sm text-emerald-900/80">Il a bien été enregistré.</p>
+                        </div>
+                      ) : null}
+
+                      {reviewError ? (
+                        <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-900">
+                          {reviewError}
+                        </div>
+                      ) : null}
+
+                      {reviewLoading ? (
+                        <p className="text-sm font-medium text-slate-600">Chargement…</p>
+                      ) : null}
+
+                      <div>
+                        <p className="text-sm font-medium text-slate-700">Note *</p>
+                        <div className="mt-2 flex items-center gap-2">
+                          {Array.from({ length: 5 }).map((_, idx) => {
+                            const v = idx + 1;
+                            const active = rating >= v;
+                            return (
+                              <button
+                                key={v}
+                                type="button"
+                                onClick={() => {
+                                  if (eligibility.alreadyReviewed && !eligibility.canEdit) return;
+                                  setRating(v);
+                                }}
+                                disabled={eligibility.alreadyReviewed && !eligibility.canEdit}
+                                className={
+                                  active
+                                    ? "inline-flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-[#F5B301] ring-1 ring-slate-200 transition"
+                                    : "inline-flex h-9 w-9 items-center justify-center rounded-full bg-white text-slate-300 ring-1 ring-slate-200 transition hover:bg-slate-50"
+                                }
+                                aria-label={`Donner ${v} étoile${v > 1 ? "s" : ""}`}
+                              >
+                                <Star className="h-5 w-5" />
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      <div>
+                        <label htmlFor="review_comment" className="block text-sm font-medium text-slate-700">
+                          Commentaire (optionnel)
+                        </label>
+                        <textarea
+                          id="review_comment"
+                          value={comment}
+                          onChange={(e) => setComment(e.target.value)}
+                          disabled={eligibility.alreadyReviewed && !eligibility.canEdit}
+                          className="mt-2 w-full min-h-[120px] rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition focus:border-[var(--dogshift-blue)] focus:ring-4 focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_85%)] disabled:opacity-60"
+                          placeholder="Partagez votre expérience (optionnel)"
+                        />
+                      </div>
+
+                      <label className="flex cursor-pointer items-center gap-2 text-sm font-medium text-slate-700">
+                        <input
+                          type="checkbox"
+                          checked={anonymous}
+                          onChange={(e) => setAnonymous(e.target.checked)}
+                          disabled={eligibility.alreadyReviewed && !eligibility.canEdit}
+                          className="h-4 w-4 rounded border-slate-300"
+                        />
+                        Publier de manière anonyme
+                      </label>
+
+                      <button
+                        type="button"
+                        disabled={rating < 1 || reviewSubmitting || (eligibility.alreadyReviewed && !eligibility.canEdit)}
+                        onClick={async () => {
+                          if (reviewSubmitting) return;
+                          if (rating < 1) return;
+                          setReviewSubmitting(true);
+                          setReviewError(null);
+                          try {
+                            const res = await fetch("/api/reviews", {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({
+                                bookingId,
+                                rating,
+                                comment: comment.trim() ? comment.trim() : null,
+                                anonymity: anonymous,
+                              }),
+                            });
+                            const payload = (await res.json().catch(() => null)) as ReviewPostPayload | null;
+                            if (!res.ok || !payload?.ok || !payload.review) {
+                              setReviewError("Impossible d’envoyer l’avis. Réessaie.");
+                              return;
+                            }
+                            setExistingReview(payload.review);
+                            setReviewSent(true);
+                          } catch {
+                            setReviewError("Impossible d’envoyer l’avis. Réessaie.");
+                          } finally {
+                            setReviewSubmitting(false);
+                          }
+                        }}
+                        className="w-full rounded-2xl bg-[var(--dogshift-blue)] px-6 py-3 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition hover:bg-[var(--dogshift-blue-hover)] disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {reviewSubmitting
+                          ? "Envoi…"
+                          : eligibility.alreadyReviewed
+                            ? "Mettre à jour mon avis"
+                            : "Envoyer l’avis"}
+                      </button>
+
+                      {existingReview ? (
+                        <p className="text-xs font-medium text-slate-500">
+                          Dernière mise à jour : {formatDateOnly(existingReview.updatedAt)}
+                        </p>
+                      ) : null}
+                    </div>
+                  ) : (
+                    <p className="text-sm font-medium text-slate-600">Vous pourrez laisser un avis après la prestation.</p>
+                  )}
+                </div>
+              ) : null}
+            </div>
           </div>
         </div>
       )}

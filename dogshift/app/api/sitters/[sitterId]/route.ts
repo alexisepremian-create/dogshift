@@ -19,6 +19,8 @@ type SitterDetail = {
   verified: boolean;
   lat: number | null;
   lng: number | null;
+  countReviews: number;
+  averageRating: number | null;
 };
 
 export async function GET(
@@ -118,7 +120,24 @@ export async function GET(
       verified: typeof (sitterProfile as any)?.verificationStatus === "string" ? (sitterProfile as any).verificationStatus === "approved" : false,
       lat: typeof sitterProfile.lat === "number" && Number.isFinite(sitterProfile.lat) ? sitterProfile.lat : null,
       lng: typeof sitterProfile.lng === "number" && Number.isFinite(sitterProfile.lng) ? sitterProfile.lng : null,
+      countReviews: 0,
+      averageRating: null,
     };
+
+    try {
+      const agg = await (prisma as any).review.aggregate({
+        where: { sitterId },
+        _count: { id: true },
+        _avg: { rating: true },
+      });
+
+      const count = typeof agg?._count?.id === "number" ? agg._count.id : 0;
+      const avg = typeof agg?._avg?.rating === "number" && Number.isFinite(agg._avg.rating) ? agg._avg.rating : null;
+      sitter.countReviews = count;
+      sitter.averageRating = avg;
+    } catch (err) {
+      console.error("[api][sitters][sitterId] review aggregate failed", err);
+    }
 
     return NextResponse.json({ ok: true, sitter }, { status: 200 });
   } catch (err) {
