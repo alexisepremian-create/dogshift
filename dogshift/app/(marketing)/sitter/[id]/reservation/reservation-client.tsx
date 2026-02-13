@@ -26,7 +26,7 @@ const SECONDARY_BTN =
   "inline-flex items-center justify-center rounded-2xl border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50";
 
 function pricingUnitForService(service: string): PricingUnit {
-  return service === "Pension" ? "DAILY" : "HOURLY";
+  return service === "Pension" || service === "Garde" ? "DAILY" : "HOURLY";
 }
 
 function isFinitePositiveNumber(x: unknown): x is number {
@@ -627,10 +627,7 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
           return;
         }
 
-        if (dateEnd && dateEnd !== dateStart) {
-          setError("Pour l’instant, les services horaires sont limités à une seule journée.");
-          return;
-        }
+        setDateEnd(dateStart);
       }
 
       const payload: Record<string, unknown> = {

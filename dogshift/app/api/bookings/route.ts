@@ -17,6 +17,16 @@ type CreateBookingBody = {
   message?: unknown;
 };
 
+type StayRule = {
+  minStayDays?: number;
+  maxStayDays?: number;
+};
+
+const SERVICE_STAY_RULES: Record<string, StayRule> = {
+  Pension: {},
+  Garde: {},
+};
+
 function isValidIsoDate(value: string) {
   return /^\d{4}-\d{2}-\d{2}$/.test(value);
 }
@@ -118,6 +128,25 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, error: "INVALID_DATES" }, { status: 400 });
     }
 
+    const isDailyService = service === "Pension" || service === "Garde";
+    const isHourlyService = service === "Promenade";
+
+    // Service-specific expected payload.
+    if (isDailyService) {
+      if (hasHourlyDates || !hasDailyDates) {
+        return NextResponse.json({ ok: false, error: "INVALID_DATES" }, { status: 400 });
+      }
+    }
+    if (isHourlyService) {
+      if (!hasHourlyDates) {
+        return NextResponse.json({ ok: false, error: "INVALID_DATES" }, { status: 400 });
+      }
+      // Promenade: a single day is implied by the hourly range.
+      if (hasDailyDates) {
+        return NextResponse.json({ ok: false, error: "INVALID_DATES" }, { status: 400 });
+      }
+    }
+
     if (hasHourlyDates) {
       if (!isValidIsoDatetime(startAt) || !isValidIsoDatetime(endAt)) {
         return NextResponse.json({ ok: false, error: "INVALID_DATES" }, { status: 400 });
@@ -137,6 +166,16 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ ok: false, error: "PAST_DATE" }, { status: 400 });
       }
       if (endDate < startDate) {
+        return NextResponse.json({ ok: false, error: "INVALID_DATES" }, { status: 400 });
+      }
+
+      // Optional stay rules (prepared for future per-service min/max stay).
+      const days = daysBetweenInclusive(startDate, endDate);
+      const rules = SERVICE_STAY_RULES[service] ?? {};
+      if (typeof rules.minStayDays === "number" && Number.isFinite(rules.minStayDays) && days < rules.minStayDays) {
+        return NextResponse.json({ ok: false, error: "INVALID_DATES" }, { status: 400 });
+      }
+      if (typeof rules.maxStayDays === "number" && Number.isFinite(rules.maxStayDays) && days > rules.maxStayDays) {
         return NextResponse.json({ ok: false, error: "INVALID_DATES" }, { status: 400 });
       }
     }
@@ -168,8 +207,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, error: "SERVICE_NOT_AVAILABLE" }, { status: 400 });
     }
 
-    const isDailyService = service === "Pension";
-
     let totalChf: number | null = null;
     let startDateTime: Date | null = null;
     let endDateTime: Date | null = null;
@@ -197,13 +234,7 @@ export async function POST(req: NextRequest) {
       const utcMidnight = isoDateToUtcMidnight(startLocalIso);
       requiredAvailabilityDates = utcMidnight ? [utcMidnight] : null;
     } else {
-      if (!hasDailyDates) {
-        return NextResponse.json({ ok: false, error: "INVALID_DATES" }, { status: 400 });
-      }
-      totalChf = unit;
-      startDateTime = new Date(`${startDate}T00:00:00Z`);
-      endDateTime = new Date(`${endDate}T00:00:00Z`);
-      requiredAvailabilityDates = dateRangeUtcMidnightsInclusive(startDate, endDate);
+      return NextResponse.json({ ok: false, error: "INVALID_DATES" }, { status: 400 });
     }
 
     if (totalChf === null) {
