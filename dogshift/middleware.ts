@@ -43,6 +43,15 @@ function isPublicSitterRoute(req: MiddlewareReqLike) {
 }
 
 export default clerkMiddleware(async (auth, req) => {
+  const forwardedHost = (req.headers.get("x-forwarded-host") || "").split(",")[0]?.trim();
+  const host = (forwardedHost || req.headers.get("host") || "").split(",")[0]?.trim().toLowerCase();
+  if (process.env.NODE_ENV === "production" && host === "dogshift.ch") {
+    const url = req.nextUrl.clone();
+    url.host = "www.dogshift.ch";
+    url.protocol = "https";
+    return NextResponse.redirect(url, 308);
+  }
+
   const sitePassword = process.env.SITE_PASSWORD;
   const passwordSet = Boolean(sitePassword);
   const unlockedCookie = req.cookies.get("site_unlocked")?.value;
