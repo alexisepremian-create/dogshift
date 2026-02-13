@@ -121,16 +121,50 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
           ? booking.stripePaymentIntentId.trim()
           : "";
 
+      const alreadyRefunded =
+        (typeof booking.stripeRefundId === "string" && booking.stripeRefundId.trim()) || Boolean(booking.refundedAt);
+
       if (!paymentIntentId) {
         return NextResponse.json({ ok: false, error: "MISSING_PAYMENT_INTENT" }, { status: 409 });
       }
 
+      if (alreadyRefunded) {
+        const updated = await (prisma as any).booking.update({
+          where: { id: bookingId },
+          data: {
+            canceledAt,
+          },
+          select: {
+            id: true,
+            startDate: true,
+            endDate: true,
+            updatedAt: true,
+            canceledAt: true,
+            stripeRefundId: true,
+            refundedAt: true,
+          },
+        });
+
+        const res = await setBookingStatus(bookingId, "REFUNDED" as any, { req });
+        if (!res.ok) return NextResponse.json({ ok: false, error: res.error }, { status: 500 });
+
+        return NextResponse.json({ ok: true, booking: { ...updated, status: "REFUNDED" } }, { status: 200 });
+      }
+
       try {
+        const intent = (await stripe.paymentIntents.retrieve(paymentIntentId, { expand: ["charges.data.transfer"] })) as any;
+        const chargeId = typeof intent?.charges?.data?.[0]?.id === "string" ? String(intent.charges.data[0].id) : "";
+        if (!chargeId) {
+          return NextResponse.json({ ok: false, error: "MISSING_CHARGE" }, { status: 409 });
+        }
+
         const refund = await stripe.refunds.create(
           {
-            payment_intent: paymentIntentId,
+            charge: chargeId,
             reason: "requested_by_customer",
-          },
+            reverse_transfer: true,
+            refund_application_fee: true,
+          } as any,
           {
             idempotencyKey: `refund:owner_cancel:${bookingId}:${paymentIntentId}`,
           }

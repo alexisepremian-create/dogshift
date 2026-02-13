@@ -132,11 +132,19 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
 
     if (paymentIntentId) {
       try {
+        const intent = (await stripe.paymentIntents.retrieve(paymentIntentId, { expand: ["charges.data.transfer"] })) as any;
+        const chargeId = typeof intent?.charges?.data?.[0]?.id === "string" ? String(intent.charges.data[0].id) : "";
+        if (!chargeId) {
+          return NextResponse.json({ ok: false, error: "MISSING_CHARGE" }, { status: 409 });
+        }
+
         const refund = await stripe.refunds.create(
           {
-            payment_intent: paymentIntentId,
+            charge: chargeId,
             reason: "requested_by_customer",
-          },
+            reverse_transfer: true,
+            refund_application_fee: true,
+          } as any,
           {
             idempotencyKey: `refund:${bookingId}:${paymentIntentId}`,
           }
