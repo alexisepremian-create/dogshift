@@ -6,5 +6,11 @@
       "destination": "https://www.dogshift.ch/:path*",
       "permanent": true
     }
+  ],
+  "crons": [
+    {
+      "path": "/api/cron/review-requests",
+      "schedule": "0 3 * * *"
+    }
   ]
 }
