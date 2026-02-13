@@ -745,8 +745,7 @@ export default function AccountSettingsPage() {
         <div className="mt-6 grid gap-3">
           {(
             [
-              ["newMessages", "Nouveaux messages", "messages"],
-              ["messageReceived", "Emails de messages", "messages"],
+              ["messageReceived", "Nouveaux messages", "messages"],
               ["newBookingRequest", "Nouvelle demande de réservation", "booking"],
               ["bookingConfirmed", "Réservation confirmée", "booking"],
               ["paymentReceived", "Paiement reçu", "payment"],

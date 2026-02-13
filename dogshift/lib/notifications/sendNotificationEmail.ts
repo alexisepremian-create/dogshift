@@ -108,11 +108,17 @@ export type NotificationPayload =
   | { kind: "bookingRefunded"; bookingId: string; dashboard: "account" | "host" }
   | { kind: "bookingRefundFailed"; bookingId: string; dashboard: "account" | "host" };
 
-function messageSnippet(value: string) {
-  const trimmed = (value || "").trim();
-  if (!trimmed) return "";
-  if (trimmed.length <= 80) return trimmed;
-  return trimmed.slice(0, 80);
+async function resolveConversationLabel(conversationId: string) {
+  try {
+    const convo = await (prisma as any).conversation.findUnique({
+      where: { id: conversationId },
+      select: { bookingId: true },
+    });
+    const bookingId = typeof convo?.bookingId === "string" && convo.bookingId.trim() ? convo.bookingId.trim() : "";
+    return bookingId ? `Réservation #${bookingId}` : "Conversation";
+  } catch {
+    return "Conversation";
+  }
 }
 
 export async function sendNotificationEmail(params: {
@@ -169,12 +175,10 @@ export async function sendNotificationEmail(params: {
     switch (payload.kind) {
       case "newMessage": {
         const url = baseUrl ? `${baseUrl}/account/messages?conversationId=${encodeURIComponent(payload.conversationId)}` : "";
-        const snippet = messageSnippet(payload.messagePreview);
         return (
           `Bonjour,\n\n` +
-          `Vous avez reçu un nouveau message.\n\n` +
-          (snippet ? `${snippet}\n\n` : "") +
-          (url ? `Voir le message : ${url}\n\n` : "") +
+          `Vous avez reçu un nouveau message sur DogShift.\n\n` +
+          (url ? `Voir la conversation : ${url}\n\n` : "") +
           `— DogShift\n`
         );
       }
@@ -249,19 +253,30 @@ export async function sendNotificationEmail(params: {
   const html = await (async () => {
     switch (payload.kind) {
       case "newMessage": {
-        const url = baseUrl ? `${baseUrl}/account/messages?conversationId=${encodeURIComponent(payload.conversationId)}` : "";
-        const snippet = messageSnippet(payload.messagePreview);
+        const recipientHasSitterProfile = Boolean(
+          await prisma.sitterProfile.findUnique({ where: { userId: recipientUserId }, select: { userId: true } })
+        );
+        const conversationUrl = baseUrl
+          ? recipientHasSitterProfile
+            ? `${baseUrl}/host/messages/${encodeURIComponent(payload.conversationId)}`
+            : `${baseUrl}/account/messages?conversationId=${encodeURIComponent(payload.conversationId)}`
+          : "";
+        const conversationLabel = await resolveConversationLabel(payload.conversationId);
+
         const rows: EmailSummaryRow[] = [
-          { label: "De", value: payload.fromName },
-          ...(snippet ? [{ label: "Aperçu", value: snippet }] : []),
+          { label: "De", value: payload.fromName || "Utilisateur" },
+          { label: "Conversation", value: conversationLabel },
         ];
         return renderEmailLayout({
           logoUrl,
           title: "Nouveau message",
-          subtitle: "Vous avez reçu un nouveau message.",
+          subtitle: "Vous avez reçu un nouveau message sur DogShift.",
           summaryRows: rows,
-          ctaLabel: url ? "Voir le message" : undefined,
-          ctaUrl: url || undefined,
+          ctaLabel: conversationUrl ? "Voir la conversation" : undefined,
+          ctaUrl: conversationUrl || undefined,
+          secondaryLinkLabel: baseUrl ? "Ouvrir DogShift" : undefined,
+          secondaryLinkUrl: baseUrl ? `${baseUrl}/account` : undefined,
+          footerLinks: baseUrl ? [{ label: "Gérer mes notifications", url: `${baseUrl}/account/settings` }] : undefined,
         }).html;
       }
       case "bookingRequest": {

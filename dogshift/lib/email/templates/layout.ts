@@ -26,6 +26,9 @@ export function renderEmailLayout(params: {
   summaryRows?: EmailSummaryRow[];
   ctaLabel?: string;
   ctaUrl?: string;
+  secondaryLinkLabel?: string;
+  secondaryLinkUrl?: string;
+  footerLinks?: { label: string; url: string }[];
   footerText?: string;
 }) {
   const brandName = (params.brandName || "DogShift").trim() || "DogShift";
@@ -38,6 +41,11 @@ export function renderEmailLayout(params: {
 
   const ctaUrl = params.ctaUrl ? safeUrl(params.ctaUrl) : "";
   const ctaLabel = params.ctaLabel ? escapeHtml(params.ctaLabel) : "";
+
+  const secondaryLinkUrl = params.secondaryLinkUrl ? safeUrl(params.secondaryLinkUrl) : "";
+  const secondaryLinkLabel = params.secondaryLinkLabel ? escapeHtml(params.secondaryLinkLabel) : "";
+
+  const footerLinks = Array.isArray(params.footerLinks) ? params.footerLinks : [];
 
   const footerText = escapeHtml(
     params.footerText || "DogShift • support@dogshift.ch • Ceci est un email automatique, merci de ne pas répondre."
@@ -77,13 +85,36 @@ export function renderEmailLayout(params: {
             </a>
           </td>
         </tr>
+        ${secondaryLinkUrl && secondaryLinkLabel
+          ? `
+        <tr>
+          <td align="center" style="padding:12px 0 0 0;font-family:Arial,Helvetica,sans-serif;">
+            <a href="${escapeHtml(secondaryLinkUrl)}" style="color:#6b7280;text-decoration:underline;font-size:12px;line-height:16px;">
+              ${secondaryLinkLabel}
+            </a>
+          </td>
+        </tr>
+        `
+          : ""}
       </table>
     `
     : "";
 
   const logoHtml = logoUrl
-    ? `<img src="${escapeHtml(logoUrl)}" width="120" height="28" alt="${escapeHtml(brandName)}" style="display:block;border:0;outline:none;text-decoration:none;" />`
+    ? `<img src="${escapeHtml(logoUrl)}" width="120" alt="${escapeHtml(brandName)}" style="display:block;border:0;outline:none;text-decoration:none;width:120px;height:auto;max-width:120px;" />`
     : `<div style="font-family:Arial,Helvetica,sans-serif;font-size:18px;font-weight:800;color:#111827;">${escapeHtml(brandName)}</div>`;
+
+  const footerLinksHtml = footerLinks.length
+    ? `<div style="margin-top:10px;">
+        ${footerLinks
+          .map((l) => {
+            const label = escapeHtml(l.label);
+            const url = escapeHtml(safeUrl(l.url));
+            return `<a href="${url}" style="color:#6b7280;text-decoration:underline;">${label}</a>`;
+          })
+          .join("<span style=\"padding:0 8px;\">•</span>")}
+      </div>`
+    : "";
 
   const subtitleHtml = subtitle
     ? `<div style="margin-top:6px;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:20px;color:#6b7280;">${subtitle}</div>`
@@ -118,6 +149,7 @@ export function renderEmailLayout(params: {
             <tr>
               <td style="padding:16px 4px 0 4px;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:18px;color:#6b7280;">
                 ${footerText}
+                ${footerLinksHtml}
               </td>
             </tr>
           </table>
