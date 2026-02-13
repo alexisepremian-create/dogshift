@@ -68,7 +68,7 @@ export default clerkMiddleware(async (auth, req) => {
     const isNextAsset = pathname.startsWith("/_next/");
     const isStaticFile = /\.[^/]+$/.test(pathname);
 
-    if (!isLockBypassRoute(req) && !isPublicSitterRoute(req) && !isNextAsset && !isStaticFile) {
+    if (!pathname.startsWith("/api") && !isLockBypassRoute(req) && !isPublicSitterRoute(req) && !isNextAsset && !isStaticFile) {
       if (unlockedCookie !== "1") {
         const url = req.nextUrl.clone();
         url.pathname = "/unlock";
