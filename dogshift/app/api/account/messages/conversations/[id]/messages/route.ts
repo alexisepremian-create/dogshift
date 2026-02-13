@@ -8,6 +8,7 @@ import {
   resolveNotificationRecipientForConversation,
   sendNotificationEmail,
 } from "@/lib/notifications/sendNotificationEmail";
+import { hasNotificationAlreadySent, shouldSendUserNotification } from "@/lib/notifications/prefs";
 
 export const runtime = "nodejs";
 
@@ -154,10 +155,33 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
         }
 
         try {
+          const throttleBucket = throttleBucket10Min();
+          const entityId = `${conversationId}:${throttleBucket}`;
+          const pref = await shouldSendUserNotification(recipient.recipientUserId, "messageReceived");
+          const already = await hasNotificationAlreadySent(recipient.recipientUserId, "messageReceived", entityId);
+
+          if (!pref) {
+            console.log(
+              `MESSAGE_EMAIL_SKIP: recipientUserId=${recipient.recipientUserId} conversationId=${conversationId} pref=false throttleBucket=${throttleBucket} entityId=${entityId} reason=PREF_OFF`
+            );
+            return;
+          }
+
+          if (already) {
+            console.log(
+              `MESSAGE_EMAIL_SKIP: recipientUserId=${recipient.recipientUserId} conversationId=${conversationId} pref=true throttleBucket=${throttleBucket} entityId=${entityId} reason=THROTTLED_OR_ALREADY_SENT`
+            );
+            return;
+          }
+
+          console.log(
+            `MESSAGE_EMAIL_TRIGGER: recipientUserId=${recipient.recipientUserId} conversationId=${conversationId} pref=true throttleBucket=${throttleBucket} entityId=${entityId}`
+          );
+
           await sendNotificationEmail({
             recipientUserId: recipient.recipientUserId,
             key: "messageReceived",
-            entityId: `${conversationId}:${throttleBucket10Min()}`,
+            entityId,
             req,
             payload: {
               kind: "newMessage",
