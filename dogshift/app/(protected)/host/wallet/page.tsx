@@ -67,6 +67,15 @@ export default function HostWalletPage() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [stripeInfoOpen]);
 
+  useEffect(() => {
+    if (!stripeInfoOpen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [stripeInfoOpen]);
+
   async function startStripeOnboarding() {
     try {
       setStripeConnect((s) => ({ ...s, loading: true, error: null }));
@@ -230,7 +239,7 @@ export default function HostWalletPage() {
 
         {stripeInfoOpen ? (
           <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 px-4 py-10 backdrop-blur-sm"
+            className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm"
             role="dialog"
             aria-modal="true"
             aria-label="Comment fonctionnent les paiements sur DogShift"
@@ -238,8 +247,8 @@ export default function HostWalletPage() {
               if (e.target === e.currentTarget) setStripeInfoOpen(false);
             }}
           >
-            <div className="flex w-[calc(100vw-32px)] max-w-xl flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_30px_100px_-60px_rgba(2,6,23,0.45)] sm:w-full sm:p-6">
-              <div className="flex items-start justify-between gap-4">
+            <div className="fixed inset-x-4 bottom-4 mx-auto flex max-w-[520px] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_30px_100px_-60px_rgba(2,6,23,0.45)] sm:static sm:inset-auto sm:bottom-auto sm:w-full sm:max-w-xl sm:rounded-3xl">
+              <div className="sticky top-0 flex items-start justify-between gap-4 border-b border-slate-100 bg-white p-4 sm:p-6">
                 <div className="min-w-0">
                   <p className="text-base font-semibold text-slate-900">Comment fonctionnent les paiements sur DogShift</p>
                   <p className="mt-2 text-sm text-slate-600">
@@ -255,7 +264,10 @@ export default function HostWalletPage() {
                 </button>
               </div>
 
-              <div className="mt-5 grid max-h-[70vh] gap-5 overflow-y-auto pr-1 text-sm text-slate-700 sm:max-h-[75vh]">
+              <div
+                className="grid max-h-[calc(100vh-180px)] gap-5 overflow-y-auto p-4 pr-3 text-sm text-slate-700 sm:max-h-[75vh] sm:p-6 sm:pr-6"
+                style={{ WebkitOverflowScrolling: "touch" }}
+              >
                 <section className="grid gap-2">
                   <p className="font-semibold text-slate-900">1. Pourquoi connecter Stripe ?</p>
                   <p>
