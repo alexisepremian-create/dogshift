@@ -318,6 +318,8 @@ function SitterPublicProfileContent() {
             }
           | { ok: false; error: string };
 
+        if (dbg) console.log("API raw response", payload);
+
         if (!res.ok || !payload.ok) {
           const err = (payload as unknown as { error?: unknown })?.error;
           setApiError(typeof err === "string" ? err : res.status === 403 ? "FORBIDDEN" : "NOT_FOUND");
@@ -357,6 +359,7 @@ function SitterPublicProfileContent() {
         };
 
         setApiSitter(sitter);
+        if (dbg) console.log("After setSitter", sitter);
         setApiLoaded(true);
       } catch (error) {
         if (dbg) console.log("[ProfileContent] fetch error", error);
@@ -368,7 +371,7 @@ function SitterPublicProfileContent() {
         if (dbg) console.log("[ProfileContent] fetch finally");
       }
     })();
-  }, [id]);
+  }, [dbg, id, isPreviewMode]);
 
   useEffect(() => {
     if (!id) return;
