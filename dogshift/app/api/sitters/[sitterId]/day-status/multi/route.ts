@@ -3,13 +3,9 @@ import type { NextRequest } from "next/server";
 
 import { prisma } from "@/lib/prisma";
 import {
-  SERVICE_DEFAULTS,
-  computeDaySlots,
-  dayOfWeekForZurichDate,
   TIMEZONE_ZURICH,
-  type ServiceType,
 } from "@/lib/availability/slotEngine";
-import { summarizeDayStatusFromSlots } from "@/lib/availability/dayStatus";
+import { computeMultiDayStatusIndexed } from "@/lib/availability/dayStatusMulti";
 
 export const runtime = "nodejs";
 
@@ -31,16 +27,6 @@ function addDaysUtc(dt: Date, deltaDays: number) {
 
 function dateToIso(dt: Date) {
   return dt.toISOString().slice(0, 10);
-}
-
-function ensureServiceConfig(sitterId: string, serviceType: ServiceType, row: any) {
-  const defaults = SERVICE_DEFAULTS[serviceType];
-  return {
-    ...defaults,
-    sitterId,
-    ...(row ?? {}),
-    serviceType,
-  };
 }
 
 export async function GET(
@@ -92,41 +78,17 @@ export async function GET(
       (prisma as any).serviceConfig.findMany({ where: { sitterId } }),
     ]);
 
-    const configByService = new Map<ServiceType, any>();
-    for (const row of allConfigs ?? []) {
-      if (!row || typeof row.serviceType !== "string") continue;
-      const st = row.serviceType as ServiceType;
-      if (st === "PROMENADE" || st === "DOGSITTING" || st === "PENSION") {
-        configByService.set(st, ensureServiceConfig(sitterId, st, row));
-      }
-    }
-
-    const days = dates.map((date) => {
-      const dow = dayOfWeekForZurichDate(date);
-
-      const computeStatus = (serviceType: ServiceType) => {
-        const rules = (allRules ?? []).filter((r: any) => r && r.serviceType === serviceType && r.dayOfWeek === dow);
-        const exceptions = (allExceptions ?? []).filter((e: any) => e && e.serviceType === serviceType && e.date === date);
-        const config = configByService.get(serviceType) ?? ensureServiceConfig(sitterId, serviceType, null);
-        const slots = computeDaySlots({
-          serviceType,
-          date,
-          now: new Date(),
-          rules,
-          exceptions,
-          bookings: allBookings ?? [],
-          config,
-        });
-        return summarizeDayStatusFromSlots(slots);
-      };
-
-      return {
-        date,
-        promenadeStatus: computeStatus("PROMENADE"),
-        dogsittingStatus: computeStatus("DOGSITTING"),
-        pensionStatus: computeStatus("PENSION"),
-      };
+    const computed = computeMultiDayStatusIndexed({
+      sitterId,
+      dates,
+      now: new Date(),
+      allRules: allRules ?? [],
+      allExceptions: allExceptions ?? [],
+      allBookings: allBookings ?? [],
+      allConfigs: allConfigs ?? [],
     });
+
+    const days = computed.days;
 
     const durationMs = Date.now() - startedAt;
     if (dbg) {
@@ -135,6 +97,7 @@ export async function GET(
         from,
         to,
         days: days.length,
+        ...computed.metrics,
         durationMs,
       });
     }
