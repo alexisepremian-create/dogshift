@@ -37,9 +37,11 @@ type MiddlewareReqLike = {
 
 function isPublicSitterRoute(req: MiddlewareReqLike) {
   const pathname = String(req?.nextUrl?.pathname ?? "");
-  if (!pathname.startsWith("/sitter/")) return false;
-  const mode = String(req?.nextUrl?.searchParams?.get("mode") ?? "");
-  return mode === "public";
+  if (!pathname.startsWith("/sitter/") && !pathname.startsWith("/sitters/")) return false;
+  const mode = String(req?.nextUrl?.searchParams?.get("mode") ?? "")
+    .trim()
+    .toLowerCase();
+  return mode === "public" || mode === "";
 }
 
 export default clerkMiddleware(async (auth, req) => {
