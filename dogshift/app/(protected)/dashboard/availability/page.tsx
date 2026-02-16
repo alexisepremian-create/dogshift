@@ -55,6 +55,12 @@ function serviceMeta(svc: ServiceTypeApi) {
   return { icon: "🛌", label: "Pension" };
 }
 
+function serviceDotTone(svc: ServiceTypeApi) {
+  if (svc === "PROMENADE") return "bg-sky-400";
+  if (svc === "DOGSITTING") return "bg-violet-400";
+  return "bg-emerald-400";
+}
+
 function startOfMonthIso(dt: Date) {
   return new Date(Date.UTC(dt.getUTCFullYear(), dt.getUTCMonth(), 1, 12, 0, 0, 0));
 }
@@ -1007,6 +1013,19 @@ export default function AvailabilityStudioPage() {
                 const row = monthStatusByDate.get(dateIso) ?? null;
                 const tone = focusDayTone(row);
                 const isPast = dateIso < todayKeyZurich;
+
+                const indicators: Array<{ key: string; type: "service" | "exception"; svc?: ServiceTypeApi }> = [];
+                if (row) {
+                  indicators.push({ key: "PROMENADE", type: "service", svc: "PROMENADE" });
+                  indicators.push({ key: "DOGSITTING", type: "service", svc: "DOGSITTING" });
+                  indicators.push({ key: "PENSION", type: "service", svc: "PENSION" });
+                }
+                if (exceptionDatesForService.has(dateIso)) {
+                  indicators.push({ key: "EXCEPTION", type: "exception" });
+                }
+                const visibleIndicators = indicators.slice(0, 3);
+                const hasOverflow = indicators.length > visibleIndicators.length;
+
                 return (
                   <button
                     key={dateIso}
@@ -1018,23 +1037,33 @@ export default function AvailabilityStudioPage() {
                     }}
                     className={
                       isPast
-                        ? `flex h-10 w-full flex-col items-center justify-center rounded-2xl ring-1 ${tone} cursor-not-allowed opacity-40`
-                        : `flex h-10 w-full flex-col items-center justify-center rounded-2xl ring-1 ${tone} hover:ring-2`
+                        ? `flex h-12 w-full flex-col justify-between rounded-2xl ring-1 ${tone} cursor-not-allowed px-2 py-1 opacity-40`
+                        : `flex h-12 w-full flex-col justify-between rounded-2xl ring-1 ${tone} px-2 py-1 hover:ring-2`
                     }
                     aria-label={`Exception ${dateIso}`}
                   >
-                    <span className="text-sm font-semibold leading-none">{day}</span>
-                    {row ? (
-                      <div className="-mt-1 flex items-center gap-1">
-                        <span className={`h-2 w-2 rounded-full ${statusTone(row.promenadeStatus)}`} aria-hidden="true" />
-                        <span className={`h-2 w-2 rounded-full ${statusTone(row.dogsittingStatus)}`} aria-hidden="true" />
-                        <span className={`h-2 w-2 rounded-full ${statusTone(row.pensionStatus)}`} aria-hidden="true" />
-                      </div>
-                    ) : null}
+                    <div className="flex items-start justify-end">
+                      <span className="text-sm font-semibold leading-none text-slate-900">{day}</span>
+                    </div>
 
-                    {exceptionDatesForService.has(dateIso) ? (
-                      <span className="mt-1 h-1.5 w-1.5 rounded-full bg-[var(--dogshift-blue)]" aria-hidden="true" />
-                    ) : null}
+                    {visibleIndicators.length ? (
+                      <div className="flex items-center justify-center gap-1">
+                        {visibleIndicators.map((ind) => {
+                          if (ind.type === "exception") {
+                            return <span key={ind.key} className="h-2 w-2 rounded-full bg-[var(--dogshift-blue)]" aria-hidden="true" />;
+                          }
+                          const svc = ind.svc as ServiceTypeApi;
+                          return <span key={ind.key} className={`h-2 w-2 rounded-full ${serviceDotTone(svc)}`} aria-hidden="true" />;
+                        })}
+                        {hasOverflow ? (
+                          <span className="-mt-[1px] text-[10px] font-bold leading-none text-slate-400" aria-hidden="true">
+                            …
+                          </span>
+                        ) : null}
+                      </div>
+                    ) : (
+                      <div />
+                    )}
                   </button>
                 );
               })}
