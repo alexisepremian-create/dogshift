@@ -753,6 +753,11 @@ function SitterPublicProfileContent({
     [currentHostId, profileData]
   );
 
+  const nextAvail = useMemo(() => {
+    const rows = Array.isArray(availableDates) ? availableDates : [];
+    return rows.slice(0, 3);
+  }, [availableDates]);
+
   const isHostPreview = showHostChrome && isPreviewMode;
   const shouldShowFinalizeModal = isHostPreview && hostProfileCompletion < 100;
 
@@ -770,7 +775,9 @@ function SitterPublicProfileContent({
     });
   }
 
-  if (sitter === undefined) {
+  const isLoading = sitter === undefined;
+
+  if (isLoading) {
     if (dbg) console.log("[ProfileContent] returning loader - profile is", sitter);
     return <PageLoader label="Chargement…" />;
   }
@@ -814,11 +821,6 @@ function SitterPublicProfileContent({
 
   const ratingLabel = formatRatingMaybe(sitter.rating);
   const reviewCountLabel = sitter.reviewCount ?? 0;
-
-  const nextAvail = useMemo(() => {
-    const rows = Array.isArray(availableDates) ? availableDates : [];
-    return rows.slice(0, 3);
-  }, [availableDates]);
 
   const content = (
     <div className="relative grid gap-6 overflow-hidden" data-testid="sitter-public-profile">
