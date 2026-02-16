@@ -132,6 +132,8 @@ export default function AvailabilityStudioPage() {
   const [configDrawerOpen, setConfigDrawerOpen] = useState(false);
   const [configDraft, setConfigDraft] = useState<Partial<ServiceConfig> | null>(null);
 
+  const [bookingInfoOpen, setBookingInfoOpen] = useState(false);
+
   const [exceptionDrawerOpen, setExceptionDrawerOpen] = useState(false);
   const [exceptionDate, setExceptionDate] = useState<string>("");
   const [exceptionStatus, setExceptionStatus] = useState<"AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE">("UNAVAILABLE");
@@ -490,11 +492,11 @@ export default function AvailabilityStudioPage() {
   }
 
   return (
-    <div className="relative grid gap-6" data-testid="availability-studio">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <div className="mx-auto w-full max-w-6xl px-4 py-10">
+      <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-lg font-semibold text-slate-900">Studio disponibilités</h1>
-          <p className="mt-1 text-sm text-slate-600">Configure tes règles, exceptions et paramètres par service.</p>
+          <p className="text-2xl font-bold text-slate-900">Disponibilités</p>
+          <p className="mt-2 text-sm text-slate-600">Configure tes services, tes règles hebdo et tes exceptions.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Link
@@ -806,6 +808,18 @@ export default function AvailabilityStudioPage() {
           <p className="text-sm font-semibold text-rose-900">{error}</p>
         </div>
       ) : null}
+
+      <div className="mt-4 rounded-3xl border border-slate-200 bg-white p-4">
+        <button
+          type="button"
+          onClick={() => setBookingInfoOpen(true)}
+          className="inline-flex items-center gap-2 text-sm font-semibold text-slate-800"
+          aria-haspopup="dialog"
+          aria-expanded={bookingInfoOpen}
+        >
+          ⓘ Fonctionnement des réservations
+        </button>
+      </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Column 1: Services */}
@@ -1202,6 +1216,28 @@ export default function AvailabilityStudioPage() {
       ) : null}
 
       {loading ? <div className="fixed bottom-6 right-6 rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white">Chargement…</div> : null}
+
+      {bookingInfoOpen ? (
+        <div className="fixed inset-0 z-50 flex items-end justify-end bg-slate-900/40 p-4" role="dialog" aria-modal="true" aria-label="Fonctionnement des réservations">
+          <div className="w-full max-w-md rounded-3xl bg-white p-5 shadow-xl">
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-semibold text-slate-900">Fonctionnement des réservations</p>
+              <button
+                type="button"
+                onClick={() => setBookingInfoOpen(false)}
+                className="inline-flex h-9 items-center justify-center rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700"
+              >
+                Fermer
+              </button>
+            </div>
+            <div className="mt-4 grid gap-2 text-sm text-slate-700">
+              <p>Les réservations doivent être effectuées au minimum 24h à l’avance.</p>
+              <p>15 minutes sont automatiquement bloquées avant et après chaque réservation.</p>
+              <p>Les créneaux sont proposés par intervalles définis (ex: 30 minutes).</p>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
