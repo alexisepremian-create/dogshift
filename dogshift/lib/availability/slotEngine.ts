@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma";
+import { prisma } from "../prisma.ts";
 
 export type ServiceType = "PROMENADE" | "DOGSITTING" | "PENSION";
 
@@ -236,6 +236,10 @@ function dayOfWeekZurich(dateIso: string) {
   return typeof map[short] === "number" ? map[short] : 0;
 }
 
+export function dayOfWeekForZurichDate(dateIso: string) {
+  return dayOfWeekZurich(dateIso);
+}
+
 function normalizeRuleIntervals(rules: AvailabilityRuleRow[]) {
   return rules
     .map((r) => ({
@@ -354,11 +358,34 @@ export function computeDaySlots(input: ComputeDaySlotsInput): DaySlot[] {
   const baseFromRules = mergeSameStatus(normalizeRuleIntervals(input.rules));
   const baseWithExceptions = applyOverride(baseFromRules, normalizeExceptionIntervals(input.exceptions));
 
-  let agenda = baseWithExceptions.filter((i) => i.status !== "UNAVAILABLE");
-  for (const hb of hardBlocks) {
-    agenda = subtractBlock(agenda, hb);
+  // Hard blocks override the agenda to UNAVAILABLE (instead of subtracting), so we can expose UNAVAILABLE slots + reasons.
+  const hardOverrides: Interval[] = hardBlocks.map((b) => ({
+    startMin: b.startMin,
+    endMin: b.endMin,
+    status: "UNAVAILABLE",
+    reason: b.reason,
+  }));
+  const agenda = applyOverride(baseWithExceptions, hardOverrides);
+
+  function statusForRange(startMin: number, endMin: number): { status: SlotStatus; reason?: string } {
+    let sawAvailable = false;
+    let onRequestReason: string | undefined;
+    for (const seg of agenda) {
+      if (seg.endMin <= startMin || seg.startMin >= endMin) continue;
+      if (seg.status === "UNAVAILABLE") {
+        return { status: "UNAVAILABLE", reason: seg.reason };
+      }
+      if (seg.status === "ON_REQUEST" && !onRequestReason) {
+        onRequestReason = seg.reason;
+      }
+      if (seg.status === "AVAILABLE") {
+        sawAvailable = true;
+      }
+    }
+    if (onRequestReason) return { status: "ON_REQUEST", reason: onRequestReason };
+    if (sawAvailable) return { status: "AVAILABLE" };
+    return { status: "UNAVAILABLE", reason: "outside_rule" };
   }
-  agenda = mergeSameStatus(agenda);
 
   const slots: DaySlot[] = [];
   const step = Math.max(1, input.config.slotStepMin);
@@ -367,18 +394,26 @@ export function computeDaySlots(input: ComputeDaySlotsInput): DaySlot[] {
   const leadTimeMin = Math.max(0, input.config.leadTimeMin);
   const nowMin = toDayMinRange(input.date, now);
 
+  const seenStarts = new Set<number>();
   for (const interval of agenda) {
     const firstStart = Math.ceil(interval.startMin / step) * step;
-    for (let startMin = firstStart; startMin + duration <= interval.endMin; startMin += step) {
+    for (let startMin = firstStart; startMin < interval.endMin; startMin += step) {
+      if (seenStarts.has(startMin)) continue;
+      seenStarts.add(startMin);
       const endMin = startMin + duration;
-      let status: SlotStatus = interval.status;
-      let reason = interval.reason;
+      if (endMin > 24 * 60) continue;
 
-      if (nowMin !== null && startMin - nowMin < leadTimeMin) {
+      const base = statusForRange(startMin, endMin);
+      let status: SlotStatus = base.status;
+      let reason = base.reason;
+
+      // Lead time gating.
+      if (status !== "UNAVAILABLE" && nowMin !== null && startMin - nowMin < leadTimeMin) {
         status = "UNAVAILABLE";
         reason = "lead_time";
       }
 
+      // Soft blocks degrade to ON_REQUEST unless already UNAVAILABLE.
       if (status !== "UNAVAILABLE") {
         for (const sb of softBlocks) {
           if (sb.endMin <= startMin || sb.startMin >= endMin) continue;
