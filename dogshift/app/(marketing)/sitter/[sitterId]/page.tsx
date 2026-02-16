@@ -808,7 +808,14 @@ function SitterPublicProfileContent({
     const dt = new Date();
     return new Date(Date.UTC(dt.getUTCFullYear(), dt.getUTCMonth(), 1, 0, 0, 0, 0));
   });
-  const [monthDays, setMonthDays] = useState<Array<{ date: string; status: "AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE" }>>([]);
+  const [monthDays, setMonthDays] = useState<
+    Array<{
+      date: string;
+      promenadeStatus: "AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE";
+      dogsittingStatus: "AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE";
+      pensionStatus: "AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE";
+    }>
+  >([]);
   const [monthLoading, setMonthLoading] = useState(false);
   const [monthError, setMonthError] = useState<string | null>(null);
   const [monthRetryKey, setMonthRetryKey] = useState(0);
@@ -859,12 +866,21 @@ function SitterPublicProfileContent({
   }, [monthCursor]);
 
   const monthDaysByDate = useMemo(() => {
-    const map = new Map<string, "AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE">();
+    const map = new Map<
+      string,
+      {
+        promenadeStatus: "AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE";
+        dogsittingStatus: "AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE";
+        pensionStatus: "AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE";
+      }
+    >();
     for (const row of monthDays) {
       if (!row || typeof row.date !== "string") continue;
-      if (row.status === "AVAILABLE" || row.status === "ON_REQUEST" || row.status === "UNAVAILABLE") {
-        map.set(row.date, row.status);
-      }
+      map.set(row.date, {
+        promenadeStatus: row.promenadeStatus,
+        dogsittingStatus: row.dogsittingStatus,
+        pensionStatus: row.pensionStatus,
+      });
     }
     return map;
   }, [monthDays]);
@@ -888,17 +904,28 @@ function SitterPublicProfileContent({
           const qp = new URLSearchParams();
           qp.set("from", monthMeta.fromIso);
           qp.set("to", monthMeta.toIso);
-          qp.set("service", slotsServiceType);
           if (dbg) qp.set("dbg", "1");
-          const res = await fetch(`/api/sitters/${encodeURIComponent(id)}/day-status?${qp.toString()}`, {
-            method: "GET",
-            cache: "no-store",
-            signal: controller.signal,
-          });
+
+          const res = await fetch(`/api/sitters/${encodeURIComponent(id)}/day-status/multi?${qp.toString()}`,
+            {
+              method: "GET",
+              cache: "no-store",
+              signal: controller.signal,
+            });
+
           const payload = (await res.json().catch(() => null)) as
-            | { ok: true; days: Array<{ date: string; status: "AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE" }> }
+            | {
+                ok: true;
+                days: Array<{
+                  date: string;
+                  promenadeStatus: "AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE";
+                  dogsittingStatus: "AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE";
+                  pensionStatus: "AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE";
+                }>;
+              }
             | { ok: false; error: string }
             | null;
+
           if (cancelled) return;
           if (!res.ok || !payload || !payload.ok || !Array.isArray((payload as any).days)) {
             const err = (payload as any)?.error;
@@ -906,9 +933,21 @@ function SitterPublicProfileContent({
             setMonthDays([]);
             return;
           }
+
           const rows = payload.days.filter(
-            (d): d is { date: string; status: "AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE" } =>
-              Boolean(d && typeof d.date === "string" && (d.status === "AVAILABLE" || d.status === "ON_REQUEST" || d.status === "UNAVAILABLE"))
+            (d): d is {
+              date: string;
+              promenadeStatus: "AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE";
+              dogsittingStatus: "AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE";
+              pensionStatus: "AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE";
+            } =>
+              Boolean(
+                d &&
+                  typeof d.date === "string" &&
+                  (d.promenadeStatus === "AVAILABLE" || d.promenadeStatus === "ON_REQUEST" || d.promenadeStatus === "UNAVAILABLE") &&
+                  (d.dogsittingStatus === "AVAILABLE" || d.dogsittingStatus === "ON_REQUEST" || d.dogsittingStatus === "UNAVAILABLE") &&
+                  (d.pensionStatus === "AVAILABLE" || d.pensionStatus === "ON_REQUEST" || d.pensionStatus === "UNAVAILABLE")
+              )
           );
           setMonthDays(rows);
         } catch (error) {
@@ -1361,34 +1400,91 @@ function SitterPublicProfileContent({
                                   {Array.from({ length: monthMeta.daysInMonth }).map((_, i) => {
                                     const day = i + 1;
                                     const dateIso = `${String(monthMeta.year).padStart(4, "0")}-${String(monthMeta.month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-                                    const status = monthDaysByDate.get(dateIso) ?? "UNAVAILABLE";
-                                    const tone =
+                                    const row = monthDaysByDate.get(dateIso) ?? {
+                                      promenadeStatus: "UNAVAILABLE" as const,
+                                      dogsittingStatus: "UNAVAILABLE" as const,
+                                      pensionStatus: "UNAVAILABLE" as const,
+                                    };
+
+                                    const statusTone = (status: "AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE") =>
                                       status === "AVAILABLE"
-                                        ? "bg-emerald-50 text-emerald-900 ring-emerald-200"
+                                        ? "bg-emerald-500"
                                         : status === "ON_REQUEST"
+                                          ? "bg-amber-500"
+                                          : "bg-slate-300";
+
+                                    const cellTone =
+                                      slotsServiceType === "PROMENADE"
+                                        ? row.promenadeStatus
+                                        : slotsServiceType === "DOGSITTING"
+                                          ? row.dogsittingStatus
+                                          : row.pensionStatus;
+
+                                    const tone =
+                                      cellTone === "AVAILABLE"
+                                        ? "bg-emerald-50 text-emerald-900 ring-emerald-200"
+                                        : cellTone === "ON_REQUEST"
                                           ? "bg-amber-50 text-amber-900 ring-amber-200"
                                           : "bg-slate-100 text-slate-500 ring-slate-200";
-                                    const ariaLabel = `${dateIso} ${slotsServiceType} ${status}`;
+
+                                    const ariaLabel =
+                                      `${dateIso} — Promenade: ${row.promenadeStatus}; ` +
+                                      `Dogsitting: ${row.dogsittingStatus}; ` +
+                                      `Pension: ${row.pensionStatus}`;
                                     return (
-                                      <button
-                                        key={dateIso}
-                                        type="button"
-                                        onClick={() => {
-                                          setSlotsDate(dateIso);
-                                          if (slotsServiceType === "PENSION") {
-                                            if (!boardingStart) {
-                                              setBoardingStart(dateIso);
-                                              setBoardingEnd(dateIso);
-                                            } else {
-                                              setBoardingEnd(dateIso);
+                                      <div key={dateIso} className={`flex h-10 w-full flex-col items-center justify-center rounded-2xl ring-1 ${tone}`}>
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setSlotsDate(dateIso);
+                                            if (slotsServiceType === "PENSION") {
+                                              if (!boardingStart) {
+                                                setBoardingStart(dateIso);
+                                                setBoardingEnd(dateIso);
+                                              } else {
+                                                setBoardingEnd(dateIso);
+                                              }
                                             }
-                                          }
-                                        }}
-                                        className={`flex h-10 w-full flex-col items-center justify-center rounded-2xl ring-1 transition hover:bg-white ${tone}`}
-                                        aria-label={ariaLabel}
-                                      >
-                                        <span className="text-sm font-semibold leading-none">{day}</span>
-                                      </button>
+                                          }}
+                                          className="flex w-full flex-1 flex-col items-center justify-center rounded-2xl"
+                                          aria-label={ariaLabel}
+                                        >
+                                          <span className="text-sm font-semibold leading-none">{day}</span>
+                                        </button>
+                                        <div className="-mt-1 flex items-center gap-1">
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              setSlotsServiceType("PROMENADE");
+                                              setSlotsDate(dateIso);
+                                            }}
+                                            className={`h-2 w-2 rounded-full ${statusTone(row.promenadeStatus)}`}
+                                            aria-label={`Promenade ${dateIso}`}
+                                          />
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              setSlotsServiceType("DOGSITTING");
+                                              setSlotsDate(dateIso);
+                                            }}
+                                            className={`h-2 w-2 rounded-full ${statusTone(row.dogsittingStatus)}`}
+                                            aria-label={`Dogsitting ${dateIso}`}
+                                          />
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              setSlotsServiceType("PENSION");
+                                              setSlotsDate(dateIso);
+                                              if (!boardingStart) {
+                                                setBoardingStart(dateIso);
+                                                setBoardingEnd(dateIso);
+                                              }
+                                            }}
+                                            className={`h-2 w-2 rounded-full ${statusTone(row.pensionStatus)}`}
+                                            aria-label={`Pension ${dateIso}`}
+                                          />
+                                        </div>
+                                      </div>
                                     );
                                   })}
                                 </div>
