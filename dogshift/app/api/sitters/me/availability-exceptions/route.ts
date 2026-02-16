@@ -25,6 +25,13 @@ type PostBody = {
   ranges?: unknown;
 };
 
+type PutBody = {
+  serviceType?: unknown;
+  date?: unknown;
+  status?: unknown;
+  ranges?: unknown;
+};
+
 type DeleteBody = {
   id?: unknown;
 };
@@ -108,6 +115,75 @@ export async function POST(req: NextRequest) {
   });
 
   return NextResponse.json({ ok: true }, { status: 200, headers: { "cache-control": "no-store" } });
+}
+
+export async function PUT(req: NextRequest) {
+  const startedAt = Date.now();
+  const auth = await requireSitterOwner(req);
+  if (!auth.ok) return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
+
+  let body: PutBody;
+  try {
+    body = (await req.json()) as PutBody;
+  } catch {
+    return NextResponse.json({ ok: false, error: "INVALID_BODY" }, { status: 400 });
+  }
+
+  const serviceType = normalizeService(typeof body.serviceType === "string" ? body.serviceType : "");
+  if (!serviceType) return NextResponse.json({ ok: false, error: "INVALID_SERVICE" }, { status: 400 });
+
+  const dateIso = typeof body.date === "string" ? body.date.trim() : "";
+  if (!isValidIsoDate(dateIso)) return NextResponse.json({ ok: false, error: "INVALID_DATE" }, { status: 400 });
+
+  const status = typeof body.status === "string" ? body.status.trim().toUpperCase() : "";
+  if (status !== "AVAILABLE" && status !== "ON_REQUEST" && status !== "UNAVAILABLE") {
+    return NextResponse.json({ ok: false, error: "INVALID_STATUS" }, { status: 400 });
+  }
+
+  const normalized = normalizeRanges(body.ranges);
+  if (!normalized.ok) return NextResponse.json({ ok: false, error: normalized.error }, { status: 400 });
+
+  const ranges = normalized.ranges.length ? normalized.ranges : [{ startMin: 0, endMin: 24 * 60 }];
+
+  await (prisma as any).availabilityException.deleteMany({
+    where: { sitterId: auth.sitterId, serviceType, date: new Date(`${dateIso}T00:00:00Z`) },
+  });
+
+  await (prisma as any).availabilityException.createMany({
+    data: ranges.map((r) => ({
+      sitterId: auth.sitterId,
+      serviceType,
+      date: new Date(`${dateIso}T00:00:00Z`),
+      startMin: r.startMin,
+      endMin: r.endMin,
+      status,
+    })),
+  });
+
+  const rows = await (prisma as any).availabilityException.findMany({
+    where: { sitterId: auth.sitterId, serviceType, date: new Date(`${dateIso}T00:00:00Z`) },
+    orderBy: { startMin: "asc" },
+    select: { id: true, date: true, startMin: true, endMin: true, status: true },
+  });
+
+  const exceptions = (rows ?? []).map((r: any) => ({
+    id: r.id,
+    date: r.date instanceof Date ? r.date.toISOString().slice(0, 10) : r.date,
+    startMin: r.startMin,
+    endMin: r.endMin,
+    status: r.status,
+  }));
+
+  console.info("[api][sitters][me][availability-exceptions][PUT]", {
+    sitterId: auth.sitterId,
+    serviceType,
+    date: dateIso,
+    status,
+    ranges: ranges.length,
+    durationMs: Date.now() - startedAt,
+  });
+
+  return NextResponse.json({ ok: true, sitterId: auth.sitterId, serviceType, date: dateIso, exceptions }, { status: 200, headers: { "cache-control": "no-store" } });
 }
 
 export async function DELETE(req: NextRequest) {

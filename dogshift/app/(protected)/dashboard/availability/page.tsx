@@ -39,6 +39,8 @@ type ExceptionRow = {
   status: "AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE";
 };
 
+type ToastState = { tone: "ok" | "error"; message: string } | null;
+
 function minutesToHHMM(min: number) {
   const m = Math.max(0, Math.min(24 * 60, Math.round(min)));
   const hh = String(Math.floor(m / 60)).padStart(2, "0");
@@ -125,9 +127,18 @@ export default function AvailabilityStudioPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [savedPing, setSavedPing] = useState<string | null>(null);
+  const [toast, setToast] = useState<ToastState>(null);
 
   const [configDrawerOpen, setConfigDrawerOpen] = useState(false);
   const [configDraft, setConfigDraft] = useState<Partial<ServiceConfig> | null>(null);
+
+  const [exceptionDrawerOpen, setExceptionDrawerOpen] = useState(false);
+  const [exceptionDate, setExceptionDate] = useState<string>("");
+  const [exceptionStatus, setExceptionStatus] = useState<"AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE">("UNAVAILABLE");
+  const [exceptionAllDay, setExceptionAllDay] = useState(true);
+  const [exceptionRanges, setExceptionRanges] = useState<Array<{ startMin: number; endMin: number }>>([]);
+  const [exceptionSaving, setExceptionSaving] = useState(false);
+  const [exceptionError, setExceptionError] = useState<string | null>(null);
 
   const monthStatusByDate = useMemo(() => {
     const map = new Map<string, (typeof monthDays)[number]>();
@@ -213,6 +224,43 @@ export default function AvailabilityStudioPage() {
       if (token !== refreshTokenRef.current) return;
       setLoading(false);
     }
+
+    return;
+  }
+
+  function showToast(next: ToastState) {
+    setToast(next);
+    if (!next) return;
+    setTimeout(() => setToast(null), 2200);
+  }
+
+  const exceptionsForSelectedDate = useMemo(() => {
+    if (!exceptionDate) return [] as ExceptionRow[];
+    return (exceptionsByService[service] ?? []).filter((e) => e.date === exceptionDate);
+  }, [exceptionDate, exceptionsByService, service]);
+
+  function openExceptionDrawer(dateIso: string) {
+    setExceptionDate(dateIso);
+    setExceptionError(null);
+
+    const existing = (exceptionsByService[service] ?? []).filter((e) => e.date === dateIso);
+    if (existing.length) {
+      // 1 exception per date/service: derive the form from the existing set.
+      const st = existing[0].status;
+      setExceptionStatus(st);
+      const isAllDay = existing.length === 1 && existing[0].startMin === 0 && existing[0].endMin === 24 * 60;
+      setExceptionAllDay(isAllDay);
+      setExceptionRanges(
+        isAllDay
+          ? []
+          : existing.map((r) => ({ startMin: r.startMin, endMin: r.endMin })).sort((a, b) => a.startMin - b.startMin)
+      );
+    } else {
+      setExceptionStatus("UNAVAILABLE");
+      setExceptionAllDay(true);
+      setExceptionRanges([]);
+    }
+    setExceptionDrawerOpen(true);
   }
 
   useEffect(() => {
@@ -312,6 +360,242 @@ export default function AvailabilityStudioPage() {
               🟢 {savedPing}
             </span>
           ) : null}
+
+      {exceptionDrawerOpen ? (
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-end bg-slate-900/40 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Exception"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) setExceptionDrawerOpen(false);
+          }}
+        >
+          <div className="w-full max-w-md rounded-3xl bg-white p-5 shadow-xl">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-semibold text-slate-900">{exceptionsForSelectedDate.length ? "Exception" : "Ajouter une exception"}</p>
+                <p className="mt-1 text-sm text-slate-600">{exceptionDate}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setExceptionDrawerOpen(false)}
+                className="inline-flex h-9 items-center justify-center rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700"
+              >
+                Fermer
+              </button>
+            </div>
+
+            <p className="mt-3 text-xs font-semibold text-slate-500">Les exceptions remplacent les règles hebdomadaires pour cette date.</p>
+
+            {exceptionsForSelectedDate.length ? (
+              <div className="mt-4 grid gap-2">
+                {exceptionsForSelectedDate.map((e) => (
+                  <div key={e.id} className="flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                    <div>
+                      <p className="text-xs font-semibold text-slate-500">{e.status}</p>
+                      <p className="text-sm font-semibold text-slate-900">
+                        {minutesToHHMM(e.startMin)}–{minutesToHHMM(e.endMin)}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        setExceptionSaving(true);
+                        setExceptionError(null);
+                        try {
+                          const res = await fetch("/api/sitters/me/availability-exceptions", {
+                            method: "DELETE",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ id: e.id }),
+                          });
+                          const payload = (await res.json().catch(() => null)) as any;
+                          if (!res.ok || !payload?.ok) throw new Error(payload?.error ?? "DELETE_ERROR");
+                          showToast({ tone: "ok", message: "Exception supprimée" });
+                          await refetchAll();
+                        } catch (err) {
+                          setExceptionError(err instanceof Error ? err.message : "DELETE_ERROR");
+                          showToast({ tone: "error", message: "Impossible de supprimer" });
+                        } finally {
+                          setExceptionSaving(false);
+                        }
+                      }}
+                      disabled={exceptionSaving}
+                      className="inline-flex h-9 items-center justify-center rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 disabled:opacity-60"
+                      aria-label="Supprimer"
+                    >
+                      🗑️
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+
+            <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-4">
+              <p className="text-sm font-semibold text-slate-900">{exceptionsForSelectedDate.length ? "Modifier" : "Créer"}</p>
+
+              <div className="mt-3 grid gap-3">
+                <label className="text-xs font-semibold text-slate-700">
+                  Statut
+                  <select
+                    value={exceptionStatus}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      if (v === "AVAILABLE" || v === "ON_REQUEST" || v === "UNAVAILABLE") setExceptionStatus(v);
+                    }}
+                    className="mt-1 w-full rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm"
+                    aria-label="Statut exception"
+                  >
+                    <option value="AVAILABLE">Disponible</option>
+                    <option value="ON_REQUEST">Sur demande</option>
+                    <option value="UNAVAILABLE">Indisponible</option>
+                  </select>
+                </label>
+
+                <div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                  <div>
+                    <p className="text-sm font-semibold text-slate-900">Toute la journée</p>
+                    <p className="mt-1 text-xs text-slate-600">Sinon, définis des plages horaires.</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setExceptionAllDay((v) => !v)}
+                    className={
+                      exceptionAllDay
+                        ? "rounded-full bg-[var(--dogshift-blue)] px-3 py-1 text-xs font-semibold text-white"
+                        : "rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700"
+                    }
+                    aria-pressed={exceptionAllDay}
+                  >
+                    {exceptionAllDay ? "Oui" : "Non"}
+                  </button>
+                </div>
+
+                {!exceptionAllDay ? (
+                  <div>
+                    <p className="text-xs font-semibold text-slate-500">Plages horaires</p>
+                    <div className="mt-2 grid gap-2">
+                      {exceptionRanges.length ? (
+                        exceptionRanges.map((r, idx) => (
+                          <div key={`exr-${idx}`} className="grid grid-cols-2 gap-2">
+                            <input
+                              type="time"
+                              value={minutesToHHMM(r.startMin)}
+                              onChange={(e) => {
+                                const nextStart = hhmmToMinutes(e.target.value);
+                                if (nextStart === null) return;
+                                setExceptionRanges((prev) => {
+                                  const next = prev.slice();
+                                  next[idx] = { ...next[idx], startMin: nextStart };
+                                  return next;
+                                });
+                              }}
+                              className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700"
+                              aria-label={`Exception début ${idx + 1}`}
+                            />
+                            <input
+                              type="time"
+                              value={minutesToHHMM(r.endMin)}
+                              onChange={(e) => {
+                                const nextEnd = hhmmToMinutes(e.target.value);
+                                if (nextEnd === null) return;
+                                setExceptionRanges((prev) => {
+                                  const next = prev.slice();
+                                  next[idx] = { ...next[idx], endMin: nextEnd };
+                                  return next;
+                                });
+                              }}
+                              className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700"
+                              aria-label={`Exception fin ${idx + 1}`}
+                            />
+                          </div>
+                        ))
+                      ) : (
+                        <p className="text-sm text-slate-600">Aucune plage.</p>
+                      )}
+
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setExceptionRanges((prev) => [...prev, { startMin: 9 * 60, endMin: 12 * 60 }])}
+                          className="inline-flex h-9 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-xs font-semibold text-slate-700"
+                        >
+                          + Ajouter plage
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setExceptionRanges((prev) => prev.slice(0, -1))}
+                          disabled={!exceptionRanges.length}
+                          className="inline-flex h-9 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-xs font-semibold text-slate-700 disabled:opacity-60"
+                        >
+                          Supprimer dernière
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ) : null}
+
+                {exceptionError ? <p className="text-sm font-semibold text-rose-700">{exceptionError}</p> : null}
+
+                <button
+                  type="button"
+                  disabled={exceptionSaving}
+                  onClick={async () => {
+                    setExceptionSaving(true);
+                    setExceptionError(null);
+                    try {
+                      const ranges = exceptionAllDay ? [] : exceptionRanges;
+                      const normalized = normalizeRanges(ranges);
+                      if (!normalized.ok) {
+                        setExceptionError("INVALID_RANGES");
+                        showToast({ tone: "error", message: "Plages invalides" });
+                        return;
+                      }
+
+                      const res = await fetch("/api/sitters/me/availability-exceptions", {
+                        method: "PUT",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                          serviceType: service,
+                          date: exceptionDate,
+                          status: exceptionStatus,
+                          ranges: normalized.ranges,
+                        }),
+                      });
+                      const payload = (await res.json().catch(() => null)) as any;
+                      if (!res.ok || !payload?.ok) throw new Error(payload?.error ?? "SAVE_ERROR");
+                      showToast({ tone: "ok", message: "Exception enregistrée" });
+                      await refetchAll();
+                    } catch (err) {
+                      setExceptionError(err instanceof Error ? err.message : "SAVE_ERROR");
+                      showToast({ tone: "error", message: "Impossible d’enregistrer" });
+                    } finally {
+                      setExceptionSaving(false);
+                    }
+                  }}
+                  className="inline-flex h-11 w-full items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-6 text-sm font-semibold text-white disabled:opacity-60"
+                >
+                  Enregistrer
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {toast ? (
+        <div
+          className={
+            toast.tone === "ok"
+              ? "fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-full bg-emerald-600 px-4 py-2 text-xs font-semibold text-white"
+              : "fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-full bg-rose-600 px-4 py-2 text-xs font-semibold text-white"
+          }
+          role="status"
+          aria-live="polite"
+        >
+          {toast.message}
+        </div>
+      ) : null}
         </div>
       </div>
 
@@ -520,7 +804,13 @@ export default function AvailabilityStudioPage() {
                 const row = monthStatusByDate.get(dateIso) ?? null;
                 const tone = focusDayTone(row);
                 return (
-                  <div key={dateIso} className={`flex h-10 w-full flex-col items-center justify-center rounded-2xl ring-1 ${tone}`}>
+                  <button
+                    key={dateIso}
+                    type="button"
+                    onClick={() => openExceptionDrawer(dateIso)}
+                    className={`flex h-10 w-full flex-col items-center justify-center rounded-2xl ring-1 ${tone}`}
+                    aria-label={`Exception ${dateIso}`}
+                  >
                     <span className="text-sm font-semibold leading-none">{day}</span>
                     {row ? (
                       <div className="-mt-1 flex items-center gap-1">
@@ -529,7 +819,7 @@ export default function AvailabilityStudioPage() {
                         <span className={`h-2 w-2 rounded-full ${statusTone(row.pensionStatus)}`} aria-hidden="true" />
                       </div>
                     ) : null}
-                  </div>
+                  </button>
                 );
               })}
             </div>
