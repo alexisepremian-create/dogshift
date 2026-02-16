@@ -60,7 +60,7 @@ function isRscLikeRequest(req: Request) {
   return false;
 }
 
-export default clerkMiddleware(async (auth, req) => {
+export const proxy = clerkMiddleware(async (auth, req) => {
   const forwardedHost = (req.headers.get("x-forwarded-host") || "").split(",")[0]?.trim();
   const host = (forwardedHost || req.headers.get("host") || "").split(",")[0]?.trim().toLowerCase();
   if (process.env.NODE_ENV === "production" && host === "dogshift.ch") {
