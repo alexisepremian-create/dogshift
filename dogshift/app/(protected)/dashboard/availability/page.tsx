@@ -125,6 +125,7 @@ export default function AvailabilityStudioPage() {
   const [exceptionStatus, setExceptionStatus] = useState<"AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE">("UNAVAILABLE");
   const [exceptionAllDay, setExceptionAllDay] = useState(true);
   const [exceptionRanges, setExceptionRanges] = useState<Array<{ startMin: number; endMin: number }>>([]);
+  const [justAddedRangeIdx, setJustAddedRangeIdx] = useState<number | null>(null);
   const [exceptionSaving, setExceptionSaving] = useState(false);
   const [exceptionError, setExceptionError] = useState<string | null>(null);
 
@@ -578,50 +579,56 @@ export default function AvailabilityStudioPage() {
                 {!exceptionAllDay ? (
                   <div>
                     <p className="text-xs font-semibold text-slate-500">Plages horaires</p>
-                    <div className="mt-2 grid gap-2">
-                      {exceptionRanges.length ? (
-                        exceptionRanges.map((r, idx) => (
-                          <div key={`exr-${idx}`} className="rounded-2xl border border-slate-200 bg-white p-3">
-                            <div className="grid grid-cols-2 gap-2">
-                              <input
-                              type="time"
-                              value={minutesToHHMM(r.startMin)}
-                              step={900}
-                              onChange={(e) => {
-                                const nextStart = hhmmToMinutes(e.target.value);
-                                if (nextStart === null) return;
-                                setExceptionRanges((prev) => {
-                                  const next = prev.slice();
-                                  next[idx] = { ...next[idx], startMin: nextStart };
-                                  return next;
-                                });
-                              }}
-                              className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700"
-                              aria-label={`Exception début ${idx + 1}`}
-                            />
-                              <input
-                              type="time"
-                              value={minutesToHHMM(r.endMin)}
-                              step={900}
-                              onChange={(e) => {
-                                const nextEnd = hhmmToMinutes(e.target.value);
-                                if (nextEnd === null) return;
-                                setExceptionRanges((prev) => {
-                                  const next = prev.slice();
-                                  next[idx] = { ...next[idx], endMin: nextEnd };
-                                  return next;
-                                });
-                              }}
-                              className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700"
-                              aria-label={`Exception fin ${idx + 1}`}
-                            />
-                          </div>
+                    <div className="mt-2 rounded-2xl border border-slate-200 bg-white p-3">
+                      <div className="grid max-h-56 gap-2 overflow-auto pr-1">
+                        {exceptionRanges.length ? (
+                          exceptionRanges.map((r, idx) => (
+                            <div
+                              key={`exr-${idx}`}
+                              className={
+                                justAddedRangeIdx === idx
+                                  ? "flex items-center justify-between rounded-2xl border border-slate-200 bg-sky-50 px-3 py-2 transition-colors"
+                                  : "flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-3 py-2 transition-colors"
+                              }
+                            >
+                              <div className="flex items-center gap-2">
+                                <input
+                                  type="time"
+                                  value={minutesToHHMM(r.startMin)}
+                                  step={1800}
+                                  onChange={(e) => {
+                                    const nextStart = hhmmToMinutes(e.target.value);
+                                    if (nextStart === null) return;
+                                    setExceptionRanges((prev) => {
+                                      const next = prev.slice();
+                                      next[idx] = { ...next[idx], startMin: nextStart };
+                                      return next;
+                                    });
+                                  }}
+                                  className="w-[92px] rounded-xl border border-slate-200 bg-white px-2 py-2 text-xs font-semibold text-slate-700"
+                                  aria-label={`Plage ${idx + 1} début`}
+                                />
+                                <span className="text-xs font-semibold text-slate-400" aria-hidden="true">
+                                  →
+                                </span>
+                                <input
+                                  type="time"
+                                  value={minutesToHHMM(r.endMin)}
+                                  step={1800}
+                                  onChange={(e) => {
+                                    const nextEnd = hhmmToMinutes(e.target.value);
+                                    if (nextEnd === null) return;
+                                    setExceptionRanges((prev) => {
+                                      const next = prev.slice();
+                                      next[idx] = { ...next[idx], endMin: nextEnd };
+                                      return next;
+                                    });
+                                  }}
+                                  className="w-[92px] rounded-xl border border-slate-200 bg-white px-2 py-2 text-xs font-semibold text-slate-700"
+                                  aria-label={`Plage ${idx + 1} fin`}
+                                />
+                              </div>
 
-                            {r.endMin <= r.startMin ? (
-                              <p className="mt-2 text-xs font-semibold text-rose-700">La fin doit être après le début.</p>
-                            ) : null}
-
-                            <div className="mt-3 flex flex-wrap gap-2">
                               <button
                                 type="button"
                                 onClick={() =>
@@ -634,36 +641,29 @@ export default function AvailabilityStudioPage() {
                                 className="inline-flex h-9 items-center justify-center rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700"
                                 aria-label="Supprimer cette plage"
                               >
-                                🗑️ Supprimer
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  setExceptionRanges((prev) => {
-                                    const next = prev.slice();
-                                    next.splice(idx + 1, 0, { startMin: r.startMin, endMin: r.endMin });
-                                    return next;
-                                  })
-                                }
-                                className="inline-flex h-9 items-center justify-center rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700"
-                                aria-label="Dupliquer cette plage"
-                              >
-                                Dupliquer
+                                Supprimer
                               </button>
                             </div>
-                          </div>
-                        ))
-                      ) : (
-                        <p className="text-sm text-slate-600">Aucune plage.</p>
-                      )}
+                          ))
+                        ) : (
+                          <p className="text-sm text-slate-600">Aucune plage.</p>
+                        )}
+                      </div>
 
-                      <div className="flex items-center gap-2">
+                      <div className="mt-3">
                         <button
                           type="button"
-                          onClick={() => setExceptionRanges((prev) => [...prev, { startMin: 9 * 60, endMin: 12 * 60 }])}
+                          onClick={() => {
+                            setExceptionRanges((prev) => {
+                              const next = [...prev, { startMin: 8 * 60, endMin: 9 * 60 }];
+                              setJustAddedRangeIdx(next.length - 1);
+                              setTimeout(() => setJustAddedRangeIdx(null), 700);
+                              return next;
+                            });
+                          }}
                           className="inline-flex h-9 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-xs font-semibold text-slate-700"
                         >
-                          + Ajouter plage
+                          + Ajouter une plage
                         </button>
                       </div>
                     </div>
