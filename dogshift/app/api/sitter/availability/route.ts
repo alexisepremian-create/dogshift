@@ -6,6 +6,16 @@ import { resolveDbUserId } from "@/lib/auth/resolveDbUserId";
 
 export const runtime = "nodejs";
 
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  let t: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    t = setTimeout(() => reject(new Error(`TIMEOUT:${label}`)), ms);
+  });
+  return Promise.race([promise, timeout]).finally(() => {
+    if (t) clearTimeout(t);
+  }) as Promise<T>;
+}
+
 type DatesBody = {
   dates?: unknown;
 };
@@ -38,13 +48,17 @@ function normalizeDatesBody(body: DatesBody) {
 }
 
 async function requireSitterUser(req: NextRequest) {
-  const userId = await resolveDbUserId(req);
+  const userId = await withTimeout(resolveDbUserId(req), 8_000, "resolveDbUserId");
   if (!userId) return { ok: false as const, status: 401 as const, error: "UNAUTHORIZED" };
 
-  const user = await (prisma as any).user.findUnique({
-    where: { id: userId },
-    select: { id: true, role: true, sitterId: true },
-  });
+  const user = await withTimeout<any>(
+    (prisma as any).user.findUnique({
+      where: { id: userId },
+      select: { id: true, role: true, sitterId: true },
+    }),
+    8_000,
+    "user.findUnique"
+  );
 
   const sitterId = typeof user?.sitterId === "string" ? user.sitterId : null;
   if (!user?.id || user.role !== "SITTER" || !sitterId) {
@@ -55,15 +69,22 @@ async function requireSitterUser(req: NextRequest) {
 }
 
 export async function GET(req: NextRequest) {
+  const startedAt = Date.now();
+  const requestId = typeof (globalThis as any).crypto?.randomUUID === "function" ? (globalThis as any).crypto.randomUUID() : `r_${startedAt}`;
+  console.info("[api][sitter][availability][GET] start", { requestId });
   try {
     const auth = await requireSitterUser(req);
     if (!auth.ok) return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
 
-    const rows = await (prisma as any).availability.findMany({
-      where: { sitterId: auth.sitterId },
-      orderBy: { dateKey: "asc" },
-      select: { dateKey: true, isAvailable: true },
-    });
+    const rows = await withTimeout<any[]>(
+      (prisma as any).availability.findMany({
+        where: { sitterId: auth.sitterId },
+        orderBy: { dateKey: "asc" },
+        select: { dateKey: true, isAvailable: true },
+      }),
+      12_000,
+      "availability.findMany"
+    );
 
     const dates = (rows ?? [])
       .filter((r: any) => r?.isAvailable)
@@ -72,12 +93,22 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ ok: true, dates }, { status: 200 });
   } catch (err) {
-    console.error("[api][sitter][availability][GET] error", err);
+    const durationMs = Date.now() - startedAt;
+    const message = err instanceof Error ? err.message : String(err);
+    const isTimeout = typeof message === "string" && message.startsWith("TIMEOUT:");
+    console.error("[api][sitter][availability][GET] error", { requestId, durationMs, err });
+    if (isTimeout) return NextResponse.json({ ok: false, error: "TIMEOUT" }, { status: 504 });
     return NextResponse.json({ ok: false, error: "INTERNAL_ERROR" }, { status: 500 });
+  } finally {
+    const durationMs = Date.now() - startedAt;
+    console.info("[api][sitter][availability][GET] end", { requestId, durationMs });
   }
 }
 
 export async function POST(req: NextRequest) {
+  const startedAt = Date.now();
+  const requestId = typeof (globalThis as any).crypto?.randomUUID === "function" ? (globalThis as any).crypto.randomUUID() : `r_${startedAt}`;
+  console.info("[api][sitter][availability][POST] start", { requestId });
   try {
     const auth = await requireSitterUser(req);
     if (!auth.ok) return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
@@ -100,19 +131,33 @@ export async function POST(req: NextRequest) {
       if (iso < todayIso) return NextResponse.json({ ok: false, error: "PAST_DATE" }, { status: 400 });
     }
 
-    await (prisma as any).availability.createMany({
-      data: dates.map((dateKey) => ({ sitterId: auth.sitterId, dateKey, isAvailable: true })),
-      skipDuplicates: true,
-    });
+    await withTimeout(
+      (prisma as any).availability.createMany({
+        data: dates.map((dateKey) => ({ sitterId: auth.sitterId, dateKey, isAvailable: true })),
+        skipDuplicates: true,
+      }),
+      12_000,
+      "availability.createMany"
+    );
 
     return NextResponse.json({ ok: true }, { status: 200 });
   } catch (err) {
-    console.error("[api][sitter][availability][POST] error", err);
+    const durationMs = Date.now() - startedAt;
+    const message = err instanceof Error ? err.message : String(err);
+    const isTimeout = typeof message === "string" && message.startsWith("TIMEOUT:");
+    console.error("[api][sitter][availability][POST] error", { requestId, durationMs, err });
+    if (isTimeout) return NextResponse.json({ ok: false, error: "TIMEOUT" }, { status: 504 });
     return NextResponse.json({ ok: false, error: "INTERNAL_ERROR" }, { status: 500 });
+  } finally {
+    const durationMs = Date.now() - startedAt;
+    console.info("[api][sitter][availability][POST] end", { requestId, durationMs });
   }
 }
 
 export async function DELETE(req: NextRequest) {
+  const startedAt = Date.now();
+  const requestId = typeof (globalThis as any).crypto?.randomUUID === "function" ? (globalThis as any).crypto.randomUUID() : `r_${startedAt}`;
+  console.info("[api][sitter][availability][DELETE] start", { requestId });
   try {
     const auth = await requireSitterUser(req);
     if (!auth.ok) return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
@@ -135,16 +180,27 @@ export async function DELETE(req: NextRequest) {
       if (iso < todayIso) return NextResponse.json({ ok: false, error: "PAST_DATE" }, { status: 400 });
     }
 
-    await (prisma as any).availability.deleteMany({
-      where: {
-        sitterId: auth.sitterId,
-        dateKey: { in: dates },
-      },
-    });
+    await withTimeout(
+      (prisma as any).availability.deleteMany({
+        where: {
+          sitterId: auth.sitterId,
+          dateKey: { in: dates },
+        },
+      }),
+      12_000,
+      "availability.deleteMany"
+    );
 
     return NextResponse.json({ ok: true }, { status: 200 });
   } catch (err) {
-    console.error("[api][sitter][availability][DELETE] error", err);
+    const durationMs = Date.now() - startedAt;
+    const message = err instanceof Error ? err.message : String(err);
+    const isTimeout = typeof message === "string" && message.startsWith("TIMEOUT:");
+    console.error("[api][sitter][availability][DELETE] error", { requestId, durationMs, err });
+    if (isTimeout) return NextResponse.json({ ok: false, error: "TIMEOUT" }, { status: 504 });
     return NextResponse.json({ ok: false, error: "INTERNAL_ERROR" }, { status: 500 });
+  } finally {
+    const durationMs = Date.now() - startedAt;
+    console.info("[api][sitter][availability][DELETE] end", { requestId, durationMs });
   }
 }
