@@ -831,6 +831,27 @@ function SitterPublicProfileContent({
   const [monthError, setMonthError] = useState<string | null>(null);
   const [monthRetryKey, setMonthRetryKey] = useState(0);
 
+  const serviceUi = useMemo(() => {
+    const byKey = {
+      PROMENADE: { icon: "🚶", label: "Promenade" },
+      DOGSITTING: { icon: "🏠", label: "Dogsitting" },
+      PENSION: { icon: "🛌", label: "Pension" },
+    } as const;
+    const current = byKey[slotsServiceType];
+
+    const statusLabel = (s: "AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE") =>
+      s === "AVAILABLE" ? "Disponible" : s === "ON_REQUEST" ? "Sur demande" : "Indisponible";
+
+    const statusLabelLong = (s: "AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE") =>
+      s === "AVAILABLE"
+        ? "Disponible"
+        : s === "ON_REQUEST"
+          ? "Sur demande (réponse du sitter requise)"
+          : "Indisponible";
+
+    return { byKey, current, statusLabel, statusLabelLong };
+  }, [slotsServiceType]);
+
   useEffect(() => {
     if (slotsDate) return;
     try {
@@ -895,6 +916,28 @@ function SitterPublicProfileContent({
     }
     return map;
   }, [monthDays]);
+
+  const daySlotsAgenda = useMemo(() => {
+    const parseHour = (iso: string) => {
+      const h = Number(iso.slice(11, 13));
+      return Number.isFinite(h) ? h : 0;
+    };
+
+    const groups: Array<{ key: "MORNING" | "AFTERNOON" | "EVENING"; label: string; items: typeof daySlots }> = [
+      { key: "MORNING", label: "Matin", items: [] },
+      { key: "AFTERNOON", label: "Après-midi", items: [] },
+      { key: "EVENING", label: "Soir", items: [] },
+    ];
+
+    for (const slot of daySlots) {
+      const h = parseHour(slot.startAt);
+      if (h < 12) groups[0].items.push(slot);
+      else if (h < 18) groups[1].items.push(slot);
+      else groups[2].items.push(slot);
+    }
+
+    return groups.filter((g) => g.items.length);
+  }, [daySlots]);
 
   useEffect(() => {
     if (boardingStart) return;
@@ -1417,7 +1460,7 @@ function SitterPublicProfileContent({
                                   }
                                   aria-pressed={selected}
                                 >
-                                  {svc.label}
+                                  {serviceUi.byKey[svc.key].icon} {svc.label}
                                 </button>
                               );
                             })}
@@ -1449,7 +1492,14 @@ function SitterPublicProfileContent({
                             <p className="mt-2 text-sm font-semibold text-slate-900">{monthMeta.monthLabel}</p>
 
                             {monthLoading ? (
-                              <p className="mt-2 text-sm text-slate-600">Chargement…</p>
+                              <div className="mt-3 grid gap-2" aria-label="Chargement du calendrier">
+                                <div className="h-4 w-40 animate-pulse rounded bg-slate-200" />
+                                <div className="grid grid-cols-7 gap-2">
+                                  {Array.from({ length: 21 }).map((_, i) => (
+                                    <div key={`cal-skel-${i}`} className="h-10 w-full animate-pulse rounded-2xl bg-slate-200" />
+                                  ))}
+                                </div>
+                              </div>
                             ) : monthError ? (
                               <div className="mt-2">
                                 <p className="text-sm text-rose-700">{monthError}</p>
@@ -1463,6 +1513,24 @@ function SitterPublicProfileContent({
                               </div>
                             ) : (
                               <div className="mt-3">
+                                <div className="rounded-2xl border border-slate-200 bg-white p-3" aria-label="Légende disponibilités">
+                                  <p className="text-xs font-semibold text-slate-700">Légende</p>
+                                  <div className="mt-2 grid gap-2 text-xs text-slate-700 sm:grid-cols-3">
+                                    <div className="flex items-center gap-2">
+                                      <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" aria-hidden="true" />
+                                      <span>Disponible</span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      <span className="h-2.5 w-2.5 rounded-full bg-amber-500" aria-hidden="true" />
+                                      <span>Sur demande</span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      <span className="h-2.5 w-2.5 rounded-full bg-slate-300" aria-hidden="true" />
+                                      <span>Indisponible</span>
+                                    </div>
+                                  </div>
+                                </div>
+
                                 <div className="grid grid-cols-7 gap-2 text-center text-[11px] font-semibold text-slate-500">
                                   <div>L</div>
                                   <div>M</div>
@@ -1508,11 +1576,19 @@ function SitterPublicProfileContent({
                                           : "bg-slate-100 text-slate-500 ring-slate-200";
 
                                     const ariaLabel =
-                                      `${dateIso} — Promenade: ${row.promenadeStatus}; ` +
-                                      `Dogsitting: ${row.dogsittingStatus}; ` +
-                                      `Pension: ${row.pensionStatus}`;
+                                      `${dateIso} — ` +
+                                      `Promenade: ${serviceUi.statusLabel(row.promenadeStatus)}; ` +
+                                      `Dogsitting: ${serviceUi.statusLabel(row.dogsittingStatus)}; ` +
+                                      `Pension: ${serviceUi.statusLabel(row.pensionStatus)}`;
+
+                                    const focusRing =
+                                      slotsServiceType === "PROMENADE"
+                                        ? "ring-[2px] ring-emerald-500/30"
+                                        : slotsServiceType === "DOGSITTING"
+                                          ? "ring-[2px] ring-indigo-500/30"
+                                          : "ring-[2px] ring-fuchsia-500/30";
                                     return (
-                                      <div key={dateIso} className={`flex h-10 w-full flex-col items-center justify-center rounded-2xl ring-1 ${tone}`}>
+                                      <div key={dateIso} className={`flex h-10 w-full flex-col items-center justify-center rounded-2xl ring-1 ${tone} ${focusRing}`}>
                                         <button
                                           type="button"
                                           onClick={() => {
@@ -1539,7 +1615,7 @@ function SitterPublicProfileContent({
                                               setSlotsDate(dateIso);
                                             }}
                                             className={`h-2 w-2 rounded-full ${statusTone(row.promenadeStatus)}`}
-                                            aria-label={`Promenade ${dateIso}`}
+                                            aria-label={`${dateIso} — ${serviceUi.byKey.PROMENADE.icon} Promenade: ${serviceUi.statusLabel(row.promenadeStatus)}`}
                                           />
                                           <button
                                             type="button"
@@ -1548,7 +1624,7 @@ function SitterPublicProfileContent({
                                               setSlotsDate(dateIso);
                                             }}
                                             className={`h-2 w-2 rounded-full ${statusTone(row.dogsittingStatus)}`}
-                                            aria-label={`Dogsitting ${dateIso}`}
+                                            aria-label={`${dateIso} — ${serviceUi.byKey.DOGSITTING.icon} Dogsitting: ${serviceUi.statusLabel(row.dogsittingStatus)}`}
                                           />
                                           <button
                                             type="button"
@@ -1561,7 +1637,7 @@ function SitterPublicProfileContent({
                                               }
                                             }}
                                             className={`h-2 w-2 rounded-full ${statusTone(row.pensionStatus)}`}
-                                            aria-label={`Pension ${dateIso}`}
+                                            aria-label={`${dateIso} — ${serviceUi.byKey.PENSION.icon} Pension: ${serviceUi.statusLabel(row.pensionStatus)}`}
                                           />
                                         </div>
                                       </div>
@@ -1586,7 +1662,12 @@ function SitterPublicProfileContent({
                           </div>
 
                           <div className="mt-4">
-                            <p className="text-sm font-medium text-slate-900">Créneaux</p>
+                            <p className="text-sm font-medium text-slate-900">
+                              Créneaux (service sélectionné)
+                              <span className="ml-2 text-sm font-semibold text-slate-700">
+                                {serviceUi.current.icon} {serviceUi.current.label}
+                              </span>
+                            </p>
                             {serviceSummary ? (
                               <div className="mt-2 flex flex-wrap gap-2">
                                 <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700">
@@ -1720,7 +1801,11 @@ function SitterPublicProfileContent({
                                 </div>
                               </div>
                             ) : slotsLoading ? (
-                              <p className="mt-2 text-sm text-slate-600">Chargement…</p>
+                              <div className="mt-3 grid gap-2" aria-label="Chargement des créneaux">
+                                {Array.from({ length: 4 }).map((_, i) => (
+                                  <div key={`slots-skel-${i}`} className="h-12 w-full animate-pulse rounded-2xl bg-slate-200" />
+                                ))}
+                              </div>
                             ) : slotsError ? (
                               <div className="mt-2">
                                 <p className="text-sm text-rose-700">{slotsError}</p>
@@ -1733,55 +1818,57 @@ function SitterPublicProfileContent({
                                 </button>
                               </div>
                             ) : daySlots.length ? (
-                              <div className="mt-3 grid gap-2">
-                                {daySlots.map((slot) => {
-                                  const isUnavailable = slot.status === "UNAVAILABLE";
-                                  const isOnRequest = slot.status === "ON_REQUEST";
-                                  const tone = isUnavailable
-                                    ? "border-slate-200 bg-slate-100 text-slate-500"
-                                    : isOnRequest
-                                      ? "border-amber-200 bg-amber-50 text-amber-900"
-                                      : "border-emerald-200 bg-emerald-50 text-emerald-900";
-                                  const label = `${slot.startAt.slice(11, 16)}–${slot.endAt.slice(11, 16)}`;
-                                  const ariaLabel = `${slotsServiceType} ${label} ${slot.status}`;
-                                  const tooltip = dbg
-                                    ? slot.reason ?? ""
-                                    : slot.status === "AVAILABLE"
-                                      ? "Disponible"
-                                      : slot.status === "ON_REQUEST"
-                                        ? "Sur demande"
-                                        : "Indisponible";
-                                  return (
-                                    <button
-                                      key={`${slot.startAt}-${slot.endAt}-${slot.status}-${slot.reason ?? ""}`}
-                                      type="button"
-                                      disabled={isUnavailable}
-                                      title={tooltip}
-                                      onClick={() => {
-                                        if (isUnavailable) return;
-                                        const serviceName = slotsServiceType === "PROMENADE" ? "Promenade" : "Garde";
-                                        setSelectedService(serviceName);
-                                        if (slotsServiceType === "PROMENADE") {
-                                          setBookingStartAt(slot.startAt);
-                                          setBookingEndAt(slot.endAt);
-                                          setBookingStart("");
-                                          setBookingEnd("");
-                                        } else {
-                                          setBookingStart(slotsDate);
-                                          setBookingEnd(slotsDate);
-                                          setBookingStartAt("");
-                                          setBookingEndAt("");
-                                        }
-                                        setBookingOpen(true);
-                                      }}
-                                      className={`flex w-full items-center justify-between rounded-2xl border px-4 py-3 text-left text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-70 ${tone}`}
-                                      aria-label={ariaLabel}
-                                    >
-                                      <span>{label}</span>
-                                      <span className="text-xs font-semibold">{slot.status === "AVAILABLE" ? "Dispo" : slot.status === "ON_REQUEST" ? "Sur demande" : "Indispo"}</span>
-                                    </button>
-                                  );
-                                })}
+                              <div className="mt-3 grid gap-3">
+                                {daySlotsAgenda.map((group) => (
+                                  <div key={group.key}>
+                                    <p className="text-xs font-semibold text-slate-500">{group.label}</p>
+                                    <div className="mt-2 grid gap-2">
+                                      {group.items.map((slot) => {
+                                        const isUnavailable = slot.status === "UNAVAILABLE";
+                                        const isOnRequest = slot.status === "ON_REQUEST";
+                                        const tone = isUnavailable
+                                          ? "border-slate-200 bg-slate-100 text-slate-500"
+                                          : isOnRequest
+                                            ? "border-amber-200 bg-amber-50 text-amber-900"
+                                            : "border-emerald-200 bg-emerald-50 text-emerald-900";
+                                        const label = `${slot.startAt.slice(11, 16)}–${slot.endAt.slice(11, 16)}`;
+                                        const statusText = serviceUi.statusLabelLong(slot.status);
+                                        const ariaLabel = `${serviceUi.current.icon} ${serviceUi.current.label} ${label} — ${statusText}`;
+                                        const tooltip = dbg ? slot.reason ?? "" : statusText;
+                                        return (
+                                          <button
+                                            key={`${slot.startAt}-${slot.endAt}-${slot.status}-${slot.reason ?? ""}`}
+                                            type="button"
+                                            disabled={isUnavailable}
+                                            title={tooltip}
+                                            onClick={() => {
+                                              if (isUnavailable) return;
+                                              const serviceName = slotsServiceType === "PROMENADE" ? "Promenade" : "Garde";
+                                              setSelectedService(serviceName);
+                                              if (slotsServiceType === "PROMENADE") {
+                                                setBookingStartAt(slot.startAt);
+                                                setBookingEndAt(slot.endAt);
+                                                setBookingStart("");
+                                                setBookingEnd("");
+                                              } else {
+                                                setBookingStart(slotsDate);
+                                                setBookingEnd(slotsDate);
+                                                setBookingStartAt("");
+                                                setBookingEndAt("");
+                                              }
+                                              setBookingOpen(true);
+                                            }}
+                                            className={`flex w-full items-center justify-between rounded-2xl border px-4 py-3 text-left text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-70 ${tone}`}
+                                            aria-label={ariaLabel}
+                                          >
+                                            <span>{label}</span>
+                                            <span className="text-xs font-semibold">{serviceUi.statusLabel(slot.status)}</span>
+                                          </button>
+                                        );
+                                      })}
+                                    </div>
+                                  </div>
+                                ))}
                               </div>
                             ) : (
                               <p className="mt-2 text-sm text-slate-600">Aucun créneau.</p>
