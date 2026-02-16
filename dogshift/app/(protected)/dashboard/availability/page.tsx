@@ -140,6 +140,11 @@ export default function AvailabilityStudioPage() {
   const [exceptionSaving, setExceptionSaving] = useState(false);
   const [exceptionError, setExceptionError] = useState<string | null>(null);
 
+  const exceptionDrawerTitleRef = useRef<HTMLParagraphElement | null>(null);
+  const exceptionDrawerRef = useRef<HTMLDivElement | null>(null);
+  const exceptionDrawerRestoreFocusRef = useRef<HTMLElement | null>(null);
+  const exceptionDrawerInitialSnapshotRef = useRef<string>("");
+
   const monthStatusByDate = useMemo(() => {
     const map = new Map<string, (typeof monthDays)[number]>();
     for (const row of monthDays) map.set(row.date, row);
@@ -234,12 +239,52 @@ export default function AvailabilityStudioPage() {
     setTimeout(() => setToast(null), 2200);
   }
 
+  const exceptionDatesForService = useMemo(() => {
+    const set = new Set<string>();
+    for (const e of exceptionsByService[service] ?? []) {
+      if (e && typeof e.date === "string") set.add(e.date);
+    }
+    return set;
+  }, [exceptionsByService, service]);
+
   const exceptionsForSelectedDate = useMemo(() => {
     if (!exceptionDate) return [] as ExceptionRow[];
     return (exceptionsByService[service] ?? []).filter((e) => e.date === exceptionDate);
   }, [exceptionDate, exceptionsByService, service]);
 
+  const exceptionRangesValidation = useMemo(() => {
+    if (exceptionAllDay) return { ok: true as const, error: null as string | null };
+    if (!exceptionRanges.length) return { ok: false as const, error: "Ajoute au moins une plage." };
+    for (const r of exceptionRanges) {
+      if (r.endMin <= r.startMin) return { ok: false as const, error: "Une plage a une fin avant son début." };
+    }
+    const normalized = normalizeRanges(exceptionRanges);
+    if (!normalized.ok) return { ok: false as const, error: "Les plages se chevauchent." };
+    return { ok: true as const, error: null as string | null };
+  }, [exceptionAllDay, exceptionRanges]);
+
+  const exceptionHasUnsavedChanges = useMemo(() => {
+    if (!exceptionDrawerOpen) return false;
+    const snap = JSON.stringify({
+      date: exceptionDate,
+      status: exceptionStatus,
+      allDay: exceptionAllDay,
+      ranges: exceptionRanges,
+    });
+    return snap !== exceptionDrawerInitialSnapshotRef.current;
+  }, [exceptionAllDay, exceptionDate, exceptionDrawerOpen, exceptionRanges, exceptionStatus]);
+
+  function closeExceptionDrawer() {
+    if (exceptionSaving) return;
+    if (exceptionHasUnsavedChanges) {
+      const ok = window.confirm("Quitter sans enregistrer ?");
+      if (!ok) return;
+    }
+    setExceptionDrawerOpen(false);
+  }
+
   function openExceptionDrawer(dateIso: string) {
+    exceptionDrawerRestoreFocusRef.current = document.activeElement as HTMLElement | null;
     setExceptionDate(dateIso);
     setExceptionError(null);
 
@@ -260,8 +305,79 @@ export default function AvailabilityStudioPage() {
       setExceptionAllDay(true);
       setExceptionRanges([]);
     }
+
+    exceptionDrawerInitialSnapshotRef.current = JSON.stringify({
+      date: dateIso,
+      status: existing.length ? existing[0].status : "UNAVAILABLE",
+      allDay: existing.length ? (existing.length === 1 && existing[0].startMin === 0 && existing[0].endMin === 24 * 60) : true,
+      ranges:
+        existing.length && !(existing.length === 1 && existing[0].startMin === 0 && existing[0].endMin === 24 * 60)
+          ? existing.map((r) => ({ startMin: r.startMin, endMin: r.endMin })).sort((a, b) => a.startMin - b.startMin)
+          : [],
+    });
     setExceptionDrawerOpen(true);
   }
+
+  useEffect(() => {
+    if (!exceptionDrawerOpen) {
+      const el = exceptionDrawerRestoreFocusRef.current;
+      if (el && typeof el.focus === "function") {
+        try {
+          el.focus();
+        } catch {
+          // ignore
+        }
+      }
+      return;
+    }
+
+    const t = setTimeout(() => {
+      const node = exceptionDrawerTitleRef.current;
+      if (node && typeof (node as any).focus === "function") {
+        (node as any).focus();
+      }
+    }, 0);
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        closeExceptionDrawer();
+        return;
+      }
+
+      if (e.key !== "Tab") return;
+      const root = exceptionDrawerRef.current;
+      if (!root) return;
+      const focusables = Array.from(
+        root.querySelectorAll<HTMLElement>(
+          "a[href], button:not([disabled]), textarea, input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex='-1'])"
+        )
+      ).filter((el) => !el.hasAttribute("disabled") && el.tabIndex !== -1);
+
+      if (!focusables.length) return;
+      const first = focusables[0];
+      const last = focusables[focusables.length - 1];
+      const active = document.activeElement as HTMLElement | null;
+
+      if (e.shiftKey) {
+        if (active === first || !root.contains(active)) {
+          e.preventDefault();
+          last.focus();
+        }
+      } else {
+        if (active === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      clearTimeout(t);
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [exceptionDrawerOpen, exceptionHasUnsavedChanges, exceptionSaving]);
 
   useEffect(() => {
     void refetchAll();
@@ -366,27 +482,37 @@ export default function AvailabilityStudioPage() {
           className="fixed inset-0 z-50 flex items-end justify-end bg-slate-900/40 p-4"
           role="dialog"
           aria-modal="true"
-          aria-label="Exception"
+          aria-labelledby="exception-drawer-title"
+          aria-describedby="exception-drawer-desc"
           onMouseDown={(e) => {
-            if (e.target === e.currentTarget) setExceptionDrawerOpen(false);
+            if (e.target === e.currentTarget) closeExceptionDrawer();
           }}
         >
-          <div className="w-full max-w-md rounded-3xl bg-white p-5 shadow-xl">
+          <div ref={exceptionDrawerRef} className="w-full max-w-md rounded-3xl bg-white p-5 shadow-xl">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-semibold text-slate-900">{exceptionsForSelectedDate.length ? "Exception" : "Ajouter une exception"}</p>
+                <p
+                  id="exception-drawer-title"
+                  ref={exceptionDrawerTitleRef}
+                  tabIndex={-1}
+                  className="text-sm font-semibold text-slate-900"
+                >
+                  {exceptionsForSelectedDate.length ? "Exception" : "Ajouter une exception"}
+                </p>
                 <p className="mt-1 text-sm text-slate-600">{exceptionDate}</p>
               </div>
               <button
                 type="button"
-                onClick={() => setExceptionDrawerOpen(false)}
+                onClick={() => closeExceptionDrawer()}
                 className="inline-flex h-9 items-center justify-center rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700"
               >
                 Fermer
               </button>
             </div>
 
-            <p className="mt-3 text-xs font-semibold text-slate-500">Les exceptions remplacent les règles hebdomadaires pour cette date.</p>
+            <p id="exception-drawer-desc" className="mt-3 text-xs font-semibold text-slate-500">
+              Les exceptions remplacent les règles hebdomadaires pour cette date.
+            </p>
 
             {exceptionsForSelectedDate.length ? (
               <div className="mt-4 grid gap-2">
@@ -396,6 +522,9 @@ export default function AvailabilityStudioPage() {
                       <p className="text-xs font-semibold text-slate-500">{e.status}</p>
                       <p className="text-sm font-semibold text-slate-900">
                         {minutesToHHMM(e.startMin)}–{minutesToHHMM(e.endMin)}
+                      </p>
+                      <p className="mt-1 text-xs font-semibold text-slate-500">
+                        {e.startMin === 0 && e.endMin === 24 * 60 ? "Toute la journée" : `${minutesToHHMM(e.startMin)}–${minutesToHHMM(e.endMin)}`}
                       </p>
                     </div>
                     <button
@@ -433,6 +562,12 @@ export default function AvailabilityStudioPage() {
 
             <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-4">
               <p className="text-sm font-semibold text-slate-900">{exceptionsForSelectedDate.length ? "Modifier" : "Créer"}</p>
+
+              <div className="mt-2 rounded-2xl border border-slate-200 bg-slate-50 p-3 text-xs font-semibold text-slate-700">
+                <p>AVAILABLE : Tu acceptes automatiquement</p>
+                <p className="mt-1">ON_REQUEST : Tu dois confirmer</p>
+                <p className="mt-1">UNAVAILABLE : Non réservable</p>
+              </div>
 
               <div className="mt-3 grid gap-3">
                 <label className="text-xs font-semibold text-slate-700">
@@ -477,10 +612,12 @@ export default function AvailabilityStudioPage() {
                     <div className="mt-2 grid gap-2">
                       {exceptionRanges.length ? (
                         exceptionRanges.map((r, idx) => (
-                          <div key={`exr-${idx}`} className="grid grid-cols-2 gap-2">
-                            <input
+                          <div key={`exr-${idx}`} className="rounded-2xl border border-slate-200 bg-white p-3">
+                            <div className="grid grid-cols-2 gap-2">
+                              <input
                               type="time"
                               value={minutesToHHMM(r.startMin)}
+                              step={900}
                               onChange={(e) => {
                                 const nextStart = hhmmToMinutes(e.target.value);
                                 if (nextStart === null) return;
@@ -493,9 +630,10 @@ export default function AvailabilityStudioPage() {
                               className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700"
                               aria-label={`Exception début ${idx + 1}`}
                             />
-                            <input
+                              <input
                               type="time"
                               value={minutesToHHMM(r.endMin)}
+                              step={900}
                               onChange={(e) => {
                                 const nextEnd = hhmmToMinutes(e.target.value);
                                 if (nextEnd === null) return;
@@ -508,6 +646,42 @@ export default function AvailabilityStudioPage() {
                               className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700"
                               aria-label={`Exception fin ${idx + 1}`}
                             />
+                          </div>
+
+                            {r.endMin <= r.startMin ? (
+                              <p className="mt-2 text-xs font-semibold text-rose-700">La fin doit être après le début.</p>
+                            ) : null}
+
+                            <div className="mt-3 flex flex-wrap gap-2">
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setExceptionRanges((prev) => {
+                                    const next = prev.slice();
+                                    next.splice(idx, 1);
+                                    return next;
+                                  })
+                                }
+                                className="inline-flex h-9 items-center justify-center rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700"
+                                aria-label="Supprimer cette plage"
+                              >
+                                🗑️ Supprimer
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setExceptionRanges((prev) => {
+                                    const next = prev.slice();
+                                    next.splice(idx + 1, 0, { startMin: r.startMin, endMin: r.endMin });
+                                    return next;
+                                  })
+                                }
+                                className="inline-flex h-9 items-center justify-center rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700"
+                                aria-label="Dupliquer cette plage"
+                              >
+                                Dupliquer
+                              </button>
+                            </div>
                           </div>
                         ))
                       ) : (
@@ -522,24 +696,20 @@ export default function AvailabilityStudioPage() {
                         >
                           + Ajouter plage
                         </button>
-                        <button
-                          type="button"
-                          onClick={() => setExceptionRanges((prev) => prev.slice(0, -1))}
-                          disabled={!exceptionRanges.length}
-                          className="inline-flex h-9 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-xs font-semibold text-slate-700 disabled:opacity-60"
-                        >
-                          Supprimer dernière
-                        </button>
                       </div>
                     </div>
                   </div>
+                ) : null}
+
+                {!exceptionRangesValidation.ok ? (
+                  <p className="text-sm font-semibold text-rose-700">{exceptionRangesValidation.error}</p>
                 ) : null}
 
                 {exceptionError ? <p className="text-sm font-semibold text-rose-700">{exceptionError}</p> : null}
 
                 <button
                   type="button"
-                  disabled={exceptionSaving}
+                  disabled={exceptionSaving || !exceptionRangesValidation.ok}
                   onClick={async () => {
                     setExceptionSaving(true);
                     setExceptionError(null);
@@ -575,7 +745,7 @@ export default function AvailabilityStudioPage() {
                   }}
                   className="inline-flex h-11 w-full items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-6 text-sm font-semibold text-white disabled:opacity-60"
                 >
-                  Enregistrer
+                  {exceptionSaving ? "Enregistrement…" : "Enregistrer"}
                 </button>
               </div>
             </div>
@@ -818,6 +988,10 @@ export default function AvailabilityStudioPage() {
                         <span className={`h-2 w-2 rounded-full ${statusTone(row.dogsittingStatus)}`} aria-hidden="true" />
                         <span className={`h-2 w-2 rounded-full ${statusTone(row.pensionStatus)}`} aria-hidden="true" />
                       </div>
+                    ) : null}
+
+                    {exceptionDatesForService.has(dateIso) ? (
+                      <span className="mt-1 h-1.5 w-1.5 rounded-full bg-[var(--dogshift-blue)]" aria-hidden="true" />
                     ) : null}
                   </button>
                 );
