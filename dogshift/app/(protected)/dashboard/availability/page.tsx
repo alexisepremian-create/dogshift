@@ -1090,6 +1090,7 @@ export default function AvailabilityStudioPage() {
               <p>Réservation minimum 24h à l’avance.</p>
               <p>15 min bloquées avant + après chaque réservation.</p>
               <p>Créneaux par intervalles (pas = 30 min).</p>
+              <p>Pension: check-in 08:00–19:00, check-out 08:00–12:00.</p>
             </div>
           </div>
         </div>
