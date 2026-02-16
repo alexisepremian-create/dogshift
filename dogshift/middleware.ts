@@ -95,6 +95,11 @@ export default clerkMiddleware(async (auth, req) => {
 
   if (isPublicRoute(req)) return addLockHeaders(NextResponse.next());
 
+  const pathname = String(req?.nextUrl?.pathname ?? "");
+  if (pathname.startsWith("/api/")) {
+    return addLockHeaders(NextResponse.next());
+  }
+
   await auth();
   return addLockHeaders(NextResponse.next());
 });
