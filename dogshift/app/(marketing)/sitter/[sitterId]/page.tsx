@@ -170,6 +170,8 @@ export default function SitterPublicProfile() {
   const [availableDates, setAvailableDates] = useState<string[]>([]);
   const [apiError, setApiError] = useState<string | null>(null);
 
+  const [lockChecked, setLockChecked] = useState(false);
+
   const viewMode = (searchParams?.get("mode") ?? "public").trim() || "public";
   const isPreviewMode = viewMode === "preview";
   const isPublicView = viewMode === "public";
@@ -177,29 +179,42 @@ export default function SitterPublicProfile() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    if (window.location.pathname.startsWith("/unlock")) return;
-    if (!isPreviewMode) return;
+    if (window.location.pathname.startsWith("/unlock")) {
+      setLockChecked(true);
+      return;
+    }
 
     let cancelled = false;
     void (async () => {
       try {
-        const res = await fetch("/api/site-lock-status", { cache: "no-store" });
+        const dbg = new URLSearchParams(window.location.search).get("dbg") === "1";
+        const res = await fetch("/api/site-lock-status", {
+          cache: "no-store",
+          credentials: "include",
+        });
         const payload = (await res.json().catch(() => null)) as { ok?: boolean; lockOn?: boolean } | null;
         if (cancelled) return;
-        if (!res.ok || !payload?.ok) return;
+        if (dbg) console.log("[LockGuard] status", { ok: res.ok, payload });
+        if (!res.ok || !payload?.ok) {
+          setLockChecked(true);
+          return;
+        }
         if (payload.lockOn) {
           const next = `${window.location.pathname}${window.location.search}`;
-          window.location.href = `/unlock?next=${encodeURIComponent(next)}`;
+          window.location.replace(`/unlock?next=${encodeURIComponent(next)}`);
+          return;
         }
+        setLockChecked(true);
       } catch {
-        // ignore
+        if (cancelled) return;
+        setLockChecked(true);
       }
     })();
 
     return () => {
       cancelled = true;
     };
-  }, [isPreviewMode]);
+  }, []);
 
   const [previewLoaded, setPreviewLoaded] = useState(false);
   const [previewSitter, setPreviewSitter] = useState<SitterCard | null>(null);
@@ -210,6 +225,10 @@ export default function SitterPublicProfile() {
 
   const sessionName = typeof user?.fullName === "string" ? user.fullName : "";
   const sessionImage = typeof user?.imageUrl === "string" ? user.imageUrl : null;
+
+  if (!lockChecked) {
+    return <PageLoader label="Chargement…" />;
+  }
 
   function buildSitterFromProfile(profile: HostProfileV1): SitterCard {
     const servicesRaw = profile.services && typeof profile.services === "object" ? profile.services : {};
@@ -249,6 +268,7 @@ export default function SitterPublicProfile() {
   }
 
   useEffect(() => {
+    if (!lockChecked) return;
     if (!id) return;
     setApiLoaded(false);
     setApiError(null);
@@ -324,9 +344,10 @@ export default function SitterPublicProfile() {
         setApiLoaded(true);
       }
     })();
-  }, [id]);
+  }, [id, lockChecked]);
 
   useEffect(() => {
+    if (!lockChecked) return;
     if (!id) return;
     let cancelled = false;
     void (async () => {
@@ -352,7 +373,7 @@ export default function SitterPublicProfile() {
     return () => {
       cancelled = true;
     };
-  }, [id]);
+  }, [id, lockChecked]);
 
   useEffect(() => {
     if (!id) return;
@@ -360,6 +381,7 @@ export default function SitterPublicProfile() {
   }, [id]);
 
   useEffect(() => {
+    if (!lockChecked) return;
     setHydrated(true);
     if (!isLoaded || !isSignedIn) {
       setCurrentHostId(null);
@@ -432,7 +454,7 @@ export default function SitterPublicProfile() {
         setProfileData(null);
       }
     })();
-  }, [id, isLoaded, isSignedIn, isPreviewMode]);
+  }, [id, isLoaded, isSignedIn, isPreviewMode, lockChecked]);
 
   useEffect(() => {
     // handled above
