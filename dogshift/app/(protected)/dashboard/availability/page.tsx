@@ -842,7 +842,23 @@ export default function AvailabilityStudioPage() {
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Column 1: Services */}
         <div className="rounded-3xl border border-slate-200 bg-white p-5">
-          <p className="text-sm font-semibold text-slate-900">Services</p>
+          <div className="flex items-start justify-between gap-4">
+            <p className="text-sm font-semibold text-slate-900">Services</p>
+            <div className="grid gap-1 text-right text-[11px] font-semibold text-slate-500">
+              <div className="flex items-center justify-end gap-2">
+                <span className={`h-2 w-2 rounded-full ${serviceDotTone("PROMENADE")}`} aria-hidden="true" />
+                <span>Promenade</span>
+              </div>
+              <div className="flex items-center justify-end gap-2">
+                <span className={`h-2 w-2 rounded-full ${serviceDotTone("DOGSITTING")}`} aria-hidden="true" />
+                <span>Dogsitting</span>
+              </div>
+              <div className="flex items-center justify-end gap-2">
+                <span className={`h-2 w-2 rounded-full ${serviceDotTone("PENSION")}`} aria-hidden="true" />
+                <span>Pension</span>
+              </div>
+            </div>
+          </div>
           <div className="mt-4 grid gap-3">
             {(["PROMENADE", "DOGSITTING", "PENSION"] as const).map((svc) => {
               const metaSvc = serviceMeta(svc);
