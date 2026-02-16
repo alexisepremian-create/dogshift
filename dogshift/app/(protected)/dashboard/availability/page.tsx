@@ -1108,9 +1108,9 @@ export default function AvailabilityStudioPage() {
               </button>
             </div>
             <div className="mt-4 grid gap-2 text-sm text-slate-700">
-              <p>Les réservations doivent être effectuées au minimum 24h à l’avance.</p>
-              <p>15 minutes sont automatiquement bloquées avant et après chaque réservation.</p>
-              <p>Les créneaux sont proposés par intervalles définis (ex: 30 minutes).</p>
+              <p>Réservation minimum 24h à l’avance.</p>
+              <p>15 min bloquées avant + après chaque réservation.</p>
+              <p>Créneaux par intervalles (pas = 30 min).</p>
             </div>
           </div>
         </div>
