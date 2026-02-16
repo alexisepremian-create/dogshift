@@ -553,6 +553,19 @@ function SitterPublicProfileContent({
   const [bookingEndAt, setBookingEndAt] = useState<string>("");
   const [bookingMessage, setBookingMessage] = useState("");
 
+  const [selectedSlot, setSelectedSlot] = useState<
+    | {
+        serviceType: "PROMENADE" | "DOGSITTING";
+        dateIso: string;
+        startAt: string;
+        endAt: string;
+        status: "AVAILABLE" | "ON_REQUEST";
+        reason?: string;
+      }
+    | null
+  >(null);
+  const [selectedSlotNotice, setSelectedSlotNotice] = useState<string | null>(null);
+
   const [paying, setPaying] = useState(false);
   const [payError, setPayError] = useState<string | null>(null);
 
@@ -585,8 +598,8 @@ function SitterPublicProfileContent({
     setPaying(true);
     setPayError(null);
 
-    const isHourlyService = selectedService === "Promenade";
-    const hasHourlyDates = Boolean(bookingStartAt && bookingEndAt);
+    const isHourlyService = selectedService === "Promenade" || selectedService === "Garde";
+    const hasHourlyDates = Boolean(selectedSlot && selectedSlot.startAt && selectedSlot.endAt);
     const hasDailyDates = Boolean(bookingStart && bookingEnd);
 
     if (!selectedService) {
@@ -618,8 +631,8 @@ function SitterPublicProfileContent({
           service: selectedService,
           startDate: isHourlyService ? undefined : bookingStart,
           endDate: isHourlyService ? undefined : bookingEnd,
-          startAt: isHourlyService ? bookingStartAt : undefined,
-          endAt: isHourlyService ? bookingEndAt : undefined,
+          startAt: isHourlyService ? selectedSlot?.startAt : undefined,
+          endAt: isHourlyService ? selectedSlot?.endAt : undefined,
           message: bookingMessage,
         }),
       });
@@ -938,6 +951,38 @@ function SitterPublicProfileContent({
 
     return groups.filter((g) => g.items.length);
   }, [daySlots]);
+
+  useEffect(() => {
+    setSelectedSlot(null);
+    setSelectedSlotNotice(null);
+  }, [slotsDate, slotsServiceType]);
+
+  useEffect(() => {
+    if (!selectedSlot) return;
+    if (slotsServiceType === "PENSION") {
+      setSelectedSlot(null);
+      return;
+    }
+    if (slotsServiceType !== selectedSlot.serviceType) {
+      setSelectedSlot(null);
+      return;
+    }
+    if (slotsDate !== selectedSlot.dateIso) {
+      setSelectedSlot(null);
+      return;
+    }
+    if (slotsLoading) return;
+    if (slotsError) {
+      setSelectedSlot(null);
+      setSelectedSlotNotice("Créneau mis à jour.");
+      return;
+    }
+    const match = daySlots.find((s) => s.startAt === selectedSlot.startAt && s.endAt === selectedSlot.endAt);
+    if (!match || match.status === "UNAVAILABLE" || match.status !== selectedSlot.status) {
+      setSelectedSlot(null);
+      setSelectedSlotNotice("Créneau mis à jour.");
+    }
+  }, [daySlots, selectedSlot, slotsDate, slotsError, slotsLoading, slotsServiceType]);
 
   useEffect(() => {
     if (boardingStart) return;
@@ -1826,6 +1871,12 @@ function SitterPublicProfileContent({
                                       {group.items.map((slot) => {
                                         const isUnavailable = slot.status === "UNAVAILABLE";
                                         const isOnRequest = slot.status === "ON_REQUEST";
+                                        const isSelected =
+                                          Boolean(selectedSlot) &&
+                                          selectedSlot?.serviceType === slotsServiceType &&
+                                          selectedSlot?.dateIso === slotsDate &&
+                                          selectedSlot?.startAt === slot.startAt &&
+                                          selectedSlot?.endAt === slot.endAt;
                                         const tone = isUnavailable
                                           ? "border-slate-200 bg-slate-100 text-slate-500"
                                           : isOnRequest
@@ -1843,23 +1894,23 @@ function SitterPublicProfileContent({
                                             title={tooltip}
                                             onClick={() => {
                                               if (isUnavailable) return;
-                                              const serviceName = slotsServiceType === "PROMENADE" ? "Promenade" : "Garde";
-                                              setSelectedService(serviceName);
-                                              if (slotsServiceType === "PROMENADE") {
-                                                setBookingStartAt(slot.startAt);
-                                                setBookingEndAt(slot.endAt);
-                                                setBookingStart("");
-                                                setBookingEnd("");
-                                              } else {
-                                                setBookingStart(slotsDate);
-                                                setBookingEnd(slotsDate);
-                                                setBookingStartAt("");
-                                                setBookingEndAt("");
+                                              setSelectedSlotNotice(null);
+                                              if (slot.status === "AVAILABLE" || slot.status === "ON_REQUEST") {
+                                                setSelectedSlot({
+                                                  serviceType: slotsServiceType,
+                                                  dateIso: slotsDate,
+                                                  startAt: slot.startAt,
+                                                  endAt: slot.endAt,
+                                                  status: slot.status,
+                                                  reason: slot.reason,
+                                                });
                                               }
-                                              setBookingOpen(true);
                                             }}
-                                            className={`flex w-full items-center justify-between rounded-2xl border px-4 py-3 text-left text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-70 ${tone}`}
+                                            className={`flex w-full items-center justify-between rounded-2xl border px-4 py-3 text-left text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-70 ${tone} ${
+                                              isSelected ? "ring-2 ring-[var(--dogshift-blue)]" : ""
+                                            }`}
                                             aria-label={ariaLabel}
+                                            aria-pressed={isSelected}
                                           >
                                             <span>{label}</span>
                                             <span className="text-xs font-semibold">{serviceUi.statusLabel(slot.status)}</span>
@@ -1869,6 +1920,30 @@ function SitterPublicProfileContent({
                                     </div>
                                   </div>
                                 ))}
+
+                                {selectedSlotNotice ? (
+                                  <p className="text-sm font-semibold text-amber-900">{selectedSlotNotice}</p>
+                                ) : null}
+
+                                {selectedSlot ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const serviceName = selectedSlot.serviceType === "PROMENADE" ? "Promenade" : "Garde";
+                                      setSelectedService(serviceName);
+                                      setBookingStartAt(selectedSlot.startAt);
+                                      setBookingEndAt(selectedSlot.endAt);
+                                      setBookingStart("");
+                                      setBookingEnd("");
+                                      setBookingOpen(true);
+                                    }}
+                                    className="inline-flex h-11 w-full items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-6 text-sm font-semibold text-white"
+                                  >
+                                    {selectedSlot.status === "AVAILABLE" ? "Réserver ce créneau" : "Demander ce créneau"}
+                                  </button>
+                                ) : (
+                                  <p className="text-sm text-slate-600">Sélectionnez un créneau pour continuer.</p>
+                                )}
                               </div>
                             ) : (
                               <p className="mt-2 text-sm text-slate-600">Aucun créneau.</p>
