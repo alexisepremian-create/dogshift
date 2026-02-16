@@ -1050,11 +1050,21 @@ export default function AvailabilityStudioPage() {
                 const tone = focusDayTone(row);
                 const isPast = dateIso < todayKeyZurich;
 
+                const promenadeEnabled = configByService.PROMENADE?.enabled ?? true;
+                const dogsittingEnabled = configByService.DOGSITTING?.enabled ?? true;
+                const pensionEnabled = configByService.PENSION?.enabled ?? true;
+
                 const indicators: Array<{ key: string; type: "service" | "exception"; svc?: ServiceTypeApi }> = [];
                 if (row) {
-                  indicators.push({ key: "PROMENADE", type: "service", svc: "PROMENADE" });
-                  indicators.push({ key: "DOGSITTING", type: "service", svc: "DOGSITTING" });
-                  indicators.push({ key: "PENSION", type: "service", svc: "PENSION" });
+                  if (promenadeEnabled && row.promenadeStatus !== "UNAVAILABLE") {
+                    indicators.push({ key: "PROMENADE", type: "service", svc: "PROMENADE" });
+                  }
+                  if (dogsittingEnabled && row.dogsittingStatus !== "UNAVAILABLE") {
+                    indicators.push({ key: "DOGSITTING", type: "service", svc: "DOGSITTING" });
+                  }
+                  if (pensionEnabled && row.pensionStatus !== "UNAVAILABLE") {
+                    indicators.push({ key: "PENSION", type: "service", svc: "PENSION" });
+                  }
                 }
                 if (exceptionDatesForService.has(dateIso)) {
                   indicators.push({ key: "EXCEPTION", type: "exception" });
