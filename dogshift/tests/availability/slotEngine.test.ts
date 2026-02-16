@@ -404,15 +404,14 @@ test("durationMin override: longer duration yields fewer slots", () => {
   const longSlots = computeDaySlots({ ...base, durationMin: 60 });
 
   assert.equal(shortSlots.length, 6);
-  assert.equal(longSlots.length, 6);
+  assert.equal(longSlots.length, 5);
   assert.equal(longSlots[0].endMin - longSlots[0].startMin, 60);
 
   const shortAvailable = shortSlots.filter((s) => s.status === "AVAILABLE").length;
   const longAvailable = longSlots.filter((s) => s.status === "AVAILABLE").length;
   assert.equal(shortAvailable, 6);
   assert.equal(longAvailable, 5);
-  assert.equal(slotAt(longSlots, 11 * 60 + 30)?.status, "UNAVAILABLE");
-  assert.equal(slotAt(longSlots, 11 * 60 + 30)?.reason, "outside_rule");
+  assert.equal(slotAt(longSlots, 11 * 60 + 30), null);
 });
 
 test("durationMin override: hard booking overlap blocks long slot", () => {

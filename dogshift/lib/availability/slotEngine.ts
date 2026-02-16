@@ -72,7 +72,7 @@ export const SERVICE_DEFAULTS: Record<ServiceType, ServiceConfigDefaults> = {
     slotStepMin: 30,
     minDurationMin: 30,
     maxDurationMin: 120,
-    leadTimeMin: 120,
+    leadTimeMin: 24 * 60,
     bufferBeforeMin: 15,
     bufferAfterMin: 15,
     overnightRequired: false,
@@ -84,12 +84,12 @@ export const SERVICE_DEFAULTS: Record<ServiceType, ServiceConfigDefaults> = {
   DOGSITTING: {
     serviceType: "DOGSITTING",
     enabled: true,
-    slotStepMin: 60,
+    slotStepMin: 30,
     minDurationMin: 120,
     maxDurationMin: 720,
-    leadTimeMin: 180,
-    bufferBeforeMin: 0,
-    bufferAfterMin: 0,
+    leadTimeMin: 24 * 60,
+    bufferBeforeMin: 15,
+    bufferAfterMin: 15,
     overnightRequired: false,
     checkInStartMin: null,
     checkInEndMin: null,
@@ -99,12 +99,12 @@ export const SERVICE_DEFAULTS: Record<ServiceType, ServiceConfigDefaults> = {
   PENSION: {
     serviceType: "PENSION",
     enabled: true,
-    slotStepMin: 60,
+    slotStepMin: 30,
     minDurationMin: 60,
     maxDurationMin: 24 * 60,
     leadTimeMin: 24 * 60,
-    bufferBeforeMin: 0,
-    bufferAfterMin: 0,
+    bufferBeforeMin: 15,
+    bufferAfterMin: 15,
     overnightRequired: true,
     checkInStartMin: 8 * 60,
     checkInEndMin: 19 * 60,
@@ -509,6 +509,7 @@ export function computeDaySlots(input: ComputeDaySlotsInput): DaySlot[] {
       if (endMin > 24 * 60) continue;
 
       const base = statusForRange(startMin, endMin);
+      if (base.status === "UNAVAILABLE" && base.reason === "outside_rule") continue;
       let status: SlotStatus = base.status;
       let reason = base.reason;
 
@@ -564,12 +565,11 @@ export async function generateDaySlots(
       (prisma as any).serviceConfig.findUnique({ where: { sitterId_serviceType: { sitterId, serviceType: input.serviceType } } }) as Promise<ServiceConfigRow | null>,
     ]);
 
-    const mergedConfig: ServiceConfigRow = config
-      ? config
-      : ({
-          ...SERVICE_DEFAULTS[input.serviceType],
-          sitterId,
-        } as ServiceConfigRow);
+    const mergedConfig: ServiceConfigRow = {
+      ...SERVICE_DEFAULTS[input.serviceType],
+      sitterId,
+      enabled: config?.enabled ?? true,
+    };
 
     const requestedDuration =
       typeof input.durationMin === "number" && Number.isFinite(input.durationMin) ? Math.round(input.durationMin) : null;
