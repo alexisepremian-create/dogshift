@@ -4,9 +4,10 @@
   "private": true,
   "scripts": {
     "dev": "next dev --webpack",
-    "build": "prisma generate && prisma migrate deploy && next build",
+    "build": "prisma generate && next build",
     "start": "next start",
     "lint": "eslint",
+    "migrate:deploy": "prisma migrate deploy",
     "generate-invite-codes": "node scripts/generate-invite-codes.mjs",
     "postinstall": "prisma generate"
   },
