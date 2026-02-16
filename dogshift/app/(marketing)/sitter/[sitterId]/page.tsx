@@ -785,11 +785,24 @@ function SitterPublicProfileContent({
 
   const [slotsServiceType, setSlotsServiceType] = useState<"PROMENADE" | "DOGSITTING" | "PENSION">("PROMENADE");
   const [slotsDate, setSlotsDate] = useState<string>("");
+  const [boardingStart, setBoardingStart] = useState<string>("");
+  const [boardingEnd, setBoardingEnd] = useState<string>("");
   const [daySlots, setDaySlots] = useState<
     Array<{ startAt: string; endAt: string; status: "AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE"; reason?: string }>
   >([]);
+  const [serviceSummary, setServiceSummary] = useState<
+    | {
+        minDurationMin: number;
+        stepMin: number;
+        leadTimeMin: number;
+        bufferBeforeMin: number;
+        bufferAfterMin: number;
+      }
+    | null
+  >(null);
   const [slotsLoading, setSlotsLoading] = useState(false);
   const [slotsError, setSlotsError] = useState<string | null>(null);
+  const [slotsRetryKey, setSlotsRetryKey] = useState(0);
 
   useEffect(() => {
     if (slotsDate) return;
@@ -807,53 +820,90 @@ function SitterPublicProfileContent({
   }, [slotsDate]);
 
   useEffect(() => {
+    if (boardingStart) return;
+    if (!slotsDate) return;
+    setBoardingStart(slotsDate);
+    setBoardingEnd(slotsDate);
+  }, [boardingEnd, boardingStart, slotsDate]);
+
+  useEffect(() => {
     if (!id || !slotsDate) return;
     let cancelled = false;
-    void (async () => {
-      setSlotsLoading(true);
-      setSlotsError(null);
-      try {
-        const qp = new URLSearchParams();
-        qp.set("date", slotsDate);
-        qp.set("service", slotsServiceType);
-        if (dbg) qp.set("dbg", "1");
-        const res = await fetch(`/api/sitters/${encodeURIComponent(id)}/slots?${qp.toString()}`, {
-          method: "GET",
-          cache: "no-store",
-        });
-        const payload = (await res.json().catch(() => null)) as
-          | {
-              ok: true;
-              slots: Array<{ startAt: string; endAt: string; status: "AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE"; reason?: string }>;
-            }
-          | { ok: false; error: string }
-          | null;
-        if (cancelled) return;
-        if (!res.ok || !payload || !payload.ok || !Array.isArray((payload as any).slots)) {
-          const err = (payload as any)?.error;
-          setSlotsError(typeof err === "string" ? err : "SLOTS_ERROR");
+    const controller = new AbortController();
+    const debounce = setTimeout(() => {
+      void (async () => {
+        setSlotsLoading(true);
+        setSlotsError(null);
+        try {
+          const qp = new URLSearchParams();
+          qp.set("date", slotsDate);
+          qp.set("service", slotsServiceType);
+          if (dbg) qp.set("dbg", "1");
+          const res = await fetch(`/api/sitters/${encodeURIComponent(id)}/slots?${qp.toString()}`, {
+            method: "GET",
+            cache: "no-store",
+            signal: controller.signal,
+          });
+          const payload = (await res.json().catch(() => null)) as
+            | {
+                ok: true;
+                config?: {
+                  minDurationMin?: number;
+                  stepMin?: number;
+                  leadTimeMin?: number;
+                  bufferBeforeMin?: number;
+                  bufferAfterMin?: number;
+                };
+                slots: Array<{ startAt: string; endAt: string; status: "AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE"; reason?: string }>;
+              }
+            | { ok: false; error: string }
+            | null;
+          if (cancelled) return;
+          if (!res.ok || !payload || !payload.ok || !Array.isArray((payload as any).slots)) {
+            const err = (payload as any)?.error;
+            setSlotsError(typeof err === "string" ? err : "SLOTS_ERROR");
+            setDaySlots([]);
+            setServiceSummary(null);
+            return;
+          }
+
+          const cfg = (payload as any)?.config;
+          if (cfg && typeof cfg === "object") {
+            setServiceSummary({
+              minDurationMin: typeof cfg.minDurationMin === "number" ? cfg.minDurationMin : 0,
+              stepMin: typeof cfg.stepMin === "number" ? cfg.stepMin : 0,
+              leadTimeMin: typeof cfg.leadTimeMin === "number" ? cfg.leadTimeMin : 0,
+              bufferBeforeMin: typeof cfg.bufferBeforeMin === "number" ? cfg.bufferBeforeMin : 0,
+              bufferAfterMin: typeof cfg.bufferAfterMin === "number" ? cfg.bufferAfterMin : 0,
+            });
+          } else {
+            setServiceSummary(null);
+          }
+
+          const slots = payload.slots.filter(
+            (s): s is { startAt: string; endAt: string; status: "AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE"; reason?: string } =>
+              Boolean(s && typeof s.startAt === "string" && typeof s.endAt === "string" && typeof (s as any).status === "string")
+          );
+          setDaySlots(slots);
+        } catch (error) {
+          if (cancelled) return;
+          if (error instanceof DOMException && error.name === "AbortError") return;
+          if (dbg) console.log("[ProfileContent] fetch error", error);
+          setSlotsError("SLOTS_NETWORK_ERROR");
           setDaySlots([]);
-          return;
+          setServiceSummary(null);
+        } finally {
+          if (cancelled) return;
+          setSlotsLoading(false);
         }
-        const slots = payload.slots.filter(
-          (s): s is { startAt: string; endAt: string; status: "AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE"; reason?: string } =>
-            Boolean(s && typeof s.startAt === "string" && typeof s.endAt === "string" && typeof (s as any).status === "string")
-        );
-        setDaySlots(slots);
-      } catch (error) {
-        if (cancelled) return;
-        if (dbg) console.log("[ProfileContent] fetch error", error);
-        setSlotsError("SLOTS_NETWORK_ERROR");
-        setDaySlots([]);
-      } finally {
-        if (cancelled) return;
-        setSlotsLoading(false);
-      }
-    })();
+      })();
+    }, 250);
     return () => {
       cancelled = true;
+      clearTimeout(debounce);
+      controller.abort();
     };
-  }, [dbg, id, slotsDate, slotsServiceType]);
+  }, [dbg, id, slotsDate, slotsRetryKey, slotsServiceType]);
 
   if (process.env.NODE_ENV !== "production") {
     console.log("[sitter][render]", {
@@ -1166,10 +1216,83 @@ function SitterPublicProfileContent({
 
                           <div className="mt-4">
                             <p className="text-sm font-medium text-slate-900">Créneaux</p>
-                            {slotsLoading ? (
+                            {serviceSummary ? (
+                              <div className="mt-2 flex flex-wrap gap-2">
+                                <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700">
+                                  Durée min: {serviceSummary.minDurationMin} min
+                                </span>
+                                <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700">
+                                  Pas: {serviceSummary.stepMin} min
+                                </span>
+                                <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700">
+                                  Lead: {serviceSummary.leadTimeMin} min
+                                </span>
+                                <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700">
+                                  Buffer: {serviceSummary.bufferBeforeMin}/{serviceSummary.bufferAfterMin} min
+                                </span>
+                              </div>
+                            ) : null}
+
+                            {slotsServiceType === "PENSION" ? (
+                              <div className="mt-3 rounded-2xl border border-slate-200 bg-white p-4">
+                                <p className="text-sm font-semibold text-slate-900">Séjour (multi-jours)</p>
+                                <p className="mt-1 text-sm text-slate-600">Sélectionnez une arrivée et un départ.</p>
+                                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                                  <div>
+                                    <label className="text-xs font-semibold text-slate-700" htmlFor="boarding-start">
+                                      Arrivée
+                                    </label>
+                                    <input
+                                      id="boarding-start"
+                                      type="date"
+                                      value={boardingStart}
+                                      onChange={(e) => setBoardingStart(e.target.value)}
+                                      className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm"
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="text-xs font-semibold text-slate-700" htmlFor="boarding-end">
+                                      Départ
+                                    </label>
+                                    <input
+                                      id="boarding-end"
+                                      type="date"
+                                      value={boardingEnd}
+                                      onChange={(e) => setBoardingEnd(e.target.value)}
+                                      className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm"
+                                    />
+                                  </div>
+                                </div>
+                                <div className="mt-4">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setSelectedService("Pension");
+                                      setBookingStart(boardingStart);
+                                      setBookingEnd(boardingEnd);
+                                      setBookingStartAt("");
+                                      setBookingEndAt("");
+                                      setBookingOpen(true);
+                                    }}
+                                    className="inline-flex h-11 w-full items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-6 text-sm font-semibold text-white"
+                                  >
+                                    Continuer
+                                  </button>
+                                </div>
+                              </div>
+                            ) : slotsLoading ? (
                               <p className="mt-2 text-sm text-slate-600">Chargement…</p>
                             ) : slotsError ? (
-                              <p className="mt-2 text-sm text-rose-700">{slotsError}</p>
+                              <div className="mt-2">
+                                <p className="text-sm text-rose-700">{slotsError}</p>
+                                <button
+                                  type="button"
+                                  onClick={() => setSlotsRetryKey((v) => v + 1)}
+                                  className="mt-2 inline-flex h-9 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-xs font-semibold text-slate-700"
+                                >
+                                  Réessayer
+                                </button>
+                              </div>
                             ) : daySlots.length ? (
                               <div className="mt-3 grid gap-2">
                                 {daySlots.map((slot) => {
@@ -1182,20 +1305,22 @@ function SitterPublicProfileContent({
                                       : "border-emerald-200 bg-emerald-50 text-emerald-900";
                                   const label = `${slot.startAt.slice(11, 16)}–${slot.endAt.slice(11, 16)}`;
                                   const ariaLabel = `${slotsServiceType} ${label} ${slot.status}`;
+                                  const tooltip = dbg
+                                    ? slot.reason ?? ""
+                                    : slot.status === "AVAILABLE"
+                                      ? "Disponible"
+                                      : slot.status === "ON_REQUEST"
+                                        ? "Sur demande"
+                                        : "Indisponible";
                                   return (
                                     <button
                                       key={`${slot.startAt}-${slot.endAt}-${slot.status}-${slot.reason ?? ""}`}
                                       type="button"
                                       disabled={isUnavailable}
-                                      title={slot.reason ?? ""}
+                                      title={tooltip}
                                       onClick={() => {
                                         if (isUnavailable) return;
-                                        const serviceName =
-                                          slotsServiceType === "PROMENADE"
-                                            ? "Promenade"
-                                            : slotsServiceType === "DOGSITTING"
-                                              ? "Garde"
-                                              : "Pension";
+                                        const serviceName = slotsServiceType === "PROMENADE" ? "Promenade" : "Garde";
                                         setSelectedService(serviceName);
                                         if (slotsServiceType === "PROMENADE") {
                                           setBookingStartAt(slot.startAt);
