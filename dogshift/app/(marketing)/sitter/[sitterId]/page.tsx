@@ -10,6 +10,7 @@ import HostDashboardShell from "@/components/HostDashboardShell";
 import { HostUserProvider, makeHostUserValuePreview } from "@/components/HostUserProvider";
 import SunCornerGlow from "@/components/SunCornerGlow";
 import { appendHostMessage } from "@/lib/hostMessages";
+import { BUCKET_LABELS_FR, bucketDetailFr, mapReasonToBucket } from "@/lib/availability/reasonBuckets";
 import PageLoader from "@/components/ui/PageLoader";
 
 type ServiceType = "Promenade" | "Garde" | "Pension";
@@ -42,6 +43,49 @@ type AvailabilityPayload = { ok?: boolean; dates?: string[]; error?: string };
 
 function formatRating(rating: number) {
   return rating % 1 === 0 ? rating.toFixed(0) : rating.toFixed(1);
+}
+
+function Tooltip({
+  label,
+  children,
+}: {
+  label: string;
+  children: (opts: { triggerProps: { onMouseEnter: () => void; onMouseLeave: () => void; onFocus: () => void; onBlur: () => void; "aria-describedby": string } }) => ReactNode;
+}) {
+  const [open, setOpen] = useState(false);
+  const id = useMemo(() => `tt-${Math.random().toString(16).slice(2)}`, []);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [open]);
+
+  return (
+    <span className="relative inline-flex">
+      {children({
+        triggerProps: {
+          onMouseEnter: () => setOpen(true),
+          onMouseLeave: () => setOpen(false),
+          onFocus: () => setOpen(true),
+          onBlur: () => setOpen(false),
+          "aria-describedby": id,
+        },
+      })}
+      {open ? (
+        <span
+          id={id}
+          role="tooltip"
+          className="absolute left-1/2 top-full z-20 mt-2 w-72 -translate-x-1/2 rounded-2xl border border-slate-200 bg-white p-3 text-xs font-semibold text-slate-700 shadow-lg"
+        >
+          {label}
+        </span>
+      ) : null}
+    </span>
+  );
 }
 
 function Spinner({ className }: { className?: string }) {
@@ -828,6 +872,20 @@ function SitterPublicProfileContent({
   const [dogsittingDurationMin, setDogsittingDurationMin] = useState<number | null>(null);
   const [slotWhyOpenKey, setSlotWhyOpenKey] = useState<string | null>(null);
   const [calendarInfoDate, setCalendarInfoDate] = useState<string | null>(null);
+  const [dayDetailsLoading, setDayDetailsLoading] = useState(false);
+  const [dayDetailsError, setDayDetailsError] = useState<string | null>(null);
+  const [dayDetails, setDayDetails] = useState<
+    | null
+    | {
+        status: "AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE";
+        summary: { availableCount: number; onRequestCount: number; unavailableCount: number };
+        buckets: Array<{ key: string; label: string; count: number }>;
+        dbg?: { topReasons?: Array<{ reason: string; count: number }> };
+      }
+  >(null);
+  const [dayDetailsRetryKey, setDayDetailsRetryKey] = useState(0);
+  const [dayDetailsOpen, setDayDetailsOpen] = useState(false);
+  const dayDetailsControllerRef = useRef<AbortController | null>(null);
   const [agendaExpandedGroups, setAgendaExpandedGroups] = useState<Record<string, boolean>>({});
   const [slotsLoading, setSlotsLoading] = useState(false);
   const [slotsError, setSlotsError] = useState<string | null>(null);
@@ -875,31 +933,93 @@ function SitterPublicProfileContent({
       s === "AVAILABLE" ? "Disponible" : s === "ON_REQUEST" ? "Sur demande" : "Indisponible";
 
     const bucketForReason = (reason?: string) => {
-      const r = typeof reason === "string" ? reason : "";
-      if (!r) return { title: "Indisponible", detail: "Période non couverte" };
-      if (r.startsWith("booking_") && (r.includes("confirmed") || r.includes("paid"))) {
-        return { title: "Réservation existante", detail: "Ce créneau chevauche une réservation." };
-      }
-      if (r.startsWith("booking_pending")) {
-        return { title: "Réservation en attente", detail: "Une réservation est en cours sur ce créneau." };
-      }
-      if (r.startsWith("exception_")) {
-        return { title: "Exception", detail: "Une exception modifie les disponibilités ce jour." };
-      }
-      if (r.startsWith("rule_")) {
-        return { title: "Règles du sitter", detail: "Ce créneau dépend des horaires définis par le sitter." };
-      }
-      if (r === "lead_time") {
-        return { title: "Délai minimum", detail: "Le délai minimum avant réservation n’est pas respecté." };
-      }
-      if (r === "outside_rule") {
-        return { title: "Hors horaires définis", detail: "Ce créneau dépasse les horaires disponibles." };
-      }
-      return { title: "Indisponible", detail: "Ce créneau n’est pas réservable." };
+      const key = mapReasonToBucket(reason);
+      return {
+        key,
+        title: BUCKET_LABELS_FR[key],
+        detail: bucketDetailFr(key),
+      };
     };
 
     return { statusText, bucketForReason };
   }, []);
+
+  useEffect(() => {
+    if (!id) return;
+    if (!calendarInfoDate) {
+      setDayDetails(null);
+      setDayDetailsError(null);
+      setDayDetailsLoading(false);
+      setDayDetailsOpen(false);
+      return;
+    }
+    if (!dayDetailsOpen) return;
+
+    let cancelled = false;
+    const controller = new AbortController();
+    dayDetailsControllerRef.current?.abort();
+    dayDetailsControllerRef.current = controller;
+
+    const debounce = setTimeout(() => {
+      void (async () => {
+        setDayDetailsLoading(true);
+        setDayDetailsError(null);
+        try {
+          const qp = new URLSearchParams();
+          qp.set("date", calendarInfoDate);
+          qp.set("service", slotsServiceType);
+          if (slotsServiceType === "DOGSITTING" && typeof dogsittingDurationMin === "number" && Number.isFinite(dogsittingDurationMin)) {
+            qp.set("durationMin", String(dogsittingDurationMin));
+          }
+          if (dbg) qp.set("dbg", "1");
+
+          const res = await fetch(`/api/sitters/${encodeURIComponent(id)}/day-details?${qp.toString()}`, {
+            method: "GET",
+            cache: "no-store",
+            signal: controller.signal,
+          });
+          const payload = (await res.json().catch(() => null)) as
+            | {
+                ok: true;
+                status: "AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE";
+                summary: { availableCount: number; onRequestCount: number; unavailableCount: number };
+                buckets: Array<{ key: string; label: string; count: number }>;
+                dbg?: { topReasons?: Array<{ reason: string; count: number }> };
+              }
+            | { ok: false; error: string }
+            | null;
+
+          if (cancelled) return;
+          if (!res.ok || !payload || !payload.ok) {
+            const err = (payload as any)?.error;
+            setDayDetailsError(typeof err === "string" ? err : "DAY_DETAILS_ERROR");
+            setDayDetails(null);
+            return;
+          }
+          setDayDetails({
+            status: payload.status,
+            summary: payload.summary,
+            buckets: Array.isArray(payload.buckets) ? payload.buckets : [],
+            dbg: payload.dbg,
+          });
+        } catch (error) {
+          if (cancelled) return;
+          if (error instanceof DOMException && error.name === "AbortError") return;
+          setDayDetailsError("DAY_DETAILS_NETWORK_ERROR");
+          setDayDetails(null);
+        } finally {
+          if (cancelled) return;
+          setDayDetailsLoading(false);
+        }
+      })();
+    }, 200);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(debounce);
+      controller.abort();
+    };
+  }, [calendarInfoDate, dayDetailsOpen, dayDetailsRetryKey, dbg, dogsittingDurationMin, id, slotsServiceType]);
 
   useEffect(() => {
     if (slotsDate) return;
@@ -1843,6 +1963,75 @@ function SitterPublicProfileContent({
                                         </div>
                                       );
                                     })()}
+
+                                    <div className="mt-3">
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setDayDetailsOpen(true);
+                                          setDayDetailsRetryKey((v) => v + 1);
+                                        }}
+                                        className="inline-flex h-9 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-xs font-semibold text-slate-700"
+                                        disabled={monthDaysByDate.get(calendarInfoDate)
+                                          ? (slotsServiceType === "PROMENADE"
+                                              ? monthDaysByDate.get(calendarInfoDate)!.promenadeStatus
+                                              : slotsServiceType === "DOGSITTING"
+                                                ? monthDaysByDate.get(calendarInfoDate)!.dogsittingStatus
+                                                : monthDaysByDate.get(calendarInfoDate)!.pensionStatus) === "AVAILABLE"
+                                          : false}
+                                      >
+                                        Comprendre pourquoi
+                                      </button>
+                                    </div>
+
+                                    {dayDetailsOpen ? (
+                                      <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                                        {dayDetailsLoading ? (
+                                          <p className="text-sm text-slate-600">Chargement…</p>
+                                        ) : dayDetailsError ? (
+                                          <div>
+                                            <p className="text-sm text-rose-700">{dayDetailsError}</p>
+                                            <button
+                                              type="button"
+                                              onClick={() => setDayDetailsRetryKey((v) => v + 1)}
+                                              className="mt-2 inline-flex h-9 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-xs font-semibold text-slate-700"
+                                            >
+                                              Réessayer
+                                            </button>
+                                          </div>
+                                        ) : dayDetails ? (
+                                          <div>
+                                            {dayDetails.status === "AVAILABLE" ? (
+                                              <p className="text-sm text-slate-700">Ce jour est disponible pour ce service.</p>
+                                            ) : dayDetails.buckets.length ? (
+                                              <div className="grid gap-2">
+                                                {dayDetails.buckets.map((b) => (
+                                                  <div key={b.key} className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700">
+                                                    <span className="font-semibold">{b.label}</span>
+                                                    <span className="text-xs font-semibold text-slate-500">{b.count}</span>
+                                                  </div>
+                                                ))}
+                                              </div>
+                                            ) : (
+                                              <p className="text-sm text-slate-700">Aucun détail disponible.</p>
+                                            )}
+
+                                            {dbg && dayDetails.dbg?.topReasons?.length ? (
+                                              <details className="mt-3">
+                                                <summary className="cursor-pointer text-xs font-semibold text-slate-600">dbg</summary>
+                                                <div className="mt-2 grid gap-1 text-xs text-slate-600">
+                                                  {dayDetails.dbg.topReasons.map((r) => (
+                                                    <div key={r.reason}>
+                                                      {r.reason}: {r.count}
+                                                    </div>
+                                                  ))}
+                                                </div>
+                                              </details>
+                                            ) : null}
+                                          </div>
+                                        ) : null}
+                                      </div>
+                                    ) : null}
                                   </div>
                                 ) : null}
                               </div>
@@ -1874,13 +2063,18 @@ function SitterPublicProfileContent({
                               <span className="inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700">
                                 Synchronisé avec l’agenda
                               </span>
-                              <span
-                                className="text-xs text-slate-500"
-                                title="Les créneaux affichés sont calculés depuis l’agenda (règles, exceptions, réservations, buffers, délai)."
-                                aria-label="Les créneaux affichés sont calculés depuis l’agenda (règles, exceptions, réservations, buffers, délai)."
-                              >
-                                ⓘ
-                              </span>
+                              <Tooltip label="Les créneaux affichés sont calculés depuis l’agenda (règles, exceptions, réservations, buffers, délai).">
+                                {({ triggerProps }) => (
+                                  <button
+                                    type="button"
+                                    className="text-xs font-semibold text-slate-500"
+                                    aria-label="Info"
+                                    {...triggerProps}
+                                  >
+                                    ⓘ
+                                  </button>
+                                )}
+                              </Tooltip>
                             </div>
 
                             <div className="sticky top-0 z-10 -mx-4 mt-3 border-y border-slate-200 bg-slate-50 px-4 py-2">
@@ -2102,7 +2296,17 @@ function SitterPublicProfileContent({
                                               <button
                                                 type="button"
                                                 disabled={isUnavailable}
-                                                title={tooltip}
+                                                data-slot-nav="1"
+                                                data-slot-nav-key={`${slot.startAt}-${slot.endAt}`}
+                                                onKeyDown={(e) => {
+                                                  if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
+                                                  const nodes = Array.from(document.querySelectorAll<HTMLButtonElement>("button[data-slot-nav='1']"));
+                                                  const idx = nodes.findIndex((n) => n === e.currentTarget);
+                                                  if (idx < 0) return;
+                                                  e.preventDefault();
+                                                  const next = e.key === "ArrowDown" ? nodes[idx + 1] : nodes[idx - 1];
+                                                  next?.focus();
+                                                }}
                                                 onClick={() => {
                                                   if (isUnavailable) return;
                                                   setSelectedSlotNotice(null);
