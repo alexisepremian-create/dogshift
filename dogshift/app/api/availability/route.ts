@@ -6,6 +6,16 @@ import { resolveDbUserId } from "@/lib/auth/resolveDbUserId";
 
 export const runtime = "nodejs";
 
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  let t: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    t = setTimeout(() => reject(new Error(`TIMEOUT:${label}`)), ms);
+  });
+  return Promise.race([promise, timeout]).finally(() => {
+    if (t) clearTimeout(t);
+  }) as Promise<T>;
+}
+
 type BulkBody = {
   added?: unknown;
   removed?: unknown;
@@ -38,13 +48,17 @@ function normalizeDateKeys(value: unknown) {
 }
 
 async function requireSitterUser(req: NextRequest) {
-  const userId = await resolveDbUserId(req);
+  const userId = await withTimeout(resolveDbUserId(req), 8_000, "resolveDbUserId");
   if (!userId) return { ok: false as const, status: 401 as const, error: "UNAUTHORIZED" };
 
-  const user = await (prisma as any).user.findUnique({
-    where: { id: userId },
-    select: { id: true, role: true, sitterId: true },
-  });
+  const user = await withTimeout<any>(
+    (prisma as any).user.findUnique({
+      where: { id: userId },
+      select: { id: true, role: true, sitterId: true },
+    }),
+    8_000,
+    "user.findUnique"
+  );
 
   const sitterId = typeof user?.sitterId === "string" ? user.sitterId : null;
   if (!user?.id || user.role !== "SITTER" || !sitterId) {
@@ -56,6 +70,8 @@ async function requireSitterUser(req: NextRequest) {
 
 export async function PUT(req: NextRequest) {
   const startedAt = Date.now();
+  const requestId = typeof (globalThis as any).crypto?.randomUUID === "function" ? (globalThis as any).crypto.randomUUID() : `r_${startedAt}`;
+  console.info("[api][availability][PUT] start", { requestId });
   try {
     const auth = await requireSitterUser(req);
     if (!auth.ok) return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
@@ -89,30 +105,35 @@ export async function PUT(req: NextRequest) {
     const toCreate = added.filter((k) => !removed.includes(k));
     const toDelete = removed.filter((k) => !added.includes(k));
 
-    const result = await (prisma as any).$transaction(async (tx: any) => {
-      let created = 0;
-      let deleted = 0;
+    const result = await withTimeout<{ created: number; deleted: number }>(
+      (prisma as any).$transaction(async (tx: any) => {
+        let created = 0;
+        let deleted = 0;
 
-      if (toCreate.length) {
-        const createRes = await tx.availability.createMany({
-          data: toCreate.map((dateKey) => ({ sitterId: auth.sitterId, dateKey, isAvailable: true })),
-          skipDuplicates: true,
-        });
-        created = typeof createRes?.count === "number" ? createRes.count : 0;
-      }
+        if (toCreate.length) {
+          const createRes = await tx.availability.createMany({
+            data: toCreate.map((dateKey) => ({ sitterId: auth.sitterId, dateKey, isAvailable: true })),
+            skipDuplicates: true,
+          });
+          created = typeof createRes?.count === "number" ? createRes.count : 0;
+        }
 
-      if (toDelete.length) {
-        const delRes = await tx.availability.deleteMany({
-          where: { sitterId: auth.sitterId, dateKey: { in: toDelete } },
-        });
-        deleted = typeof delRes?.count === "number" ? delRes.count : 0;
-      }
+        if (toDelete.length) {
+          const delRes = await tx.availability.deleteMany({
+            where: { sitterId: auth.sitterId, dateKey: { in: toDelete } },
+          });
+          deleted = typeof delRes?.count === "number" ? delRes.count : 0;
+        }
 
-      return { created, deleted };
-    });
+        return { created, deleted };
+      }),
+      12_000,
+      "prisma.$transaction"
+    );
 
     const durationMs = Date.now() - startedAt;
     console.info("[api][availability][PUT]", {
+      requestId,
       sitterId: auth.sitterId,
       added: added.length,
       removed: removed.length,
@@ -124,7 +145,15 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ ok: true, created: result.created, deleted: result.deleted }, { status: 200 });
   } catch (err) {
     const durationMs = Date.now() - startedAt;
-    console.error("[api][availability][PUT] error", { durationMs, err });
+    const message = err instanceof Error ? err.message : String(err);
+    const isTimeout = typeof message === "string" && message.startsWith("TIMEOUT:");
+    console.error("[api][availability][PUT] error", { requestId, durationMs, err });
+    if (isTimeout) {
+      return NextResponse.json({ ok: false, error: "TIMEOUT" }, { status: 504 });
+    }
     return NextResponse.json({ ok: false, error: "INTERNAL_ERROR" }, { status: 500 });
+  } finally {
+    const durationMs = Date.now() - startedAt;
+    console.info("[api][availability][PUT] end", { requestId, durationMs });
   }
 }
