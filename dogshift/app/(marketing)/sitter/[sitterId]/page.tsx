@@ -175,6 +175,32 @@ export default function SitterPublicProfile() {
   const isPublicView = viewMode === "public";
   const isHostViewingOwn = Boolean(currentHostId && id && currentHostId === id);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (window.location.pathname.startsWith("/unlock")) return;
+    if (!isPreviewMode) return;
+
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetch("/api/site-lock-status", { cache: "no-store" });
+        const payload = (await res.json().catch(() => null)) as { ok?: boolean; lockOn?: boolean } | null;
+        if (cancelled) return;
+        if (!res.ok || !payload?.ok) return;
+        if (payload.lockOn) {
+          const next = `${window.location.pathname}${window.location.search}`;
+          window.location.href = `/unlock?next=${encodeURIComponent(next)}`;
+        }
+      } catch {
+        // ignore
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isPreviewMode]);
+
   const [previewLoaded, setPreviewLoaded] = useState(false);
   const [previewSitter, setPreviewSitter] = useState<SitterCard | null>(null);
   const [profileData, setProfileData] = useState<HostProfileV1 | null>(null);
