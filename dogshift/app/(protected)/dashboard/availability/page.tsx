@@ -920,7 +920,7 @@ export default function AvailabilityStudioPage() {
             <p className="mt-1 text-sm text-slate-600">Définis tes plages pour {serviceMeta(service).label}.</p>
           </div>
 
-          <div ref={weeklyRulesContainerRef} className="mt-1 grid max-h-[calc(100vh-260px)] gap-4 overflow-auto pr-1">
+          <div ref={weeklyRulesContainerRef} className="mt-1 grid max-h-[calc(100vh-260px)] gap-4 overflow-auto p-1">
             {Array.from({ length: 7 }).map((_, dow) => {
               const rows = rulesByDow.get(dow) ?? [];
               const draft = rows.map((r) => ({ startMin: r.startMin, endMin: r.endMin, status: r.status }));
@@ -932,7 +932,7 @@ export default function AvailabilityStudioPage() {
                   }}
                   className={
                     focusedDow === dow
-                      ? "rounded-2xl border border-slate-200 p-4 ring-2 ring-[var(--dogshift-blue)]"
+                      ? "rounded-2xl border border-slate-200 p-4 outline outline-2 outline-offset-2 outline-[var(--dogshift-blue)]"
                       : "rounded-2xl border border-slate-200 p-4"
                   }
                 >
