@@ -214,6 +214,8 @@ function SitterPublicProfileContent() {
   const params = useParams<{ id: string }>();
   const searchParams = useSearchParams();
   const pathname = usePathname();
+  const dbg = searchParams?.get("dbg") === "1";
+  if (dbg) console.log("[ProfileContent] render");
   const actionsRef = useRef<HTMLDivElement | null>(null);
   const idParam = params?.id;
   const id = typeof idParam === "string" ? idParam : Array.isArray(idParam) ? idParam[0] : "";
@@ -290,6 +292,7 @@ function SitterPublicProfileContent() {
     setApiError(null);
     void (async () => {
       try {
+        if (dbg) console.log("[ProfileContent] fetch start");
         const res = await fetch(
           `/api/sitters/${encodeURIComponent(id)}${isPreviewMode ? "?mode=preview" : ""}`
         );
@@ -324,6 +327,8 @@ function SitterPublicProfileContent() {
           return;
         }
 
+        if (dbg) console.log("[ProfileContent] fetch success");
+
         setProfileData(null);
 
         const services = safeStringArray(payload.sitter.services);
@@ -353,11 +358,14 @@ function SitterPublicProfileContent() {
 
         setApiSitter(sitter);
         setApiLoaded(true);
-      } catch {
+      } catch (error) {
+        if (dbg) console.log("[ProfileContent] fetch error", error);
         setApiError("NETWORK_ERROR");
         setApiSitter(null);
         setProfileData(null);
         setApiLoaded(true);
+      } finally {
+        if (dbg) console.log("[ProfileContent] fetch finally");
       }
     })();
   }, [id]);
@@ -368,6 +376,7 @@ function SitterPublicProfileContent() {
     void (async () => {
       setAvailabilityLoaded(false);
       try {
+        if (dbg) console.log("[ProfileContent] fetch start");
         const res = await fetch(`/api/sitters/${encodeURIComponent(id)}/availability`, { method: "GET" });
         const payload = (await res.json().catch(() => null)) as AvailabilityPayload | null;
         if (cancelled) return;
@@ -376,13 +385,17 @@ function SitterPublicProfileContent() {
           setAvailabilityLoaded(true);
           return;
         }
+        if (dbg) console.log("[ProfileContent] fetch success");
         const rows = payload.dates.filter((d): d is string => typeof d === "string" && d.trim().length > 0);
         setAvailableDates(rows);
         setAvailabilityLoaded(true);
-      } catch {
+      } catch (error) {
+        if (dbg) console.log("[ProfileContent] fetch error", error);
         if (cancelled) return;
         setAvailableDates([]);
         setAvailabilityLoaded(true);
+      } finally {
+        if (dbg) console.log("[ProfileContent] fetch finally");
       }
     })();
     return () => {
@@ -407,6 +420,7 @@ function SitterPublicProfileContent() {
     }
     void (async () => {
       try {
+        if (dbg) console.log("[ProfileContent] fetch start");
         const res = await fetch("/api/host/profile", { method: "GET", cache: "no-store" });
         const payload = (await res.json()) as {
           ok?: boolean;
@@ -422,6 +436,8 @@ function SitterPublicProfileContent() {
           setProfileData(null);
           return;
         }
+
+        if (dbg) console.log("[ProfileContent] fetch success");
         const sitterId = typeof payload.sitterId === "string" ? payload.sitterId : null;
         const normalizedSitterId = sitterId && sitterId.trim() ? sitterId.trim() : null;
         setCurrentHostId(normalizedSitterId);
@@ -460,12 +476,15 @@ function SitterPublicProfileContent() {
           setPreviewSitter(null);
         }
         setPreviewLoaded(true);
-      } catch {
+      } catch (error) {
+        if (dbg) console.log("[ProfileContent] fetch error", error);
         setCurrentHostId(null);
         setHostProfileCompletion(0);
         setPreviewLoaded(false);
         setPreviewSitter(null);
         setProfileData(null);
+      } finally {
+        if (dbg) console.log("[ProfileContent] fetch finally");
       }
     })();
   }, [id, isLoaded, isSignedIn, isPreviewMode]);
@@ -720,6 +739,7 @@ function SitterPublicProfileContent() {
   }
 
   if (sitter === undefined) {
+    if (dbg) console.log("[ProfileContent] returning loader - profile is", sitter);
     return <PageLoader label="Chargement…" />;
   }
 
