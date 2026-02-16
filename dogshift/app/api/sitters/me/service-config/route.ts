@@ -4,6 +4,7 @@ import type { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireSitterOwner } from "@/lib/auth/requireSitterOwner";
 import { SERVICE_DEFAULTS, type ServiceType } from "@/lib/availability/slotEngine";
+import { writeAvailabilityAuditLog } from "@/lib/availability/auditLog";
 
 export const runtime = "nodejs";
 
@@ -164,6 +165,20 @@ export async function PUT(req: NextRequest) {
     },
     update: data,
   });
+
+  try {
+    await writeAvailabilityAuditLog({
+      sitterId: auth.sitterId,
+      actorUserId: auth.dbUserId,
+      action: "UPSERT_CONFIG",
+      serviceType,
+      payloadSummary: {
+        keys: Object.keys(data),
+      },
+    });
+  } catch {
+    // best-effort
+  }
 
   console.info("[api][sitters][me][service-config][PUT]", {
     sitterId: auth.sitterId,

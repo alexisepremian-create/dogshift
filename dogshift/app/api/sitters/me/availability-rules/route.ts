@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { requireSitterOwner } from "@/lib/auth/requireSitterOwner";
 import type { ServiceType } from "@/lib/availability/slotEngine";
 import { clampMinute, normalizeRanges } from "@/lib/availability/rangeValidation";
+import { writeAvailabilityAuditLog } from "@/lib/availability/auditLog";
 
 export const runtime = "nodejs";
 
@@ -116,6 +117,21 @@ export async function PUT(req: NextRequest) {
         status: r.status,
       })),
     });
+  }
+
+  try {
+    await writeAvailabilityAuditLog({
+      sitterId: auth.sitterId,
+      actorUserId: auth.dbUserId,
+      action: "REPLACE_RULES",
+      serviceType,
+      payloadSummary: {
+        dayOfWeek,
+        rules: toCreate.length,
+      },
+    });
+  } catch {
+    // best-effort
   }
 
   const rows = await (prisma as any).availabilityRule.findMany({

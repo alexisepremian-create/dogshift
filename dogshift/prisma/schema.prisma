@@ -312,6 +312,7 @@ model AvailabilityRule {
   id String @id @default(cuid())
 
   sitterId   String
+  serviceType ServiceType
   dayOfWeek  Int
   startMin   Int
   endMin     Int
@@ -322,14 +323,15 @@ model AvailabilityRule {
 
   sitter User @relation(fields: [sitterId], references: [sitterId], onDelete: Cascade)
 
-  @@index([sitterId, dayOfWeek])
-  @@index([sitterId])
+  @@index([sitterId, serviceType, dayOfWeek])
+  @@index([sitterId, serviceType])
 }
 
 model AvailabilityException {
   id String @id @default(cuid())
 
   sitterId  String
+  serviceType ServiceType
   date      DateTime @db.Date
   startMin  Int
   endMin    Int
@@ -340,8 +342,25 @@ model AvailabilityException {
 
   sitter User @relation(fields: [sitterId], references: [sitterId], onDelete: Cascade)
 
-  @@index([sitterId, date])
-  @@index([sitterId])
+  @@index([sitterId, serviceType, date])
+  @@index([sitterId, serviceType])
+}
+
+model AvailabilityAuditLog {
+  id String @id @default(cuid())
+
+  sitterId      String
+  actorUserId   String
+
+  action      String
+  serviceType  ServiceType?
+  dateKey      String?
+  payloadSummary Json?
+
+  createdAt DateTime @default(now())
+
+  @@index([sitterId, createdAt])
+  @@index([sitterId, serviceType, createdAt])
 }
 
 model ServiceConfig {

@@ -550,12 +550,16 @@ export async function generateDaySlots(
     if (!sitterId) return { ok: false, error: "INVALID_SITTER" };
     if (!isValidIsoDate(date)) return { ok: false, error: "INVALID_DATE" };
 
+    const serviceType = input.serviceType;
+
     const now = input.now ?? new Date();
     const dow = dayOfWeekZurich(date);
 
     const [rules, exceptions, bookings, config] = await Promise.all([
-      (prisma as any).availabilityRule.findMany({ where: { sitterId, dayOfWeek: dow } }) as Promise<AvailabilityRuleRow[]>,
-      (prisma as any).availabilityException.findMany({ where: { sitterId, date: new Date(`${date}T00:00:00Z`) } }) as Promise<AvailabilityExceptionRow[]>,
+      (prisma as any).availabilityRule.findMany({ where: { sitterId, serviceType: input.serviceType, dayOfWeek: dow } }) as Promise<AvailabilityRuleRow[]>,
+      (prisma as any).availabilityException.findMany({
+        where: { sitterId, serviceType: input.serviceType, date: new Date(`${date}T00:00:00Z`) },
+      }) as Promise<AvailabilityExceptionRow[]>,
       (prisma as any).booking.findMany({ where: { sitterId } }) as Promise<BookingRow[]>,
       (prisma as any).serviceConfig.findUnique({ where: { sitterId_serviceType: { sitterId, serviceType: input.serviceType } } }) as Promise<ServiceConfigRow | null>,
     ]);
@@ -693,9 +697,10 @@ export function evaluateBoardingRangeFromData(input: EvaluateBoardingRangeFromDa
 
 export async function checkBoardingRange(input: CheckBoardingRangeInput): Promise<{ ok: true; result: BoardingRangeResult } | { ok: false; error: string }> {
   try {
-    const sitterId = input.sitterId?.trim() ?? "";
-    const startDate = input.startDate?.trim() ?? "";
-    const endDate = input.endDate?.trim() ?? "";
+    const sitterId = input.sitterId;
+    const startDate = input.startDate;
+    const endDate = input.endDate;
+    const serviceType = "PENSION";
     if (!sitterId) return { ok: false, error: "INVALID_SITTER" };
     if (!isValidIsoDate(startDate) || !isValidIsoDate(endDate)) return { ok: false, error: "INVALID_DATE" };
     if (endDate <= startDate) return { ok: false, error: "INVALID_RANGE" };

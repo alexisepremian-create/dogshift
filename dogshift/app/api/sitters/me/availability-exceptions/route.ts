@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { requireSitterOwner } from "@/lib/auth/requireSitterOwner";
 import type { ServiceType } from "@/lib/availability/slotEngine";
 import { normalizeRanges } from "@/lib/availability/rangeValidation";
+import { writeAvailabilityAuditLog } from "@/lib/availability/auditLog";
 
 export const runtime = "nodejs";
 
@@ -160,6 +161,22 @@ export async function PUT(req: NextRequest) {
     })),
   });
 
+  try {
+    await writeAvailabilityAuditLog({
+      sitterId: auth.sitterId,
+      actorUserId: auth.dbUserId,
+      action: "UPSERT_EXCEPTION",
+      serviceType,
+      dateKey: dateIso,
+      payloadSummary: {
+        status,
+        ranges: ranges.length,
+      },
+    });
+  } catch {
+    // best-effort
+  }
+
   const rows = await (prisma as any).availabilityException.findMany({
     where: { sitterId: auth.sitterId, serviceType, date: new Date(`${dateIso}T00:00:00Z`) },
     orderBy: { startMin: "asc" },
@@ -207,6 +224,17 @@ export async function DELETE(req: NextRequest) {
   }
 
   await (prisma as any).availabilityException.delete({ where: { id } });
+
+  try {
+    await writeAvailabilityAuditLog({
+      sitterId: auth.sitterId,
+      actorUserId: auth.dbUserId,
+      action: "DELETE_EXCEPTION",
+      payloadSummary: { id },
+    });
+  } catch {
+    // best-effort
+  }
 
   console.info("[api][sitters][me][availability-exceptions][DELETE]", {
     sitterId: auth.sitterId,
