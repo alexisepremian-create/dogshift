@@ -52,6 +52,8 @@ export default clerkMiddleware(async (auth, req) => {
     return NextResponse.redirect(url, 308);
   }
 
+  const pathname = String(req?.nextUrl?.pathname ?? "");
+
   const sitePassword = process.env.SITE_PASSWORD;
   const passwordSet = Boolean(sitePassword);
   const unlockedCookie = req.cookies.get("site_unlocked")?.value;
@@ -63,12 +65,16 @@ export default clerkMiddleware(async (auth, req) => {
     return res;
   };
   if (sitePassword) {
-    const { pathname, search } = req.nextUrl;
+    const { search } = req.nextUrl;
 
     const isNextAsset = pathname.startsWith("/_next/");
     const isStaticFile = /\.[^/]+$/.test(pathname);
 
-    if (!pathname.startsWith("/api") && !isLockBypassRoute(req) && !isPublicSitterRoute(req) && !isNextAsset && !isStaticFile) {
+    const isApiRoute = pathname.startsWith("/api/");
+    const isImagesRoute = pathname.startsWith("/images/");
+    const isFavicon = pathname === "/favicon.ico";
+
+    if (!isApiRoute && !isFavicon && !isImagesRoute && !isLockBypassRoute(req) && !isPublicSitterRoute(req) && !isNextAsset && !isStaticFile) {
       if (unlockedCookie !== "1") {
         const url = req.nextUrl.clone();
         url.pathname = "/unlock";
@@ -94,8 +100,6 @@ export default clerkMiddleware(async (auth, req) => {
   }
 
   if (isPublicRoute(req)) return addLockHeaders(NextResponse.next());
-
-  const pathname = String(req?.nextUrl?.pathname ?? "");
   if (pathname.startsWith("/api/")) {
     return addLockHeaders(NextResponse.next());
   }
