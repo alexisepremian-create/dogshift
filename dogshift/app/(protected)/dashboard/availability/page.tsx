@@ -138,6 +138,10 @@ export default function AvailabilityStudioPage() {
 
   const exceptionDrawerTitleRef = useRef<HTMLParagraphElement | null>(null);
   const exceptionDrawerRef = useRef<HTMLDivElement | null>(null);
+
+  const weeklyRulesContainerRef = useRef<HTMLDivElement | null>(null);
+  const weeklyRuleDayRefs = useRef<Array<HTMLDivElement | null>>([]);
+  const [focusedDow, setFocusedDow] = useState<number | null>(null);
   const exceptionDrawerRestoreFocusRef = useRef<HTMLElement | null>(null);
   const exceptionDrawerInitialSnapshotRef = useRef<string>("");
 
@@ -316,6 +320,9 @@ export default function AvailabilityStudioPage() {
     setExceptionDate(dateIso);
     setExceptionError(null);
 
+    const dow = new Date(`${dateIso}T12:00:00Z`).getUTCDay();
+    setFocusedDow(dow);
+
     const existing = (exceptionsByService[service] ?? []).filter((e) => e.date === dateIso);
     if (existing.length) {
       // 1 exception per date/service: derive the form from the existing set.
@@ -345,6 +352,17 @@ export default function AvailabilityStudioPage() {
     });
     setExceptionDrawerOpen(true);
   }
+
+  useEffect(() => {
+    if (focusedDow === null) return;
+    const el = weeklyRuleDayRefs.current[focusedDow] ?? null;
+    if (!el) return;
+    try {
+      el.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    } catch {
+      // ignore
+    }
+  }, [focusedDow]);
 
   useEffect(() => {
     if (!exceptionDrawerOpen) {
@@ -874,16 +892,28 @@ export default function AvailabilityStudioPage() {
         </div>
 
         {/* Column 2: Weekly rules */}
-        <div className="rounded-3xl border border-slate-200 bg-white p-5">
-          <p className="text-sm font-semibold text-slate-900">Règles hebdomadaires</p>
-          <p className="mt-1 text-sm text-slate-600">Définis tes plages pour {serviceMeta(service).label}.</p>
+        <div className="flex flex-col rounded-3xl border border-slate-200 bg-white p-5">
+          <div className="sticky top-0 z-10 bg-white pb-3">
+            <p className="text-sm font-semibold text-slate-900">Règles hebdomadaires</p>
+            <p className="mt-1 text-sm text-slate-600">Définis tes plages pour {serviceMeta(service).label}.</p>
+          </div>
 
-          <div className="mt-4 grid gap-4">
+          <div ref={weeklyRulesContainerRef} className="mt-1 grid max-h-[calc(100vh-260px)] gap-4 overflow-auto pr-1">
             {Array.from({ length: 7 }).map((_, dow) => {
               const rows = rulesByDow.get(dow) ?? [];
               const draft = rows.map((r) => ({ startMin: r.startMin, endMin: r.endMin, status: r.status }));
               return (
-                <div key={`dow-${dow}`} className="rounded-2xl border border-slate-200 p-4">
+                <div
+                  key={`dow-${dow}`}
+                  ref={(node) => {
+                    weeklyRuleDayRefs.current[dow] = node;
+                  }}
+                  className={
+                    focusedDow === dow
+                      ? "rounded-2xl border border-slate-200 p-4 ring-2 ring-[var(--dogshift-blue)]"
+                      : "rounded-2xl border border-slate-200 p-4"
+                  }
+                >
                   <div className="flex items-center justify-between">
                     <p className="text-sm font-semibold text-slate-900">{weekLabels[dow]}</p>
                     <button
