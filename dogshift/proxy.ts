@@ -44,15 +44,6 @@ function isPublicSitterRoute(req: MiddlewareReqLike) {
   return mode === "public" || mode === "";
 }
 
-function isRscLikeRequest(req: Request) {
-  try {
-    const url = new URL(req.url);
-    return url.searchParams.has("_rsc");
-  } catch {
-    return false;
-  }
-}
-
 export const proxy = clerkMiddleware(async (auth, req) => {
   let isRsc = false;
   try {
@@ -65,7 +56,8 @@ export const proxy = clerkMiddleware(async (auth, req) => {
   if (isRsc) {
     const res = NextResponse.json({ ok: false, locked: true }, { status: 401 });
     res.headers.set("x-dogshift-rsc-detected", "1");
-    res.headers.set("x-dogshift-lock-layer", "next");
+    res.headers.set("x-dogshift-lock-layer", "proxy");
+    res.headers.set("x-dogshift-seen-rsc", "1");
     return res;
   }
 
@@ -88,6 +80,7 @@ export const proxy = clerkMiddleware(async (auth, req) => {
   const addLockHeaders = (res: NextResponse) => {
     res.headers.set("x-site-password-set", passwordSet ? "1" : "0");
     res.headers.set("x-site-lock-on", lockOn ? "1" : "0");
+    res.headers.set("x-dogshift-seen-rsc", isRsc ? "1" : "0");
     return res;
   };
   if (sitePassword) {
@@ -102,19 +95,12 @@ export const proxy = clerkMiddleware(async (auth, req) => {
 
     if (!isApiRoute && !isFavicon && !isImagesRoute && !isLockBypassRoute(req) && !isPublicSitterRoute(req) && !isNextAsset && !isStaticFile) {
       if (unlockedCookie !== "1") {
-        if (isRscLikeRequest(req)) {
-          const res = NextResponse.json({ ok: false, locked: true }, { status: 401 });
-          res.headers.set("x-dogshift-rsc-detected", "1");
-          res.headers.set("x-dogshift-lock-layer", "next");
-          return addLockHeaders(res);
-        }
-
         const url = req.nextUrl.clone();
         url.pathname = "/unlock";
         url.search = `?next=${encodeURIComponent(pathname + search)}`;
 
         const res = NextResponse.redirect(url);
-        res.headers.set("x-dogshift-lock-layer", "next");
+        res.headers.set("x-dogshift-lock-layer", "proxy");
         return addLockHeaders(res);
       }
     }
