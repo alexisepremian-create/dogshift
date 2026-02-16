@@ -10,17 +10,6 @@ type ServiceTypeApi = "PROMENADE" | "DOGSITTING" | "PENSION";
 
 type ServiceConfig = {
   enabled: boolean;
-  slotStepMin: number;
-  minDurationMin: number;
-  maxDurationMin: number;
-  leadTimeMin: number;
-  bufferBeforeMin: number;
-  bufferAfterMin: number;
-  overnightRequired: boolean;
-  checkInStartMin: number | null;
-  checkInEndMin: number | null;
-  checkOutStartMin: number | null;
-  checkOutEndMin: number | null;
 };
 
 type RuleRow = {
@@ -196,8 +185,8 @@ export default function AvailabilityStudioPage() {
         services.map(async (svc) => {
           const res = await fetch(`/api/sitters/me/service-config?service=${encodeURIComponent(svc)}`, { method: "GET", cache: "no-store" });
           const payload = (await res.json().catch(() => null)) as any;
-          if (!res.ok || !payload?.ok || !payload?.config) throw new Error("CONFIG_ERROR");
-          return [svc, payload.config as ServiceConfig] as const;
+          if (!res.ok || !payload?.ok || typeof payload?.enabled !== "boolean") throw new Error("CONFIG_ERROR");
+          return [svc, { enabled: payload.enabled } satisfies ServiceConfig] as const;
         })
       );
       if (token !== refreshTokenRef.current) return;
@@ -869,17 +858,7 @@ export default function AvailabilityStudioPage() {
                       />
                     </button>
                   </div>
-                  {cfg ? (
-                    <div className="mt-3 grid gap-1 text-xs text-slate-600">
-                      {svc === "PENSION" ? (
-                        <div>
-                          Check-in/out: {cfg.checkInStartMin ?? "—"}-{cfg.checkInEndMin ?? "—"} / {cfg.checkOutStartMin ?? "—"}-{cfg.checkOutEndMin ?? "—"}
-                        </div>
-                      ) : null}
-                    </div>
-                  ) : (
-                    <div className="mt-3 h-4 w-40 animate-pulse rounded bg-slate-100" />
-                  )}
+                  {cfg ? null : <div className="mt-3 h-4 w-40 animate-pulse rounded bg-slate-100" />}
                 </button>
               );
             })}

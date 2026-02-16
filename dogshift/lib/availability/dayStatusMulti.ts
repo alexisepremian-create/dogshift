@@ -20,10 +20,11 @@ export type DayStatusMultiInput = {
 
 function ensureServiceConfig(sitterId: string, serviceType: ServiceType, row: any) {
   const defaults = SERVICE_DEFAULTS[serviceType];
+  const enabled = typeof row?.enabled === "boolean" ? row.enabled : undefined;
   return {
     ...defaults,
     sitterId,
-    ...(row ?? {}),
+    ...(enabled !== undefined ? { enabled } : null),
     serviceType,
   };
 }
