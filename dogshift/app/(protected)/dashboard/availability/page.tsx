@@ -862,8 +862,6 @@ export default function AvailabilityStudioPage() {
                     <div className="mt-3 grid gap-1 text-xs text-slate-600">
                       <div>Durée min: {cfg.minDurationMin} min</div>
                       <div>Pas: {cfg.slotStepMin} min</div>
-                      <div>Lead: {cfg.leadTimeMin} min</div>
-                      <div>Buffers: {cfg.bufferBeforeMin}/{cfg.bufferAfterMin} min</div>
                       {svc === "PENSION" ? (
                         <div>
                           Check-in/out: {cfg.checkInStartMin ?? "—"}-{cfg.checkInEndMin ?? "—"} / {cfg.checkOutStartMin ?? "—"}-{cfg.checkOutEndMin ?? "—"}
