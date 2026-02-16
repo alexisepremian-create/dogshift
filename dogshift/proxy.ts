@@ -45,19 +45,40 @@ function isPublicSitterRoute(req: MiddlewareReqLike) {
 }
 
 export const proxy = clerkMiddleware(async (auth, req) => {
-  let isRsc = false;
+  let reqUrl = "";
+  let reqSearch = "";
+  let reqHost = "";
+  let reqPathname = "";
+
   try {
     const url = new URL(req.url);
-    isRsc = url.searchParams.has("_rsc");
+    reqUrl = url.toString();
+    reqSearch = url.search;
+    reqHost = url.host;
+    reqPathname = url.pathname;
   } catch {
-    isRsc = false;
+    reqUrl = "";
+    reqSearch = "";
+    reqHost = "";
+    reqPathname = "";
   }
 
-  if (isRsc) {
-    const res = NextResponse.json({ ok: false, locked: true }, { status: 401 });
+  const headerAccept = req.headers.get("accept") || "";
+  const isRscLike =
+    req.headers.get("rsc") === "1" ||
+    req.headers.has("next-router-state-tree") ||
+    req.headers.has("next-router-prefetch") ||
+    req.headers.has("next-action") ||
+    headerAccept.includes("text/x-component");
+
+  if (isRscLike) {
+    const next = `${reqPathname || "/"}${reqSearch || ""}`;
+    const res = NextResponse.json({ ok: false, locked: true, next }, { status: 401 });
     res.headers.set("x-dogshift-rsc-detected", "1");
     res.headers.set("x-dogshift-lock-layer", "proxy");
-    res.headers.set("x-dogshift-seen-rsc", "1");
+    res.headers.set("x-dogshift-req-url", reqUrl.slice(0, 200));
+    res.headers.set("x-dogshift-req-search", (reqSearch || "").slice(0, 200));
+    res.headers.set("x-dogshift-req-host", (reqHost || "").slice(0, 200));
     return res;
   }
 
@@ -80,7 +101,9 @@ export const proxy = clerkMiddleware(async (auth, req) => {
   const addLockHeaders = (res: NextResponse) => {
     res.headers.set("x-site-password-set", passwordSet ? "1" : "0");
     res.headers.set("x-site-lock-on", lockOn ? "1" : "0");
-    res.headers.set("x-dogshift-seen-rsc", isRsc ? "1" : "0");
+    res.headers.set("x-dogshift-req-url", reqUrl.slice(0, 200));
+    res.headers.set("x-dogshift-req-search", (reqSearch || "").slice(0, 200));
+    res.headers.set("x-dogshift-req-host", (reqHost || "").slice(0, 200));
     return res;
   };
   if (sitePassword) {
