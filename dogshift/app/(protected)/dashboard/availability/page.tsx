@@ -120,6 +120,8 @@ export default function AvailabilityStudioPage() {
 
   const [bookingInfoOpen, setBookingInfoOpen] = useState(false);
 
+  const todayKeyZurich = useMemo(() => toZurichIsoDate(new Date()), []);
+
   const [exceptionDrawerOpen, setExceptionDrawerOpen] = useState(false);
   const [exceptionDate, setExceptionDate] = useState<string>("");
   const [exceptionStatus, setExceptionStatus] = useState<"AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE">("UNAVAILABLE");
@@ -1004,12 +1006,21 @@ export default function AvailabilityStudioPage() {
                 const dateIso = `${String(meta.year).padStart(4, "0")}-${String(meta.month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
                 const row = monthStatusByDate.get(dateIso) ?? null;
                 const tone = focusDayTone(row);
+                const isPast = dateIso < todayKeyZurich;
                 return (
                   <button
                     key={dateIso}
                     type="button"
-                    onClick={() => openExceptionDrawer(dateIso)}
-                    className={`flex h-10 w-full flex-col items-center justify-center rounded-2xl ring-1 ${tone}`}
+                    disabled={isPast}
+                    onClick={() => {
+                      if (isPast) return;
+                      openExceptionDrawer(dateIso);
+                    }}
+                    className={
+                      isPast
+                        ? `flex h-10 w-full flex-col items-center justify-center rounded-2xl ring-1 ${tone} cursor-not-allowed opacity-40`
+                        : `flex h-10 w-full flex-col items-center justify-center rounded-2xl ring-1 ${tone} hover:ring-2`
+                    }
                     aria-label={`Exception ${dateIso}`}
                   >
                     <span className="text-sm font-semibold leading-none">{day}</span>
