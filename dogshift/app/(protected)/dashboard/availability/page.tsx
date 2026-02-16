@@ -12,14 +12,6 @@ type ServiceConfig = {
   enabled: boolean;
 };
 
-type RuleRow = {
-  id: string;
-  dayOfWeek: number;
-  startMin: number;
-  endMin: number;
-  status: "AVAILABLE" | "ON_REQUEST";
-};
-
 type ExceptionRow = {
   id: string;
   date: string; // yyyy-mm-dd
@@ -106,12 +98,6 @@ export default function AvailabilityStudioPage() {
     PENSION: null,
   });
 
-  const [rulesByService, setRulesByService] = useState<Record<ServiceTypeApi, RuleRow[]>>({
-    PROMENADE: [],
-    DOGSITTING: [],
-    PENSION: [],
-  });
-
   const [exceptionsByService, setExceptionsByService] = useState<Record<ServiceTypeApi, ExceptionRow[]>>({
     PROMENADE: [],
     DOGSITTING: [],
@@ -144,10 +130,6 @@ export default function AvailabilityStudioPage() {
 
   const exceptionDrawerTitleRef = useRef<HTMLParagraphElement | null>(null);
   const exceptionDrawerRef = useRef<HTMLDivElement | null>(null);
-
-  const weeklyRulesContainerRef = useRef<HTMLDivElement | null>(null);
-  const weeklyRuleDayRefs = useRef<Array<HTMLDivElement | null>>([]);
-  const [focusedDow, setFocusedDow] = useState<number | null>(null);
   const exceptionDrawerRestoreFocusRef = useRef<HTMLElement | null>(null);
   const exceptionDrawerInitialSnapshotRef = useRef<string>("");
 
@@ -211,21 +193,6 @@ export default function AvailabilityStudioPage() {
       setConfigByService((prev) => {
         const next = { ...prev };
         for (const [svc, cfg] of cfgPairs) (next as any)[svc] = cfg;
-        return next;
-      });
-
-      const rulesPairs = await Promise.all(
-        services.map(async (svc) => {
-          const res = await fetch(`/api/sitters/me/availability-rules?service=${encodeURIComponent(svc)}`, { method: "GET", cache: "no-store" });
-          const payload = (await res.json().catch(() => null)) as any;
-          if (!res.ok || !payload?.ok || !Array.isArray(payload?.rules)) throw new Error("RULES_ERROR");
-          return [svc, payload.rules as RuleRow[]] as const;
-        })
-      );
-      if (token !== refreshTokenRef.current) return;
-      setRulesByService((prev) => {
-        const next = { ...prev };
-        for (const [svc, rules] of rulesPairs) (next as any)[svc] = rules;
         return next;
       });
 
@@ -326,9 +293,6 @@ export default function AvailabilityStudioPage() {
     setExceptionDate(dateIso);
     setExceptionError(null);
 
-    const dow = new Date(`${dateIso}T12:00:00Z`).getUTCDay();
-    setFocusedDow(dow);
-
     const existing = (exceptionsByService[service] ?? []).filter((e) => e.date === dateIso);
     if (existing.length) {
       // 1 exception per date/service: derive the form from the existing set.
@@ -358,17 +322,6 @@ export default function AvailabilityStudioPage() {
     });
     setExceptionDrawerOpen(true);
   }
-
-  useEffect(() => {
-    if (focusedDow === null) return;
-    const el = weeklyRuleDayRefs.current[focusedDow] ?? null;
-    if (!el) return;
-    try {
-      el.scrollIntoView({ behavior: "smooth", block: "nearest" });
-    } catch {
-      // ignore
-    }
-  }, [focusedDow]);
 
   useEffect(() => {
     if (!exceptionDrawerOpen) {
@@ -437,16 +390,6 @@ export default function AvailabilityStudioPage() {
   }, [sitterId, meta.fromIso, meta.toIso]);
 
   const selectedConfig = configByService[service];
-  const selectedRules = rulesByService[service];
-
-  const rulesByDow = useMemo(() => {
-    const map = new Map<number, RuleRow[]>();
-    for (const r of selectedRules) {
-      map.set(r.dayOfWeek, [...(map.get(r.dayOfWeek) ?? []), r]);
-    }
-    for (const [k, v] of map) v.sort((a, b) => a.startMin - b.startMin);
-    return map;
-  }, [selectedRules]);
 
   function statusTone(status: "AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE") {
     return status === "AVAILABLE" ? "bg-emerald-500" : status === "ON_REQUEST" ? "bg-amber-500" : "bg-slate-300";
@@ -466,32 +409,6 @@ export default function AvailabilityStudioPage() {
         ? "bg-amber-50 text-amber-900 ring-amber-200"
         : "bg-slate-100 text-slate-500 ring-slate-200";
   };
-
-  async function saveDayRules(dayOfWeek: number, next: Array<{ startMin: number; endMin: number; status: "AVAILABLE" | "ON_REQUEST" }>) {
-    if (!sitterId) return;
-    const rangesOnly = next.map((r) => ({ startMin: r.startMin, endMin: r.endMin }));
-    const normalized = normalizeRanges(rangesOnly);
-    if (!normalized.ok) {
-      setError("INVALID_RANGES");
-      return;
-    }
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch(`/api/sitters/me/availability-rules?service=${encodeURIComponent(service)}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ dayOfWeek, rules: next }),
-      });
-      const payload = (await res.json().catch(() => null)) as any;
-      if (!res.ok || !payload?.ok) throw new Error(payload?.error ?? "SAVE_ERROR");
-      await refetchAll();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "SAVE_ERROR");
-    } finally {
-      setLoading(false);
-    }
-  }
 
   const weekLabels = ["Dimanche", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"];
 
@@ -514,7 +431,7 @@ export default function AvailabilityStudioPage() {
       <div className="flex items-center justify-between">
         <div>
           <p className="text-2xl font-bold text-slate-900">Disponibilités</p>
-          <p className="mt-2 text-sm text-slate-600">Configure tes services, tes règles hebdo et tes exceptions.</p>
+          <p className="mt-2 text-sm text-slate-600">Configure tes services et tes exceptions.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Link
@@ -839,7 +756,7 @@ export default function AvailabilityStudioPage() {
         </button>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div className="grid gap-6 lg:grid-cols-2">
         {/* Column 1: Services */}
         <div className="rounded-3xl border border-slate-200 bg-white p-5">
           <div className="flex items-start justify-between gap-4">
@@ -913,110 +830,7 @@ export default function AvailabilityStudioPage() {
           </div>
         </div>
 
-        {/* Column 2: Weekly rules */}
-        <div className="flex flex-col rounded-3xl border border-slate-200 bg-white p-5">
-          <div className="sticky top-0 z-10 bg-white pb-3">
-            <p className="text-sm font-semibold text-slate-900">Règles hebdomadaires</p>
-            <p className="mt-1 text-sm text-slate-600">Définis tes plages pour {serviceMeta(service).label}.</p>
-          </div>
-
-          <div ref={weeklyRulesContainerRef} className="mt-1 grid max-h-[calc(100vh-260px)] gap-4 overflow-auto p-1">
-            {Array.from({ length: 7 }).map((_, dow) => {
-              const rows = rulesByDow.get(dow) ?? [];
-              const draft = rows.map((r) => ({ startMin: r.startMin, endMin: r.endMin, status: r.status }));
-              return (
-                <div
-                  key={`dow-${dow}`}
-                  ref={(node) => {
-                    weeklyRuleDayRefs.current[dow] = node;
-                  }}
-                  className={
-                    focusedDow === dow
-                      ? "rounded-2xl border border-slate-200 p-4 outline outline-2 outline-offset-2 outline-[var(--dogshift-blue)]"
-                      : "rounded-2xl border border-slate-200 p-4"
-                  }
-                >
-                  <div className="flex items-center justify-between">
-                    <p className="text-sm font-semibold text-slate-900">{weekLabels[dow]}</p>
-                    <button
-                      type="button"
-                      onClick={() => saveDayRules(dow, [])}
-                      className="text-xs font-semibold text-slate-600 underline underline-offset-2"
-                    >
-                      Effacer
-                    </button>
-                  </div>
-
-                  <div className="mt-3 grid gap-2">
-                    {draft.length ? (
-                      draft.map((r, idx) => (
-                        <div key={`${dow}-${idx}`} className="grid grid-cols-3 gap-2">
-                          <input
-                            type="time"
-                            value={minutesToHHMM(r.startMin)}
-                            onChange={(e) => {
-                              const nextStart = hhmmToMinutes(e.target.value);
-                              if (nextStart === null) return;
-                              const next = draft.slice();
-                              next[idx] = { ...next[idx], startMin: nextStart };
-                              void saveDayRules(dow, next);
-                            }}
-                            className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700"
-                            aria-label={`${weekLabels[dow]} début`}
-                          />
-                          <input
-                            type="time"
-                            value={minutesToHHMM(r.endMin)}
-                            onChange={(e) => {
-                              const nextEnd = hhmmToMinutes(e.target.value);
-                              if (nextEnd === null) return;
-                              const next = draft.slice();
-                              next[idx] = { ...next[idx], endMin: nextEnd };
-                              void saveDayRules(dow, next);
-                            }}
-                            className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700"
-                            aria-label={`${weekLabels[dow]} fin`}
-                          />
-                          <select
-                            value={r.status}
-                            onChange={(e) => {
-                              const v = e.target.value === "ON_REQUEST" ? "ON_REQUEST" : "AVAILABLE";
-                              const next = draft.slice();
-                              next[idx] = { ...next[idx], status: v };
-                              void saveDayRules(dow, next);
-                            }}
-                            className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700"
-                            aria-label={`${weekLabels[dow]} statut`}
-                          >
-                            <option value="AVAILABLE">Disponible</option>
-                            <option value="ON_REQUEST">Sur demande</option>
-                          </select>
-                        </div>
-                      ))
-                    ) : (
-                      <p className="text-xs font-semibold text-slate-500">Aucune plage.</p>
-                    )}
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const baseStart = 9 * 60;
-                        const baseEnd = 12 * 60;
-                        const next = [...draft, { startMin: baseStart, endMin: baseEnd, status: "AVAILABLE" as const }];
-                        void saveDayRules(dow, next);
-                      }}
-                      className="inline-flex h-9 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-xs font-semibold text-slate-700"
-                    >
-                      + Ajouter plage
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Column 3: Exceptions + preview calendar */}
+        {/* Column 2: Exceptions + preview calendar */}
         <div className="rounded-3xl border border-slate-200 bg-white p-5">
           <div className="flex items-center justify-between">
             <div>
