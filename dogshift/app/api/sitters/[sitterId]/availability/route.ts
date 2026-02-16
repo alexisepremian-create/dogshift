@@ -32,13 +32,16 @@ function todayZurichIsoDate() {
   return formatZurichIsoDate(new Date());
 }
 
-export async function GET(req: NextRequest, { params }: { params: { id: string } | Promise<{ id: string }> }) {
+export async function GET(
+  req: NextRequest,
+  { params }: { params: { sitterId: string } | Promise<{ sitterId: string }> }
+) {
   const startedAt = Date.now();
   const requestId = typeof (globalThis as any).crypto?.randomUUID === "function" ? (globalThis as any).crypto.randomUUID() : `r_${startedAt}`;
   console.info("[api][sitters][id][availability][GET] start", { requestId });
   try {
-    const resolved = (await params) as { id?: string };
-    const sitterId = typeof resolved?.id === "string" ? resolved.id.trim() : "";
+    const resolved = (await params) as { sitterId?: string };
+    const sitterId = typeof resolved?.sitterId === "string" ? resolved.sitterId.trim() : "";
     if (!isValidSitterId(sitterId)) {
       return NextResponse.json({ ok: false, error: "INVALID_SITTER" }, { status: 400 });
     }

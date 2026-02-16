@@ -7,13 +7,15 @@ export const runtime = "nodejs";
 
 export async function GET(
   _req: NextRequest,
-  { params }: { params: { id: string } | Promise<{ id: string }> }
+  { params }: { params: { sitterId: string } | Promise<{ sitterId: string }> }
 ) {
   try {
-    const resolvedParams = (typeof (params as any)?.then === "function" ? await (params as Promise<{ id: string }>) : (params as { id: string })) as {
-      id: string;
+    const resolvedParams = (typeof (params as any)?.then === "function"
+      ? await (params as Promise<{ sitterId: string }>)
+      : (params as { sitterId: string })) as {
+      sitterId: string;
     };
-    const sitterId = typeof resolvedParams?.id === "string" ? resolvedParams.id : "";
+    const sitterId = typeof resolvedParams?.sitterId === "string" ? resolvedParams.sitterId : "";
 
     if (!sitterId) {
       return NextResponse.json({ ok: false, error: "INVALID_ID" }, { status: 400 });
