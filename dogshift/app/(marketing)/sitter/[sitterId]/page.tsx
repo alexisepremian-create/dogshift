@@ -549,6 +549,8 @@ function SitterPublicProfileContent({
   const [selectedService, setSelectedService] = useState<string | null>(null);
   const [bookingStart, setBookingStart] = useState("");
   const [bookingEnd, setBookingEnd] = useState("");
+  const [bookingStartAt, setBookingStartAt] = useState<string>("");
+  const [bookingEndAt, setBookingEndAt] = useState<string>("");
   const [bookingMessage, setBookingMessage] = useState("");
 
   const [paying, setPaying] = useState(false);
@@ -583,10 +585,28 @@ function SitterPublicProfileContent({
     setPaying(true);
     setPayError(null);
 
-    if (!selectedService || !bookingStart || !bookingEnd) {
+    const isHourlyService = selectedService === "Promenade";
+    const hasHourlyDates = Boolean(bookingStartAt && bookingEndAt);
+    const hasDailyDates = Boolean(bookingStart && bookingEnd);
+
+    if (!selectedService) {
       setPayError("Choisissez un service et des dates avant de payer.");
       setPaying(false);
       return;
+    }
+
+    if (isHourlyService) {
+      if (!hasHourlyDates) {
+        setPayError("Choisissez un créneau avant de payer.");
+        setPaying(false);
+        return;
+      }
+    } else {
+      if (!hasDailyDates) {
+        setPayError("Choisissez un service et des dates avant de payer.");
+        setPaying(false);
+        return;
+      }
     }
 
     try {
@@ -596,8 +616,10 @@ function SitterPublicProfileContent({
         body: JSON.stringify({
           sitterId: id,
           service: selectedService,
-          startDate: bookingStart,
-          endDate: bookingEnd,
+          startDate: isHourlyService ? undefined : bookingStart,
+          endDate: isHourlyService ? undefined : bookingEnd,
+          startAt: isHourlyService ? bookingStartAt : undefined,
+          endAt: isHourlyService ? bookingEndAt : undefined,
           message: bookingMessage,
         }),
       });
@@ -760,6 +782,78 @@ function SitterPublicProfileContent({
 
   const isHostPreview = showHostChrome && isPreviewMode;
   const shouldShowFinalizeModal = isHostPreview && hostProfileCompletion < 100;
+
+  const [slotsServiceType, setSlotsServiceType] = useState<"PROMENADE" | "DOGSITTING" | "PENSION">("PROMENADE");
+  const [slotsDate, setSlotsDate] = useState<string>("");
+  const [daySlots, setDaySlots] = useState<
+    Array<{ startAt: string; endAt: string; status: "AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE"; reason?: string }>
+  >([]);
+  const [slotsLoading, setSlotsLoading] = useState(false);
+  const [slotsError, setSlotsError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (slotsDate) return;
+    try {
+      const today = new Intl.DateTimeFormat("en-CA", {
+        timeZone: "Europe/Zurich",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      }).format(new Date());
+      setSlotsDate(today);
+    } catch {
+      setSlotsDate(new Date().toISOString().slice(0, 10));
+    }
+  }, [slotsDate]);
+
+  useEffect(() => {
+    if (!id || !slotsDate) return;
+    let cancelled = false;
+    void (async () => {
+      setSlotsLoading(true);
+      setSlotsError(null);
+      try {
+        const qp = new URLSearchParams();
+        qp.set("date", slotsDate);
+        qp.set("service", slotsServiceType);
+        if (dbg) qp.set("dbg", "1");
+        const res = await fetch(`/api/sitters/${encodeURIComponent(id)}/slots?${qp.toString()}`, {
+          method: "GET",
+          cache: "no-store",
+        });
+        const payload = (await res.json().catch(() => null)) as
+          | {
+              ok: true;
+              slots: Array<{ startAt: string; endAt: string; status: "AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE"; reason?: string }>;
+            }
+          | { ok: false; error: string }
+          | null;
+        if (cancelled) return;
+        if (!res.ok || !payload || !payload.ok || !Array.isArray((payload as any).slots)) {
+          const err = (payload as any)?.error;
+          setSlotsError(typeof err === "string" ? err : "SLOTS_ERROR");
+          setDaySlots([]);
+          return;
+        }
+        const slots = payload.slots.filter(
+          (s): s is { startAt: string; endAt: string; status: "AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE"; reason?: string } =>
+            Boolean(s && typeof s.startAt === "string" && typeof s.endAt === "string" && typeof (s as any).status === "string")
+        );
+        setDaySlots(slots);
+      } catch (error) {
+        if (cancelled) return;
+        if (dbg) console.log("[ProfileContent] fetch error", error);
+        setSlotsError("SLOTS_NETWORK_ERROR");
+        setDaySlots([]);
+      } finally {
+        if (cancelled) return;
+        setSlotsLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [dbg, id, slotsDate, slotsServiceType]);
 
   if (process.env.NODE_ENV !== "production") {
     console.log("[sitter][render]", {
@@ -1029,6 +1123,107 @@ function SitterPublicProfileContent({
                             <p className="mt-2 text-sm font-semibold text-[var(--dogshift-blue)]">Envoie un message pour demander une date.</p>
                           </div>
                         )}
+
+                        <div className="mt-6">
+                          <p className="text-sm font-medium text-slate-900">Service</p>
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            {([
+                              { key: "PROMENADE" as const, label: "Promenade" },
+                              { key: "DOGSITTING" as const, label: "Dogsitting" },
+                              { key: "PENSION" as const, label: "Pension" },
+                            ] as const).map((svc) => {
+                              const selected = slotsServiceType === svc.key;
+                              return (
+                                <button
+                                  key={svc.key}
+                                  type="button"
+                                  onClick={() => setSlotsServiceType(svc.key)}
+                                  className={
+                                    selected
+                                      ? "rounded-full bg-[var(--dogshift-blue)] px-3 py-1 text-xs font-semibold text-white"
+                                      : "rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                                  }
+                                  aria-pressed={selected}
+                                >
+                                  {svc.label}
+                                </button>
+                              );
+                            })}
+                          </div>
+
+                          <div className="mt-4">
+                            <label className="text-sm font-medium text-slate-900" htmlFor="slots-date">
+                              Date
+                            </label>
+                            <input
+                              id="slots-date"
+                              type="date"
+                              value={slotsDate}
+                              onChange={(e) => setSlotsDate(e.target.value)}
+                              className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm"
+                            />
+                          </div>
+
+                          <div className="mt-4">
+                            <p className="text-sm font-medium text-slate-900">Créneaux</p>
+                            {slotsLoading ? (
+                              <p className="mt-2 text-sm text-slate-600">Chargement…</p>
+                            ) : slotsError ? (
+                              <p className="mt-2 text-sm text-rose-700">{slotsError}</p>
+                            ) : daySlots.length ? (
+                              <div className="mt-3 grid gap-2">
+                                {daySlots.map((slot) => {
+                                  const isUnavailable = slot.status === "UNAVAILABLE";
+                                  const isOnRequest = slot.status === "ON_REQUEST";
+                                  const tone = isUnavailable
+                                    ? "border-slate-200 bg-slate-100 text-slate-500"
+                                    : isOnRequest
+                                      ? "border-amber-200 bg-amber-50 text-amber-900"
+                                      : "border-emerald-200 bg-emerald-50 text-emerald-900";
+                                  const label = `${slot.startAt.slice(11, 16)}–${slot.endAt.slice(11, 16)}`;
+                                  const ariaLabel = `${slotsServiceType} ${label} ${slot.status}`;
+                                  return (
+                                    <button
+                                      key={`${slot.startAt}-${slot.endAt}-${slot.status}-${slot.reason ?? ""}`}
+                                      type="button"
+                                      disabled={isUnavailable}
+                                      title={slot.reason ?? ""}
+                                      onClick={() => {
+                                        if (isUnavailable) return;
+                                        const serviceName =
+                                          slotsServiceType === "PROMENADE"
+                                            ? "Promenade"
+                                            : slotsServiceType === "DOGSITTING"
+                                              ? "Garde"
+                                              : "Pension";
+                                        setSelectedService(serviceName);
+                                        if (slotsServiceType === "PROMENADE") {
+                                          setBookingStartAt(slot.startAt);
+                                          setBookingEndAt(slot.endAt);
+                                          setBookingStart("");
+                                          setBookingEnd("");
+                                        } else {
+                                          setBookingStart(slotsDate);
+                                          setBookingEnd(slotsDate);
+                                          setBookingStartAt("");
+                                          setBookingEndAt("");
+                                        }
+                                        setBookingOpen(true);
+                                      }}
+                                      className={`flex w-full items-center justify-between rounded-2xl border px-4 py-3 text-left text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-70 ${tone}`}
+                                      aria-label={ariaLabel}
+                                    >
+                                      <span>{label}</span>
+                                      <span className="text-xs font-semibold">{slot.status === "AVAILABLE" ? "Dispo" : slot.status === "ON_REQUEST" ? "Sur demande" : "Indispo"}</span>
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            ) : (
+                              <p className="mt-2 text-sm text-slate-600">Aucun créneau.</p>
+                            )}
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>

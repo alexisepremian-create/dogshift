@@ -27,6 +27,14 @@ export type GenerateDaySlotsInput = {
   now?: Date;
 };
 
+export type PublicServiceConfig = {
+  minDurationMin: number;
+  stepMin: number;
+  bufferBeforeMin: number;
+  bufferAfterMin: number;
+  leadTimeMin: number;
+};
+
 type Interval = {
   startMin: number;
   endMin: number;
@@ -41,7 +49,8 @@ type BookingBlock = {
   reason: string;
 };
 
-const ZURICH_TZ = "Europe/Zurich";
+export const TIMEZONE_ZURICH = "Europe/Zurich";
+const ZURICH_TZ = TIMEZONE_ZURICH;
 
 export const SERVICE_DEFAULTS: Record<ServiceType, ServiceConfigDefaults> = {
   PROMENADE: {
@@ -227,6 +236,53 @@ function minutesToIso(dateIso: string, minutes: number) {
   const d = Number(parts[2]);
   if (!Number.isFinite(y) || !Number.isFinite(mo) || !Number.isFinite(d)) return new Date(NaN);
   return new Date(Date.UTC(y, mo - 1, d, hh, mm, 0, 0));
+}
+
+function formatZurichOffsetIso(dt: Date) {
+  const dtf = new Intl.DateTimeFormat("en-CA", {
+    timeZone: ZURICH_TZ,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hourCycle: "h23",
+    timeZoneName: "shortOffset",
+  });
+  const parts = dtf.formatToParts(dt);
+  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "";
+  const y = get("year");
+  const mo = get("month");
+  const d = get("day");
+  const h = get("hour") || "00";
+  const m = get("minute") || "00";
+  const s = get("second") || "00";
+  const tz = get("timeZoneName") || "GMT";
+  const mOffset = tz.match(/GMT([+-]\d{1,2})(?::?(\d{2}))?/i);
+  let offset = "Z";
+  if (mOffset) {
+    const signNum = Number(mOffset[1]);
+    const sign = signNum >= 0 ? "+" : "-";
+    const hhOff = String(Math.abs(signNum)).padStart(2, "0");
+    const mmOff = String(mOffset[2] ?? "00").padStart(2, "0");
+    offset = `${sign}${hhOff}:${mmOff}`;
+  }
+  return `${y}-${mo}-${d}T${h}:${m}:${s}${offset}`;
+}
+
+function minutesToZurichOffsetIso(dateIso: string, minutes: number) {
+  return formatZurichOffsetIso(minutesToIso(dateIso, minutes));
+}
+
+function toPublicConfig(config: ServiceConfigRow): PublicServiceConfig {
+  return {
+    minDurationMin: config.minDurationMin,
+    stepMin: config.slotStepMin,
+    bufferBeforeMin: config.bufferBeforeMin,
+    bufferAfterMin: config.bufferAfterMin,
+    leadTimeMin: config.leadTimeMin,
+  };
 }
 
 function dayOfWeekZurich(dateIso: string) {
@@ -423,8 +479,8 @@ export function computeDaySlots(input: ComputeDaySlotsInput): DaySlot[] {
         }
       }
 
-      const startAt = minutesToIso(input.date, startMin).toISOString();
-      const endAt = minutesToIso(input.date, endMin).toISOString();
+      const startAt = minutesToZurichOffsetIso(input.date, startMin);
+      const endAt = minutesToZurichOffsetIso(input.date, endMin);
       slots.push({ startAt, endAt, startMin, endMin, status, reason });
     }
   }
@@ -433,7 +489,9 @@ export function computeDaySlots(input: ComputeDaySlotsInput): DaySlot[] {
   return slots;
 }
 
-export async function generateDaySlots(input: GenerateDaySlotsInput): Promise<{ ok: true; slots: DaySlot[] } | { ok: false; error: string }> {
+export async function generateDaySlots(
+  input: GenerateDaySlotsInput
+): Promise<{ ok: true; slots: DaySlot[]; config: PublicServiceConfig } | { ok: false; error: string }> {
   try {
     const sitterId = input.sitterId?.trim() ?? "";
     const date = input.date?.trim() ?? "";
@@ -467,7 +525,7 @@ export async function generateDaySlots(input: GenerateDaySlotsInput): Promise<{ 
       config: mergedConfig,
     });
 
-    return { ok: true, slots };
+    return { ok: true, slots, config: toPublicConfig(mergedConfig) };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     return { ok: false, error: message || "INTERNAL_ERROR" };
