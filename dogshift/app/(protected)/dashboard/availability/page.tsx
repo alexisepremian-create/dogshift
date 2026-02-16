@@ -153,6 +153,37 @@ export default function AvailabilityStudioPage() {
 
   const refreshTokenRef = useRef(0);
 
+  async function saveServiceEnabled(svc: ServiceTypeApi, enabled: boolean) {
+    if (!sitterId) return;
+    setLoading(true);
+    setError(null);
+    try {
+      setConfigByService((prev) => {
+        const next = { ...prev };
+        const cur = prev[svc];
+        (next as any)[svc] = cur ? { ...cur, enabled } : ({ enabled } as any);
+        return next;
+      });
+
+      const res = await fetch(`/api/sitters/me/service-config?service=${encodeURIComponent(svc)}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ enabled }),
+      });
+      const payload = (await res.json().catch(() => null)) as any;
+      if (!res.ok || !payload?.ok) throw new Error(payload?.error ?? "SAVE_ERROR");
+
+      showToast({ tone: "ok", message: enabled ? "Service activé" : "Service désactivé" });
+      await refetchAll();
+    } catch (e) {
+      showToast({ tone: "error", message: "Impossible d’enregistrer" });
+      await refetchAll();
+      setError(e instanceof Error ? e.message : "SAVE_ERROR");
+    } finally {
+      setLoading(false);
+    }
+  }
+
   async function refetchAll() {
     if (!sitterId) return;
     const token = ++refreshTokenRef.current;
@@ -785,6 +816,7 @@ export default function AvailabilityStudioPage() {
               const metaSvc = serviceMeta(svc);
               const cfg = configByService[svc];
               const selected = svc === service;
+              const enabled = cfg?.enabled !== false;
               return (
                 <button
                   key={svc}
@@ -801,7 +833,30 @@ export default function AvailabilityStudioPage() {
                     <p className="text-sm font-semibold text-slate-900">
                       {metaSvc.icon} {metaSvc.label}
                     </p>
-                    <span className="text-xs font-semibold text-slate-500">{cfg?.enabled === false ? "Inactif" : "Actif"}</span>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={enabled}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        void saveServiceEnabled(svc, !enabled);
+                      }}
+                      className={
+                        enabled
+                          ? "relative inline-flex h-6 w-11 items-center rounded-full bg-emerald-500 transition"
+                          : "relative inline-flex h-6 w-11 items-center rounded-full bg-slate-300 transition"
+                      }
+                      aria-label={enabled ? `Désactiver ${metaSvc.label}` : `Activer ${metaSvc.label}`}
+                    >
+                      <span
+                        className={
+                          enabled
+                            ? "inline-block h-5 w-5 translate-x-5 rounded-full bg-white shadow transition"
+                            : "inline-block h-5 w-5 translate-x-1 rounded-full bg-white shadow transition"
+                        }
+                      />
+                    </button>
                   </div>
                   {cfg ? (
                     <div className="mt-3 grid gap-1 text-xs text-slate-600">
