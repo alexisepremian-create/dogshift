@@ -129,9 +129,6 @@ export default function AvailabilityStudioPage() {
   const [savedPing, setSavedPing] = useState<string | null>(null);
   const [toast, setToast] = useState<ToastState>(null);
 
-  const [configDrawerOpen, setConfigDrawerOpen] = useState(false);
-  const [configDraft, setConfigDraft] = useState<Partial<ServiceConfig> | null>(null);
-
   const [bookingInfoOpen, setBookingInfoOpen] = useState(false);
 
   const [exceptionDrawerOpen, setExceptionDrawerOpen] = useState(false);
@@ -889,17 +886,6 @@ export default function AvailabilityStudioPage() {
               );
             })}
           </div>
-
-          <button
-            type="button"
-            onClick={() => {
-              setConfigDraft(configByService[service] ?? null);
-              setConfigDrawerOpen(true);
-            }}
-            className="mt-4 inline-flex h-10 w-full items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-4 text-xs font-semibold text-white"
-          >
-            Modifier
-          </button>
         </div>
 
         {/* Column 2: Weekly rules */}
@@ -1107,113 +1093,6 @@ export default function AvailabilityStudioPage() {
           </div>
         </div>
       </div>
-
-      {configDrawerOpen && configDraft ? (
-        <div className="fixed inset-0 z-50 flex items-end justify-end bg-slate-900/40 p-4" role="dialog" aria-modal="true" aria-label="Modifier config">
-          <div className="w-full max-w-md rounded-3xl bg-white p-5 shadow-xl">
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-semibold text-slate-900">Paramètres — {serviceMeta(service).label}</p>
-              <button
-                type="button"
-                onClick={() => setConfigDrawerOpen(false)}
-                className="inline-flex h-9 items-center justify-center rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700"
-              >
-                Fermer
-              </button>
-            </div>
-
-            <div className="mt-4 grid gap-3">
-              <label className="text-xs font-semibold text-slate-700">
-                Lead time (min)
-                <input
-                  type="number"
-                  value={configDraft.leadTimeMin ?? 0}
-                  onChange={(e) => setConfigDraft((p) => ({ ...(p ?? {}), leadTimeMin: Number(e.target.value) }))}
-                  className="mt-1 w-full rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm"
-                />
-              </label>
-              <label className="text-xs font-semibold text-slate-700">
-                Buffer avant (min)
-                <input
-                  type="number"
-                  value={configDraft.bufferBeforeMin ?? 0}
-                  onChange={(e) => setConfigDraft((p) => ({ ...(p ?? {}), bufferBeforeMin: Number(e.target.value) }))}
-                  className="mt-1 w-full rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm"
-                />
-              </label>
-              <label className="text-xs font-semibold text-slate-700">
-                Buffer après (min)
-                <input
-                  type="number"
-                  value={configDraft.bufferAfterMin ?? 0}
-                  onChange={(e) => setConfigDraft((p) => ({ ...(p ?? {}), bufferAfterMin: Number(e.target.value) }))}
-                  className="mt-1 w-full rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm"
-                />
-              </label>
-              {(service === "PROMENADE" || service === "DOGSITTING") ? (
-                <>
-                  <label className="text-xs font-semibold text-slate-700">
-                    Durée min (min)
-                    <input
-                      type="number"
-                      value={configDraft.minDurationMin ?? 0}
-                      onChange={(e) => setConfigDraft((p) => ({ ...(p ?? {}), minDurationMin: Number(e.target.value) }))}
-                      className="mt-1 w-full rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm"
-                    />
-                  </label>
-                  <label className="text-xs font-semibold text-slate-700">
-                    Pas (min)
-                    <input
-                      type="number"
-                      value={configDraft.slotStepMin ?? 0}
-                      onChange={(e) => setConfigDraft((p) => ({ ...(p ?? {}), slotStepMin: Number(e.target.value) }))}
-                      className="mt-1 w-full rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm"
-                    />
-                  </label>
-                  {service === "DOGSITTING" ? (
-                    <label className="text-xs font-semibold text-slate-700">
-                      Durée max (min)
-                      <input
-                        type="number"
-                        value={configDraft.maxDurationMin ?? 0}
-                        onChange={(e) => setConfigDraft((p) => ({ ...(p ?? {}), maxDurationMin: Number(e.target.value) }))}
-                        className="mt-1 w-full rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm"
-                      />
-                    </label>
-                  ) : null}
-                </>
-              ) : null}
-            </div>
-
-            <button
-              type="button"
-              disabled={loading}
-              onClick={async () => {
-                setLoading(true);
-                setError(null);
-                try {
-                  const res = await fetch(`/api/sitters/me/service-config?service=${encodeURIComponent(service)}`, {
-                    method: "PUT",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(configDraft),
-                  });
-                  const payload = (await res.json().catch(() => null)) as any;
-                  if (!res.ok || !payload?.ok) throw new Error(payload?.error ?? "SAVE_ERROR");
-                  setConfigDrawerOpen(false);
-                  await refetchAll();
-                } catch (e) {
-                  setError(e instanceof Error ? e.message : "SAVE_ERROR");
-                } finally {
-                  setLoading(false);
-                }
-              }}
-              className="mt-4 inline-flex h-11 w-full items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-6 text-sm font-semibold text-white disabled:opacity-60"
-            >
-              Enregistrer
-            </button>
-          </div>
-        </div>
-      ) : null}
 
       {loading ? <div className="fixed bottom-6 right-6 rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white">Chargement…</div> : null}
 
