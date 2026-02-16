@@ -74,10 +74,8 @@ export async function GET(
     return NextResponse.json({ ok: false, error: "INVALID_DATE_RANGE" }, { status: 400 });
   }
 
-  const serviceType = normalizeService(serviceRaw);
-  if (!serviceType) {
-    return NextResponse.json({ ok: false, error: "INVALID_SERVICE" }, { status: 400 });
-  }
+  const serviceType = serviceRaw ? normalizeService(serviceRaw) : ("PROMENADE" as const);
+  if (!serviceType) return NextResponse.json({ ok: false, error: "INVALID_SERVICE" }, { status: 400 });
 
   const dates: string[] = [];
   for (let d = start; d.getTime() <= end.getTime(); d = addDaysUtc(d, 1)) {

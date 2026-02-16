@@ -67,7 +67,7 @@ export async function GET(
   try {
     const [allRules, allExceptions, allBookings, allConfigs] = await Promise.all([
       (prisma as any).availabilityRule.findMany({ where: { sitterId } }),
-      (prisma as any).availabilityException.findMany({ where: { sitterId, date: { gte: from, lte: to } } }),
+      (prisma as any).availabilityException.findMany({ where: { sitterId, date: { gte: fromStart, lte: toEnd } } }),
       (prisma as any).booking.findMany({
         where: {
           sitterId,

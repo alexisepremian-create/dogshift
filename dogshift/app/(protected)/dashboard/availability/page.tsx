@@ -214,6 +214,7 @@ export default function AvailabilityStudioPage() {
       const qp = new URLSearchParams();
       qp.set("from", meta.fromIso);
       qp.set("to", meta.toIso);
+      qp.set("service", service);
       const res = await fetch(`/api/sitters/${encodeURIComponent(sitterId)}/day-status/multi?${qp.toString()}`, { method: "GET", cache: "no-store" });
       const payload = (await res.json().catch(() => null)) as any;
       if (!res.ok || !payload?.ok || !Array.isArray(payload?.days)) throw new Error("DAY_STATUS_ERROR");

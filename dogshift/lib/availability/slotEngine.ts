@@ -709,9 +709,14 @@ export async function checkBoardingRange(input: CheckBoardingRangeInput): Promis
     const startDt = new Date(`${startDate}T00:00:00.000Z`);
     const endDt = new Date(`${endDate}T23:59:59.999Z`);
 
+    const exceptionsFrom = new Date(`${startDate}T00:00:00.000Z`);
+    const exceptionsTo = new Date(`${endDate}T23:59:59.999Z`);
+
     const [rules, exceptions, bookings, configRow] = await Promise.all([
       (prisma as any).availabilityRule.findMany({ where: { sitterId, serviceType: "PENSION" } }) as Promise<AvailabilityRuleRow[]>,
-      (prisma as any).availabilityException.findMany({ where: { sitterId, serviceType: "PENSION", date: { gte: startDate, lte: endDate } } }) as Promise<AvailabilityExceptionRow[]>,
+      (prisma as any).availabilityException.findMany({
+        where: { sitterId, serviceType: "PENSION", date: { gte: exceptionsFrom, lte: exceptionsTo } },
+      }) as Promise<AvailabilityExceptionRow[]>,
       (prisma as any).booking.findMany({
         where: {
           sitterId,
