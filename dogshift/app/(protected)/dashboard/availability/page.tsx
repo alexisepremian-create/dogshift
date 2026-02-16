@@ -30,6 +30,12 @@ type ExceptionRow = {
 
 type ToastState = { tone: "ok" | "error"; message: string } | null;
 
+function statusLabelFr(value: "AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE") {
+  if (value === "AVAILABLE") return "Disponible";
+  if (value === "ON_REQUEST") return "Sur demande";
+  return "Indisponible";
+}
+
 function minutesToHHMM(min: number) {
   const m = Math.max(0, Math.min(24 * 60, Math.round(min)));
   const hh = String(Math.floor(m / 60)).padStart(2, "0");
@@ -1109,7 +1115,7 @@ export default function AvailabilityStudioPage() {
                     <div>
                       <p className="text-xs font-semibold text-slate-500">{e.date}</p>
                       <p className="text-sm font-semibold text-slate-900">
-                        {minutesToHHMM(e.startMin)}–{minutesToHHMM(e.endMin)} — {e.status}
+                        {minutesToHHMM(e.startMin)}–{minutesToHHMM(e.endMin)} — {statusLabelFr(e.status)}
                       </p>
                     </div>
                     <button
