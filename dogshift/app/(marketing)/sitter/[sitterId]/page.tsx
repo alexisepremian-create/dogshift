@@ -826,6 +826,9 @@ function SitterPublicProfileContent({
     | null
   >(null);
   const [dogsittingDurationMin, setDogsittingDurationMin] = useState<number | null>(null);
+  const [slotWhyOpenKey, setSlotWhyOpenKey] = useState<string | null>(null);
+  const [calendarInfoDate, setCalendarInfoDate] = useState<string | null>(null);
+  const [agendaExpandedGroups, setAgendaExpandedGroups] = useState<Record<string, boolean>>({});
   const [slotsLoading, setSlotsLoading] = useState(false);
   const [slotsError, setSlotsError] = useState<string | null>(null);
   const [slotsRetryKey, setSlotsRetryKey] = useState(0);
@@ -866,6 +869,37 @@ function SitterPublicProfileContent({
 
     return { byKey, current, statusLabel, statusLabelLong };
   }, [slotsServiceType]);
+
+  const userReasonBucket = useMemo(() => {
+    const statusText = (s: "AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE") =>
+      s === "AVAILABLE" ? "Disponible" : s === "ON_REQUEST" ? "Sur demande" : "Indisponible";
+
+    const bucketForReason = (reason?: string) => {
+      const r = typeof reason === "string" ? reason : "";
+      if (!r) return { title: "Indisponible", detail: "Période non couverte" };
+      if (r.startsWith("booking_") && (r.includes("confirmed") || r.includes("paid"))) {
+        return { title: "Réservation existante", detail: "Ce créneau chevauche une réservation." };
+      }
+      if (r.startsWith("booking_pending")) {
+        return { title: "Réservation en attente", detail: "Une réservation est en cours sur ce créneau." };
+      }
+      if (r.startsWith("exception_")) {
+        return { title: "Exception", detail: "Une exception modifie les disponibilités ce jour." };
+      }
+      if (r.startsWith("rule_")) {
+        return { title: "Règles du sitter", detail: "Ce créneau dépend des horaires définis par le sitter." };
+      }
+      if (r === "lead_time") {
+        return { title: "Délai minimum", detail: "Le délai minimum avant réservation n’est pas respecté." };
+      }
+      if (r === "outside_rule") {
+        return { title: "Hors horaires définis", detail: "Ce créneau dépasse les horaires disponibles." };
+      }
+      return { title: "Indisponible", detail: "Ce créneau n’est pas réservable." };
+    };
+
+    return { statusText, bucketForReason };
+  }, []);
 
   useEffect(() => {
     if (slotsDate) return;
@@ -1653,6 +1687,12 @@ function SitterPublicProfileContent({
                                       <span>Indisponible</span>
                                     </div>
                                   </div>
+
+                                  <div className="mt-3 grid gap-1 text-xs text-slate-600">
+                                    <p>La couleur du jour correspond au service sélectionné.</p>
+                                    <p>Les 3 pastilles indiquent le statut de chaque service ce jour-là.</p>
+                                    <p>Clique une pastille pour basculer sur ce service et voir les créneaux du jour.</p>
+                                  </div>
                                 </div>
 
                                 <div className="grid grid-cols-7 gap-2 text-center text-[11px] font-semibold text-slate-500">
@@ -1763,11 +1803,48 @@ function SitterPublicProfileContent({
                                             className={`h-2 w-2 rounded-full ${statusTone(row.pensionStatus)}`}
                                             aria-label={`${dateIso} — ${serviceUi.byKey.PENSION.icon} Pension: ${serviceUi.statusLabel(row.pensionStatus)}`}
                                           />
+
+                                          <button
+                                            type="button"
+                                            onClick={() => setCalendarInfoDate((prev) => (prev === dateIso ? null : dateIso))}
+                                            className="ml-1 inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-200 bg-white text-[10px] font-semibold text-slate-600"
+                                            aria-label={`${dateIso} — détails du jour`}
+                                            title="Détails du jour"
+                                          >
+                                            i
+                                          </button>
                                         </div>
                                       </div>
                                     );
                                   })}
                                 </div>
+
+                                {calendarInfoDate ? (
+                                  <div className="mt-3 rounded-2xl border border-slate-200 bg-white p-4">
+                                    <p className="text-xs font-semibold text-slate-500">Détails</p>
+                                    <p className="mt-1 text-sm font-semibold text-slate-900">{calendarInfoDate}</p>
+                                    {(() => {
+                                      const row = monthDaysByDate.get(calendarInfoDate);
+                                      if (!row) {
+                                        return <p className="mt-2 text-sm text-slate-600">Ouvre la vue jour pour voir les créneaux.</p>;
+                                      }
+                                      return (
+                                        <div className="mt-2 grid gap-2 text-sm text-slate-700">
+                                          <div>
+                                            {serviceUi.byKey.PROMENADE.icon} Promenade: <span className="font-semibold">{serviceUi.statusLabel(row.promenadeStatus)}</span>
+                                          </div>
+                                          <div>
+                                            {serviceUi.byKey.DOGSITTING.icon} Dogsitting: <span className="font-semibold">{serviceUi.statusLabel(row.dogsittingStatus)}</span>
+                                          </div>
+                                          <div>
+                                            {serviceUi.byKey.PENSION.icon} Pension: <span className="font-semibold">{serviceUi.statusLabel(row.pensionStatus)}</span>
+                                          </div>
+                                          <p className="text-xs text-slate-500">Ouvre la vue jour pour voir les détails et les créneaux.</p>
+                                        </div>
+                                      );
+                                    })()}
+                                  </div>
+                                ) : null}
                               </div>
                             )}
                           </div>
@@ -1792,6 +1869,26 @@ function SitterPublicProfileContent({
                                 {serviceUi.current.icon} {serviceUi.current.label}
                               </span>
                             </p>
+
+                            <div className="mt-2 inline-flex items-center gap-2">
+                              <span className="inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700">
+                                Synchronisé avec l’agenda
+                              </span>
+                              <span
+                                className="text-xs text-slate-500"
+                                title="Les créneaux affichés sont calculés depuis l’agenda (règles, exceptions, réservations, buffers, délai)."
+                                aria-label="Les créneaux affichés sont calculés depuis l’agenda (règles, exceptions, réservations, buffers, délai)."
+                              >
+                                ⓘ
+                              </span>
+                            </div>
+
+                            <div className="sticky top-0 z-10 -mx-4 mt-3 border-y border-slate-200 bg-slate-50 px-4 py-2">
+                              <p className="text-xs font-semibold text-slate-700">
+                                {serviceUi.current.icon} {serviceUi.current.label} — {formatDateFr(slotsDate)}
+                                {slotsServiceType === "DOGSITTING" && typeof dogsittingDurationMin === "number" ? ` — ${dogsittingDurationMin} min` : ""}
+                              </p>
+                            </div>
 
                             {slotsServiceType === "DOGSITTING" && serviceSummary ? (
                               <div className="mt-3 rounded-2xl border border-slate-200 bg-white p-4">
@@ -1974,7 +2071,7 @@ function SitterPublicProfileContent({
                                   <div key={group.key}>
                                     <p className="text-xs font-semibold text-slate-500">{group.label}</p>
                                     <div className="mt-2 grid gap-2">
-                                      {group.items.map((slot) => {
+                                      {(agendaExpandedGroups[group.key] ? group.items : group.items.slice(0, 8)).map((slot) => {
                                         const isUnavailable = slot.status === "UNAVAILABLE";
                                         const isOnRequest = slot.status === "ON_REQUEST";
                                         const isSelected =
@@ -1989,41 +2086,105 @@ function SitterPublicProfileContent({
                                             ? "border-amber-200 bg-amber-50 text-amber-900"
                                             : "border-emerald-200 bg-emerald-50 text-emerald-900";
                                         const label = `${slot.startAt.slice(11, 16)}–${slot.endAt.slice(11, 16)}`;
-                                        const statusText = serviceUi.statusLabelLong(slot.status);
+                                        const statusText =
+                                          slot.status === "ON_REQUEST" ? "Sur demande (le sitter doit confirmer)" : serviceUi.statusLabelLong(slot.status);
                                         const ariaLabel = `${serviceUi.current.icon} ${serviceUi.current.label} ${label} — ${statusText}`;
-                                        const tooltip = dbg ? slot.reason ?? "" : statusText;
+                                        const whyKey = `${slot.startAt}-${slot.endAt}`;
+                                        const bucket = userReasonBucket.bucketForReason(slot.reason);
+                                        const tooltip = dbg
+                                          ? slot.reason ?? ""
+                                          : slot.status === "UNAVAILABLE"
+                                            ? "Indisponible"
+                                            : statusText;
                                         return (
-                                          <button
-                                            key={`${slot.startAt}-${slot.endAt}-${slot.status}-${slot.reason ?? ""}`}
-                                            type="button"
-                                            disabled={isUnavailable}
-                                            title={tooltip}
-                                            onClick={() => {
-                                              if (isUnavailable) return;
-                                              setSelectedSlotNotice(null);
-                                              if (slot.status === "AVAILABLE" || slot.status === "ON_REQUEST") {
-                                                setSelectedSlot({
-                                                  serviceType: slotsServiceType,
-                                                  dateIso: slotsDate,
-                                                  startAt: slot.startAt,
-                                                  endAt: slot.endAt,
-                                                  status: slot.status,
-                                                  reason: slot.reason,
-                                                });
-                                              }
-                                            }}
-                                            className={`flex w-full items-center justify-between rounded-2xl border px-4 py-3 text-left text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-70 ${tone} ${
-                                              isSelected ? "ring-2 ring-[var(--dogshift-blue)]" : ""
-                                            }`}
-                                            aria-label={ariaLabel}
-                                            aria-pressed={isSelected}
-                                          >
-                                            <span>{label}</span>
-                                            <span className="text-xs font-semibold">{serviceUi.statusLabel(slot.status)}</span>
-                                          </button>
+                                          <div key={`${slot.startAt}-${slot.endAt}-${slot.status}-${slot.reason ?? ""}`} className="relative">
+                                            <div className="flex items-stretch gap-2">
+                                              <button
+                                                type="button"
+                                                disabled={isUnavailable}
+                                                title={tooltip}
+                                                onClick={() => {
+                                                  if (isUnavailable) return;
+                                                  setSelectedSlotNotice(null);
+                                                  if (slot.status === "AVAILABLE" || slot.status === "ON_REQUEST") {
+                                                    setSelectedSlot({
+                                                      serviceType: slotsServiceType,
+                                                      dateIso: slotsDate,
+                                                      startAt: slot.startAt,
+                                                      endAt: slot.endAt,
+                                                      status: slot.status,
+                                                      reason: slot.reason,
+                                                    });
+                                                  }
+                                                }}
+                                                className={`flex w-full items-center justify-between rounded-2xl border px-4 py-3 text-left text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-70 ${tone} ${
+                                                  isSelected ? "ring-2 ring-[var(--dogshift-blue)]" : ""
+                                                }`}
+                                                aria-label={ariaLabel}
+                                                aria-pressed={isSelected}
+                                              >
+                                                <span>
+                                                  {label}
+                                                  {slot.status === "ON_REQUEST" ? (
+                                                    <span className="ml-2 text-xs font-semibold text-amber-900">Réponse requise</span>
+                                                  ) : null}
+                                                </span>
+                                                <span className="text-xs font-semibold">{userReasonBucket.statusText(slot.status)}</span>
+                                              </button>
+
+                                              {slot.status === "UNAVAILABLE" ? (
+                                                <button
+                                                  type="button"
+                                                  onClick={() => setSlotWhyOpenKey((prev) => (prev === whyKey ? null : whyKey))}
+                                                  className="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700"
+                                                  aria-label={`Voir pourquoi ${label}`}
+                                                >
+                                                  Voir pourquoi
+                                                </button>
+                                              ) : null}
+                                            </div>
+
+                                            {slotWhyOpenKey === whyKey ? (
+                                              <div className="mt-2 rounded-2xl border border-slate-200 bg-white p-4">
+                                                <div className="flex items-start justify-between gap-3">
+                                                  <div>
+                                                    <p className="text-xs font-semibold text-slate-500">Pourquoi</p>
+                                                    <p className="mt-1 text-sm font-semibold text-slate-900">{bucket.title}</p>
+                                                    <p className="mt-1 text-sm text-slate-600">{bucket.detail}</p>
+                                                    {dbg && slot.reason ? (
+                                                      <p className="mt-2 text-xs font-semibold text-slate-500">dbg: {slot.reason}</p>
+                                                    ) : null}
+                                                  </div>
+                                                  <button
+                                                    type="button"
+                                                    onClick={() => setSlotWhyOpenKey(null)}
+                                                    className="inline-flex h-8 items-center justify-center rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700"
+                                                    aria-label="Fermer"
+                                                  >
+                                                    Fermer
+                                                  </button>
+                                                </div>
+                                              </div>
+                                            ) : null}
+                                          </div>
                                         );
                                       })}
                                     </div>
+
+                                    {group.items.length > 8 ? (
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          setAgendaExpandedGroups((prev) => ({
+                                            ...prev,
+                                            [group.key]: !prev[group.key],
+                                          }))
+                                        }
+                                        className="mt-2 inline-flex h-9 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-xs font-semibold text-slate-700"
+                                      >
+                                        {agendaExpandedGroups[group.key] ? "Afficher moins" : "Afficher plus"}
+                                      </button>
+                                    ) : null}
                                   </div>
                                 ))}
 
