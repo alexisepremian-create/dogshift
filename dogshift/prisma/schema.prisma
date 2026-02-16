@@ -48,6 +48,18 @@ enum VerificationStatus {
   rejected
 }
 
+enum ServiceType {
+  PROMENADE
+  DOGSITTING
+  PENSION
+}
+
+enum AvailabilityStatus {
+  AVAILABLE
+  ON_REQUEST
+  UNAVAILABLE
+}
+
 model User {
   id              String    @id @default(cuid())
   clerkUserId     String?   @unique
@@ -82,6 +94,10 @@ model User {
   reviewsReceived Review[] @relation("ReviewSitter")
 
   availabilities Availability[] @relation("SitterAvailabilities")
+
+  availabilityRules      AvailabilityRule[]
+  availabilityExceptions AvailabilityException[]
+  serviceConfigs         ServiceConfig[]
 }
 
 model Notification {
@@ -213,6 +229,10 @@ model Booking {
   startDate DateTime?
   endDate   DateTime?
 
+  serviceType ServiceType?
+  startAt     DateTime?
+  endAt       DateTime?
+
   message String?
 
   status            BookingStatus @default(PENDING_PAYMENT)
@@ -286,6 +306,72 @@ model Availability {
 
   @@unique([sitterId, dateKey])
   @@index([sitterId, dateKey])
+}
+
+model AvailabilityRule {
+  id String @id @default(cuid())
+
+  sitterId   String
+  dayOfWeek  Int
+  startMin   Int
+  endMin     Int
+  status     AvailabilityStatus
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  sitter User @relation(fields: [sitterId], references: [sitterId], onDelete: Cascade)
+
+  @@index([sitterId, dayOfWeek])
+  @@index([sitterId])
+}
+
+model AvailabilityException {
+  id String @id @default(cuid())
+
+  sitterId  String
+  date      DateTime @db.Date
+  startMin  Int
+  endMin    Int
+  status    AvailabilityStatus
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  sitter User @relation(fields: [sitterId], references: [sitterId], onDelete: Cascade)
+
+  @@index([sitterId, date])
+  @@index([sitterId])
+}
+
+model ServiceConfig {
+  id String @id @default(cuid())
+
+  sitterId     String
+  serviceType  ServiceType
+  enabled      Boolean @default(true)
+
+  slotStepMin      Int
+  minDurationMin   Int
+  maxDurationMin   Int
+  leadTimeMin      Int
+  bufferBeforeMin  Int
+  bufferAfterMin   Int
+
+  overnightRequired Boolean @default(false)
+  checkInStartMin   Int?
+  checkInEndMin     Int?
+  checkOutStartMin  Int?
+  checkOutEndMin    Int?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  sitter User @relation(fields: [sitterId], references: [sitterId], onDelete: Cascade)
+
+  @@unique([sitterId, serviceType])
+  @@index([sitterId])
+  @@index([serviceType])
 }
 
 model Conversation {
