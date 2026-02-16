@@ -25,6 +25,7 @@ export async function POST(req: Request) {
     name: "site_unlocked",
     value: "1",
     httpOnly: true,
+    domain: process.env.NODE_ENV === "production" ? ".dogshift.ch" : undefined,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
     path: "/",

@@ -44,6 +44,22 @@ function isPublicSitterRoute(req: MiddlewareReqLike) {
   return mode === "public" || mode === "";
 }
 
+function isRscLikeRequest(req: Request) {
+  const url = (req as any)?.nextUrl as undefined | { searchParams?: URLSearchParams };
+  const hasRscQuery = Boolean(url?.searchParams?.has("_rsc"));
+  if (hasRscQuery) return true;
+
+  const headers = req.headers;
+  const rscHeader = headers.get("rsc");
+  if (rscHeader === "1") return true;
+
+  if (headers.has("next-router-state-tree")) return true;
+  if (headers.has("next-router-prefetch")) return true;
+  if (headers.has("next-action")) return true;
+
+  return false;
+}
+
 export default clerkMiddleware(async (auth, req) => {
   const forwardedHost = (req.headers.get("x-forwarded-host") || "").split(",")[0]?.trim();
   const host = (forwardedHost || req.headers.get("host") || "").split(",")[0]?.trim().toLowerCase();
@@ -81,6 +97,15 @@ export default clerkMiddleware(async (auth, req) => {
         const url = req.nextUrl.clone();
         url.pathname = "/unlock";
         url.search = `?next=${encodeURIComponent(pathname + search)}`;
+        if (isRscLikeRequest(req)) {
+          return addLockHeaders(
+            NextResponse.json(
+              { ok: false, locked: true, next: pathname + search },
+              { status: 401 }
+            )
+          );
+        }
+
         return addLockHeaders(NextResponse.redirect(url));
       }
     }
