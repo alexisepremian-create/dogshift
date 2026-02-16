@@ -804,6 +804,15 @@ function SitterPublicProfileContent({
   const [slotsError, setSlotsError] = useState<string | null>(null);
   const [slotsRetryKey, setSlotsRetryKey] = useState(0);
 
+  const [monthCursor, setMonthCursor] = useState(() => {
+    const dt = new Date();
+    return new Date(Date.UTC(dt.getUTCFullYear(), dt.getUTCMonth(), 1, 0, 0, 0, 0));
+  });
+  const [monthDays, setMonthDays] = useState<Array<{ date: string; status: "AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE" }>>([]);
+  const [monthLoading, setMonthLoading] = useState(false);
+  const [monthError, setMonthError] = useState<string | null>(null);
+  const [monthRetryKey, setMonthRetryKey] = useState(0);
+
   useEffect(() => {
     if (slotsDate) return;
     try {
@@ -819,12 +828,106 @@ function SitterPublicProfileContent({
     }
   }, [slotsDate]);
 
+  const monthMeta = useMemo(() => {
+    const y = monthCursor.getUTCFullYear();
+    const m = monthCursor.getUTCMonth();
+    const first = new Date(Date.UTC(y, m, 1, 12, 0, 0, 0));
+    const last = new Date(Date.UTC(y, m + 1, 0, 12, 0, 0, 0));
+
+    const toZurichIso = (dt: Date) =>
+      new Intl.DateTimeFormat("en-CA", {
+        timeZone: "Europe/Zurich",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      }).format(dt);
+
+    const fromIso = toZurichIso(first);
+    const toIso = toZurichIso(last);
+
+    const firstLocalDow = new Date(`${fromIso}T12:00:00Z`).getUTCDay();
+    const mondayIndex = (firstLocalDow + 6) % 7;
+
+    const monthLabel = new Intl.DateTimeFormat("fr-CH", {
+      timeZone: "Europe/Zurich",
+      month: "long",
+      year: "numeric",
+    }).format(first);
+
+    const daysInMonth = Number(toIso.slice(8, 10));
+    return { fromIso, toIso, mondayIndex, daysInMonth, monthLabel, year: y, month: m };
+  }, [monthCursor]);
+
+  const monthDaysByDate = useMemo(() => {
+    const map = new Map<string, "AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE">();
+    for (const row of monthDays) {
+      if (!row || typeof row.date !== "string") continue;
+      if (row.status === "AVAILABLE" || row.status === "ON_REQUEST" || row.status === "UNAVAILABLE") {
+        map.set(row.date, row.status);
+      }
+    }
+    return map;
+  }, [monthDays]);
+
   useEffect(() => {
     if (boardingStart) return;
     if (!slotsDate) return;
     setBoardingStart(slotsDate);
     setBoardingEnd(slotsDate);
   }, [boardingEnd, boardingStart, slotsDate]);
+
+  useEffect(() => {
+    if (!id) return;
+    let cancelled = false;
+    const controller = new AbortController();
+    const debounce = setTimeout(() => {
+      void (async () => {
+        setMonthLoading(true);
+        setMonthError(null);
+        try {
+          const qp = new URLSearchParams();
+          qp.set("from", monthMeta.fromIso);
+          qp.set("to", monthMeta.toIso);
+          qp.set("service", slotsServiceType);
+          if (dbg) qp.set("dbg", "1");
+          const res = await fetch(`/api/sitters/${encodeURIComponent(id)}/day-status?${qp.toString()}`, {
+            method: "GET",
+            cache: "no-store",
+            signal: controller.signal,
+          });
+          const payload = (await res.json().catch(() => null)) as
+            | { ok: true; days: Array<{ date: string; status: "AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE" }> }
+            | { ok: false; error: string }
+            | null;
+          if (cancelled) return;
+          if (!res.ok || !payload || !payload.ok || !Array.isArray((payload as any).days)) {
+            const err = (payload as any)?.error;
+            setMonthError(typeof err === "string" ? err : "DAY_STATUS_ERROR");
+            setMonthDays([]);
+            return;
+          }
+          const rows = payload.days.filter(
+            (d): d is { date: string; status: "AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE" } =>
+              Boolean(d && typeof d.date === "string" && (d.status === "AVAILABLE" || d.status === "ON_REQUEST" || d.status === "UNAVAILABLE"))
+          );
+          setMonthDays(rows);
+        } catch (error) {
+          if (cancelled) return;
+          if (error instanceof DOMException && error.name === "AbortError") return;
+          setMonthError("DAY_STATUS_NETWORK_ERROR");
+          setMonthDays([]);
+        } finally {
+          if (cancelled) return;
+          setMonthLoading(false);
+        }
+      })();
+    }, 250);
+    return () => {
+      cancelled = true;
+      clearTimeout(debounce);
+      controller.abort();
+    };
+  }, [dbg, id, monthMeta.fromIso, monthMeta.toIso, monthRetryKey, slotsServiceType]);
 
   useEffect(() => {
     if (!id || !slotsDate) return;
@@ -1199,6 +1302,98 @@ function SitterPublicProfileContent({
                                 </button>
                               );
                             })}
+                          </div>
+
+                          <div className="mt-5">
+                            <div className="flex items-center justify-between">
+                              <p className="text-sm font-medium text-slate-900">Calendrier</p>
+                              <div className="flex items-center gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => setMonthCursor((d) => new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() - 1, 1, 0, 0, 0, 0)))}
+                                  className="inline-flex h-9 items-center justify-center rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700"
+                                  aria-label="Mois précédent"
+                                >
+                                  ◀
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setMonthCursor((d) => new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1, 0, 0, 0, 0)))}
+                                  className="inline-flex h-9 items-center justify-center rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700"
+                                  aria-label="Mois suivant"
+                                >
+                                  ▶
+                                </button>
+                              </div>
+                            </div>
+
+                            <p className="mt-2 text-sm font-semibold text-slate-900">{monthMeta.monthLabel}</p>
+
+                            {monthLoading ? (
+                              <p className="mt-2 text-sm text-slate-600">Chargement…</p>
+                            ) : monthError ? (
+                              <div className="mt-2">
+                                <p className="text-sm text-rose-700">{monthError}</p>
+                                <button
+                                  type="button"
+                                  onClick={() => setMonthRetryKey((v) => v + 1)}
+                                  className="mt-2 inline-flex h-9 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-xs font-semibold text-slate-700"
+                                >
+                                  Réessayer
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="mt-3">
+                                <div className="grid grid-cols-7 gap-2 text-center text-[11px] font-semibold text-slate-500">
+                                  <div>L</div>
+                                  <div>M</div>
+                                  <div>M</div>
+                                  <div>J</div>
+                                  <div>V</div>
+                                  <div>S</div>
+                                  <div>D</div>
+                                </div>
+
+                                <div className="mt-2 grid grid-cols-7 gap-2">
+                                  {Array.from({ length: monthMeta.mondayIndex }).map((_, i) => (
+                                    <div key={`pad-${i}`} />
+                                  ))}
+                                  {Array.from({ length: monthMeta.daysInMonth }).map((_, i) => {
+                                    const day = i + 1;
+                                    const dateIso = `${String(monthMeta.year).padStart(4, "0")}-${String(monthMeta.month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+                                    const status = monthDaysByDate.get(dateIso) ?? "UNAVAILABLE";
+                                    const tone =
+                                      status === "AVAILABLE"
+                                        ? "bg-emerald-50 text-emerald-900 ring-emerald-200"
+                                        : status === "ON_REQUEST"
+                                          ? "bg-amber-50 text-amber-900 ring-amber-200"
+                                          : "bg-slate-100 text-slate-500 ring-slate-200";
+                                    const ariaLabel = `${dateIso} ${slotsServiceType} ${status}`;
+                                    return (
+                                      <button
+                                        key={dateIso}
+                                        type="button"
+                                        onClick={() => {
+                                          setSlotsDate(dateIso);
+                                          if (slotsServiceType === "PENSION") {
+                                            if (!boardingStart) {
+                                              setBoardingStart(dateIso);
+                                              setBoardingEnd(dateIso);
+                                            } else {
+                                              setBoardingEnd(dateIso);
+                                            }
+                                          }
+                                        }}
+                                        className={`flex h-10 w-full flex-col items-center justify-center rounded-2xl ring-1 transition hover:bg-white ${tone}`}
+                                        aria-label={ariaLabel}
+                                      >
+                                        <span className="text-sm font-semibold leading-none">{day}</span>
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            )}
                           </div>
 
                           <div className="mt-4">
