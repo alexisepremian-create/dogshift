@@ -45,8 +45,15 @@ function isPublicSitterRoute(req: MiddlewareReqLike) {
 }
 
 function isRscLikeRequest(req: Request) {
-  const url = (req as any)?.nextUrl as undefined | { searchParams?: URLSearchParams };
-  const hasRscQuery = Boolean(url?.searchParams?.has("_rsc"));
+  try {
+    const url = new URL(req.url);
+    if (url.searchParams.has("_rsc")) return true;
+  } catch {
+    // ignore
+  }
+
+  const nextUrl = (req as any)?.nextUrl as undefined | { searchParams?: URLSearchParams };
+  const hasRscQuery = Boolean(nextUrl?.searchParams?.has("_rsc"));
   if (hasRscQuery) return true;
 
   const headers = req.headers;
@@ -98,15 +105,17 @@ export const proxy = clerkMiddleware(async (auth, req) => {
         url.pathname = "/unlock";
         url.search = `?next=${encodeURIComponent(pathname + search)}`;
         if (isRscLikeRequest(req)) {
-          return addLockHeaders(
-            NextResponse.json(
-              { ok: false, locked: true, next: pathname + search },
-              { status: 401 }
-            )
+          const res = NextResponse.json(
+            { ok: false, locked: true, next: pathname + search },
+            { status: 401 }
           );
+          res.headers.set("x-dogshift-lock-layer", "next");
+          return addLockHeaders(res);
         }
 
-        return addLockHeaders(NextResponse.redirect(url));
+        const res = NextResponse.redirect(url);
+        res.headers.set("x-dogshift-lock-layer", "next");
+        return addLockHeaders(res);
       }
     }
   }
