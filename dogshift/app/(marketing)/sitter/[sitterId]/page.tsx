@@ -175,11 +175,11 @@ export default function SitterPublicProfile() {
           credentials: "include",
           signal: controller.signal,
         });
-        const payload = (await res.json().catch(() => null)) as { ok?: boolean; lockOn?: boolean } | null;
+        const data = (await res.json().catch(() => null)) as { ok?: boolean; lockOn?: boolean } | null;
         if (cancelled) return;
-        if (dbg) console.log("[LockGuard] status", { ok: res.ok, payload });
+        if (dbg) console.log("[LockGuard] status", { ok: res.ok, data });
 
-        if (res.ok && payload?.ok && payload.lockOn) {
+        if (res.ok && data?.ok && data.lockOn) {
           shouldSetChecked = false;
           shouldRedirect = true;
           const next = `${window.location.pathname}${window.location.search}`;
