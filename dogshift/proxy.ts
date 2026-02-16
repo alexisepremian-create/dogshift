@@ -54,6 +54,21 @@ function isRscLikeRequest(req: Request) {
 }
 
 export const proxy = clerkMiddleware(async (auth, req) => {
+  let isRsc = false;
+  try {
+    const url = new URL(req.url);
+    isRsc = url.searchParams.has("_rsc");
+  } catch {
+    isRsc = false;
+  }
+
+  if (isRsc) {
+    const res = NextResponse.json({ ok: false, locked: true }, { status: 401 });
+    res.headers.set("x-dogshift-rsc-detected", "1");
+    res.headers.set("x-dogshift-lock-layer", "next");
+    return res;
+  }
+
   const forwardedHost = (req.headers.get("x-forwarded-host") || "").split(",")[0]?.trim();
   const host = (forwardedHost || req.headers.get("host") || "").split(",")[0]?.trim().toLowerCase();
   if (process.env.NODE_ENV === "production" && host === "dogshift.ch") {
