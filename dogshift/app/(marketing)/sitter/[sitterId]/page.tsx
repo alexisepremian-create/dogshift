@@ -211,14 +211,15 @@ export default function SitterPublicProfile() {
 
 function SitterPublicProfileContent() {
   const router = useRouter();
-  const params = useParams<{ id: string }>();
+  const params = useParams<{ sitterId: string }>();
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const dbg = searchParams?.get("dbg") === "1";
   if (dbg) console.log("[ProfileContent] render");
   const actionsRef = useRef<HTMLDivElement | null>(null);
-  const idParam = params?.id;
+  const idParam = params?.sitterId;
   const id = typeof idParam === "string" ? idParam : Array.isArray(idParam) ? idParam[0] : "";
+  if (dbg) console.log("ID used for fetch:", id);
 
   const { isLoaded, isSignedIn, user } = useUser();
   const isLoggedIn = Boolean(isLoaded && isSignedIn);
@@ -371,7 +372,7 @@ function SitterPublicProfileContent() {
         if (dbg) console.log("[ProfileContent] fetch finally");
       }
     })();
-  }, [dbg, id, isPreviewMode]);
+  }, [id, isPreviewMode]);
 
   useEffect(() => {
     if (!id) return;
