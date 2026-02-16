@@ -817,6 +817,7 @@ function SitterPublicProfileContent({
   const [serviceSummary, setServiceSummary] = useState<
     | {
         minDurationMin: number;
+        maxDurationMin: number;
         stepMin: number;
         leadTimeMin: number;
         bufferBeforeMin: number;
@@ -824,6 +825,7 @@ function SitterPublicProfileContent({
       }
     | null
   >(null);
+  const [dogsittingDurationMin, setDogsittingDurationMin] = useState<number | null>(null);
   const [slotsLoading, setSlotsLoading] = useState(false);
   const [slotsError, setSlotsError] = useState<string | null>(null);
   const [slotsRetryKey, setSlotsRetryKey] = useState(0);
@@ -952,10 +954,65 @@ function SitterPublicProfileContent({
     return groups.filter((g) => g.items.length);
   }, [daySlots]);
 
+  const dogsittingDurationOptions = useMemo(() => {
+    if (slotsServiceType !== "DOGSITTING") return [] as number[];
+    if (!serviceSummary) return [] as number[];
+
+    const min = Math.max(1, Math.round(serviceSummary.minDurationMin));
+    const step = Math.max(1, Math.round(serviceSummary.stepMin));
+    const maxCfg = Math.max(0, Math.round(serviceSummary.maxDurationMin));
+    const cap = maxCfg > 0 ? maxCfg : 240;
+    const max = Math.max(min, cap);
+
+    const out: number[] = [];
+    for (let d = min; d <= max; d += step) out.push(d);
+    return out.slice(0, 30);
+  }, [serviceSummary, slotsServiceType]);
+
   useEffect(() => {
     setSelectedSlot(null);
     setSelectedSlotNotice(null);
   }, [slotsDate, slotsServiceType]);
+
+  useEffect(() => {
+    if (slotsServiceType !== "DOGSITTING") {
+      if (dogsittingDurationMin !== null) setDogsittingDurationMin(null);
+      return;
+    }
+    if (!serviceSummary) return;
+    const min = Math.max(1, Math.round(serviceSummary.minDurationMin));
+    const step = Math.max(1, Math.round(serviceSummary.stepMin));
+    const maxCfg = Math.max(0, Math.round(serviceSummary.maxDurationMin));
+    const cap = maxCfg > 0 ? maxCfg : 240;
+
+    const cur = dogsittingDurationMin;
+    if (cur === null) {
+      setDogsittingDurationMin(min);
+      return;
+    }
+    if (cur < min) {
+      setDogsittingDurationMin(min);
+      return;
+    }
+    if (cur % step !== 0) {
+      setDogsittingDurationMin(min);
+      return;
+    }
+    if (maxCfg > 0 && cur > maxCfg) {
+      setDogsittingDurationMin(maxCfg);
+      return;
+    }
+    if (maxCfg <= 0 && cur > cap) {
+      setDogsittingDurationMin(cap);
+      return;
+    }
+  }, [dogsittingDurationMin, serviceSummary, slotsServiceType]);
+
+  useEffect(() => {
+    if (slotsServiceType !== "DOGSITTING") return;
+    setSelectedSlot(null);
+    setSelectedSlotNotice(null);
+  }, [dogsittingDurationMin, slotsServiceType]);
 
   useEffect(() => {
     if (!selectedSlot) return;
@@ -1148,6 +1205,9 @@ function SitterPublicProfileContent({
           const qp = new URLSearchParams();
           qp.set("date", slotsDate);
           qp.set("service", slotsServiceType);
+          if (slotsServiceType === "DOGSITTING" && typeof dogsittingDurationMin === "number" && Number.isFinite(dogsittingDurationMin)) {
+            qp.set("durationMin", String(dogsittingDurationMin));
+          }
           if (dbg) qp.set("dbg", "1");
           const res = await fetch(`/api/sitters/${encodeURIComponent(id)}/slots?${qp.toString()}`, {
             method: "GET",
@@ -1159,11 +1219,13 @@ function SitterPublicProfileContent({
                 ok: true;
                 config?: {
                   minDurationMin?: number;
+                  maxDurationMin?: number;
                   stepMin?: number;
                   leadTimeMin?: number;
                   bufferBeforeMin?: number;
                   bufferAfterMin?: number;
                 };
+                durationMin?: number;
                 slots: Array<{ startAt: string; endAt: string; status: "AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE"; reason?: string }>;
               }
             | { ok: false; error: string }
@@ -1181,6 +1243,7 @@ function SitterPublicProfileContent({
           if (cfg && typeof cfg === "object") {
             setServiceSummary({
               minDurationMin: typeof cfg.minDurationMin === "number" ? cfg.minDurationMin : 0,
+              maxDurationMin: typeof (cfg as any).maxDurationMin === "number" ? (cfg as any).maxDurationMin : 0,
               stepMin: typeof cfg.stepMin === "number" ? cfg.stepMin : 0,
               leadTimeMin: typeof cfg.leadTimeMin === "number" ? cfg.leadTimeMin : 0,
               bufferBeforeMin: typeof cfg.bufferBeforeMin === "number" ? cfg.bufferBeforeMin : 0,
@@ -1188,6 +1251,22 @@ function SitterPublicProfileContent({
             });
           } else {
             setServiceSummary(null);
+          }
+
+          if (slotsServiceType === "DOGSITTING") {
+            const effectiveDuration = typeof (payload as any).durationMin === "number" ? (payload as any).durationMin : null;
+            if (effectiveDuration && Number.isFinite(effectiveDuration) && effectiveDuration > 0) {
+              setDogsittingDurationMin(effectiveDuration);
+            }
+            if (dbg) {
+              console.log("[ProfileContent][slots]", {
+                sitterId: id,
+                serviceType: slotsServiceType,
+                date: slotsDate,
+                durationMin: effectiveDuration,
+                slots: Array.isArray((payload as any).slots) ? (payload as any).slots.length : null,
+              });
+            }
           }
 
           const slots = payload.slots.filter(
@@ -1713,6 +1792,33 @@ function SitterPublicProfileContent({
                                 {serviceUi.current.icon} {serviceUi.current.label}
                               </span>
                             </p>
+
+                            {slotsServiceType === "DOGSITTING" && serviceSummary ? (
+                              <div className="mt-3 rounded-2xl border border-slate-200 bg-white p-4">
+                                <p className="text-xs font-semibold text-slate-500">Durée</p>
+                                <div className="mt-2 flex flex-wrap gap-2">
+                                  {dogsittingDurationOptions.map((d) => {
+                                    const selected = dogsittingDurationMin === d;
+                                    return (
+                                      <button
+                                        key={`dur-${d}`}
+                                        type="button"
+                                        onClick={() => setDogsittingDurationMin(d)}
+                                        className={
+                                          selected
+                                            ? "rounded-full bg-[var(--dogshift-blue)] px-3 py-1 text-xs font-semibold text-white"
+                                            : "rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                                        }
+                                        aria-pressed={selected}
+                                      >
+                                        {d} min
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            ) : null}
+
                             {serviceSummary ? (
                               <div className="mt-2 flex flex-wrap gap-2">
                                 <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700">

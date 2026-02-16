@@ -35,11 +35,13 @@ export type GenerateDaySlotsInput = {
   sitterId: string;
   serviceType: ServiceType;
   date: string;
+  durationMin?: number;
   now?: Date;
 };
 
 export type PublicServiceConfig = {
   minDurationMin: number;
+  maxDurationMin: number;
   stepMin: number;
   bufferBeforeMin: number;
   bufferAfterMin: number;
@@ -298,6 +300,7 @@ function minutesToZurichOffsetIso(dateIso: string, minutes: number) {
 function toPublicConfig(config: ServiceConfigRow): PublicServiceConfig {
   return {
     minDurationMin: config.minDurationMin,
+    maxDurationMin: config.maxDurationMin,
     stepMin: config.slotStepMin,
     bufferBeforeMin: config.bufferBeforeMin,
     bufferAfterMin: config.bufferAfterMin,
@@ -404,6 +407,7 @@ export type ComputeDaySlotsInput = {
   exceptions: AvailabilityExceptionRow[];
   bookings: BookingRow[];
   config: ServiceConfigRow;
+  durationMin?: number;
 };
 
 export function computeDaySlots(input: ComputeDaySlotsInput): DaySlot[] {
@@ -449,19 +453,39 @@ export function computeDaySlots(input: ComputeDaySlotsInput): DaySlot[] {
   const agenda = applyOverride(baseWithExceptions, hardOverrides);
 
   function statusForRange(startMin: number, endMin: number): { status: SlotStatus; reason?: string } {
+    let cursor = startMin;
     let sawAvailable = false;
     let onRequestReason: string | undefined;
+
     for (const seg of agenda) {
-      if (seg.endMin <= startMin || seg.startMin >= endMin) continue;
+      if (seg.endMin <= startMin) continue;
+      if (seg.startMin >= endMin) break;
+      if (seg.endMin <= cursor) continue;
+
       if (seg.status === "UNAVAILABLE") {
-        return { status: "UNAVAILABLE", reason: seg.reason };
+        if (seg.startMin < endMin && seg.endMin > startMin) {
+          return { status: "UNAVAILABLE", reason: seg.reason };
+        }
+        continue;
       }
+
+      if (seg.startMin > cursor) {
+        return { status: "UNAVAILABLE", reason: "outside_rule" };
+      }
+
       if (seg.status === "ON_REQUEST" && !onRequestReason) {
         onRequestReason = seg.reason;
       }
       if (seg.status === "AVAILABLE") {
         sawAvailable = true;
       }
+
+      cursor = Math.max(cursor, Math.min(seg.endMin, endMin));
+      if (cursor >= endMin) break;
+    }
+
+    if (cursor < endMin) {
+      return { status: "UNAVAILABLE", reason: "outside_rule" };
     }
     if (onRequestReason) return { status: "ON_REQUEST", reason: onRequestReason };
     if (sawAvailable) return { status: "AVAILABLE" };
@@ -470,7 +494,7 @@ export function computeDaySlots(input: ComputeDaySlotsInput): DaySlot[] {
 
   const slots: DaySlot[] = [];
   const step = Math.max(1, input.config.slotStepMin);
-  const duration = Math.max(1, input.config.minDurationMin);
+  const duration = Math.max(1, input.durationMin ?? input.config.minDurationMin);
 
   const leadTimeMin = Math.max(0, input.config.leadTimeMin);
   const nowMin = toDayMinRange(input.date, now);
@@ -516,7 +540,10 @@ export function computeDaySlots(input: ComputeDaySlotsInput): DaySlot[] {
 
 export async function generateDaySlots(
   input: GenerateDaySlotsInput
-): Promise<{ ok: true; slots: DaySlot[]; config: PublicServiceConfig } | { ok: false; error: string }> {
+): Promise<
+  | { ok: true; slots: DaySlot[]; config: PublicServiceConfig; durationMin: number }
+  | { ok: false; error: string }
+> {
   try {
     const sitterId = input.sitterId?.trim() ?? "";
     const date = input.date?.trim() ?? "";
@@ -540,6 +567,26 @@ export async function generateDaySlots(
           sitterId,
         } as ServiceConfigRow);
 
+    const requestedDuration =
+      typeof input.durationMin === "number" && Number.isFinite(input.durationMin) ? Math.round(input.durationMin) : null;
+
+    if (requestedDuration !== null) {
+      if (input.serviceType !== "DOGSITTING") return { ok: false, error: "INVALID_DURATION" };
+      if (requestedDuration <= 0) return { ok: false, error: "INVALID_DURATION" };
+      if (requestedDuration < mergedConfig.minDurationMin) return { ok: false, error: "INVALID_DURATION" };
+      if (requestedDuration % Math.max(1, mergedConfig.slotStepMin) !== 0) return { ok: false, error: "INVALID_DURATION" };
+      if (
+        typeof mergedConfig.maxDurationMin === "number" &&
+        Number.isFinite(mergedConfig.maxDurationMin) &&
+        mergedConfig.maxDurationMin > 0 &&
+        requestedDuration > mergedConfig.maxDurationMin
+      ) {
+        return { ok: false, error: "INVALID_DURATION" };
+      }
+    }
+
+    const durationMinEffective = requestedDuration ?? mergedConfig.minDurationMin;
+
     const slots = computeDaySlots({
       date,
       serviceType: input.serviceType,
@@ -548,9 +595,10 @@ export async function generateDaySlots(
       exceptions,
       bookings,
       config: mergedConfig,
+      durationMin: durationMinEffective,
     });
 
-    return { ok: true, slots, config: toPublicConfig(mergedConfig) };
+    return { ok: true, slots, config: toPublicConfig(mergedConfig), durationMin: durationMinEffective };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     return { ok: false, error: message || "INTERNAL_ERROR" };

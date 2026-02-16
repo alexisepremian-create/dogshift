@@ -30,7 +30,7 @@ type Booking = {
 
 type Config = {
   sitterId: string;
-  serviceType: "PROMENADE";
+  serviceType: "PROMENADE" | "DOGSITTING";
   enabled: boolean;
   slotStepMin: number;
   minDurationMin: number;
@@ -368,4 +368,91 @@ test("Lead time blocks slots too close to now", () => {
   assert.equal(slotAt(slots, 9 * 60)?.status, "UNAVAILABLE");
   assert.equal(slotAt(slots, 9 * 60)?.reason, "lead_time");
   assert.equal(slotAt(slots, 10 * 60)?.status, "AVAILABLE");
+});
+
+test("durationMin override: longer duration yields fewer slots", () => {
+  const date = "2026-02-16";
+  const now = new Date("2026-02-16T00:00:00Z");
+  const config = {
+    sitterId: "s-1",
+    serviceType: "DOGSITTING",
+    enabled: true,
+    slotStepMin: 30,
+    minDurationMin: 30,
+    maxDurationMin: 240,
+    leadTimeMin: 0,
+    bufferBeforeMin: 0,
+    bufferAfterMin: 0,
+    overnightRequired: false,
+    checkInStartMin: null,
+    checkInEndMin: null,
+    checkOutStartMin: null,
+    checkOutEndMin: null,
+  } satisfies Config;
+
+  const base = {
+    date,
+    serviceType: "DOGSITTING" as const,
+    now,
+    rules: [{ sitterId: "s-1", dayOfWeek: 1, startMin: 9 * 60, endMin: 12 * 60, status: "AVAILABLE" } satisfies Rule],
+    exceptions: [],
+    bookings: [],
+    config,
+  };
+
+  const shortSlots = computeDaySlots({ ...base, durationMin: 30 });
+  const longSlots = computeDaySlots({ ...base, durationMin: 60 });
+
+  assert.equal(shortSlots.length, 6);
+  assert.equal(longSlots.length, 6);
+  assert.equal(longSlots[0].endMin - longSlots[0].startMin, 60);
+
+  const shortAvailable = shortSlots.filter((s) => s.status === "AVAILABLE").length;
+  const longAvailable = longSlots.filter((s) => s.status === "AVAILABLE").length;
+  assert.equal(shortAvailable, 6);
+  assert.equal(longAvailable, 5);
+  assert.equal(slotAt(longSlots, 11 * 60 + 30)?.status, "UNAVAILABLE");
+  assert.equal(slotAt(longSlots, 11 * 60 + 30)?.reason, "outside_rule");
+});
+
+test("durationMin override: hard booking overlap blocks long slot", () => {
+  const date = "2026-02-16";
+  const now = new Date("2026-02-16T00:00:00Z");
+
+  const slots = computeDaySlots({
+    date,
+    serviceType: "DOGSITTING",
+    now,
+    rules: [{ sitterId: "s-1", dayOfWeek: 1, startMin: 9 * 60, endMin: 12 * 60, status: "AVAILABLE" } satisfies Rule],
+    exceptions: [],
+    bookings: [
+      {
+        status: "CONFIRMED",
+        createdAt: new Date("2026-02-15T23:00:00Z"),
+        startAt: cetDate("2026-02-16", 9, 45),
+        endAt: cetDate("2026-02-16", 10, 15),
+      } satisfies Booking,
+    ],
+    config: {
+      sitterId: "s-1",
+      serviceType: "DOGSITTING",
+      enabled: true,
+      slotStepMin: 30,
+      minDurationMin: 30,
+      maxDurationMin: 240,
+      leadTimeMin: 0,
+      bufferBeforeMin: 0,
+      bufferAfterMin: 0,
+      overnightRequired: false,
+      checkInStartMin: null,
+      checkInEndMin: null,
+      checkOutStartMin: null,
+      checkOutEndMin: null,
+    } satisfies Config,
+    durationMin: 60,
+  });
+
+  // Slot 09:30-10:30 overlaps booking 09:45-10:15.
+  assert.equal(slotAt(slots, 9 * 60 + 30)?.status, "UNAVAILABLE");
+  assert.equal(slotAt(slots, 9 * 60 + 30)?.reason, "booking_confirmed_overlap");
 });

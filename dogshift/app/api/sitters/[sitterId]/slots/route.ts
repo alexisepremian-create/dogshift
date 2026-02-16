@@ -26,6 +26,7 @@ export async function GET(
   const url = new URL(req.url);
   const date = (url.searchParams.get("date") ?? "").trim();
   const serviceRaw = (url.searchParams.get("service") ?? "").trim();
+  const durationRaw = (url.searchParams.get("durationMin") ?? "").trim();
   const dbg = url.searchParams.get("dbg") === "1";
 
   if (!sitterId) {
@@ -40,7 +41,12 @@ export async function GET(
     return NextResponse.json({ ok: false, error: "INVALID_SERVICE" }, { status: 400 });
   }
 
-  const result = await generateDaySlots({ sitterId, serviceType, date });
+  const durationMin = durationRaw ? Number(durationRaw) : null;
+  if (durationMin !== null && !Number.isFinite(durationMin)) {
+    return NextResponse.json({ ok: false, error: "INVALID_DURATION" }, { status: 400 });
+  }
+
+  const result = await generateDaySlots({ sitterId, serviceType, date, durationMin: durationMin ?? undefined });
   const durationMs = Date.now() - startedAt;
 
   if (dbg) {
@@ -55,6 +61,18 @@ export async function GET(
   }
 
   if (!result.ok) {
+    if (result.error === "INVALID_DURATION") {
+      return NextResponse.json(
+        { ok: false, error: result.error },
+        {
+          status: 400,
+          headers: {
+            "cache-control": "no-store",
+            ...(dbg ? { "x-dogshift-slots": "1" } : {}),
+          },
+        }
+      );
+    }
     return NextResponse.json(
       { ok: false, error: result.error },
       {
@@ -75,6 +93,7 @@ export async function GET(
       date,
       timezone: TIMEZONE_ZURICH,
       config: result.config,
+      durationMin: result.durationMin,
       slots: result.slots,
     },
     {
