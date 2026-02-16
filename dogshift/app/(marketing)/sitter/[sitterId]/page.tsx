@@ -787,6 +787,17 @@ function SitterPublicProfileContent({
   const [slotsDate, setSlotsDate] = useState<string>("");
   const [boardingStart, setBoardingStart] = useState<string>("");
   const [boardingEnd, setBoardingEnd] = useState<string>("");
+  const [boardingStatusLoading, setBoardingStatusLoading] = useState(false);
+  const [boardingStatusError, setBoardingStatusError] = useState<string | null>(null);
+  const [boardingStatusRetryKey, setBoardingStatusRetryKey] = useState(0);
+  const [boardingStatus, setBoardingStatus] = useState<
+    | {
+        status: "AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE";
+        days: Array<{ date: string; status: "AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE"; reason?: string }>;
+        blockingDays?: Array<{ date: string; status: "UNAVAILABLE"; reason?: string }>;
+      }
+    | null
+  >(null);
   const [daySlots, setDaySlots] = useState<
     Array<{ startAt: string; endAt: string; status: "AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE"; reason?: string }>
   >([]);
@@ -891,6 +902,75 @@ function SitterPublicProfileContent({
     setBoardingStart(slotsDate);
     setBoardingEnd(slotsDate);
   }, [boardingEnd, boardingStart, slotsDate]);
+
+  useEffect(() => {
+    if (!id) return;
+    if (slotsServiceType !== "PENSION") {
+      setBoardingStatus(null);
+      setBoardingStatusError(null);
+      setBoardingStatusLoading(false);
+      return;
+    }
+    if (!boardingStart || !boardingEnd) {
+      setBoardingStatus(null);
+      return;
+    }
+
+    let cancelled = false;
+    const controller = new AbortController();
+    const debounce = setTimeout(() => {
+      void (async () => {
+        setBoardingStatusLoading(true);
+        setBoardingStatusError(null);
+        try {
+          const qp = new URLSearchParams();
+          qp.set("start", boardingStart);
+          qp.set("end", boardingEnd);
+          if (dbg) qp.set("dbg", "1");
+          const res = await fetch(`/api/sitters/${encodeURIComponent(id)}/boarding-status?${qp.toString()}`, {
+            method: "GET",
+            cache: "no-store",
+            signal: controller.signal,
+          });
+          const payload = (await res.json().catch(() => null)) as
+            | {
+                ok: true;
+                status: "AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE";
+                days: Array<{ date: string; status: "AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE"; reason?: string }>;
+                blockingDays?: Array<{ date: string; status: "UNAVAILABLE"; reason?: string }>;
+              }
+            | { ok: false; error: string }
+            | null;
+          if (cancelled) return;
+          if (!res.ok || !payload || !payload.ok) {
+            const err = (payload as any)?.error;
+            setBoardingStatusError(typeof err === "string" ? err : "BOARDING_STATUS_ERROR");
+            setBoardingStatus(null);
+            return;
+          }
+          setBoardingStatus({
+            status: payload.status,
+            days: Array.isArray(payload.days) ? payload.days : [],
+            blockingDays: Array.isArray(payload.blockingDays) ? payload.blockingDays : undefined,
+          });
+        } catch (error) {
+          if (cancelled) return;
+          if (error instanceof DOMException && error.name === "AbortError") return;
+          setBoardingStatusError("BOARDING_STATUS_NETWORK_ERROR");
+          setBoardingStatus(null);
+        } finally {
+          if (cancelled) return;
+          setBoardingStatusLoading(false);
+        }
+      })();
+    }, 250);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(debounce);
+      controller.abort();
+    };
+  }, [boardingEnd, boardingStart, boardingStatusRetryKey, dbg, id, slotsServiceType]);
 
   useEffect(() => {
     if (!id) return;
@@ -1555,6 +1635,73 @@ function SitterPublicProfileContent({
                                   </div>
                                 </div>
                                 <div className="mt-4">
+                                  {boardingStatusLoading ? (
+                                    <p className="text-sm text-slate-600">Vérification…</p>
+                                  ) : boardingStatusError ? (
+                                    <div>
+                                      <p className="text-sm text-rose-700">{boardingStatusError}</p>
+                                      <button
+                                        type="button"
+                                        onClick={() => setBoardingStatusRetryKey((v) => v + 1)}
+                                        className="mt-2 inline-flex h-9 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-xs font-semibold text-slate-700"
+                                      >
+                                        Réessayer
+                                      </button>
+                                    </div>
+                                  ) : boardingStatus ? (
+                                    <div>
+                                      <div
+                                        className={
+                                          boardingStatus.status === "AVAILABLE"
+                                            ? "inline-flex items-center rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-900 ring-1 ring-emerald-200"
+                                            : boardingStatus.status === "ON_REQUEST"
+                                              ? "inline-flex items-center rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-900 ring-1 ring-amber-200"
+                                              : "inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600 ring-1 ring-slate-200"
+                                        }
+                                      >
+                                        {boardingStatus.status === "AVAILABLE"
+                                          ? "Disponible"
+                                          : boardingStatus.status === "ON_REQUEST"
+                                            ? "Sur demande"
+                                            : "Indisponible"}
+                                      </div>
+                                      {boardingStatus.status === "ON_REQUEST" ? (
+                                        <p className="mt-2 text-sm text-slate-600">Certains jours sont sur demande.</p>
+                                      ) : null}
+
+                                      {boardingStatus.status === "UNAVAILABLE" && boardingStatus.blockingDays?.length ? (
+                                        <div className="mt-3">
+                                          <p className="text-sm font-semibold text-slate-900">Jours bloquants</p>
+                                          <div className="mt-2 flex flex-wrap gap-2">
+                                            {boardingStatus.blockingDays.map((d) => (
+                                              <span
+                                                key={d.date}
+                                                className="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700 ring-1 ring-slate-200"
+                                                title={dbg ? d.reason ?? "" : ""}
+                                              >
+                                                {formatDateFr(d.date)}
+                                              </span>
+                                            ))}
+                                          </div>
+                                        </div>
+                                      ) : null}
+
+                                      {dbg && boardingStatus.days.length ? (
+                                        <div className="mt-3">
+                                          <p className="text-xs font-semibold text-slate-500">dbg</p>
+                                          <div className="mt-1 grid gap-1 text-xs text-slate-600">
+                                            {boardingStatus.days.map((d) => (
+                                              <div key={d.date}>
+                                                {d.date} — {d.status}
+                                                {d.reason ? ` (${d.reason})` : ""}
+                                              </div>
+                                            ))}
+                                          </div>
+                                        </div>
+                                      ) : null}
+                                    </div>
+                                  ) : null}
+
                                   <button
                                     type="button"
                                     onClick={() => {
@@ -1565,7 +1712,8 @@ function SitterPublicProfileContent({
                                       setBookingEndAt("");
                                       setBookingOpen(true);
                                     }}
-                                    className="inline-flex h-11 w-full items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-6 text-sm font-semibold text-white"
+                                    disabled={boardingStatus?.status === "UNAVAILABLE"}
+                                    className="inline-flex h-11 w-full items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-6 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
                                   >
                                     Continuer
                                   </button>

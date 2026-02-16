@@ -1,5 +1,7 @@
 import { prisma } from "../prisma.ts";
 
+import { summarizeDayStatusFromSlots } from "./dayStatus.ts";
+
 export type ServiceType = "PROMENADE" | "DOGSITTING" | "PENSION";
 
 export type SlotStatus = "AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE";
@@ -15,9 +17,18 @@ export type DaySlot = {
 
 export type BoardingRangeStatus = "AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE";
 
-export type BoardingRangeResult = {
+export type BoardingRangeDay = {
+  date: string;
   status: BoardingRangeStatus;
   reason?: string;
+};
+
+export type BoardingRangeResult = {
+  startDate: string;
+  endDate: string;
+  status: BoardingRangeStatus;
+  days: BoardingRangeDay[];
+  blockingDays?: BoardingRangeDay[];
 };
 
 export type GenerateDaySlotsInput = {
@@ -146,6 +157,15 @@ type BookingRow = {
 
 function isValidIsoDate(value: string) {
   return /^\d{4}-\d{2}-\d{2}$/.test(value);
+}
+
+function getZurichDateIso(dt: Date) {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: ZURICH_TZ,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(dt);
 }
 
 function clampMin(v: number) {
@@ -392,18 +412,23 @@ export function computeDaySlots(input: ComputeDaySlotsInput): DaySlot[] {
 
   const hardBlocks: Interval[] = [];
   const softBlocks: Interval[] = [];
-  for (const b of input.bookings) {
+  for (const b of input.bookings ?? []) {
     const block = bookingToBlock(b, now);
     if (!block) continue;
 
-    const startMin = toDayMinRange(input.date, block.startAt);
-    const endMin = toDayMinRange(input.date, block.endAt);
+    const startIso = getZurichDateIso(block.startAt);
+    const endIso = getZurichDateIso(block.endAt);
+    if (input.date < startIso || input.date > endIso) continue;
+
+    const startMin = input.date === startIso ? toDayMinRange(input.date, block.startAt) : 0;
+    const endMin = input.date === endIso ? toDayMinRange(input.date, block.endAt) : 24 * 60;
     if (startMin === null || endMin === null) continue;
+    if (endMin <= startMin) continue;
 
     const expanded: Interval = {
-      startMin: startMin - input.config.bufferBeforeMin,
-      endMin: endMin + input.config.bufferAfterMin,
-      status: "UNAVAILABLE",
+      startMin: startMin - (block.kind === "HARD" ? input.config.bufferBeforeMin : 0),
+      endMin: endMin + (block.kind === "HARD" ? input.config.bufferAfterMin : 0),
+      status: block.kind === "HARD" ? "UNAVAILABLE" : "ON_REQUEST",
       reason: block.reason,
     };
 
@@ -539,6 +564,132 @@ export type CheckBoardingRangeInput = {
   now?: Date;
 };
 
-export async function checkBoardingRange(_input: CheckBoardingRangeInput): Promise<{ ok: true; result: BoardingRangeResult } | { ok: false; error: string }> {
-  return { ok: false, error: "NOT_IMPLEMENTED" };
+export type EvaluateBoardingRangeFromDataInput = {
+  sitterId: string;
+  startDate: string;
+  endDate: string;
+  now: Date;
+  rules: AvailabilityRuleRow[];
+  exceptions: AvailabilityExceptionRow[];
+  bookings: BookingRow[];
+  config: ServiceConfigRow;
+};
+
+function addDaysIso(iso: string, deltaDays: number) {
+  const dt = new Date(`${iso}T12:00:00Z`);
+  if (Number.isNaN(dt.getTime())) return iso;
+  const next = new Date(dt.getTime() + deltaDays * 24 * 60 * 60 * 1000);
+  return getZurichDateIso(next);
+}
+
+export function evaluateBoardingRangeFromData(input: EvaluateBoardingRangeFromDataInput): BoardingRangeResult {
+  const { sitterId, startDate, endDate, now } = input;
+  if (!sitterId) {
+    return { startDate, endDate, status: "UNAVAILABLE", days: [], blockingDays: [{ date: startDate, status: "UNAVAILABLE", reason: "INVALID_SITTER" }] };
+  }
+  if (!isValidIsoDate(startDate) || !isValidIsoDate(endDate)) {
+    return { startDate, endDate, status: "UNAVAILABLE", days: [], blockingDays: [{ date: startDate, status: "UNAVAILABLE", reason: "INVALID_DATE" }] };
+  }
+  if (endDate <= startDate) {
+    return { startDate, endDate, status: "UNAVAILABLE", days: [], blockingDays: [{ date: startDate, status: "UNAVAILABLE", reason: "INVALID_RANGE" }] };
+  }
+
+  const days: BoardingRangeDay[] = [];
+  const blockingDays: BoardingRangeDay[] = [];
+  let hasOnRequest = false;
+
+  function summarizeBoardingDay(slots: DaySlot[]): { status: BoardingRangeStatus; reason?: string } {
+    let sawAvailable = false;
+    let onRequestReason: string | undefined;
+    for (const s of slots) {
+      if (!s) continue;
+      if (s.status === "UNAVAILABLE") return { status: "UNAVAILABLE", reason: s.reason };
+      if (s.status === "ON_REQUEST" && !onRequestReason) onRequestReason = s.reason;
+      if (s.status === "AVAILABLE") sawAvailable = true;
+    }
+    if (onRequestReason) return { status: "ON_REQUEST", reason: onRequestReason };
+    if (sawAvailable) return { status: "AVAILABLE" };
+    return { status: "UNAVAILABLE", reason: "outside_rule" };
+  }
+
+  for (let d = startDate; d < endDate; d = addDaysIso(d, 1)) {
+    const dow = dayOfWeekZurich(d);
+    const rules = input.rules.filter((r) => r.dayOfWeek === dow);
+    const exceptions = input.exceptions.filter((e) => getZurichDateIso(e.date) === d);
+
+    const slots = computeDaySlots({
+      date: d,
+      serviceType: "PENSION",
+      now,
+      rules,
+      exceptions,
+      bookings: input.bookings,
+      config: input.config,
+    });
+
+    const summarized = summarizeBoardingDay(slots);
+    const status = summarized.status;
+    const reason = summarized.reason;
+
+    if (status === "UNAVAILABLE") {
+      blockingDays.push({ date: d, status, reason });
+    } else if (status === "ON_REQUEST") {
+      hasOnRequest = true;
+    }
+    days.push({ date: d, status, reason });
+  }
+
+  const overall: BoardingRangeStatus = blockingDays.length ? "UNAVAILABLE" : hasOnRequest ? "ON_REQUEST" : "AVAILABLE";
+  return { startDate, endDate, status: overall, days, blockingDays: blockingDays.length ? blockingDays : undefined };
+}
+
+export async function checkBoardingRange(input: CheckBoardingRangeInput): Promise<{ ok: true; result: BoardingRangeResult } | { ok: false; error: string }> {
+  try {
+    const sitterId = input.sitterId?.trim() ?? "";
+    const startDate = input.startDate?.trim() ?? "";
+    const endDate = input.endDate?.trim() ?? "";
+    if (!sitterId) return { ok: false, error: "INVALID_SITTER" };
+    if (!isValidIsoDate(startDate) || !isValidIsoDate(endDate)) return { ok: false, error: "INVALID_DATE" };
+    if (endDate <= startDate) return { ok: false, error: "INVALID_RANGE" };
+
+    const now = input.now ?? new Date();
+    const startDt = new Date(`${startDate}T00:00:00.000Z`);
+    const endDt = new Date(`${endDate}T23:59:59.999Z`);
+
+    const [rules, exceptions, bookings, configRow] = await Promise.all([
+      (prisma as any).availabilityRule.findMany({ where: { sitterId, serviceType: "PENSION" } }) as Promise<AvailabilityRuleRow[]>,
+      (prisma as any).availabilityException.findMany({ where: { sitterId, serviceType: "PENSION", date: { gte: startDate, lte: endDate } } }) as Promise<AvailabilityExceptionRow[]>,
+      (prisma as any).booking.findMany({
+        where: {
+          sitterId,
+          startAt: { lt: endDt },
+          endAt: { gt: startDt },
+        },
+      }) as Promise<BookingRow[]>,
+      (prisma as any).serviceConfig.findFirst({ where: { sitterId, serviceType: "PENSION" } }) as Promise<ServiceConfigRow | null>,
+    ]);
+
+    const mergedConfig: ServiceConfigRow = {
+      ...SERVICE_DEFAULTS.PENSION,
+      sitterId,
+      ...(configRow ?? {}),
+      serviceType: "PENSION",
+    };
+
+    const result = evaluateBoardingRangeFromData({
+      sitterId,
+      startDate,
+      endDate,
+      now,
+      rules: rules ?? [],
+      exceptions: exceptions ?? [],
+      bookings: bookings ?? [],
+      config: mergedConfig,
+    });
+
+    return { ok: true, result };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return { ok: false, error: message || "INTERNAL_ERROR" };
+  }
 }
