@@ -49,8 +49,8 @@ export async function GET(req: NextRequest) {
   const to = (url.searchParams.get("to") ?? "").trim();
 
   const where: Record<string, unknown> = { sitterId: auth.sitterId, serviceType };
-  if (from && isValidIsoDate(from)) (where as any).date = { ...(where as any).date, gte: from };
-  if (to && isValidIsoDate(to)) (where as any).date = { ...(where as any).date, lte: to };
+  if (from && isValidIsoDate(from)) (where as any).date = { ...(where as any).date, gte: new Date(`${from}T00:00:00.000Z`) };
+  if (to && isValidIsoDate(to)) (where as any).date = { ...(where as any).date, lte: new Date(`${to}T23:59:59.999Z`) };
 
   const rows = await (prisma as any).availabilityException.findMany({
     where,
