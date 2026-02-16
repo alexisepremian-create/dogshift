@@ -47,24 +47,10 @@ function isPublicSitterRoute(req: MiddlewareReqLike) {
 function isRscLikeRequest(req: Request) {
   try {
     const url = new URL(req.url);
-    if (url.searchParams.has("_rsc")) return true;
+    return url.searchParams.has("_rsc");
   } catch {
-    // ignore
+    return false;
   }
-
-  const nextUrl = (req as any)?.nextUrl as undefined | { searchParams?: URLSearchParams };
-  const hasRscQuery = Boolean(nextUrl?.searchParams?.has("_rsc"));
-  if (hasRscQuery) return true;
-
-  const headers = req.headers;
-  const rscHeader = headers.get("rsc");
-  if (rscHeader === "1") return true;
-
-  if (headers.has("next-router-state-tree")) return true;
-  if (headers.has("next-router-prefetch")) return true;
-  if (headers.has("next-action")) return true;
-
-  return false;
 }
 
 export const proxy = clerkMiddleware(async (auth, req) => {
@@ -101,17 +87,16 @@ export const proxy = clerkMiddleware(async (auth, req) => {
 
     if (!isApiRoute && !isFavicon && !isImagesRoute && !isLockBypassRoute(req) && !isPublicSitterRoute(req) && !isNextAsset && !isStaticFile) {
       if (unlockedCookie !== "1") {
-        const url = req.nextUrl.clone();
-        url.pathname = "/unlock";
-        url.search = `?next=${encodeURIComponent(pathname + search)}`;
         if (isRscLikeRequest(req)) {
-          const res = NextResponse.json(
-            { ok: false, locked: true, next: pathname + search },
-            { status: 401 }
-          );
+          const res = NextResponse.json({ ok: false, locked: true }, { status: 401 });
+          res.headers.set("x-dogshift-rsc-detected", "1");
           res.headers.set("x-dogshift-lock-layer", "next");
           return addLockHeaders(res);
         }
+
+        const url = req.nextUrl.clone();
+        url.pathname = "/unlock";
+        url.search = `?next=${encodeURIComponent(pathname + search)}`;
 
         const res = NextResponse.redirect(url);
         res.headers.set("x-dogshift-lock-layer", "next");
