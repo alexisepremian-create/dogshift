@@ -150,12 +150,19 @@ function Modal({
 export default function SitterPublicProfile() {
   const [lockChecked, setLockChecked] = useState(false);
 
+  console.log("[LockGuard] render", Date.now());
+
   useEffect(() => {
     if (typeof window === "undefined") return;
+
+    console.log("[LockGuard] effect start");
 
     let cancelled = false;
     void (async () => {
       let shouldSetChecked = true;
+      let shouldRedirect = false;
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 4_000);
       try {
         const dbg = new URLSearchParams(window.location.search).get("dbg") === "1";
         if (dbg) console.log("[LockGuard] start", window.location.href);
@@ -166,6 +173,7 @@ export default function SitterPublicProfile() {
         const res = await fetch("/api/site-lock-status", {
           cache: "no-store",
           credentials: "include",
+          signal: controller.signal,
         });
         const payload = (await res.json().catch(() => null)) as { ok?: boolean; lockOn?: boolean } | null;
         if (cancelled) return;
@@ -173,6 +181,7 @@ export default function SitterPublicProfile() {
 
         if (res.ok && payload?.ok && payload.lockOn) {
           shouldSetChecked = false;
+          shouldRedirect = true;
           const next = `${window.location.pathname}${window.location.search}`;
           window.location.replace(`/unlock?next=${encodeURIComponent(next)}`);
           return;
@@ -185,8 +194,9 @@ export default function SitterPublicProfile() {
           // ignore
         }
       } finally {
+        clearTimeout(timeout);
         if (cancelled) return;
-        if (shouldSetChecked) setLockChecked(true);
+        if (!shouldRedirect && shouldSetChecked) setLockChecked(true);
       }
     })();
 
