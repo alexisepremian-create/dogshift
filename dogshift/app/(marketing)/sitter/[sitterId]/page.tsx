@@ -148,9 +148,22 @@ function Modal({
 }
 
 export default function SitterPublicProfile() {
-  const [lockChecked, setLockChecked] = useState(false);
+  const params = useParams<{ sitterId: string }>();
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
+  const rawIdParam = params?.sitterId;
+  const rawId = typeof rawIdParam === "string" ? rawIdParam : Array.isArray(rawIdParam) ? rawIdParam[0] : "";
+  const sitterId = rawId && rawId.startsWith("s-") ? rawId : rawId ? `s-${rawId}` : "";
+  const dbg = searchParams?.get("dbg") === "1";
+  const viewMode = (searchParams?.get("mode") ?? "public").trim() || "public";
+  const isPreviewMode = viewMode === "preview";
+  const search = searchParams?.toString?.() ?? "";
 
-  console.log("[LockGuard] render", Date.now());
+  if (dbg) {
+    console.log("[SitterPage] rawId=", rawId, "normalized=", sitterId, "preview=", isPreviewMode);
+  }
+
+  const [lockChecked, setLockChecked] = useState(false);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -206,19 +219,35 @@ export default function SitterPublicProfile() {
   }, []);
 
   if (!lockChecked) return <PageLoader label="Chargement…" />;
-  return <SitterPublicProfileContent />;
+  if (dbg) console.log("[SitterPage] render complete");
+  return (
+    <SitterPublicProfileContent
+      sitterId={sitterId}
+      isPreviewMode={isPreviewMode}
+      dbg={dbg}
+      pathname={pathname}
+      search={search}
+    />
+  );
 }
 
-function SitterPublicProfileContent() {
+function SitterPublicProfileContent({
+  sitterId,
+  isPreviewMode,
+  dbg,
+  pathname,
+  search,
+}: {
+  sitterId: string;
+  isPreviewMode: boolean;
+  dbg: boolean;
+  pathname: string;
+  search: string;
+}) {
   const router = useRouter();
-  const params = useParams<{ sitterId: string }>();
-  const searchParams = useSearchParams();
-  const pathname = usePathname();
-  const dbg = searchParams?.get("dbg") === "1";
   if (dbg) console.log("[ProfileContent] render");
   const actionsRef = useRef<HTMLDivElement | null>(null);
-  const idParam = params?.sitterId;
-  const id = typeof idParam === "string" ? idParam : Array.isArray(idParam) ? idParam[0] : "";
+  const id = sitterId;
   if (dbg) console.log("ID used for fetch:", id);
 
   const { isLoaded, isSignedIn, user } = useUser();
@@ -235,9 +264,8 @@ function SitterPublicProfileContent() {
   const [availableDates, setAvailableDates] = useState<string[]>([]);
   const [apiError, setApiError] = useState<string | null>(null);
 
-  const viewMode = (searchParams?.get("mode") ?? "public").trim() || "public";
-  const isPreviewMode = viewMode === "preview";
-  const isPublicView = viewMode === "public";
+  const viewMode = isPreviewMode ? "preview" : "public";
+  const isPublicView = !isPreviewMode;
   const isHostViewingOwn = Boolean(currentHostId && id && currentHostId === id);
 
   const [previewLoaded, setPreviewLoaded] = useState(false);
@@ -532,9 +560,9 @@ function SitterPublicProfileContent() {
   const [bookingCtaError, setBookingCtaError] = useState<string | null>(null);
 
   const shouldAutoStartChat = useMemo(() => {
-    const v = (searchParams?.get("startChat") ?? "").trim();
+    const v = (new URLSearchParams(search).get("startChat") ?? "").trim();
     return v === "1" || v.toLowerCase() === "true";
-  }, [searchParams]);
+  }, [search]);
 
   useEffect(() => {
     if (!payError) return;
@@ -700,7 +728,7 @@ function SitterPublicProfileContent() {
           return;
         }
 
-        const nextParams = new URLSearchParams(searchParams?.toString() ?? "");
+        const nextParams = new URLSearchParams(search);
         nextParams.delete("startChat");
         const tail = nextParams.toString();
         const keepOnUrl = tail ? `?${tail}` : "";
@@ -738,7 +766,7 @@ function SitterPublicProfileContent() {
       isSignedIn,
       mode: viewMode,
       pathname,
-      search: searchParams?.toString?.() ? `?${searchParams.toString()}` : "",
+      search: search ? `?${search}` : "",
     });
   }
 
@@ -746,6 +774,8 @@ function SitterPublicProfileContent() {
     if (dbg) console.log("[ProfileContent] returning loader - profile is", sitter);
     return <PageLoader label="Chargement…" />;
   }
+
+  if (dbg) console.log("[ProfileContent] render complete");
 
   if (sitter === null) {
     const isNotPublished = apiError === "NOT_PUBLISHED";

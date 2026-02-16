@@ -18,6 +18,18 @@ export default function Error({
     }
   }, []);
 
+  const routeInfo = useMemo(() => {
+    if (typeof window === "undefined") return null;
+    try {
+      return {
+        pathname: window.location.pathname,
+        search: window.location.search,
+      };
+    } catch {
+      return null;
+    }
+  }, []);
+
   return (
     <div className="min-h-screen bg-white text-slate-900">
       <main className="mx-auto max-w-3xl px-4 py-12 sm:px-6">
@@ -30,6 +42,11 @@ export default function Error({
 
           {dbg ? (
             <>
+              <p className="mt-5 text-sm font-semibold text-slate-900">Route</p>
+              <pre className="mt-2 whitespace-pre-wrap break-words text-xs text-slate-800">
+                {routeInfo ? JSON.stringify(routeInfo, null, 2) : "(no route info)"}
+              </pre>
+
               <p className="mt-5 text-sm font-semibold text-slate-900">Stack</p>
               <pre className="mt-2 max-h-[50vh] overflow-auto whitespace-pre-wrap break-words text-xs text-slate-800">
                 {error?.stack || "(no stack)"}
