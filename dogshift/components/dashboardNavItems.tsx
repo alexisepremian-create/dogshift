@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
-import { LayoutDashboard, MessageSquare, Pencil, User, CalendarDays, Settings, Wallet } from "lucide-react";
+import { LayoutDashboard, MessageSquare, Pencil, User, CalendarDays, Settings, Wallet, SlidersHorizontal } from "lucide-react";
 
 import { useHostUser } from "@/components/HostUserProvider";
 
@@ -38,6 +38,7 @@ export function useHostDashboardNavItems() {
 
   const activeKey = useMemo(() => {
     if (pathname === "/host") return "dashboard";
+    if (pathname?.startsWith("/dashboard/availability")) return "availability";
     if (pathname?.startsWith("/host/messages")) return "messages";
     if (pathname?.startsWith("/host/requests")) return "requests";
     if (pathname?.startsWith("/host/profile")) return "profile";
@@ -57,6 +58,14 @@ export function useHostDashboardNavItems() {
         href: "/host",
         icon: <LayoutDashboard className="h-5 w-5" aria-hidden="true" />,
         active: activeKey === "dashboard",
+      },
+      {
+        key: "availability",
+        label: "Disponibilités",
+        description: "Configurer ton agenda et tes règles.",
+        href: "/dashboard/availability",
+        icon: <SlidersHorizontal className="h-5 w-5" aria-hidden="true" />,
+        active: activeKey === "availability",
       },
       {
         key: "public",
