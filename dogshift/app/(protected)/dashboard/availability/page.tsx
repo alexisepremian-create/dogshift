@@ -475,7 +475,7 @@ export default function AvailabilityStudioPage() {
                   tabIndex={-1}
                   className="text-sm font-semibold text-slate-900"
                 >
-                  {exceptionsForSelectedDate.length ? "Exception" : "Ajouter une exception"}
+                  {exceptionsForSelectedDate.length ? "Réservation" : "Ajouter une réservation"}
                 </p>
                 <p className="mt-1 text-sm text-slate-600">{exceptionDate}</p>
               </div>
@@ -489,7 +489,7 @@ export default function AvailabilityStudioPage() {
             </div>
 
             <p id="exception-drawer-desc" className="mt-3 text-xs font-semibold text-slate-500">
-              Les exceptions remplacent les règles hebdomadaires pour cette date.
+              Cette réservation remplace tes disponibilités habituelles pour cette date.
             </p>
 
             {exceptionsForSelectedDate.length ? (
@@ -497,7 +497,7 @@ export default function AvailabilityStudioPage() {
                 {exceptionsForSelectedDate.map((e) => (
                   <div key={e.id} className="flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
                     <div>
-                      <p className="text-xs font-semibold text-slate-500">{e.status}</p>
+                      <p className="text-xs font-semibold text-slate-500">{statusLabelFr(e.status)}</p>
                       <p className="text-sm font-semibold text-slate-900">
                         {minutesToHHMM(e.startMin)}–{minutesToHHMM(e.endMin)}
                       </p>
@@ -542,9 +542,9 @@ export default function AvailabilityStudioPage() {
               <p className="text-sm font-semibold text-slate-900">{exceptionsForSelectedDate.length ? "Modifier" : "Créer"}</p>
 
               <div className="mt-2 rounded-2xl border border-slate-200 bg-slate-50 p-3 text-xs font-semibold text-slate-700">
-                <p>AVAILABLE : Tu acceptes automatiquement</p>
-                <p className="mt-1">ON_REQUEST : Tu dois confirmer</p>
-                <p className="mt-1">UNAVAILABLE : Non réservable</p>
+                <p>Disponible (acceptation automatique)</p>
+                <p className="mt-1">Sur demande (confirmation requise)</p>
+                <p className="mt-1">Indisponible (non réservable)</p>
               </div>
 
               <div className="mt-3 grid gap-3">
@@ -557,7 +557,7 @@ export default function AvailabilityStudioPage() {
                       if (v === "AVAILABLE" || v === "ON_REQUEST" || v === "UNAVAILABLE") setExceptionStatus(v);
                     }}
                     className="mt-1 w-full rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm"
-                    aria-label="Statut exception"
+                    aria-label="Statut réservation"
                   >
                     <option value="AVAILABLE">Disponible</option>
                     <option value="ON_REQUEST">Sur demande</option>
