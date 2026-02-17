@@ -253,6 +253,22 @@ export default function AvailabilityStudioPage() {
     return set;
   }, [exceptionsByService, service]);
 
+  const bookableExceptionDatesByService = useMemo(() => {
+    const mk = (svc: ServiceTypeApi) => {
+      const set = new Set<string>();
+      for (const e of exceptionsByService[svc] ?? []) {
+        if (!e || typeof e.date !== "string") continue;
+        if (e.status === "AVAILABLE" || e.status === "ON_REQUEST") set.add(e.date);
+      }
+      return set;
+    };
+    return {
+      PROMENADE: mk("PROMENADE"),
+      DOGSITTING: mk("DOGSITTING"),
+      PENSION: mk("PENSION"),
+    };
+  }, [exceptionsByService]);
+
   const exceptionsForSelectedDate = useMemo(() => {
     if (!exceptionDate) return [] as ExceptionRow[];
     return (exceptionsByService[service] ?? []).filter((e) => e.date === exceptionDate);
@@ -396,19 +412,11 @@ export default function AvailabilityStudioPage() {
     return status === "AVAILABLE" ? "bg-emerald-500" : status === "ON_REQUEST" ? "bg-amber-500" : "bg-slate-300";
   }
 
-  const focusDayTone = (row: (typeof monthDays)[number] | null) => {
-    const cellTone = !row
-      ? "UNAVAILABLE"
-      : service === "PROMENADE"
-        ? row.promenadeStatus
-        : service === "DOGSITTING"
-          ? row.dogsittingStatus
-          : row.pensionStatus;
-    return cellTone === "AVAILABLE"
+  const focusDayTone = (dateIso: string) => {
+    const isBookable = bookableExceptionDatesByService[service].has(dateIso);
+    return isBookable
       ? "bg-emerald-50 text-emerald-900 ring-emerald-200"
-      : cellTone === "ON_REQUEST"
-        ? "bg-amber-50 text-amber-900 ring-amber-200"
-        : "bg-slate-100 text-slate-500 ring-slate-200";
+      : "bg-slate-100 text-slate-500 ring-slate-200";
   };
 
   const weekLabels = ["Dimanche", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"];
@@ -876,28 +884,22 @@ export default function AvailabilityStudioPage() {
               {Array.from({ length: meta.daysInMonth }).map((_, i) => {
                 const day = i + 1;
                 const dateIso = `${String(meta.year).padStart(4, "0")}-${String(meta.month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-                const row = monthStatusByDate.get(dateIso) ?? null;
-                const tone = focusDayTone(row);
+                const tone = focusDayTone(dateIso);
                 const isPast = dateIso < todayKeyZurich;
 
                 const promenadeEnabled = configByService.PROMENADE?.enabled ?? true;
                 const dogsittingEnabled = configByService.DOGSITTING?.enabled ?? true;
                 const pensionEnabled = configByService.PENSION?.enabled ?? true;
 
-                const indicators: Array<{ key: string; type: "service" | "exception"; svc?: ServiceTypeApi }> = [];
-                if (row) {
-                  if (promenadeEnabled && row.promenadeStatus !== "UNAVAILABLE") {
-                    indicators.push({ key: "PROMENADE", type: "service", svc: "PROMENADE" });
-                  }
-                  if (dogsittingEnabled && row.dogsittingStatus !== "UNAVAILABLE") {
-                    indicators.push({ key: "DOGSITTING", type: "service", svc: "DOGSITTING" });
-                  }
-                  if (pensionEnabled && row.pensionStatus !== "UNAVAILABLE") {
-                    indicators.push({ key: "PENSION", type: "service", svc: "PENSION" });
-                  }
+                const indicators: Array<{ key: string; type: "service"; svc: ServiceTypeApi }> = [];
+                if (promenadeEnabled && bookableExceptionDatesByService.PROMENADE.has(dateIso)) {
+                  indicators.push({ key: "PROMENADE", type: "service", svc: "PROMENADE" });
                 }
-                if (exceptionDatesForService.has(dateIso)) {
-                  indicators.push({ key: "EXCEPTION", type: "exception" });
+                if (dogsittingEnabled && bookableExceptionDatesByService.DOGSITTING.has(dateIso)) {
+                  indicators.push({ key: "DOGSITTING", type: "service", svc: "DOGSITTING" });
+                }
+                if (pensionEnabled && bookableExceptionDatesByService.PENSION.has(dateIso)) {
+                  indicators.push({ key: "PENSION", type: "service", svc: "PENSION" });
                 }
                 const visibleIndicators = indicators.slice(0, 3);
                 const hasOverflow = indicators.length > visibleIndicators.length;
@@ -925,11 +927,7 @@ export default function AvailabilityStudioPage() {
                     {visibleIndicators.length ? (
                       <div className="flex items-center justify-center gap-1">
                         {visibleIndicators.map((ind) => {
-                          if (ind.type === "exception") {
-                            return <span key={ind.key} className="h-2 w-2 rounded-full bg-[var(--dogshift-blue)]" aria-hidden="true" />;
-                          }
-                          const svc = ind.svc as ServiceTypeApi;
-                          return <span key={ind.key} className={`h-2 w-2 rounded-full ${serviceDotTone(svc)}`} aria-hidden="true" />;
+                          return <span key={ind.key} className={`h-2 w-2 rounded-full ${serviceDotTone(ind.svc)}`} aria-hidden="true" />;
                         })}
                         {hasOverflow ? (
                           <span className="-mt-[1px] text-[10px] font-bold leading-none text-slate-400" aria-hidden="true">
