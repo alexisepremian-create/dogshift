@@ -72,6 +72,19 @@ function toZurichIsoDate(dt: Date) {
   }).format(dt);
 }
 
+function formatDateFrCh(isoDate: string) {
+  const safe = (isoDate ?? "").trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(safe)) return safe;
+  const dt = new Date(`${safe}T12:00:00Z`);
+  const out = new Intl.DateTimeFormat("fr-CH", {
+    timeZone: "Europe/Zurich",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(dt);
+  return out.replaceAll(".", "-");
+}
+
 function monthMeta(cursor: Date) {
   const y = cursor.getUTCFullYear();
   const m = cursor.getUTCMonth();
@@ -239,9 +252,8 @@ export default function AvailabilityStudioPage() {
     return;
   }
 
-  function showToast(next: ToastState) {
+  function showToast(next: NonNullable<ToastState>) {
     setToast(next);
-    if (!next) return;
     setTimeout(() => setToast(null), 2200);
   }
 
@@ -477,7 +489,7 @@ export default function AvailabilityStudioPage() {
                 >
                   {exceptionsForSelectedDate.length ? "Réservation" : "Ajouter une réservation"}
                 </p>
-                <p className="mt-1 text-sm text-slate-600">{exceptionDate}</p>
+                <p className="mt-1 text-sm text-slate-600">{formatDateFrCh(exceptionDate)}</p>
               </div>
               <button
                 type="button"
@@ -518,7 +530,7 @@ export default function AvailabilityStudioPage() {
                           });
                           const payload = (await res.json().catch(() => null)) as any;
                           if (!res.ok || !payload?.ok) throw new Error(payload?.error ?? "DELETE_ERROR");
-                          showToast({ tone: "ok", message: "Exception supprimée" });
+                          showToast({ tone: "ok", message: "Disponibilité supprimée" });
                           await refetchAll();
                         } catch (err) {
                           setExceptionError(err instanceof Error ? err.message : "DELETE_ERROR");
@@ -699,6 +711,9 @@ export default function AvailabilityStudioPage() {
                         return;
                       }
 
+                      const nextRanges = exceptionAllDay ? [] : normalized.ranges;
+                      setExceptionRanges(nextRanges);
+
                       const res = await fetch("/api/sitters/me/availability-exceptions", {
                         method: "PUT",
                         headers: { "Content-Type": "application/json" },
@@ -711,8 +726,14 @@ export default function AvailabilityStudioPage() {
                       });
                       const payload = (await res.json().catch(() => null)) as any;
                       if (!res.ok || !payload?.ok) throw new Error(payload?.error ?? "SAVE_ERROR");
-                      showToast({ tone: "ok", message: "Exception enregistrée" });
                       await refetchAll();
+                      exceptionDrawerInitialSnapshotRef.current = JSON.stringify({
+                        date: exceptionDate,
+                        status: exceptionStatus,
+                        allDay: exceptionAllDay,
+                        ranges: nextRanges,
+                      });
+                      showToast({ tone: "ok", message: "Disponibilité enregistrée" });
                     } catch (err) {
                       setExceptionError(err instanceof Error ? err.message : "SAVE_ERROR");
                       showToast({ tone: "error", message: "Impossible d’enregistrer" });
@@ -918,7 +939,7 @@ export default function AvailabilityStudioPage() {
                         ? `flex h-12 w-full flex-col justify-between rounded-2xl ring-1 ${tone} cursor-not-allowed px-2 py-1 opacity-40`
                         : `flex h-12 w-full flex-col justify-between rounded-2xl ring-1 ${tone} px-2 py-1 hover:ring-2`
                     }
-                    aria-label={`Exception ${dateIso}`}
+                    aria-label={`Disponibilité ${formatDateFrCh(dateIso)}`}
                   >
                     <div className="flex items-start justify-end">
                       <span className="text-sm font-semibold leading-none text-slate-900">{day}</span>
@@ -945,13 +966,13 @@ export default function AvailabilityStudioPage() {
           </div>
 
           <div className="mt-4">
-            <p className="text-sm font-semibold text-slate-900">Exceptions ({serviceMeta(service).label})</p>
+            <p className="text-sm font-semibold text-slate-900">Disponibilités ({serviceMeta(service).label})</p>
             <div className="mt-2 grid gap-2">
               {(exceptionsByService[service] ?? []).length ? (
                 (exceptionsByService[service] ?? []).map((e) => (
                   <div key={e.id} className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3">
                     <div>
-                      <p className="text-xs font-semibold text-slate-500">{e.date}</p>
+                      <p className="text-xs font-semibold text-slate-500">{formatDateFrCh(e.date)}</p>
                       <p className="text-sm font-semibold text-slate-900">
                         {minutesToHHMM(e.startMin)}–{minutesToHHMM(e.endMin)} — {statusLabelFr(e.status)}
                       </p>
@@ -978,7 +999,7 @@ export default function AvailabilityStudioPage() {
                   </div>
                 ))
               ) : (
-                <p className="text-sm text-slate-600">Aucune exception.</p>
+                <p className="text-sm text-slate-600">Aucune disponibilité.</p>
               )}
             </div>
           </div>
