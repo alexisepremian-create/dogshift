@@ -3,8 +3,34 @@ import type { NextRequest } from "next/server";
 
 import { prisma } from "@/lib/prisma";
 import { sendEmail } from "@/lib/email/sendEmail";
+import { render } from "@react-email/render";
+
+import {
+  PilotSitterApplicationConfirmationEmail,
+  pilotSitterApplicationConfirmationCtaUrl,
+  pilotSitterApplicationConfirmationPlainText,
+} from "@/lib/email/templates/pilotSitterApplicationConfirmation";
 
 export const runtime = "nodejs";
+
+function baseUrlFromRequest(req: NextRequest) {
+  const appUrl = (process.env.APP_URL || "").trim();
+  if (appUrl) return appUrl.replace(/\/$/, "");
+
+  const publicAppUrl = (process.env.NEXT_PUBLIC_APP_URL || "").trim();
+  if (publicAppUrl) return publicAppUrl.replace(/\/$/, "");
+
+  const env = (process.env.NEXTAUTH_URL || "").trim();
+  if (env) return env.replace(/\/$/, "");
+
+  const proto = (req.headers.get("x-forwarded-proto") || "https").split(",")[0]?.trim() || "https";
+  const host =
+    (req.headers.get("x-forwarded-host") || "").split(",")[0]?.trim() ||
+    (req.headers.get("host") || "").split(",")[0]?.trim() ||
+    "";
+  if (!host) return "";
+  return `${proto}://${host}`;
+}
 
 function isValidEmail(value: string) {
   const v = value.trim().toLowerCase();
@@ -138,14 +164,21 @@ export async function POST(req: NextRequest) {
 
     // best-effort confirmation email
     try {
+      const baseUrl = baseUrlFromRequest(req);
+      const ctaUrl = pilotSitterApplicationConfirmationCtaUrl(baseUrl);
+      const text = pilotSitterApplicationConfirmationPlainText({ firstName: created.firstName, ctaUrl });
+      const html = await render(
+        PilotSitterApplicationConfirmationEmail({
+          baseUrl,
+          firstName: created.firstName,
+          previewText: "Candidature reçue — DogShift",
+        })
+      );
       await sendEmail({
         to: created.email,
         subject: "Candidature reçue — DogShift",
-        text:
-          `Bonjour ${created.firstName},\n\n` +
-          `Nous avons bien reçu ta candidature pour devenir dog-sitter DogShift (phase pilote).\n\n` +
-          `Nous te recontactons si ton profil est retenu.\n\n` +
-          `— DogShift\n`,
+        text,
+        html,
       });
     } catch {
       // ignore (do not block application creation)
