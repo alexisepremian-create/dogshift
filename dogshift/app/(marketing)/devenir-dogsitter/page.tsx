@@ -178,22 +178,6 @@ export default function DevenirDogsitterPage() {
               Profils sélectionnés manuellement – Phase pilote Lausanne & Riviera
             </p>
 
-            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-              <button
-                type="button"
-                onClick={() => formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
-                className="inline-flex items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-6 py-3 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition hover:bg-[var(--dogshift-blue-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)]"
-              >
-                Candidater maintenant
-              </button>
-              <a
-                href="#comment-ca-marche"
-                className="inline-flex items-center justify-center rounded-2xl border border-slate-300 bg-white px-6 py-3 text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50"
-              >
-                En savoir plus
-              </a>
-            </div>
-
             <div id="comment-ca-marche" className="mt-12 rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-44px_rgba(2,6,23,0.15)] sm:p-8">
               <h2 className="text-lg font-semibold text-slate-900">Comment ça marche</h2>
               <div className="mt-6 grid gap-4 sm:grid-cols-2">
