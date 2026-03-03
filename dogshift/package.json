@@ -5,12 +5,13 @@
   "scripts": {
     "dev": "next dev --webpack",
     "build": "prisma generate && next build",
-    "vercel-build": "prisma migrate deploy && prisma generate && next build",
+    "vercel-build": "prisma generate && next build",
     "start": "next start",
     "lint": "eslint",
     "test": "node --test --experimental-strip-types --experimental-specifier-resolution=node",
     "test:watch": "node --test --watch --experimental-strip-types --experimental-specifier-resolution=node",
     "migrate:deploy": "prisma migrate deploy",
+    "migrate:deploy:prod": "prisma migrate deploy && prisma generate",
     "generate-invite-codes": "node scripts/generate-invite-codes.mjs",
     "postinstall": "prisma generate"
   },
