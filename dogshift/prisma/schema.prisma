@@ -60,6 +60,13 @@ enum AvailabilityStatus {
   UNAVAILABLE
 }
 
+enum SitterApplicationStatus {
+  PENDING
+  CONTACTED
+  ACCEPTED
+  REJECTED
+}
+
 model User {
   id              String    @id @default(cuid())
   clerkUserId     String?   @unique
@@ -147,6 +154,47 @@ model SitterApplication {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, createdAt])
+}
+
+model PilotSitterApplication {
+  id String @id @default(cuid())
+
+  firstName String
+  lastName  String
+  city      String
+  email     String
+  phone     String
+
+  age Int?
+
+  experienceText   String
+  hasDogExperience Boolean
+  motivationText   String
+  availabilityText String
+
+  consentInterview Boolean
+  consentPrivacy   Boolean
+
+  status SitterApplicationStatus @default(PENDING)
+
+  utmSource   String?
+  utmMedium   String?
+  utmCampaign String?
+  utmContent  String?
+  utmTerm     String?
+
+  referrer       String?
+  userAgent      String?
+  ip             String?
+  idempotencyKey String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([createdAt])
+  @@index([status, createdAt])
+  @@index([email, createdAt])
+  @@unique([email, idempotencyKey])
 }
 
 model SitterProfile {
