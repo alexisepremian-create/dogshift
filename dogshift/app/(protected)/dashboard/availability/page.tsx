@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useHostUser } from "@/components/HostUserProvider";
 import { normalizeRanges } from "@/lib/availability/rangeValidation";
+import type { HostProfileV1 } from "@/lib/hostProfile";
 
 type ServiceTypeApi = "PROMENADE" | "DOGSITTING" | "PENSION";
 
@@ -29,6 +30,14 @@ type AvailabilityRuleRow = {
 };
 
 type ToastState = { tone: "ok" | "error"; message: string } | null;
+
+type PricingServiceKey = "Promenade" | "Garde" | "Pension";
+
+const TARIFF_RANGES: Record<PricingServiceKey, { min: number; max: number }> = {
+  Promenade: { min: 15, max: 25 },
+  Garde: { min: 18, max: 30 },
+  Pension: { min: 35, max: 60 },
+};
 
 function errorMessageFr(code: string) {
   if (code === "PRICING_REQUIRED") {
@@ -72,6 +81,29 @@ function serviceDotTone(svc: ServiceTypeApi) {
   if (svc === "PROMENADE") return "bg-sky-400";
   if (svc === "DOGSITTING") return "bg-violet-400";
   return "bg-emerald-400";
+}
+
+function pricingKeyForService(svc: ServiceTypeApi): PricingServiceKey {
+  if (svc === "PROMENADE") return "Promenade";
+  if (svc === "DOGSITTING") return "Garde";
+  return "Pension";
+}
+
+function parsePrice(raw: string) {
+  const cleaned = raw.replace(",", ".").trim();
+  if (!cleaned) return null;
+  const n = Number(cleaned);
+  if (!Number.isFinite(n) || n <= 0) return null;
+  return Math.round(n * 100) / 100;
+}
+
+function getTariffRangeError(service: PricingServiceKey, price: number) {
+  const r = TARIFF_RANGES[service];
+  if (!Number.isFinite(price)) return null;
+  if (price < r.min || price > r.max) {
+    return `Le prix doit être compris entre ${r.min} et ${r.max} CHF.`;
+  }
+  return null;
 }
 
 function dayStatusForService(
@@ -131,13 +163,27 @@ function monthMeta(cursor: Date) {
 export default function AvailabilityStudioPage() {
   const host = useHostUser();
   const sitterId = host.sitterId;
-
-  const [service, setService] = useState<ServiceTypeApi>("PROMENADE");
+  const remoteProfile = (host.profile && typeof host.profile === "object" ? (host.profile as Partial<HostProfileV1>) : null);
 
   const [configByService, setConfigByService] = useState<Record<ServiceTypeApi, ServiceConfig | null>>({
     PROMENADE: null,
     DOGSITTING: null,
     PENSION: null,
+  });
+  const [pricingByService, setPricingByService] = useState<Record<ServiceTypeApi, number | undefined>>({
+    PROMENADE: undefined,
+    DOGSITTING: undefined,
+    PENSION: undefined,
+  });
+  const [pricingInputByService, setPricingInputByService] = useState<Record<ServiceTypeApi, string>>({
+    PROMENADE: "",
+    DOGSITTING: "",
+    PENSION: "",
+  });
+  const [pricingSavingByService, setPricingSavingByService] = useState<Record<ServiceTypeApi, boolean>>({
+    PROMENADE: false,
+    DOGSITTING: false,
+    PENSION: false,
   });
 
   const [exceptionsByService, setExceptionsByService] = useState<Record<ServiceTypeApi, ExceptionRow[]>>({
@@ -202,6 +248,42 @@ export default function AvailabilityStudioPage() {
     const services: ServiceTypeApi[] = ["PROMENADE", "DOGSITTING", "PENSION"];
     return services.filter((svc) => configByService[svc]?.enabled !== false);
   }, [configByService]);
+
+  useEffect(() => {
+    const pricing = remoteProfile?.pricing && typeof remoteProfile.pricing === "object" ? (remoteProfile.pricing as Partial<Record<PricingServiceKey, number>>) : {};
+    const nextPricing: Record<ServiceTypeApi, number | undefined> = {
+      PROMENADE: typeof pricing.Promenade === "number" ? pricing.Promenade : undefined,
+      DOGSITTING: typeof pricing.Garde === "number" ? pricing.Garde : undefined,
+      PENSION: typeof pricing.Pension === "number" ? pricing.Pension : undefined,
+    };
+    setPricingByService(nextPricing);
+    setPricingInputByService({
+      PROMENADE: nextPricing.PROMENADE !== undefined ? String(nextPricing.PROMENADE) : "",
+      DOGSITTING: nextPricing.DOGSITTING !== undefined ? String(nextPricing.DOGSITTING) : "",
+      PENSION: nextPricing.PENSION !== undefined ? String(nextPricing.PENSION) : "",
+    });
+  }, [remoteProfile]);
+
+  const pricingErrorByService = useMemo(() => {
+    return {
+      PROMENADE:
+        pricingByService.PROMENADE === undefined
+          ? "Ajoute un prix pour activer ce service."
+          : getTariffRangeError("Promenade", pricingByService.PROMENADE) ?? null,
+      DOGSITTING:
+        pricingByService.DOGSITTING === undefined
+          ? "Ajoute un prix pour activer ce service."
+          : getTariffRangeError("Garde", pricingByService.DOGSITTING) ?? null,
+      PENSION:
+        pricingByService.PENSION === undefined
+          ? "Ajoute un prix pour activer ce service."
+          : getTariffRangeError("Pension", pricingByService.PENSION) ?? null,
+    } satisfies Record<ServiceTypeApi, string | null>;
+  }, [pricingByService]);
+
+  const canEditAvailabilityForTab = useMemo(() => {
+    return (configByService[availabilityTab]?.enabled ?? true) && !pricingErrorByService[availabilityTab];
+  }, [availabilityTab, configByService, pricingErrorByService]);
 
   useEffect(() => {
     if (!bookingInfoOpen) return;
@@ -283,6 +365,47 @@ export default function AvailabilityStudioPage() {
       if (code !== "PRICING_REQUIRED") setError(e instanceof Error ? e.message : "SAVE_ERROR");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function saveServicePricing(svc: ServiceTypeApi) {
+    if (!sitterId) return;
+    const raw = pricingInputByService[svc] ?? "";
+    const parsed = parsePrice(raw);
+    const pricingKey = pricingKeyForService(svc);
+    const nextAll: Record<PricingServiceKey, number | null> = {
+      Promenade: pricingByService.PROMENADE ?? null,
+      Garde: pricingByService.DOGSITTING ?? null,
+      Pension: pricingByService.PENSION ?? null,
+    };
+    nextAll[pricingKey] = parsed;
+
+    setPricingSavingByService((prev) => ({ ...prev, [svc]: true }));
+    setError(null);
+    setTopError(null);
+    try {
+      const res = await fetch("/api/host/profile/pricing", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pricing: nextAll }),
+      });
+      const payload = (await res.json().catch(() => null)) as { ok?: boolean; error?: string; details?: string } | null;
+      if (!res.ok || !payload?.ok) {
+        throw new Error((typeof payload?.details === "string" && payload.details) || payload?.error || "SAVE_ERROR");
+      }
+
+      setPricingByService({
+        PROMENADE: typeof nextAll.Promenade === "number" ? nextAll.Promenade : undefined,
+        DOGSITTING: typeof nextAll.Garde === "number" ? nextAll.Garde : undefined,
+        PENSION: typeof nextAll.Pension === "number" ? nextAll.Pension : undefined,
+      });
+
+      await refetchAll();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "SAVE_ERROR");
+      await refetchAll();
+    } finally {
+      setPricingSavingByService((prev) => ({ ...prev, [svc]: false }));
     }
   }
 
@@ -767,8 +890,6 @@ export default function AvailabilityStudioPage() {
     void refetchAll();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sitterId, meta.fromIso, meta.toIso]);
-
-  const selectedConfig = configByService[service];
 
   function statusTone(status: "AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE") {
     return status === "AVAILABLE" ? "bg-emerald-500" : status === "ON_REQUEST" ? "bg-amber-500" : "bg-slate-300";
@@ -1268,16 +1389,37 @@ export default function AvailabilityStudioPage() {
               const enabled = cfg?.enabled !== false;
               const tone = serviceDotTone(svc);
               const activeSwitchTone = tone === "bg-sky-400" ? "bg-sky-500" : tone === "bg-violet-400" ? "bg-violet-500" : "bg-emerald-500";
+              const priceInput = pricingInputByService[svc] ?? "";
+              const priceError = pricingErrorByService[svc];
+              const priceSaving = pricingSavingByService[svc];
+              const isActiveCard = availabilityTab === svc;
               return (
-                <div key={svc} className="rounded-3xl border border-slate-200 bg-white p-4 text-left">
+                <div
+                  key={svc}
+                  className={
+                    isActiveCard
+                      ? "rounded-3xl border-2 border-[var(--dogshift-blue)] bg-white p-4 text-left shadow-[0_8px_24px_-20px_rgba(37,99,235,0.45)]"
+                      : "rounded-3xl border border-slate-200 bg-white p-4 text-left"
+                  }
+                >
                   <div className="flex items-center justify-between">
-                    <p className="text-sm font-semibold text-slate-900">
-                      {metaSvc.icon} {metaSvc.label}
-                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setAvailabilityTab(svc)}
+                      className="text-left"
+                    >
+                      <p className="text-sm font-semibold text-slate-900">
+                        {metaSvc.icon} {metaSvc.label}
+                      </p>
+                      <p className="mt-1 text-xs font-semibold text-slate-500">
+                        {isActiveCard ? "Service en cours de configuration" : "Configurer ce service"}
+                      </p>
+                    </button>
                     <button
                       type="button"
                       role="switch"
                       aria-checked={enabled}
+                      disabled={!enabled && Boolean(priceError)}
                       onClick={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
@@ -1286,7 +1428,7 @@ export default function AvailabilityStudioPage() {
                       className={
                         enabled
                           ? `relative inline-flex h-6 w-11 items-center rounded-full ${activeSwitchTone} transition`
-                          : "relative inline-flex h-6 w-11 items-center rounded-full bg-slate-300 transition"
+                          : "relative inline-flex h-6 w-11 items-center rounded-full bg-slate-300 transition disabled:opacity-50"
                       }
                       aria-label={enabled ? `Désactiver ${metaSvc.label}` : `Activer ${metaSvc.label}`}
                     >
@@ -1301,6 +1443,33 @@ export default function AvailabilityStudioPage() {
                   </div>
                   {cfg ? null : <div className="mt-3 h-4 w-40 animate-pulse rounded bg-slate-100" />}
 
+                  <div className="mt-3 grid gap-2">
+                    <label className="text-xs font-semibold text-slate-500">Tarif</label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        value={priceInput}
+                        onChange={(e) => {
+                          setPricingInputByService((prev) => ({ ...prev, [svc]: e.target.value }));
+                        }}
+                        inputMode="decimal"
+                        placeholder="ex. 20"
+                        className="h-10 min-w-0 flex-1 rounded-xl border border-slate-200 bg-white px-3 text-sm font-medium text-slate-900"
+                      />
+                      <span className="text-xs font-semibold text-slate-500">CHF</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          void saveServicePricing(svc);
+                        }}
+                        disabled={priceSaving}
+                        className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 disabled:opacity-60"
+                      >
+                        {priceSaving ? "..." : "OK"}
+                      </button>
+                    </div>
+                    {priceError ? <p className="text-xs font-medium text-rose-600">{priceError}</p> : null}
+                  </div>
+
                 </div>
               );
             })}
@@ -1310,19 +1479,21 @@ export default function AvailabilityStudioPage() {
             <p className="text-sm font-semibold text-slate-900">Disponibilités</p>
 
             <div className="mt-3 grid grid-cols-3 gap-2 rounded-2xl bg-white p-2 ring-1 ring-slate-200">
-              {enabledServices.map((svc) => {
+              {(["PROMENADE", "DOGSITTING", "PENSION"] as const).map((svc) => {
                 const active = availabilityTab === svc;
                 const tone = serviceDotTone(svc);
                 const baseTone = tone === "bg-sky-400" ? "bg-sky-500" : tone === "bg-violet-400" ? "bg-violet-500" : "bg-emerald-500";
+                const disabled = (configByService[svc]?.enabled ?? true) === false || Boolean(pricingErrorByService[svc]);
                 return (
                   <button
                     key={`tab-${svc}`}
                     type="button"
+                    disabled={disabled}
                     onClick={() => setAvailabilityTab(svc)}
                     className={
                       active
                         ? `rounded-2xl ${baseTone} px-3 py-2 text-xs font-semibold text-white`
-                        : "rounded-2xl bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                        : "rounded-2xl bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-45"
                     }
                     aria-pressed={active}
                   >
@@ -1333,6 +1504,16 @@ export default function AvailabilityStudioPage() {
             </div>
 
             <div className="mt-3 rounded-2xl border border-slate-200 bg-white p-4">
+              {!canEditAvailabilityForTab ? (
+                <div className="mb-3 rounded-2xl border border-amber-200 bg-amber-50 p-3">
+                  <p className="text-sm font-semibold text-amber-900">
+                    {(configByService[availabilityTab]?.enabled ?? true) === false
+                      ? "Active d’abord ce service pour modifier ses disponibilités."
+                      : pricingErrorByService[availabilityTab] ?? "Ajoute un tarif valide pour modifier les disponibilités."}
+                  </p>
+                </div>
+              ) : null}
+
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <p className="text-sm font-semibold text-slate-900">
@@ -1366,7 +1547,7 @@ export default function AvailabilityStudioPage() {
                         onClick={() => {
                           void applyQuickAction("all-available-week");
                         }}
-                        disabled={quickActionSaving !== null || !enabledServices.length}
+                        disabled={quickActionSaving !== null || !canEditAvailabilityForTab}
                         className="inline-flex min-h-9 items-center justify-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 disabled:opacity-60"
                       >
                         {quickActionSaving === "all-available-week" ? "Enregistrement…" : "Tout disponible cette semaine"}
@@ -1376,7 +1557,7 @@ export default function AvailabilityStudioPage() {
                         onClick={() => {
                           void applyQuickAction("all-available-month");
                         }}
-                        disabled={quickActionSaving !== null || !enabledServices.length}
+                        disabled={quickActionSaving !== null || !canEditAvailabilityForTab}
                         className="inline-flex min-h-9 items-center justify-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 disabled:opacity-60"
                       >
                         {quickActionSaving === "all-available-month" ? "Enregistrement…" : "Tout disponible ce mois"}
@@ -1386,7 +1567,7 @@ export default function AvailabilityStudioPage() {
                         onClick={() => {
                           void applyQuickAction("copy-week");
                         }}
-                        disabled={quickActionSaving !== null || !enabledServices.length}
+                        disabled={quickActionSaving !== null || !canEditAvailabilityForTab}
                         className="inline-flex min-h-9 items-center justify-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 disabled:opacity-60"
                       >
                         {quickActionSaving === "copy-week" ? "Enregistrement…" : "Reproduire cette semaine sur le reste du mois"}
@@ -1398,7 +1579,7 @@ export default function AvailabilityStudioPage() {
 
               <div className="mt-3 grid gap-1.5">
                 {(() => {
-                  if (!enabledServices.length) return <p className="text-sm text-slate-600">Aucun service activé.</p>;
+                  if (!configByService[availabilityTab]) return <p className="text-sm text-slate-600">Chargement…</p>;
                   return (
                     <div className="grid gap-1.5">
                       {weeklyDayOptions.map((day) => {
@@ -1410,7 +1591,7 @@ export default function AvailabilityStudioPage() {
                               <input
                                 type="checkbox"
                                 checked={rule.enabled}
-                                disabled={isSaving}
+                                disabled={isSaving || !canEditAvailabilityForTab}
                                 onChange={(e) => {
                                   void saveWeeklyRule(availabilityTab, day.dayOfWeek, e.currentTarget.checked, rule.status);
                                 }}
@@ -1422,7 +1603,7 @@ export default function AvailabilityStudioPage() {
                             <div className="flex items-center gap-2">
                               <select
                                 value={rule.status}
-                                disabled={!rule.enabled || isSaving}
+                                disabled={!rule.enabled || isSaving || !canEditAvailabilityForTab}
                                 onChange={(e) => {
                                   const nextStatus = e.currentTarget.value === "ON_REQUEST" ? "ON_REQUEST" : "AVAILABLE";
                                   void saveWeeklyRule(availabilityTab, day.dayOfWeek, true, nextStatus);
@@ -1517,9 +1698,9 @@ export default function AvailabilityStudioPage() {
                   <button
                     key={dateIso}
                     type="button"
-                    disabled={isPast}
+                    disabled={isPast || !canEditAvailabilityForTab}
                     onClick={() => {
-                      if (isPast) return;
+                      if (isPast || !canEditAvailabilityForTab) return;
                       openInlineException(dateIso);
                     }}
                     className={
