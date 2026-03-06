@@ -29,6 +29,15 @@ function dateToIso(dt: Date) {
   return dt.toISOString().slice(0, 10);
 }
 
+function toZurichIsoDate(dt: Date) {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: TIMEZONE_ZURICH,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(dt);
+}
+
 export async function GET(
   req: NextRequest,
   { params }: { params: { sitterId: string } | Promise<{ sitterId: string }> }
@@ -67,7 +76,7 @@ export async function GET(
   try {
     const [allRules, allExceptions, allBookings, allConfigs] = await Promise.all([
       (prisma as any).availabilityRule.findMany({ where: { sitterId } }),
-      (prisma as any).availabilityException.findMany({ where: { sitterId, date: { gte: fromStart, lte: toEnd } } }),
+      (prisma as any).availabilityException.findMany({ where: { sitterId } }),
       (prisma as any).booking.findMany({
         where: {
           sitterId,
@@ -78,12 +87,20 @@ export async function GET(
       (prisma as any).serviceConfig.findMany({ where: { sitterId } }),
     ]);
 
+    const exceptionsInRange = (allExceptions ?? []).filter((e: any) => {
+      const v = e?.date;
+      if (!v) return false;
+      const key = v instanceof Date ? toZurichIsoDate(v) : typeof v === "string" ? v.slice(0, 10) : "";
+      if (!key) return false;
+      return key >= from && key <= to;
+    });
+
     const computed = computeMultiDayStatusIndexed({
       sitterId,
       dates,
       now: new Date(),
       allRules: allRules ?? [],
-      allExceptions: allExceptions ?? [],
+      allExceptions: exceptionsInRange,
       allBookings: allBookings ?? [],
       allConfigs: allConfigs ?? [],
     });
