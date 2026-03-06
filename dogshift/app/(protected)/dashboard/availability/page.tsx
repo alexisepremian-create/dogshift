@@ -804,7 +804,7 @@ export default function AvailabilityStudioPage() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-6xl px-4 py-10">
+    <div className="mx-auto w-full max-w-6xl px-4 py-10" style={{ scrollbarGutter: "stable" }}>
       <div className="flex items-center justify-between">
         <div>
           <p className="text-2xl font-bold text-slate-900">Disponibilités</p>
