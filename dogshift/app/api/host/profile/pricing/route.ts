@@ -1,0 +1,81 @@
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+import { auth, currentUser } from "@clerk/nextjs/server";
+import { Prisma } from "@prisma/client";
+
+import { prisma } from "@/lib/prisma";
+import { ensureDbUserByClerkUserId } from "@/lib/auth/resolveDbUserId";
+
+export const runtime = "nodejs";
+
+type PutBody = {
+  pricing?: unknown;
+};
+
+function normalizePricing(raw: unknown) {
+  if (!raw || typeof raw !== "object") return { ok: false as const, error: "INVALID_PRICING" as const };
+  const obj = raw as Record<string, unknown>;
+
+  const allowed = new Set(["Promenade", "Garde", "Pension"]);
+  const out: Record<string, number> = {};
+
+  for (const [k, v] of Object.entries(obj)) {
+    if (!allowed.has(k)) continue;
+    if (typeof v !== "number" || !Number.isFinite(v)) continue;
+    const n = Math.round(v * 100) / 100;
+    if (n <= 0) continue;
+    out[k] = n;
+  }
+
+  return { ok: true as const, pricing: out };
+}
+
+export async function PUT(req: NextRequest) {
+  try {
+    const { userId } = await auth();
+    if (!userId) return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
+
+    const clerkUser = await currentUser();
+    const primaryEmail = clerkUser?.primaryEmailAddress?.emailAddress ?? "";
+    if (!primaryEmail) return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
+
+    const ensured = await ensureDbUserByClerkUserId({
+      clerkUserId: userId,
+      email: primaryEmail,
+      name: typeof clerkUser?.fullName === "string" ? clerkUser.fullName : null,
+    });
+    if (!ensured) return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
+
+    const uid = ensured.id;
+
+    let body: PutBody;
+    try {
+      body = (await req.json()) as PutBody;
+    } catch {
+      return NextResponse.json({ ok: false, error: "INVALID_BODY" }, { status: 400 });
+    }
+
+    const normalized = normalizePricing(body.pricing);
+    if (!normalized.ok) return NextResponse.json({ ok: false, error: normalized.error }, { status: 400 });
+
+    const sitterProfile = await prisma.sitterProfile.findUnique({
+      where: { userId: uid },
+      select: { id: true, pricing: true, services: true },
+    });
+
+    if (!sitterProfile) return NextResponse.json({ ok: false, error: "FORBIDDEN" }, { status: 403 });
+
+    const pricing = normalized.pricing as Prisma.InputJsonValue;
+
+    const updated = await prisma.sitterProfile.update({
+      where: { userId: uid },
+      data: { pricing },
+      select: { pricing: true },
+    });
+
+    return NextResponse.json({ ok: true, pricing: updated.pricing }, { status: 200, headers: { "cache-control": "no-store" } });
+  } catch (err) {
+    console.error("[api][host][profile][pricing][PUT] error", err);
+    return NextResponse.json({ ok: false, error: "INTERNAL_ERROR" }, { status: 500 });
+  }
+}

@@ -15,6 +15,24 @@ function normalizeService(value: string): ServiceType | null {
   return null;
 }
 
+function pricingKeyForService(serviceType: ServiceType) {
+  if (serviceType === "PROMENADE") return "Promenade";
+  if (serviceType === "DOGSITTING") return "Garde";
+  return "Pension";
+}
+
+async function assertPricingConfiguredOrThrow(sitterId: string, serviceType: ServiceType) {
+  const profile = await prisma.sitterProfile.findUnique({
+    where: { sitterId },
+    select: { pricing: true },
+  });
+  const pricing = (profile?.pricing && typeof profile.pricing === "object" ? (profile.pricing as any) : null) as Record<string, unknown> | null;
+  const key = pricingKeyForService(serviceType);
+  const v = pricing ? pricing[key] : null;
+  const ok = typeof v === "number" && Number.isFinite(v) && v > 0;
+  if (!ok) throw new Error("PRICING_REQUIRED");
+}
+
 type PutBody = {
   dayOfWeek?: unknown;
   status?: unknown;
@@ -53,6 +71,14 @@ export async function GET(req: NextRequest) {
 
   const auth = await requireSitterOwner(req);
   if (!auth.ok) return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
+
+  try {
+    await assertPricingConfiguredOrThrow(auth.sitterId, serviceType);
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "";
+    if (msg === "PRICING_REQUIRED") return NextResponse.json({ ok: false, error: "PRICING_REQUIRED" }, { status: 400 });
+    throw e;
+  }
 
   const rows = await (prisma as any).availabilityRule.findMany({
     where: { sitterId: auth.sitterId, serviceType },

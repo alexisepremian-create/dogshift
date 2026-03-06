@@ -14,6 +14,23 @@ function normalizeService(value: string): ServiceType | null {
   return null;
 }
 
+function pricingKeyForService(serviceType: ServiceType) {
+  if (serviceType === "PROMENADE") return "Promenade";
+  if (serviceType === "DOGSITTING") return "Garde";
+  return "Pension";
+}
+
+async function hasValidPricing(sitterId: string, serviceType: ServiceType) {
+  const profile = await prisma.sitterProfile.findUnique({
+    where: { sitterId },
+    select: { pricing: true },
+  });
+  const pricing = (profile?.pricing && typeof profile.pricing === "object" ? (profile.pricing as any) : null) as Record<string, unknown> | null;
+  const key = pricingKeyForService(serviceType);
+  const v = pricing ? pricing[key] : null;
+  return typeof v === "number" && Number.isFinite(v) && v > 0;
+}
+
 type PutBody = {
   enabled?: unknown;
 };
@@ -65,6 +82,13 @@ export async function PUT(req: NextRequest) {
 
   const enabled = typeof body.enabled === "boolean" ? body.enabled : undefined;
   if (enabled === undefined) return NextResponse.json({ ok: false, error: "INVALID_BODY" }, { status: 400 });
+
+  if (enabled) {
+    const ok = await hasValidPricing(auth.sitterId, serviceType);
+    if (!ok) {
+      return NextResponse.json({ ok: false, error: "PRICING_REQUIRED" }, { status: 400 });
+    }
+  }
 
   const data: Record<string, unknown> = { enabled };
 

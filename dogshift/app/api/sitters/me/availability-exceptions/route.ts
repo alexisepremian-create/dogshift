@@ -19,6 +19,24 @@ function normalizeService(value: string): ServiceType | null {
   return null;
 }
 
+function pricingKeyForService(serviceType: ServiceType) {
+  if (serviceType === "PROMENADE") return "Promenade";
+  if (serviceType === "DOGSITTING") return "Garde";
+  return "Pension";
+}
+
+async function assertPricingConfiguredOrThrow(sitterId: string, serviceType: ServiceType) {
+  const profile = await prisma.sitterProfile.findUnique({
+    where: { sitterId },
+    select: { pricing: true },
+  });
+  const pricing = (profile?.pricing && typeof profile.pricing === "object" ? (profile.pricing as any) : null) as Record<string, unknown> | null;
+  const key = pricingKeyForService(serviceType);
+  const v = pricing ? pricing[key] : null;
+  const ok = typeof v === "number" && Number.isFinite(v) && v > 0;
+  if (!ok) throw new Error("PRICING_REQUIRED");
+}
+
 type PostBody = {
   serviceType?: unknown;
   date?: unknown;
@@ -84,6 +102,14 @@ export async function POST(req: NextRequest) {
   const serviceType = normalizeService(typeof body.serviceType === "string" ? body.serviceType : "");
   if (!serviceType) return NextResponse.json({ ok: false, error: "INVALID_SERVICE" }, { status: 400 });
 
+  try {
+    await assertPricingConfiguredOrThrow(auth.sitterId, serviceType);
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "";
+    if (msg === "PRICING_REQUIRED") return NextResponse.json({ ok: false, error: "PRICING_REQUIRED" }, { status: 400 });
+    throw e;
+  }
+
   const dateIso = typeof body.date === "string" ? body.date.trim() : "";
   if (!isValidIsoDate(dateIso)) return NextResponse.json({ ok: false, error: "INVALID_DATE" }, { status: 400 });
 
@@ -132,6 +158,14 @@ export async function PUT(req: NextRequest) {
 
   const serviceType = normalizeService(typeof body.serviceType === "string" ? body.serviceType : "");
   if (!serviceType) return NextResponse.json({ ok: false, error: "INVALID_SERVICE" }, { status: 400 });
+
+  try {
+    await assertPricingConfiguredOrThrow(auth.sitterId, serviceType);
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "";
+    if (msg === "PRICING_REQUIRED") return NextResponse.json({ ok: false, error: "PRICING_REQUIRED" }, { status: 400 });
+    throw e;
+  }
 
   const dateIso = typeof body.date === "string" ? body.date.trim() : "";
   if (!isValidIsoDate(dateIso)) return NextResponse.json({ ok: false, error: "INVALID_DATE" }, { status: 400 });
