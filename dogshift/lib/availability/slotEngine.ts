@@ -414,6 +414,8 @@ export function computeDaySlots(input: ComputeDaySlotsInput): DaySlot[] {
   if (!isValidIsoDate(input.date)) return [];
   const now = input.now;
 
+  if (input.config && input.config.enabled === false) return [];
+
   const hardBlocks: Interval[] = [];
   const softBlocks: Interval[] = [];
   for (const b of input.bookings ?? []) {

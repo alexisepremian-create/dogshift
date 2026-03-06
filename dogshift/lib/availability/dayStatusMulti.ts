@@ -29,6 +29,19 @@ function ensureServiceConfig(sitterId: string, serviceType: ServiceType, row: an
   };
 }
 
+function ensureServiceConfigForPublicCalendar(sitterId: string, serviceType: ServiceType, row: any) {
+  // For the public calendar, never assume a service is enabled unless there is an explicit DB row.
+  if (!row) {
+    return {
+      ...SERVICE_DEFAULTS[serviceType],
+      sitterId,
+      enabled: false,
+      serviceType,
+    };
+  }
+  return ensureServiceConfig(sitterId, serviceType, row);
+}
+
 function toZurichIsoDate(dt: Date) {
   return new Intl.DateTimeFormat("en-CA", {
     timeZone: TIMEZONE_ZURICH,
@@ -98,7 +111,7 @@ export function computeMultiDayStatusNaive(input: DayStatusMultiInput): MultiSer
   for (const row of allConfigs ?? []) {
     const st = row?.serviceType as ServiceType;
     if (st === "PROMENADE" || st === "DOGSITTING" || st === "PENSION") {
-      configByService.set(st, ensureServiceConfig(sitterId, st, row));
+      configByService.set(st, ensureServiceConfigForPublicCalendar(sitterId, st, row));
     }
   }
 
@@ -108,7 +121,7 @@ export function computeMultiDayStatusNaive(input: DayStatusMultiInput): MultiSer
     const computeStatus = (serviceType: ServiceType) => {
       const rules = (allRules ?? []).filter((r: any) => r && r.serviceType === serviceType && r.dayOfWeek === dow);
       const exceptions = (allExceptions ?? []).filter((e: any) => e && e.serviceType === serviceType && exceptionDateKey(e) === date);
-      const config = configByService.get(serviceType) ?? ensureServiceConfig(sitterId, serviceType, null);
+      const config = configByService.get(serviceType) ?? ensureServiceConfigForPublicCalendar(sitterId, serviceType, null);
       const slots = computeDaySlots({
         serviceType,
         date,
@@ -177,15 +190,15 @@ export function computeMultiDayStatusIndexed(input: DayStatusMultiInput): {
   }
 
   const configByService: Record<ServiceType, any> = {
-    PROMENADE: ensureServiceConfig(sitterId, "PROMENADE", null),
-    DOGSITTING: ensureServiceConfig(sitterId, "DOGSITTING", null),
-    PENSION: ensureServiceConfig(sitterId, "PENSION", null),
+    PROMENADE: ensureServiceConfigForPublicCalendar(sitterId, "PROMENADE", null),
+    DOGSITTING: ensureServiceConfigForPublicCalendar(sitterId, "DOGSITTING", null),
+    PENSION: ensureServiceConfigForPublicCalendar(sitterId, "PENSION", null),
   };
 
   for (const row of allConfigs ?? []) {
     const st = row?.serviceType as ServiceType;
     if (st === "PROMENADE" || st === "DOGSITTING" || st === "PENSION") {
-      configByService[st] = ensureServiceConfig(sitterId, st, row);
+      configByService[st] = ensureServiceConfigForPublicCalendar(sitterId, st, row);
     }
   }
 
