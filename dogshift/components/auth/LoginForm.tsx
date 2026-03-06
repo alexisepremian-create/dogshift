@@ -10,7 +10,7 @@ function normalizeEmail(input: string) {
 }
 
 export default function LoginForm() {
-  const { isLoaded, signIn } = useSignIn();
+  const { isLoaded, signIn, setActive } = useSignIn();
   const { isLoaded: userLoaded, isSignedIn } = useUser();
   const searchParams = useSearchParams();
 
@@ -22,6 +22,7 @@ export default function LoginForm() {
   const redirectAfterAuth = next ? `/post-login?next=${encodeURIComponent(next)}` : "/post-login";
 
   const [email, setEmail] = useState("");
+  const [emailCode, setEmailCode] = useState("");
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -40,19 +41,50 @@ export default function LoginForm() {
     setError(null);
     setLoading(true);
     try {
-      // Clerk headless magic link:
-      // - Creates an email-link sign-in attempt.
-      // - The user completes sign-in by clicking the link received by email.
-      await (signIn as any).create({
-        identifier: normalized,
-        strategy: "email_link",
-        redirectUrl: "/login",
-      });
+      // Clerk headless email code:
+      // - Creates a sign-in attempt for the identifier
+      // - Sends a one-time code to the user's email
+      await (signIn as any).create({ identifier: normalized });
+      await (signIn as any).prepareFirstFactor({ strategy: "email_code" });
       setSent(true);
     } catch (err) {
       const message = err instanceof Error ? err.message : "";
       setError(message || "Impossible d’envoyer le lien. Réessaie.");
     } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleEmailCodeVerify(e: React.FormEvent) {
+    e.preventDefault();
+    if (!isLoaded || !signIn) return;
+    if (loading) return;
+
+    const code = emailCode.replace(/\s+/g, "").trim();
+    if (!code) {
+      setError("Merci d’entrer le code reçu par email.");
+      return;
+    }
+
+    setError(null);
+    setLoading(true);
+    try {
+      const res = await (signIn as any).attemptFirstFactor({
+        strategy: "email_code",
+        code,
+      });
+
+      if (res?.status === "complete" && res?.createdSessionId) {
+        await setActive?.({ session: res.createdSessionId });
+        window.location.assign(redirectAfterAuth);
+        return;
+      }
+
+      setError("Connexion incomplète. Réessaie.");
+      setLoading(false);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "";
+      setError(message || "Code invalide.");
       setLoading(false);
     }
   }
@@ -120,40 +152,79 @@ export default function LoginForm() {
           <div className="h-px flex-1 bg-slate-200" />
         </div>
 
-        <form onSubmit={handleEmailLogin} className="space-y-5">
-        <div>
-          <label className="block text-sm font-medium text-slate-700" htmlFor="email">
-            E-mail
-          </label>
-          <input
-            id="email"
-            type="email"
-            inputMode="email"
-            autoComplete="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            disabled={disabled}
-            className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:ring-4 focus:ring-slate-200 disabled:cursor-not-allowed disabled:opacity-60"
-            placeholder="toi@exemple.com"
-          />
-        </div>
+        {!sent ? (
+          <form onSubmit={handleEmailLogin} className="space-y-5">
+            <div>
+              <label className="block text-sm font-medium text-slate-700" htmlFor="email">
+                E-mail
+              </label>
+              <input
+                id="email"
+                type="email"
+                inputMode="email"
+                autoComplete="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                disabled={disabled}
+                className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:ring-4 focus:ring-slate-200 disabled:cursor-not-allowed disabled:opacity-60"
+                placeholder="toi@exemple.com"
+              />
+            </div>
 
-        <button
-          type="submit"
-          disabled={disabled}
-          className="inline-flex w-full items-center justify-center rounded-full bg-slate-900 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          {loading ? "Envoi…" : "Se connecter par e-mail"}
-        </button>
+            <button
+              type="submit"
+              disabled={disabled}
+              className="inline-flex w-full items-center justify-center rounded-full bg-slate-900 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {loading ? "Envoi…" : "Se connecter par e-mail"}
+            </button>
 
-        {sent ? (
-          <p className="text-sm text-slate-600">Lien envoyé. Vérifie ta boîte mail pour continuer.</p>
-        ) : null}
+            {error ? <p className="text-sm text-rose-600">{error}</p> : null}
+          </form>
+        ) : (
+          <form onSubmit={handleEmailCodeVerify} className="space-y-5">
+            <div>
+              <label className="block text-sm font-medium text-slate-700" htmlFor="email-code">
+                Code reçu par e-mail
+              </label>
+              <input
+                id="email-code"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                value={emailCode}
+                onChange={(e) => setEmailCode(e.target.value)}
+                disabled={disabled}
+                className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:ring-4 focus:ring-slate-200 disabled:cursor-not-allowed disabled:opacity-60"
+                placeholder="123456"
+              />
+              <p className="mt-2 text-sm text-slate-600">Un code vient d’être envoyé. Vérifie ta boîte mail (et les spams).</p>
+            </div>
 
-        {error ? (
-          <p className="text-sm text-rose-600">{error}</p>
-        ) : null}
-        </form>
+            <button
+              type="submit"
+              disabled={disabled}
+              className="inline-flex w-full items-center justify-center rounded-full bg-slate-900 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {loading ? "Vérification…" : "Valider le code"}
+            </button>
+
+            <button
+              type="button"
+              disabled={disabled}
+              onClick={() => {
+                if (loading) return;
+                setSent(false);
+                setEmailCode("");
+                setError(null);
+              }}
+              className="inline-flex w-full items-center justify-center rounded-full border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              Changer d’email
+            </button>
+
+            {error ? <p className="text-sm text-rose-600">{error}</p> : null}
+          </form>
+        )}
       </div>
 
       <p className="mt-6 text-xs text-slate-500">
