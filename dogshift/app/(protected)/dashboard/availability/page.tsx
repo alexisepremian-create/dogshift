@@ -134,7 +134,7 @@ export default function AvailabilityStudioPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [savedPing, setSavedPing] = useState<string | null>(null);
-  const [toast, setToast] = useState<ToastState>(null);
+  const [topError, setTopError] = useState<string | null>(null);
 
   const [bookingInfoOpen, setBookingInfoOpen] = useState(false);
   const bookingInfoWrapRef = useRef<HTMLDivElement | null>(null);
@@ -206,6 +206,7 @@ export default function AvailabilityStudioPage() {
     if (!sitterId) return;
     setLoading(true);
     setError(null);
+    setTopError(null);
     try {
       setConfigByService((prev) => {
         const next = { ...prev };
@@ -222,11 +223,10 @@ export default function AvailabilityStudioPage() {
       const payload = (await res.json().catch(() => null)) as any;
       if (!res.ok || !payload?.ok) throw new Error(payload?.error ?? "SAVE_ERROR");
 
-      showToast({ tone: "ok", message: enabled ? "Service activé" : "Service désactivé" });
       await refetchAll();
     } catch (e) {
       const code = e instanceof Error ? e.message : "SAVE_ERROR";
-      showToast({ tone: "error", message: errorMessageFr(code) });
+      if (code === "PRICING_REQUIRED") setTopError(errorMessageFr(code));
       await refetchAll();
       setError(e instanceof Error ? e.message : "SAVE_ERROR");
     } finally {
@@ -297,11 +297,6 @@ export default function AvailabilityStudioPage() {
     }
 
     return;
-  }
-
-  function showToast(next: NonNullable<ToastState>) {
-    setToast(next);
-    setTimeout(() => setToast(null), 2200);
   }
 
   const bookableExceptionDatesByService = useMemo(() => {
@@ -527,6 +522,16 @@ export default function AvailabilityStudioPage() {
             </span>
           ) : null}
 
+      {topError ? (
+        <div className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 p-4">
+          {topError.split("\n").map((line, i) => (
+            <p key={`toperr-${i}`} className={i === 0 ? "text-sm font-semibold text-rose-900" : "mt-1 text-sm text-rose-900/80"}>
+              {line}
+            </p>
+          ))}
+        </div>
+      ) : null}
+
       {exceptionDrawerOpen ? (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4"
@@ -599,11 +604,9 @@ export default function AvailabilityStudioPage() {
                             });
                             const payload = (await res.json().catch(() => null)) as any;
                             if (!res.ok || !payload?.ok) throw new Error(payload?.error ?? "DELETE_ERROR");
-                            showToast({ tone: "ok", message: "Disponibilité supprimée" });
                             await refetchAll();
                           } catch (err) {
                             setExceptionError(err instanceof Error ? err.message : "DELETE_ERROR");
-                            showToast({ tone: "error", message: "Impossible de supprimer" });
                           } finally {
                             setExceptionSaving(false);
                           }
@@ -860,11 +863,9 @@ export default function AvailabilityStudioPage() {
                       allDay: exceptionAllDay,
                       ranges: nextRanges,
                     });
-                    showToast({ tone: "ok", message: "Disponibilité enregistrée" });
                     setExceptionDrawerOpen(false);
                   } catch (err) {
                     setExceptionError(err instanceof Error ? err.message : "SAVE_ERROR");
-                    showToast({ tone: "error", message: "Impossible d’enregistrer" });
                   } finally {
                     setExceptionSaving(false);
                   }
@@ -879,19 +880,6 @@ export default function AvailabilityStudioPage() {
         </div>
       ) : null}
 
-      {toast ? (
-        <div
-          className={
-            toast.tone === "ok"
-              ? "fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-full bg-emerald-600 px-4 py-2 text-xs font-semibold text-white"
-              : "fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-full bg-rose-600 px-4 py-2 text-xs font-semibold text-white"
-          }
-          role="status"
-          aria-live="polite"
-        >
-          {toast.message}
-        </div>
-      ) : null}
         </div>
       </div>
 
