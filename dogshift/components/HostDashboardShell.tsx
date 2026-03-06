@@ -13,8 +13,8 @@ import { useHostDashboardNavItems } from "@/components/dashboardNavItems";
 
 export default function HostDashboardShell({ children }: { children: React.ReactNode }) {
   const host = useHostUser();
-  const clerk = useClerk();
   const router = useRouter();
+  useClerk();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { items } = useHostDashboardNavItems();
@@ -45,21 +45,7 @@ export default function HostDashboardShell({ children }: { children: React.React
         moreLabel="Plus"
         moreIcon={<MoreHorizontal className="h-5 w-5" aria-hidden="true" />}
         onSignOut={() => {
-          (async () => {
-            try {
-              window.localStorage.removeItem("ds_auth_user");
-            } catch {
-              // ignore
-            }
-            try {
-              await clerk.signOut();
-            } finally {
-              router.replace("/login?force=1");
-              setTimeout(() => {
-                window.location.assign("/login?force=1");
-              }, 300);
-            }
-          })();
+          router.replace("/sign-out?redirect=%2Flogin%3Fforce%3D1");
         }}
         signOutLabel="Déconnexion"
       />

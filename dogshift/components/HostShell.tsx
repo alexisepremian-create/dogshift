@@ -9,8 +9,8 @@ import HostTopNav from "@/components/HostTopNav";
 
 export default function HostShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const clerk = useClerk();
-  const router = useRouter();
+  useClerk();
+  useRouter();
   const logoutBtn =
     "inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-900 transition-all duration-200 ease-out hover:bg-slate-50 active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)]";
 
@@ -29,21 +29,7 @@ export default function HostShell({ children }: { children: React.ReactNode }) {
           <button
             type="button"
             onClick={() => {
-              (async () => {
-                try {
-                  window.localStorage.removeItem("ds_auth_user");
-                } catch {
-                  // ignore
-                }
-                try {
-                  await clerk.signOut();
-                } finally {
-                  router.replace("/login?force=1");
-                  setTimeout(() => {
-                    window.location.assign("/login?force=1");
-                  }, 300);
-                }
-              })();
+              window.location.assign("/sign-out?redirect=%2Flogin%3Fforce%3D1");
             }}
             className={logoutBtn}
           >

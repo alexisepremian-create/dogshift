@@ -29,20 +29,7 @@ export default function SiteHeader() {
   const signOutRedirectUrl = "/login?force=1";
 
   async function handleSignOut() {
-    try {
-      window.localStorage.removeItem("ds_auth_user");
-    } catch {
-      // ignore
-    }
-
-    try {
-      await clerk.signOut();
-    } finally {
-      router.replace(signOutRedirectUrl);
-      setTimeout(() => {
-        window.location.assign(signOutRedirectUrl);
-      }, 300);
-    }
+    window.location.assign(`/sign-out?redirect=${encodeURIComponent(signOutRedirectUrl)}`);
   }
 
   const menuRef = useRef<HTMLDivElement | null>(null);
