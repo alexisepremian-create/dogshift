@@ -135,12 +135,15 @@ export default function AvailabilityStudioPage() {
 
   const [exceptionDrawerOpen, setExceptionDrawerOpen] = useState(false);
   const [exceptionDate, setExceptionDate] = useState<string>("");
+  const [exceptionService, setExceptionService] = useState<ServiceTypeApi>("PROMENADE");
   const [exceptionStatus, setExceptionStatus] = useState<"AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE">("UNAVAILABLE");
   const [exceptionAllDay, setExceptionAllDay] = useState(true);
   const [exceptionRanges, setExceptionRanges] = useState<Array<{ startMin: number; endMin: number }>>([]);
   const [justAddedRangeIdx, setJustAddedRangeIdx] = useState<number | null>(null);
   const [exceptionSaving, setExceptionSaving] = useState(false);
   const [exceptionError, setExceptionError] = useState<string | null>(null);
+
+  const exceptionFormLoadedKeyRef = useRef<string>("");
 
   const exceptionDrawerTitleRef = useRef<HTMLParagraphElement | null>(null);
   const exceptionDrawerRef = useRef<HTMLDivElement | null>(null);
@@ -283,8 +286,8 @@ export default function AvailabilityStudioPage() {
 
   const exceptionsForSelectedDate = useMemo(() => {
     if (!exceptionDate) return [] as ExceptionRow[];
-    return (exceptionsByService[service] ?? []).filter((e) => e.date === exceptionDate);
-  }, [exceptionDate, exceptionsByService, service]);
+    return (exceptionsByService[exceptionService] ?? []).filter((e) => e.date === exceptionDate);
+  }, [exceptionDate, exceptionService, exceptionsByService]);
 
   const exceptionRangesValidation = useMemo(() => {
     if (exceptionAllDay) return { ok: true as const, error: null as string | null };
@@ -301,12 +304,13 @@ export default function AvailabilityStudioPage() {
     if (!exceptionDrawerOpen) return false;
     const snap = JSON.stringify({
       date: exceptionDate,
+      service: exceptionService,
       status: exceptionStatus,
       allDay: exceptionAllDay,
       ranges: exceptionRanges,
     });
     return snap !== exceptionDrawerInitialSnapshotRef.current;
-  }, [exceptionAllDay, exceptionDate, exceptionDrawerOpen, exceptionRanges, exceptionStatus]);
+  }, [exceptionAllDay, exceptionDate, exceptionDrawerOpen, exceptionRanges, exceptionService, exceptionStatus]);
 
   function closeExceptionDrawer() {
     if (exceptionSaving) return;
@@ -320,11 +324,23 @@ export default function AvailabilityStudioPage() {
   function openExceptionDrawer(dateIso: string) {
     exceptionDrawerRestoreFocusRef.current = document.activeElement as HTMLElement | null;
     setExceptionDate(dateIso);
+    setExceptionService("PROMENADE");
     setExceptionError(null);
 
-    const existing = (exceptionsByService[service] ?? []).filter((e) => e.date === dateIso);
+    exceptionFormLoadedKeyRef.current = "";
+    setExceptionDrawerOpen(true);
+  }
+
+  useEffect(() => {
+    if (!exceptionDrawerOpen) return;
+    if (!exceptionDate) return;
+
+    const key = `${exceptionDate}|${exceptionService}`;
+    if (exceptionFormLoadedKeyRef.current === key) return;
+    exceptionFormLoadedKeyRef.current = key;
+
+    const existing = (exceptionsByService[exceptionService] ?? []).filter((e) => e.date === exceptionDate);
     if (existing.length) {
-      // 1 exception per date/service: derive the form from the existing set.
       const st = existing[0].status;
       setExceptionStatus(st);
       const isAllDay = existing.length === 1 && existing[0].startMin === 0 && existing[0].endMin === 24 * 60;
@@ -341,16 +357,16 @@ export default function AvailabilityStudioPage() {
     }
 
     exceptionDrawerInitialSnapshotRef.current = JSON.stringify({
-      date: dateIso,
+      date: exceptionDate,
+      service: exceptionService,
       status: existing.length ? existing[0].status : "UNAVAILABLE",
-      allDay: existing.length ? (existing.length === 1 && existing[0].startMin === 0 && existing[0].endMin === 24 * 60) : true,
+      allDay: existing.length ? existing.length === 1 && existing[0].startMin === 0 && existing[0].endMin === 24 * 60 : true,
       ranges:
         existing.length && !(existing.length === 1 && existing[0].startMin === 0 && existing[0].endMin === 24 * 60)
           ? existing.map((r) => ({ startMin: r.startMin, endMin: r.endMin })).sort((a, b) => a.startMin - b.startMin)
           : [],
     });
-    setExceptionDrawerOpen(true);
-  }
+  }, [exceptionDate, exceptionDrawerOpen, exceptionService, exceptionsByService]);
 
   useEffect(() => {
     if (!exceptionDrawerOpen) {
@@ -563,6 +579,61 @@ export default function AvailabilityStudioPage() {
                 </div>
 
                 <div className="mt-3 grid gap-3">
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                  <p className="text-sm font-semibold text-slate-900">Service</p>
+                  <p className="mt-1 text-xs text-slate-600">Choisis pour quel service tu définis cette réservation.</p>
+
+                  <div className="mt-3 grid grid-cols-3 gap-2 rounded-2xl bg-white p-2 ring-1 ring-slate-200">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setExceptionError(null);
+                        setExceptionService("PROMENADE");
+                      }}
+                      className={
+                        exceptionService === "PROMENADE"
+                          ? "rounded-2xl bg-[var(--dogshift-blue)] px-3 py-2 text-xs font-semibold text-white"
+                          : "rounded-2xl bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                      }
+                      aria-pressed={exceptionService === "PROMENADE"}
+                    >
+                      Promenade
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setExceptionError(null);
+                        setExceptionService("DOGSITTING");
+                      }}
+                      className={
+                        exceptionService === "DOGSITTING"
+                          ? "rounded-2xl bg-[var(--dogshift-blue)] px-3 py-2 text-xs font-semibold text-white"
+                          : "rounded-2xl bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                      }
+                      aria-pressed={exceptionService === "DOGSITTING"}
+                    >
+                      Dogsitting
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setExceptionError(null);
+                        setExceptionService("PENSION");
+                      }}
+                      className={
+                        exceptionService === "PENSION"
+                          ? "rounded-2xl bg-[var(--dogshift-blue)] px-3 py-2 text-xs font-semibold text-white"
+                          : "rounded-2xl bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                      }
+                      aria-pressed={exceptionService === "PENSION"}
+                    >
+                      Pension
+                    </button>
+                  </div>
+                </div>
+
                 <label className="text-xs font-semibold text-slate-700">
                   Statut
                   <select
@@ -740,7 +811,7 @@ export default function AvailabilityStudioPage() {
                       method: "PUT",
                       headers: { "Content-Type": "application/json" },
                       body: JSON.stringify({
-                        serviceType: service,
+                        serviceType: exceptionService,
                         date: exceptionDate,
                         status: exceptionStatus,
                         ranges: normalized.ranges,
@@ -751,6 +822,7 @@ export default function AvailabilityStudioPage() {
                     await refetchAll();
                     exceptionDrawerInitialSnapshotRef.current = JSON.stringify({
                       date: exceptionDate,
+                      service: exceptionService,
                       status: exceptionStatus,
                       allDay: exceptionAllDay,
                       ranges: nextRanges,
