@@ -53,6 +53,8 @@ type PutBody = {
 
 type DeleteBody = {
   id?: unknown;
+  serviceType?: unknown;
+  date?: unknown;
 };
 
 export async function GET(req: NextRequest) {
@@ -247,6 +249,41 @@ export async function DELETE(req: NextRequest) {
     body = (await req.json()) as DeleteBody;
   } catch {
     return NextResponse.json({ ok: false, error: "INVALID_BODY" }, { status: 400 });
+  }
+
+  const serviceType = normalizeService(typeof body.serviceType === "string" ? body.serviceType : "");
+  const dateIso = typeof body.date === "string" ? body.date.trim() : "";
+  if (serviceType && isValidIsoDate(dateIso)) {
+    const deleted = await (prisma as any).availabilityException.deleteMany({
+      where: {
+        sitterId: auth.sitterId,
+        serviceType,
+        date: new Date(`${dateIso}T00:00:00Z`),
+      },
+    });
+
+    try {
+      await writeAvailabilityAuditLog({
+        sitterId: auth.sitterId,
+        actorUserId: auth.dbUserId,
+        action: "DELETE_EXCEPTION",
+        serviceType,
+        dateKey: dateIso,
+        payloadSummary: { deletedCount: typeof deleted?.count === "number" ? deleted.count : null },
+      });
+    } catch {
+      // best-effort
+    }
+
+    console.info("[api][sitters][me][availability-exceptions][DELETE]", {
+      sitterId: auth.sitterId,
+      serviceType,
+      date: dateIso,
+      deletedCount: typeof deleted?.count === "number" ? deleted.count : null,
+      durationMs: Date.now() - startedAt,
+    });
+
+    return NextResponse.json({ ok: true, deletedCount: typeof deleted?.count === "number" ? deleted.count : 0 }, { status: 200, headers: { "cache-control": "no-store" } });
   }
 
   const id = typeof body.id === "string" ? body.id.trim() : "";

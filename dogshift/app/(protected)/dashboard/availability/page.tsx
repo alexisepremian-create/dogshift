@@ -761,16 +761,17 @@ export default function AvailabilityStudioPage() {
     setError(null);
     setTopError(null);
     try {
-      const ids = (["PROMENADE", "DOGSITTING", "PENSION"] as const)
-        .flatMap((svc) => (exceptionsByService[svc] ?? []).map((row) => row.id))
-        .filter((id) => Boolean(id));
+      const serviceDates = (["PROMENADE", "DOGSITTING", "PENSION"] as const).flatMap((svc) => {
+        const dates = Array.from(new Set((exceptionsByService[svc] ?? []).map((row) => row.date).filter((date) => Boolean(date))));
+        return dates.map((date) => ({ svc, date }));
+      });
 
       await Promise.all(
-        ids.map(async (id) => {
+        serviceDates.map(async ({ svc, date }) => {
           const res = await fetch("/api/sitters/me/availability-exceptions", {
             method: "DELETE",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ id }),
+            body: JSON.stringify({ serviceType: svc, date }),
           });
           const payload = (await res.json().catch(() => null)) as any;
           if (!res.ok || !payload?.ok) throw new Error(payload?.error ?? "DELETE_ERROR");
