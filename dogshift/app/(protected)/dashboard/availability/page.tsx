@@ -528,6 +528,11 @@ export default function AvailabilityStudioPage() {
                   {exceptionsForSelectedDate.map((e) => (
                     <div key={e.id} className="flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
                       <div>
+                        <p className="text-xs font-semibold text-slate-700">
+                          <span className="inline-flex items-center rounded-full bg-white px-2 py-0.5 ring-1 ring-slate-200">
+                            {serviceMeta(exceptionService).label}
+                          </span>
+                        </p>
                         <p className="text-xs font-semibold text-slate-500">{statusLabelFr(e.status)}</p>
                         <p className="text-sm font-semibold text-slate-900">
                           {minutesToHHMM(e.startMin)}–{minutesToHHMM(e.endMin)}
@@ -538,6 +543,7 @@ export default function AvailabilityStudioPage() {
                       </div>
                       <button
                         type="button"
+                        title="Supprimer cette disponibilité"
                         onClick={async () => {
                           setExceptionSaving(true);
                           setExceptionError(null);
@@ -559,7 +565,7 @@ export default function AvailabilityStudioPage() {
                           }
                         }}
                         disabled={exceptionSaving}
-                        className="inline-flex h-9 items-center justify-center rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 disabled:opacity-60"
+                        className="inline-flex h-9 items-center justify-center rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 disabled:opacity-60 hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700"
                         aria-label="Supprimer"
                       >
                         🗑️
