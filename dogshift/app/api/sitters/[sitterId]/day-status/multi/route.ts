@@ -87,19 +87,24 @@ export async function GET(
       (prisma as any).serviceConfig.findMany({ where: { sitterId } }),
     ]);
 
-    const exceptionsInRange = (allExceptions ?? []).filter((e: any) => {
-      const v = e?.date;
-      if (!v) return false;
-      const key = v instanceof Date ? toZurichIsoDate(v) : typeof v === "string" ? v.slice(0, 10) : "";
-      if (!key) return false;
-      return key >= from && key <= to;
-    });
+    const services = ["PROMENADE", "DOGSITTING", "PENSION"] as const;
+    const exceptionsInRange: any[] = [];
+    const rulesInRange: any[] = [];
+
+    for (const svc of services) {
+      const [rulesSvc, excSvc] = await Promise.all([
+        (prisma as any).availabilityRule.findMany({ where: { sitterId, serviceType: svc } }),
+        (prisma as any).availabilityException.findMany({ where: { sitterId, serviceType: svc, date: { gte: fromStart, lte: toEnd } } }),
+      ]);
+      if (Array.isArray(rulesSvc)) rulesInRange.push(...rulesSvc);
+      if (Array.isArray(excSvc)) exceptionsInRange.push(...excSvc);
+    }
 
     const computed = computeMultiDayStatusIndexed({
       sitterId,
       dates,
       now: new Date(),
-      allRules: allRules ?? [],
+      allRules: rulesInRange.length ? rulesInRange : (allRules ?? []),
       allExceptions: exceptionsInRange,
       allBookings: allBookings ?? [],
       allConfigs: allConfigs ?? [],
