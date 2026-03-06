@@ -469,7 +469,7 @@ export default function AvailabilityStudioPage() {
 
       {exceptionDrawerOpen ? (
         <div
-          className="fixed inset-0 z-50 flex items-end justify-end bg-slate-900/40 p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4"
           role="dialog"
           aria-modal="true"
           aria-labelledby="exception-drawer-title"
@@ -478,88 +478,91 @@ export default function AvailabilityStudioPage() {
             if (e.target === e.currentTarget) closeExceptionDrawer();
           }}
         >
-          <div ref={exceptionDrawerRef} className="w-full max-w-md rounded-3xl bg-white p-5 shadow-xl">
-            <div className="flex items-center justify-between">
-              <div>
-                <p
-                  id="exception-drawer-title"
-                  ref={exceptionDrawerTitleRef}
-                  tabIndex={-1}
-                  className="text-sm font-semibold text-slate-900"
+          <div ref={exceptionDrawerRef} className="flex w-full max-w-md flex-col overflow-hidden rounded-3xl bg-white shadow-xl max-h-[calc(100vh-2rem)]">
+            <div className="shrink-0 border-b border-slate-200 p-5">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p
+                    id="exception-drawer-title"
+                    ref={exceptionDrawerTitleRef}
+                    tabIndex={-1}
+                    className="text-sm font-semibold text-slate-900"
+                  >
+                    {exceptionsForSelectedDate.length ? "Réservation" : "Ajouter une réservation"}
+                  </p>
+                  <p className="mt-1 text-sm text-slate-600">{formatDateFrCh(exceptionDate)}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => closeExceptionDrawer()}
+                  className="inline-flex h-9 items-center justify-center rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700"
                 >
-                  {exceptionsForSelectedDate.length ? "Réservation" : "Ajouter une réservation"}
-                </p>
-                <p className="mt-1 text-sm text-slate-600">{formatDateFrCh(exceptionDate)}</p>
+                  Fermer
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={() => closeExceptionDrawer()}
-                className="inline-flex h-9 items-center justify-center rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700"
-              >
-                Fermer
-              </button>
+
+              <p id="exception-drawer-desc" className="mt-3 text-xs font-semibold text-slate-500">
+                Cette réservation remplace tes disponibilités habituelles pour cette date.
+              </p>
             </div>
 
-            <p id="exception-drawer-desc" className="mt-3 text-xs font-semibold text-slate-500">
-              Cette réservation remplace tes disponibilités habituelles pour cette date.
-            </p>
-
-            {exceptionsForSelectedDate.length ? (
-              <div className="mt-4 grid gap-2">
-                {exceptionsForSelectedDate.map((e) => (
-                  <div key={e.id} className="flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                    <div>
-                      <p className="text-xs font-semibold text-slate-500">{statusLabelFr(e.status)}</p>
-                      <p className="text-sm font-semibold text-slate-900">
-                        {minutesToHHMM(e.startMin)}–{minutesToHHMM(e.endMin)}
-                      </p>
-                      <p className="mt-1 text-xs font-semibold text-slate-500">
-                        {e.startMin === 0 && e.endMin === 24 * 60 ? "Toute la journée" : `${minutesToHHMM(e.startMin)}–${minutesToHHMM(e.endMin)}`}
-                      </p>
+            <div className="flex-1 overflow-y-auto p-5">
+              {exceptionsForSelectedDate.length ? (
+                <div className="grid gap-2">
+                  {exceptionsForSelectedDate.map((e) => (
+                    <div key={e.id} className="flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                      <div>
+                        <p className="text-xs font-semibold text-slate-500">{statusLabelFr(e.status)}</p>
+                        <p className="text-sm font-semibold text-slate-900">
+                          {minutesToHHMM(e.startMin)}–{minutesToHHMM(e.endMin)}
+                        </p>
+                        <p className="mt-1 text-xs font-semibold text-slate-500">
+                          {e.startMin === 0 && e.endMin === 24 * 60 ? "Toute la journée" : `${minutesToHHMM(e.startMin)}–${minutesToHHMM(e.endMin)}`}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          setExceptionSaving(true);
+                          setExceptionError(null);
+                          try {
+                            const res = await fetch("/api/sitters/me/availability-exceptions", {
+                              method: "DELETE",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ id: e.id }),
+                            });
+                            const payload = (await res.json().catch(() => null)) as any;
+                            if (!res.ok || !payload?.ok) throw new Error(payload?.error ?? "DELETE_ERROR");
+                            showToast({ tone: "ok", message: "Disponibilité supprimée" });
+                            await refetchAll();
+                          } catch (err) {
+                            setExceptionError(err instanceof Error ? err.message : "DELETE_ERROR");
+                            showToast({ tone: "error", message: "Impossible de supprimer" });
+                          } finally {
+                            setExceptionSaving(false);
+                          }
+                        }}
+                        disabled={exceptionSaving}
+                        className="inline-flex h-9 items-center justify-center rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 disabled:opacity-60"
+                        aria-label="Supprimer"
+                      >
+                        🗑️
+                      </button>
                     </div>
-                    <button
-                      type="button"
-                      onClick={async () => {
-                        setExceptionSaving(true);
-                        setExceptionError(null);
-                        try {
-                          const res = await fetch("/api/sitters/me/availability-exceptions", {
-                            method: "DELETE",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({ id: e.id }),
-                          });
-                          const payload = (await res.json().catch(() => null)) as any;
-                          if (!res.ok || !payload?.ok) throw new Error(payload?.error ?? "DELETE_ERROR");
-                          showToast({ tone: "ok", message: "Disponibilité supprimée" });
-                          await refetchAll();
-                        } catch (err) {
-                          setExceptionError(err instanceof Error ? err.message : "DELETE_ERROR");
-                          showToast({ tone: "error", message: "Impossible de supprimer" });
-                        } finally {
-                          setExceptionSaving(false);
-                        }
-                      }}
-                      disabled={exceptionSaving}
-                      className="inline-flex h-9 items-center justify-center rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 disabled:opacity-60"
-                      aria-label="Supprimer"
-                    >
-                      🗑️
-                    </button>
-                  </div>
-                ))}
-              </div>
-            ) : null}
+                  ))}
+                </div>
+              ) : null}
 
-            <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-4">
-              <p className="text-sm font-semibold text-slate-900">{exceptionsForSelectedDate.length ? "Modifier" : "Créer"}</p>
+              <div className={`${exceptionsForSelectedDate.length ? "mt-5" : ""} rounded-2xl border border-slate-200 bg-white p-4`}>
+                <p className="text-sm font-semibold text-slate-900">{exceptionsForSelectedDate.length ? "Modifier" : "Créer"}</p>
 
-              <div className="mt-2 rounded-2xl border border-slate-200 bg-slate-50 p-3 text-xs font-semibold text-slate-700">
-                <p>Disponible (acceptation automatique)</p>
-                <p className="mt-1">Sur demande (confirmation requise)</p>
-                <p className="mt-1">Indisponible (non réservable)</p>
-              </div>
+                <div className="mt-2 rounded-2xl border border-slate-200 bg-slate-50 p-3 text-xs font-semibold text-slate-700">
+                  <p>Disponible (acceptation automatique)</p>
+                  <p className="mt-1">Sur demande (confirmation requise)</p>
+                  <p className="mt-1">Indisponible (non réservable)</p>
+                </div>
 
-              <div className="mt-3 grid gap-3">
+                <div className="mt-3 grid gap-3">
                 <label className="text-xs font-semibold text-slate-700">
                   Statut
                   <select
@@ -708,58 +711,62 @@ export default function AvailabilityStudioPage() {
                   <p className="text-sm font-semibold text-rose-700">{exceptionRangesValidation.error}</p>
                 ) : null}
 
-                {exceptionError ? <p className="text-sm font-semibold text-rose-700">{exceptionError}</p> : null}
+                </div>
+              </div>
+            </div>
 
-                <button
-                  type="button"
-                  disabled={exceptionSaving || !exceptionRangesValidation.ok}
-                  onClick={async () => {
-                    setExceptionSaving(true);
-                    setExceptionError(null);
-                    try {
-                      const ranges = exceptionAllDay ? [] : exceptionRanges;
-                      const normalized = normalizeRanges(ranges);
-                      if (!normalized.ok) {
-                        setExceptionError("INVALID_RANGES");
-                        showToast({ tone: "error", message: "Plages invalides" });
-                        return;
-                      }
+            <div className="shrink-0 border-t border-slate-200 bg-white p-5">
+              {exceptionError ? <p className="mb-3 text-sm font-semibold text-rose-700">{exceptionError}</p> : null}
 
-                      const nextRanges = exceptionAllDay ? [] : normalized.ranges;
-                      setExceptionRanges(nextRanges);
+              <button
+                type="button"
+                disabled={exceptionSaving || !exceptionRangesValidation.ok}
+                onClick={async () => {
+                  setExceptionSaving(true);
+                  setExceptionError(null);
+                  try {
+                    const ranges = exceptionAllDay ? [] : exceptionRanges;
+                    const normalized = normalizeRanges(ranges);
+                    if (!normalized.ok) {
+                      setExceptionError("INVALID_RANGES");
+                      showToast({ tone: "error", message: "Plages invalides" });
+                      return;
+                    }
 
-                      const res = await fetch("/api/sitters/me/availability-exceptions", {
-                        method: "PUT",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({
-                          serviceType: service,
-                          date: exceptionDate,
-                          status: exceptionStatus,
-                          ranges: normalized.ranges,
-                        }),
-                      });
-                      const payload = (await res.json().catch(() => null)) as any;
-                      if (!res.ok || !payload?.ok) throw new Error(payload?.error ?? "SAVE_ERROR");
-                      await refetchAll();
-                      exceptionDrawerInitialSnapshotRef.current = JSON.stringify({
+                    const nextRanges = exceptionAllDay ? [] : normalized.ranges;
+                    setExceptionRanges(nextRanges);
+
+                    const res = await fetch("/api/sitters/me/availability-exceptions", {
+                      method: "PUT",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({
+                        serviceType: service,
                         date: exceptionDate,
                         status: exceptionStatus,
-                        allDay: exceptionAllDay,
-                        ranges: nextRanges,
-                      });
-                      showToast({ tone: "ok", message: "Disponibilité enregistrée" });
-                    } catch (err) {
-                      setExceptionError(err instanceof Error ? err.message : "SAVE_ERROR");
-                      showToast({ tone: "error", message: "Impossible d’enregistrer" });
-                    } finally {
-                      setExceptionSaving(false);
-                    }
-                  }}
-                  className="inline-flex h-11 w-full items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-6 text-sm font-semibold text-white disabled:opacity-60"
-                >
-                  {exceptionSaving ? "Enregistrement…" : "Enregistrer"}
-                </button>
-              </div>
+                        ranges: normalized.ranges,
+                      }),
+                    });
+                    const payload = (await res.json().catch(() => null)) as any;
+                    if (!res.ok || !payload?.ok) throw new Error(payload?.error ?? "SAVE_ERROR");
+                    await refetchAll();
+                    exceptionDrawerInitialSnapshotRef.current = JSON.stringify({
+                      date: exceptionDate,
+                      status: exceptionStatus,
+                      allDay: exceptionAllDay,
+                      ranges: nextRanges,
+                    });
+                    showToast({ tone: "ok", message: "Disponibilité enregistrée" });
+                  } catch (err) {
+                    setExceptionError(err instanceof Error ? err.message : "SAVE_ERROR");
+                    showToast({ tone: "error", message: "Impossible d’enregistrer" });
+                  } finally {
+                    setExceptionSaving(false);
+                  }
+                }}
+                className="inline-flex h-11 w-full items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-6 text-sm font-semibold text-white disabled:opacity-60"
+              >
+                {exceptionSaving ? "Enregistrement…" : "Enregistrer"}
+              </button>
             </div>
           </div>
         </div>
