@@ -876,6 +876,18 @@ function SitterPublicProfileContent({
   const [monthRetryKey, setMonthRetryKey] = useState(0);
 
   const nextAvail = useMemo(() => {
+    let todayIso = "";
+    try {
+      todayIso = new Intl.DateTimeFormat("en-CA", {
+        timeZone: "Europe/Zurich",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      }).format(new Date());
+    } catch {
+      todayIso = new Date().toISOString().slice(0, 10);
+    }
+
     const rows = Array.isArray(monthDays) ? monthDays : [];
     const serviceKey =
       slotsServiceType === "PROMENADE"
@@ -884,16 +896,17 @@ function SitterPublicProfileContent({
           ? "dogsittingStatus"
           : "pensionStatus";
 
-    const out: string[] = [];
+    const candidates: string[] = [];
     for (const d of rows) {
       if (!d || typeof d.date !== "string") continue;
+      if (todayIso && d.date < todayIso) continue;
       const s = (d as any)[serviceKey] as "AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE" | undefined;
       if (s === "AVAILABLE" || s === "ON_REQUEST") {
-        out.push(d.date);
-        if (out.length >= 3) break;
+        candidates.push(d.date);
       }
     }
-    return out;
+    candidates.sort();
+    return candidates.slice(0, 3);
   }, [monthDays, slotsServiceType]);
 
   const serviceUi = useMemo(() => {
