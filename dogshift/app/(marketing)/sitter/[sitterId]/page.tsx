@@ -871,43 +871,94 @@ function SitterPublicProfileContent({
       pensionStatus: "AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE";
     }>
   >([]);
+
+  const [nextDays, setNextDays] = useState<
+    Array<{
+      date: string;
+      promenadeStatus: "AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE";
+      dogsittingStatus: "AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE";
+      pensionStatus: "AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE";
+    }>
+  >([]);
+  const [nextDaysLoading, setNextDaysLoading] = useState(false);
+  const [nextDaysError, setNextDaysError] = useState<string | null>(null);
+  const [nextDaysRetryKey, setNextDaysRetryKey] = useState(0);
   const [monthLoading, setMonthLoading] = useState(false);
   const [monthError, setMonthError] = useState<string | null>(null);
   const [monthRetryKey, setMonthRetryKey] = useState(0);
 
+  useEffect(() => {
+    if (!id) return;
+    let cancelled = false;
+    const controller = new AbortController();
+    void (async () => {
+      setNextDaysLoading(true);
+      setNextDaysError(null);
+      try {
+        const tz = "Europe/Zurich";
+        const todayIso = new Intl.DateTimeFormat("en-CA", {
+          timeZone: tz,
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+        }).format(new Date());
+        const start = new Date(`${todayIso}T12:00:00Z`);
+        const end = new Date(start.getTime() + 59 * 24 * 60 * 60 * 1000);
+        const toIso = new Intl.DateTimeFormat("en-CA", {
+          timeZone: tz,
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+        }).format(end);
+
+        const qp = new URLSearchParams();
+        qp.set("from", todayIso);
+        qp.set("to", toIso);
+        if (dbg) qp.set("dbg", "1");
+
+        const res = await fetch(
+          `/api/sitters/${encodeURIComponent(id)}/day-status/multi?${qp.toString()}`,
+          { method: "GET", cache: "no-store", signal: controller.signal }
+        );
+        const payload = (await res.json().catch(() => null)) as any;
+        if (cancelled) return;
+        if (!res.ok || !payload?.ok || !Array.isArray(payload?.days)) {
+          const err = payload?.error;
+          setNextDaysError(typeof err === "string" ? err : "DAY_STATUS_ERROR");
+          setNextDays([]);
+          return;
+        }
+
+        const rows = payload.days.filter((d: any) => d && typeof d.date === "string");
+        setNextDays(rows);
+      } catch (error) {
+        if (cancelled) return;
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        setNextDaysError("DAY_STATUS_NETWORK_ERROR");
+        setNextDays([]);
+      } finally {
+        if (cancelled) return;
+        setNextDaysLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
+  }, [dbg, id, nextDaysRetryKey]);
+
   const nextAvail = useMemo(() => {
-    let todayIso = "";
-    try {
-      todayIso = new Intl.DateTimeFormat("en-CA", {
-        timeZone: "Europe/Zurich",
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-      }).format(new Date());
-    } catch {
-      todayIso = new Date().toISOString().slice(0, 10);
-    }
-
-    const rows = Array.isArray(monthDays) ? monthDays : [];
-    const serviceKey =
-      slotsServiceType === "PROMENADE"
-        ? "promenadeStatus"
-        : slotsServiceType === "DOGSITTING"
-          ? "dogsittingStatus"
-          : "pensionStatus";
-
+    const rows = Array.isArray(nextDays) ? nextDays : [];
     const candidates: string[] = [];
     for (const d of rows) {
       if (!d || typeof d.date !== "string") continue;
-      if (todayIso && d.date < todayIso) continue;
-      const s = (d as any)[serviceKey] as "AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE" | undefined;
-      if (s === "AVAILABLE" || s === "ON_REQUEST") {
-        candidates.push(d.date);
-      }
+      const anyAvailable = d.promenadeStatus === "AVAILABLE" || d.dogsittingStatus === "AVAILABLE" || d.pensionStatus === "AVAILABLE";
+      const anyOnRequest = d.promenadeStatus === "ON_REQUEST" || d.dogsittingStatus === "ON_REQUEST" || d.pensionStatus === "ON_REQUEST";
+      if (anyAvailable || anyOnRequest) candidates.push(d.date);
     }
     candidates.sort();
     return candidates.slice(0, 3);
-  }, [monthDays, slotsServiceType]);
+  }, [nextDays]);
 
   const serviceUi = useMemo(() => {
     const byKey = {
