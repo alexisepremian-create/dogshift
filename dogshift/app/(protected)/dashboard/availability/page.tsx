@@ -83,6 +83,12 @@ function serviceDotTone(svc: ServiceTypeApi) {
   return "bg-emerald-400";
 }
 
+function serviceRingTone(svc: ServiceTypeApi) {
+  if (svc === "PROMENADE") return "ring-sky-200 bg-sky-50 text-sky-900";
+  if (svc === "DOGSITTING") return "ring-violet-200 bg-violet-50 text-violet-900";
+  return "ring-emerald-200 bg-emerald-50 text-emerald-900";
+}
+
 function pricingKeyForService(svc: ServiceTypeApi): PricingServiceKey {
   if (svc === "PROMENADE") return "Promenade";
   if (svc === "DOGSITTING") return "Garde";
@@ -746,6 +752,39 @@ export default function AvailabilityStudioPage() {
     }
   }
 
+  async function resetCurrentMonth() {
+    if (!sitterId) return;
+    const confirmed = window.confirm("Réinitialiser ce mois ? Toutes les exceptions du mois affiché seront supprimées.");
+    if (!confirmed) return;
+
+    setLoading(true);
+    setError(null);
+    setTopError(null);
+    try {
+      const ids = (["PROMENADE", "DOGSITTING", "PENSION"] as const)
+        .flatMap((svc) => (exceptionsByService[svc] ?? []).map((row) => row.id))
+        .filter((id) => Boolean(id));
+
+      await Promise.all(
+        ids.map(async (id) => {
+          const res = await fetch("/api/sitters/me/availability-exceptions", {
+            method: "DELETE",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id }),
+          });
+          const payload = (await res.json().catch(() => null)) as any;
+          if (!res.ok || !payload?.ok) throw new Error(payload?.error ?? "DELETE_ERROR");
+        })
+      );
+
+      await refetchAll();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "DELETE_ERROR");
+    } finally {
+      setLoading(false);
+    }
+  }
+
   const exceptionRangesValidation = useMemo(() => {
     if (exceptionAllDay) return { ok: true as const, error: null as string | null };
     if (!exceptionRanges.length) return { ok: false as const, error: "Ajoute au moins une plage." };
@@ -1398,7 +1437,7 @@ export default function AvailabilityStudioPage() {
                   key={svc}
                   className={
                     isActiveCard
-                      ? "rounded-3xl border-2 border-[var(--dogshift-blue)] bg-white p-4 text-left shadow-[0_8px_24px_-20px_rgba(37,99,235,0.45)]"
+                      ? "rounded-3xl border border-slate-200 bg-white p-4 text-left shadow-[0_10px_28px_-22px_rgba(15,23,42,0.25)] ring-2 ring-[color-mix(in_srgb,var(--dogshift-blue),white_65%)]"
                       : "rounded-3xl border border-slate-200 bg-white p-4 text-left"
                   }
                 >
@@ -1632,10 +1671,18 @@ export default function AvailabilityStudioPage() {
         <div className="rounded-3xl border border-slate-200 bg-white p-5">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-semibold text-slate-900">Exceptions</p>
-              <p className="mt-1 text-sm text-slate-600">Exceptions futures sur le mois courant.</p>
+              <p className="text-sm font-semibold text-slate-900">Agenda des disponibilités</p>
             </div>
             <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  void resetCurrentMonth();
+                }}
+                className="inline-flex h-9 items-center justify-center rounded-xl border border-rose-200 bg-white px-3 text-xs font-semibold text-rose-700"
+              >
+                Réinitialiser ce mois
+              </button>
               <button
                 type="button"
                 onClick={() => setMonthCursor((d) => new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() - 1, 1, 12, 0, 0, 0)))}
@@ -1674,25 +1721,12 @@ export default function AvailabilityStudioPage() {
               {Array.from({ length: meta.daysInMonth }).map((_, i) => {
                 const day = i + 1;
                 const dateIso = `${String(meta.year).padStart(4, "0")}-${String(meta.month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-                const tone = focusDayTone(dateIso);
+                const status = effectiveStatusForDate(dateIso, availabilityTab);
+                const tone =
+                  status === "AVAILABLE" || status === "ON_REQUEST"
+                    ? serviceRingTone(availabilityTab)
+                    : "bg-slate-100 text-slate-500 ring-slate-200";
                 const isPast = dateIso < todayKeyZurich;
-
-                const promenadeEnabled = configByService.PROMENADE?.enabled ?? true;
-                const dogsittingEnabled = configByService.DOGSITTING?.enabled ?? true;
-                const pensionEnabled = configByService.PENSION?.enabled ?? true;
-
-                const indicators: Array<{ key: string; type: "service"; svc: ServiceTypeApi }> = [];
-                if (promenadeEnabled && bookableDatesByService.PROMENADE.has(dateIso)) {
-                  indicators.push({ key: "PROMENADE", type: "service", svc: "PROMENADE" });
-                }
-                if (dogsittingEnabled && bookableDatesByService.DOGSITTING.has(dateIso)) {
-                  indicators.push({ key: "DOGSITTING", type: "service", svc: "DOGSITTING" });
-                }
-                if (pensionEnabled && bookableDatesByService.PENSION.has(dateIso)) {
-                  indicators.push({ key: "PENSION", type: "service", svc: "PENSION" });
-                }
-                const visibleIndicators = indicators.slice(0, 3);
-                const hasOverflow = indicators.length > visibleIndicators.length;
 
                 return (
                   <button
@@ -1714,20 +1748,13 @@ export default function AvailabilityStudioPage() {
                       <span className="text-sm font-semibold leading-none text-slate-900">{day}</span>
                     </div>
 
-                    {visibleIndicators.length ? (
-                      <div className="flex items-center justify-center gap-1">
-                        {visibleIndicators.map((ind) => {
-                          return <span key={ind.key} className={`h-2 w-2 rounded-full ${serviceDotTone(ind.svc)}`} aria-hidden="true" />;
-                        })}
-                        {hasOverflow ? (
-                          <span className="-mt-[1px] text-[10px] font-bold leading-none text-slate-400" aria-hidden="true">
-                            …
-                          </span>
-                        ) : null}
-                      </div>
-                    ) : (
-                      <div />
-                    )}
+                    <div className="flex items-center justify-center gap-1">
+                      {status === "AVAILABLE" || status === "ON_REQUEST" ? (
+                        <span className={`h-2 w-2 rounded-full ${serviceDotTone(availabilityTab)}`} aria-hidden="true" />
+                      ) : (
+                        <span className="text-[10px] font-semibold leading-none text-slate-400">—</span>
+                      )}
+                    </div>
                   </button>
                 );
               })}
@@ -1748,6 +1775,33 @@ export default function AvailabilityStudioPage() {
                 >
                   Fermer
                 </button>
+              </div>
+
+              <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                {(["PROMENADE", "DOGSITTING", "PENSION"] as const).map((svc) => {
+                  const active = exceptionService === svc;
+                  const disabled = (configByService[svc]?.enabled ?? true) === false || Boolean(pricingErrorByService[svc]);
+                  return (
+                    <button
+                      key={`inline-service-${svc}`}
+                      type="button"
+                      disabled={disabled}
+                      onClick={() => {
+                        setExceptionService(svc);
+                        const existing = (exceptionsByService[svc] ?? []).filter((e) => e.date === exceptionDate).sort((a, b) => a.startMin - b.startMin);
+                        setExceptionStatus(existing[0]?.status ?? effectiveStatusForDate(exceptionDate, svc));
+                        setExceptionError(null);
+                      }}
+                      className={
+                        active
+                          ? "rounded-2xl bg-slate-900 px-3 py-2 text-xs font-semibold text-white disabled:opacity-45"
+                          : "rounded-2xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 disabled:cursor-not-allowed disabled:opacity-45"
+                      }
+                    >
+                      {serviceMeta(svc).label}
+                    </button>
+                  );
+                })}
               </div>
 
               <div className="mt-3 grid gap-2 sm:grid-cols-3">
