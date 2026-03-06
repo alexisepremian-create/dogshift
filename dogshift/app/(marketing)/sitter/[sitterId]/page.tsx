@@ -1157,6 +1157,21 @@ function SitterPublicProfileContent({
                 </div>
               </div>
 
+              <div className="mt-3 grid gap-2 text-xs text-slate-700 sm:grid-cols-3">
+                <div className="flex items-center gap-2">
+                  <span className="h-2.5 w-2.5 rounded-full bg-sky-400" aria-hidden="true" />
+                  <span>Promenade</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="h-2.5 w-2.5 rounded-full bg-violet-400" aria-hidden="true" />
+                  <span>Dogsitting</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="h-2.5 w-2.5 rounded-full bg-emerald-400" aria-hidden="true" />
+                  <span>Pension</span>
+                </div>
+              </div>
+
               <div className="mt-3 grid gap-1 text-xs text-slate-600">
                 <p>La couleur du jour correspond au service sélectionné.</p>
                 <p>Les 3 pastilles indiquent le statut de chaque service ce jour-là.</p>
@@ -1181,31 +1196,29 @@ function SitterPublicProfileContent({
               {Array.from({ length: monthMeta.daysInMonth }).map((_, i) => {
                 const day = i + 1;
                 const dateIso = `${String(monthMeta.year).padStart(4, "0")}-${String(monthMeta.month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-                const row = monthDaysByDate.get(dateIso) ?? {
-                  promenadeStatus: "UNAVAILABLE" as const,
-                  dogsittingStatus: "UNAVAILABLE" as const,
-                  pensionStatus: "UNAVAILABLE" as const,
-                };
+                const row = monthDaysByDate.get(dateIso);
 
                 const cellTone =
-                  slotsServiceType === "PROMENADE"
-                    ? row.promenadeStatus
-                    : slotsServiceType === "DOGSITTING"
-                      ? row.dogsittingStatus
-                      : row.pensionStatus;
+                  row
+                    ? slotsServiceType === "PROMENADE"
+                      ? row.promenadeStatus
+                      : slotsServiceType === "DOGSITTING"
+                        ? row.dogsittingStatus
+                        : row.pensionStatus
+                    : "UNAVAILABLE";
 
                 const tone =
-                  cellTone === "AVAILABLE"
+                  row && cellTone === "AVAILABLE"
                     ? "bg-emerald-50 text-emerald-900 ring-emerald-200"
-                    : cellTone === "ON_REQUEST"
+                    : row && cellTone === "ON_REQUEST"
                       ? "bg-amber-50 text-amber-900 ring-amber-200"
                       : "bg-slate-100 text-slate-500 ring-slate-200";
 
                 const ariaLabel =
                   `${dateIso} — ` +
-                  `Promenade: ${serviceUi.statusLabel(row.promenadeStatus)}; ` +
-                  `Dogsitting: ${serviceUi.statusLabel(row.dogsittingStatus)}; ` +
-                  `Pension: ${serviceUi.statusLabel(row.pensionStatus)}`;
+                  `Promenade: ${serviceUi.statusLabel(row?.promenadeStatus ?? "UNAVAILABLE")}; ` +
+                  `Dogsitting: ${serviceUi.statusLabel(row?.dogsittingStatus ?? "UNAVAILABLE")}; ` +
+                  `Pension: ${serviceUi.statusLabel(row?.pensionStatus ?? "UNAVAILABLE")}`;
 
                 const focusRing =
                   slotsServiceType === "PROMENADE"
@@ -1214,9 +1227,9 @@ function SitterPublicProfileContent({
                       ? "ring-[2px] ring-indigo-500/30"
                       : "ring-[2px] ring-fuchsia-500/30";
 
-                const showPromenade = row.promenadeStatus === "AVAILABLE" || row.promenadeStatus === "ON_REQUEST";
-                const showDogsitting = row.dogsittingStatus === "AVAILABLE" || row.dogsittingStatus === "ON_REQUEST";
-                const showPension = row.pensionStatus === "AVAILABLE" || row.pensionStatus === "ON_REQUEST";
+                const showPromenade = row ? row.promenadeStatus === "AVAILABLE" || row.promenadeStatus === "ON_REQUEST" : false;
+                const showDogsitting = row ? row.dogsittingStatus === "AVAILABLE" || row.dogsittingStatus === "ON_REQUEST" : false;
+                const showPension = row ? row.pensionStatus === "AVAILABLE" || row.pensionStatus === "ON_REQUEST" : false;
 
                 return (
                   <div key={dateIso} className={`flex h-14 w-full flex-col rounded-2xl ring-1 ${tone} ${focusRing}`}>
