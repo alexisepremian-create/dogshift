@@ -802,11 +802,23 @@ export default function AvailabilityStudioPage() {
                   Fermer
                 </button>
               </div>
-              <div className="mt-4 grid gap-2 text-sm text-slate-700">
-                <p>Réservation minimum 24h à l’avance.</p>
-                <p>15 min bloquées avant + après chaque réservation.</p>
-                <p>Créneaux par intervalles (pas = 30 min).</p>
-                <p>Pension: check-in 08:00–19:00, check-out 08:00–12:00.</p>
+              <div className="mt-4 grid gap-3 text-sm text-slate-700">
+                <div>
+                  <p className="text-sm font-semibold text-slate-900">Fonctionnement des réservations</p>
+                  <ul className="mt-2 grid list-disc gap-2 pl-5">
+                    <li>Les réservations doivent être faites au moins 24h à l’avance.</li>
+                    <li>15 minutes sont bloquées avant et après chaque réservation pour permettre l’organisation.</li>
+                    <li>Les horaires de promenade et de dogsitting sont proposés toutes les 30 minutes.</li>
+                  </ul>
+                </div>
+
+                <div>
+                  <p className="text-sm font-semibold text-slate-900">Pension (garde à domicile)</p>
+                  <ul className="mt-2 grid list-disc gap-2 pl-5">
+                    <li>Arrivée du chien : 08:00 – 19:00</li>
+                    <li>Départ du chien : 08:00 – 12:00</li>
+                  </ul>
+                </div>
               </div>
             </div>
           ) : null}
