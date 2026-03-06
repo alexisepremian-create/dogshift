@@ -448,35 +448,8 @@ function SitterPublicProfileContent({
 
   useEffect(() => {
     if (!id) return;
-    let cancelled = false;
-    void (async () => {
-      setAvailabilityLoaded(false);
-      try {
-        if (dbg) console.log("[ProfileContent] fetch start");
-        const res = await fetch(`/api/sitters/${encodeURIComponent(id)}/availability`, { method: "GET" });
-        const payload = (await res.json().catch(() => null)) as AvailabilityPayload | null;
-        if (cancelled) return;
-        if (!res.ok || !payload?.ok || !Array.isArray(payload.dates)) {
-          setAvailableDates([]);
-          setAvailabilityLoaded(true);
-          return;
-        }
-        if (dbg) console.log("[ProfileContent] fetch success");
-        const rows = payload.dates.filter((d): d is string => typeof d === "string" && d.trim().length > 0);
-        setAvailableDates(rows);
-        setAvailabilityLoaded(true);
-      } catch (error) {
-        if (dbg) console.log("[ProfileContent] fetch error", error);
-        if (cancelled) return;
-        setAvailableDates([]);
-        setAvailabilityLoaded(true);
-      } finally {
-        if (dbg) console.log("[ProfileContent] fetch finally");
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
+    setAvailabilityLoaded(true);
+    setAvailableDates([]);
   }, [id]);
 
   useEffect(() => {
@@ -832,11 +805,6 @@ function SitterPublicProfileContent({
     [currentHostId, profileData]
   );
 
-  const nextAvail = useMemo(() => {
-    const rows = Array.isArray(availableDates) ? availableDates : [];
-    return rows.slice(0, 3);
-  }, [availableDates]);
-
   const isHostPreview = showHostChrome && isPreviewMode;
   const shouldShowFinalizeModal = isHostPreview && hostProfileCompletion < 100;
 
@@ -906,6 +874,27 @@ function SitterPublicProfileContent({
   const [monthLoading, setMonthLoading] = useState(false);
   const [monthError, setMonthError] = useState<string | null>(null);
   const [monthRetryKey, setMonthRetryKey] = useState(0);
+
+  const nextAvail = useMemo(() => {
+    const rows = Array.isArray(monthDays) ? monthDays : [];
+    const serviceKey =
+      slotsServiceType === "PROMENADE"
+        ? "promenadeStatus"
+        : slotsServiceType === "DOGSITTING"
+          ? "dogsittingStatus"
+          : "pensionStatus";
+
+    const out: string[] = [];
+    for (const d of rows) {
+      if (!d || typeof d.date !== "string") continue;
+      const s = (d as any)[serviceKey] as "AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE" | undefined;
+      if (s === "AVAILABLE" || s === "ON_REQUEST") {
+        out.push(d.date);
+        if (out.length >= 3) break;
+      }
+    }
+    return out;
+  }, [monthDays, slotsServiceType]);
 
   const serviceUi = useMemo(() => {
     const byKey = {
@@ -2046,8 +2035,10 @@ function SitterPublicProfileContent({
                         />
 
                         <p className="text-sm font-medium text-slate-900">Prochaines disponibilités</p>
-                        {!availabilityLoaded ? (
+                        {monthLoading ? (
                           <p className="mt-1 text-sm text-slate-600">Chargement…</p>
+                        ) : monthError ? (
+                          <p className="mt-1 text-sm text-rose-700">{monthError}</p>
                         ) : nextAvail.length ? (
                           <div className="mt-2 flex flex-wrap gap-2">
                             {nextAvail.map((d) => (
