@@ -226,9 +226,12 @@ export default function AvailabilityStudioPage() {
       await refetchAll();
     } catch (e) {
       const code = e instanceof Error ? e.message : "SAVE_ERROR";
-      if (code === "PRICING_REQUIRED") setTopError(errorMessageFr(code));
+      if (code === "PRICING_REQUIRED") {
+        setTopError(errorMessageFr(code));
+        setError(null);
+      }
       await refetchAll();
-      setError(e instanceof Error ? e.message : "SAVE_ERROR");
+      if (code !== "PRICING_REQUIRED") setError(e instanceof Error ? e.message : "SAVE_ERROR");
     } finally {
       setLoading(false);
     }
@@ -883,7 +886,7 @@ export default function AvailabilityStudioPage() {
         </div>
       </div>
 
-      {error ? (
+      {error && !topError ? (
         <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4">
           <p className="text-sm font-semibold text-rose-900">{error}</p>
         </div>
