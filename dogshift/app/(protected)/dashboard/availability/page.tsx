@@ -235,7 +235,6 @@ export default function AvailabilityStudioPage() {
       const qp = new URLSearchParams();
       qp.set("from", meta.fromIso);
       qp.set("to", meta.toIso);
-      qp.set("service", service);
       const res = await fetch(`/api/sitters/${encodeURIComponent(sitterId)}/day-status/multi?${qp.toString()}`, { method: "GET", cache: "no-store" });
       const payload = (await res.json().catch(() => null)) as any;
       if (!res.ok || !payload?.ok || !Array.isArray(payload?.days)) throw new Error("DAY_STATUS_ERROR");
@@ -259,14 +258,6 @@ export default function AvailabilityStudioPage() {
     setToast(next);
     setTimeout(() => setToast(null), 2200);
   }
-
-  const exceptionDatesForService = useMemo(() => {
-    const set = new Set<string>();
-    for (const e of exceptionsByService[service] ?? []) {
-      if (e && typeof e.date === "string") set.add(e.date);
-    }
-    return set;
-  }, [exceptionsByService, service]);
 
   const bookableExceptionDatesByService = useMemo(() => {
     const mk = (svc: ServiceTypeApi) => {
@@ -441,7 +432,22 @@ export default function AvailabilityStudioPage() {
   }
 
   const focusDayTone = (dateIso: string) => {
-    const isBookable = bookableExceptionDatesByService[service].has(dateIso);
+    const day = monthStatusByDate.get(dateIso);
+    const promenadeEnabled = configByService.PROMENADE?.enabled ?? true;
+    const dogsittingEnabled = configByService.DOGSITTING?.enabled ?? true;
+    const pensionEnabled = configByService.PENSION?.enabled ?? true;
+
+    const promenadeBookable =
+      promenadeEnabled &&
+      (day?.promenadeStatus === "AVAILABLE" || day?.promenadeStatus === "ON_REQUEST" || bookableExceptionDatesByService.PROMENADE.has(dateIso));
+    const dogsittingBookable =
+      dogsittingEnabled &&
+      (day?.dogsittingStatus === "AVAILABLE" || day?.dogsittingStatus === "ON_REQUEST" || bookableExceptionDatesByService.DOGSITTING.has(dateIso));
+    const pensionBookable =
+      pensionEnabled &&
+      (day?.pensionStatus === "AVAILABLE" || day?.pensionStatus === "ON_REQUEST" || bookableExceptionDatesByService.PENSION.has(dateIso));
+
+    const isBookable = promenadeBookable || dogsittingBookable || pensionBookable;
     return isBookable
       ? "bg-emerald-50 text-emerald-900 ring-emerald-200"
       : "bg-slate-100 text-slate-500 ring-slate-200";
@@ -1092,41 +1098,61 @@ export default function AvailabilityStudioPage() {
           </div>
 
           <div className="mt-4">
-            <p className="text-sm font-semibold text-slate-900">Disponibilités ({serviceMeta(service).label})</p>
-            <div className="mt-2 grid gap-2">
-              {(exceptionsByService[service] ?? []).length ? (
-                (exceptionsByService[service] ?? []).map((e) => (
-                  <div key={e.id} className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3">
-                    <div>
-                      <p className="text-xs font-semibold text-slate-500">{formatDateFrCh(e.date)}</p>
+            <p className="text-sm font-semibold text-slate-900">Disponibilités</p>
+
+            <div className="mt-3 grid gap-4">
+              {(["PROMENADE", "DOGSITTING", "PENSION"] as const).map((svc) => {
+                const rows = (exceptionsByService[svc] ?? [])
+                  .slice()
+                  .sort((a, b) => (a.date === b.date ? a.startMin - b.startMin : a.date.localeCompare(b.date)));
+
+                return (
+                  <div key={`list-${svc}`} className="rounded-2xl border border-slate-200 bg-white p-4">
+                    <div className="flex items-center justify-between">
                       <p className="text-sm font-semibold text-slate-900">
-                        {minutesToHHMM(e.startMin)}–{minutesToHHMM(e.endMin)} — {statusLabelFr(e.status)}
+                        {serviceMeta(svc).icon} {serviceMeta(svc).label}
                       </p>
+                      <span className={`h-2 w-2 rounded-full ${serviceDotTone(svc)}`} aria-hidden="true" />
                     </div>
-                    <button
-                      type="button"
-                      onClick={async () => {
-                        setLoading(true);
-                        try {
-                          await fetch("/api/sitters/me/availability-exceptions", {
-                            method: "DELETE",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({ id: e.id }),
-                          });
-                          await refetchAll();
-                        } finally {
-                          setLoading(false);
-                        }
-                      }}
-                      className="inline-flex h-9 items-center justify-center rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700"
-                    >
-                      Supprimer
-                    </button>
+
+                    <div className="mt-3 grid gap-2">
+                      {rows.length ? (
+                        rows.map((e) => (
+                          <div key={e.id} className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3">
+                            <div>
+                              <p className="text-xs font-semibold text-slate-500">{formatDateFrCh(e.date)}</p>
+                              <p className="text-sm font-semibold text-slate-900">
+                                {minutesToHHMM(e.startMin)}–{minutesToHHMM(e.endMin)} — {statusLabelFr(e.status)}
+                              </p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                setLoading(true);
+                                try {
+                                  await fetch("/api/sitters/me/availability-exceptions", {
+                                    method: "DELETE",
+                                    headers: { "Content-Type": "application/json" },
+                                    body: JSON.stringify({ id: e.id }),
+                                  });
+                                  await refetchAll();
+                                } finally {
+                                  setLoading(false);
+                                }
+                              }}
+                              className="inline-flex h-9 items-center justify-center rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700"
+                            >
+                              Supprimer
+                            </button>
+                          </div>
+                        ))
+                      ) : (
+                        <p className="text-sm text-slate-600">Aucune disponibilité.</p>
+                      )}
+                    </div>
                   </div>
-                ))
-              ) : (
-                <p className="text-sm text-slate-600">Aucune disponibilité.</p>
-              )}
+                );
+              })}
             </div>
           </div>
         </div>
