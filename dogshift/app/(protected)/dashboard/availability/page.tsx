@@ -927,8 +927,8 @@ export default function AvailabilityStudioPage() {
                   <ul className="mt-2 grid list-disc gap-2 pl-5">
                     <li>Tu configures ici tes services et tes exceptions de disponibilité.</li>
                     <li>Les clients peuvent ensuite t’envoyer des demandes de réservation sur tes créneaux disponibles.</li>
-                    <li>Les créneaux de promenade et de dogsitting sont proposés par pas de 30 minutes.</li>
-                    <li>Un tampon de 15 minutes est appliqué avant et après chaque réservation pour te laisser le temps de t’organiser.</li>
+                    <li>Les horaires pour les promenades et le dogsitting sont proposés toutes les 30 minutes.</li>
+                    <li>15 minutes sont automatiquement bloquées avant et après chaque réservation pour te laisser le temps de t’organiser.</li>
                     <li>Les réservations doivent être faites au moins 24h à l’avance.</li>
                   </ul>
                 </div>
