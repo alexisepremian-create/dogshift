@@ -89,6 +89,28 @@ function serviceRingTone(svc: ServiceTypeApi) {
   return "ring-emerald-200 bg-emerald-50 text-emerald-900";
 }
 
+function serviceSolidTone(svc: ServiceTypeApi) {
+  if (svc === "PROMENADE") return "bg-sky-500 text-white border-sky-500";
+  if (svc === "DOGSITTING") return "bg-violet-500 text-white border-violet-500";
+  return "bg-emerald-500 text-white border-emerald-500";
+}
+
+function pricingUnitLabel(svc: ServiceTypeApi) {
+  return svc === "PENSION" ? "CHF / jour" : "CHF / heure";
+}
+
+function pricingRangeLabel(svc: ServiceTypeApi) {
+  const key = pricingKeyForService(svc);
+  const range = TARIFF_RANGES[key];
+  return `${range.min}–${range.max} CHF`;
+}
+
+function statusCellTone(status: "AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE") {
+  if (status === "AVAILABLE") return "bg-emerald-50 text-emerald-900 ring-emerald-200";
+  if (status === "ON_REQUEST") return "bg-amber-50 text-amber-900 ring-amber-200";
+  return "bg-slate-100 text-slate-500 ring-slate-200";
+}
+
 function pricingKeyForService(svc: ServiceTypeApi): PricingServiceKey {
   if (svc === "PROMENADE") return "Promenade";
   if (svc === "DOGSITTING") return "Garde";
@@ -1385,6 +1407,9 @@ export default function AvailabilityStudioPage() {
                 <div>
                   <ul className="mt-2 grid list-disc gap-2 pl-5">
                     <li>Tu configures ici tes services et tes exceptions de disponibilité.</li>
+                    <li>Les tarifs doivent être définis avant de pouvoir activer un service.</li>
+                    <li>Promenade et dogsitting sont facturés en CHF / heure. La pension est facturée en CHF / jour.</li>
+                    <li>En phase pilote, les tarifs doivent respecter la fourchette imposée par la plateforme.</li>
                     <li>Les clients peuvent ensuite t’envoyer des demandes de réservation sur tes créneaux disponibles.</li>
                     <li>Les horaires pour les promenades et le dogsitting sont proposés toutes les 30 minutes.</li>
                     <li>15 minutes sont automatiquement bloquées avant et après chaque réservation pour te laisser le temps de t’organiser.</li>
@@ -1420,6 +1445,17 @@ export default function AvailabilityStudioPage() {
                 <span className={`h-2 w-2 rounded-full ${serviceDotTone("PENSION")}`} aria-hidden="true" />
                 <span>Pension</span>
               </div>
+            </div>
+          </div>
+          <div className="mt-4 rounded-3xl border border-slate-200 bg-slate-50 p-4">
+            <p className="text-sm font-semibold text-slate-900">Encadrement tarifaire – Phase pilote</p>
+            <p className="mt-2 text-sm text-slate-700">
+              Les tarifs sont gérés uniquement ici. Pour activer un service, tu dois d’abord définir un tarif valide dans la fourchette autorisée par la plateforme.
+            </p>
+            <div className="mt-3 grid gap-2 text-xs font-semibold text-slate-600 sm:grid-cols-3">
+              <div className="rounded-2xl border border-slate-200 bg-white px-3 py-2">Promenade : CHF / heure · {pricingRangeLabel("PROMENADE")}</div>
+              <div className="rounded-2xl border border-slate-200 bg-white px-3 py-2">Garde : CHF / heure · {pricingRangeLabel("DOGSITTING")}</div>
+              <div className="rounded-2xl border border-slate-200 bg-white px-3 py-2">Pension : CHF / jour · {pricingRangeLabel("PENSION")}</div>
             </div>
           </div>
           <div className="mt-4 grid gap-3">
@@ -1495,7 +1531,7 @@ export default function AvailabilityStudioPage() {
                         placeholder="ex. 20"
                         className="h-10 min-w-0 flex-1 rounded-xl border border-slate-200 bg-white px-3 text-sm font-medium text-slate-900"
                       />
-                      <span className="text-xs font-semibold text-slate-500">CHF</span>
+                      <span className="text-xs font-semibold text-slate-500">{pricingUnitLabel(svc)}</span>
                       <button
                         type="button"
                         onClick={() => {
@@ -1507,6 +1543,7 @@ export default function AvailabilityStudioPage() {
                         {priceSaving ? "..." : "OK"}
                       </button>
                     </div>
+                    <p className="text-[11px] font-semibold text-slate-500">Fourchette pilote : {pricingRangeLabel(svc)}</p>
                     {priceError ? <p className="text-xs font-medium text-rose-600">{priceError}</p> : null}
                   </div>
 
@@ -1723,10 +1760,7 @@ export default function AvailabilityStudioPage() {
                 const day = i + 1;
                 const dateIso = `${String(meta.year).padStart(4, "0")}-${String(meta.month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
                 const status = effectiveStatusForDate(dateIso, availabilityTab);
-                const tone =
-                  status === "AVAILABLE" || status === "ON_REQUEST"
-                    ? serviceRingTone(availabilityTab)
-                    : "bg-slate-100 text-slate-500 ring-slate-200";
+                const tone = statusCellTone(status);
                 const isPast = dateIso < todayKeyZurich;
 
                 return (
@@ -1795,7 +1829,7 @@ export default function AvailabilityStudioPage() {
                       }}
                       className={
                         active
-                          ? "rounded-2xl bg-slate-900 px-3 py-2 text-xs font-semibold text-white disabled:opacity-45"
+                          ? `rounded-2xl border px-3 py-2 text-xs font-semibold disabled:opacity-45 ${serviceSolidTone(svc)}`
                           : "rounded-2xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 disabled:cursor-not-allowed disabled:opacity-45"
                       }
                     >
