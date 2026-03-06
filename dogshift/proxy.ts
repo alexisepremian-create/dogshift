@@ -64,6 +64,19 @@ export const proxy = clerkMiddleware(async (auth, req) => {
     reqPathname = "";
   }
 
+  const pathname = String(req?.nextUrl?.pathname ?? "");
+
+  const sitePassword = process.env.SITE_PASSWORD;
+  const passwordSet = Boolean(sitePassword);
+  const unlockedCookie = req.cookies.get("site_unlocked")?.value;
+  const lockOn = passwordSet && unlockedCookie !== "1";
+
+  const isApiRoute = pathname.startsWith("/api/");
+  const isNextAsset = pathname.startsWith("/_next/");
+  const isStaticFile = /\.[^/]+$/.test(pathname);
+  const isImagesRoute = pathname.startsWith("/images/");
+  const isFavicon = pathname === "/favicon.ico";
+
   const headerAccept = req.headers.get("accept") || "";
   const isRscLike =
     req.headers.get("rsc") === "1" ||
@@ -72,7 +85,17 @@ export const proxy = clerkMiddleware(async (auth, req) => {
     req.headers.has("next-action") ||
     headerAccept.includes("text/x-component");
 
-  if (isRscLike) {
+  if (
+    isRscLike &&
+    lockOn &&
+    !isApiRoute &&
+    !isFavicon &&
+    !isImagesRoute &&
+    !isLockBypassRoute(req) &&
+    !isPublicSitterRoute(req) &&
+    !isNextAsset &&
+    !isStaticFile
+  ) {
     const next = `${reqPathname || "/"}${reqSearch || ""}`;
     const res = NextResponse.json({ ok: false, locked: true, next }, { status: 401 });
     res.headers.set("x-dogshift-rsc-detected", "1");
@@ -92,13 +115,6 @@ export const proxy = clerkMiddleware(async (auth, req) => {
     return NextResponse.redirect(url, 308);
   }
 
-  const pathname = String(req?.nextUrl?.pathname ?? "");
-
-  const sitePassword = process.env.SITE_PASSWORD;
-  const passwordSet = Boolean(sitePassword);
-  const unlockedCookie = req.cookies.get("site_unlocked")?.value;
-  const lockOn = passwordSet && unlockedCookie !== "1";
-
   const addLockHeaders = (res: NextResponse) => {
     res.headers.set("x-site-password-set", passwordSet ? "1" : "0");
     res.headers.set("x-site-lock-on", lockOn ? "1" : "0");
@@ -109,13 +125,6 @@ export const proxy = clerkMiddleware(async (auth, req) => {
   };
   if (sitePassword) {
     const { search } = req.nextUrl;
-
-    const isNextAsset = pathname.startsWith("/_next/");
-    const isStaticFile = /\.[^/]+$/.test(pathname);
-
-    const isApiRoute = pathname.startsWith("/api/");
-    const isImagesRoute = pathname.startsWith("/images/");
-    const isFavicon = pathname === "/favicon.ico";
 
     if (!isApiRoute && !isFavicon && !isImagesRoute && !isLockBypassRoute(req) && !isPublicSitterRoute(req) && !isNextAsset && !isStaticFile) {
       if (unlockedCookie !== "1") {

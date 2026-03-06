@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { SignOutButton, useAuth, useUser } from "@clerk/nextjs";
+import { SignOutButton, useAuth, useClerk, useUser } from "@clerk/nextjs";
 
 import AuthLayout from "@/components/auth/AuthLayout";
 import LoginForm from "@/components/auth/LoginForm";
@@ -10,6 +10,7 @@ import LoginForm from "@/components/auth/LoginForm";
 export default function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const clerk = useClerk();
   const { isLoaded, isSignedIn } = useUser();
   const { isLoaded: authLoaded, userId: authUserId, isSignedIn: authIsSignedIn } = useAuth();
 
@@ -22,6 +23,10 @@ export default function LoginPage() {
 
   const [serverDebug, setServerDebug] = useState<any>(null);
   const [serverDebugError, setServerDebugError] = useState<string | null>(null);
+
+  const [clientErrors, setClientErrors] = useState<Array<{ ts: number; type: string; message: string }>>([]);
+  const [signOutAttempting, setSignOutAttempting] = useState(false);
+  const [signOutError, setSignOutError] = useState<string | null>(null);
 
   const [switching, setSwitching] = useState(false);
   const [switchError, setSwitchError] = useState<string | null>(null);
@@ -60,7 +65,34 @@ export default function LoginPage() {
         setServerDebug(null);
         setServerDebugError(err instanceof Error ? err.message : "FETCH_FAILED");
       });
-  }, [debugMode, debugToken]);
+  }, [debugMode, debugToken, signOutAttempting]);
+
+  useEffect(() => {
+    if (!debugMode) return;
+
+    const onError = (event: ErrorEvent) => {
+      setClientErrors((prev) => {
+        const next = [{ ts: Date.now(), type: "error", message: event.message || "UNKNOWN_ERROR" }, ...prev];
+        return next.slice(0, 10);
+      });
+    };
+
+    const onUnhandledRejection = (event: PromiseRejectionEvent) => {
+      const reason = event?.reason;
+      const message = reason instanceof Error ? reason.message : typeof reason === "string" ? reason : "UNHANDLED_REJECTION";
+      setClientErrors((prev) => {
+        const next = [{ ts: Date.now(), type: "unhandledrejection", message }, ...prev];
+        return next.slice(0, 10);
+      });
+    };
+
+    window.addEventListener("error", onError);
+    window.addEventListener("unhandledrejection", onUnhandledRejection);
+    return () => {
+      window.removeEventListener("error", onError);
+      window.removeEventListener("unhandledrejection", onUnhandledRejection);
+    };
+  }, [debugMode]);
 
   return (
     <AuthLayout>
@@ -87,15 +119,60 @@ export default function LoginPage() {
             {serverDebugError ? serverDebugError : JSON.stringify(serverDebug, null, 2)}
           </pre>
 
+          <p className="mt-4 text-xs font-medium text-amber-900/80">Client errors</p>
+          <pre className="mt-2 whitespace-pre-wrap break-words rounded-2xl bg-white/70 p-3 text-[11px] text-slate-900 ring-1 ring-amber-200">
+            {clientErrors.length ? JSON.stringify(clientErrors, null, 2) : "(none)"}
+          </pre>
+
           <div className="mt-4">
             <SignOutButton redirectUrl="/login?force=1">
               <button
                 type="button"
+                onClick={(e) => {
+                  try {
+                    console.log("[login][debug][native-signout][click]", {
+                      target: (e.target as HTMLElement | null)?.tagName,
+                      url: window.location.href,
+                    });
+                  } catch {
+                    // ignore
+                  }
+                }}
                 className="inline-flex w-full items-center justify-center rounded-full bg-slate-900 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800"
               >
                 SignOutButton (Clerk natif)
               </button>
             </SignOutButton>
+          </div>
+
+          <div className="mt-3">
+            <button
+              type="button"
+              disabled={signOutAttempting}
+              onClick={async () => {
+                if (signOutAttempting) return;
+                setSignOutAttempting(true);
+                setSignOutError(null);
+                try {
+                  console.log("[login][debug][manual-signout][start]", {
+                    authLoaded,
+                    authIsSignedIn,
+                    authUserId,
+                  });
+                  await clerk.signOut({ redirectUrl: "/login?force=1" });
+                } catch (err) {
+                  const message = err instanceof Error ? err.message : typeof err === "string" ? err : "SIGN_OUT_FAILED";
+                  setSignOutError(message);
+                  console.log("[login][debug][manual-signout][error]", err);
+                } finally {
+                  setTimeout(() => setSignOutAttempting(false), 300);
+                }
+              }}
+              className="inline-flex w-full items-center justify-center rounded-full border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {signOutAttempting ? "Sign out…" : "Manual signOut() test"}
+            </button>
+            {signOutError ? <p className="mt-2 text-xs font-semibold text-rose-700">{signOutError}</p> : null}
           </div>
         </div>
       ) : null}
