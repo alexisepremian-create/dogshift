@@ -158,6 +158,22 @@ export default function AvailabilityStudioPage() {
     return map;
   }, [monthDays]);
 
+  const enabledServices = useMemo(() => {
+    const services: ServiceTypeApi[] = ["PROMENADE", "DOGSITTING", "PENSION"];
+    return services.filter((svc) => configByService[svc]?.enabled !== false);
+  }, [configByService]);
+
+  useEffect(() => {
+    if (!enabledServices.length) return;
+    if (!enabledServices.includes(availabilityTab)) setAvailabilityTab(enabledServices[0]);
+  }, [availabilityTab, enabledServices]);
+
+  useEffect(() => {
+    if (!exceptionDrawerOpen) return;
+    if (!enabledServices.length) return;
+    if (!enabledServices.includes(exceptionService)) setExceptionService(enabledServices[0]);
+  }, [enabledServices, exceptionDrawerOpen, exceptionService]);
+
   const refreshTokenRef = useRef(0);
 
   async function saveServiceEnabled(svc: ServiceTypeApi, enabled: boolean) {
@@ -317,7 +333,7 @@ export default function AvailabilityStudioPage() {
   function openExceptionDrawer(dateIso: string) {
     exceptionDrawerRestoreFocusRef.current = document.activeElement as HTMLElement | null;
     setExceptionDate(dateIso);
-    setExceptionService("PROMENADE");
+    setExceptionService(enabledServices[0] ?? "PROMENADE");
     setExceptionError(null);
 
     exceptionFormLoadedKeyRef.current = "";
@@ -590,55 +606,39 @@ export default function AvailabilityStudioPage() {
                   <p className="text-sm font-semibold text-slate-900">Service</p>
                   <p className="mt-1 text-xs text-slate-600">Choisis pour quel service tu définis cette réservation.</p>
 
-                  <div className="mt-3 grid grid-cols-3 gap-2 rounded-2xl bg-white p-2 ring-1 ring-slate-200">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setExceptionError(null);
-                        setExceptionService("PROMENADE");
-                      }}
-                      className={
-                        exceptionService === "PROMENADE"
-                          ? "rounded-2xl bg-[var(--dogshift-blue)] px-3 py-2 text-xs font-semibold text-white"
-                          : "rounded-2xl bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
-                      }
-                      aria-pressed={exceptionService === "PROMENADE"}
+                  {enabledServices.length ? (
+                    <div
+                      className={`mt-3 grid gap-2 rounded-2xl bg-white p-2 ring-1 ring-slate-200 ${
+                        enabledServices.length === 1 ? "grid-cols-1" : enabledServices.length === 2 ? "grid-cols-2" : "grid-cols-3"
+                      }`}
                     >
-                      Promenade
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setExceptionError(null);
-                        setExceptionService("DOGSITTING");
-                      }}
-                      className={
-                        exceptionService === "DOGSITTING"
-                          ? "rounded-2xl bg-[var(--dogshift-blue)] px-3 py-2 text-xs font-semibold text-white"
-                          : "rounded-2xl bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
-                      }
-                      aria-pressed={exceptionService === "DOGSITTING"}
-                    >
-                      Dogsitting
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setExceptionError(null);
-                        setExceptionService("PENSION");
-                      }}
-                      className={
-                        exceptionService === "PENSION"
-                          ? "rounded-2xl bg-[var(--dogshift-blue)] px-3 py-2 text-xs font-semibold text-white"
-                          : "rounded-2xl bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
-                      }
-                      aria-pressed={exceptionService === "PENSION"}
-                    >
-                      Pension
-                    </button>
-                  </div>
+                      {enabledServices.map((svc) => {
+                        const active = exceptionService === svc;
+                        const tone = serviceDotTone(svc);
+                        const baseTone = tone === "bg-sky-400" ? "bg-sky-500" : tone === "bg-violet-400" ? "bg-violet-500" : "bg-emerald-500";
+                        return (
+                          <button
+                            key={`ex-svc-${svc}`}
+                            type="button"
+                            onClick={() => {
+                              setExceptionError(null);
+                              setExceptionService(svc);
+                            }}
+                            className={
+                              active
+                                ? `rounded-2xl ${baseTone} px-3 py-2 text-xs font-semibold text-white`
+                                : "rounded-2xl bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                            }
+                            aria-pressed={active}
+                          >
+                            {serviceMeta(svc).label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <p className="mt-3 text-sm font-semibold text-slate-700">Active au moins un service pour ajouter une disponibilité.</p>
+                  )}
                 </div>
 
                 <label className="text-xs font-semibold text-slate-700">
@@ -989,7 +989,7 @@ export default function AvailabilityStudioPage() {
             <p className="text-sm font-semibold text-slate-900">Disponibilités</p>
 
             <div className="mt-3 grid grid-cols-3 gap-2 rounded-2xl bg-white p-2 ring-1 ring-slate-200">
-              {(["PROMENADE", "DOGSITTING", "PENSION"] as const).map((svc) => {
+              {enabledServices.map((svc) => {
                 const active = availabilityTab === svc;
                 const tone = serviceDotTone(svc);
                 const baseTone = tone === "bg-sky-400" ? "bg-sky-500" : tone === "bg-violet-400" ? "bg-violet-500" : "bg-emerald-500";
@@ -1021,6 +1021,7 @@ export default function AvailabilityStudioPage() {
 
               <div className="mt-3 grid gap-2">
                 {(() => {
+                  if (!enabledServices.length) return <p className="text-sm text-slate-600">Aucun service activé.</p>;
                   const rows = (exceptionsByService[availabilityTab] ?? [])
                     .slice()
                     .sort((a, b) => (a.date === b.date ? a.startMin - b.startMin : a.date.localeCompare(b.date)));
