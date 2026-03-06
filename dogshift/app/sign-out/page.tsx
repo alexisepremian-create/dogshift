@@ -2,15 +2,19 @@
 
 import { useClerk } from "@clerk/nextjs";
 import { useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 
 export default function SignOutPage() {
   const clerk = useClerk();
-  const router = useRouter();
   const searchParams = useSearchParams();
 
   useEffect(() => {
+    if (!(clerk as any)?.loaded) return;
     const redirect = (searchParams?.get("redirect") ?? "").trim() || "/login?force=1";
+
+    const fallback = window.setTimeout(() => {
+      window.location.assign(redirect);
+    }, 2500);
 
     (async () => {
       try {
@@ -20,20 +24,16 @@ export default function SignOutPage() {
       }
 
       try {
-        try {
-          await (clerk as any).signOut({ sessionId: "all" });
-        } catch {
-          await clerk.signOut();
-        }
+        // Let Clerk control redirect completion: avoids navigating away before cookies are cleared.
+        await (clerk as any).signOut({ redirectUrl: redirect, sessionId: "all" });
+      } catch {
+        await clerk.signOut({ redirectUrl: redirect } as any);
       } finally {
-        router.replace(redirect);
-        setTimeout(() => {
-          window.location.assign(redirect);
-        }, 100);
+        window.clearTimeout(fallback);
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [clerk, searchParams]);
 
   return null;
 }
