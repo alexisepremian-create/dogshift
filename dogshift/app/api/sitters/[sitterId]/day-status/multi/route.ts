@@ -104,7 +104,7 @@ export async function GET(
       sitterId,
       dates,
       now: new Date(),
-      allRules: rulesInRange.length ? rulesInRange : (allRules ?? []),
+      allRules: [],
       allExceptions: exceptionsInRange,
       allBookings: allBookings ?? [],
       allConfigs: allConfigs ?? [],
