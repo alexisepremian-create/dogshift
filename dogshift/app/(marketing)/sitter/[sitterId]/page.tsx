@@ -1157,25 +1157,25 @@ function SitterPublicProfileContent({
                 </div>
               </div>
 
-              <div className="mt-3 grid gap-2 text-xs text-slate-700 sm:grid-cols-3">
-                <div className="flex items-center gap-2">
-                  <span className="h-2.5 w-2.5 rounded-full bg-sky-400" aria-hidden="true" />
-                  <span>Promenade</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="h-2.5 w-2.5 rounded-full bg-violet-400" aria-hidden="true" />
-                  <span>Dogsitting</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="h-2.5 w-2.5 rounded-full bg-emerald-400" aria-hidden="true" />
-                  <span>Pension</span>
-                </div>
-              </div>
-
               <div className="mt-3 grid gap-1 text-xs text-slate-600">
-                <p>La couleur du jour correspond au service sélectionné.</p>
-                <p>Les 3 pastilles indiquent le statut de chaque service ce jour-là.</p>
-                <p>Clique une pastille pour basculer sur ce service et voir les créneaux du jour.</p>
+                <p>La couleur du jour indique le statut global (tous services confondus).</p>
+                <p>Les petites pastilles indiquent quels services sont disponibles ce jour-là :</p>
+                <p>
+                  <span className="inline-flex items-center gap-1">
+                    <span className="h-2.5 w-2.5 rounded-full bg-sky-400" aria-hidden="true" />
+                    <span>Promenade</span>
+                  </span>
+                  <span className="mx-2">·</span>
+                  <span className="inline-flex items-center gap-1">
+                    <span className="h-2.5 w-2.5 rounded-full bg-violet-400" aria-hidden="true" />
+                    <span>Dogsitting</span>
+                  </span>
+                  <span className="mx-2">·</span>
+                  <span className="inline-flex items-center gap-1">
+                    <span className="h-2.5 w-2.5 rounded-full bg-emerald-400" aria-hidden="true" />
+                    <span>Pension</span>
+                  </span>
+                </p>
               </div>
             </div>
 
@@ -1198,19 +1198,18 @@ function SitterPublicProfileContent({
                 const dateIso = `${String(monthMeta.year).padStart(4, "0")}-${String(monthMeta.month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
                 const row = monthDaysByDate.get(dateIso);
 
-                const cellTone =
-                  row
-                    ? slotsServiceType === "PROMENADE"
-                      ? row.promenadeStatus
-                      : slotsServiceType === "DOGSITTING"
-                        ? row.dogsittingStatus
-                        : row.pensionStatus
-                    : "UNAVAILABLE";
+                const globalTone = !row
+                  ? "UNAVAILABLE"
+                  : row.promenadeStatus === "AVAILABLE" || row.dogsittingStatus === "AVAILABLE" || row.pensionStatus === "AVAILABLE"
+                    ? "AVAILABLE"
+                    : row.promenadeStatus === "ON_REQUEST" || row.dogsittingStatus === "ON_REQUEST" || row.pensionStatus === "ON_REQUEST"
+                      ? "ON_REQUEST"
+                      : "UNAVAILABLE";
 
                 const tone =
-                  row && cellTone === "AVAILABLE"
+                  row && globalTone === "AVAILABLE"
                     ? "bg-emerald-50 text-emerald-900 ring-emerald-200"
-                    : row && cellTone === "ON_REQUEST"
+                    : row && globalTone === "ON_REQUEST"
                       ? "bg-amber-50 text-amber-900 ring-amber-200"
                       : "bg-slate-100 text-slate-500 ring-slate-200";
 
