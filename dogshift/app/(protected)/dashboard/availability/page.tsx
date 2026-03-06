@@ -481,10 +481,12 @@ export default function AvailabilityStudioPage() {
     setError(null);
     setTopError(null);
     try {
-      const dates = Array.from({ length: meta.daysInMonth }, (_, i) => {
+      const monthDates = Array.from({ length: meta.daysInMonth }, (_, i) => {
         const day = i + 1;
         return `${String(meta.year).padStart(4, "0")}-${String(meta.month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
       });
+      const dates = monthDates.filter((date) => date >= todayKeyZurich);
+      if (!dates.length) return;
       const statusByDate = new Map<string, "AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE">();
 
       if (action === "all-available") {
@@ -492,22 +494,26 @@ export default function AvailabilityStudioPage() {
       } else if (action === "all-unavailable") {
         for (const date of dates) statusByDate.set(date, "UNAVAILABLE");
       } else {
-        const refDate = meta.fromIso <= todayKeyZurich && todayKeyZurich <= meta.toIso ? todayKeyZurich : meta.fromIso;
+        const refDate = meta.fromIso <= todayKeyZurich && todayKeyZurich <= meta.toIso ? todayKeyZurich : dates[0];
         const ref = new Date(`${refDate}T12:00:00Z`);
         const refDow = ref.getUTCDay();
         const mondayDelta = (refDow + 6) % 7;
         const weekStart = new Date(ref);
         weekStart.setUTCDate(ref.getUTCDate() - mondayDelta);
         const template = new Map<number, "AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE">();
+
         for (let i = 0; i < 7; i++) {
           const d = new Date(weekStart);
           d.setUTCDate(weekStart.getUTCDate() + i);
           const iso = toZurichIsoDate(d);
+          if (iso < todayKeyZurich) continue;
           template.set(d.getUTCDay(), dayStatusForService(monthStatusByDate.get(iso), availabilityTab));
         }
+
         for (const date of dates) {
           const dow = new Date(`${date}T12:00:00Z`).getUTCDay();
-          statusByDate.set(date, template.get(dow) ?? "UNAVAILABLE");
+          const copied = template.get(dow);
+          if (copied) statusByDate.set(date, copied);
         }
       }
 
@@ -1339,7 +1345,7 @@ export default function AvailabilityStudioPage() {
                   disabled={quickActionSaving !== null || !enabledServices.length}
                   className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 disabled:opacity-60"
                 >
-                  {quickActionSaving === "copy-week" ? "Enregistrement…" : "Copier cette semaine"}
+                  {quickActionSaving === "copy-week" ? "Enregistrement…" : "Reproduire cette semaine sur le reste du mois"}
                 </button>
               </div>
             </div>
