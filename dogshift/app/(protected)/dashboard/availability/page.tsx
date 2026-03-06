@@ -774,15 +774,43 @@ export default function AvailabilityStudioPage() {
       ) : null}
 
       <div className="mt-4 rounded-3xl border border-slate-200 bg-white p-4">
-        <button
-          type="button"
-          onClick={() => setBookingInfoOpen(true)}
-          className="inline-flex items-center gap-2 text-sm font-semibold text-slate-800"
-          aria-haspopup="dialog"
-          aria-expanded={bookingInfoOpen}
-        >
-          ⓘ Fonctionnement des réservations
-        </button>
+        <div className="relative inline-block">
+          <button
+            type="button"
+            onClick={() => setBookingInfoOpen((v) => !v)}
+            className="inline-flex items-center gap-2 text-sm font-semibold text-slate-800"
+            aria-haspopup="dialog"
+            aria-expanded={bookingInfoOpen}
+          >
+            ⓘ Fonctionnement des réservations
+          </button>
+
+          {bookingInfoOpen ? (
+            <div
+              className="absolute left-0 top-full z-50 mt-2 w-[28rem] max-w-[calc(100vw-2rem)] rounded-3xl border border-slate-200 bg-white p-5 shadow-xl"
+              role="dialog"
+              aria-modal="false"
+              aria-label="Fonctionnement des réservations"
+            >
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-sm font-semibold text-slate-900">Fonctionnement des réservations</p>
+                <button
+                  type="button"
+                  onClick={() => setBookingInfoOpen(false)}
+                  className="inline-flex h-9 items-center justify-center rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700"
+                >
+                  Fermer
+                </button>
+              </div>
+              <div className="mt-4 grid gap-2 text-sm text-slate-700">
+                <p>Réservation minimum 24h à l’avance.</p>
+                <p>15 min bloquées avant + après chaque réservation.</p>
+                <p>Créneaux par intervalles (pas = 30 min).</p>
+                <p>Pension: check-in 08:00–19:00, check-out 08:00–12:00.</p>
+              </div>
+            </div>
+          ) : null}
+        </div>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
@@ -1007,29 +1035,6 @@ export default function AvailabilityStudioPage() {
       </div>
 
       {loading ? <div className="fixed bottom-6 right-6 rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white">Chargement…</div> : null}
-
-      {bookingInfoOpen ? (
-        <div className="fixed inset-0 z-50 flex items-end justify-end bg-slate-900/40 p-4" role="dialog" aria-modal="true" aria-label="Fonctionnement des réservations">
-          <div className="w-full max-w-md rounded-3xl bg-white p-5 shadow-xl">
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-semibold text-slate-900">Fonctionnement des réservations</p>
-              <button
-                type="button"
-                onClick={() => setBookingInfoOpen(false)}
-                className="inline-flex h-9 items-center justify-center rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700"
-              >
-                Fermer
-              </button>
-            </div>
-            <div className="mt-4 grid gap-2 text-sm text-slate-700">
-              <p>Réservation minimum 24h à l’avance.</p>
-              <p>15 min bloquées avant + après chaque réservation.</p>
-              <p>Créneaux par intervalles (pas = 30 min).</p>
-              <p>Pension: check-in 08:00–19:00, check-out 08:00–12:00.</p>
-            </div>
-          </div>
-        </div>
-      ) : null}
     </div>
   );
 }
