@@ -1356,10 +1356,10 @@ export default function AvailabilityStudioPage() {
 
               <div
                 id="availability-quick-actions"
-                className={`${quickActionsOpen ? "mt-3 block opacity-100" : "hidden opacity-0"} transition-opacity duration-150`}
+                className={`mt-3 w-full overflow-hidden transition-[max-height,opacity] duration-200 ease-out ${quickActionsOpen ? "max-h-64 opacity-100" : "max-h-0 opacity-0"}`}
               >
-                <div>
-                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                <div className="w-full rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                  <div className="min-w-0">
                     <div className="grid gap-2">
                       <button
                         type="button"
