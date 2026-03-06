@@ -128,6 +128,7 @@ export default function HostProfileEditPage() {
   const [verificationUploading, setVerificationUploading] = useState(false);
   const [verificationSubmittedAt, setVerificationSubmittedAt] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
 
@@ -284,6 +285,8 @@ export default function HostProfileEditPage() {
     setProfile(nextProfile);
     saveHostProfileToStorage(nextProfile);
 
+    setSaving(true);
+
     void (async () => {
       try {
         const res = await fetch("/api/host/profile", {
@@ -306,6 +309,8 @@ export default function HostProfileEditPage() {
       } catch {
         setError("Impossible d’enregistrer le profil.");
         setSaved(false);
+      } finally {
+        setSaving(false);
       }
     })();
   }
@@ -967,11 +972,18 @@ export default function HostProfileEditPage() {
 
                 <button
                   type="button"
-                  disabled={activeServices.length === 0 || !pricingValid || !pricingWithinRanges}
+                  disabled={saving || activeServices.length === 0 || !pricingValid || !pricingWithinRanges}
                   onClick={onSave}
-                  className="mt-5 w-full rounded-2xl bg-[var(--dogshift-blue)] px-6 py-3 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition hover:bg-[var(--dogshift-blue-hover)] disabled:cursor-not-allowed disabled:opacity-60"
+                  className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-[var(--dogshift-blue)] px-6 py-3 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition hover:bg-[var(--dogshift-blue-hover)] disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  Enregistrer
+                  {saving ? (
+                    <>
+                      <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" aria-hidden="true" />
+                      <span>Enregistrement…</span>
+                    </>
+                  ) : (
+                    "Enregistrer"
+                  )}
                 </button>
 
                 {saved ? (
