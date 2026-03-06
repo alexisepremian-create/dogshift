@@ -18,19 +18,6 @@ export type DayStatusMultiInput = {
   allConfigs: any[];
 };
 
-function normalizeStoredDowToEngine(dow: number) {
-  if (!Number.isFinite(dow)) return null;
-  const d = Math.round(dow);
-  if (d < 0 || d > 6) return null;
-
-  // The dashboard availability studio stores dayOfWeek as Monday-based (0=Mon..6=Sun).
-  // The engine uses Sunday-based (0=Sun..6=Sat). Convert accordingly.
-  // If data is already Sunday-based, this mapping would be wrong, but in that case
-  // the observed behavior would not be "all Sundays available". The conversion is
-  // needed to align with persisted semantics.
-  return (d + 1) % 7;
-}
-
 function ensureServiceConfig(sitterId: string, serviceType: ServiceType, row: any) {
   const defaults = SERVICE_DEFAULTS[serviceType];
   const enabled = typeof row?.enabled === "boolean" ? row.enabled : undefined;
@@ -119,12 +106,7 @@ export function computeMultiDayStatusNaive(input: DayStatusMultiInput): MultiSer
     const dow = dayOfWeekForZurichDate(date);
 
     const computeStatus = (serviceType: ServiceType) => {
-      const rules = (allRules ?? []).filter((r: any) => {
-        if (!r || r.serviceType !== serviceType) return false;
-        const stored = typeof r?.dayOfWeek === "number" ? r.dayOfWeek : NaN;
-        const normalized = normalizeStoredDowToEngine(stored);
-        return normalized !== null && normalized === dow;
-      });
+      const rules = (allRules ?? []).filter((r: any) => r && r.serviceType === serviceType && r.dayOfWeek === dow);
       const exceptions = (allExceptions ?? []).filter((e: any) => e && e.serviceType === serviceType && exceptionDateKey(e) === date);
       const config = configByService.get(serviceType) ?? ensureServiceConfig(sitterId, serviceType, null);
       const slots = computeDaySlots({
@@ -172,9 +154,8 @@ export function computeMultiDayStatusIndexed(input: DayStatusMultiInput): {
 
   for (const r of allRules ?? []) {
     const st = r?.serviceType as ServiceType;
-    const storedDow = typeof r?.dayOfWeek === "number" ? r.dayOfWeek : null;
-    const dow = storedDow === null ? null : normalizeStoredDowToEngine(storedDow);
-    if ((st === "PROMENADE" || st === "DOGSITTING" || st === "PENSION") && dow !== null) {
+    const dow = typeof r?.dayOfWeek === "number" ? r.dayOfWeek : null;
+    if ((st === "PROMENADE" || st === "DOGSITTING" || st === "PENSION") && dow !== null && dow >= 0 && dow <= 6) {
       rulesByServiceByDow[st][dow].push(r);
     }
   }
