@@ -756,6 +756,7 @@ export default function AvailabilityStudioPage() {
                       ranges: nextRanges,
                     });
                     showToast({ tone: "ok", message: "Disponibilité enregistrée" });
+                    setExceptionDrawerOpen(false);
                   } catch (err) {
                     setExceptionError(err instanceof Error ? err.message : "SAVE_ERROR");
                     showToast({ tone: "error", message: "Impossible d’enregistrer" });
