@@ -804,7 +804,6 @@ export default function AvailabilityStudioPage() {
               </div>
               <div className="mt-4 grid gap-3 text-sm text-slate-700">
                 <div>
-                  <p className="text-sm font-semibold text-slate-900">Fonctionnement des réservations</p>
                   <ul className="mt-2 grid list-disc gap-2 pl-5">
                     <li>Les réservations doivent être faites au moins 24h à l’avance.</li>
                     <li>15 minutes sont bloquées avant et après chaque réservation pour permettre l’organisation.</li>
@@ -813,11 +812,8 @@ export default function AvailabilityStudioPage() {
                 </div>
 
                 <div>
-                  <p className="text-sm font-semibold text-slate-900">Pension (garde à domicile)</p>
-                  <ul className="mt-2 grid list-disc gap-2 pl-5">
-                    <li>Arrivée du chien : 08:00 – 19:00</li>
-                    <li>Départ du chien : 08:00 – 12:00</li>
-                  </ul>
+                  <p className="text-sm font-semibold text-slate-900">Pension</p>
+                  <p className="mt-2">Les horaires d’arrivée et de départ du chien dépendent des disponibilités que vous avez définies.</p>
                 </div>
               </div>
             </div>
