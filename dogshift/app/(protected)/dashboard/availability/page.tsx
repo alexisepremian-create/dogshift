@@ -531,10 +531,10 @@ export default function AvailabilityStudioPage() {
             ))}
           </div>
           <Link
-            href={`/sitter/${encodeURIComponent(sitterId)}?mode=public`}
+            href="/host/profile/edit"
             className="inline-flex h-10 shrink-0 items-center justify-center rounded-2xl border border-rose-200 bg-white px-4 text-xs font-semibold text-rose-900"
           >
-            Ouvrir ma page publique
+            Ouvrir l’édition du profil
           </Link>
         </div>
       ) : null}
