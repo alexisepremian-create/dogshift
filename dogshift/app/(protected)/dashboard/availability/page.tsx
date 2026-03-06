@@ -131,6 +131,8 @@ export default function AvailabilityStudioPage() {
 
   const [bookingInfoOpen, setBookingInfoOpen] = useState(false);
 
+  const [availabilityTab, setAvailabilityTab] = useState<ServiceTypeApi>("PROMENADE");
+
   const todayKeyZurich = useMemo(() => toZurichIsoDate(new Date()), []);
 
   const [exceptionDrawerOpen, setExceptionDrawerOpen] = useState(false);
@@ -986,59 +988,76 @@ export default function AvailabilityStudioPage() {
           <div className="mt-6 border-t border-slate-200 pt-5">
             <p className="text-sm font-semibold text-slate-900">Disponibilités</p>
 
-            <div className="mt-3 grid gap-4">
+            <div className="mt-3 grid grid-cols-3 gap-2 rounded-2xl bg-white p-2 ring-1 ring-slate-200">
               {(["PROMENADE", "DOGSITTING", "PENSION"] as const).map((svc) => {
-                const rows = (exceptionsByService[svc] ?? [])
-                  .slice()
-                  .sort((a, b) => (a.date === b.date ? a.startMin - b.startMin : a.date.localeCompare(b.date)));
-
+                const active = availabilityTab === svc;
+                const tone = serviceDotTone(svc);
+                const baseTone = tone === "bg-sky-400" ? "bg-sky-500" : tone === "bg-violet-400" ? "bg-violet-500" : "bg-emerald-500";
                 return (
-                  <div key={`list-${svc}`} className="rounded-2xl border border-slate-200 bg-white p-4">
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm font-semibold text-slate-900">
-                        {serviceMeta(svc).icon} {serviceMeta(svc).label}
-                      </p>
-                      <span className={`h-2 w-2 rounded-full ${serviceDotTone(svc)}`} aria-hidden="true" />
-                    </div>
-
-                    <div className="mt-3 grid gap-2">
-                      {rows.length ? (
-                        rows.map((e) => (
-                          <div key={e.id} className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3">
-                            <div>
-                              <p className="text-xs font-semibold text-slate-500">{formatDateFrCh(e.date)}</p>
-                              <p className="text-sm font-semibold text-slate-900">
-                                {minutesToHHMM(e.startMin)}–{minutesToHHMM(e.endMin)} — {statusLabelFr(e.status)}
-                              </p>
-                            </div>
-                            <button
-                              type="button"
-                              onClick={async () => {
-                                setLoading(true);
-                                try {
-                                  await fetch("/api/sitters/me/availability-exceptions", {
-                                    method: "DELETE",
-                                    headers: { "Content-Type": "application/json" },
-                                    body: JSON.stringify({ id: e.id }),
-                                  });
-                                  await refetchAll();
-                                } finally {
-                                  setLoading(false);
-                                }
-                              }}
-                              className="inline-flex h-9 items-center justify-center rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700"
-                            >
-                              Supprimer
-                            </button>
-                          </div>
-                        ))
-                      ) : (
-                        <p className="text-sm text-slate-600">Aucune disponibilité.</p>
-                      )}
-                    </div>
-                  </div>
+                  <button
+                    key={`tab-${svc}`}
+                    type="button"
+                    onClick={() => setAvailabilityTab(svc)}
+                    className={
+                      active
+                        ? `rounded-2xl ${baseTone} px-3 py-2 text-xs font-semibold text-white`
+                        : "rounded-2xl bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                    }
+                    aria-pressed={active}
+                  >
+                    {serviceMeta(svc).label}
+                  </button>
                 );
               })}
+            </div>
+
+            <div className="mt-3 rounded-2xl border border-slate-200 bg-white p-4">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-semibold text-slate-900">
+                  {serviceMeta(availabilityTab).icon} {serviceMeta(availabilityTab).label}
+                </p>
+                <span className={`h-2 w-2 rounded-full ${serviceDotTone(availabilityTab)}`} aria-hidden="true" />
+              </div>
+
+              <div className="mt-3 grid gap-2">
+                {(() => {
+                  const rows = (exceptionsByService[availabilityTab] ?? [])
+                    .slice()
+                    .sort((a, b) => (a.date === b.date ? a.startMin - b.startMin : a.date.localeCompare(b.date)));
+
+                  if (!rows.length) return <p className="text-sm text-slate-600">Aucune disponibilité.</p>;
+
+                  return rows.map((e) => (
+                    <div key={e.id} className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3">
+                      <div>
+                        <p className="text-xs font-semibold text-slate-500">{formatDateFrCh(e.date)}</p>
+                        <p className="text-sm font-semibold text-slate-900">
+                          {minutesToHHMM(e.startMin)}–{minutesToHHMM(e.endMin)} — {statusLabelFr(e.status)}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          setLoading(true);
+                          try {
+                            await fetch("/api/sitters/me/availability-exceptions", {
+                              method: "DELETE",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ id: e.id }),
+                            });
+                            await refetchAll();
+                          } finally {
+                            setLoading(false);
+                          }
+                        }}
+                        className="inline-flex h-9 items-center justify-center rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700"
+                      >
+                        Supprimer
+                      </button>
+                    </div>
+                  ));
+                })()}
+              </div>
             </div>
           </div>
         </div>
