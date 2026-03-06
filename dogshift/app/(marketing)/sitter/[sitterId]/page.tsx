@@ -1086,6 +1086,310 @@ function SitterPublicProfileContent({
     return map;
   }, [monthDays]);
 
+  const AvailabilityCalendar = ({
+    monthMeta,
+    monthLoading,
+    monthError,
+    monthDaysByDate,
+    setMonthRetryKey,
+    slotsServiceType,
+    setSlotsServiceType,
+    setSlotsDate,
+    boardingStart,
+    setBoardingStart,
+    setBoardingEnd,
+    calendarInfoDate,
+    setCalendarInfoDate,
+    dayDetailsOpen,
+    setDayDetailsOpen,
+    dayDetailsLoading,
+    dayDetailsError,
+    dayDetails,
+    setDayDetailsRetryKey,
+    dbg,
+    serviceUi,
+  }: any) => {
+    const serviceDotTone = (svc: "PROMENADE" | "DOGSITTING" | "PENSION") =>
+      svc === "PROMENADE" ? "bg-sky-400" : svc === "DOGSITTING" ? "bg-violet-400" : "bg-emerald-400";
+
+    return (
+      <>
+        <p className="mt-2 text-sm font-semibold text-slate-900">{monthMeta.monthLabel}</p>
+
+        {monthLoading ? (
+          <div className="mt-3 grid gap-2" aria-label="Chargement du calendrier">
+            <div className="h-4 w-40 animate-pulse rounded bg-slate-200" />
+            <div className="grid grid-cols-7 gap-2">
+              {Array.from({ length: 21 }).map((_, i) => (
+                <div key={`cal-skel-${i}`} className="h-14 w-full animate-pulse rounded-2xl bg-slate-200" />
+              ))}
+            </div>
+          </div>
+        ) : monthError ? (
+          <div className="mt-2">
+            <p className="text-sm text-rose-700">{monthError}</p>
+            <button
+              type="button"
+              onClick={() => setMonthRetryKey((v: number) => v + 1)}
+              className="mt-2 inline-flex h-9 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-xs font-semibold text-slate-700"
+            >
+              Réessayer
+            </button>
+          </div>
+        ) : (
+          <div className="mt-3">
+            <div className="rounded-2xl border border-slate-200 bg-white p-3" aria-label="Légende disponibilités">
+              <p className="text-xs font-semibold text-slate-700">Légende</p>
+              <div className="mt-2 grid gap-2 text-xs text-slate-700 sm:grid-cols-3">
+                <div className="flex items-center gap-2">
+                  <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" aria-hidden="true" />
+                  <span>Disponible</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="h-2.5 w-2.5 rounded-full bg-amber-500" aria-hidden="true" />
+                  <span>Sur demande</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="h-2.5 w-2.5 rounded-full bg-slate-300" aria-hidden="true" />
+                  <span>Indisponible</span>
+                </div>
+              </div>
+
+              <div className="mt-3 grid gap-1 text-xs text-slate-600">
+                <p>La couleur du jour correspond au service sélectionné.</p>
+                <p>Les 3 pastilles indiquent le statut de chaque service ce jour-là.</p>
+                <p>Clique une pastille pour basculer sur ce service et voir les créneaux du jour.</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-7 gap-2 text-center text-[11px] font-semibold text-slate-500">
+              <div>L</div>
+              <div>M</div>
+              <div>M</div>
+              <div>J</div>
+              <div>V</div>
+              <div>S</div>
+              <div>D</div>
+            </div>
+
+            <div className="mt-2 grid grid-cols-7 gap-2">
+              {Array.from({ length: monthMeta.mondayIndex }).map((_, i) => (
+                <div key={`pad-${i}`} />
+              ))}
+              {Array.from({ length: monthMeta.daysInMonth }).map((_, i) => {
+                const day = i + 1;
+                const dateIso = `${String(monthMeta.year).padStart(4, "0")}-${String(monthMeta.month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+                const row = monthDaysByDate.get(dateIso) ?? {
+                  promenadeStatus: "UNAVAILABLE" as const,
+                  dogsittingStatus: "UNAVAILABLE" as const,
+                  pensionStatus: "UNAVAILABLE" as const,
+                };
+
+                const cellTone =
+                  slotsServiceType === "PROMENADE"
+                    ? row.promenadeStatus
+                    : slotsServiceType === "DOGSITTING"
+                      ? row.dogsittingStatus
+                      : row.pensionStatus;
+
+                const tone =
+                  cellTone === "AVAILABLE"
+                    ? "bg-emerald-50 text-emerald-900 ring-emerald-200"
+                    : cellTone === "ON_REQUEST"
+                      ? "bg-amber-50 text-amber-900 ring-amber-200"
+                      : "bg-slate-100 text-slate-500 ring-slate-200";
+
+                const ariaLabel =
+                  `${dateIso} — ` +
+                  `Promenade: ${serviceUi.statusLabel(row.promenadeStatus)}; ` +
+                  `Dogsitting: ${serviceUi.statusLabel(row.dogsittingStatus)}; ` +
+                  `Pension: ${serviceUi.statusLabel(row.pensionStatus)}`;
+
+                const focusRing =
+                  slotsServiceType === "PROMENADE"
+                    ? "ring-[2px] ring-emerald-500/30"
+                    : slotsServiceType === "DOGSITTING"
+                      ? "ring-[2px] ring-indigo-500/30"
+                      : "ring-[2px] ring-fuchsia-500/30";
+
+                const showPromenade = row.promenadeStatus === "AVAILABLE" || row.promenadeStatus === "ON_REQUEST";
+                const showDogsitting = row.dogsittingStatus === "AVAILABLE" || row.dogsittingStatus === "ON_REQUEST";
+                const showPension = row.pensionStatus === "AVAILABLE" || row.pensionStatus === "ON_REQUEST";
+
+                return (
+                  <div key={dateIso} className={`flex h-14 w-full flex-col rounded-2xl ring-1 ${tone} ${focusRing}`}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSlotsDate(dateIso);
+                        if (slotsServiceType === "PENSION") {
+                          if (!boardingStart) {
+                            setBoardingStart(dateIso);
+                            setBoardingEnd(dateIso);
+                          } else {
+                            setBoardingEnd(dateIso);
+                          }
+                        }
+                      }}
+                      className="flex h-full w-full flex-col justify-between rounded-2xl px-2 py-2"
+                      aria-label={ariaLabel}
+                    >
+                      <div className="flex items-start justify-end">
+                        <span className="text-sm font-semibold leading-none">{day}</span>
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1">
+                          {showPromenade ? (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSlotsServiceType("PROMENADE");
+                                setSlotsDate(dateIso);
+                              }}
+                              className={`h-2.5 w-2.5 rounded-full ${serviceDotTone("PROMENADE")}`}
+                              aria-label={`${dateIso} — ${serviceUi.byKey.PROMENADE.icon} Promenade: ${serviceUi.statusLabel(row.promenadeStatus)}`}
+                            />
+                          ) : null}
+                          {showDogsitting ? (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSlotsServiceType("DOGSITTING");
+                                setSlotsDate(dateIso);
+                              }}
+                              className={`h-2.5 w-2.5 rounded-full ${serviceDotTone("DOGSITTING")}`}
+                              aria-label={`${dateIso} — ${serviceUi.byKey.DOGSITTING.icon} Dogsitting: ${serviceUi.statusLabel(row.dogsittingStatus)}`}
+                            />
+                          ) : null}
+                          {showPension ? (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSlotsServiceType("PENSION");
+                                setSlotsDate(dateIso);
+                                if (!boardingStart) {
+                                  setBoardingStart(dateIso);
+                                  setBoardingEnd(dateIso);
+                                }
+                              }}
+                              className={`h-2.5 w-2.5 rounded-full ${serviceDotTone("PENSION")}`}
+                              aria-label={`${dateIso} — ${serviceUi.byKey.PENSION.icon} Pension: ${serviceUi.statusLabel(row.pensionStatus)}`}
+                            />
+                          ) : null}
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => setCalendarInfoDate((prev: string | null) => (prev === dateIso ? null : dateIso))}
+                          className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-slate-200 bg-white text-[10px] font-semibold text-slate-600"
+                          aria-label={`${dateIso} — détails du jour`}
+                          title="Détails du jour"
+                        >
+                          i
+                        </button>
+                      </div>
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+
+            {calendarInfoDate ? (
+              <div className="mt-3 rounded-2xl border border-slate-200 bg-white p-4">
+                <p className="text-xs font-semibold text-slate-500">Détails</p>
+                <p className="mt-1 text-sm font-semibold text-slate-900">{calendarInfoDate}</p>
+                {(() => {
+                  const row = monthDaysByDate.get(calendarInfoDate);
+                  if (!row) {
+                    return <p className="mt-2 text-sm text-slate-600">Ouvre la vue jour pour voir les créneaux.</p>;
+                  }
+                  return (
+                    <div className="mt-2 grid gap-2 text-sm text-slate-700">
+                      <div>
+                        {serviceUi.byKey.PROMENADE.icon} Promenade: <span className="font-semibold">{serviceUi.statusLabel(row.promenadeStatus)}</span>
+                      </div>
+                      <div>
+                        {serviceUi.byKey.DOGSITTING.icon} Dogsitting: <span className="font-semibold">{serviceUi.statusLabel(row.dogsittingStatus)}</span>
+                      </div>
+                      <div>
+                        {serviceUi.byKey.PENSION.icon} Pension: <span className="font-semibold">{serviceUi.statusLabel(row.pensionStatus)}</span>
+                      </div>
+                      <p className="text-xs text-slate-500">Ouvre la vue jour pour voir les détails et les créneaux.</p>
+                    </div>
+                  );
+                })()}
+
+                <div className="mt-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDayDetailsOpen(true);
+                      setDayDetailsRetryKey((v: number) => v + 1);
+                    }}
+                    className="inline-flex h-9 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-xs font-semibold text-slate-700"
+                    disabled={false}
+                  >
+                    Comprendre pourquoi
+                  </button>
+                </div>
+
+                {dayDetailsOpen ? (
+                  <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                    {dayDetailsLoading ? (
+                      <p className="text-sm text-slate-600">Chargement…</p>
+                    ) : dayDetailsError ? (
+                      <div>
+                        <p className="text-sm text-rose-700">{dayDetailsError}</p>
+                        <button
+                          type="button"
+                          onClick={() => setDayDetailsRetryKey((v: number) => v + 1)}
+                          className="mt-2 inline-flex h-9 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-xs font-semibold text-slate-700"
+                        >
+                          Réessayer
+                        </button>
+                      </div>
+                    ) : dayDetails ? (
+                      <div>
+                        {dayDetails.status === "AVAILABLE" ? (
+                          <p className="text-sm text-slate-700">Ce jour est disponible pour ce service.</p>
+                        ) : dayDetails.buckets.length ? (
+                          <div className="grid gap-2">
+                            {dayDetails.buckets.map((b: any) => (
+                              <div key={b.key} className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700">
+                                <span className="font-semibold">{b.label}</span>
+                                <span className="text-xs font-semibold text-slate-500">{b.count}</span>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-sm text-slate-700">Aucun détail disponible.</p>
+                        )}
+
+                        {dbg && dayDetails.dbg?.topReasons?.length ? (
+                          <details className="mt-3">
+                            <summary className="cursor-pointer text-xs font-semibold text-slate-600">dbg</summary>
+                            <div className="mt-2 grid gap-1 text-xs text-slate-600">
+                              {dayDetails.dbg.topReasons.map((r: any) => (
+                                <div key={r.reason}>
+                                  {r.reason}: {r.count}
+                                </div>
+                              ))}
+                            </div>
+                          </details>
+                        ) : null}
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
+        )}
+      </>
+    );
+  };
+
   const daySlotsAgenda = useMemo(() => {
     const parseHour = (iso: string) => {
       const h = Number(iso.slice(11, 13));
@@ -1691,6 +1995,54 @@ function SitterPublicProfileContent({
                           })}
                         </div>
                       )}
+
+                      <div className="mt-5">
+                        <div className="flex items-center justify-between">
+                          <p className="text-sm font-medium text-slate-900">Calendrier</p>
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setMonthCursor((d) => new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() - 1, 1, 0, 0, 0, 0)))}
+                              className="inline-flex h-9 items-center justify-center rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700"
+                              aria-label="Mois précédent"
+                            >
+                              ◀
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setMonthCursor((d) => new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1, 0, 0, 0, 0)))}
+                              className="inline-flex h-9 items-center justify-center rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700"
+                              aria-label="Mois suivant"
+                            >
+                              ▶
+                            </button>
+                          </div>
+                        </div>
+
+                        <AvailabilityCalendar
+                          monthMeta={monthMeta}
+                          monthLoading={monthLoading}
+                          monthError={monthError}
+                          monthDaysByDate={monthDaysByDate}
+                          setMonthRetryKey={setMonthRetryKey}
+                          slotsServiceType={slotsServiceType}
+                          setSlotsServiceType={setSlotsServiceType}
+                          setSlotsDate={setSlotsDate}
+                          boardingStart={boardingStart}
+                          setBoardingStart={setBoardingStart}
+                          setBoardingEnd={setBoardingEnd}
+                          calendarInfoDate={calendarInfoDate}
+                          setCalendarInfoDate={setCalendarInfoDate}
+                          dayDetailsOpen={dayDetailsOpen}
+                          setDayDetailsOpen={setDayDetailsOpen}
+                          dayDetailsLoading={dayDetailsLoading}
+                          dayDetailsError={dayDetailsError}
+                          dayDetails={dayDetails}
+                          setDayDetailsRetryKey={setDayDetailsRetryKey}
+                          dbg={dbg}
+                          serviceUi={serviceUi}
+                        />
+                      </div>
                     </div>
 
                     <div className="h-full min-h-[130px] rounded-2xl border border-slate-200 bg-slate-50 p-4">
@@ -1742,300 +2094,6 @@ function SitterPublicProfileContent({
                                 </button>
                               );
                             })}
-                          </div>
-
-                          <div className="mt-5">
-                            <div className="flex items-center justify-between">
-                              <p className="text-sm font-medium text-slate-900">Calendrier</p>
-                              <div className="flex items-center gap-2">
-                                <button
-                                  type="button"
-                                  onClick={() => setMonthCursor((d) => new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() - 1, 1, 0, 0, 0, 0)))}
-                                  className="inline-flex h-9 items-center justify-center rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700"
-                                  aria-label="Mois précédent"
-                                >
-                                  ◀
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => setMonthCursor((d) => new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1, 0, 0, 0, 0)))}
-                                  className="inline-flex h-9 items-center justify-center rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700"
-                                  aria-label="Mois suivant"
-                                >
-                                  ▶
-                                </button>
-                              </div>
-                            </div>
-
-                            <p className="mt-2 text-sm font-semibold text-slate-900">{monthMeta.monthLabel}</p>
-
-                            {monthLoading ? (
-                              <div className="mt-3 grid gap-2" aria-label="Chargement du calendrier">
-                                <div className="h-4 w-40 animate-pulse rounded bg-slate-200" />
-                                <div className="grid grid-cols-7 gap-2">
-                                  {Array.from({ length: 21 }).map((_, i) => (
-                                    <div key={`cal-skel-${i}`} className="h-10 w-full animate-pulse rounded-2xl bg-slate-200" />
-                                  ))}
-                                </div>
-                              </div>
-                            ) : monthError ? (
-                              <div className="mt-2">
-                                <p className="text-sm text-rose-700">{monthError}</p>
-                                <button
-                                  type="button"
-                                  onClick={() => setMonthRetryKey((v) => v + 1)}
-                                  className="mt-2 inline-flex h-9 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-xs font-semibold text-slate-700"
-                                >
-                                  Réessayer
-                                </button>
-                              </div>
-                            ) : (
-                              <div className="mt-3">
-                                <div className="rounded-2xl border border-slate-200 bg-white p-3" aria-label="Légende disponibilités">
-                                  <p className="text-xs font-semibold text-slate-700">Légende</p>
-                                  <div className="mt-2 grid gap-2 text-xs text-slate-700 sm:grid-cols-3">
-                                    <div className="flex items-center gap-2">
-                                      <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" aria-hidden="true" />
-                                      <span>Disponible</span>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                      <span className="h-2.5 w-2.5 rounded-full bg-amber-500" aria-hidden="true" />
-                                      <span>Sur demande</span>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                      <span className="h-2.5 w-2.5 rounded-full bg-slate-300" aria-hidden="true" />
-                                      <span>Indisponible</span>
-                                    </div>
-                                  </div>
-
-                                  <div className="mt-3 grid gap-1 text-xs text-slate-600">
-                                    <p>La couleur du jour correspond au service sélectionné.</p>
-                                    <p>Les 3 pastilles indiquent le statut de chaque service ce jour-là.</p>
-                                    <p>Clique une pastille pour basculer sur ce service et voir les créneaux du jour.</p>
-                                  </div>
-                                </div>
-
-                                <div className="grid grid-cols-7 gap-2 text-center text-[11px] font-semibold text-slate-500">
-                                  <div>L</div>
-                                  <div>M</div>
-                                  <div>M</div>
-                                  <div>J</div>
-                                  <div>V</div>
-                                  <div>S</div>
-                                  <div>D</div>
-                                </div>
-
-                                <div className="mt-2 grid grid-cols-7 gap-2">
-                                  {Array.from({ length: monthMeta.mondayIndex }).map((_, i) => (
-                                    <div key={`pad-${i}`} />
-                                  ))}
-                                  {Array.from({ length: monthMeta.daysInMonth }).map((_, i) => {
-                                    const day = i + 1;
-                                    const dateIso = `${String(monthMeta.year).padStart(4, "0")}-${String(monthMeta.month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-                                    const row = monthDaysByDate.get(dateIso) ?? {
-                                      promenadeStatus: "UNAVAILABLE" as const,
-                                      dogsittingStatus: "UNAVAILABLE" as const,
-                                      pensionStatus: "UNAVAILABLE" as const,
-                                    };
-
-                                    const statusTone = (status: "AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE") =>
-                                      status === "AVAILABLE"
-                                        ? "bg-emerald-500"
-                                        : status === "ON_REQUEST"
-                                          ? "bg-amber-500"
-                                          : "bg-slate-300";
-
-                                    const cellTone =
-                                      slotsServiceType === "PROMENADE"
-                                        ? row.promenadeStatus
-                                        : slotsServiceType === "DOGSITTING"
-                                          ? row.dogsittingStatus
-                                          : row.pensionStatus;
-
-                                    const tone =
-                                      cellTone === "AVAILABLE"
-                                        ? "bg-emerald-50 text-emerald-900 ring-emerald-200"
-                                        : cellTone === "ON_REQUEST"
-                                          ? "bg-amber-50 text-amber-900 ring-amber-200"
-                                          : "bg-slate-100 text-slate-500 ring-slate-200";
-
-                                    const ariaLabel =
-                                      `${dateIso} — ` +
-                                      `Promenade: ${serviceUi.statusLabel(row.promenadeStatus)}; ` +
-                                      `Dogsitting: ${serviceUi.statusLabel(row.dogsittingStatus)}; ` +
-                                      `Pension: ${serviceUi.statusLabel(row.pensionStatus)}`;
-
-                                    const focusRing =
-                                      slotsServiceType === "PROMENADE"
-                                        ? "ring-[2px] ring-emerald-500/30"
-                                        : slotsServiceType === "DOGSITTING"
-                                          ? "ring-[2px] ring-indigo-500/30"
-                                          : "ring-[2px] ring-fuchsia-500/30";
-                                    return (
-                                      <div key={dateIso} className={`flex h-10 w-full flex-col items-center justify-center rounded-2xl ring-1 ${tone} ${focusRing}`}>
-                                        <button
-                                          type="button"
-                                          onClick={() => {
-                                            setSlotsDate(dateIso);
-                                            if (slotsServiceType === "PENSION") {
-                                              if (!boardingStart) {
-                                                setBoardingStart(dateIso);
-                                                setBoardingEnd(dateIso);
-                                              } else {
-                                                setBoardingEnd(dateIso);
-                                              }
-                                            }
-                                          }}
-                                          className="flex w-full flex-1 flex-col items-center justify-center rounded-2xl"
-                                          aria-label={ariaLabel}
-                                        >
-                                          <span className="text-sm font-semibold leading-none">{day}</span>
-                                        </button>
-                                        <div className="-mt-1 flex items-center gap-1">
-                                          <button
-                                            type="button"
-                                            onClick={() => {
-                                              setSlotsServiceType("PROMENADE");
-                                              setSlotsDate(dateIso);
-                                            }}
-                                            className={`h-2 w-2 rounded-full ${statusTone(row.promenadeStatus)}`}
-                                            aria-label={`${dateIso} — ${serviceUi.byKey.PROMENADE.icon} Promenade: ${serviceUi.statusLabel(row.promenadeStatus)}`}
-                                          />
-                                          <button
-                                            type="button"
-                                            onClick={() => {
-                                              setSlotsServiceType("DOGSITTING");
-                                              setSlotsDate(dateIso);
-                                            }}
-                                            className={`h-2 w-2 rounded-full ${statusTone(row.dogsittingStatus)}`}
-                                            aria-label={`${dateIso} — ${serviceUi.byKey.DOGSITTING.icon} Dogsitting: ${serviceUi.statusLabel(row.dogsittingStatus)}`}
-                                          />
-                                          <button
-                                            type="button"
-                                            onClick={() => {
-                                              setSlotsServiceType("PENSION");
-                                              setSlotsDate(dateIso);
-                                              if (!boardingStart) {
-                                                setBoardingStart(dateIso);
-                                                setBoardingEnd(dateIso);
-                                              }
-                                            }}
-                                            className={`h-2 w-2 rounded-full ${statusTone(row.pensionStatus)}`}
-                                            aria-label={`${dateIso} — ${serviceUi.byKey.PENSION.icon} Pension: ${serviceUi.statusLabel(row.pensionStatus)}`}
-                                          />
-
-                                          <button
-                                            type="button"
-                                            onClick={() => setCalendarInfoDate((prev) => (prev === dateIso ? null : dateIso))}
-                                            className="ml-1 inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-200 bg-white text-[10px] font-semibold text-slate-600"
-                                            aria-label={`${dateIso} — détails du jour`}
-                                            title="Détails du jour"
-                                          >
-                                            i
-                                          </button>
-                                        </div>
-                                      </div>
-                                    );
-                                  })}
-                                </div>
-
-                                {calendarInfoDate ? (
-                                  <div className="mt-3 rounded-2xl border border-slate-200 bg-white p-4">
-                                    <p className="text-xs font-semibold text-slate-500">Détails</p>
-                                    <p className="mt-1 text-sm font-semibold text-slate-900">{calendarInfoDate}</p>
-                                    {(() => {
-                                      const row = monthDaysByDate.get(calendarInfoDate);
-                                      if (!row) {
-                                        return <p className="mt-2 text-sm text-slate-600">Ouvre la vue jour pour voir les créneaux.</p>;
-                                      }
-                                      return (
-                                        <div className="mt-2 grid gap-2 text-sm text-slate-700">
-                                          <div>
-                                            {serviceUi.byKey.PROMENADE.icon} Promenade: <span className="font-semibold">{serviceUi.statusLabel(row.promenadeStatus)}</span>
-                                          </div>
-                                          <div>
-                                            {serviceUi.byKey.DOGSITTING.icon} Dogsitting: <span className="font-semibold">{serviceUi.statusLabel(row.dogsittingStatus)}</span>
-                                          </div>
-                                          <div>
-                                            {serviceUi.byKey.PENSION.icon} Pension: <span className="font-semibold">{serviceUi.statusLabel(row.pensionStatus)}</span>
-                                          </div>
-                                          <p className="text-xs text-slate-500">Ouvre la vue jour pour voir les détails et les créneaux.</p>
-                                        </div>
-                                      );
-                                    })()}
-
-                                    <div className="mt-3">
-                                      <button
-                                        type="button"
-                                        onClick={() => {
-                                          setDayDetailsOpen(true);
-                                          setDayDetailsRetryKey((v) => v + 1);
-                                        }}
-                                        className="inline-flex h-9 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-xs font-semibold text-slate-700"
-                                        disabled={monthDaysByDate.get(calendarInfoDate)
-                                          ? (slotsServiceType === "PROMENADE"
-                                              ? monthDaysByDate.get(calendarInfoDate)!.promenadeStatus
-                                              : slotsServiceType === "DOGSITTING"
-                                                ? monthDaysByDate.get(calendarInfoDate)!.dogsittingStatus
-                                                : monthDaysByDate.get(calendarInfoDate)!.pensionStatus) === "AVAILABLE"
-                                          : false}
-                                      >
-                                        Comprendre pourquoi
-                                      </button>
-                                    </div>
-
-                                    {dayDetailsOpen ? (
-                                      <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                                        {dayDetailsLoading ? (
-                                          <p className="text-sm text-slate-600">Chargement…</p>
-                                        ) : dayDetailsError ? (
-                                          <div>
-                                            <p className="text-sm text-rose-700">{dayDetailsError}</p>
-                                            <button
-                                              type="button"
-                                              onClick={() => setDayDetailsRetryKey((v) => v + 1)}
-                                              className="mt-2 inline-flex h-9 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-xs font-semibold text-slate-700"
-                                            >
-                                              Réessayer
-                                            </button>
-                                          </div>
-                                        ) : dayDetails ? (
-                                          <div>
-                                            {dayDetails.status === "AVAILABLE" ? (
-                                              <p className="text-sm text-slate-700">Ce jour est disponible pour ce service.</p>
-                                            ) : dayDetails.buckets.length ? (
-                                              <div className="grid gap-2">
-                                                {dayDetails.buckets.map((b) => (
-                                                  <div key={b.key} className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700">
-                                                    <span className="font-semibold">{b.label}</span>
-                                                    <span className="text-xs font-semibold text-slate-500">{b.count}</span>
-                                                  </div>
-                                                ))}
-                                              </div>
-                                            ) : (
-                                              <p className="text-sm text-slate-700">Aucun détail disponible.</p>
-                                            )}
-
-                                            {dbg && dayDetails.dbg?.topReasons?.length ? (
-                                              <details className="mt-3">
-                                                <summary className="cursor-pointer text-xs font-semibold text-slate-600">dbg</summary>
-                                                <div className="mt-2 grid gap-1 text-xs text-slate-600">
-                                                  {dayDetails.dbg.topReasons.map((r) => (
-                                                    <div key={r.reason}>
-                                                      {r.reason}: {r.count}
-                                                    </div>
-                                                  ))}
-                                                </div>
-                                              </details>
-                                            ) : null}
-                                          </div>
-                                        ) : null}
-                                      </div>
-                                    ) : null}
-                                  </div>
-                                ) : null}
-                              </div>
-                            )}
                           </div>
 
                           <div className="mt-4">
