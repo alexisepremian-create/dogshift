@@ -513,25 +513,29 @@ export default function AvailabilityStudioPage() {
           <p className="mt-2 text-sm text-slate-600">Configure tes services et tes exceptions.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Link
-            href={`/sitter/${encodeURIComponent(sitterId)}?mode=public`}
-            className="inline-flex h-10 items-center justify-center rounded-2xl border border-slate-200 bg-white px-4 text-xs font-semibold text-slate-700"
-          >
-            Ouvrir ma page publique
-          </Link>
           {savedPing ? (
             <span className="inline-flex items-center rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-900 ring-1 ring-emerald-200">
               🟢 {savedPing}
             </span>
           ) : null}
+        </div>
+      </div>
 
       {topError ? (
-        <div className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 p-4">
-          {topError.split("\n").map((line, i) => (
-            <p key={`toperr-${i}`} className={i === 0 ? "text-sm font-semibold text-rose-900" : "mt-1 text-sm text-rose-900/80"}>
-              {line}
-            </p>
-          ))}
+        <div className="mt-4 flex flex-col gap-3 rounded-2xl border border-rose-200 bg-rose-50 p-4 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            {topError.split("\n").map((line, i) => (
+              <p key={`toperr-${i}`} className={i === 0 ? "text-sm font-semibold text-rose-900" : "mt-1 text-sm text-rose-900/80"}>
+                {line}
+              </p>
+            ))}
+          </div>
+          <Link
+            href={`/sitter/${encodeURIComponent(sitterId)}?mode=public`}
+            className="inline-flex h-10 shrink-0 items-center justify-center rounded-2xl border border-rose-200 bg-white px-4 text-xs font-semibold text-rose-900"
+          >
+            Ouvrir ma page publique
+          </Link>
         </div>
       ) : null}
 
@@ -882,9 +886,6 @@ export default function AvailabilityStudioPage() {
           </div>
         </div>
       ) : null}
-
-        </div>
-      </div>
 
       {error && !topError ? (
         <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4">
