@@ -276,23 +276,25 @@ export default function SiteHeader() {
             <div
               role="menu"
               aria-label="Devenir dogsitter"
-              className="pointer-events-none absolute left-1/2 top-full z-50 mt-3 w-52 -translate-x-1/2 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_18px_60px_-40px_rgba(2,6,23,0.18)] opacity-0 transition group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100"
+              className="pointer-events-none absolute left-1/2 top-full z-50 w-52 -translate-x-1/2 pt-3 opacity-0 transition group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100"
             >
-              <Link
-                role="menuitem"
-                href="/devenir-dogsitter"
-                className="flex items-center px-4 py-3 text-sm font-semibold text-slate-900 hover:bg-slate-50"
-              >
-                Candidater
-              </Link>
-              <div className="h-px w-full bg-slate-200" />
-              <Link
-                role="menuitem"
-                href="/become-sitter"
-                className="flex items-center px-4 py-3 text-sm font-semibold text-slate-900 hover:bg-slate-50"
-              >
-                Accès sitter
-              </Link>
+              <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_18px_60px_-40px_rgba(2,6,23,0.18)]">
+                <Link
+                  role="menuitem"
+                  href="/devenir-dogsitter"
+                  className="flex items-center px-4 py-3 text-sm font-semibold text-slate-900 hover:bg-slate-50"
+                >
+                  Candidater
+                </Link>
+                <div className="h-px w-full bg-slate-200" />
+                <Link
+                  role="menuitem"
+                  href="/become-sitter"
+                  className="flex items-center px-4 py-3 text-sm font-semibold text-slate-900 hover:bg-slate-50"
+                >
+                  Accès sitter
+                </Link>
+              </div>
             </div>
           </div>
           <Link href="/shop" className={navLinkClassName}>
