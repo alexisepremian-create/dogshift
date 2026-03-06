@@ -968,6 +968,8 @@ export default function AvailabilityStudioPage() {
               const metaSvc = serviceMeta(svc);
               const cfg = configByService[svc];
               const enabled = cfg?.enabled !== false;
+              const tone = serviceDotTone(svc);
+              const activeSwitchTone = tone === "bg-sky-400" ? "bg-sky-500" : tone === "bg-violet-400" ? "bg-violet-500" : "bg-emerald-500";
               return (
                 <div key={svc} className="rounded-3xl border border-slate-200 bg-white p-4 text-left">
                   <div className="flex items-center justify-between">
@@ -985,7 +987,7 @@ export default function AvailabilityStudioPage() {
                       }}
                       className={
                         enabled
-                          ? "relative inline-flex h-6 w-11 items-center rounded-full bg-emerald-500 transition"
+                          ? `relative inline-flex h-6 w-11 items-center rounded-full ${activeSwitchTone} transition`
                           : "relative inline-flex h-6 w-11 items-center rounded-full bg-slate-300 transition"
                       }
                       aria-label={enabled ? `Désactiver ${metaSvc.label}` : `Activer ${metaSvc.label}`}
