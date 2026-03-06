@@ -20,6 +20,14 @@ type ExceptionRow = {
   status: "AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE";
 };
 
+type AvailabilityRuleRow = {
+  id: string;
+  dayOfWeek: number;
+  startMin: number;
+  endMin: number;
+  status: "AVAILABLE" | "ON_REQUEST";
+};
+
 type ToastState = { tone: "ok" | "error"; message: string } | null;
 
 function errorMessageFr(code: string) {
@@ -64,6 +72,20 @@ function serviceDotTone(svc: ServiceTypeApi) {
   if (svc === "PROMENADE") return "bg-sky-400";
   if (svc === "DOGSITTING") return "bg-violet-400";
   return "bg-emerald-400";
+}
+
+function dayStatusForService(
+  row: {
+    promenadeStatus: "AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE";
+    dogsittingStatus: "AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE";
+    pensionStatus: "AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE";
+  } | undefined,
+  svc: ServiceTypeApi
+) {
+  if (!row) return "UNAVAILABLE" as const;
+  if (svc === "PROMENADE") return row.promenadeStatus;
+  if (svc === "DOGSITTING") return row.dogsittingStatus;
+  return row.pensionStatus;
 }
 
 function startOfMonthIso(dt: Date) {
@@ -124,6 +146,12 @@ export default function AvailabilityStudioPage() {
     PENSION: [],
   });
 
+  const [rulesByService, setRulesByService] = useState<Record<ServiceTypeApi, AvailabilityRuleRow[]>>({
+    PROMENADE: [],
+    DOGSITTING: [],
+    PENSION: [],
+  });
+
   const [monthCursor, setMonthCursor] = useState(() => startOfMonthIso(new Date()));
   const meta = useMemo(() => monthMeta(monthCursor), [monthCursor]);
 
@@ -152,6 +180,7 @@ export default function AvailabilityStudioPage() {
   const [justAddedRangeIdx, setJustAddedRangeIdx] = useState<number | null>(null);
   const [exceptionSaving, setExceptionSaving] = useState(false);
   const [exceptionError, setExceptionError] = useState<string | null>(null);
+  const [weeklySavingKey, setWeeklySavingKey] = useState<string | null>(null);
 
   const exceptionFormLoadedKeyRef = useRef<string>("");
 
@@ -279,6 +308,25 @@ export default function AvailabilityStudioPage() {
         return next;
       });
 
+      const rulePairs = await Promise.all(
+        services.map(async (svc) => {
+          const res = await fetch(`/api/sitters/me/availability-rules?service=${encodeURIComponent(svc)}`, { method: "GET", cache: "no-store" });
+          const payload = (await res.json().catch(() => null)) as any;
+          if (!res.ok) {
+            if (payload?.error === "PRICING_REQUIRED") return [svc, [] as AvailabilityRuleRow[]] as const;
+            throw new Error("RULES_ERROR");
+          }
+          if (!payload?.ok || !Array.isArray(payload?.rules)) throw new Error("RULES_ERROR");
+          return [svc, payload.rules as AvailabilityRuleRow[]] as const;
+        })
+      );
+      if (token !== refreshTokenRef.current) return;
+      setRulesByService((prev) => {
+        const next = { ...prev };
+        for (const [svc, rules] of rulePairs) (next as any)[svc] = rules;
+        return next;
+      });
+
       // Public preview month calendar (truth = slotEngine summaries)
       const qp = new URLSearchParams();
       qp.set("from", meta.fromIso);
@@ -302,12 +350,46 @@ export default function AvailabilityStudioPage() {
     return;
   }
 
-  const bookableExceptionDatesByService = useMemo(() => {
+  async function saveWeeklyRule(svc: ServiceTypeApi, dayOfWeek: number, enabled: boolean, status: "AVAILABLE" | "ON_REQUEST") {
+    if (!sitterId) return;
+    setLoading(true);
+    setError(null);
+    setTopError(null);
+    setWeeklySavingKey(`${svc}-${dayOfWeek}`);
+    try {
+      const res = await fetch(`/api/sitters/me/availability-rules?service=${encodeURIComponent(svc)}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          dayOfWeek,
+          rules: enabled ? [{ startMin: 0, endMin: 24 * 60, status }] : [],
+        }),
+      });
+      const payload = (await res.json().catch(() => null)) as any;
+      if (!res.ok || !payload?.ok) throw new Error(payload?.error ?? "SAVE_ERROR");
+      await refetchAll();
+    } catch (e) {
+      const code = e instanceof Error ? e.message : "SAVE_ERROR";
+      if (code === "PRICING_REQUIRED") {
+        setTopError(errorMessageFr(code));
+        setError(null);
+      } else {
+        setError(code);
+      }
+      await refetchAll();
+    } finally {
+      setWeeklySavingKey(null);
+      setLoading(false);
+    }
+  }
+
+  const bookableDatesByService = useMemo(() => {
     const mk = (svc: ServiceTypeApi) => {
       const set = new Set<string>();
-      for (const e of exceptionsByService[svc] ?? []) {
-        if (!e || typeof e.date !== "string") continue;
-        if (e.status === "AVAILABLE" || e.status === "ON_REQUEST") set.add(e.date);
+      for (const row of monthDays) {
+        if (!row || typeof row.date !== "string") continue;
+        const status = dayStatusForService(row, svc);
+        if (status === "AVAILABLE" || status === "ON_REQUEST") set.add(row.date);
       }
       return set;
     };
@@ -316,7 +398,32 @@ export default function AvailabilityStudioPage() {
       DOGSITTING: mk("DOGSITTING"),
       PENSION: mk("PENSION"),
     };
-  }, [exceptionsByService]);
+  }, [monthDays]);
+
+  const weeklyDayOptions = useMemo(
+    () => [
+      { dayOfWeek: 1, label: "Lundi" },
+      { dayOfWeek: 2, label: "Mardi" },
+      { dayOfWeek: 3, label: "Mercredi" },
+      { dayOfWeek: 4, label: "Jeudi" },
+      { dayOfWeek: 5, label: "Vendredi" },
+      { dayOfWeek: 6, label: "Samedi" },
+      { dayOfWeek: 0, label: "Dimanche" },
+    ],
+    []
+  );
+
+  const weeklyRulesForTab = useMemo(() => {
+    const map = new Map<number, { enabled: boolean; status: "AVAILABLE" | "ON_REQUEST" }>();
+    for (const day of weeklyDayOptions) {
+      map.set(day.dayOfWeek, { enabled: false, status: "AVAILABLE" });
+    }
+    for (const rule of rulesByService[availabilityTab] ?? []) {
+      if (!map.has(rule.dayOfWeek)) continue;
+      map.set(rule.dayOfWeek, { enabled: true, status: rule.status });
+    }
+    return map;
+  }, [availabilityTab, rulesByService, weeklyDayOptions]);
 
   const exceptionsForSelectedDate = useMemo(() => {
     if (!exceptionDate) return [] as ExceptionRow[];
@@ -479,17 +586,15 @@ export default function AvailabilityStudioPage() {
     const dogsittingEnabled = configByService.DOGSITTING?.enabled ?? true;
     const pensionEnabled = configByService.PENSION?.enabled ?? true;
 
-    const promenadeBookable = promenadeEnabled && bookableExceptionDatesByService.PROMENADE.has(dateIso);
-    const dogsittingBookable = dogsittingEnabled && bookableExceptionDatesByService.DOGSITTING.has(dateIso);
-    const pensionBookable = pensionEnabled && bookableExceptionDatesByService.PENSION.has(dateIso);
+    const promenadeBookable = promenadeEnabled && bookableDatesByService.PROMENADE.has(dateIso);
+    const dogsittingBookable = dogsittingEnabled && bookableDatesByService.DOGSITTING.has(dateIso);
+    const pensionBookable = pensionEnabled && bookableDatesByService.PENSION.has(dateIso);
 
     const isBookable = promenadeBookable || dogsittingBookable || pensionBookable;
     return isBookable
       ? "bg-emerald-50 text-emerald-900 ring-emerald-200"
       : "bg-slate-100 text-slate-500 ring-slate-200";
   };
-
-  const weekLabels = ["Dimanche", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"];
 
   if (!sitterId) {
     return (
@@ -1045,41 +1150,47 @@ export default function AvailabilityStudioPage() {
               <div className="mt-3 grid gap-2">
                 {(() => {
                   if (!enabledServices.length) return <p className="text-sm text-slate-600">Aucun service activé.</p>;
-                  const rows = (exceptionsByService[availabilityTab] ?? [])
-                    .slice()
-                    .sort((a, b) => (a.date === b.date ? a.startMin - b.startMin : a.date.localeCompare(b.date)));
+                  return (
+                    <div className="grid gap-2">
+                      {weeklyDayOptions.map((day) => {
+                        const rule = weeklyRulesForTab.get(day.dayOfWeek) ?? { enabled: false, status: "AVAILABLE" as const };
+                        const isSaving = weeklySavingKey === `${availabilityTab}-${day.dayOfWeek}`;
+                        return (
+                          <div key={`${availabilityTab}-${day.dayOfWeek}`} className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                            <label className="flex items-center gap-3">
+                              <input
+                                type="checkbox"
+                                checked={rule.enabled}
+                                disabled={isSaving}
+                                onChange={(e) => {
+                                  void saveWeeklyRule(availabilityTab, day.dayOfWeek, e.currentTarget.checked, rule.status);
+                                }}
+                                className="h-4 w-4 rounded border-slate-300 text-[var(--dogshift-blue)] focus:ring-[var(--dogshift-blue)]"
+                              />
+                              <span className="text-sm font-semibold text-slate-900">{day.label}</span>
+                            </label>
 
-                  if (!rows.length) return <p className="text-sm text-slate-600">Aucune disponibilité.</p>;
+                            <div className="flex items-center gap-2">
+                              <select
+                                value={rule.status}
+                                disabled={!rule.enabled || isSaving}
+                                onChange={(e) => {
+                                  const nextStatus = e.currentTarget.value === "ON_REQUEST" ? "ON_REQUEST" : "AVAILABLE";
+                                  void saveWeeklyRule(availabilityTab, day.dayOfWeek, true, nextStatus);
+                                }}
+                                className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+                              >
+                                <option value="AVAILABLE">Disponible</option>
+                                <option value="ON_REQUEST">Sur demande</option>
+                              </select>
 
-                  return rows.map((e) => (
-                    <div key={e.id} className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3">
-                      <div>
-                        <p className="text-xs font-semibold text-slate-500">{formatDateFrCh(e.date)}</p>
-                        <p className="text-sm font-semibold text-slate-900">
-                          {minutesToHHMM(e.startMin)}–{minutesToHHMM(e.endMin)} — {statusLabelFr(e.status)}
-                        </p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={async () => {
-                          setLoading(true);
-                          try {
-                            await fetch("/api/sitters/me/availability-exceptions", {
-                              method: "DELETE",
-                              headers: { "Content-Type": "application/json" },
-                              body: JSON.stringify({ id: e.id }),
-                            });
-                            await refetchAll();
-                          } finally {
-                            setLoading(false);
-                          }
-                        }}
-                        className="inline-flex h-9 items-center justify-center rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700"
-                      >
-                        Supprimer
-                      </button>
+                              {isSaving ? <span className="text-xs font-semibold text-slate-500">Enregistrement…</span> : null}
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
-                  ));
+                  );
                 })()}
               </div>
             </div>
@@ -1140,13 +1251,13 @@ export default function AvailabilityStudioPage() {
                 const pensionEnabled = configByService.PENSION?.enabled ?? true;
 
                 const indicators: Array<{ key: string; type: "service"; svc: ServiceTypeApi }> = [];
-                if (promenadeEnabled && bookableExceptionDatesByService.PROMENADE.has(dateIso)) {
+                if (promenadeEnabled && bookableDatesByService.PROMENADE.has(dateIso)) {
                   indicators.push({ key: "PROMENADE", type: "service", svc: "PROMENADE" });
                 }
-                if (dogsittingEnabled && bookableExceptionDatesByService.DOGSITTING.has(dateIso)) {
+                if (dogsittingEnabled && bookableDatesByService.DOGSITTING.has(dateIso)) {
                   indicators.push({ key: "DOGSITTING", type: "service", svc: "DOGSITTING" });
                 }
-                if (pensionEnabled && bookableExceptionDatesByService.PENSION.has(dateIso)) {
+                if (pensionEnabled && bookableDatesByService.PENSION.has(dateIso)) {
                   indicators.push({ key: "PENSION", type: "service", svc: "PENSION" });
                 }
                 const visibleIndicators = indicators.slice(0, 3);
