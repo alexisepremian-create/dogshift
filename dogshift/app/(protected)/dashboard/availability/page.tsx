@@ -139,7 +139,7 @@ export default function AvailabilityStudioPage() {
   const [exceptionDrawerOpen, setExceptionDrawerOpen] = useState(false);
   const [exceptionDate, setExceptionDate] = useState<string>("");
   const [exceptionService, setExceptionService] = useState<ServiceTypeApi>("PROMENADE");
-  const [exceptionStatus, setExceptionStatus] = useState<"AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE">("UNAVAILABLE");
+  const [exceptionStatus, setExceptionStatus] = useState<"AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE">("AVAILABLE");
   const [exceptionAllDay, setExceptionAllDay] = useState(true);
   const [exceptionRanges, setExceptionRanges] = useState<Array<{ startMin: number; endMin: number }>>([]);
   const [justAddedRangeIdx, setJustAddedRangeIdx] = useState<number | null>(null);
@@ -370,7 +370,7 @@ export default function AvailabilityStudioPage() {
     const existing = (exceptionsByService[exceptionService] ?? []).filter((e) => e.date === exceptionDate);
     if (existing.length) {
       const st = existing[0].status;
-      setExceptionStatus(st);
+      setExceptionStatus(st === "UNAVAILABLE" ? "AVAILABLE" : st);
       const isAllDay = existing.length === 1 && existing[0].startMin === 0 && existing[0].endMin === 24 * 60;
       setExceptionAllDay(isAllDay);
       setExceptionRanges(
@@ -379,7 +379,7 @@ export default function AvailabilityStudioPage() {
           : existing.map((r) => ({ startMin: r.startMin, endMin: r.endMin })).sort((a, b) => a.startMin - b.startMin)
       );
     } else {
-      setExceptionStatus("UNAVAILABLE");
+      setExceptionStatus("AVAILABLE");
       setExceptionAllDay(true);
       setExceptionRanges([]);
     }
@@ -387,7 +387,7 @@ export default function AvailabilityStudioPage() {
     exceptionDrawerInitialSnapshotRef.current = JSON.stringify({
       date: exceptionDate,
       service: exceptionService,
-      status: existing.length ? existing[0].status : "UNAVAILABLE",
+      status: existing.length ? (existing[0].status === "UNAVAILABLE" ? "AVAILABLE" : existing[0].status) : "AVAILABLE",
       allDay: existing.length ? existing.length === 1 && existing[0].startMin === 0 && existing[0].endMin === 24 * 60 : true,
       ranges:
         existing.length && !(existing.length === 1 && existing[0].startMin === 0 && existing[0].endMin === 24 * 60)
@@ -617,7 +617,6 @@ export default function AvailabilityStudioPage() {
                 <div className="mt-2 rounded-2xl border border-slate-200 bg-slate-50 p-3 text-xs font-semibold text-slate-700">
                   <p>Disponible (acceptation automatique)</p>
                   <p className="mt-1">Sur demande (confirmation requise)</p>
-                  <p className="mt-1">Indisponible (non réservable)</p>
                 </div>
 
                 <div className="mt-3 grid gap-3">
@@ -666,14 +665,13 @@ export default function AvailabilityStudioPage() {
                     value={exceptionStatus}
                     onChange={(e) => {
                       const v = e.target.value;
-                      if (v === "AVAILABLE" || v === "ON_REQUEST" || v === "UNAVAILABLE") setExceptionStatus(v);
+                      if (v === "AVAILABLE" || v === "ON_REQUEST") setExceptionStatus(v);
                     }}
                     className="mt-1 w-full rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm"
                     aria-label="Statut réservation"
                   >
                     <option value="AVAILABLE">Disponible</option>
                     <option value="ON_REQUEST">Sur demande</option>
-                    <option value="UNAVAILABLE">Indisponible</option>
                   </select>
                 </label>
 
@@ -817,21 +815,22 @@ export default function AvailabilityStudioPage() {
 
               <button
                 type="button"
-                disabled={exceptionSaving || !exceptionRangesValidation.ok}
                 onClick={async () => {
+                  if (exceptionSaving) return;
                   setExceptionSaving(true);
                   setExceptionError(null);
                   try {
-                    const ranges = exceptionAllDay ? [] : exceptionRanges;
-                    const normalized = normalizeRanges(ranges);
+                    if (exceptionStatus === "UNAVAILABLE") throw new Error("INVALID_STATUS");
+
+                    const normalized =
+                      exceptionAllDay
+                        ? { ok: true as const, ranges: [{ startMin: 0, endMin: 24 * 60 }] }
+                        : normalizeRanges(exceptionRanges);
                     if (!normalized.ok) {
-                      setExceptionError("INVALID_RANGES");
-                      showToast({ tone: "error", message: "Plages invalides" });
+                      setExceptionError("Les plages se chevauchent.");
                       return;
                     }
-
-                    const nextRanges = exceptionAllDay ? [] : normalized.ranges;
-                    setExceptionRanges(nextRanges);
+                    const nextRanges = normalized.ranges;
 
                     const res = await fetch("/api/sitters/me/availability-exceptions", {
                       method: "PUT",
@@ -862,6 +861,7 @@ export default function AvailabilityStudioPage() {
                     setExceptionSaving(false);
                   }
                 }}
+                disabled={exceptionSaving || !enabledServices.length}
                 className="inline-flex h-11 w-full items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-6 text-sm font-semibold text-white disabled:opacity-60"
               >
                 {exceptionSaving ? "Enregistrement…" : "Enregistrer"}
