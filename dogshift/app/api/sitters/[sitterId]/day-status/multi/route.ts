@@ -124,11 +124,41 @@ export async function GET(
       });
     }
 
+    const exceptionsLoadedDatesByService = dbg
+      ? ((): Record<string, string[]> => {
+          const out: Record<string, Set<string>> = {
+            PROMENADE: new Set<string>(),
+            DOGSITTING: new Set<string>(),
+            PENSION: new Set<string>(),
+          };
+          for (const e of exceptionsInRange ?? []) {
+            const st = typeof (e as any)?.serviceType === "string" ? String((e as any).serviceType) : "";
+            const v = (e as any)?.date;
+            const key = v instanceof Date ? toZurichIsoDate(v) : typeof v === "string" ? v.slice(0, 10) : "";
+            if (!key) continue;
+            if (st === "PROMENADE" || st === "DOGSITTING" || st === "PENSION") {
+              out[st].add(key);
+            }
+          }
+          return {
+            PROMENADE: Array.from(out.PROMENADE).sort(),
+            DOGSITTING: Array.from(out.DOGSITTING).sort(),
+            PENSION: Array.from(out.PENSION).sort(),
+          };
+        })()
+      : undefined;
+
     return NextResponse.json(
       {
         ok: true,
         timezone: TIMEZONE_ZURICH,
         days,
+        ...(dbg
+          ? {
+              exceptionsLoadedCount: Array.isArray(exceptionsInRange) ? exceptionsInRange.length : 0,
+              exceptionsLoadedDatesByService,
+            }
+          : null),
       },
       {
         status: 200,
