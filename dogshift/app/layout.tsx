@@ -42,7 +42,7 @@ export default async function RootLayout({
   await headers();
 
   return (
-    <html lang="en">
+    <html lang="fr">
       <head>
         <link rel="icon" href="/favicon.ico" />
         <link rel="preload" as="image" href="/favicon.ico" />
