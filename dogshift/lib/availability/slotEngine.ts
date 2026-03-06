@@ -441,7 +441,11 @@ export function computeDaySlots(input: ComputeDaySlotsInput): DaySlot[] {
   }
 
   const baseFromRules = mergeSameStatus(normalizeRuleIntervals(input.rules));
-  const baseWithExceptions = applyOverride(baseFromRules, normalizeExceptionIntervals(input.exceptions));
+  const exceptionIntervals = normalizeExceptionIntervals(input.exceptions);
+  const baseSeeded = !baseFromRules.length && exceptionIntervals.length
+    ? ([{ startMin: 0, endMin: 24 * 60, status: "UNAVAILABLE" as const, reason: "no_rule" }] as Interval[])
+    : baseFromRules;
+  const baseWithExceptions = applyOverride(baseSeeded, exceptionIntervals);
 
   // Hard blocks override the agenda to UNAVAILABLE (instead of subtracting), so we can expose UNAVAILABLE slots + reasons.
   const hardOverrides: Interval[] = hardBlocks.map((b) => ({
