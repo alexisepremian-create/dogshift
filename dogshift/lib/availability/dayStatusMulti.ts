@@ -65,6 +65,20 @@ function bookingEndDate(b: any) {
   return null;
 }
 
+function isZurichMidnight(dt: Date) {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: TIMEZONE_ZURICH,
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  }).formatToParts(dt);
+  const hh = Number(parts.find((p) => p.type === "hour")?.value ?? "NaN");
+  const mm = Number(parts.find((p) => p.type === "minute")?.value ?? "NaN");
+  const ss = Number(parts.find((p) => p.type === "second")?.value ?? "NaN");
+  return hh === 0 && mm === 0 && ss === 0;
+}
+
 function addDaysIsoUtc(iso: string, deltaDays: number) {
   const dt = new Date(`${iso}T12:00:00Z`);
   const next = new Date(dt.getTime() + deltaDays * 24 * 60 * 60 * 1000);
@@ -186,8 +200,13 @@ export function computeMultiDayStatusIndexed(input: DayStatusMultiInput): {
     const endAt = bookingEndDate(b);
     if (!startAt || !endAt) continue;
     const startIso = toZurichIsoDate(startAt);
-    const endIso = toZurichIsoDate(endAt);
-    if (!startIso || !endIso) continue;
+    const endIsoRaw = toZurichIsoDate(endAt);
+    if (!startIso || !endIsoRaw) continue;
+
+    // If a booking ends exactly at local midnight, it should NOT block that calendar day.
+    // Example: [2026-03-10 18:00 → 2026-03-11 00:00) blocks 10th but not 11th.
+    const endIso = isZurichMidnight(endAt) ? addDaysIsoUtc(endIsoRaw, -1) : endIsoRaw;
+    if (endIso < startIso) continue;
 
     const minIso = clampIso(startIso, fromIso, toIso);
     const maxIso = clampIso(endIso, fromIso, toIso);
