@@ -18,9 +18,6 @@ import {
   type HostProfileV1,
 } from "@/lib/hostProfile";
 
-type AvailabilityPayload = { ok?: boolean; dates?: string[]; error?: string };
-type BulkAvailabilityPayload = { ok?: boolean; created?: number; deleted?: number; error?: string };
-
 const SERVICE_LABELS: Record<ServiceType, string> = {
   Promenade: "Promenade",
   Garde: "Garde",
@@ -64,10 +61,6 @@ function formatZurichIsoDate(date: Date) {
     month: "2-digit",
     day: "2-digit",
   }).format(date);
-}
-
-function todayZurichIsoDate() {
-  return formatZurichIsoDate(new Date());
 }
 
 function toIsoDateString(d: Date) {
@@ -137,66 +130,7 @@ export default function HostProfileEditPage() {
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [availMonth, setAvailMonth] = useState<Date>(() => {
-    const now = new Date();
-    return new Date(now.getFullYear(), now.getMonth(), 1);
-  });
-  const [availRemote, setAvailRemote] = useState<Set<string>>(() => new Set());
-  const [availDraft, setAvailDraft] = useState<Set<string>>(() => new Set());
-  const [availLoading, setAvailLoading] = useState(false);
-  const [availSaving, setAvailSaving] = useState(false);
-  const [availError, setAvailError] = useState<string | null>(null);
-  const [availSaved, setAvailSaved] = useState(false);
 
-  const [availToast, setAvailToast] = useState<{ kind: "success" | "error"; message: string } | null>(null);
-
-  const todayIso = useMemo(() => todayZurichIsoDate(), []);
-
-  useEffect(() => {
-    return;
-  }, []);
-
-  useEffect(() => {
-    if (!availToast) return;
-    const t = window.setTimeout(() => setAvailToast(null), 3200);
-    return () => window.clearTimeout(t);
-  }, [availToast]);
-
-  useEffect(() => {
-    if (!sitterId) return;
-    let canceled = false;
-    setAvailLoading(true);
-    setAvailError(null);
-    setAvailSaved(false);
-    void (async () => {
-      try {
-        const res = await fetch("/api/sitter/availability", { method: "GET" });
-        const payload = (await res.json().catch(() => null)) as AvailabilityPayload | null;
-        if (canceled) return;
-        if (!res.ok || !payload?.ok) {
-          setAvailError("Impossible de charger les disponibilités.");
-          setAvailRemote(new Set());
-          setAvailDraft(new Set());
-          return;
-        }
-        const rows = Array.isArray(payload.dates) ? payload.dates.filter((d): d is string => typeof d === "string") : [];
-        const normalized = new Set(rows);
-        setAvailRemote(normalized);
-        setAvailDraft(new Set(rows));
-      } catch {
-        if (canceled) return;
-        setAvailError("Impossible de charger les disponibilités.");
-        setAvailRemote(new Set());
-        setAvailDraft(new Set());
-      } finally {
-        if (canceled) return;
-        setAvailLoading(false);
-      }
-    })();
-    return () => {
-      canceled = true;
-    };
-  }, [sitterId]);
 
   useEffect(() => {
     if (!sitterId) return;
@@ -606,189 +540,6 @@ export default function HostProfileEditPage() {
                     </div>
                   </div>
                 ) : null}
-              </div>
-
-              <div id="disponibilites" className="scroll-mt-24 border-t border-slate-200 p-6 sm:p-8">
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                  <div>
-                    <h2 className="text-base font-semibold text-slate-900">Disponibilités</h2>
-                    <p className="mt-1 text-sm text-slate-600">Clique sur une date pour la rendre disponible / indisponible.</p>
-                    <p className="mt-1 text-xs font-medium text-slate-500">
-                      Ces disponibilités s’appliquent à tous vos services. Les horaires se règlent dans Horaires & règles.
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      if (availLoading) return;
-                      setAvailLoading(true);
-                      setAvailError(null);
-                      setAvailSaved(false);
-                      try {
-                        const res = await fetch("/api/sitter/availability", { method: "GET" });
-                        const payload = (await res.json().catch(() => null)) as AvailabilityPayload | null;
-                        if (!res.ok || !payload?.ok) {
-                          setAvailError("Impossible de charger les disponibilités.");
-                          return;
-                        }
-                        const rows = Array.isArray(payload.dates) ? payload.dates.filter((d): d is string => typeof d === "string") : [];
-                        const normalized = new Set(rows);
-                        setAvailRemote(normalized);
-                        setAvailDraft(new Set(rows));
-                      } catch {
-                        setAvailError("Impossible de charger les disponibilités.");
-                      } finally {
-                        setAvailLoading(false);
-                      }
-                    }}
-                    className="inline-flex items-center justify-center rounded-2xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50"
-                  >
-                    {availLoading ? "Chargement…" : "Rafraîchir"}
-                  </button>
-                </div>
-
-                <div className="mt-5 rounded-[20px] border border-slate-200 bg-white p-4 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.12)] sm:p-5">
-                  <div className="flex items-center justify-between gap-3">
-                    <button
-                      type="button"
-                      onClick={() => setAvailMonth((m) => addMonths(m, -1))}
-                      className="inline-flex h-9 w-9 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-700 shadow-sm transition hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)]"
-                      aria-label="Mois précédent"
-                    >
-                      <span aria-hidden="true">‹</span>
-                    </button>
-
-                    <p className="text-sm font-semibold capitalize tracking-tight text-slate-900 sm:text-base">{monthTitle(availMonth)}</p>
-
-                    <button
-                      type="button"
-                      onClick={() => setAvailMonth((m) => addMonths(m, 1))}
-                      className="inline-flex h-9 w-9 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-700 shadow-sm transition hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)]"
-                      aria-label="Mois suivant"
-                    >
-                      <span aria-hidden="true">›</span>
-                    </button>
-                  </div>
-
-                  <div className="mt-4 grid grid-cols-7 gap-1">
-                    {(["L", "M", "M", "J", "V", "S", "D"] as const).map((d) => (
-                      <p key={d} className="text-center text-[11px] font-semibold text-slate-500">
-                        {d}
-                      </p>
-                    ))}
-                  </div>
-
-                  <div className="mt-2 grid grid-cols-7 gap-1">
-                    {getMonthGrid(availMonth).map((cell) => {
-                      const iso = toIsoDateString(cell.date);
-                      const isPast = iso < todayIso;
-                      const selected = availDraft.has(iso);
-                      const canToggle = cell.inMonth && !isPast;
-                      return (
-                        <button
-                          key={iso}
-                          type="button"
-                          disabled={!canToggle}
-                          onClick={() => {
-                            if (!canToggle) return;
-                            setAvailSaved(false);
-                            setAvailDraft((prev) => {
-                              const next = new Set(prev);
-                              if (next.has(iso)) next.delete(iso);
-                              else next.add(iso);
-                              return next;
-                            });
-                          }}
-                          className={
-                            "inline-flex h-9 w-9 items-center justify-center rounded-full text-sm font-semibold transition duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)] " +
-                            (cell.inMonth ? "" : "opacity-40 ") +
-                            (isPast ? "cursor-not-allowed bg-slate-100 text-slate-400 " : "") +
-                            (selected && !isPast
-                              ? "bg-emerald-100 text-emerald-900 ring-1 ring-emerald-200"
-                              : !isPast
-                                ? "bg-white text-slate-900 ring-1 ring-slate-200 hover:bg-slate-50"
-                                : "")
-                          }
-                          aria-pressed={selected}
-                        >
-                          {cell.date.getDate()}
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                  <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="text-xs font-medium text-slate-600">
-                      <p>
-                        <span className="inline-flex h-2 w-2 rounded-full bg-emerald-300 align-middle" /> <span className="ml-2">Disponible</span>
-                      </p>
-                      <p className="mt-1">
-                        <span className="inline-flex h-2 w-2 rounded-full bg-slate-300 align-middle" /> <span className="ml-2">Indisponible</span>
-                      </p>
-                    </div>
-
-                    <button
-                      type="button"
-                      disabled={availSaving}
-                      onClick={async () => {
-                        if (availSaving) return;
-                        const before = new Set(availRemote);
-                        setAvailSaving(true);
-                        setAvailError(null);
-                        setAvailSaved(false);
-                        try {
-                          const next = availDraft;
-                          const toAdd = Array.from(next).filter((d) => !availRemote.has(d));
-                          const toRemove = Array.from(availRemote).filter((d) => !next.has(d));
-
-                          // Optimistic: assume success and update remote state immediately.
-                          setAvailRemote(new Set(next));
-
-                          const res = await fetch("/api/availability", {
-                            method: "PUT",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({ added: toAdd, removed: toRemove }),
-                          });
-                          const payload = (await res.json().catch(() => null)) as BulkAvailabilityPayload | null;
-                          if (!res.ok || !payload?.ok) {
-                            setAvailRemote(before);
-                            setAvailDraft(before);
-                            setAvailError("Impossible d’enregistrer les disponibilités.");
-                            setAvailToast({ kind: "error", message: "Erreur: enregistrement des disponibilités." });
-                            return;
-                          }
-
-                          setAvailSaved(true);
-                          setAvailToast({ kind: "success", message: "Disponibilités enregistrées." });
-                        } catch {
-                          setAvailRemote(before);
-                          setAvailDraft(before);
-                          setAvailError("Impossible d’enregistrer les disponibilités.");
-                          setAvailToast({ kind: "error", message: "Erreur: enregistrement des disponibilités." });
-                        } finally {
-                          setAvailSaving(false);
-                        }
-                      }}
-                      className="inline-flex items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-5 py-2.5 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition hover:bg-[var(--dogshift-blue-hover)] disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                      {availSaving ? "Enregistrement…" : "Enregistrer"}
-                    </button>
-                  </div>
-
-                  {availSaved ? (
-                    <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
-                      <p className="text-sm font-semibold text-emerald-900">Enregistré</p>
-                      <p className="mt-1 text-sm text-emerald-900/80">Tes disponibilités ont été mises à jour.</p>
-                    </div>
-                  ) : null}
-
-                  {availError ? (
-                    <div className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 p-4">
-                      <p className="text-sm font-semibold text-rose-900">Erreur</p>
-                      <p className="mt-1 text-sm text-rose-900/80">{availError}</p>
-                    </div>
-                  ) : null}
-                </div>
               </div>
 
               <div id="horaires" className="scroll-mt-24 border-t border-slate-200 p-6 sm:p-8">
@@ -1235,17 +986,6 @@ export default function HostProfileEditPage() {
           </section>
         </div>
       </div>
-
-      {availToast ? (
-        <div
-          className={
-            "fixed bottom-5 left-1/2 z-50 -translate-x-1/2 rounded-full border px-5 py-3 text-sm font-semibold shadow-[0_18px_60px_-46px_rgba(2,6,23,0.35)] " +
-            (availToast.kind === "success" ? "border-emerald-200 bg-white text-emerald-900" : "border-rose-200 bg-white text-rose-900")
-          }
-        >
-          {availToast.message}
-        </div>
-      ) : null}
     </div>
   );
 }

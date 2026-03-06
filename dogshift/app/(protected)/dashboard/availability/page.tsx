@@ -22,6 +22,13 @@ type ExceptionRow = {
 
 type ToastState = { tone: "ok" | "error"; message: string } | null;
 
+function errorMessageFr(code: string) {
+  if (code === "PRICING_REQUIRED") {
+    return "Tarif requis\nTu dois d’abord définir un tarif pour ce service avant de pouvoir l’activer ou ajouter des disponibilités.\nTu peux le faire dans la section Services & tarifs.";
+  }
+  return code;
+}
+
 function statusLabelFr(value: "AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE") {
   if (value === "AVAILABLE") return "Disponible";
   if (value === "ON_REQUEST") return "Sur demande";
@@ -218,7 +225,8 @@ export default function AvailabilityStudioPage() {
       showToast({ tone: "ok", message: enabled ? "Service activé" : "Service désactivé" });
       await refetchAll();
     } catch (e) {
-      showToast({ tone: "error", message: "Impossible d’enregistrer" });
+      const code = e instanceof Error ? e.message : "SAVE_ERROR";
+      showToast({ tone: "error", message: errorMessageFr(code) });
       await refetchAll();
       setError(e instanceof Error ? e.message : "SAVE_ERROR");
     } finally {

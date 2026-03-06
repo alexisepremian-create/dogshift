@@ -18,16 +18,34 @@ function normalizePricing(raw: unknown) {
 
   const allowed = new Set(["Promenade", "Garde", "Pension"]);
   const out: Record<string, number> = {};
+  const missingOrInvalid: string[] = [];
 
   for (const [k, v] of Object.entries(obj)) {
     if (!allowed.has(k)) continue;
-    if (typeof v !== "number" || !Number.isFinite(v)) continue;
+    if (v === null || v === "" || v === undefined) {
+      missingOrInvalid.push(k);
+      continue;
+    }
+    if (typeof v !== "number" || !Number.isFinite(v)) {
+      missingOrInvalid.push(k);
+      continue;
+    }
     const n = Math.round(v * 100) / 100;
-    if (n <= 0) continue;
+    if (n <= 0) {
+      missingOrInvalid.push(k);
+      continue;
+    }
     out[k] = n;
   }
 
-  return { ok: true as const, pricing: out };
+  return { ok: true as const, pricing: out, missingOrInvalid };
+}
+
+function serviceTypeForPricingKey(key: string) {
+  if (key === "Promenade") return "PROMENADE";
+  if (key === "Garde") return "DOGSITTING";
+  if (key === "Pension") return "PENSION";
+  return null;
 }
 
 export async function PUT(req: NextRequest) {
@@ -47,6 +65,13 @@ export async function PUT(req: NextRequest) {
     if (!ensured) return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
 
     const uid = ensured.id;
+
+    const user = await prisma.user.findUnique({
+      where: { id: uid },
+      select: { sitterId: true },
+    });
+    const sitterId = typeof (user as any)?.sitterId === "string" ? String((user as any).sitterId).trim() : "";
+    if (!sitterId) return NextResponse.json({ ok: false, error: "FORBIDDEN" }, { status: 403 });
 
     let body: PutBody;
     try {
@@ -73,7 +98,30 @@ export async function PUT(req: NextRequest) {
       select: { pricing: true },
     });
 
-    return NextResponse.json({ ok: true, pricing: updated.pricing }, { status: 200, headers: { "cache-control": "no-store" } });
+    const toDisable = (normalized.missingOrInvalid ?? [])
+      .map((k) => serviceTypeForPricingKey(k))
+      .filter((v): v is "PROMENADE" | "DOGSITTING" | "PENSION" => v === "PROMENADE" || v === "DOGSITTING" || v === "PENSION");
+
+    if (toDisable.length) {
+      await Promise.all(
+        toDisable.map((serviceType) =>
+          (prisma as any).serviceConfig.upsert({
+            where: { sitterId_serviceType: { sitterId, serviceType } },
+            create: {
+              sitterId,
+              serviceType,
+              enabled: false,
+            },
+            update: { enabled: false },
+          })
+        )
+      );
+    }
+
+    return NextResponse.json(
+      { ok: true, pricing: updated.pricing, disabledServices: toDisable },
+      { status: 200, headers: { "cache-control": "no-store" } }
+    );
   } catch (err) {
     console.error("[api][host][profile][pricing][PUT] error", err);
     return NextResponse.json({ ok: false, error: "INTERNAL_ERROR" }, { status: 500 });
