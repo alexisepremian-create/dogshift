@@ -358,6 +358,20 @@ export default function AvailabilityStudioPage() {
     setError(null);
     setTopError(null);
     setWeeklySavingKey(`${svc}-${dayOfWeek}`);
+    setRulesByService((prev) => {
+      const current = prev[svc] ?? [];
+      const nextRules = current.filter((rule) => rule.dayOfWeek !== dayOfWeek);
+      if (enabled) {
+        nextRules.push({
+          id: `optimistic-${svc}-${dayOfWeek}`,
+          dayOfWeek,
+          startMin: 0,
+          endMin: 24 * 60,
+          status,
+        });
+      }
+      return { ...prev, [svc]: nextRules };
+    });
     try {
       const res = await fetch(`/api/sitters/me/availability-rules?service=${encodeURIComponent(svc)}`, {
         method: "PUT",
@@ -385,12 +399,35 @@ export default function AvailabilityStudioPage() {
     }
   }
 
+  const effectiveStatusForDate = useMemo(() => {
+    const rulesMaps: Record<ServiceTypeApi, Map<number, "AVAILABLE" | "ON_REQUEST">> = {
+      PROMENADE: new Map(),
+      DOGSITTING: new Map(),
+      PENSION: new Map(),
+    };
+
+    for (const svc of ["PROMENADE", "DOGSITTING", "PENSION"] as const) {
+      for (const rule of rulesByService[svc] ?? []) {
+        rulesMaps[svc].set(rule.dayOfWeek, rule.status);
+      }
+    }
+
+    return (dateIso: string, svc: ServiceTypeApi) => {
+      const exception = (exceptionsByService[svc] ?? []).find((row) => row.date === dateIso);
+      if (exception) return exception.status;
+      const dow = new Date(`${dateIso}T12:00:00Z`).getUTCDay();
+      const weeklyStatus = rulesMaps[svc].get(dow);
+      if (weeklyStatus) return weeklyStatus;
+      return "UNAVAILABLE" as const;
+    };
+  }, [exceptionsByService, rulesByService]);
+
   const bookableDatesByService = useMemo(() => {
     const mk = (svc: ServiceTypeApi) => {
       const set = new Set<string>();
       for (const row of monthDays) {
         if (!row || typeof row.date !== "string") continue;
-        const status = dayStatusForService(row, svc);
+        const status = effectiveStatusForDate(row.date, svc);
         if (status === "AVAILABLE" || status === "ON_REQUEST") set.add(row.date);
       }
       return set;
@@ -400,7 +437,7 @@ export default function AvailabilityStudioPage() {
       DOGSITTING: mk("DOGSITTING"),
       PENSION: mk("PENSION"),
     };
-  }, [monthDays]);
+  }, [effectiveStatusForDate, monthDays]);
 
   const weeklyDayOptions = useMemo(
     () => [
@@ -435,7 +472,7 @@ export default function AvailabilityStudioPage() {
   function openInlineException(dateIso: string) {
     const svc = availabilityTab;
     const existing = (exceptionsByService[svc] ?? []).filter((e) => e.date === dateIso).sort((a, b) => a.startMin - b.startMin);
-    const fallbackStatus = dayStatusForService(monthStatusByDate.get(dateIso), svc);
+    const fallbackStatus = effectiveStatusForDate(dateIso, svc);
     setExceptionDate(dateIso);
     setExceptionService(svc);
     setExceptionStatus(existing[0]?.status ?? fallbackStatus);
@@ -475,7 +512,7 @@ export default function AvailabilityStudioPage() {
     }
   }
 
-  async function applyQuickAction(action: "all-available" | "all-unavailable" | "copy-week") {
+  async function applyQuickAction(action: "all-available-week" | "all-available-month" | "copy-week") {
     if (!sitterId) return;
     setQuickActionSaving(action);
     setError(null);
@@ -485,21 +522,32 @@ export default function AvailabilityStudioPage() {
         const day = i + 1;
         return `${String(meta.year).padStart(4, "0")}-${String(meta.month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
       });
-      const dates = monthDates.filter((date) => date >= todayKeyZurich);
-      if (!dates.length) return;
+      const futureMonthDates = monthDates.filter((date) => date >= todayKeyZurich);
+      if (!futureMonthDates.length) return;
       const statusByDate = new Map<string, "AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE">();
+      let dates = futureMonthDates;
 
-      if (action === "all-available") {
+      if (action === "all-available-week") {
+        const ref = new Date(`${todayKeyZurich}T12:00:00Z`);
+        const refDow = ref.getUTCDay();
+        const sundayDelta = (7 - refDow) % 7;
+        const weekEnd = new Date(ref);
+        weekEnd.setUTCDate(ref.getUTCDate() + sundayDelta);
+        const weekEndIso = toZurichIsoDate(weekEnd);
+        dates = futureMonthDates.filter((date) => date <= weekEndIso);
         for (const date of dates) statusByDate.set(date, "AVAILABLE");
-      } else if (action === "all-unavailable") {
-        for (const date of dates) statusByDate.set(date, "UNAVAILABLE");
+      } else if (action === "all-available-month") {
+        for (const date of dates) statusByDate.set(date, "AVAILABLE");
       } else {
-        const refDate = meta.fromIso <= todayKeyZurich && todayKeyZurich <= meta.toIso ? todayKeyZurich : dates[0];
+        const refDate = meta.fromIso <= todayKeyZurich && todayKeyZurich <= meta.toIso ? todayKeyZurich : futureMonthDates[0];
         const ref = new Date(`${refDate}T12:00:00Z`);
         const refDow = ref.getUTCDay();
         const mondayDelta = (refDow + 6) % 7;
         const weekStart = new Date(ref);
         weekStart.setUTCDate(ref.getUTCDate() - mondayDelta);
+        const weekEnd = new Date(weekStart);
+        weekEnd.setUTCDate(weekStart.getUTCDate() + 6);
+        const weekEndIso = toZurichIsoDate(weekEnd);
         const template = new Map<number, "AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE">();
 
         for (let i = 0; i < 7; i++) {
@@ -507,15 +555,23 @@ export default function AvailabilityStudioPage() {
           d.setUTCDate(weekStart.getUTCDate() + i);
           const iso = toZurichIsoDate(d);
           if (iso < todayKeyZurich) continue;
-          template.set(d.getUTCDay(), dayStatusForService(monthStatusByDate.get(iso), availabilityTab));
+          template.set(d.getUTCDay(), effectiveStatusForDate(iso, availabilityTab));
         }
+
+        dates = futureMonthDates.filter((date) => date > weekEndIso);
 
         for (const date of dates) {
           const dow = new Date(`${date}T12:00:00Z`).getUTCDay();
           const copied = template.get(dow);
-          if (copied) statusByDate.set(date, copied);
+          if (copied) {
+            statusByDate.set(date, copied);
+          } else {
+            statusByDate.set(date, effectiveStatusForDate(date, availabilityTab));
+          }
         }
       }
+
+      if (!dates.length) return;
 
       await Promise.all(
         dates.map(async (date) => {
@@ -1266,17 +1322,53 @@ export default function AvailabilityStudioPage() {
                 <span className={`h-2 w-2 rounded-full ${serviceDotTone(availabilityTab)}`} aria-hidden="true" />
               </div>
 
-              <div className="mt-3 grid gap-2">
+              <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-500">Actions rapides</p>
+                <div className="mt-2 grid gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void applyQuickAction("all-available-week");
+                    }}
+                    disabled={quickActionSaving !== null || !enabledServices.length}
+                    className="inline-flex min-h-9 items-center justify-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 disabled:opacity-60"
+                  >
+                    {quickActionSaving === "all-available-week" ? "Enregistrement…" : "Tout disponible cette semaine"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void applyQuickAction("all-available-month");
+                    }}
+                    disabled={quickActionSaving !== null || !enabledServices.length}
+                    className="inline-flex min-h-9 items-center justify-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 disabled:opacity-60"
+                  >
+                    {quickActionSaving === "all-available-month" ? "Enregistrement…" : "Tout disponible ce mois"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void applyQuickAction("copy-week");
+                    }}
+                    disabled={quickActionSaving !== null || !enabledServices.length}
+                    className="inline-flex min-h-9 items-center justify-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 disabled:opacity-60"
+                  >
+                    {quickActionSaving === "copy-week" ? "Enregistrement…" : "Reproduire cette semaine sur le reste du mois"}
+                  </button>
+                </div>
+              </div>
+
+              <div className="mt-3 grid gap-1.5">
                 {(() => {
                   if (!enabledServices.length) return <p className="text-sm text-slate-600">Aucun service activé.</p>;
                   return (
-                    <div className="grid gap-2">
+                    <div className="grid gap-1.5">
                       {weeklyDayOptions.map((day) => {
                         const rule = weeklyRulesForTab.get(day.dayOfWeek) ?? { enabled: false, status: "AVAILABLE" as const };
                         const isSaving = weeklySavingKey === `${availabilityTab}-${day.dayOfWeek}`;
                         return (
-                          <div key={`${availabilityTab}-${day.dayOfWeek}`} className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-                            <label className="flex items-center gap-3">
+                          <div key={`${availabilityTab}-${day.dayOfWeek}`} className="flex items-center justify-between gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+                            <label className="flex min-w-0 items-center gap-2.5">
                               <input
                                 type="checkbox"
                                 checked={rule.enabled}
@@ -1284,9 +1376,9 @@ export default function AvailabilityStudioPage() {
                                 onChange={(e) => {
                                   void saveWeeklyRule(availabilityTab, day.dayOfWeek, e.currentTarget.checked, rule.status);
                                 }}
-                                className="h-4 w-4 rounded border-slate-300 text-[var(--dogshift-blue)] focus:ring-[var(--dogshift-blue)]"
+                                className="h-3.5 w-3.5 rounded border-slate-300 text-[var(--dogshift-blue)] focus:ring-[var(--dogshift-blue)]"
                               />
-                              <span className="text-sm font-semibold text-slate-900">{day.label}</span>
+                              <span className="text-sm font-medium text-slate-900">{day.label}</span>
                             </label>
 
                             <div className="flex items-center gap-2">
@@ -1297,7 +1389,7 @@ export default function AvailabilityStudioPage() {
                                   const nextStatus = e.currentTarget.value === "ON_REQUEST" ? "ON_REQUEST" : "AVAILABLE";
                                   void saveWeeklyRule(availabilityTab, day.dayOfWeek, true, nextStatus);
                                 }}
-                                className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+                                className="h-8 rounded-lg border border-slate-200 bg-white px-2.5 text-xs font-medium text-slate-700 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
                               >
                                 <option value="AVAILABLE">Disponible</option>
                                 <option value="ON_REQUEST">Sur demande</option>
@@ -1314,41 +1406,6 @@ export default function AvailabilityStudioPage() {
               </div>
             </div>
 
-            <div className="mt-3 rounded-2xl border border-slate-200 bg-white p-4">
-              <p className="text-sm font-semibold text-slate-900">Actions rapides</p>
-              <div className="mt-3 grid gap-2 sm:grid-cols-3">
-                <button
-                  type="button"
-                  onClick={() => {
-                    void applyQuickAction("all-available");
-                  }}
-                  disabled={quickActionSaving !== null || !enabledServices.length}
-                  className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 disabled:opacity-60"
-                >
-                  {quickActionSaving === "all-available" ? "Enregistrement…" : "Tout disponible ce mois"}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    void applyQuickAction("all-unavailable");
-                  }}
-                  disabled={quickActionSaving !== null || !enabledServices.length}
-                  className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 disabled:opacity-60"
-                >
-                  {quickActionSaving === "all-unavailable" ? "Enregistrement…" : "Tout indisponible ce mois"}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    void applyQuickAction("copy-week");
-                  }}
-                  disabled={quickActionSaving !== null || !enabledServices.length}
-                  className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 disabled:opacity-60"
-                >
-                  {quickActionSaving === "copy-week" ? "Enregistrement…" : "Reproduire cette semaine sur le reste du mois"}
-                </button>
-              </div>
-            </div>
           </div>
         </div>
 
