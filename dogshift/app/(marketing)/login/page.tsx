@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useClerk, useUser } from "@clerk/nextjs";
+import { useUser } from "@clerk/nextjs";
 
 import AuthLayout from "@/components/auth/AuthLayout";
 import LoginForm from "@/components/auth/LoginForm";
@@ -11,7 +11,6 @@ export default function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { isLoaded, isSignedIn } = useUser();
-  const clerk = useClerk();
 
   const force = (searchParams?.get("force") ?? "").trim();
   const forceMode = force === "1" || force.toLowerCase() === "true";
@@ -46,10 +45,7 @@ export default function LoginPage() {
                 } catch {
                   // ignore
                 }
-                void clerk
-                  .signOut({ redirectUrl: "/login?force=1&startGoogle=1" })
-                  .catch(() => setSwitchError("Impossible de se déconnecter. Réessaie."))
-                  .finally(() => setSwitching(false));
+                window.location.assign("/sign-out?redirect=%2Flogin%3Fforce%3D1%26startGoogle%3D1");
               }}
               className="inline-flex items-center justify-center rounded-full bg-slate-900 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
             >

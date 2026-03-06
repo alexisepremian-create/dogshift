@@ -20,7 +20,11 @@ export default function SignOutPage() {
       }
 
       try {
-        await clerk.signOut();
+        try {
+          await (clerk as any).signOut({ sessionId: "all" });
+        } catch {
+          await clerk.signOut();
+        }
       } finally {
         router.replace(redirect);
         setTimeout(() => {

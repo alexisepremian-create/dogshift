@@ -158,9 +158,10 @@ export default function LoginForm() {
   useEffect(() => {
     if (!userLoaded) return;
     if (!isSignedIn) return;
+    if (forceMode) return;
     router.replace(redirectAfterAuth);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userLoaded, isSignedIn]);
+  }, [userLoaded, isSignedIn, forceMode]);
 
   return (
     <div className="flex flex-col">
