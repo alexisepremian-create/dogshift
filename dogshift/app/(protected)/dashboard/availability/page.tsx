@@ -181,6 +181,8 @@ export default function AvailabilityStudioPage() {
   const [exceptionSaving, setExceptionSaving] = useState(false);
   const [exceptionError, setExceptionError] = useState<string | null>(null);
   const [weeklySavingKey, setWeeklySavingKey] = useState<string | null>(null);
+  const [quickActionSaving, setQuickActionSaving] = useState<string | null>(null);
+  const [inlineExceptionOpen, setInlineExceptionOpen] = useState(false);
 
   const exceptionFormLoadedKeyRef = useRef<string>("");
 
@@ -429,6 +431,117 @@ export default function AvailabilityStudioPage() {
     if (!exceptionDate) return [] as ExceptionRow[];
     return (exceptionsByService[exceptionService] ?? []).filter((e) => e.date === exceptionDate);
   }, [exceptionDate, exceptionService, exceptionsByService]);
+
+  function openInlineException(dateIso: string) {
+    const svc = availabilityTab;
+    const existing = (exceptionsByService[svc] ?? []).filter((e) => e.date === dateIso).sort((a, b) => a.startMin - b.startMin);
+    const fallbackStatus = dayStatusForService(monthStatusByDate.get(dateIso), svc);
+    setExceptionDate(dateIso);
+    setExceptionService(svc);
+    setExceptionStatus(existing[0]?.status ?? fallbackStatus);
+    setExceptionError(null);
+    setInlineExceptionOpen(true);
+  }
+
+  async function saveSingleDayException(serviceType: ServiceTypeApi, date: string, status: "AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE") {
+    setExceptionSaving(true);
+    setExceptionError(null);
+    setTopError(null);
+    try {
+      const res = await fetch("/api/sitters/me/availability-exceptions", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          serviceType,
+          date,
+          status,
+          ranges: status === "UNAVAILABLE" ? [] : [{ startMin: 0, endMin: 24 * 60 }],
+        }),
+      });
+      const payload = (await res.json().catch(() => null)) as any;
+      if (!res.ok || !payload?.ok) throw new Error(payload?.error ?? "SAVE_ERROR");
+      await refetchAll();
+      setInlineExceptionOpen(false);
+    } catch (e) {
+      const code = e instanceof Error ? e.message : "SAVE_ERROR";
+      if (code === "PRICING_REQUIRED") {
+        setTopError(errorMessageFr(code));
+        setError(null);
+      } else {
+        setExceptionError(code);
+      }
+    } finally {
+      setExceptionSaving(false);
+    }
+  }
+
+  async function applyQuickAction(action: "all-available" | "all-unavailable" | "copy-week") {
+    if (!sitterId) return;
+    setQuickActionSaving(action);
+    setError(null);
+    setTopError(null);
+    try {
+      const dates = Array.from({ length: meta.daysInMonth }, (_, i) => {
+        const day = i + 1;
+        return `${String(meta.year).padStart(4, "0")}-${String(meta.month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+      });
+      const statusByDate = new Map<string, "AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE">();
+
+      if (action === "all-available") {
+        for (const date of dates) statusByDate.set(date, "AVAILABLE");
+      } else if (action === "all-unavailable") {
+        for (const date of dates) statusByDate.set(date, "UNAVAILABLE");
+      } else {
+        const refDate = meta.fromIso <= todayKeyZurich && todayKeyZurich <= meta.toIso ? todayKeyZurich : meta.fromIso;
+        const ref = new Date(`${refDate}T12:00:00Z`);
+        const refDow = ref.getUTCDay();
+        const mondayDelta = (refDow + 6) % 7;
+        const weekStart = new Date(ref);
+        weekStart.setUTCDate(ref.getUTCDate() - mondayDelta);
+        const template = new Map<number, "AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE">();
+        for (let i = 0; i < 7; i++) {
+          const d = new Date(weekStart);
+          d.setUTCDate(weekStart.getUTCDate() + i);
+          const iso = toZurichIsoDate(d);
+          template.set(d.getUTCDay(), dayStatusForService(monthStatusByDate.get(iso), availabilityTab));
+        }
+        for (const date of dates) {
+          const dow = new Date(`${date}T12:00:00Z`).getUTCDay();
+          statusByDate.set(date, template.get(dow) ?? "UNAVAILABLE");
+        }
+      }
+
+      await Promise.all(
+        dates.map(async (date) => {
+          const status = statusByDate.get(date) ?? "UNAVAILABLE";
+          const res = await fetch("/api/sitters/me/availability-exceptions", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              serviceType: availabilityTab,
+              date,
+              status,
+              ranges: status === "UNAVAILABLE" ? [] : [{ startMin: 0, endMin: 24 * 60 }],
+            }),
+          });
+          const payload = (await res.json().catch(() => null)) as any;
+          if (!res.ok || !payload?.ok) throw new Error(payload?.error ?? "SAVE_ERROR");
+        })
+      );
+
+      await refetchAll();
+    } catch (e) {
+      const code = e instanceof Error ? e.message : "SAVE_ERROR";
+      if (code === "PRICING_REQUIRED") {
+        setTopError(errorMessageFr(code));
+        setError(null);
+      } else {
+        setError(code);
+      }
+    } finally {
+      setQuickActionSaving(null);
+    }
+  }
 
   const exceptionRangesValidation = useMemo(() => {
     if (exceptionAllDay) return { ok: true as const, error: null as string | null };
@@ -1194,6 +1307,42 @@ export default function AvailabilityStudioPage() {
                 })()}
               </div>
             </div>
+
+            <div className="mt-3 rounded-2xl border border-slate-200 bg-white p-4">
+              <p className="text-sm font-semibold text-slate-900">Actions rapides</p>
+              <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    void applyQuickAction("all-available");
+                  }}
+                  disabled={quickActionSaving !== null || !enabledServices.length}
+                  className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 disabled:opacity-60"
+                >
+                  {quickActionSaving === "all-available" ? "Enregistrement…" : "Tout disponible ce mois"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    void applyQuickAction("all-unavailable");
+                  }}
+                  disabled={quickActionSaving !== null || !enabledServices.length}
+                  className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 disabled:opacity-60"
+                >
+                  {quickActionSaving === "all-unavailable" ? "Enregistrement…" : "Tout indisponible ce mois"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    void applyQuickAction("copy-week");
+                  }}
+                  disabled={quickActionSaving !== null || !enabledServices.length}
+                  className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 disabled:opacity-60"
+                >
+                  {quickActionSaving === "copy-week" ? "Enregistrement…" : "Copier cette semaine"}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -1270,7 +1419,7 @@ export default function AvailabilityStudioPage() {
                     disabled={isPast}
                     onClick={() => {
                       if (isPast) return;
-                      openExceptionDrawer(dateIso);
+                      openInlineException(dateIso);
                     }}
                     className={
                       isPast
@@ -1302,6 +1451,62 @@ export default function AvailabilityStudioPage() {
               })}
             </div>
           </div>
+
+          {inlineExceptionOpen && exceptionDate ? (
+            <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold text-slate-900">Date sélectionnée</p>
+                  <p className="mt-1 text-sm text-slate-600">{formatDateFrCh(exceptionDate)}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setInlineExceptionOpen(false)}
+                  className="inline-flex h-9 items-center justify-center rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700"
+                >
+                  Fermer
+                </button>
+              </div>
+
+              <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                {(["AVAILABLE", "ON_REQUEST", "UNAVAILABLE"] as const).map((status) => {
+                  const active = exceptionStatus === status;
+                  return (
+                    <button
+                      key={`inline-status-${status}`}
+                      type="button"
+                      onClick={() => setExceptionStatus(status)}
+                      className={
+                        active
+                          ? "rounded-2xl bg-[var(--dogshift-blue)] px-3 py-2 text-xs font-semibold text-white"
+                          : "rounded-2xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700"
+                      }
+                      aria-pressed={active}
+                    >
+                      {statusLabelFr(status)}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <p className="mt-3 text-xs font-semibold text-slate-500">
+                Cette exception remplace la règle hebdomadaire pour le service {serviceMeta(exceptionService).label.toLowerCase()}.
+              </p>
+
+              {exceptionError ? <p className="mt-3 text-sm font-semibold text-rose-700">{exceptionError}</p> : null}
+
+              <button
+                type="button"
+                onClick={() => {
+                  void saveSingleDayException(exceptionService, exceptionDate, exceptionStatus);
+                }}
+                disabled={exceptionSaving}
+                className="mt-4 inline-flex h-11 w-full items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-6 text-sm font-semibold text-white disabled:opacity-60"
+              >
+                {exceptionSaving ? "Enregistrement…" : "Appliquer uniquement à cette date"}
+              </button>
+            </div>
+          ) : null}
 
         </div>
       </div>
