@@ -130,6 +130,7 @@ export default function AvailabilityStudioPage() {
   const [toast, setToast] = useState<ToastState>(null);
 
   const [bookingInfoOpen, setBookingInfoOpen] = useState(false);
+  const bookingInfoWrapRef = useRef<HTMLDivElement | null>(null);
 
   const [availabilityTab, setAvailabilityTab] = useState<ServiceTypeApi>("PROMENADE");
 
@@ -162,6 +163,24 @@ export default function AvailabilityStudioPage() {
     const services: ServiceTypeApi[] = ["PROMENADE", "DOGSITTING", "PENSION"];
     return services.filter((svc) => configByService[svc]?.enabled !== false);
   }, [configByService]);
+
+  useEffect(() => {
+    if (!bookingInfoOpen) return;
+
+    const onPointerDown = (e: MouseEvent | TouchEvent) => {
+      const root = bookingInfoWrapRef.current;
+      const target = e.target as Node | null;
+      if (!root || !target) return;
+      if (!root.contains(target)) setBookingInfoOpen(false);
+    };
+
+    window.addEventListener("mousedown", onPointerDown);
+    window.addEventListener("touchstart", onPointerDown);
+    return () => {
+      window.removeEventListener("mousedown", onPointerDown);
+      window.removeEventListener("touchstart", onPointerDown);
+    };
+  }, [bookingInfoOpen]);
 
   useEffect(() => {
     if (!enabledServices.length) return;
@@ -875,7 +894,7 @@ export default function AvailabilityStudioPage() {
       ) : null}
 
       <div className="mt-4 rounded-3xl border border-slate-200 bg-white p-4">
-        <div className="relative inline-block">
+        <div ref={bookingInfoWrapRef} className="relative inline-block">
           <button
             type="button"
             onClick={() => setBookingInfoOpen((v) => !v)}
@@ -906,15 +925,17 @@ export default function AvailabilityStudioPage() {
               <div className="mt-4 grid gap-3 text-sm text-slate-700">
                 <div>
                   <ul className="mt-2 grid list-disc gap-2 pl-5">
+                    <li>Tu configures ici tes services et tes exceptions de disponibilité.</li>
+                    <li>Les clients peuvent ensuite t’envoyer des demandes de réservation sur tes créneaux disponibles.</li>
+                    <li>Les créneaux de promenade et de dogsitting sont proposés par pas de 30 minutes.</li>
+                    <li>Un tampon de 15 minutes est appliqué avant et après chaque réservation pour te laisser le temps de t’organiser.</li>
                     <li>Les réservations doivent être faites au moins 24h à l’avance.</li>
-                    <li>15 minutes sont bloquées avant et après chaque réservation pour permettre l’organisation.</li>
-                    <li>Les horaires de promenade et de dogsitting sont proposés toutes les 30 minutes.</li>
                   </ul>
                 </div>
 
                 <div>
                   <p className="text-sm font-semibold text-slate-900">Pension</p>
-                  <p className="mt-2">Les horaires d’arrivée et de départ du chien dépendent des disponibilités que vous avez définies.</p>
+                  <p className="mt-2">Pour la pension, les horaires d’arrivée et de départ dépendent des disponibilités que tu as définies.</p>
                 </div>
               </div>
             </div>
