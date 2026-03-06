@@ -1348,17 +1348,17 @@ export default function AvailabilityStudioPage() {
                   aria-controls="availability-quick-actions"
                 >
                   <span>Actions rapides</span>
-                  <span className={`inline-block transition-transform duration-200 ${quickActionsOpen ? "rotate-90" : "rotate-0"}`} aria-hidden="true">
-                    &gt;
+                  <span className="inline-block w-3 text-center" aria-hidden="true">
+                    {quickActionsOpen ? "⌃" : "⌄"}
                   </span>
                 </button>
               </div>
 
               <div
                 id="availability-quick-actions"
-                className={`grid transition-all duration-200 ease-out ${quickActionsOpen ? "mt-3 grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}
+                className={`${quickActionsOpen ? "mt-3 block opacity-100" : "hidden opacity-0"} transition-opacity duration-150`}
               >
-                <div className="overflow-hidden">
+                <div>
                   <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
                     <div className="grid gap-2">
                       <button
