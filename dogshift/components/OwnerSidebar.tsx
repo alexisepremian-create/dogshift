@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useClerk } from "@clerk/nextjs";
 import { LogOut } from "lucide-react";
 
@@ -14,6 +15,7 @@ type OwnerSidebarProps = {
 
 export default function OwnerSidebar({ onNavigate, className, forceExpanded }: OwnerSidebarProps) {
   const clerk = useClerk();
+  const router = useRouter();
   const { items } = useOwnerDashboardNavItems();
 
   const footer = (
@@ -21,12 +23,21 @@ export default function OwnerSidebar({ onNavigate, className, forceExpanded }: O
       <button
         type="button"
         onClick={() => {
-          try {
-            window.localStorage.removeItem("ds_auth_user");
-          } catch {
-            // ignore
-          }
-          void clerk.signOut({ redirectUrl: "/login?force=1" });
+          (async () => {
+            try {
+              window.localStorage.removeItem("ds_auth_user");
+            } catch {
+              // ignore
+            }
+            try {
+              await clerk.signOut();
+            } finally {
+              router.replace("/login?force=1");
+              setTimeout(() => {
+                window.location.assign("/login?force=1");
+              }, 300);
+            }
+          })();
         }}
         className={
           "group/item relative flex items-center rounded-2xl text-sm font-medium text-slate-600 transition hover:bg-slate-50 hover:text-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)] " +

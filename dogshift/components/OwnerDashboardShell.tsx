@@ -2,6 +2,7 @@
 
 import { MoreHorizontal } from "lucide-react";
 import { useClerk } from "@clerk/nextjs";
+import { useRouter } from "next/navigation";
 
 import DashboardMobileNav from "@/components/DashboardMobileNav";
 import OwnerSidebar from "@/components/OwnerSidebar";
@@ -9,6 +10,7 @@ import { useOwnerDashboardNavItems } from "@/components/dashboardNavItems";
 
 export default function OwnerDashboardShell({ children }: { children: React.ReactNode }) {
   const clerk = useClerk();
+  const router = useRouter();
   const { items } = useOwnerDashboardNavItems();
 
   return (
@@ -33,12 +35,21 @@ export default function OwnerDashboardShell({ children }: { children: React.Reac
         moreLabel="Plus"
         moreIcon={<MoreHorizontal className="h-5 w-5" aria-hidden="true" />}
         onSignOut={() => {
-          try {
-            window.localStorage.removeItem("ds_auth_user");
-          } catch {
-            // ignore
-          }
-          void clerk.signOut({ redirectUrl: "/login?force=1" });
+          (async () => {
+            try {
+              window.localStorage.removeItem("ds_auth_user");
+            } catch {
+              // ignore
+            }
+            try {
+              await clerk.signOut();
+            } finally {
+              router.replace("/login?force=1");
+              setTimeout(() => {
+                window.location.assign("/login?force=1");
+              }, 300);
+            }
+          })();
         }}
         signOutLabel="Déconnexion"
       />

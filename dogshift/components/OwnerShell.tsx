@@ -1,12 +1,14 @@
 "use client";
 
 import { useClerk } from "@clerk/nextjs";
+import { useRouter } from "next/navigation";
 
 import BrandLogo from "@/components/BrandLogo";
 import OwnerTopNav from "@/components/OwnerTopNav";
 
 export default function OwnerShell({ children }: { children: React.ReactNode }) {
   const clerk = useClerk();
+  const router = useRouter();
   const logoutBtn =
     "inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-900 transition-all duration-200 ease-out hover:bg-slate-50 active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)]";
 
@@ -23,12 +25,21 @@ export default function OwnerShell({ children }: { children: React.ReactNode }) 
           <button
             type="button"
             onClick={() => {
-              try {
-                window.localStorage.removeItem("ds_auth_user");
-              } catch {
-                // ignore
-              }
-              void clerk.signOut({ redirectUrl: "/login?force=1" });
+              (async () => {
+                try {
+                  window.localStorage.removeItem("ds_auth_user");
+                } catch {
+                  // ignore
+                }
+                try {
+                  await clerk.signOut();
+                } finally {
+                  router.replace("/login?force=1");
+                  setTimeout(() => {
+                    window.location.assign("/login?force=1");
+                  }, 300);
+                }
+              })();
             }}
             className={logoutBtn}
           >

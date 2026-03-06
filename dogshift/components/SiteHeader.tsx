@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Menu, LogOut, HelpCircle, LayoutDashboard, User, Search, ShoppingBag, UserPlus, MoreHorizontal, House } from "lucide-react";
 import { useClerk, useUser } from "@clerk/nextjs";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import BrandLogo from "@/components/BrandLogo";
 import NotificationBell from "@/components/NotificationBell";
 
@@ -16,6 +16,7 @@ export default function SiteHeader() {
   const [mobileBottomHidden, setMobileBottomHidden] = useState(false);
   const { isLoaded, isSignedIn } = useUser();
   const clerk = useClerk();
+  const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const isHome = pathname === "/";
@@ -24,6 +25,25 @@ export default function SiteHeader() {
   const isHostPreview = Boolean(pathname && pathname.startsWith("/sitter/") && (searchParams?.get("mode") ?? "") === "preview");
 
   const accountHref = "/account";
+
+  const signOutRedirectUrl = "/login?force=1";
+
+  async function handleSignOut() {
+    try {
+      window.localStorage.removeItem("ds_auth_user");
+    } catch {
+      // ignore
+    }
+
+    try {
+      await clerk.signOut();
+    } finally {
+      router.replace(signOutRedirectUrl);
+      setTimeout(() => {
+        window.location.assign(signOutRedirectUrl);
+      }, 300);
+    }
+  }
 
   const menuRef = useRef<HTMLDivElement | null>(null);
 
@@ -197,12 +217,7 @@ export default function SiteHeader() {
                       type="button"
                       onClick={() => {
                         setUserMenuOpen(false);
-                        try {
-                          window.localStorage.removeItem("ds_auth_user");
-                        } catch {
-                          // ignore
-                        }
-                        void clerk.signOut({ redirectUrl: "/login?force=1" });
+                        void handleSignOut();
                       }}
                       className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-medium text-slate-700 hover:bg-slate-50"
                     >
@@ -411,7 +426,7 @@ export default function SiteHeader() {
                       type="button"
                       onClick={() => {
                         setMobileNavOpen(false);
-                        void clerk.signOut({ redirectUrl: "/login" });
+                        void handleSignOut();
                       }}
                       className="flex items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm font-semibold text-slate-900 ring-1 ring-slate-200"
                     >

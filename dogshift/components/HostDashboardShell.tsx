@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { MoreHorizontal } from "lucide-react";
 import { useClerk } from "@clerk/nextjs";
 
@@ -14,6 +14,7 @@ import { useHostDashboardNavItems } from "@/components/dashboardNavItems";
 export default function HostDashboardShell({ children }: { children: React.ReactNode }) {
   const host = useHostUser();
   const clerk = useClerk();
+  const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { items } = useHostDashboardNavItems();
@@ -44,12 +45,21 @@ export default function HostDashboardShell({ children }: { children: React.React
         moreLabel="Plus"
         moreIcon={<MoreHorizontal className="h-5 w-5" aria-hidden="true" />}
         onSignOut={() => {
-          try {
-            window.localStorage.removeItem("ds_auth_user");
-          } catch {
-            // ignore
-          }
-          void clerk.signOut({ redirectUrl: "/login?force=1" });
+          (async () => {
+            try {
+              window.localStorage.removeItem("ds_auth_user");
+            } catch {
+              // ignore
+            }
+            try {
+              await clerk.signOut();
+            } finally {
+              router.replace("/login?force=1");
+              setTimeout(() => {
+                window.location.assign("/login?force=1");
+              }, 300);
+            }
+          })();
         }}
         signOutLabel="Déconnexion"
       />
