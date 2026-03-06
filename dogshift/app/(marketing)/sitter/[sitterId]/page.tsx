@@ -1925,8 +1925,7 @@ function SitterPublicProfileContent({
                     </div>
                   </div>
 
-                  <div className="mt-7 grid gap-6 sm:grid-cols-2 sm:items-stretch">
-                    <div className="h-full min-h-[130px] rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                  <div className="mt-7 rounded-2xl border border-slate-200 bg-slate-50 p-4">
                       <h2 className="text-sm font-semibold text-slate-900">Services & tarifs</h2>
                       {sitter.services.length === 0 ? (
                         <div className="mt-3 rounded-2xl border border-slate-200 bg-white p-4">
@@ -1995,8 +1994,11 @@ function SitterPublicProfileContent({
                           })}
                         </div>
                       )}
+                  </div>
 
-                      <div className="mt-5">
+                  <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                      <h2 className="text-sm font-semibold text-slate-900">Disponibilités</h2>
+                      <div className="mt-3">
                         <div className="flex items-center justify-between">
                           <p className="text-sm font-medium text-slate-900">Calendrier</p>
                           <div className="flex items-center gap-2">
@@ -2042,12 +2044,7 @@ function SitterPublicProfileContent({
                           dbg={dbg}
                           serviceUi={serviceUi}
                         />
-                      </div>
-                    </div>
 
-                    <div className="h-full min-h-[130px] rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                      <h2 className="text-sm font-semibold text-slate-900">Disponibilités</h2>
-                      <div className="mt-3">
                         <p className="text-sm font-medium text-slate-900">Prochaines disponibilités</p>
                         {!availabilityLoaded ? (
                           <p className="mt-1 text-sm text-slate-600">Chargement…</p>
@@ -2481,7 +2478,6 @@ function SitterPublicProfileContent({
                         </div>
                       </div>
                     </div>
-                  </div>
 
                   {showBoardingDetails ? (
                     <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-4">
