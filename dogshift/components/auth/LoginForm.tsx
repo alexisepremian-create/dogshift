@@ -23,6 +23,7 @@ export default function LoginForm() {
 
   const [email, setEmail] = useState("");
   const [emailCode, setEmailCode] = useState("");
+  const [emailAddressId, setEmailAddressId] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -44,12 +45,31 @@ export default function LoginForm() {
       // Clerk headless email code:
       // - Creates a sign-in attempt for the identifier
       // - Sends a one-time code to the user's email
-      await (signIn as any).create({ identifier: normalized });
-      await (signIn as any).prepareFirstFactor({ strategy: "email_code" });
+      const res = await (signIn as any).create({ identifier: normalized });
+      const factors: any[] = Array.isArray(res?.supportedFirstFactors) ? res.supportedFirstFactors : [];
+      const emailFactor = factors.find((f) => String(f?.strategy || "") === "email_code");
+      const resolvedEmailAddressId =
+        (typeof emailFactor?.emailAddressId === "string" && emailFactor.emailAddressId.trim()) ||
+        (typeof emailFactor?.email_address_id === "string" && emailFactor.email_address_id.trim()) ||
+        "";
+
+      if (!resolvedEmailAddressId) {
+        throw new Error("EMAIL_ADDRESS_ID_MISSING");
+      }
+
+      setEmailAddressId(resolvedEmailAddressId);
+      await (signIn as any).prepareFirstFactor({
+        strategy: "email_code",
+        emailAddressId: resolvedEmailAddressId,
+      });
       setSent(true);
     } catch (err) {
       const message = err instanceof Error ? err.message : "";
-      setError(message || "Impossible d’envoyer le lien. Réessaie.");
+      if (message === "EMAIL_ADDRESS_ID_MISSING") {
+        setError("Impossible de démarrer la connexion email. Réessaie ou utilise Google.");
+      } else {
+        setError(message || "Impossible d’envoyer le lien. Réessaie.");
+      }
     } finally {
       setLoading(false);
     }
@@ -215,6 +235,7 @@ export default function LoginForm() {
                 if (loading) return;
                 setSent(false);
                 setEmailCode("");
+                setEmailAddressId("");
                 setError(null);
               }}
               className="inline-flex w-full items-center justify-center rounded-full border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
