@@ -2,6 +2,8 @@
 
 import { useMemo, useRef, useState } from "react";
 
+import BecomeSitterAccessForm from "@/components/BecomeSitterAccessForm";
+
 type FormState = {
   firstName: string;
   lastName: string;
@@ -69,6 +71,7 @@ export default function DevenirDogsitterPage() {
 
   const [status, setStatus] = useState<"idle" | "submitting" | "success" | "error">("idle");
   const [error, setError] = useState<string>("");
+  const [accessOpen, setAccessOpen] = useState(false);
 
   const [form, setForm] = useState<FormState>({
     firstName: "",
@@ -177,6 +180,34 @@ export default function DevenirDogsitterPage() {
             <p className="mt-4 text-pretty text-base leading-relaxed text-slate-600 sm:text-lg">
               Profils sélectionnés manuellement – Phase pilote Lausanne & Riviera
             </p>
+
+            <div className="mt-8 grid gap-4 sm:grid-cols-2">
+              <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-44px_rgba(2,6,23,0.12)] sm:p-8">
+                <p className="text-xs font-semibold text-slate-600">Nouveau sitter</p>
+                <h2 className="mt-2 text-lg font-semibold text-slate-900">Candidater pour devenir dog-sitter</h2>
+                <p className="mt-2 text-sm leading-relaxed text-slate-600">Remplis le formulaire (2–3 minutes). Sélection manuelle.</p>
+                <button
+                  type="button"
+                  onClick={() => formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
+                  className="mt-5 inline-flex w-full items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-6 py-3 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition hover:bg-[var(--dogshift-blue-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)]"
+                >
+                  Candidater maintenant
+                </button>
+              </div>
+
+              <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-44px_rgba(2,6,23,0.12)] sm:p-8">
+                <p className="text-xs font-semibold text-slate-600">Déjà sélectionné</p>
+                <h2 className="mt-2 text-lg font-semibold text-slate-900">Entrer ton code d’accès</h2>
+                <p className="mt-2 text-sm leading-relaxed text-slate-600">Tu as reçu un code du type DS-XXXX-XXXX ? Déverrouille ton espace sitter.</p>
+                <button
+                  type="button"
+                  onClick={() => setAccessOpen(true)}
+                  className="mt-5 inline-flex w-full items-center justify-center rounded-2xl border border-slate-300 bg-white px-6 py-3 text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-400"
+                >
+                  Entrer mon code
+                </button>
+              </div>
+            </div>
 
             <div id="comment-ca-marche" className="mt-12 rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-44px_rgba(2,6,23,0.15)] sm:p-8">
               <h2 className="text-lg font-semibold text-slate-900">Comment ça marche</h2>
@@ -393,6 +424,30 @@ export default function DevenirDogsitterPage() {
           </div>
         </div>
       </section>
+
+      {accessOpen ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4" role="dialog" aria-modal="true">
+          <button
+            type="button"
+            className="absolute inset-0 bg-black/30"
+            aria-label="Fermer"
+            onClick={() => setAccessOpen(false)}
+          />
+          <div className="relative z-10">
+            <div className="absolute -right-2 -top-2">
+              <button
+                type="button"
+                onClick={() => setAccessOpen(false)}
+                className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 shadow-sm transition hover:bg-slate-50"
+                aria-label="Fermer"
+              >
+                ×
+              </button>
+            </div>
+            <BecomeSitterAccessForm onUnlocked={() => setAccessOpen(false)} />
+          </div>
+        </div>
+      ) : null}
     </main>
   );
 }
