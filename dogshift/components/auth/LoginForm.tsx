@@ -47,7 +47,6 @@ export default function LoginForm() {
         identifier: normalized,
         strategy: "email_link",
         redirectUrl: "/login",
-        redirectUrlComplete: redirectAfterAuth,
       });
       setSent(true);
     } catch (err) {
