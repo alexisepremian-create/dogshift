@@ -262,9 +262,39 @@ export default function SiteHeader() {
           <Link href="/search" className={navLinkClassName}>
             Trouver un sitter
           </Link>
-          <Link href="/become-sitter" className={navLinkClassName}>
-            Devenir dogsitter
-          </Link>
+          <div className="group relative">
+            <Link
+              href="/devenir-dogsitter"
+              className={navLinkClassName + " inline-flex items-center gap-2"}
+              aria-haspopup="menu"
+            >
+              Devenir dogsitter
+              <span aria-hidden="true" className="text-slate-400 transition group-hover:text-slate-700">
+                ▾
+              </span>
+            </Link>
+            <div
+              role="menu"
+              aria-label="Devenir dogsitter"
+              className="pointer-events-none absolute left-1/2 top-full z-50 mt-3 w-52 -translate-x-1/2 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_18px_60px_-40px_rgba(2,6,23,0.18)] opacity-0 transition group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100"
+            >
+              <Link
+                role="menuitem"
+                href="/devenir-dogsitter"
+                className="flex items-center px-4 py-3 text-sm font-semibold text-slate-900 hover:bg-slate-50"
+              >
+                Candidater
+              </Link>
+              <div className="h-px w-full bg-slate-200" />
+              <Link
+                role="menuitem"
+                href="/become-sitter"
+                className="flex items-center px-4 py-3 text-sm font-semibold text-slate-900 hover:bg-slate-50"
+              >
+                Accès sitter
+              </Link>
+            </div>
+          </div>
           <Link href="/shop" className={navLinkClassName}>
             Boutique
           </Link>
@@ -328,12 +358,20 @@ export default function SiteHeader() {
                   <span className="min-w-0 flex-1 truncate">Trouver un sitter</span>
                 </Link>
                 <Link
+                  href="/devenir-dogsitter"
+                  onClick={() => setMobileNavOpen(false)}
+                  className="flex items-center gap-3 rounded-2xl px-4 py-3 text-base font-semibold text-slate-900 ring-1 ring-slate-200"
+                >
+                  <UserPlus className="h-5 w-5 text-slate-500" aria-hidden="true" />
+                  <span className="min-w-0 flex-1 truncate">Candidater</span>
+                </Link>
+                <Link
                   href="/become-sitter"
                   onClick={() => setMobileNavOpen(false)}
                   className="flex items-center gap-3 rounded-2xl px-4 py-3 text-base font-semibold text-slate-900 ring-1 ring-slate-200"
                 >
                   <UserPlus className="h-5 w-5 text-slate-500" aria-hidden="true" />
-                  <span className="min-w-0 flex-1 truncate">Devenir dogsitter</span>
+                  <span className="min-w-0 flex-1 truncate">Accès sitter</span>
                 </Link>
                 <Link
                   href="/shop"
@@ -422,7 +460,7 @@ export default function SiteHeader() {
             </Link>
 
             <Link
-              href="/become-sitter"
+              href="/devenir-dogsitter"
               className="flex flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2 text-xs font-semibold text-slate-700"
             >
               <UserPlus className="h-5 w-5" aria-hidden="true" />
