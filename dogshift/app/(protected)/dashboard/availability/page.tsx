@@ -939,20 +939,9 @@ export default function AvailabilityStudioPage() {
             {(["PROMENADE", "DOGSITTING", "PENSION"] as const).map((svc) => {
               const metaSvc = serviceMeta(svc);
               const cfg = configByService[svc];
-              const selected = svc === service;
               const enabled = cfg?.enabled !== false;
               return (
-                <button
-                  key={svc}
-                  type="button"
-                  onClick={() => setService(svc)}
-                  className={
-                    selected
-                      ? "rounded-3xl border border-[var(--dogshift-blue)] bg-[color-mix(in_srgb,var(--dogshift-blue),white_92%)] p-4 text-left"
-                      : "rounded-3xl border border-slate-200 bg-white p-4 text-left hover:bg-slate-50"
-                  }
-                  aria-pressed={selected}
-                >
+                <div key={svc} className="rounded-3xl border border-slate-200 bg-white p-4 text-left">
                   <div className="flex items-center justify-between">
                     <p className="text-sm font-semibold text-slate-900">
                       {metaSvc.icon} {metaSvc.label}
@@ -983,7 +972,8 @@ export default function AvailabilityStudioPage() {
                     </button>
                   </div>
                   {cfg ? null : <div className="mt-3 h-4 w-40 animate-pulse rounded bg-slate-100" />}
-                </button>
+
+                </div>
               );
             })}
           </div>
