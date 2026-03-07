@@ -1068,7 +1068,7 @@ function SitterPublicProfileContent({
   const bookingSelectionSummary = useMemo(() => {
     if (slotsServiceType === "PENSION") {
       if (!boardingStart) return null;
-      if (!boardingEnd) return `Arrivée sélectionnée : ${formatDateFr(boardingStart)}`;
+      if (!boardingEnd || boardingEnd === boardingStart) return `Séjour : ${formatDateFr(boardingStart)}`;
       return `Séjour : ${formatSelectionRange(boardingStart, boardingEnd)}`;
     }
     if (!slotsDate) return null;
@@ -1078,8 +1078,8 @@ function SitterPublicProfileContent({
   const canRequestBooking = useMemo(() => {
     if (disableSelfActions) return false;
     if (slotsServiceType === "PENSION") {
-      if (!boardingStart || !boardingEnd) return false;
-      if (boardingEnd <= boardingStart) return false;
+      if (!boardingStart) return false;
+      if (boardingEnd && boardingEnd < boardingStart) return false;
       if (boardingStatusLoading) return false;
       if (boardingStatus?.status === "UNAVAILABLE") return false;
       return true;
@@ -1342,12 +1342,7 @@ function SitterPublicProfileContent({
                 const isSelectableForService = serviceTone === "AVAILABLE" || serviceTone === "ON_REQUEST";
                 const ariaLabel = `${dateIso} — ${serviceUi.current.label}: ${serviceUi.statusLabel(serviceTone)}`;
 
-                const focusRing =
-                  slotsServiceType === "PROMENADE"
-                    ? `ring-[2px] ${selectedServiceTone.accent}`
-                    : slotsServiceType === "DOGSITTING"
-                      ? `ring-[2px] ${selectedServiceTone.accent}`
-                      : `ring-[2px] ${selectedServiceTone.accent}`;
+                const focusRing = isSelectableForService ? `ring-[2px] ${selectedServiceTone.accent}` : "";
 
                 const isCalendarSelected =
                   slotsServiceType === "PENSION"
@@ -1370,13 +1365,22 @@ function SitterPublicProfileContent({
                         if (!isSelectableForService) return;
                         setPensionSelectionMessage(null);
                         if (slotsServiceType === "PENSION") {
-                          if (!boardingStart || boardingEnd) {
+                          if (!boardingStart) {
                             setBoardingStart(dateIso);
-                            setBoardingEnd("");
+                            setBoardingEnd(dateIso);
                           } else {
-                            if (dateIso <= boardingStart) {
+                            if (boardingEnd && boardingEnd > boardingStart) {
+                              if (dateIso <= boardingStart) {
+                                setBoardingStart(dateIso);
+                                setBoardingEnd(dateIso);
+                                return;
+                              }
+                              setBoardingEnd(dateIso);
+                              return;
+                            }
+                            if (dateIso < boardingStart) {
                               setBoardingStart(dateIso);
-                              setBoardingEnd("");
+                              setBoardingEnd(dateIso);
                               return;
                             }
                             setBoardingEnd(dateIso);
@@ -2075,7 +2079,7 @@ function SitterPublicProfileContent({
                                     : "flex w-full items-center rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left text-sm font-semibold text-slate-900 hover:bg-slate-50"
                                 }
                               >
-                                <span className="flex items-center gap-3 whitespace-nowrap">
+                                <span className="flex w-full items-center gap-3">
                                   <span
                                     className={
                                       selected
@@ -2086,7 +2090,7 @@ function SitterPublicProfileContent({
                                   >
                                     {selected ? <span className={`h-2 w-2 rounded-full ${color.activeFill}`} /> : null}
                                   </span>
-                                  <span>{row.service}</span>
+                                  <span className="w-[7.5rem] shrink-0">{row.service}</span>
                                   <span className={selected ? color.activePrice : hasPrice ? "text-slate-900" : "text-slate-500"}>
                                     {hasPrice ? `CHF ${row.price}${row.service === "Pension" ? " / jour" : " / heure"}` : "Prix sur demande"}
                                   </span>
