@@ -649,11 +649,34 @@ export default function AvailabilityStudioPage() {
     setInlineExceptionOpen(true);
   }
 
+  function upsertLocalSingleDayException(serviceType: ServiceTypeApi, date: string, status: "AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE") {
+    setExceptionsByService((prev) => {
+      const current = prev[serviceType] ?? [];
+      const remaining = current.filter((row) => row.date !== date);
+      const optimistic: ExceptionRow = {
+        id: `optimistic-${serviceType}-${date}`,
+        date,
+        startMin: 0,
+        endMin: 24 * 60,
+        status,
+      };
+      return {
+        ...prev,
+        [serviceType]: [...remaining, optimistic].sort((a, b) => {
+          if (a.date !== b.date) return a.date.localeCompare(b.date);
+          return a.startMin - b.startMin;
+        }),
+      };
+    });
+  }
+
   async function saveSingleDayException(serviceType: ServiceTypeApi, date: string, status: "AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE") {
     setExceptionSaving(true);
     setExceptionError(null);
     setTopError(null);
     try {
+      upsertLocalSingleDayException(serviceType, date, status);
+      setAvailabilityTab(serviceType);
       const res = await fetch("/api/sitters/me/availability-exceptions", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -669,6 +692,7 @@ export default function AvailabilityStudioPage() {
       await refetchAll();
       setInlineExceptionOpen(false);
     } catch (e) {
+      await refetchAll();
       const code = e instanceof Error ? e.message : "SAVE_ERROR";
       if (code === "PRICING_REQUIRED") {
         setTopError(errorMessageFr(code));
@@ -1821,6 +1845,7 @@ export default function AvailabilityStudioPage() {
                       disabled={disabled}
                       onClick={() => {
                         setExceptionService(svc);
+                        setAvailabilityTab(svc);
                         const existing = (exceptionsByService[svc] ?? []).filter((e) => e.date === exceptionDate).sort((a, b) => a.startMin - b.startMin);
                         setExceptionStatus(existing[0]?.status ?? effectiveStatusForDate(exceptionDate, svc));
                         setExceptionError(null);
