@@ -121,6 +121,14 @@ function serviceSupportsTimeSlots(svc: ServiceTypeApi) {
   return svc === "PROMENADE" || svc === "DOGSITTING";
 }
 
+function isServiceSelectionDisabled(
+  svc: ServiceTypeApi,
+  configByService: Partial<Record<ServiceTypeApi, ServiceConfig | null>>,
+  pricingErrorByService: Partial<Record<ServiceTypeApi, string | null | undefined>>
+) {
+  return (configByService[svc]?.enabled ?? true) === false || Boolean(pricingErrorByService[svc]);
+}
+
 function pricingKeyForService(svc: ServiceTypeApi): PricingServiceKey {
   if (svc === "PROMENADE") return "Promenade";
   if (svc === "DOGSITTING") return "Garde";
@@ -671,6 +679,21 @@ export default function AvailabilityStudioPage() {
     );
     setExceptionError(null);
     setInlineExceptionOpen(true);
+  }
+
+  function selectInlineExceptionService(svc: ServiceTypeApi) {
+    setExceptionService(svc);
+    setAvailabilityTab(svc);
+    const existing = (exceptionsByService[svc] ?? []).filter((e) => e.date === exceptionDate).sort((a, b) => a.startMin - b.startMin);
+    const isAllDay = existing.length === 1 && existing[0]?.startMin === 0 && existing[0]?.endMin === 24 * 60;
+    setExceptionStatus(existing[0]?.status ?? effectiveStatusForDate(exceptionDate, svc));
+    setExceptionAllDay(existing.length ? isAllDay : true);
+    setExceptionRanges(
+      existing.length && !isAllDay
+        ? existing.map((row) => ({ startMin: row.startMin, endMin: row.endMin })).sort((a, b) => a.startMin - b.startMin)
+        : []
+    );
+    setExceptionError(null);
   }
 
   function upsertLocalSingleDayException(
@@ -1439,7 +1462,7 @@ export default function AvailabilityStudioPage() {
         </div>
       ) : null}
 
-      <div className="mt-4 rounded-3xl border border-slate-200 bg-white p-4">
+      <div className="mt-4">
         <div ref={bookingInfoWrapRef} className="relative inline-block">
           <button
             type="button"
@@ -1504,18 +1527,18 @@ export default function AvailabilityStudioPage() {
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Column 1: Services */}
         <div className="rounded-3xl border border-slate-200 bg-white p-5">
-          <div className="flex items-start justify-between gap-4">
+          <div className="flex flex-col items-start gap-3">
             <p className="text-sm font-semibold text-slate-900">Services</p>
-            <div className="grid gap-1 text-right text-[11px] font-semibold text-slate-500">
-              <div className="flex items-center justify-end gap-2">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-[11px] font-semibold text-slate-500">
+              <div className="flex items-center gap-2">
                 <span className={`h-2 w-2 rounded-full ${serviceDotTone("PROMENADE")}`} aria-hidden="true" />
                 <span>Promenade</span>
               </div>
-              <div className="flex items-center justify-end gap-2">
+              <div className="flex items-center gap-2">
                 <span className={`h-2 w-2 rounded-full ${serviceDotTone("DOGSITTING")}`} aria-hidden="true" />
                 <span>Dogsitting</span>
               </div>
-              <div className="flex items-center justify-end gap-2">
+              <div className="flex items-center gap-2">
                 <span className={`h-2 w-2 rounded-full ${serviceDotTone("PENSION")}`} aria-hidden="true" />
                 <span>Pension</span>
               </div>
@@ -1767,7 +1790,11 @@ export default function AvailabilityStudioPage() {
                 </div>
               </div>
 
-              <div className="mt-3 grid gap-1.5">
+              <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                <div className="mb-3">
+                  <p className="text-sm font-semibold text-slate-900">Disponibilités hebdomadaires</p>
+                  <p className="mt-1 text-xs text-slate-600">Définis ici tes disponibilités récurrentes pour des journées entières.</p>
+                </div>
                 {(() => {
                   if (!configByService[availabilityTab]) return <p className="text-sm text-slate-600">Chargement…</p>;
                   return (
@@ -1925,40 +1952,26 @@ export default function AvailabilityStudioPage() {
                 </button>
               </div>
 
-              <div className="mt-3 grid gap-2 sm:grid-cols-3">
-                {(["PROMENADE", "DOGSITTING", "PENSION"] as const).map((svc) => {
-                  const active = exceptionService === svc;
-                  const disabled = (configByService[svc]?.enabled ?? true) === false || Boolean(pricingErrorByService[svc]);
-                  return (
-                    <button
-                      key={`inline-service-${svc}`}
-                      type="button"
-                      disabled={disabled}
-                      onClick={() => {
-                        setExceptionService(svc);
-                        setAvailabilityTab(svc);
-                        const existing = (exceptionsByService[svc] ?? []).filter((e) => e.date === exceptionDate).sort((a, b) => a.startMin - b.startMin);
-                        const isAllDay = existing.length === 1 && existing[0]?.startMin === 0 && existing[0]?.endMin === 24 * 60;
-                        setExceptionStatus(existing[0]?.status ?? effectiveStatusForDate(exceptionDate, svc));
-                        setExceptionAllDay(existing.length ? isAllDay : true);
-                        setExceptionRanges(
-                          existing.length && !isAllDay
-                            ? existing.map((row) => ({ startMin: row.startMin, endMin: row.endMin })).sort((a, b) => a.startMin - b.startMin)
-                            : []
-                        );
-                        setExceptionError(null);
-                      }}
-                      className={
-                        active
-                          ? `rounded-2xl border px-3 py-2 text-xs font-semibold disabled:opacity-45 ${serviceSolidTone(svc)}`
-                          : "rounded-2xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 disabled:cursor-not-allowed disabled:opacity-45"
-                      }
-                    >
-                      {serviceMeta(svc).label}
-                    </button>
-                  );
-                })}
-              </div>
+              <label className="mt-3 block text-xs font-semibold text-slate-700">
+                Service
+                <select
+                  value={exceptionService}
+                  onChange={(e) => {
+                    const svc = e.target.value as ServiceTypeApi;
+                    if (svc === "PROMENADE" || svc === "DOGSITTING" || svc === "PENSION") selectInlineExceptionService(svc);
+                  }}
+                  className="mt-1 w-full rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-900"
+                >
+                  {(["PROMENADE", "DOGSITTING", "PENSION"] as const).map((svc) => {
+                    const disabled = isServiceSelectionDisabled(svc, configByService, pricingErrorByService);
+                    return (
+                      <option key={`inline-service-${svc}`} value={svc} disabled={disabled}>
+                        {serviceMeta(svc).label}
+                      </option>
+                    );
+                  })}
+                </select>
+              </label>
 
               <div className="mt-3 grid gap-2 sm:grid-cols-3">
                 {(["AVAILABLE", "ON_REQUEST", "UNAVAILABLE"] as const).map((status) => {
