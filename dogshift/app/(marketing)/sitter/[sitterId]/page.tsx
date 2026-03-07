@@ -1307,11 +1307,36 @@ function SitterPublicProfileContent({
 
                 const serviceTone = statusForSelectedService(row, slotsServiceType);
 
+                const selectedServiceTone =
+                  slotsServiceType === "PROMENADE"
+                    ? {
+                        available: "bg-sky-50 text-sky-900 ring-sky-200",
+                        onRequest: "bg-sky-50 text-sky-900 ring-sky-200",
+                        accent: "ring-sky-500/35",
+                        range: "bg-sky-50 ring-sky-200",
+                        selected: "ring-sky-500",
+                      }
+                    : slotsServiceType === "DOGSITTING"
+                      ? {
+                          available: "bg-violet-50 text-violet-900 ring-violet-200",
+                          onRequest: "bg-violet-50 text-violet-900 ring-violet-200",
+                          accent: "ring-violet-500/35",
+                          range: "bg-violet-50 ring-violet-200",
+                          selected: "ring-violet-500",
+                        }
+                      : {
+                          available: "bg-emerald-50 text-emerald-900 ring-emerald-200",
+                          onRequest: "bg-emerald-50 text-emerald-900 ring-emerald-200",
+                          accent: "ring-emerald-500/35",
+                          range: "bg-emerald-50 ring-emerald-200",
+                          selected: "ring-emerald-500",
+                        };
+
                 const tone =
                   row && serviceTone === "AVAILABLE"
-                    ? "bg-emerald-50 text-emerald-900 ring-emerald-200"
+                    ? selectedServiceTone.available
                     : row && serviceTone === "ON_REQUEST"
-                      ? "bg-amber-50 text-amber-900 ring-amber-200"
+                      ? selectedServiceTone.onRequest
                       : "bg-slate-100 text-slate-500 ring-slate-200";
 
                 const isSelectableForService = serviceTone === "AVAILABLE" || serviceTone === "ON_REQUEST";
@@ -1319,10 +1344,10 @@ function SitterPublicProfileContent({
 
                 const focusRing =
                   slotsServiceType === "PROMENADE"
-                    ? "ring-[2px] ring-emerald-500/30"
+                    ? `ring-[2px] ${selectedServiceTone.accent}`
                     : slotsServiceType === "DOGSITTING"
-                      ? "ring-[2px] ring-indigo-500/30"
-                      : "ring-[2px] ring-fuchsia-500/30";
+                      ? `ring-[2px] ${selectedServiceTone.accent}`
+                      : `ring-[2px] ${selectedServiceTone.accent}`;
 
                 const isCalendarSelected =
                   slotsServiceType === "PENSION"
@@ -1335,8 +1360,8 @@ function SitterPublicProfileContent({
                   <div
                     key={dateIso}
                     className={`flex h-14 w-full flex-col rounded-2xl ring-1 ${tone} ${focusRing} ${
-                      isInPensionRange ? "bg-fuchsia-50 ring-fuchsia-200" : ""
-                    } ${isCalendarSelected ? "ring-2 ring-[var(--dogshift-blue)]" : ""}`}
+                      isInPensionRange ? selectedServiceTone.range : ""
+                    } ${isCalendarSelected ? `ring-2 ${selectedServiceTone.selected}` : ""}`}
                   >
                     <button
                       type="button"
@@ -2046,11 +2071,11 @@ function SitterPublicProfileContent({
                                 }}
                                 className={
                                   selected
-                                    ? `flex w-full items-center justify-between rounded-2xl border px-4 py-3 text-left text-sm font-semibold ${color.active}`
-                                    : "flex w-full items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left text-sm font-semibold text-slate-900 hover:bg-slate-50"
+                                    ? `flex w-full items-center rounded-2xl border px-4 py-3 text-left text-sm font-semibold ${color.active}`
+                                    : "flex w-full items-center rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left text-sm font-semibold text-slate-900 hover:bg-slate-50"
                                 }
                               >
-                                <span className="flex items-center gap-2">
+                                <span className="flex items-center gap-3">
                                   <span
                                     className={
                                       selected
@@ -2061,10 +2086,12 @@ function SitterPublicProfileContent({
                                   >
                                     {selected ? <span className={`h-2 w-2 rounded-full ${color.activeFill}`} /> : null}
                                   </span>
-                                  {row.service}
-                                </span>
-                                <span className={selected ? color.activePrice : hasPrice ? "text-slate-900" : "text-slate-500"}>
-                                  {hasPrice ? `CHF ${row.price}${row.service === "Pension" ? " / jour" : " / heure"}` : "Prix sur demande"}
+                                  <span className="flex items-center gap-3">
+                                    <span>{row.service}</span>
+                                    <span className={selected ? color.activePrice : hasPrice ? "text-slate-900" : "text-slate-500"}>
+                                      {hasPrice ? `CHF ${row.price}${row.service === "Pension" ? " / jour" : " / heure"}` : "Prix sur demande"}
+                                    </span>
+                                  </span>
                                 </span>
                               </button>
                             );
