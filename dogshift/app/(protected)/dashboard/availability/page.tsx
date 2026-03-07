@@ -105,6 +105,12 @@ function pricingRangeLabel(svc: ServiceTypeApi) {
   return `${range.min}–${range.max} CHF`;
 }
 
+function pricingPlaceholderLabel(svc: ServiceTypeApi) {
+  if (svc === "PROMENADE") return "ex. 20";
+  if (svc === "DOGSITTING") return "ex. 24";
+  return "ex. 45";
+}
+
 function statusCellTone(status: "AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE") {
   if (status === "AVAILABLE") return "bg-emerald-50 text-emerald-900 ring-emerald-200";
   if (status === "ON_REQUEST") return "bg-amber-50 text-amber-900 ring-amber-200";
@@ -1613,7 +1619,7 @@ export default function AvailabilityStudioPage() {
                         }}
                         onClick={(e) => e.stopPropagation()}
                         inputMode="decimal"
-                        placeholder="ex. 20"
+                        placeholder={pricingPlaceholderLabel(svc)}
                         className="h-10 min-w-0 flex-1 rounded-xl border border-slate-200 bg-white px-3 text-sm font-medium text-slate-900"
                       />
                       <span className="text-xs font-semibold text-slate-500">{pricingUnitLabel(svc)}</span>
