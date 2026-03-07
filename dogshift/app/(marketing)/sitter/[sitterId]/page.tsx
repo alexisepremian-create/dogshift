@@ -163,6 +163,22 @@ function serviceColorClasses(serviceType: "PROMENADE" | "DOGSITTING" | "PENSION"
   };
 }
 
+function statusForSelectedService(
+  row:
+    | {
+        promenadeStatus: "AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE";
+        dogsittingStatus: "AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE";
+        pensionStatus: "AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE";
+      }
+    | undefined,
+  serviceType: "PROMENADE" | "DOGSITTING" | "PENSION"
+) {
+  if (!row) return "UNAVAILABLE" as const;
+  if (serviceType === "PROMENADE") return row.promenadeStatus;
+  if (serviceType === "DOGSITTING") return row.dogsittingStatus;
+  return row.pensionStatus;
+}
+
 function formatSelectionRange(start: string, end?: string) {
   if (!start) return "";
   if (!end) return formatDateFr(start);
@@ -1005,13 +1021,12 @@ function SitterPublicProfileContent({
     const candidates: string[] = [];
     for (const d of rows) {
       if (!d || typeof d.date !== "string") continue;
-      const anyAvailable = d.promenadeStatus === "AVAILABLE" || d.dogsittingStatus === "AVAILABLE" || d.pensionStatus === "AVAILABLE";
-      const anyOnRequest = d.promenadeStatus === "ON_REQUEST" || d.dogsittingStatus === "ON_REQUEST" || d.pensionStatus === "ON_REQUEST";
-      if (anyAvailable || anyOnRequest) candidates.push(d.date);
+      const status = statusForSelectedService(d, slotsServiceType);
+      if (status === "AVAILABLE" || status === "ON_REQUEST") candidates.push(d.date);
     }
     candidates.sort();
     return candidates.slice(0, 3);
-  }, [nextDays]);
+  }, [nextDays, slotsServiceType]);
 
   const serviceUi = useMemo(() => {
     const byKey = {
@@ -1290,26 +1305,17 @@ function SitterPublicProfileContent({
                 const dateIso = `${String(monthMeta.year).padStart(4, "0")}-${String(monthMeta.month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
                 const row = monthDaysByDate.get(dateIso);
 
-                const globalTone = !row
-                  ? "UNAVAILABLE"
-                  : row.promenadeStatus === "AVAILABLE" || row.dogsittingStatus === "AVAILABLE" || row.pensionStatus === "AVAILABLE"
-                    ? "AVAILABLE"
-                    : row.promenadeStatus === "ON_REQUEST" || row.dogsittingStatus === "ON_REQUEST" || row.pensionStatus === "ON_REQUEST"
-                      ? "ON_REQUEST"
-                      : "UNAVAILABLE";
+                const serviceTone = statusForSelectedService(row, slotsServiceType);
 
                 const tone =
-                  row && globalTone === "AVAILABLE"
+                  row && serviceTone === "AVAILABLE"
                     ? "bg-emerald-50 text-emerald-900 ring-emerald-200"
-                    : row && globalTone === "ON_REQUEST"
+                    : row && serviceTone === "ON_REQUEST"
                       ? "bg-amber-50 text-amber-900 ring-amber-200"
                       : "bg-slate-100 text-slate-500 ring-slate-200";
 
-                const ariaLabel =
-                  `${dateIso} — ` +
-                  `Promenade: ${serviceUi.statusLabel(row?.promenadeStatus ?? "UNAVAILABLE")}; ` +
-                  `Dogsitting: ${serviceUi.statusLabel(row?.dogsittingStatus ?? "UNAVAILABLE")}; ` +
-                  `Pension: ${serviceUi.statusLabel(row?.pensionStatus ?? "UNAVAILABLE")}`;
+                const isSelectableForService = serviceTone === "AVAILABLE" || serviceTone === "ON_REQUEST";
+                const ariaLabel = `${dateIso} — ${serviceUi.current.label}: ${serviceUi.statusLabel(serviceTone)}`;
 
                 const focusRing =
                   slotsServiceType === "PROMENADE"
@@ -1334,7 +1340,9 @@ function SitterPublicProfileContent({
                   >
                     <button
                       type="button"
+                      disabled={!isSelectableForService}
                       onClick={() => {
+                        if (!isSelectableForService) return;
                         setPensionSelectionMessage(null);
                         if (slotsServiceType === "PENSION") {
                           if (!boardingStart || boardingEnd) {
@@ -1352,7 +1360,7 @@ function SitterPublicProfileContent({
                         }
                         setSlotsDate(dateIso);
                       }}
-                      className="flex h-full w-full flex-col justify-between rounded-2xl px-2 py-2"
+                      className="flex h-full w-full flex-col justify-between rounded-2xl px-2 py-2 disabled:cursor-not-allowed disabled:opacity-70"
                       aria-label={ariaLabel}
                     >
                       <div className="flex items-start justify-end">
@@ -1389,16 +1397,11 @@ function SitterPublicProfileContent({
                   if (!row) {
                     return <p className="mt-2 text-sm text-slate-600">Ouvre la vue jour pour voir les créneaux.</p>;
                   }
+                  const status = statusForSelectedService(row, slotsServiceType);
                   return (
                     <div className="mt-2 grid gap-2 text-sm text-slate-700">
                       <div>
-                        {serviceUi.byKey.PROMENADE.icon} Promenade: <span className="font-semibold">{serviceUi.statusLabel(row.promenadeStatus)}</span>
-                      </div>
-                      <div>
-                        {serviceUi.byKey.DOGSITTING.icon} Dogsitting: <span className="font-semibold">{serviceUi.statusLabel(row.dogsittingStatus)}</span>
-                      </div>
-                      <div>
-                        {serviceUi.byKey.PENSION.icon} Pension: <span className="font-semibold">{serviceUi.statusLabel(row.pensionStatus)}</span>
+                        {serviceUi.current.icon} {serviceUi.current.label}: <span className="font-semibold">{serviceUi.statusLabel(status)}</span>
                       </div>
                       <p className="text-xs text-slate-500">Ouvre la vue jour pour voir les détails et les créneaux.</p>
                     </div>
