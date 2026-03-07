@@ -1408,13 +1408,22 @@ export default function AvailabilityStudioPage() {
                   <ul className="mt-2 grid list-disc gap-2 pl-5">
                     <li>Tu configures ici tes services et tes exceptions de disponibilité.</li>
                     <li>Les tarifs doivent être définis avant de pouvoir activer un service.</li>
-                    <li>Promenade et dogsitting sont facturés en CHF / heure. La pension est facturée en CHF / jour.</li>
-                    <li>En phase pilote, les tarifs doivent respecter la fourchette imposée par la plateforme.</li>
+                    <li>Promenade et garde : CHF / heure. Pension : CHF / jour.</li>
                     <li>Les clients peuvent ensuite t’envoyer des demandes de réservation sur tes créneaux disponibles.</li>
                     <li>Les horaires pour les promenades et le dogsitting sont proposés toutes les 30 minutes.</li>
                     <li>15 minutes sont automatiquement bloquées avant et après chaque réservation pour te laisser le temps de t’organiser.</li>
                     <li>Les réservations doivent être faites au moins 24h à l’avance.</li>
                   </ul>
+                </div>
+
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                  <p className="text-sm font-semibold text-slate-900">Phase pilote</p>
+                  <div className="mt-2 grid gap-1 text-sm text-slate-700">
+                    <p>Les tarifs se règlent ici avant d’activer un service.</p>
+                    <p>Promenade : 15–25 CHF / heure</p>
+                    <p>Garde : 18–30 CHF / heure</p>
+                    <p>Pension : 35–60 CHF / jour</p>
+                  </div>
                 </div>
 
                 <div>
@@ -1445,17 +1454,6 @@ export default function AvailabilityStudioPage() {
                 <span className={`h-2 w-2 rounded-full ${serviceDotTone("PENSION")}`} aria-hidden="true" />
                 <span>Pension</span>
               </div>
-            </div>
-          </div>
-          <div className="mt-4 rounded-3xl border border-slate-200 bg-slate-50 p-4">
-            <p className="text-sm font-semibold text-slate-900">Encadrement tarifaire – Phase pilote</p>
-            <p className="mt-2 text-sm text-slate-700">
-              Les tarifs sont gérés uniquement ici. Pour activer un service, tu dois d’abord définir un tarif valide dans la fourchette autorisée par la plateforme.
-            </p>
-            <div className="mt-3 grid gap-2 text-xs font-semibold text-slate-600 sm:grid-cols-3">
-              <div className="rounded-2xl border border-slate-200 bg-white px-3 py-2">Promenade : CHF / heure · {pricingRangeLabel("PROMENADE")}</div>
-              <div className="rounded-2xl border border-slate-200 bg-white px-3 py-2">Garde : CHF / heure · {pricingRangeLabel("DOGSITTING")}</div>
-              <div className="rounded-2xl border border-slate-200 bg-white px-3 py-2">Pension : CHF / jour · {pricingRangeLabel("PENSION")}</div>
             </div>
           </div>
           <div className="mt-4 grid gap-3">
