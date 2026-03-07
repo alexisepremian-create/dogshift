@@ -1527,7 +1527,7 @@ export default function AvailabilityStudioPage() {
                 ←
               </button>
 
-              <div className="min-w-0 flex-1 overflow-hidden rounded-3xl">
+              <div className="min-w-0 flex-1 overflow-visible px-1 pt-2">
                 <div
                   className="flex transition-transform duration-300 ease-out"
                   style={{ transform: `translateX(-${servicesCarouselIndex * 100}%)` }}
@@ -1545,28 +1545,34 @@ export default function AvailabilityStudioPage() {
               return (
                 <div
                   key={svc}
-                  className="w-full min-w-full flex-none px-1"
+                  className="w-full min-w-full flex-none px-2 pb-1"
                 >
                   <div
-                  className={
-                    isActiveCard
-                      ? "rounded-3xl border border-slate-200 bg-white p-4 text-left shadow-[0_10px_28px_-22px_rgba(15,23,42,0.25)] ring-2 ring-[color-mix(in_srgb,var(--dogshift-blue),white_65%)]"
-                      : "rounded-3xl border border-slate-200 bg-white p-4 text-left"
-                  }
-                >
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setAvailabilityTab(svc)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        setAvailabilityTab(svc);
+                      }
+                    }}
+                    className={
+                      isActiveCard
+                        ? "cursor-pointer rounded-3xl border border-slate-200 bg-white p-4 text-left shadow-[0_10px_28px_-22px_rgba(15,23,42,0.25)] ring-2 ring-[color-mix(in_srgb,var(--dogshift-blue),white_65%)]"
+                        : "cursor-pointer rounded-3xl border border-slate-200 bg-white p-4 text-left"
+                    }
+                    aria-pressed={isActiveCard}
+                  >
                   <div className="flex items-center justify-between">
-                    <button
-                      type="button"
-                      onClick={() => setAvailabilityTab(svc)}
-                      className="text-left"
-                    >
+                    <div className="text-left">
                       <p className="text-sm font-semibold text-slate-900">
                         {metaSvc.icon} {metaSvc.label}
                       </p>
                       <p className="mt-1 text-xs font-semibold text-slate-500">
                         {isActiveCard ? "Service en cours de configuration" : "Configurer ce service"}
                       </p>
-                    </button>
+                    </div>
                     <button
                       type="button"
                       role="switch"
@@ -1601,8 +1607,10 @@ export default function AvailabilityStudioPage() {
                       <input
                         value={priceInput}
                         onChange={(e) => {
+                          e.stopPropagation();
                           setPricingInputByService((prev) => ({ ...prev, [svc]: e.target.value }));
                         }}
+                        onClick={(e) => e.stopPropagation()}
                         inputMode="decimal"
                         placeholder="ex. 20"
                         className="h-10 min-w-0 flex-1 rounded-xl border border-slate-200 bg-white px-3 text-sm font-medium text-slate-900"
@@ -1610,7 +1618,8 @@ export default function AvailabilityStudioPage() {
                       <span className="text-xs font-semibold text-slate-500">{pricingUnitLabel(svc)}</span>
                       <button
                         type="button"
-                        onClick={() => {
+                        onClick={(e) => {
+                          e.stopPropagation();
                           void saveServicePricing(svc);
                         }}
                         disabled={priceSaving}
