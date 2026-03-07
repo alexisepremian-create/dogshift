@@ -111,6 +111,10 @@ function statusCellTone(status: "AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE") {
   return "bg-slate-100 text-slate-500 ring-slate-200";
 }
 
+function serviceSupportsTimeSlots(svc: ServiceTypeApi) {
+  return svc === "PROMENADE" || svc === "DOGSITTING";
+}
+
 function pricingKeyForService(svc: ServiceTypeApi): PricingServiceKey {
   if (svc === "PROMENADE") return "Promenade";
   if (svc === "DOGSITTING") return "Garde";
@@ -642,27 +646,39 @@ export default function AvailabilityStudioPage() {
     const svc = availabilityTab;
     const existing = (exceptionsByService[svc] ?? []).filter((e) => e.date === dateIso).sort((a, b) => a.startMin - b.startMin);
     const fallbackStatus = effectiveStatusForDate(dateIso, svc);
+    const isAllDay = existing.length === 1 && existing[0]?.startMin === 0 && existing[0]?.endMin === 24 * 60;
     setExceptionDate(dateIso);
     setExceptionService(svc);
     setExceptionStatus(existing[0]?.status ?? fallbackStatus);
+    setExceptionAllDay(existing.length ? isAllDay : true);
+    setExceptionRanges(
+      existing.length && !isAllDay
+        ? existing.map((row) => ({ startMin: row.startMin, endMin: row.endMin })).sort((a, b) => a.startMin - b.startMin)
+        : []
+    );
     setExceptionError(null);
     setInlineExceptionOpen(true);
   }
 
-  function upsertLocalSingleDayException(serviceType: ServiceTypeApi, date: string, status: "AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE") {
+  function upsertLocalSingleDayException(
+    serviceType: ServiceTypeApi,
+    date: string,
+    status: "AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE",
+    ranges: Array<{ startMin: number; endMin: number }>
+  ) {
     setExceptionsByService((prev) => {
       const current = prev[serviceType] ?? [];
       const remaining = current.filter((row) => row.date !== date);
-      const optimistic: ExceptionRow = {
-        id: `optimistic-${serviceType}-${date}`,
+      const optimistic = ranges.map((range, idx) => ({
+        id: `optimistic-${serviceType}-${date}-${idx}`,
         date,
-        startMin: 0,
-        endMin: 24 * 60,
+        startMin: range.startMin,
+        endMin: range.endMin,
         status,
-      };
+      }));
       return {
         ...prev,
-        [serviceType]: [...remaining, optimistic].sort((a, b) => {
+        [serviceType]: [...remaining, ...optimistic].sort((a, b) => {
           if (a.date !== b.date) return a.date.localeCompare(b.date);
           return a.startMin - b.startMin;
         }),
@@ -675,7 +691,19 @@ export default function AvailabilityStudioPage() {
     setExceptionError(null);
     setTopError(null);
     try {
-      upsertLocalSingleDayException(serviceType, date, status);
+      const supportsSlots = serviceSupportsTimeSlots(serviceType);
+      const normalized =
+        status === "UNAVAILABLE"
+          ? { ok: true as const, ranges: [{ startMin: 0, endMin: 24 * 60 }] }
+          : !supportsSlots || exceptionAllDay
+            ? { ok: true as const, ranges: [{ startMin: 0, endMin: 24 * 60 }] }
+            : normalizeRanges(exceptionRanges);
+      if (!normalized.ok) {
+        setExceptionError(normalized.error === "INVALID_RANGES" ? "Ajoute des horaires valides." : "Les plages se chevauchent.");
+        return;
+      }
+      const ranges = normalized.ranges.length ? normalized.ranges : [{ startMin: 0, endMin: 24 * 60 }];
+      upsertLocalSingleDayException(serviceType, date, status, ranges);
       setAvailabilityTab(serviceType);
       const res = await fetch("/api/sitters/me/availability-exceptions", {
         method: "PUT",
@@ -684,7 +712,7 @@ export default function AvailabilityStudioPage() {
           serviceType,
           date,
           status,
-          ranges: status === "UNAVAILABLE" ? [] : [{ startMin: 0, endMin: 24 * 60 }],
+          ranges,
         }),
       });
       const payload = (await res.json().catch(() => null)) as any;
@@ -1847,7 +1875,14 @@ export default function AvailabilityStudioPage() {
                         setExceptionService(svc);
                         setAvailabilityTab(svc);
                         const existing = (exceptionsByService[svc] ?? []).filter((e) => e.date === exceptionDate).sort((a, b) => a.startMin - b.startMin);
+                        const isAllDay = existing.length === 1 && existing[0]?.startMin === 0 && existing[0]?.endMin === 24 * 60;
                         setExceptionStatus(existing[0]?.status ?? effectiveStatusForDate(exceptionDate, svc));
+                        setExceptionAllDay(existing.length ? isAllDay : true);
+                        setExceptionRanges(
+                          existing.length && !isAllDay
+                            ? existing.map((row) => ({ startMin: row.startMin, endMin: row.endMin })).sort((a, b) => a.startMin - b.startMin)
+                            : []
+                        );
                         setExceptionError(null);
                       }}
                       className={
@@ -1882,6 +1917,131 @@ export default function AvailabilityStudioPage() {
                   );
                 })}
               </div>
+
+              {serviceSupportsTimeSlots(exceptionService) && exceptionStatus !== "UNAVAILABLE" ? (
+                <div className="mt-3 rounded-2xl border border-slate-200 bg-white p-4">
+                  <p className="text-sm font-semibold text-slate-900">Horaires</p>
+                  <p className="mt-1 text-xs text-slate-600">Choisis si ce service est disponible toute la journée ou seulement sur certains créneaux.</p>
+
+                  <div className="mt-3 grid grid-cols-2 gap-2 rounded-2xl bg-slate-50 p-2 ring-1 ring-slate-200">
+                    <button
+                      type="button"
+                      onClick={() => setExceptionAllDay(true)}
+                      className={
+                        exceptionAllDay
+                          ? "rounded-2xl bg-[var(--dogshift-blue)] px-3 py-2 text-xs font-semibold text-white"
+                          : "rounded-2xl bg-white px-3 py-2 text-xs font-semibold text-slate-700"
+                      }
+                      aria-pressed={exceptionAllDay}
+                    >
+                      Toute la journée
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setExceptionAllDay(false);
+                        setExceptionRanges((prev) => (prev.length ? prev : [{ startMin: 8 * 60, endMin: 10 * 60 }]));
+                      }}
+                      className={
+                        !exceptionAllDay
+                          ? "rounded-2xl bg-[var(--dogshift-blue)] px-3 py-2 text-xs font-semibold text-white"
+                          : "rounded-2xl bg-white px-3 py-2 text-xs font-semibold text-slate-700"
+                      }
+                      aria-pressed={!exceptionAllDay}
+                    >
+                      Définir des horaires
+                    </button>
+                  </div>
+
+                  {!exceptionAllDay ? (
+                    <div className="mt-3">
+                      <p className="text-xs font-semibold text-slate-500">Créneaux horaires</p>
+                      <div className="mt-2 grid gap-2">
+                        {exceptionRanges.length ? (
+                          exceptionRanges.map((range, idx) => (
+                            <div
+                              key={`inline-range-${idx}`}
+                              className={
+                                justAddedRangeIdx === idx
+                                  ? "flex items-center justify-between rounded-2xl border border-slate-200 bg-sky-50 px-3 py-2"
+                                  : "flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2"
+                              }
+                            >
+                              <div className="flex items-center gap-2">
+                                <input
+                                  type="time"
+                                  value={minutesToHHMM(range.startMin)}
+                                  step={1800}
+                                  onChange={(e) => {
+                                    const nextStart = hhmmToMinutes(e.target.value);
+                                    if (nextStart === null) return;
+                                    setExceptionRanges((prev) => {
+                                      const next = prev.slice();
+                                      next[idx] = { ...next[idx], startMin: nextStart };
+                                      return next;
+                                    });
+                                  }}
+                                  className="w-[96px] rounded-xl border border-slate-200 bg-white px-2 py-2 text-xs font-semibold text-slate-700"
+                                  aria-label={`Créneau ${idx + 1} début`}
+                                />
+                                <span className="text-xs font-semibold text-slate-400">→</span>
+                                <input
+                                  type="time"
+                                  value={minutesToHHMM(range.endMin)}
+                                  step={1800}
+                                  onChange={(e) => {
+                                    const nextEnd = hhmmToMinutes(e.target.value);
+                                    if (nextEnd === null) return;
+                                    setExceptionRanges((prev) => {
+                                      const next = prev.slice();
+                                      next[idx] = { ...next[idx], endMin: nextEnd };
+                                      return next;
+                                    });
+                                  }}
+                                  className="w-[96px] rounded-xl border border-slate-200 bg-white px-2 py-2 text-xs font-semibold text-slate-700"
+                                  aria-label={`Créneau ${idx + 1} fin`}
+                                />
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setExceptionRanges((prev) => {
+                                    const next = prev.slice();
+                                    next.splice(idx, 1);
+                                    return next;
+                                  });
+                                }}
+                                className="inline-flex h-9 items-center justify-center rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700"
+                              >
+                                Supprimer
+                              </button>
+                            </div>
+                          ))
+                        ) : (
+                          <p className="text-sm text-slate-600">Aucun créneau.</p>
+                        )}
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setExceptionRanges((prev) => {
+                            const next = [...prev, { startMin: 14 * 60, endMin: 16 * 60 }];
+                            setJustAddedRangeIdx(next.length - 1);
+                            setTimeout(() => setJustAddedRangeIdx(null), 700);
+                            return next;
+                          });
+                        }}
+                        className="mt-3 inline-flex h-9 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-xs font-semibold text-slate-700"
+                      >
+                        + Ajouter un créneau
+                      </button>
+
+                      {!exceptionRangesValidation.ok ? <p className="mt-3 text-sm font-semibold text-rose-700">{exceptionRangesValidation.error}</p> : null}
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
 
               <p className="mt-3 text-xs font-semibold text-slate-500">
                 Cette exception remplace la règle hebdomadaire pour le service {serviceMeta(exceptionService).label.toLowerCase()}.
