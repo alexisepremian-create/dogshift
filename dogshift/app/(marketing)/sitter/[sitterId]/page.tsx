@@ -2090,8 +2090,8 @@ function SitterPublicProfileContent({
                                   >
                                     {selected ? <span className={`h-2 w-2 rounded-full ${color.activeFill}`} /> : null}
                                   </span>
-                                  <span className="w-[7.5rem] shrink-0">{row.service}</span>
-                                  <span className={selected ? color.activePrice : hasPrice ? "text-slate-900" : "text-slate-500"}>
+                                  <span className="min-w-0 flex-1">{row.service}</span>
+                                  <span className={`shrink-0 text-right ${selected ? color.activePrice : hasPrice ? "text-slate-900" : "text-slate-500"}`}>
                                     {hasPrice ? `CHF ${row.price}${row.service === "Pension" ? " / jour" : " / heure"}` : "Prix sur demande"}
                                   </span>
                                 </span>
