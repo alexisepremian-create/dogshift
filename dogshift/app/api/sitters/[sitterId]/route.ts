@@ -23,6 +23,23 @@ type SitterDetail = {
   averageRating: number | null;
 };
 
+function normalizePersistedPricing(raw: unknown) {
+  if (!raw || typeof raw !== "object") return {} as Record<string, number>;
+  const obj = raw as Record<string, unknown>;
+  const out: Record<string, number> = {};
+  if (typeof obj.Promenade === "number" && Number.isFinite(obj.Promenade) && obj.Promenade > 0) out.Promenade = obj.Promenade;
+  if (typeof obj.Garde === "number" && Number.isFinite(obj.Garde) && obj.Garde > 0) out.Garde = obj.Garde;
+  if (typeof obj.Pension === "number" && Number.isFinite(obj.Pension) && obj.Pension > 0) out.Pension = obj.Pension;
+  return out;
+}
+
+function serviceLabelForType(serviceType: string) {
+  if (serviceType === "PROMENADE") return "Promenade";
+  if (serviceType === "DOGSITTING") return "Garde";
+  if (serviceType === "PENSION") return "Pension";
+  return null;
+}
+
 export async function GET(
   req: NextRequest,
   { params }: { params: { sitterId: string } | Promise<{ sitterId: string }> }
@@ -106,6 +123,23 @@ export async function GET(
     }
 
     const name = String((sitterProfile.displayName ?? sitterProfile.user?.name ?? "") ?? "").trim();
+    const pricing = normalizePersistedPricing(sitterProfile.pricing);
+
+    const serviceConfigs = await (prisma as any).serviceConfig.findMany({
+      where: { sitterId },
+      select: { serviceType: true, enabled: true },
+    });
+
+    const enabledServicesFromConfig = Array.isArray(serviceConfigs)
+      ? serviceConfigs
+          .filter((row) => row && row.enabled === true)
+          .map((row) => serviceLabelForType(String(row.serviceType ?? "")))
+          .filter((value): value is NonNullable<ReturnType<typeof serviceLabelForType>> => value !== null)
+      : [];
+
+    const enabledServices = enabledServicesFromConfig.length
+      ? enabledServicesFromConfig
+      : Object.keys(pricing).filter((svc) => svc === "Promenade" || svc === "Garde" || svc === "Pension");
 
     const sitter: SitterDetail = {
       sitterId: String(sitterProfile.sitterId ?? ""),
@@ -114,8 +148,8 @@ export async function GET(
       postalCode: sitterProfile.postalCode ?? "",
       bio: sitterProfile.bio ?? "",
       avatarUrl: sitterProfile.avatarUrl ?? sitterProfile.user?.image ?? null,
-      services: sitterProfile.services ?? null,
-      pricing: sitterProfile.pricing ?? null,
+      services: enabledServices,
+      pricing,
       dogSizes: sitterProfile.dogSizes ?? null,
       verified: typeof (sitterProfile as any)?.verificationStatus === "string" ? (sitterProfile as any).verificationStatus === "approved" : false,
       lat: typeof sitterProfile.lat === "number" && Number.isFinite(sitterProfile.lat) ? sitterProfile.lat : null,

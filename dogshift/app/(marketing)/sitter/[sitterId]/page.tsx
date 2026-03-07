@@ -129,6 +129,40 @@ function safePricingMap(value: unknown) {
   return out;
 }
 
+function serviceLabelToSlotsType(service: string): "PROMENADE" | "DOGSITTING" | "PENSION" {
+  if (service === "Promenade") return "PROMENADE";
+  if (service === "Garde") return "DOGSITTING";
+  return "PENSION";
+}
+
+function serviceColorClasses(serviceType: "PROMENADE" | "DOGSITTING" | "PENSION") {
+  if (serviceType === "PROMENADE") {
+    return {
+      dot: "bg-sky-400",
+      active: "border-sky-200 bg-sky-50 text-sky-900",
+      activePrice: "text-sky-900",
+      activeRing: "border-sky-500",
+      activeFill: "bg-sky-500",
+    };
+  }
+  if (serviceType === "DOGSITTING") {
+    return {
+      dot: "bg-violet-400",
+      active: "border-violet-200 bg-violet-50 text-violet-900",
+      activePrice: "text-violet-900",
+      activeRing: "border-violet-500",
+      activeFill: "bg-violet-500",
+    };
+  }
+  return {
+    dot: "bg-emerald-400",
+    active: "border-emerald-200 bg-emerald-50 text-emerald-900",
+    activePrice: "text-emerald-900",
+    activeRing: "border-emerald-500",
+    activeFill: "bg-emerald-500",
+  };
+}
+
 function StarIcon({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true" className={className}>
@@ -316,7 +350,7 @@ function SitterPublicProfileContent({
   const [previewSitter, setPreviewSitter] = useState<SitterCard | null>(null);
   const [profileData, setProfileData] = useState<HostProfileV1 | null>(null);
 
-  const [finalizeModalOpen, setFinalizeModalOpen] = useState(true);
+  const [finalizeModalOpen, setFinalizeModalOpen] = useState(false);
   const [finalizeLoading, setFinalizeLoading] = useState(false);
 
   const sessionName = typeof user?.fullName === "string" ? user.fullName : "";
@@ -806,7 +840,7 @@ function SitterPublicProfileContent({
   );
 
   const isHostPreview = showHostChrome && isPreviewMode;
-  const shouldShowFinalizeModal = isHostPreview && hostProfileCompletion < 100;
+  const shouldShowFinalizeModal = isHostPreview && previewLoaded && isHostViewingOwnStable && hostProfileCompletion < 100;
 
   const [slotsServiceType, setSlotsServiceType] = useState<"PROMENADE" | "DOGSITTING" | "PENSION">("PROMENADE");
   const [slotsDate, setSlotsDate] = useState<string>("");
@@ -886,6 +920,18 @@ function SitterPublicProfileContent({
   const [monthLoading, setMonthLoading] = useState(false);
   const [monthError, setMonthError] = useState<string | null>(null);
   const [monthRetryKey, setMonthRetryKey] = useState(0);
+
+  useEffect(() => {
+    setFinalizeModalOpen(shouldShowFinalizeModal);
+  }, [shouldShowFinalizeModal]);
+
+  useEffect(() => {
+    if (!sitter?.services?.length) return;
+    const availableSlotTypes = sitter.services.map((service) => serviceLabelToSlotsType(service));
+    if (!availableSlotTypes.includes(slotsServiceType)) {
+      setSlotsServiceType(availableSlotTypes[0]);
+    }
+  }, [sitter, slotsServiceType]);
 
   useEffect(() => {
     if (!id) return;
@@ -1167,8 +1213,6 @@ function SitterPublicProfileContent({
 
     return (
       <>
-        <p className="mt-2 text-sm font-semibold text-slate-900">{monthMeta.monthLabel}</p>
-
         {monthLoading ? (
           <div className="mt-3 grid gap-2" aria-label="Chargement du calendrier">
             <div className="h-4 w-40 animate-pulse rounded bg-slate-200" />
@@ -1191,38 +1235,36 @@ function SitterPublicProfileContent({
           </div>
         ) : (
           <div className="mt-3">
-            <div className="rounded-2xl border border-slate-200 bg-white p-3" aria-label="Légende disponibilités">
-              <p className="text-xs font-semibold text-slate-700">Légende</p>
-              <div className="mt-2 grid gap-2 text-xs text-slate-700 sm:grid-cols-3">
-                <div className="flex items-center gap-2">
+            <div className="rounded-2xl border border-slate-200 bg-white p-4" aria-label="Légende disponibilités">
+              <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-500">Légende</p>
+              <div className="mt-3 grid gap-3 text-xs text-slate-700 sm:grid-cols-3">
+                <div className="flex items-center gap-2 rounded-xl bg-slate-50 px-3 py-2">
                   <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" aria-hidden="true" />
                   <span>Disponible</span>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 rounded-xl bg-slate-50 px-3 py-2">
                   <span className="h-2.5 w-2.5 rounded-full bg-amber-500" aria-hidden="true" />
                   <span>Sur demande</span>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 rounded-xl bg-slate-50 px-3 py-2">
                   <span className="h-2.5 w-2.5 rounded-full bg-slate-300" aria-hidden="true" />
                   <span>Indisponible</span>
                 </div>
               </div>
 
-              <div className="mt-3 grid gap-1 text-xs text-slate-600">
+              <div className="mt-4 grid gap-2 text-xs text-slate-600">
                 <p>La couleur du jour indique le statut global (tous services confondus).</p>
                 <p>Les petites pastilles indiquent quels services sont disponibles ce jour-là :</p>
-                <p>
-                  <span className="inline-flex items-center gap-1">
+                <p className="flex flex-wrap items-center gap-x-3 gap-y-2">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-slate-50 px-2.5 py-1">
                     <span className="h-2.5 w-2.5 rounded-full bg-sky-400" aria-hidden="true" />
                     <span>Promenade</span>
                   </span>
-                  <span className="mx-2">·</span>
-                  <span className="inline-flex items-center gap-1">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-slate-50 px-2.5 py-1">
                     <span className="h-2.5 w-2.5 rounded-full bg-violet-400" aria-hidden="true" />
                     <span>Dogsitting</span>
                   </span>
-                  <span className="mx-2">·</span>
-                  <span className="inline-flex items-center gap-1">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-slate-50 px-2.5 py-1">
                     <span className="h-2.5 w-2.5 rounded-full bg-emerald-400" aria-hidden="true" />
                     <span>Pension</span>
                   </span>
@@ -1230,7 +1272,7 @@ function SitterPublicProfileContent({
               </div>
             </div>
 
-            <div className="grid grid-cols-7 gap-2 text-center text-[11px] font-semibold text-slate-500">
+            <div className="mt-5 grid grid-cols-7 gap-2 text-center text-[11px] font-semibold text-slate-500">
               <div>L</div>
               <div>M</div>
               <div>M</div>
@@ -2001,58 +2043,41 @@ function SitterPublicProfileContent({
                         <div className="mt-3 grid gap-2">
                           {pricingRows.map((row) => {
                             const hasPrice = typeof row.price === "number" && Number.isFinite(row.price) && row.price > 0;
-                            if (isPublicView) {
-                              return (
-                                <div
-                                  key={row.service}
-                                  className="flex w-full items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left text-sm font-semibold text-slate-900"
-                                >
-                                  <span>{row.service}</span>
-                                  <span className={hasPrice ? "text-slate-900" : "text-slate-500"}>
-                                    {hasPrice ? `CHF ${row.price}${row.service === "Pension" ? " / jour" : " / heure"}` : "Prix sur demande"}
-                                  </span>
-                                </div>
-                              );
-                            }
-
-                            const selectable = hasPrice;
-                            const interactive = selectable && !disableSelfActions;
-                            const selected = selectedService === row.service;
+                            const slotServiceType = serviceLabelToSlotsType(row.service);
+                            const color = serviceColorClasses(slotServiceType);
+                            const selected = slotsServiceType === slotServiceType;
                             return (
                               <button
                                 key={row.service}
                                 type="button"
-                                role="radio"
+                                role="tab"
                                 aria-checked={selected}
-                                disabled={!interactive}
                                 onClick={() => {
-                                  if (!interactive) return;
-                                  setSelectedService(row.service);
-                                  setPayError(null);
+                                  setSlotsServiceType(slotServiceType);
+                                  setSlotsDate((prev) => prev || new Date().toISOString().slice(0, 10));
                                 }}
                                 className={
                                   selected
-                                    ? "flex w-full items-center justify-between rounded-2xl border border-[var(--dogshift-blue)] bg-[color-mix(in_srgb,var(--dogshift-blue),white_92%)] px-4 py-3 text-left text-sm font-semibold text-[var(--dogshift-blue)]"
-                                    : interactive
-                                      ? "flex w-full items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left text-sm font-semibold text-slate-900 hover:bg-slate-50"
-                                      : "flex w-full items-center justify-between rounded-2xl border border-slate-200 bg-slate-100 px-4 py-3 text-left text-sm font-semibold text-slate-500"
+                                    ? `flex w-full items-center justify-between rounded-2xl border px-4 py-3 text-left text-sm font-semibold ${color.active}`
+                                    : "flex w-full items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left text-sm font-semibold text-slate-900 hover:bg-slate-50"
                                 }
                               >
                                 <span className="flex items-center gap-2">
                                   <span
                                     className={
                                       selected
-                                        ? "inline-flex h-4 w-4 items-center justify-center rounded-full border-2 border-[var(--dogshift-blue)]"
+                                        ? `inline-flex h-4 w-4 items-center justify-center rounded-full border-2 ${color.activeRing}`
                                         : "inline-flex h-4 w-4 items-center justify-center rounded-full border-2 border-slate-300"
                                     }
                                     aria-hidden="true"
                                   >
-                                    {selected ? <span className="h-2 w-2 rounded-full bg-[var(--dogshift-blue)]" /> : null}
+                                    {selected ? <span className={`h-2 w-2 rounded-full ${color.activeFill}`} /> : null}
                                   </span>
+                                  <span className={`h-2.5 w-2.5 rounded-full ${color.dot}`} aria-hidden="true" />
                                   {row.service}
                                 </span>
-                                <span className={selected ? "text-[var(--dogshift-blue)]" : interactive ? "text-slate-900" : "text-slate-500"}>
-                                  {selectable ? `CHF ${row.price}${row.service === "Pension" ? " / jour" : " / heure"}` : "Prix sur demande"}
+                                <span className={selected ? color.activePrice : hasPrice ? "text-slate-900" : "text-slate-500"}>
+                                  {hasPrice ? `CHF ${row.price}${row.service === "Pension" ? " / jour" : " / heure"}` : "Prix sur demande"}
                                 </span>
                               </button>
                             );
@@ -2062,10 +2087,10 @@ function SitterPublicProfileContent({
                   </div>
 
                   <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                      <h2 className="text-sm font-semibold text-slate-900">Disponibilités</h2>
+                      <h2 className="text-sm font-semibold text-slate-900">Agenda des disponibilités</h2>
                       <div className="mt-3">
-                        <div className="flex items-center justify-between">
-                          <p className="text-sm font-medium text-slate-900">Calendrier</p>
+                        <div className="flex items-center justify-between gap-3">
+                          <p className="text-sm font-medium capitalize text-slate-900">{monthMeta.monthLabel}</p>
                           <div className="flex items-center gap-2">
                             <button
                               type="button"
@@ -2132,33 +2157,6 @@ function SitterPublicProfileContent({
                             <p className="mt-2 text-sm font-semibold text-[var(--dogshift-blue)]">Envoie un message pour demander une date.</p>
                           </div>
                         )}
-
-                        <div className="mt-6">
-                          <p className="text-sm font-medium text-slate-900">Service</p>
-                          <div className="mt-2 flex flex-wrap gap-2">
-                            {([
-                              { key: "PROMENADE" as const, label: "Promenade" },
-                              { key: "DOGSITTING" as const, label: "Dogsitting" },
-                              { key: "PENSION" as const, label: "Pension" },
-                            ] as const).map((svc) => {
-                              const selected = slotsServiceType === svc.key;
-                              return (
-                                <button
-                                  key={svc.key}
-                                  type="button"
-                                  onClick={() => setSlotsServiceType(svc.key)}
-                                  className={
-                                    selected
-                                      ? "rounded-full bg-[var(--dogshift-blue)] px-3 py-1 text-xs font-semibold text-white"
-                                      : "rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50"
-                                  }
-                                  aria-pressed={selected}
-                                >
-                                  {serviceUi.byKey[svc.key].icon} {svc.label}
-                                </button>
-                              );
-                            })}
-                          </div>
 
                           <div className="mt-4">
                             <label className="text-sm font-medium text-slate-900" htmlFor="slots-date">
@@ -2544,7 +2542,6 @@ function SitterPublicProfileContent({
                           </div>
                         </div>
                       </div>
-                    </div>
 
                   {showBoardingDetails ? (
                     <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-4">

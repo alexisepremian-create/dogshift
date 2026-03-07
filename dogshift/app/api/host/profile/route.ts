@@ -67,6 +67,32 @@ function generateSitterId() {
   return `s-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
+function normalizePersistedPricing(raw: unknown) {
+  if (!raw || typeof raw !== "object") return {} as Record<string, number>;
+  const obj = raw as Record<string, unknown>;
+  const out: Record<string, number> = {};
+  if (typeof obj.Promenade === "number" && Number.isFinite(obj.Promenade) && obj.Promenade > 0) out.Promenade = obj.Promenade;
+  if (typeof obj.Garde === "number" && Number.isFinite(obj.Garde) && obj.Garde > 0) out.Garde = obj.Garde;
+  if (typeof obj.Pension === "number" && Number.isFinite(obj.Pension) && obj.Pension > 0) out.Pension = obj.Pension;
+  return out;
+}
+
+function mergeEnabledServices(profile: unknown, enabledServiceTypes: string[]) {
+  const baseProfile = profile && typeof profile === "object" ? (profile as Record<string, unknown>) : {};
+  const currentServices =
+    baseProfile.services && typeof baseProfile.services === "object" ? (baseProfile.services as Record<string, unknown>) : {};
+
+  return {
+    ...baseProfile,
+    services: {
+      ...currentServices,
+      Promenade: enabledServiceTypes.includes("PROMENADE"),
+      Garde: enabledServiceTypes.includes("DOGSITTING"),
+      Pension: enabledServiceTypes.includes("PENSION"),
+    },
+  };
+}
+
 export async function GET(req: NextRequest) {
   try {
     void req;
@@ -140,8 +166,31 @@ export async function GET(req: NextRequest) {
       update: {
         sitterId,
       },
-      select: { published: true, publishedAt: true, profileCompletion: true, termsAcceptedAt: true, termsVersion: true },
+      select: { published: true, publishedAt: true, pricing: true, profileCompletion: true, termsAcceptedAt: true, termsVersion: true },
     });
+
+    const serviceConfigs = await (prisma as any).serviceConfig.findMany({
+      where: { sitterId },
+      select: { serviceType: true, enabled: true },
+    });
+
+    const enabledServiceTypes = Array.isArray(serviceConfigs)
+      ? serviceConfigs.filter((row) => row && row.enabled === true).map((row) => String(row.serviceType ?? ""))
+      : [];
+
+    const persistedPricing = normalizePersistedPricing(sitterProfile?.pricing);
+    const mergedWithServices = mergeEnabledServices(profile, enabledServiceTypes);
+    const mergedProfile = {
+      ...(mergedWithServices && typeof mergedWithServices === "object" ? mergedWithServices : {}),
+      pricing: {
+        ...((mergedWithServices && typeof mergedWithServices === "object" && (mergedWithServices as Record<string, unknown>).pricing && typeof (mergedWithServices as Record<string, unknown>).pricing === "object")
+          ? ((mergedWithServices as Record<string, unknown>).pricing as Record<string, unknown>)
+          : {}),
+        ...persistedPricing,
+      },
+    };
+
+    const computedProfileCompletion = computeSitterProfileCompletion(mergedProfile);
 
     return NextResponse.json(
       {
@@ -149,10 +198,10 @@ export async function GET(req: NextRequest) {
         sitterId,
         published: Boolean(sitterProfile?.published),
         publishedAt: sitterProfile?.publishedAt instanceof Date ? sitterProfile.publishedAt.toISOString() : null,
-        profileCompletion: typeof sitterProfile?.profileCompletion === "number" ? sitterProfile.profileCompletion : 0,
+        profileCompletion: computedProfileCompletion,
         termsAcceptedAt: sitterProfile?.termsAcceptedAt instanceof Date ? sitterProfile.termsAcceptedAt.toISOString() : null,
         termsVersion: typeof sitterProfile?.termsVersion === "string" ? sitterProfile.termsVersion : null,
-        profile,
+        profile: mergedProfile,
       },
       { status: 200 }
     );
