@@ -98,6 +98,29 @@ export async function PUT(req: NextRequest) {
       select: { pricing: true },
     });
 
+    const userRow = await prisma.user.findUnique({
+      where: { id: uid },
+      select: { hostProfileJson: true },
+    });
+
+    const hostProfileJsonRaw = typeof userRow?.hostProfileJson === "string" ? userRow.hostProfileJson : null;
+    if (hostProfileJsonRaw) {
+      try {
+        const parsed = JSON.parse(hostProfileJsonRaw) as Record<string, unknown>;
+        const nextHostProfileJson = JSON.stringify({
+          ...parsed,
+          pricing: normalized.pricing,
+          updatedAt: new Date().toISOString(),
+        });
+        await prisma.user.update({
+          where: { id: uid },
+          data: { hostProfileJson: nextHostProfileJson } as unknown as Record<string, unknown>,
+        });
+      } catch {
+        // ignore malformed legacy hostProfileJson
+      }
+    }
+
     const toDisable = (normalized.missingOrInvalid ?? [])
       .map((k) => serviceTypeForPricingKey(k))
       .filter((v): v is "PROMENADE" | "DOGSITTING" | "PENSION" => v === "PROMENADE" || v === "DOGSITTING" || v === "PENSION");

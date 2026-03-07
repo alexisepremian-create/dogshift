@@ -3,6 +3,16 @@ import { auth, currentUser } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
 import { ensureDbUserByClerkUserId } from "@/lib/auth/resolveDbUserId";
 
+function normalizePersistedPricing(raw: unknown) {
+  if (!raw || typeof raw !== "object") return null;
+  const obj = raw as Record<string, unknown>;
+  const pricing: Record<string, number> = {};
+  if (typeof obj.Promenade === "number" && Number.isFinite(obj.Promenade) && obj.Promenade > 0) pricing.Promenade = obj.Promenade;
+  if (typeof obj.Garde === "number" && Number.isFinite(obj.Garde) && obj.Garde > 0) pricing.Garde = obj.Garde;
+  if (typeof obj.Pension === "number" && Number.isFinite(obj.Pension) && obj.Pension > 0) pricing.Pension = obj.Pension;
+  return pricing;
+}
+
 export type HostUserData = {
   sitterId: string | null;
   published: boolean;
@@ -83,6 +93,7 @@ export async function getHostUserData(): Promise<HostUserData> {
       sitterId: true,
       published: true,
       publishedAt: true,
+      pricing: true,
       termsAcceptedAt: true,
       termsVersion: true,
       profileCompletion: true,
@@ -139,6 +150,20 @@ export async function getHostUserData(): Promise<HostUserData> {
     } catch {
       profile = null;
     }
+  }
+
+  const persistedPricing = normalizePersistedPricing(sitterProfile?.pricing);
+  if (persistedPricing) {
+    const baseProfile = profile && typeof profile === "object" ? (profile as Record<string, unknown>) : {};
+    const currentPricing =
+      baseProfile.pricing && typeof baseProfile.pricing === "object" ? (baseProfile.pricing as Record<string, unknown>) : {};
+    profile = {
+      ...baseProfile,
+      pricing: {
+        ...currentPricing,
+        ...persistedPricing,
+      },
+    };
   }
 
   const termsAcceptedAt = sitterProfile?.termsAcceptedAt instanceof Date ? sitterProfile.termsAcceptedAt.toISOString() : null;
