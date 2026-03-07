@@ -2075,7 +2075,7 @@ function SitterPublicProfileContent({
                                     : "flex w-full items-center rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left text-sm font-semibold text-slate-900 hover:bg-slate-50"
                                 }
                               >
-                                <span className="flex items-center gap-3">
+                                <span className="flex items-center gap-3 whitespace-nowrap">
                                   <span
                                     className={
                                       selected
@@ -2086,11 +2086,9 @@ function SitterPublicProfileContent({
                                   >
                                     {selected ? <span className={`h-2 w-2 rounded-full ${color.activeFill}`} /> : null}
                                   </span>
-                                  <span className="flex items-center gap-3">
-                                    <span>{row.service}</span>
-                                    <span className={selected ? color.activePrice : hasPrice ? "text-slate-900" : "text-slate-500"}>
-                                      {hasPrice ? `CHF ${row.price}${row.service === "Pension" ? " / jour" : " / heure"}` : "Prix sur demande"}
-                                    </span>
+                                  <span>{row.service}</span>
+                                  <span className={selected ? color.activePrice : hasPrice ? "text-slate-900" : "text-slate-500"}>
+                                    {hasPrice ? `CHF ${row.price}${row.service === "Pension" ? " / jour" : " / heure"}` : "Prix sur demande"}
                                   </span>
                                 </span>
                               </button>
