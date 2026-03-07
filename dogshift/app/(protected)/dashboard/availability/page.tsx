@@ -1527,11 +1527,12 @@ export default function AvailabilityStudioPage() {
                 ←
               </button>
 
-              <div className="min-w-0 flex-1 overflow-visible px-1 pt-2">
-                <div
-                  className="flex transition-transform duration-300 ease-out"
-                  style={{ transform: `translateX(-${servicesCarouselIndex * 100}%)` }}
-                >
+              <div className="min-w-0 flex-1 px-1 pt-2">
+                <div className="w-full overflow-hidden rounded-[2rem]">
+                  <div
+                    className="flex w-full transition-transform duration-300 ease-out"
+                    style={{ transform: `translateX(-${servicesCarouselIndex * 100}%)` }}
+                  >
             {(["PROMENADE", "DOGSITTING", "PENSION"] as const).map((svc) => {
               const metaSvc = serviceMeta(svc);
               const cfg = configByService[svc];
@@ -1545,7 +1546,7 @@ export default function AvailabilityStudioPage() {
               return (
                 <div
                   key={svc}
-                  className="w-full min-w-full flex-none px-2 pb-1"
+                  className="w-full min-w-full flex-none"
                 >
                   <div
                     role="button"
@@ -1559,8 +1560,8 @@ export default function AvailabilityStudioPage() {
                     }}
                     className={
                       isActiveCard
-                        ? "cursor-pointer rounded-3xl border border-slate-200 bg-white p-4 text-left shadow-[0_10px_28px_-22px_rgba(15,23,42,0.25)] ring-2 ring-[color-mix(in_srgb,var(--dogshift-blue),white_65%)]"
-                        : "cursor-pointer rounded-3xl border border-slate-200 bg-white p-4 text-left"
+                        ? "m-2 cursor-pointer rounded-3xl border border-slate-200 bg-white p-4 text-left shadow-[0_10px_28px_-22px_rgba(15,23,42,0.25)] ring-2 ring-[color-mix(in_srgb,var(--dogshift-blue),white_65%)]"
+                        : "m-2 cursor-pointer rounded-3xl border border-slate-200 bg-white p-4 text-left"
                     }
                     aria-pressed={isActiveCard}
                   >
@@ -1636,6 +1637,7 @@ export default function AvailabilityStudioPage() {
                 </div>
               );
             })}
+                  </div>
                 </div>
               </div>
 
