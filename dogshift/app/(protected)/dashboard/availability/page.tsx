@@ -258,6 +258,7 @@ export default function AvailabilityStudioPage() {
 
   const [bookingInfoOpen, setBookingInfoOpen] = useState(false);
   const bookingInfoWrapRef = useRef<HTMLDivElement | null>(null);
+  const quickActionsWrapRef = useRef<HTMLDivElement | null>(null);
 
   const [availabilityTab, setAvailabilityTab] = useState<ServiceTypeApi>("PROMENADE");
   const [servicesCarouselIndex, setServicesCarouselIndex] = useState(0);
@@ -355,6 +356,24 @@ export default function AvailabilityStudioPage() {
       window.removeEventListener("touchstart", onPointerDown);
     };
   }, [bookingInfoOpen]);
+
+  useEffect(() => {
+    if (!quickActionsOpen) return;
+
+    const onPointerDown = (e: MouseEvent | TouchEvent) => {
+      const root = quickActionsWrapRef.current;
+      const target = e.target as Node | null;
+      if (!root || !target) return;
+      if (!root.contains(target)) setQuickActionsOpen(false);
+    };
+
+    window.addEventListener("mousedown", onPointerDown);
+    window.addEventListener("touchstart", onPointerDown);
+    return () => {
+      window.removeEventListener("mousedown", onPointerDown);
+      window.removeEventListener("touchstart", onPointerDown);
+    };
+  }, [quickActionsOpen]);
 
   useEffect(() => {
     if (!enabledServices.length) return;
@@ -1734,59 +1753,58 @@ export default function AvailabilityStudioPage() {
                   </p>
                   <span className={`h-2 w-2 rounded-full ${serviceDotTone(availabilityTab)}`} aria-hidden="true" />
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setQuickActionsOpen((prev) => !prev)}
-                  className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700"
-                  aria-expanded={quickActionsOpen}
-                  aria-controls="availability-quick-actions"
-                >
-                  <span>Actions rapides</span>
-                  <span className="inline-block w-3 text-center" aria-hidden="true">
-                    {quickActionsOpen ? "⌃" : "⌄"}
-                  </span>
-                </button>
-              </div>
+                <div ref={quickActionsWrapRef} className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setQuickActionsOpen((prev) => !prev)}
+                    className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700"
+                    aria-expanded={quickActionsOpen}
+                    aria-controls="availability-quick-actions"
+                  >
+                    <span>Actions rapides</span>
+                    <span className="inline-block w-3 text-center" aria-hidden="true">
+                      {quickActionsOpen ? "⌃" : "⌄"}
+                    </span>
+                  </button>
 
-              <div
-                id="availability-quick-actions"
-                className={`mt-3 w-full overflow-hidden transition-[max-height,opacity] duration-200 ease-out ${quickActionsOpen ? "max-h-64 opacity-100" : "max-h-0 opacity-0"}`}
-              >
-                <div className="w-full rounded-2xl border border-slate-200 bg-slate-50 p-3">
-                  <div className="min-w-0">
-                    <div className="grid gap-2">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          void applyQuickAction("all-available-week");
-                        }}
-                        disabled={quickActionSaving !== null || !canEditAvailabilityForTab}
-                        className="inline-flex min-h-9 items-center justify-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 disabled:opacity-60"
-                      >
-                        {quickActionSaving === "all-available-week" ? "Enregistrement…" : "Tout disponible cette semaine"}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          void applyQuickAction("all-available-month");
-                        }}
-                        disabled={quickActionSaving !== null || !canEditAvailabilityForTab}
-                        className="inline-flex min-h-9 items-center justify-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 disabled:opacity-60"
-                      >
-                        {quickActionSaving === "all-available-month" ? "Enregistrement…" : "Tout disponible ce mois"}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          void applyQuickAction("copy-week");
-                        }}
-                        disabled={quickActionSaving !== null || !canEditAvailabilityForTab}
-                        className="inline-flex min-h-9 items-center justify-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 disabled:opacity-60"
-                      >
-                        {quickActionSaving === "copy-week" ? "Enregistrement…" : "Reproduire cette semaine sur le reste du mois"}
-                      </button>
+                  {quickActionsOpen ? (
+                    <div id="availability-quick-actions" className="absolute right-0 top-full z-40 mt-2 w-72 rounded-2xl border border-slate-200 bg-slate-50 p-3 shadow-xl">
+                      <div className="min-w-0">
+                        <div className="grid gap-2">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              void applyQuickAction("all-available-week");
+                            }}
+                            disabled={quickActionSaving !== null || !canEditAvailabilityForTab}
+                            className="inline-flex min-h-9 items-center justify-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 disabled:opacity-60"
+                          >
+                            {quickActionSaving === "all-available-week" ? "Enregistrement…" : "Tout disponible cette semaine"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              void applyQuickAction("all-available-month");
+                            }}
+                            disabled={quickActionSaving !== null || !canEditAvailabilityForTab}
+                            className="inline-flex min-h-9 items-center justify-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 disabled:opacity-60"
+                          >
+                            {quickActionSaving === "all-available-month" ? "Enregistrement…" : "Tout disponible ce mois"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              void applyQuickAction("copy-week");
+                            }}
+                            disabled={quickActionSaving !== null || !canEditAvailabilityForTab}
+                            className="inline-flex min-h-9 items-center justify-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 disabled:opacity-60"
+                          >
+                            {quickActionSaving === "copy-week" ? "Enregistrement…" : "Reproduire cette semaine sur le reste du mois"}
+                          </button>
+                        </div>
+                      </div>
                     </div>
-                  </div>
+                  ) : null}
                 </div>
               </div>
 
