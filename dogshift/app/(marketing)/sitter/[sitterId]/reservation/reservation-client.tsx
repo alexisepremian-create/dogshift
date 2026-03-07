@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Calendar, ChevronLeft, ChevronRight } from "lucide-react";
 
 type AvailabilityPayload = { ok?: boolean; dates?: string[]; error?: string };
@@ -455,6 +455,7 @@ function DogShiftDatePicker({
 
 export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const [selectedService, setSelectedService] = useState<string | null>(null);
   const [dateStart, setDateStart] = useState("");
@@ -470,6 +471,29 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
   const [availabilityLoaded, setAvailabilityLoaded] = useState(false);
 
   const todayIso = useMemo(() => todayZurichIsoDate(), []);
+
+  useEffect(() => {
+    const serviceParam = (searchParams.get("service") ?? "").trim();
+    const dateParam = (searchParams.get("date") ?? "").trim();
+    const startParam = (searchParams.get("start") ?? "").trim();
+    const endParam = (searchParams.get("end") ?? "").trim();
+
+    const serviceExists = sitter.services.some((svc) => svc === serviceParam);
+    if (serviceExists) {
+      setSelectedService((prev) => prev ?? serviceParam);
+    }
+
+    if (serviceParam === "Pension") {
+      if (startParam) setDateStart((prev) => prev || startParam);
+      if (endParam) setDateEnd((prev) => prev || endParam);
+      return;
+    }
+
+    if (dateParam) {
+      setDateStart((prev) => prev || dateParam);
+      setDateEnd((prev) => prev || dateParam);
+    }
+  }, [searchParams, sitter.services]);
 
   useEffect(() => {
     let cancelled = false;

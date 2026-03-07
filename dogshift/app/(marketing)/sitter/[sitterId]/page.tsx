@@ -163,6 +163,12 @@ function serviceColorClasses(serviceType: "PROMENADE" | "DOGSITTING" | "PENSION"
   };
 }
 
+function formatSelectionRange(start: string, end?: string) {
+  if (!start) return "";
+  if (!end) return formatDateFr(start);
+  return `${formatDateFr(start)} → ${formatDateFr(end)}`;
+}
+
 function StarIcon({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true" className={className}>
@@ -846,6 +852,7 @@ function SitterPublicProfileContent({
   const [slotsDate, setSlotsDate] = useState<string>("");
   const [boardingStart, setBoardingStart] = useState<string>("");
   const [boardingEnd, setBoardingEnd] = useState<string>("");
+  const [pensionSelectionMessage, setPensionSelectionMessage] = useState<string | null>(null);
   const [boardingStatusLoading, setBoardingStatusLoading] = useState(false);
   const [boardingStatusError, setBoardingStatusError] = useState<string | null>(null);
   const [boardingStatusRetryKey, setBoardingStatusRetryKey] = useState(0);
@@ -1043,6 +1050,28 @@ function SitterPublicProfileContent({
     return { statusText, bucketForReason };
   }, []);
 
+  const bookingSelectionSummary = useMemo(() => {
+    if (slotsServiceType === "PENSION") {
+      if (!boardingStart) return null;
+      if (!boardingEnd) return `Arrivée sélectionnée : ${formatDateFr(boardingStart)}`;
+      return `Séjour : ${formatSelectionRange(boardingStart, boardingEnd)}`;
+    }
+    if (!slotsDate) return null;
+    return `Date sélectionnée : ${formatDateFr(slotsDate)}`;
+  }, [boardingEnd, boardingStart, slotsDate, slotsServiceType]);
+
+  const canRequestBooking = useMemo(() => {
+    if (disableSelfActions) return false;
+    if (slotsServiceType === "PENSION") {
+      if (!boardingStart || !boardingEnd) return false;
+      if (boardingEnd <= boardingStart) return false;
+      if (boardingStatusLoading) return false;
+      if (boardingStatus?.status === "UNAVAILABLE") return false;
+      return true;
+    }
+    return Boolean(slotsDate);
+  }, [boardingEnd, boardingStart, boardingStatus?.status, boardingStatusLoading, disableSelfActions, slotsDate, slotsServiceType]);
+
   useEffect(() => {
     if (!id) return;
     if (!calendarInfoDate) {
@@ -1120,21 +1149,6 @@ function SitterPublicProfileContent({
     };
   }, [calendarInfoDate, dayDetailsOpen, dayDetailsRetryKey, dbg, dogsittingDurationMin, id, slotsServiceType]);
 
-  useEffect(() => {
-    if (slotsDate) return;
-    try {
-      const today = new Intl.DateTimeFormat("en-CA", {
-        timeZone: "Europe/Zurich",
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-      }).format(new Date());
-      setSlotsDate(today);
-    } catch {
-      setSlotsDate(new Date().toISOString().slice(0, 10));
-    }
-  }, [slotsDate]);
-
   const monthMeta = useMemo(() => {
     const y = monthCursor.getUTCFullYear();
     const m = monthCursor.getUTCMonth();
@@ -1192,11 +1206,14 @@ function SitterPublicProfileContent({
     monthDaysByDate,
     setMonthRetryKey,
     slotsServiceType,
-    setSlotsServiceType,
     setSlotsDate,
     boardingStart,
+    boardingEnd,
     setBoardingStart,
     setBoardingEnd,
+    pensionSelectionMessage,
+    setPensionSelectionMessage,
+    bookingSelectionSummary,
     calendarInfoDate,
     setCalendarInfoDate,
     dayDetailsOpen,
@@ -1208,9 +1225,6 @@ function SitterPublicProfileContent({
     dbg,
     serviceUi,
   }: any) => {
-    const serviceDotTone = (svc: "PROMENADE" | "DOGSITTING" | "PENSION") =>
-      svc === "PROMENADE" ? "bg-sky-400" : svc === "DOGSITTING" ? "bg-violet-400" : "bg-emerald-400";
-
     return (
       <>
         {monthLoading ? (
@@ -1253,22 +1267,7 @@ function SitterPublicProfileContent({
               </div>
 
               <div className="mt-4 grid gap-2 text-xs text-slate-600">
-                <p>La couleur du jour indique le statut global (tous services confondus).</p>
-                <p>Les petites pastilles indiquent quels services sont disponibles ce jour-là :</p>
-                <p className="flex flex-wrap items-center gap-x-3 gap-y-2">
-                  <span className="inline-flex items-center gap-1 rounded-full bg-slate-50 px-2.5 py-1">
-                    <span className="h-2.5 w-2.5 rounded-full bg-sky-400" aria-hidden="true" />
-                    <span>Promenade</span>
-                  </span>
-                  <span className="inline-flex items-center gap-1 rounded-full bg-slate-50 px-2.5 py-1">
-                    <span className="h-2.5 w-2.5 rounded-full bg-violet-400" aria-hidden="true" />
-                    <span>Dogsitting</span>
-                  </span>
-                  <span className="inline-flex items-center gap-1 rounded-full bg-slate-50 px-2.5 py-1">
-                    <span className="h-2.5 w-2.5 rounded-full bg-emerald-400" aria-hidden="true" />
-                    <span>Pension</span>
-                  </span>
-                </p>
+                <p>La couleur du jour indique le statut global de disponibilité.</p>
               </div>
             </div>
 
@@ -1319,24 +1318,39 @@ function SitterPublicProfileContent({
                       ? "ring-[2px] ring-indigo-500/30"
                       : "ring-[2px] ring-fuchsia-500/30";
 
-                const showPromenade = row ? row.promenadeStatus === "AVAILABLE" || row.promenadeStatus === "ON_REQUEST" : false;
-                const showDogsitting = row ? row.dogsittingStatus === "AVAILABLE" || row.dogsittingStatus === "ON_REQUEST" : false;
-                const showPension = row ? row.pensionStatus === "AVAILABLE" || row.pensionStatus === "ON_REQUEST" : false;
+                const isCalendarSelected =
+                  slotsServiceType === "PENSION"
+                    ? Boolean(boardingStart && dateIso === boardingStart) || Boolean(boardingEnd && dateIso === boardingEnd)
+                    : slotsDate === dateIso;
+                const isInPensionRange =
+                  slotsServiceType === "PENSION" && Boolean(boardingStart && boardingEnd && dateIso >= boardingStart && dateIso <= boardingEnd);
 
                 return (
-                  <div key={dateIso} className={`flex h-14 w-full flex-col rounded-2xl ring-1 ${tone} ${focusRing}`}>
+                  <div
+                    key={dateIso}
+                    className={`flex h-14 w-full flex-col rounded-2xl ring-1 ${tone} ${focusRing} ${
+                      isInPensionRange ? "bg-fuchsia-50 ring-fuchsia-200" : ""
+                    } ${isCalendarSelected ? "ring-2 ring-[var(--dogshift-blue)]" : ""}`}
+                  >
                     <button
                       type="button"
                       onClick={() => {
-                        setSlotsDate(dateIso);
+                        setPensionSelectionMessage(null);
                         if (slotsServiceType === "PENSION") {
-                          if (!boardingStart) {
+                          if (!boardingStart || boardingEnd) {
                             setBoardingStart(dateIso);
-                            setBoardingEnd(dateIso);
+                            setBoardingEnd("");
                           } else {
+                            if (dateIso <= boardingStart) {
+                              setBoardingStart(dateIso);
+                              setBoardingEnd("");
+                              return;
+                            }
                             setBoardingEnd(dateIso);
                           }
+                          return;
                         }
+                        setSlotsDate(dateIso);
                       }}
                       className="flex h-full w-full flex-col justify-between rounded-2xl px-2 py-2"
                       aria-label={ariaLabel}
@@ -1346,44 +1360,8 @@ function SitterPublicProfileContent({
                       </div>
 
                       <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-1">
-                          {showPromenade ? (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setSlotsServiceType("PROMENADE");
-                                setSlotsDate(dateIso);
-                              }}
-                              className={`h-2.5 w-2.5 rounded-full ${serviceDotTone("PROMENADE")}`}
-                              aria-label={`${dateIso} — ${serviceUi.byKey.PROMENADE.icon} Promenade: ${serviceUi.statusLabel(row.promenadeStatus)}`}
-                            />
-                          ) : null}
-                          {showDogsitting ? (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setSlotsServiceType("DOGSITTING");
-                                setSlotsDate(dateIso);
-                              }}
-                              className={`h-2.5 w-2.5 rounded-full ${serviceDotTone("DOGSITTING")}`}
-                              aria-label={`${dateIso} — ${serviceUi.byKey.DOGSITTING.icon} Dogsitting: ${serviceUi.statusLabel(row.dogsittingStatus)}`}
-                            />
-                          ) : null}
-                          {showPension ? (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setSlotsServiceType("PENSION");
-                                setSlotsDate(dateIso);
-                                if (!boardingStart) {
-                                  setBoardingStart(dateIso);
-                                  setBoardingEnd(dateIso);
-                                }
-                              }}
-                              className={`h-2.5 w-2.5 rounded-full ${serviceDotTone("PENSION")}`}
-                              aria-label={`${dateIso} — ${serviceUi.byKey.PENSION.icon} Pension: ${serviceUi.statusLabel(row.pensionStatus)}`}
-                            />
-                          ) : null}
+                        <div className="text-[11px] font-semibold">
+                          {isCalendarSelected ? "Sélectionné" : isInPensionRange ? "Séjour" : ""}
                         </div>
 
                         <button
@@ -1489,6 +1467,21 @@ function SitterPublicProfileContent({
                     ) : null}
                   </div>
                 ) : null}
+              </div>
+            ) : null}
+
+            {slotsServiceType === "PENSION" ? (
+              <div className="mt-3 rounded-2xl border border-slate-200 bg-white p-4">
+                <p className="text-sm font-semibold text-slate-900">Sélection du séjour</p>
+                <p className="mt-1 text-sm text-slate-600">
+                  Choisissez une date d’arrivée, puis une date de départ directement dans le calendrier.
+                </p>
+                {bookingSelectionSummary ? <p className="mt-3 text-sm font-medium text-slate-900">{bookingSelectionSummary}</p> : null}
+                {pensionSelectionMessage ? <p className="mt-2 text-sm font-medium text-amber-900">{pensionSelectionMessage}</p> : null}
+              </div>
+            ) : bookingSelectionSummary ? (
+              <div className="mt-3 rounded-2xl border border-slate-200 bg-white p-4">
+                <p className="text-sm font-medium text-slate-900">{bookingSelectionSummary}</p>
               </div>
             ) : null}
           </div>
@@ -1605,13 +1598,6 @@ function SitterPublicProfileContent({
       setSelectedSlotNotice("Créneau mis à jour.");
     }
   }, [daySlots, selectedSlot, slotsDate, slotsError, slotsLoading, slotsServiceType]);
-
-  useEffect(() => {
-    if (boardingStart) return;
-    if (!slotsDate) return;
-    setBoardingStart(slotsDate);
-    setBoardingEnd(slotsDate);
-  }, [boardingEnd, boardingStart, slotsDate]);
 
   useEffect(() => {
     if (!id) return;
@@ -2054,7 +2040,6 @@ function SitterPublicProfileContent({
                                 aria-checked={selected}
                                 onClick={() => {
                                   setSlotsServiceType(slotServiceType);
-                                  setSlotsDate((prev) => prev || new Date().toISOString().slice(0, 10));
                                 }}
                                 className={
                                   selected
@@ -2073,7 +2058,6 @@ function SitterPublicProfileContent({
                                   >
                                     {selected ? <span className={`h-2 w-2 rounded-full ${color.activeFill}`} /> : null}
                                   </span>
-                                  <span className={`h-2.5 w-2.5 rounded-full ${color.dot}`} aria-hidden="true" />
                                   {row.service}
                                 </span>
                                 <span className={selected ? color.activePrice : hasPrice ? "text-slate-900" : "text-slate-500"}>
@@ -2118,11 +2102,14 @@ function SitterPublicProfileContent({
                           monthDaysByDate={monthDaysByDate}
                           setMonthRetryKey={setMonthRetryKey}
                           slotsServiceType={slotsServiceType}
-                          setSlotsServiceType={setSlotsServiceType}
                           setSlotsDate={setSlotsDate}
                           boardingStart={boardingStart}
+                          boardingEnd={boardingEnd}
                           setBoardingStart={setBoardingStart}
                           setBoardingEnd={setBoardingEnd}
+                          pensionSelectionMessage={pensionSelectionMessage}
+                          setPensionSelectionMessage={setPensionSelectionMessage}
+                          bookingSelectionSummary={bookingSelectionSummary}
                           calendarInfoDate={calendarInfoDate}
                           setCalendarInfoDate={setCalendarInfoDate}
                           dayDetailsOpen={dayDetailsOpen}
@@ -2157,426 +2144,8 @@ function SitterPublicProfileContent({
                             <p className="mt-2 text-sm font-semibold text-[var(--dogshift-blue)]">Envoie un message pour demander une date.</p>
                           </div>
                         )}
-
-                          <div className="mt-4">
-                            <label className="text-sm font-medium text-slate-900" htmlFor="slots-date">
-                              Date
-                            </label>
-                            <input
-                              id="slots-date"
-                              type="date"
-                              value={slotsDate}
-                              onChange={(e) => setSlotsDate(e.target.value)}
-                              className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm"
-                            />
-                          </div>
-
-                          <div className="mt-4">
-                            <p className="text-sm font-medium text-slate-900">
-                              Créneaux (service sélectionné)
-                              <span className="ml-2 text-sm font-semibold text-slate-700">
-                                {serviceUi.current.icon} {serviceUi.current.label}
-                              </span>
-                            </p>
-
-                            <div className="mt-2 inline-flex items-center gap-2">
-                              <span className="inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700">
-                                Synchronisé avec l’agenda
-                              </span>
-                              <Tooltip label="Les créneaux affichés sont calculés depuis l’agenda (règles, exceptions, réservations, buffers, délai).">
-                                {({ triggerProps }) => (
-                                  <button
-                                    type="button"
-                                    className="text-xs font-semibold text-slate-500"
-                                    aria-label="Info"
-                                    {...triggerProps}
-                                  >
-                                    ⓘ
-                                  </button>
-                                )}
-                              </Tooltip>
-                            </div>
-
-                            <div className="sticky top-0 z-10 -mx-4 mt-3 border-y border-slate-200 bg-slate-50 px-4 py-2">
-                              <p className="text-xs font-semibold text-slate-700">
-                                {serviceUi.current.icon} {serviceUi.current.label} — {formatDateFr(slotsDate)}
-                                {slotsServiceType === "DOGSITTING" && typeof dogsittingDurationMin === "number" ? ` — ${dogsittingDurationMin} min` : ""}
-                              </p>
-                            </div>
-
-                            {slotsServiceType === "DOGSITTING" && serviceSummary ? (
-                              <div className="mt-3 rounded-2xl border border-slate-200 bg-white p-4">
-                                <p className="text-xs font-semibold text-slate-500">Durée</p>
-                                <div className="mt-2 flex flex-wrap gap-2">
-                                  {dogsittingDurationOptions.map((d) => {
-                                    const selected = dogsittingDurationMin === d;
-                                    return (
-                                      <button
-                                        key={`dur-${d}`}
-                                        type="button"
-                                        onClick={() => setDogsittingDurationMin(d)}
-                                        className={
-                                          selected
-                                            ? "rounded-full bg-[var(--dogshift-blue)] px-3 py-1 text-xs font-semibold text-white"
-                                            : "rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50"
-                                        }
-                                        aria-pressed={selected}
-                                      >
-                                        {d} min
-                                      </button>
-                                    );
-                                  })}
-                                </div>
-                              </div>
-                            ) : null}
-
-                            {serviceSummary ? (
-                              <div className="mt-2 flex flex-wrap gap-2">
-                                <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700">
-                                  Durée min: {serviceSummary.minDurationMin} min
-                                </span>
-                                <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700">
-                                  Pas: {serviceSummary.stepMin} min
-                                </span>
-                                <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700">
-                                  Lead: {serviceSummary.leadTimeMin} min
-                                </span>
-                                <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700">
-                                  Buffer: {serviceSummary.bufferBeforeMin}/{serviceSummary.bufferAfterMin} min
-                                </span>
-                              </div>
-                            ) : null}
-
-                            {slotsServiceType === "PENSION" ? (
-                              <div className="mt-3 rounded-2xl border border-slate-200 bg-white p-4">
-                                <p className="text-sm font-semibold text-slate-900">Séjour (multi-jours)</p>
-                                <p className="mt-1 text-sm text-slate-600">Sélectionnez une arrivée et un départ.</p>
-                                <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                                  <div>
-                                    <label className="text-xs font-semibold text-slate-700" htmlFor="boarding-start">
-                                      Arrivée
-                                    </label>
-                                    <input
-                                      id="boarding-start"
-                                      type="date"
-                                      value={boardingStart}
-                                      onChange={(e) => setBoardingStart(e.target.value)}
-                                      className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm"
-                                    />
-                                  </div>
-                                  <div>
-                                    <label className="text-xs font-semibold text-slate-700" htmlFor="boarding-end">
-                                      Départ
-                                    </label>
-                                    <input
-                                      id="boarding-end"
-                                      type="date"
-                                      value={boardingEnd}
-                                      onChange={(e) => setBoardingEnd(e.target.value)}
-                                      className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm"
-                                    />
-                                  </div>
-                                </div>
-                                <div className="mt-4">
-                                  {boardingStatusLoading ? (
-                                    <p className="text-sm text-slate-600">Vérification…</p>
-                                  ) : boardingStatusError ? (
-                                    <div>
-                                      <p className="text-sm text-rose-700">{boardingStatusError}</p>
-                                      <button
-                                        type="button"
-                                        onClick={() => setBoardingStatusRetryKey((v) => v + 1)}
-                                        className="mt-2 inline-flex h-9 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-xs font-semibold text-slate-700"
-                                      >
-                                        Réessayer
-                                      </button>
-                                    </div>
-                                  ) : boardingStatus ? (
-                                    <div>
-                                      <div
-                                        className={
-                                          boardingStatus.status === "AVAILABLE"
-                                            ? "inline-flex items-center rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-900 ring-1 ring-emerald-200"
-                                            : boardingStatus.status === "ON_REQUEST"
-                                              ? "inline-flex items-center rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-900 ring-1 ring-amber-200"
-                                              : "inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600 ring-1 ring-slate-200"
-                                        }
-                                      >
-                                        {boardingStatus.status === "AVAILABLE"
-                                          ? "Disponible"
-                                          : boardingStatus.status === "ON_REQUEST"
-                                            ? "Sur demande"
-                                            : "Indisponible"}
-                                      </div>
-                                      {boardingStatus.status === "ON_REQUEST" ? (
-                                        <p className="mt-2 text-sm text-slate-600">Certains jours sont sur demande.</p>
-                                      ) : null}
-
-                                      {boardingStatus.status === "UNAVAILABLE" && boardingStatus.blockingDays?.length ? (
-                                        <div className="mt-3">
-                                          <p className="text-sm font-semibold text-slate-900">Jours bloquants</p>
-                                          <div className="mt-2 flex flex-wrap gap-2">
-                                            {boardingStatus.blockingDays.map((d) => (
-                                              <span
-                                                key={d.date}
-                                                className="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700 ring-1 ring-slate-200"
-                                                title={dbg ? d.reason ?? "" : ""}
-                                              >
-                                                {formatDateFr(d.date)}
-                                              </span>
-                                            ))}
-                                          </div>
-                                        </div>
-                                      ) : null}
-
-                                      {dbg && boardingStatus.days.length ? (
-                                        <div className="mt-3">
-                                          <p className="text-xs font-semibold text-slate-500">dbg</p>
-                                          <div className="mt-1 grid gap-1 text-xs text-slate-600">
-                                            {boardingStatus.days.map((d) => (
-                                              <div key={d.date}>
-                                                {d.date} — {d.status}
-                                                {d.reason ? ` (${d.reason})` : ""}
-                                              </div>
-                                            ))}
-                                          </div>
-                                        </div>
-                                      ) : null}
-                                    </div>
-                                  ) : null}
-
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      setSelectedService("Pension");
-                                      setBookingStart(boardingStart);
-                                      setBookingEnd(boardingEnd);
-                                      setBookingStartAt("");
-                                      setBookingEndAt("");
-                                      setBookingOpen(true);
-                                    }}
-                                    disabled={boardingStatus?.status === "UNAVAILABLE"}
-                                    className="inline-flex h-11 w-full items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-6 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
-                                  >
-                                    Continuer
-                                  </button>
-                                </div>
-                              </div>
-                            ) : slotsLoading ? (
-                              <div className="mt-3 grid gap-2" aria-label="Chargement des créneaux">
-                                {Array.from({ length: 4 }).map((_, i) => (
-                                  <div key={`slots-skel-${i}`} className="h-12 w-full animate-pulse rounded-2xl bg-slate-200" />
-                                ))}
-                              </div>
-                            ) : slotsError ? (
-                              <div className="mt-2">
-                                <p className="text-sm text-rose-700">{slotsError}</p>
-                                <button
-                                  type="button"
-                                  onClick={() => setSlotsRetryKey((v) => v + 1)}
-                                  className="mt-2 inline-flex h-9 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-xs font-semibold text-slate-700"
-                                >
-                                  Réessayer
-                                </button>
-                              </div>
-                            ) : daySlots.length ? (
-                              <div className="mt-3 grid gap-3">
-                                {daySlotsAgenda.map((group) => (
-                                  <div key={group.key}>
-                                    <p className="text-xs font-semibold text-slate-500">{group.label}</p>
-                                    <div className="mt-2 grid gap-2">
-                                      {(agendaExpandedGroups[group.key] ? group.items : group.items.slice(0, 8)).map((slot) => {
-                                        const isUnavailable = slot.status === "UNAVAILABLE";
-                                        const isOnRequest = slot.status === "ON_REQUEST";
-                                        const isSelected =
-                                          Boolean(selectedSlot) &&
-                                          selectedSlot?.serviceType === slotsServiceType &&
-                                          selectedSlot?.dateIso === slotsDate &&
-                                          selectedSlot?.startAt === slot.startAt &&
-                                          selectedSlot?.endAt === slot.endAt;
-                                        const tone = isUnavailable
-                                          ? "border-slate-200 bg-slate-100 text-slate-500"
-                                          : isOnRequest
-                                            ? "border-amber-200 bg-amber-50 text-amber-900"
-                                            : "border-emerald-200 bg-emerald-50 text-emerald-900";
-                                        const label = `${slot.startAt.slice(11, 16)}–${slot.endAt.slice(11, 16)}`;
-                                        const statusText =
-                                          slot.status === "ON_REQUEST" ? "Sur demande (le sitter doit confirmer)" : serviceUi.statusLabelLong(slot.status);
-                                        const ariaLabel = `${serviceUi.current.icon} ${serviceUi.current.label} ${label} — ${statusText}`;
-                                        const whyKey = `${slot.startAt}-${slot.endAt}`;
-                                        const bucket = userReasonBucket.bucketForReason(slot.reason);
-                                        const tooltip = dbg
-                                          ? slot.reason ?? ""
-                                          : slot.status === "UNAVAILABLE"
-                                            ? "Indisponible"
-                                            : statusText;
-                                        return (
-                                          <div key={`${slot.startAt}-${slot.endAt}-${slot.status}-${slot.reason ?? ""}`} className="relative">
-                                            <div className="flex items-stretch gap-2">
-                                              <button
-                                                type="button"
-                                                disabled={isUnavailable}
-                                                data-slot-nav="1"
-                                                data-slot-nav-key={`${slot.startAt}-${slot.endAt}`}
-                                                onKeyDown={(e) => {
-                                                  if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
-                                                  const nodes = Array.from(document.querySelectorAll<HTMLButtonElement>("button[data-slot-nav='1']"));
-                                                  const idx = nodes.findIndex((n) => n === e.currentTarget);
-                                                  if (idx < 0) return;
-                                                  e.preventDefault();
-                                                  const next = e.key === "ArrowDown" ? nodes[idx + 1] : nodes[idx - 1];
-                                                  next?.focus();
-                                                }}
-                                                onClick={() => {
-                                                  if (isUnavailable) return;
-                                                  setSelectedSlotNotice(null);
-                                                  if (slot.status === "AVAILABLE" || slot.status === "ON_REQUEST") {
-                                                    setSelectedSlot({
-                                                      serviceType: slotsServiceType,
-                                                      dateIso: slotsDate,
-                                                      startAt: slot.startAt,
-                                                      endAt: slot.endAt,
-                                                      status: slot.status,
-                                                      reason: slot.reason,
-                                                    });
-                                                  }
-                                                }}
-                                                className={`flex w-full items-center justify-between rounded-2xl border px-4 py-3 text-left text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-70 ${tone} ${
-                                                  isSelected ? "ring-2 ring-[var(--dogshift-blue)]" : ""
-                                                }`}
-                                                aria-label={ariaLabel}
-                                                aria-pressed={isSelected}
-                                              >
-                                                <span>
-                                                  {label}
-                                                  {slot.status === "ON_REQUEST" ? (
-                                                    <span className="ml-2 text-xs font-semibold text-amber-900">Réponse requise</span>
-                                                  ) : null}
-                                                </span>
-                                                <span className="text-xs font-semibold">{userReasonBucket.statusText(slot.status)}</span>
-                                              </button>
-
-                                              {slot.status === "UNAVAILABLE" ? (
-                                                <button
-                                                  type="button"
-                                                  onClick={() => setSlotWhyOpenKey((prev) => (prev === whyKey ? null : whyKey))}
-                                                  className="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700"
-                                                  aria-label={`Voir pourquoi ${label}`}
-                                                >
-                                                  Voir pourquoi
-                                                </button>
-                                              ) : null}
-                                            </div>
-
-                                            {slotWhyOpenKey === whyKey ? (
-                                              <div className="mt-2 rounded-2xl border border-slate-200 bg-white p-4">
-                                                <div className="flex items-start justify-between gap-3">
-                                                  <div>
-                                                    <p className="text-xs font-semibold text-slate-500">Pourquoi</p>
-                                                    <p className="mt-1 text-sm font-semibold text-slate-900">{bucket.title}</p>
-                                                    <p className="mt-1 text-sm text-slate-600">{bucket.detail}</p>
-                                                    {dbg && slot.reason ? (
-                                                      <p className="mt-2 text-xs font-semibold text-slate-500">dbg: {slot.reason}</p>
-                                                    ) : null}
-                                                  </div>
-                                                  <button
-                                                    type="button"
-                                                    onClick={() => setSlotWhyOpenKey(null)}
-                                                    className="inline-flex h-8 items-center justify-center rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700"
-                                                    aria-label="Fermer"
-                                                  >
-                                                    Fermer
-                                                  </button>
-                                                </div>
-                                              </div>
-                                            ) : null}
-                                          </div>
-                                        );
-                                      })}
-                                    </div>
-
-                                    {group.items.length > 8 ? (
-                                      <button
-                                        type="button"
-                                        onClick={() =>
-                                          setAgendaExpandedGroups((prev) => ({
-                                            ...prev,
-                                            [group.key]: !prev[group.key],
-                                          }))
-                                        }
-                                        className="mt-2 inline-flex h-9 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-xs font-semibold text-slate-700"
-                                      >
-                                        {agendaExpandedGroups[group.key] ? "Afficher moins" : "Afficher plus"}
-                                      </button>
-                                    ) : null}
-                                  </div>
-                                ))}
-
-                                {selectedSlotNotice ? (
-                                  <p className="text-sm font-semibold text-amber-900">{selectedSlotNotice}</p>
-                                ) : null}
-
-                                {selectedSlot ? (
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      const serviceName = selectedSlot.serviceType === "PROMENADE" ? "Promenade" : "Garde";
-                                      setSelectedService(serviceName);
-                                      setBookingStartAt(selectedSlot.startAt);
-                                      setBookingEndAt(selectedSlot.endAt);
-                                      setBookingStart("");
-                                      setBookingEnd("");
-                                      setBookingOpen(true);
-                                    }}
-                                    className="inline-flex h-11 w-full items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-6 text-sm font-semibold text-white"
-                                  >
-                                    {selectedSlot.status === "AVAILABLE" ? "Réserver ce créneau" : "Demander ce créneau"}
-                                  </button>
-                                ) : (
-                                  <p className="text-sm text-slate-600">Sélectionnez un créneau pour continuer.</p>
-                                )}
-                              </div>
-                            ) : (
-                              <p className="mt-2 text-sm text-slate-600">Aucun créneau.</p>
-                            )}
                           </div>
                         </div>
-                      </div>
-
-                  {showBoardingDetails ? (
-                    <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                      <h2 className="text-sm font-semibold text-slate-900">Pension (détails)</h2>
-                      <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                        {boardingDetails?.housingType ? (
-                          <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                            <p className="text-xs font-semibold text-slate-500">Type de logement</p>
-                            <p className="mt-1 text-sm font-semibold text-slate-900">{boardingDetails.housingType}</p>
-                          </div>
-                        ) : null}
-
-                        {typeof boardingDetails?.hasGarden === "boolean" ? (
-                          <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                            <p className="text-xs font-semibold text-slate-500">Jardin</p>
-                            <p className="mt-1 text-sm font-semibold text-slate-900">{boardingDetails.hasGarden ? "Oui" : "Non"}</p>
-                          </div>
-                        ) : null}
-
-                        {typeof boardingDetails?.hasOtherPets === "boolean" ? (
-                          <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                            <p className="text-xs font-semibold text-slate-500">Autres animaux</p>
-                            <p className="mt-1 text-sm font-semibold text-slate-900">{boardingDetails.hasOtherPets ? "Oui" : "Non"}</p>
-                          </div>
-                        ) : null}
-
-                        {typeof boardingDetails?.notes === "string" && boardingDetails.notes.trim() ? (
-                          <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:col-span-2">
-                            <p className="text-xs font-semibold text-slate-500">Notes</p>
-                            <p className="mt-1 text-sm text-slate-700">{boardingDetails.notes.trim()}</p>
-                          </div>
-                        ) : null}
-                      </div>
-                    </div>
-                  ) : null}
 
                   <div className="mt-7">
                     <h2 className="text-sm font-semibold text-slate-900">À propos</h2>
@@ -2727,13 +2296,53 @@ function SitterPublicProfileContent({
                             setBookingCtaError("Veuillez vous connecter pour demander une réservation.");
                             return;
                           }
+                          if (!canRequestBooking) {
+                            setBookingCtaError(
+                              slotsServiceType === "PENSION"
+                                ? "Sélectionnez une arrivée et une date de départ valides pour continuer."
+                                : "Sélectionnez un service et une date dans l’agenda pour continuer."
+                            );
+                            return;
+                          }
                           setBookingCtaError(null);
-                          router.push(`/sitter/${encodeURIComponent(id)}/reservation`);
+                          const qp = new URLSearchParams();
+                          qp.set("service", serviceUi.current.label);
+                          if (slotsServiceType === "PENSION") {
+                            qp.set("start", boardingStart);
+                            qp.set("end", boardingEnd);
+                          } else {
+                            qp.set("date", slotsDate);
+                          }
+                          router.push(`/sitter/${encodeURIComponent(id)}/reservation?${qp.toString()}`);
                         }}
-                        className="inline-flex w-full items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-6 py-3 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition hover:bg-[var(--dogshift-blue-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)]"
+                        disabled={!canRequestBooking}
+                        className="inline-flex w-full items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-6 py-3 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition hover:bg-[var(--dogshift-blue-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)] disabled:cursor-not-allowed disabled:opacity-55"
                       >
                         Demander une réservation
                       </button>
+                    )}
+
+                    {bookingSelectionSummary ? (
+                      <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                        <p className="text-sm font-medium text-slate-900">Sélection actuelle</p>
+                        <p className="mt-1 text-sm text-slate-600">{serviceUi.current.label}</p>
+                        <p className="mt-1 text-sm font-semibold text-slate-900">{bookingSelectionSummary}</p>
+                        {slotsServiceType === "PENSION" && boardingStatus?.status === "ON_REQUEST" ? (
+                          <p className="mt-2 text-sm text-amber-900">Certaines dates sont sur demande.</p>
+                        ) : null}
+                        {slotsServiceType === "PENSION" && boardingStatus?.status === "UNAVAILABLE" ? (
+                          <p className="mt-2 text-sm text-rose-700">Certaines dates du séjour ne sont pas disponibles.</p>
+                        ) : null}
+                        {slotsServiceType === "PENSION" && boardingStatusLoading ? (
+                          <p className="mt-2 text-sm text-slate-600">Vérification du séjour…</p>
+                        ) : null}
+                      </div>
+                    ) : (
+                      <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                        <p className="text-sm text-slate-600">
+                          Sélectionnez un service puis une date dans l’agenda pour activer la réservation.
+                        </p>
+                      </div>
                     )}
 
                     {bookingCtaError ? (
@@ -2819,7 +2428,6 @@ function SitterPublicProfileContent({
             </div>
           )}
 
-        {showHostChrome ? null : null}
       </div>
     </div>
   );
