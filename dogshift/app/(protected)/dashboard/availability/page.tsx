@@ -1508,7 +1508,8 @@ export default function AvailabilityStudioPage() {
               </div>
             </div>
           </div>
-          <div className="mt-4 grid gap-3">
+          <div className="mt-4 -mx-5 overflow-hidden px-5">
+            <div className="flex snap-x snap-mandatory gap-4 overflow-x-auto pb-2 pr-10 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
             {(["PROMENADE", "DOGSITTING", "PENSION"] as const).map((svc) => {
               const metaSvc = serviceMeta(svc);
               const cfg = configByService[svc];
@@ -1522,6 +1523,9 @@ export default function AvailabilityStudioPage() {
               return (
                 <div
                   key={svc}
+                  className="min-w-[320px] max-w-[360px] flex-none snap-center"
+                >
+                  <div
                   className={
                     isActiveCard
                       ? "rounded-3xl border border-slate-200 bg-white p-4 text-left shadow-[0_10px_28px_-22px_rgba(15,23,42,0.25)] ring-2 ring-[color-mix(in_srgb,var(--dogshift-blue),white_65%)]"
@@ -1598,8 +1602,16 @@ export default function AvailabilityStudioPage() {
                   </div>
 
                 </div>
+                </div>
               );
             })}
+            </div>
+            <div className="mt-3 flex items-center justify-center gap-2">
+              {(["PROMENADE", "DOGSITTING", "PENSION"] as const).map((svc) => {
+                const active = availabilityTab === svc;
+                return <span key={`service-dot-${svc}`} className={active ? "h-2 w-2 rounded-full bg-slate-900" : "h-2 w-2 rounded-full bg-slate-300"} aria-hidden="true" />;
+              })}
+            </div>
           </div>
 
           <div className="mt-6 border-t border-slate-200 pt-5">
