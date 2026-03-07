@@ -246,6 +246,7 @@ export default function AvailabilityStudioPage() {
   const bookingInfoWrapRef = useRef<HTMLDivElement | null>(null);
 
   const [availabilityTab, setAvailabilityTab] = useState<ServiceTypeApi>("PROMENADE");
+  const [servicesCarouselIndex, setServicesCarouselIndex] = useState(0);
 
   const todayKeyZurich = useMemo(() => toZurichIsoDate(new Date()), []);
 
@@ -280,6 +281,12 @@ export default function AvailabilityStudioPage() {
     const services: ServiceTypeApi[] = ["PROMENADE", "DOGSITTING", "PENSION"];
     return services.filter((svc) => configByService[svc]?.enabled !== false);
   }, [configByService]);
+
+  useEffect(() => {
+    const order: ServiceTypeApi[] = ["PROMENADE", "DOGSITTING", "PENSION"];
+    const idx = order.indexOf(availabilityTab);
+    if (idx >= 0) setServicesCarouselIndex(idx);
+  }, [availabilityTab]);
 
   useEffect(() => {
     const pricing = remoteProfile?.pricing && typeof remoteProfile.pricing === "object" ? (remoteProfile.pricing as Partial<Record<PricingServiceKey, number>>) : {};
@@ -1508,8 +1515,23 @@ export default function AvailabilityStudioPage() {
               </div>
             </div>
           </div>
-          <div className="mt-4 -mx-5 overflow-hidden px-5">
-            <div className="flex snap-x snap-mandatory gap-4 overflow-x-auto pb-2 pr-10 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+          <div className="mt-4">
+            <div className="flex items-center justify-between gap-3">
+              <button
+                type="button"
+                onClick={() => setServicesCarouselIndex((prev) => Math.max(0, prev - 1))}
+                disabled={servicesCarouselIndex === 0}
+                className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-slate-200 bg-white text-lg font-semibold text-slate-700 disabled:cursor-default disabled:opacity-35"
+                aria-label="Service précédent"
+              >
+                ←
+              </button>
+
+              <div className="min-w-0 flex-1 overflow-hidden rounded-3xl">
+                <div
+                  className="flex transition-transform duration-300 ease-out"
+                  style={{ transform: `translateX(-${servicesCarouselIndex * 100}%)` }}
+                >
             {(["PROMENADE", "DOGSITTING", "PENSION"] as const).map((svc) => {
               const metaSvc = serviceMeta(svc);
               const cfg = configByService[svc];
@@ -1523,7 +1545,7 @@ export default function AvailabilityStudioPage() {
               return (
                 <div
                   key={svc}
-                  className="min-w-[320px] max-w-[360px] flex-none snap-center"
+                  className="w-full min-w-full flex-none px-1"
                 >
                   <div
                   className={
@@ -1605,10 +1627,22 @@ export default function AvailabilityStudioPage() {
                 </div>
               );
             })}
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setServicesCarouselIndex((prev) => Math.min(2, prev + 1))}
+                disabled={servicesCarouselIndex === 2}
+                className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-slate-200 bg-white text-lg font-semibold text-slate-700 disabled:cursor-default disabled:opacity-35"
+                aria-label="Service suivant"
+              >
+                →
+              </button>
             </div>
             <div className="mt-3 flex items-center justify-center gap-2">
-              {(["PROMENADE", "DOGSITTING", "PENSION"] as const).map((svc) => {
-                const active = availabilityTab === svc;
+              {(["PROMENADE", "DOGSITTING", "PENSION"] as const).map((svc, idx) => {
+                const active = servicesCarouselIndex === idx;
                 return <span key={`service-dot-${svc}`} className={active ? "h-2 w-2 rounded-full bg-slate-900" : "h-2 w-2 rounded-full bg-slate-300"} aria-hidden="true" />;
               })}
             </div>
