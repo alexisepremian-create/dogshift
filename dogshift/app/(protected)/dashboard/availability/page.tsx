@@ -166,6 +166,25 @@ function dayStatusForService(
   return row.pensionStatus;
 }
 
+function globalDayStatus(
+  row:
+    | {
+        promenadeStatus: "AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE";
+        dogsittingStatus: "AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE";
+        pensionStatus: "AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE";
+      }
+    | undefined
+) {
+  if (!row) return "UNAVAILABLE" as const;
+  if (row.promenadeStatus === "AVAILABLE" || row.dogsittingStatus === "AVAILABLE" || row.pensionStatus === "AVAILABLE") {
+    return "AVAILABLE" as const;
+  }
+  if (row.promenadeStatus === "ON_REQUEST" || row.dogsittingStatus === "ON_REQUEST" || row.pensionStatus === "ON_REQUEST") {
+    return "ON_REQUEST" as const;
+  }
+  return "UNAVAILABLE" as const;
+}
+
 function startOfMonthIso(dt: Date) {
   return new Date(Date.UTC(dt.getUTCFullYear(), dt.getUTCMonth(), 1, 12, 0, 0, 0));
 }
@@ -683,7 +702,7 @@ export default function AvailabilityStudioPage() {
   }, [exceptionDate, exceptionService, exceptionsByService]);
 
   function openInlineException(dateIso: string) {
-    const svc = availabilityTab;
+    const svc = enabledServices.includes(availabilityTab) ? availabilityTab : enabledServices[0] ?? "PROMENADE";
     const existing = (exceptionsByService[svc] ?? []).filter((e) => e.date === dateIso).sort((a, b) => a.startMin - b.startMin);
     const fallbackStatus = effectiveStatusForDate(dateIso, svc);
     const isAllDay = existing.length === 1 && existing[0]?.startMin === 0 && existing[0]?.endMin === 24 * 60;
@@ -702,7 +721,6 @@ export default function AvailabilityStudioPage() {
 
   function selectInlineExceptionService(svc: ServiceTypeApi) {
     setExceptionService(svc);
-    setAvailabilityTab(svc);
     const existing = (exceptionsByService[svc] ?? []).filter((e) => e.date === exceptionDate).sort((a, b) => a.startMin - b.startMin);
     const isAllDay = existing.length === 1 && existing[0]?.startMin === 0 && existing[0]?.endMin === 24 * 60;
     setExceptionStatus(existing[0]?.status ?? effectiveStatusForDate(exceptionDate, svc));
@@ -759,7 +777,6 @@ export default function AvailabilityStudioPage() {
       }
       const ranges = normalized.ranges.length ? normalized.ranges : [{ startMin: 0, endMin: 24 * 60 }];
       upsertLocalSingleDayException(serviceType, date, status, ranges);
-      setAvailabilityTab(serviceType);
       const res = await fetch("/api/sitters/me/availability-exceptions", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -1917,17 +1934,21 @@ export default function AvailabilityStudioPage() {
               {Array.from({ length: meta.daysInMonth }).map((_, i) => {
                 const day = i + 1;
                 const dateIso = `${String(meta.year).padStart(4, "0")}-${String(meta.month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-                const status = effectiveStatusForDate(dateIso, availabilityTab);
+                const row = monthStatusByDate.get(dateIso);
+                const status = globalDayStatus(row);
                 const tone = statusCellTone(status);
                 const isPast = dateIso < todayKeyZurich;
+                const showPromenade = row ? row.promenadeStatus === "AVAILABLE" || row.promenadeStatus === "ON_REQUEST" : false;
+                const showDogsitting = row ? row.dogsittingStatus === "AVAILABLE" || row.dogsittingStatus === "ON_REQUEST" : false;
+                const showPension = row ? row.pensionStatus === "AVAILABLE" || row.pensionStatus === "ON_REQUEST" : false;
 
                 return (
                   <button
                     key={dateIso}
                     type="button"
-                    disabled={isPast || !canEditAvailabilityForTab}
+                    disabled={isPast}
                     onClick={() => {
-                      if (isPast || !canEditAvailabilityForTab) return;
+                      if (isPast) return;
                       openInlineException(dateIso);
                     }}
                     className={
@@ -1942,11 +1963,12 @@ export default function AvailabilityStudioPage() {
                     </div>
 
                     <div className="flex items-center justify-center gap-1">
-                      {status === "AVAILABLE" || status === "ON_REQUEST" ? (
-                        <span className={`h-2 w-2 rounded-full ${serviceDotTone(availabilityTab)}`} aria-hidden="true" />
-                      ) : (
+                      {showPromenade ? <span className={`h-2 w-2 rounded-full ${serviceDotTone("PROMENADE")}`} aria-hidden="true" /> : null}
+                      {showDogsitting ? <span className={`h-2 w-2 rounded-full ${serviceDotTone("DOGSITTING")}`} aria-hidden="true" /> : null}
+                      {showPension ? <span className={`h-2 w-2 rounded-full ${serviceDotTone("PENSION")}`} aria-hidden="true" /> : null}
+                      {!showPromenade && !showDogsitting && !showPension ? (
                         <span className="text-[10px] font-semibold leading-none text-slate-400">—</span>
-                      )}
+                      ) : null}
                     </div>
                   </button>
                 );
