@@ -71,6 +71,8 @@ function hhmmToMinutes(value: string) {
   return out;
 }
 
+const TIME_PICKER_OPTIONS = Array.from({ length: 48 }, (_, idx) => idx * 30);
+
 function serviceMeta(svc: ServiceTypeApi) {
   if (svc === "PROMENADE") return { icon: "🚶", label: "Promenade" };
   if (svc === "DOGSITTING") return { icon: "🏠", label: "Dogsitting" };
@@ -291,6 +293,7 @@ export default function AvailabilityStudioPage() {
   const [exceptionAllDay, setExceptionAllDay] = useState(true);
   const [exceptionRanges, setExceptionRanges] = useState<Array<{ startMin: number; endMin: number }>>([]);
   const [justAddedRangeIdx, setJustAddedRangeIdx] = useState<number | null>(null);
+  const [activeTimePicker, setActiveTimePicker] = useState<null | { idx: number; field: "startMin" | "endMin" }>(null);
   const [exceptionSaving, setExceptionSaving] = useState(false);
   const [exceptionError, setExceptionError] = useState<string | null>(null);
   const [weeklySavingKey, setWeeklySavingKey] = useState<string | null>(null);
@@ -299,6 +302,7 @@ export default function AvailabilityStudioPage() {
   const [quickActionsOpen, setQuickActionsOpen] = useState(false);
 
   const exceptionFormLoadedKeyRef = useRef<string>("");
+  const activeTimePickerRef = useRef<HTMLDivElement | null>(null);
 
   const exceptionDrawerTitleRef = useRef<HTMLParagraphElement | null>(null);
   const exceptionDrawerRef = useRef<HTMLDivElement | null>(null);
@@ -393,6 +397,31 @@ export default function AvailabilityStudioPage() {
       window.removeEventListener("touchstart", onPointerDown);
     };
   }, [quickActionsOpen]);
+
+  useEffect(() => {
+    if (!activeTimePicker) return;
+
+    const onPointerDown = (e: MouseEvent | TouchEvent) => {
+      if (!activeTimePickerRef.current) return;
+      const target = e.target as Node | null;
+      if (target && !activeTimePickerRef.current.contains(target)) {
+        setActiveTimePicker(null);
+      }
+    };
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setActiveTimePicker(null);
+    };
+
+    document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("touchstart", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("touchstart", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [activeTimePicker]);
 
   useEffect(() => {
     if (!enabledServices.length) return;
@@ -961,6 +990,7 @@ export default function AvailabilityStudioPage() {
       const ok = window.confirm("Quitter sans enregistrer ?");
       if (!ok) return;
     }
+    setActiveTimePicker(null);
     setExceptionDrawerOpen(false);
   }
 
@@ -1347,52 +1377,125 @@ export default function AvailabilityStudioPage() {
                               }
                             >
                               <div className="flex items-center gap-2">
-                                <input
-                                  type="time"
-                                  value={minutesToHHMM(r.startMin)}
-                                  step={1800}
-                                  onChange={(e) => {
-                                    const nextStart = hhmmToMinutes(e.target.value);
-                                    if (nextStart === null) return;
-                                    setExceptionRanges((prev) => {
-                                      const next = prev.slice();
-                                      next[idx] = { ...next[idx], startMin: nextStart };
-                                      return next;
-                                    });
-                                  }}
-                                  className="w-[92px] rounded-xl border border-slate-200 bg-white px-2 py-2 text-xs font-semibold text-slate-700"
-                                  aria-label={`Plage ${idx + 1} début`}
-                                />
+                                <div className="relative" ref={activeTimePicker?.idx === idx && activeTimePicker.field === "startMin" ? activeTimePickerRef : null}>
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      setActiveTimePicker((prev) =>
+                                        prev?.idx === idx && prev.field === "startMin" ? null : { idx, field: "startMin" }
+                                      )
+                                    }
+                                    className={
+                                      activeTimePicker?.idx === idx && activeTimePicker.field === "startMin"
+                                        ? "inline-flex h-10 w-[104px] items-center justify-between rounded-2xl border border-[var(--dogshift-blue)] bg-white px-3 text-sm font-semibold text-slate-900 ring-2 ring-[color:rgba(58,124,245,0.15)]"
+                                        : "inline-flex h-10 w-[104px] items-center justify-between rounded-2xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-900"
+                                    }
+                                    aria-haspopup="listbox"
+                                    aria-expanded={activeTimePicker?.idx === idx && activeTimePicker.field === "startMin"}
+                                    aria-label={`Plage ${idx + 1} début`}
+                                  >
+                                    <span>{minutesToHHMM(r.startMin)}</span>
+                                    <span className="text-xs text-slate-400">▾</span>
+                                  </button>
+
+                                  {activeTimePicker?.idx === idx && activeTimePicker.field === "startMin" ? (
+                                    <div className="absolute left-0 top-full z-20 mt-2 max-h-56 w-[124px] overflow-y-auto rounded-2xl border border-slate-200 bg-white p-2 shadow-xl">
+                                      <div className="grid gap-1">
+                                        {TIME_PICKER_OPTIONS.map((optionMin) => {
+                                          const selected = optionMin === r.startMin;
+                                          return (
+                                            <button
+                                              key={`drawer-start-${idx}-${optionMin}`}
+                                              type="button"
+                                              onClick={() => {
+                                                setExceptionRanges((prev) => {
+                                                  const next = prev.slice();
+                                                  next[idx] = { ...next[idx], startMin: optionMin };
+                                                  return next;
+                                                });
+                                                setActiveTimePicker(null);
+                                              }}
+                                              className={
+                                                selected
+                                                  ? "rounded-xl bg-[var(--dogshift-blue)] px-3 py-2 text-left text-sm font-semibold text-white"
+                                                  : "rounded-xl px-3 py-2 text-left text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                                              }
+                                            >
+                                              {minutesToHHMM(optionMin)}
+                                            </button>
+                                          );
+                                        })}
+                                      </div>
+                                    </div>
+                                  ) : null}
+                                </div>
                                 <span className="text-xs font-semibold text-slate-400" aria-hidden="true">
                                   →
                                 </span>
-                                <input
-                                  type="time"
-                                  value={minutesToHHMM(r.endMin)}
-                                  step={1800}
-                                  onChange={(e) => {
-                                    const nextEnd = hhmmToMinutes(e.target.value);
-                                    if (nextEnd === null) return;
-                                    setExceptionRanges((prev) => {
-                                      const next = prev.slice();
-                                      next[idx] = { ...next[idx], endMin: nextEnd };
-                                      return next;
-                                    });
-                                  }}
-                                  className="w-[92px] rounded-xl border border-slate-200 bg-white px-2 py-2 text-xs font-semibold text-slate-700"
-                                  aria-label={`Plage ${idx + 1} fin`}
-                                />
+                                <div className="relative" ref={activeTimePicker?.idx === idx && activeTimePicker.field === "endMin" ? activeTimePickerRef : null}>
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      setActiveTimePicker((prev) =>
+                                        prev?.idx === idx && prev.field === "endMin" ? null : { idx, field: "endMin" }
+                                      )
+                                    }
+                                    className={
+                                      activeTimePicker?.idx === idx && activeTimePicker.field === "endMin"
+                                        ? "inline-flex h-10 w-[104px] items-center justify-between rounded-2xl border border-[var(--dogshift-blue)] bg-white px-3 text-sm font-semibold text-slate-900 ring-2 ring-[color:rgba(58,124,245,0.15)]"
+                                        : "inline-flex h-10 w-[104px] items-center justify-between rounded-2xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-900"
+                                    }
+                                    aria-haspopup="listbox"
+                                    aria-expanded={activeTimePicker?.idx === idx && activeTimePicker.field === "endMin"}
+                                    aria-label={`Plage ${idx + 1} fin`}
+                                  >
+                                    <span>{minutesToHHMM(r.endMin)}</span>
+                                    <span className="text-xs text-slate-400">▾</span>
+                                  </button>
+
+                                  {activeTimePicker?.idx === idx && activeTimePicker.field === "endMin" ? (
+                                    <div className="absolute left-0 top-full z-20 mt-2 max-h-56 w-[124px] overflow-y-auto rounded-2xl border border-slate-200 bg-white p-2 shadow-xl">
+                                      <div className="grid gap-1">
+                                        {TIME_PICKER_OPTIONS.map((optionMin) => {
+                                          const selected = optionMin === r.endMin;
+                                          return (
+                                            <button
+                                              key={`drawer-end-${idx}-${optionMin}`}
+                                              type="button"
+                                              onClick={() => {
+                                                setExceptionRanges((prev) => {
+                                                  const next = prev.slice();
+                                                  next[idx] = { ...next[idx], endMin: optionMin };
+                                                  return next;
+                                                });
+                                                setActiveTimePicker(null);
+                                              }}
+                                              className={
+                                                selected
+                                                  ? "rounded-xl bg-[var(--dogshift-blue)] px-3 py-2 text-left text-sm font-semibold text-white"
+                                                  : "rounded-xl px-3 py-2 text-left text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                                              }
+                                            >
+                                              {minutesToHHMM(optionMin)}
+                                            </button>
+                                          );
+                                        })}
+                                      </div>
+                                    </div>
+                                  ) : null}
+                                </div>
                               </div>
 
                               <button
                                 type="button"
-                                onClick={() =>
+                                onClick={() => {
+                                  setActiveTimePicker((prev) => (prev?.idx === idx ? null : prev));
                                   setExceptionRanges((prev) => {
                                     const next = prev.slice();
                                     next.splice(idx, 1);
                                     return next;
-                                  })
-                                }
+                                  });
+                                }}
                                 className="inline-flex h-9 items-center justify-center rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700"
                                 aria-label="Supprimer cette plage"
                               >
@@ -2084,43 +2187,116 @@ export default function AvailabilityStudioPage() {
                               }
                             >
                               <div className="flex items-center gap-2">
-                                <input
-                                  type="time"
-                                  value={minutesToHHMM(range.startMin)}
-                                  step={1800}
-                                  onChange={(e) => {
-                                    const nextStart = hhmmToMinutes(e.target.value);
-                                    if (nextStart === null) return;
-                                    setExceptionRanges((prev) => {
-                                      const next = prev.slice();
-                                      next[idx] = { ...next[idx], startMin: nextStart };
-                                      return next;
-                                    });
-                                  }}
-                                  className="w-[96px] rounded-xl border border-slate-200 bg-white px-2 py-2 text-xs font-semibold text-slate-700"
-                                  aria-label={`Créneau ${idx + 1} début`}
-                                />
+                                <div className="relative" ref={activeTimePicker?.idx === idx && activeTimePicker.field === "startMin" ? activeTimePickerRef : null}>
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      setActiveTimePicker((prev) =>
+                                        prev?.idx === idx && prev.field === "startMin" ? null : { idx, field: "startMin" }
+                                      )
+                                    }
+                                    className={
+                                      activeTimePicker?.idx === idx && activeTimePicker.field === "startMin"
+                                        ? "inline-flex h-10 w-[104px] items-center justify-between rounded-2xl border border-[var(--dogshift-blue)] bg-white px-3 text-sm font-semibold text-slate-900 ring-2 ring-[color:rgba(58,124,245,0.15)]"
+                                        : "inline-flex h-10 w-[104px] items-center justify-between rounded-2xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-900"
+                                    }
+                                    aria-haspopup="listbox"
+                                    aria-expanded={activeTimePicker?.idx === idx && activeTimePicker.field === "startMin"}
+                                    aria-label={`Créneau ${idx + 1} début`}
+                                  >
+                                    <span>{minutesToHHMM(range.startMin)}</span>
+                                    <span className="text-xs text-slate-400">▾</span>
+                                  </button>
+
+                                  {activeTimePicker?.idx === idx && activeTimePicker.field === "startMin" ? (
+                                    <div className="absolute left-0 top-full z-20 mt-2 max-h-56 w-[124px] overflow-y-auto rounded-2xl border border-slate-200 bg-white p-2 shadow-xl">
+                                      <div className="grid gap-1">
+                                        {TIME_PICKER_OPTIONS.map((optionMin) => {
+                                          const selected = optionMin === range.startMin;
+                                          return (
+                                            <button
+                                              key={`start-${idx}-${optionMin}`}
+                                              type="button"
+                                              onClick={() => {
+                                                setExceptionRanges((prev) => {
+                                                  const next = prev.slice();
+                                                  next[idx] = { ...next[idx], startMin: optionMin };
+                                                  return next;
+                                                });
+                                                setActiveTimePicker(null);
+                                              }}
+                                              className={
+                                                selected
+                                                  ? "rounded-xl bg-[var(--dogshift-blue)] px-3 py-2 text-left text-sm font-semibold text-white"
+                                                  : "rounded-xl px-3 py-2 text-left text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                                              }
+                                            >
+                                              {minutesToHHMM(optionMin)}
+                                            </button>
+                                          );
+                                        })}
+                                      </div>
+                                    </div>
+                                  ) : null}
+                                </div>
                                 <span className="text-xs font-semibold text-slate-400">→</span>
-                                <input
-                                  type="time"
-                                  value={minutesToHHMM(range.endMin)}
-                                  step={1800}
-                                  onChange={(e) => {
-                                    const nextEnd = hhmmToMinutes(e.target.value);
-                                    if (nextEnd === null) return;
-                                    setExceptionRanges((prev) => {
-                                      const next = prev.slice();
-                                      next[idx] = { ...next[idx], endMin: nextEnd };
-                                      return next;
-                                    });
-                                  }}
-                                  className="w-[96px] rounded-xl border border-slate-200 bg-white px-2 py-2 text-xs font-semibold text-slate-700"
-                                  aria-label={`Créneau ${idx + 1} fin`}
-                                />
+                                <div className="relative" ref={activeTimePicker?.idx === idx && activeTimePicker.field === "endMin" ? activeTimePickerRef : null}>
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      setActiveTimePicker((prev) =>
+                                        prev?.idx === idx && prev.field === "endMin" ? null : { idx, field: "endMin" }
+                                      )
+                                    }
+                                    className={
+                                      activeTimePicker?.idx === idx && activeTimePicker.field === "endMin"
+                                        ? "inline-flex h-10 w-[104px] items-center justify-between rounded-2xl border border-[var(--dogshift-blue)] bg-white px-3 text-sm font-semibold text-slate-900 ring-2 ring-[color:rgba(58,124,245,0.15)]"
+                                        : "inline-flex h-10 w-[104px] items-center justify-between rounded-2xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-900"
+                                    }
+                                    aria-haspopup="listbox"
+                                    aria-expanded={activeTimePicker?.idx === idx && activeTimePicker.field === "endMin"}
+                                    aria-label={`Créneau ${idx + 1} fin`}
+                                  >
+                                    <span>{minutesToHHMM(range.endMin)}</span>
+                                    <span className="text-xs text-slate-400">▾</span>
+                                  </button>
+
+                                  {activeTimePicker?.idx === idx && activeTimePicker.field === "endMin" ? (
+                                    <div className="absolute left-0 top-full z-20 mt-2 max-h-56 w-[124px] overflow-y-auto rounded-2xl border border-slate-200 bg-white p-2 shadow-xl">
+                                      <div className="grid gap-1">
+                                        {TIME_PICKER_OPTIONS.map((optionMin) => {
+                                          const selected = optionMin === range.endMin;
+                                          return (
+                                            <button
+                                              key={`end-${idx}-${optionMin}`}
+                                              type="button"
+                                              onClick={() => {
+                                                setExceptionRanges((prev) => {
+                                                  const next = prev.slice();
+                                                  next[idx] = { ...next[idx], endMin: optionMin };
+                                                  return next;
+                                                });
+                                                setActiveTimePicker(null);
+                                              }}
+                                              className={
+                                                selected
+                                                  ? "rounded-xl bg-[var(--dogshift-blue)] px-3 py-2 text-left text-sm font-semibold text-white"
+                                                  : "rounded-xl px-3 py-2 text-left text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                                              }
+                                            >
+                                              {minutesToHHMM(optionMin)}
+                                            </button>
+                                          );
+                                        })}
+                                      </div>
+                                    </div>
+                                  ) : null}
+                                </div>
                               </div>
                               <button
                                 type="button"
                                 onClick={() => {
+                                  setActiveTimePicker((prev) => (prev?.idx === idx ? null : prev));
                                   setExceptionRanges((prev) => {
                                     const next = prev.slice();
                                     next.splice(idx, 1);
@@ -2141,6 +2317,7 @@ export default function AvailabilityStudioPage() {
                       <button
                         type="button"
                         onClick={() => {
+                          setActiveTimePicker(null);
                           setExceptionRanges((prev) => {
                             const next = [...prev, { startMin: 14 * 60, endMin: 16 * 60 }];
                             setJustAddedRangeIdx(next.length - 1);
