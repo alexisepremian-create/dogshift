@@ -1333,7 +1333,7 @@ function SitterPublicProfileContent({
                   slotsServiceType === "PROMENADE"
                     ? {
                         available: "bg-white text-slate-900 ring-sky-400",
-                        onRequest: "bg-white text-slate-900 ring-amber-400",
+                        onRequest: "bg-amber-50 text-amber-950 ring-amber-400",
                         accent: "ring-sky-500/35",
                         range: "bg-sky-50 ring-sky-300",
                         selected: "bg-sky-200 text-sky-950 ring-sky-600 shadow-[0_0_0_3px_rgba(14,165,233,0.18)]",
@@ -1341,14 +1341,14 @@ function SitterPublicProfileContent({
                     : slotsServiceType === "DOGSITTING"
                       ? {
                           available: "bg-white text-slate-900 ring-violet-400",
-                          onRequest: "bg-white text-slate-900 ring-amber-400",
+                          onRequest: "bg-amber-50 text-amber-950 ring-amber-400",
                           accent: "ring-violet-500/35",
                           range: "bg-violet-50 ring-violet-300",
                           selected: "bg-violet-200 text-violet-950 ring-violet-600 shadow-[0_0_0_3px_rgba(139,92,246,0.18)]",
                         }
                       : {
                           available: "bg-white text-slate-900 ring-emerald-400",
-                          onRequest: "bg-white text-slate-900 ring-amber-400",
+                          onRequest: "bg-amber-50 text-amber-950 ring-amber-400",
                           accent: "ring-emerald-500/35",
                           range: "bg-emerald-50 ring-emerald-300",
                           selected: "bg-emerald-200 text-emerald-950 ring-emerald-600 shadow-[0_0_0_3px_rgba(16,185,129,0.18)]",

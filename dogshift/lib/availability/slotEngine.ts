@@ -269,6 +269,18 @@ function minutesToIso(dateIso: string, minutes: number) {
   return new Date(Date.UTC(y, mo - 1, d, hh, mm, 0, 0));
 }
 
+function addDaysToIso(dateIso: string, deltaDays: number) {
+  const dt = new Date(`${dateIso}T12:00:00Z`);
+  if (Number.isNaN(dt.getTime())) return dateIso;
+  const next = new Date(dt.getTime() + deltaDays * 24 * 60 * 60 * 1000);
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: ZURICH_TZ,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(next);
+}
+
 function formatZurichOffsetIso(dt: Date) {
   const dtf = new Intl.DateTimeFormat("en-CA", {
     timeZone: ZURICH_TZ,
@@ -303,7 +315,14 @@ function formatZurichOffsetIso(dt: Date) {
 }
 
 function minutesToZurichOffsetIso(dateIso: string, minutes: number) {
-  return formatZurichOffsetIso(minutesToIso(dateIso, minutes));
+  const safeMinutes = clampMin(minutes);
+  const dayOffset = Math.floor(safeMinutes / (24 * 60));
+  const minuteOfDay = safeMinutes % (24 * 60);
+  const targetDate = dayOffset ? addDaysToIso(dateIso, dayOffset) : dateIso;
+  const hh = String(Math.floor(minuteOfDay / 60)).padStart(2, "0");
+  const mm = String(minuteOfDay % 60).padStart(2, "0");
+  const offset = formatZurichOffsetIso(minutesToIso(targetDate, 12 * 60)).slice(19);
+  return `${targetDate}T${hh}:${mm}:00${offset}`;
 }
 
 function toPublicConfig(config: ServiceConfigRow): PublicServiceConfig {
