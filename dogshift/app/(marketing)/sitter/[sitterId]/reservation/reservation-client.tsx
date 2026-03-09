@@ -1,13 +1,22 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Calendar, ChevronLeft, ChevronRight } from "lucide-react";
 
 type AvailabilityPayload = { ok?: boolean; dates?: string[]; error?: string };
 
 type PricingUnit = "HOURLY" | "DAILY";
+
+type ServiceDayStatus = "AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE";
+
+type DayStatusRow = {
+  date: string;
+  promenadeStatus: ServiceDayStatus;
+  dogsittingStatus: ServiceDayStatus;
+  pensionStatus: ServiceDayStatus;
+};
 
 type SitterDto = {
   sitterId: string;
@@ -87,6 +96,20 @@ function parseIsoDateString(value: string) {
   if (Number.isNaN(date.getTime())) return null;
   if (date.getFullYear() !== y || date.getMonth() !== m - 1 || date.getDate() !== d) return null;
   return date;
+}
+
+function formatDisplayDate(value: string) {
+  const parsed = parseIsoDateString(value);
+  if (!parsed) return value;
+  return `${pad2(parsed.getDate())}-${pad2(parsed.getMonth() + 1)}-${parsed.getFullYear()}`;
+}
+
+function serviceStatusForLabel(row: DayStatusRow | null, service: string): ServiceDayStatus {
+  if (!row) return "UNAVAILABLE";
+  if (service === "Promenade") return row.promenadeStatus;
+  if (service === "Garde") return row.dogsittingStatus;
+  if (service === "Pension") return row.pensionStatus;
+  return "UNAVAILABLE";
 }
 
 function formatZurichIsoDate(date: Date) {
@@ -220,12 +243,12 @@ function DogShiftCalendar({
                 onSelect(iso);
               }}
               className={
-                "group inline-flex h-9 w-9 items-center justify-center rounded-full text-sm font-semibold transition duration-150 " +
+                "group inline-flex h-9 w-9 items-center justify-center rounded-full border text-sm font-semibold transition duration-150 " +
                 (cell.inMonth ? "text-slate-900" : "text-slate-400") +
-                (disabled ? " cursor-not-allowed bg-slate-100 text-slate-400" : "") +
+                (disabled ? " cursor-not-allowed border-slate-100 bg-slate-100 text-slate-400" : "") +
                 (isSelected
-                  ? " bg-[var(--dogshift-blue)] text-white shadow-sm"
-                  : " hover:bg-[color-mix(in_srgb,var(--dogshift-blue),white_88%)]")
+                  ? " border-[var(--dogshift-blue)] bg-[color-mix(in_srgb,var(--dogshift-blue),white_92%)] text-[var(--dogshift-blue)] shadow-sm ring-2 ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_80%)]"
+                  : " border-transparent hover:border-[color-mix(in_srgb,var(--dogshift-blue),transparent_72%)] hover:bg-[color-mix(in_srgb,var(--dogshift-blue),white_88%)]")
               }
               aria-pressed={isSelected}
             >
@@ -418,9 +441,28 @@ function DogShiftDatePicker({
   isDisabled?: (iso: string) => boolean;
 }) {
   const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+
+    const handlePointerDown = (event: MouseEvent | TouchEvent) => {
+      const target = event.target;
+      if (!(target instanceof Node)) return;
+      if (rootRef.current?.contains(target)) return;
+      setOpen(false);
+    };
+
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("touchstart", handlePointerDown);
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("touchstart", handlePointerDown);
+    };
+  }, [open]);
 
   return (
-    <div className="relative">
+    <div ref={rootRef} className="relative">
       <label className="block text-xs font-semibold text-slate-600" htmlFor={id}>
         {label}
       </label>
@@ -433,7 +475,7 @@ function DogShiftDatePicker({
         aria-haspopup="dialog"
         aria-expanded={open}
       >
-        <span className={value ? "text-slate-900" : "text-slate-500"}>{value || "Choisir une date"}</span>
+        <span className={value ? "text-slate-900" : "text-slate-500"}>{value ? formatDisplayDate(value) : "Choisir une date"}</span>
         <Calendar className="h-4 w-4 text-slate-500" aria-hidden="true" />
       </button>
 
@@ -469,6 +511,8 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
 
   const [availableDates, setAvailableDates] = useState<Set<string>>(() => new Set());
   const [availabilityLoaded, setAvailabilityLoaded] = useState(false);
+  const [selectedDateDayStatus, setSelectedDateDayStatus] = useState<DayStatusRow | null>(null);
+  const [selectedDateStatusLoaded, setSelectedDateStatusLoaded] = useState(false);
 
   const todayIso = useMemo(() => todayZurichIsoDate(), []);
 
@@ -532,6 +576,88 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
       return { service: svc, unitPrice, unit: pricingUnitForService(svc) };
     });
   }, [sitter.pricing, sitter.services]);
+
+  const effectiveSelectedDate = useMemo(() => {
+    if (dateStart) return dateStart;
+    return "";
+  }, [dateStart]);
+
+  useEffect(() => {
+    if (!effectiveSelectedDate) {
+      setSelectedDateDayStatus(null);
+      setSelectedDateStatusLoaded(false);
+      return;
+    }
+
+    let cancelled = false;
+    setSelectedDateStatusLoaded(false);
+
+    void (async () => {
+      try {
+        const qp = new URLSearchParams();
+        qp.set("from", effectiveSelectedDate);
+        qp.set("to", effectiveSelectedDate);
+        const res = await fetch(`/api/sitters/${encodeURIComponent(sitter.sitterId)}/day-status/multi?${qp.toString()}`, {
+          method: "GET",
+          cache: "no-store",
+        });
+        const payload = (await res.json().catch(() => null)) as { ok?: boolean; days?: DayStatusRow[] } | null;
+        if (cancelled) return;
+        if (!res.ok || !payload?.ok || !Array.isArray(payload.days)) {
+          setSelectedDateDayStatus(null);
+          setSelectedDateStatusLoaded(true);
+          return;
+        }
+        const row = payload.days.find((day) => day?.date === effectiveSelectedDate) ?? null;
+        setSelectedDateDayStatus(row);
+        setSelectedDateStatusLoaded(true);
+      } catch {
+        if (cancelled) return;
+        setSelectedDateDayStatus(null);
+        setSelectedDateStatusLoaded(true);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [effectiveSelectedDate, sitter.sitterId]);
+
+  const selectablePricingRows = useMemo(() => {
+    if (!effectiveSelectedDate || !selectedDateStatusLoaded || !selectedDateDayStatus) {
+      return pricingRows;
+    }
+    return pricingRows.filter((row) => {
+      if (typeof row.unitPrice !== "number") return false;
+      const status = serviceStatusForLabel(selectedDateDayStatus, row.service);
+      return status === "AVAILABLE" || status === "ON_REQUEST";
+    });
+  }, [effectiveSelectedDate, pricingRows, selectedDateDayStatus, selectedDateStatusLoaded]);
+
+  useEffect(() => {
+    if (!effectiveSelectedDate || !selectedDateStatusLoaded) return;
+
+    const nextRows = selectablePricingRows;
+    if (nextRows.length === 0) {
+      if (selectedService !== null) {
+        setSelectedService(null);
+      }
+      return;
+    }
+
+    const stillValid = selectedService ? nextRows.some((row) => row.service === selectedService) : false;
+    if (stillValid) return;
+
+    if (nextRows.length === 1) {
+      setSelectedService(nextRows[0]?.service ?? null);
+      return;
+    }
+
+    setSelectedService((prev) => {
+      if (prev && nextRows.some((row) => row.service === prev)) return prev;
+      return null;
+    });
+  }, [effectiveSelectedDate, selectablePricingRows, selectedDateStatusLoaded, selectedService]);
 
   const unit = useMemo<PricingUnit | null>(() => {
     if (!selectedService) return null;
@@ -787,9 +913,15 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
 
             <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.12)] sm:p-8">
               <p className="text-sm font-semibold text-slate-900">Service</p>
+              {effectiveSelectedDate && selectedDateStatusLoaded ? (
+                <p className="mt-2 text-sm text-slate-600">
+                  Services disponibles le {formatDisplayDate(effectiveSelectedDate)} selon les disponibilités du sitter.
+                </p>
+              ) : null}
               <div className="mt-4 grid gap-2">
-                {pricingRows.map((row) => {
-                  const selectable = typeof row.unitPrice === "number";
+                {selectablePricingRows.map((row) => {
+                  const status = effectiveSelectedDate && selectedDateStatusLoaded ? serviceStatusForLabel(selectedDateDayStatus, row.service) : null;
+                  const selectable = typeof row.unitPrice === "number" && (status === null || status === "AVAILABLE" || status === "ON_REQUEST");
                   const selected = selectedService === row.service;
                   const unitLabel = row.unit === "DAILY" ? " / jour" : " / heure";
                   return (
@@ -831,6 +963,11 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
                     </button>
                   );
                 })}
+                {effectiveSelectedDate && selectedDateStatusLoaded && selectablePricingRows.length === 0 ? (
+                  <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-900">
+                    Aucun service réservable n’est disponible le {formatDisplayDate(effectiveSelectedDate)}.
+                  </div>
+                ) : null}
               </div>
             </div>
 
