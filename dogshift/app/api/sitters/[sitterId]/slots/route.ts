@@ -94,6 +94,7 @@ export async function GET(
       timezone: TIMEZONE_ZURICH,
       config: result.config,
       durationMin: result.durationMin,
+      configuredRanges: result.configuredRanges,
       slots: result.slots,
     },
     {

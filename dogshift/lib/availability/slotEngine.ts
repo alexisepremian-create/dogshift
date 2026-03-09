@@ -49,6 +49,14 @@ export type PublicServiceConfig = {
   hasExplicitTimeSlots: boolean;
 };
 
+export type ConfiguredTimeRange = {
+  startAt: string;
+  endAt: string;
+  startMin: number;
+  endMin: number;
+  status: "AVAILABLE" | "ON_REQUEST";
+};
+
 type Interval = {
   startMin: number;
   endMin: number;
@@ -351,6 +359,27 @@ function normalizeRuleIntervals(rules: AvailabilityRuleRow[]) {
     .filter((i): i is Interval => Boolean(i));
 }
 
+function exactConfiguredRanges(date: string, rules: AvailabilityRuleRow[], exceptions: AvailabilityExceptionRow[]): ConfiguredTimeRange[] {
+  const rows = (exceptions ?? []).length
+    ? (exceptions ?? [])
+        .filter((row): row is AvailabilityExceptionRow & { status: "AVAILABLE" | "ON_REQUEST" } => row.status === "AVAILABLE" || row.status === "ON_REQUEST")
+        .map((row) => ({ startMin: row.startMin, endMin: row.endMin, status: row.status }))
+    : (rules ?? [])
+        .filter((row): row is AvailabilityRuleRow & { status: "AVAILABLE" | "ON_REQUEST" } => row.status === "AVAILABLE" || row.status === "ON_REQUEST")
+        .map((row) => ({ startMin: row.startMin, endMin: row.endMin, status: row.status }));
+
+  return rows
+    .slice()
+    .sort((a, b) => a.startMin - b.startMin || a.endMin - b.endMin)
+    .map((row) => ({
+      startAt: minutesToZurichOffsetIso(date, row.startMin),
+      endAt: minutesToZurichOffsetIso(date, row.endMin),
+      startMin: row.startMin,
+      endMin: row.endMin,
+      status: row.status,
+    }));
+}
+
 function normalizeExceptionIntervals(exceptions: AvailabilityExceptionRow[]) {
   return exceptions
     .map((e) => ({
@@ -568,7 +597,7 @@ export function computeDaySlots(input: ComputeDaySlotsInput): DaySlot[] {
 export async function generateDaySlots(
   input: GenerateDaySlotsInput
 ): Promise<
-  | { ok: true; slots: DaySlot[]; config: PublicServiceConfig; durationMin: number }
+  | { ok: true; slots: DaySlot[]; config: PublicServiceConfig; durationMin: number; configuredRanges: ConfiguredTimeRange[] }
   | { ok: false; error: string }
 > {
   try {
@@ -631,6 +660,7 @@ export async function generateDaySlots(
     return {
       ok: true,
       slots,
+      configuredRanges: exactConfiguredRanges(date, rules, exceptions),
       config: {
         ...toPublicConfig(mergedConfig),
         hasExplicitTimeSlots: hasExplicitTimeWindows(rules, exceptions),

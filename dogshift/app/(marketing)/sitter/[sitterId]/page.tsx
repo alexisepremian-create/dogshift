@@ -896,6 +896,9 @@ function SitterPublicProfileContent({
   const [daySlots, setDaySlots] = useState<
     Array<{ startAt: string; endAt: string; status: "AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE"; reason?: string }>
   >([]);
+  const [configuredRanges, setConfiguredRanges] = useState<
+    Array<{ startAt: string; endAt: string; status: "AVAILABLE" | "ON_REQUEST" }>
+  >([]);
   const [serviceSummary, setServiceSummary] = useState<
     | {
         minDurationMin: number;
@@ -1550,6 +1553,30 @@ function SitterPublicProfileContent({
   }, [daySlots]);
 
   const daySlotsSummary = useMemo(() => {
+    const sourceRanges = configuredRanges.length
+      ? configuredRanges.map((range) => ({
+          startAt: range.startAt,
+          endAt: range.endAt,
+          hasOnRequest: range.status === "ON_REQUEST",
+        }))
+      : [];
+
+    if (sourceRanges.length) {
+      const groups = new Map<string, { key: string; label: string; ranges: typeof sourceRanges }>();
+      for (const range of sourceRanges) {
+        const hour = Number(range.startAt.slice(11, 13));
+        const key = hour < 12 ? "MORNING" : hour < 18 ? "AFTERNOON" : "EVENING";
+        const label = key === "MORNING" ? "Matin" : key === "AFTERNOON" ? "Après-midi" : "Soir";
+        const existing = groups.get(key);
+        if (existing) {
+          existing.ranges.push(range);
+        } else {
+          groups.set(key, { key, label, ranges: [range] });
+        }
+      }
+      return Array.from(groups.values());
+    }
+
     const mergeRanges = (items: typeof daySlots) => {
       const eligible = items
         .filter((slot) => slot.status === "AVAILABLE" || slot.status === "ON_REQUEST")
@@ -1580,7 +1607,7 @@ function SitterPublicProfileContent({
         ranges: mergeRanges(group.items),
       }))
       .filter((group) => group.ranges.length);
-  }, [daySlots, daySlotsAgenda]);
+  }, [configuredRanges, daySlots, daySlotsAgenda]);
 
   const dogsittingDurationOptions = useMemo(() => {
     if (slotsServiceType !== "DOGSITTING") return [] as number[];
@@ -1848,6 +1875,7 @@ function SitterPublicProfileContent({
                   hasExplicitTimeSlots?: boolean;
                 };
                 durationMin?: number;
+                configuredRanges?: Array<{ startAt: string; endAt: string; status: "AVAILABLE" | "ON_REQUEST" }>;
                 slots: Array<{ startAt: string; endAt: string; status: "AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE"; reason?: string }>;
               }
             | { ok: false; error: string }
@@ -1857,6 +1885,7 @@ function SitterPublicProfileContent({
             const err = (payload as any)?.error;
             setSlotsError(typeof err === "string" ? err : "SLOTS_ERROR");
             setDaySlots([]);
+            setConfiguredRanges([]);
             setServiceSummary(null);
             return;
           }
@@ -1896,13 +1925,26 @@ function SitterPublicProfileContent({
             (s): s is { startAt: string; endAt: string; status: "AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE"; reason?: string } =>
               Boolean(s && typeof s.startAt === "string" && typeof s.endAt === "string" && typeof (s as any).status === "string")
           );
+          const exactRanges = Array.isArray((payload as any).configuredRanges)
+            ? (payload as any).configuredRanges.filter(
+                (range: any): range is { startAt: string; endAt: string; status: "AVAILABLE" | "ON_REQUEST" } =>
+                  Boolean(
+                    range &&
+                      typeof range.startAt === "string" &&
+                      typeof range.endAt === "string" &&
+                      (range.status === "AVAILABLE" || range.status === "ON_REQUEST")
+                  )
+              )
+            : [];
           setDaySlots(slots);
+          setConfiguredRanges(exactRanges);
         } catch (error) {
           if (cancelled) return;
           if (error instanceof DOMException && error.name === "AbortError") return;
           if (dbg) console.log("[ProfileContent] fetch error", error);
           setSlotsError("SLOTS_NETWORK_ERROR");
           setDaySlots([]);
+          setConfiguredRanges([]);
           setServiceSummary(null);
         } finally {
           if (cancelled) return;
