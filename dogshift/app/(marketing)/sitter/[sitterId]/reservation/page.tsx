@@ -62,8 +62,16 @@ export default async function ReservationPage({
 
   if (!sitterProfile) notFound();
 
-  const services = Array.isArray(sitterProfile.services) ? sitterProfile.services.filter((s): s is string => typeof s === "string") : [];
   const pricing = sitterProfile.pricing && typeof sitterProfile.pricing === "object" ? (sitterProfile.pricing as Record<string, unknown>) : {};
+  const rawServices = Array.isArray(sitterProfile.services) ? sitterProfile.services.filter((s): s is string => typeof s === "string") : [];
+  const allowedServiceLabels = new Set(["Promenade", "Garde", "Pension"]);
+  const pricedServices = Object.entries(pricing)
+    .filter(
+      ([key, value]) =>
+        allowedServiceLabels.has(key) && typeof value === "number" && Number.isFinite(value) && value > 0
+    )
+    .map(([key]) => key);
+  const services = Array.from(new Set([...rawServices, ...pricedServices])).filter((service) => allowedServiceLabels.has(service));
 
   const sitter = {
     sitterId: sitterProfile.sitterId,
