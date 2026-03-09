@@ -140,7 +140,7 @@ export async function GET(req: NextRequest) {
       update: {
         sitterId,
       },
-      select: { published: true, publishedAt: true, pricing: true, profileCompletion: true, termsAcceptedAt: true, termsVersion: true },
+      select: { published: true, publishedAt: true, pricing: true, profileCompletion: true, termsAcceptedAt: true, termsVersion: true, verificationStatus: true },
     });
 
     const serviceConfigs = await (prisma as any).serviceConfig.findMany({
@@ -156,6 +156,7 @@ export async function GET(req: NextRequest) {
       profile,
       enabledServiceTypes,
       persistedPricing: sitterProfile?.pricing,
+      persistedVerificationStatus: sitterProfile?.verificationStatus,
     });
 
     const computedProfileCompletion = computeSitterProfileCompletion(mergedProfile);
@@ -314,10 +315,23 @@ export async function POST(req: NextRequest) {
         termsAcceptedAt: true,
         termsVersion: true,
         profileCompletion: true,
+        verificationStatus: true,
       },
     });
 
-    const completion = computeSitterProfileCompletion(normalized);
+    const completion = computeSitterProfileCompletion({
+      ...(normalized && typeof normalized === "object" ? normalized : {}),
+      ...(typeof existingProfile?.verificationStatus === "string"
+        ? {
+            verificationStatus:
+              existingProfile.verificationStatus === "approved"
+                ? "verified"
+                : existingProfile.verificationStatus === "not_verified"
+                  ? "unverified"
+                  : existingProfile.verificationStatus,
+          }
+        : null),
+    });
 
     if (pricingObj && typeof pricingObj === "object" && Object.keys(pricingObj).length > 0) {
       const pilotCheck = validatePilotTariffs({ enabledServices, pricingObj });

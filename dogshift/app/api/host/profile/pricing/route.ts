@@ -86,7 +86,7 @@ export async function PUT(req: NextRequest) {
 
     const sitterProfile = await prisma.sitterProfile.findUnique({
       where: { userId: uid },
-      select: { id: true, pricing: true, services: true },
+      select: { id: true, pricing: true, services: true, verificationStatus: true },
     });
 
     if (!sitterProfile) return NextResponse.json({ ok: false, error: "FORBIDDEN" }, { status: 403 });
@@ -129,6 +129,7 @@ export async function PUT(req: NextRequest) {
       profile: hostProfile,
       enabledServiceTypes,
       persistedPricing: normalized.pricing,
+      persistedVerificationStatus: sitterProfile?.verificationStatus,
     });
     const completion = computeSitterProfileCompletion(completionProfile);
 

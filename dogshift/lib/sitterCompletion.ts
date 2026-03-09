@@ -9,6 +9,15 @@ type HostLikeProfile = {
   verificationStatus?: unknown;
 };
 
+function normalizeCompletionVerificationStatus(raw: unknown) {
+  if (raw === "verified") return "verified" as const;
+  if (raw === "approved") return "verified" as const;
+  if (raw === "pending") return "pending" as const;
+  if (raw === "unverified") return "unverified" as const;
+  if (raw === "not_verified") return "unverified" as const;
+  return null;
+}
+
 function toStringOrEmpty(v: unknown) {
   return typeof v === "string" ? v.trim() : "";
 }
@@ -48,10 +57,13 @@ export function buildEffectiveSitterCompletionProfile(args: {
   profile: unknown;
   enabledServiceTypes: string[];
   persistedPricing?: unknown;
+  persistedVerificationStatus?: unknown;
 }) {
   const mergedWithServices = mergeCompletionEnabledServices(args.profile, args.enabledServiceTypes);
+  const persistedVerificationStatus = normalizeCompletionVerificationStatus(args.persistedVerificationStatus);
   return {
     ...(mergedWithServices && typeof mergedWithServices === "object" ? mergedWithServices : {}),
+    ...(persistedVerificationStatus ? { verificationStatus: persistedVerificationStatus } : null),
     pricing: {
       ...((mergedWithServices && typeof mergedWithServices === "object" && (mergedWithServices as Record<string, unknown>).pricing && typeof (mergedWithServices as Record<string, unknown>).pricing === "object")
         ? ((mergedWithServices as Record<string, unknown>).pricing as Record<string, unknown>)

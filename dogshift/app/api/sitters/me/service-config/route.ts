@@ -110,7 +110,7 @@ export async function PUT(req: NextRequest) {
     }),
     prisma.sitterProfile.findUnique({
       where: { userId: auth.dbUserId },
-      select: { pricing: true },
+      select: { pricing: true, verificationStatus: true },
     }),
     (prisma as any).serviceConfig.findMany({
       where: { sitterId: auth.sitterId },
@@ -135,6 +135,7 @@ export async function PUT(req: NextRequest) {
     profile: hostProfile,
     enabledServiceTypes,
     persistedPricing: sitterProfile?.pricing,
+    persistedVerificationStatus: sitterProfile?.verificationStatus,
   });
   const completion = computeSitterProfileCompletion(completionProfile);
 
