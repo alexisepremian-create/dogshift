@@ -1336,7 +1336,7 @@ function SitterPublicProfileContent({
                         onRequest: "bg-amber-50 text-amber-950 ring-amber-400",
                         accent: "ring-sky-500/35",
                         range: "bg-sky-50 ring-sky-300",
-                        selected: "bg-sky-200 text-sky-950 ring-sky-600 shadow-[0_0_0_3px_rgba(14,165,233,0.18)]",
+                        selected: "ring-sky-600 shadow-[0_0_0_3px_rgba(14,165,233,0.12)]",
                       }
                     : slotsServiceType === "DOGSITTING"
                       ? {
@@ -1344,14 +1344,14 @@ function SitterPublicProfileContent({
                           onRequest: "bg-amber-50 text-amber-950 ring-amber-400",
                           accent: "ring-violet-500/35",
                           range: "bg-violet-50 ring-violet-300",
-                          selected: "bg-violet-200 text-violet-950 ring-violet-600 shadow-[0_0_0_3px_rgba(139,92,246,0.18)]",
+                          selected: "ring-violet-600 shadow-[0_0_0_3px_rgba(139,92,246,0.12)]",
                         }
                       : {
                           available: "bg-white text-slate-900 ring-emerald-400",
                           onRequest: "bg-amber-50 text-amber-950 ring-amber-400",
                           accent: "ring-emerald-500/35",
                           range: "bg-emerald-50 ring-emerald-300",
-                          selected: "bg-emerald-200 text-emerald-950 ring-emerald-600 shadow-[0_0_0_3px_rgba(16,185,129,0.18)]",
+                          selected: "ring-emerald-600 shadow-[0_0_0_3px_rgba(16,185,129,0.12)]",
                         };
 
                 const tone =
@@ -1378,7 +1378,7 @@ function SitterPublicProfileContent({
                     key={dateIso}
                     className={`flex h-14 w-full flex-col rounded-2xl ring-1 ${tone} ${focusRing} ${
                       isInPensionRange ? selectedServiceTone.range : ""
-                    } ${isCalendarSelected ? `ring-2 ${selectedServiceTone.selected}` : ""}`}
+                    } ${isCalendarSelected ? `${selectedServiceTone.selected}` : ""}`}
                   >
                     <button
                       type="button"
