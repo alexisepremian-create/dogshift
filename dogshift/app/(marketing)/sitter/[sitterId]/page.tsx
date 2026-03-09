@@ -1449,7 +1449,7 @@ function SitterPublicProfileContent({
 
                       <div className="flex items-end justify-start">
                         <div className={`text-[11px] font-semibold ${isCalendarSelected ? "text-current/80" : "text-slate-500"}`}>
-                          {isCalendarSelected ? "Sélectionné" : isInPensionRange ? "Séjour" : ""}
+                          {isInPensionRange ? "Séjour" : ""}
                         </div>
                       </div>
                     </button>
@@ -1458,86 +1458,9 @@ function SitterPublicProfileContent({
               })}
             </div>
 
-            {calendarInfoDate ? (
+            {slotsServiceType !== "PENSION" && bookingSelectionSummary ? (
               <div className="mt-3 rounded-2xl border border-slate-200 bg-white p-4">
-                <p className="text-xs font-semibold text-slate-500">Détails</p>
-                <p className="mt-1 text-sm font-semibold text-slate-900">{formatDateDisplay(calendarInfoDate)}</p>
-                {(() => {
-                  const row = monthDaysByDate.get(calendarInfoDate);
-                  if (!row) {
-                    return <p className="mt-2 text-sm text-slate-600">Sélectionnez une date disponible pour voir les créneaux.</p>;
-                  }
-                  const status = statusForSelectedService(row, slotsServiceType);
-                  return (
-                    <div className="mt-2 grid gap-2 text-sm text-slate-700">
-                      <div>
-                        {serviceUi.current.icon} {serviceUi.current.label}: <span className="font-semibold">{serviceUi.statusLabel(status)}</span>
-                      </div>
-                      <p className="text-xs text-slate-500">Les disponibilités affichées ci-dessous correspondent au service actuellement sélectionné.</p>
-                    </div>
-                  );
-                })()}
-
-                <div className="mt-3">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setDayDetailsOpen(true);
-                      setDayDetailsRetryKey((v: number) => v + 1);
-                    }}
-                    className="inline-flex h-9 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-xs font-semibold text-slate-700"
-                    disabled={false}
-                  >
-                    Comprendre pourquoi
-                  </button>
-                </div>
-
-                {dayDetailsOpen ? (
-                  <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                    {dayDetailsLoading ? (
-                      <p className="text-sm text-slate-600">Chargement…</p>
-                    ) : dayDetailsError ? (
-                      <div>
-                        <p className="text-sm text-rose-700">{dayDetailsError}</p>
-                        <button
-                          type="button"
-                          onClick={() => setDayDetailsRetryKey((v: number) => v + 1)}
-                          className="mt-2 inline-flex h-9 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-xs font-semibold text-slate-700"
-                        >
-                          Réessayer
-                        </button>
-                      </div>
-                    ) : dayDetails ? (
-                      <div>
-                        {dayDetails.buckets.length ? (
-                          <div className="grid gap-2">
-                            {dayDetails.buckets.map((b: any) => (
-                              <div key={b.key} className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700">
-                                <span className="font-semibold">{b.label}</span>
-                                <span className="text-xs font-semibold text-slate-500">{b.count}</span>
-                              </div>
-                            ))}
-                          </div>
-                        ) : dayDetails.status === "AVAILABLE" ? null : (
-                          <p className="text-sm text-slate-700">Aucun détail disponible.</p>
-                        )}
-
-                        {dbg && dayDetails.dbg?.topReasons?.length ? (
-                          <details className="mt-3">
-                            <summary className="cursor-pointer text-xs font-semibold text-slate-600">dbg</summary>
-                            <div className="mt-2 grid gap-1 text-xs text-slate-600">
-                              {dayDetails.dbg.topReasons.map((r: any) => (
-                                <div key={r.reason}>
-                                  {r.reason}: {r.count}
-                                </div>
-                              ))}
-                            </div>
-                          </details>
-                        ) : null}
-                      </div>
-                    ) : null}
-                  </div>
-                ) : null}
+                <p className="text-sm font-medium text-slate-900">{bookingSelectionSummary}</p>
               </div>
             ) : null}
 
@@ -1596,10 +1519,6 @@ function SitterPublicProfileContent({
                 </p>
                 {bookingSelectionSummary ? <p className="mt-3 text-sm font-medium text-slate-900">{bookingSelectionSummary}</p> : null}
                 {pensionSelectionMessage ? <p className="mt-2 text-sm font-medium text-amber-900">{pensionSelectionMessage}</p> : null}
-              </div>
-            ) : bookingSelectionSummary ? (
-              <div className="mt-3 rounded-2xl border border-slate-200 bg-white p-4">
-                <p className="text-sm font-medium text-slate-900">{bookingSelectionSummary}</p>
               </div>
             ) : null}
           </div>
