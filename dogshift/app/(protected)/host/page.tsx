@@ -95,6 +95,7 @@ export default function HostDashboardPage() {
   const [verificationStatus, setVerificationStatus] = useState<"not_verified" | "pending" | "approved" | "rejected">(
     "not_verified"
   );
+  const [verificationLoaded, setVerificationLoaded] = useState(false);
 
   const completionCardDismissed = useSyncExternalStore(
     (onStoreChange) => {
@@ -136,7 +137,11 @@ export default function HostDashboardPage() {
   }, [sitterId]);
 
   useEffect(() => {
-    if (!sitterId) return;
+    if (!sitterId) {
+      setVerificationLoaded(true);
+      return;
+    }
+    setVerificationLoaded(false);
     let canceled = false;
     void (async () => {
       try {
@@ -152,6 +157,10 @@ export default function HostDashboardPage() {
         }
       } catch {
         // ignore
+      } finally {
+        if (!canceled) {
+          setVerificationLoaded(true);
+        }
       }
     })();
     return () => {
@@ -186,6 +195,8 @@ export default function HostDashboardPage() {
     };
     return getHostCompletion(effectiveProfile).percent;
   }, [profile, verificationStatus]);
+
+  const completionUiReady = Boolean(sitterId) && verificationLoaded;
 
   const storedReviews = useMemo<DogShiftReview[]>(() => {
     if (!sitterId) return [];
@@ -270,7 +281,7 @@ export default function HostDashboardPage() {
               <h1 className="flex flex-wrap items-center gap-2 text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">
                 <span>Bonjour {greetingName ?? ""}</span>
                 {greetingName ? <FilledSunIcon className="h-7 w-7" /> : null}
-                {completionPercent < 100 && !completionCardDismissed ? (
+                {completionUiReady && completionPercent < 100 && !completionCardDismissed ? (
                   <div className="ml-0 hidden w-full md:block md:w-auto md:ml-3">
                     <div className="flex w-full items-center justify-center sm:justify-end">
                       <div className="relative w-full max-w-[420px] overflow-hidden rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 shadow-sm sm:px-3">
@@ -332,10 +343,14 @@ export default function HostDashboardPage() {
               </h1>
             </div>
             <div className="mt-3 flex min-h-[32px] flex-wrap items-center gap-2">
-              <StatusBadge status={badgeStatus} />
-              <span className="inline-flex items-center rounded-full bg-white px-3 py-1 text-xs font-medium text-slate-600 ring-1 ring-slate-200">
-                Profil {completionPercent}%
-              </span>
+              {completionUiReady ? (
+                <>
+                  <StatusBadge status={badgeStatus} />
+                  <span className="inline-flex items-center rounded-full bg-white px-3 py-1 text-xs font-medium text-slate-600 ring-1 ring-slate-200">
+                    Profil {completionPercent}%
+                  </span>
+                </>
+              ) : null}
             </div>
           </div>
         </div>

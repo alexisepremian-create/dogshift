@@ -164,7 +164,7 @@ export async function GET(req: NextRequest) {
       typeof sitterProfile?.profileCompletion === "number" && Number.isFinite(sitterProfile.profileCompletion)
         ? sitterProfile.profileCompletion
         : null;
-    const resolvedProfileCompletion = persistedProfileCompletion ?? computedProfileCompletion;
+    const resolvedProfileCompletion = computedProfileCompletion;
 
     if (persistedProfileCompletion !== computedProfileCompletion) {
       await prisma.sitterProfile.update({
