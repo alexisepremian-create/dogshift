@@ -2214,6 +2214,7 @@ function SitterPublicProfileContent({
                           monthDaysByDate={monthDaysByDate}
                           setMonthRetryKey={setMonthRetryKey}
                           slotsServiceType={slotsServiceType}
+                          slotsDate={slotsDate}
                           setSlotsDate={setSlotsDate}
                           boardingStart={boardingStart}
                           boardingEnd={boardingEnd}
@@ -2230,6 +2231,10 @@ function SitterPublicProfileContent({
                           dayDetailsError={dayDetailsError}
                           dayDetails={dayDetails}
                           setDayDetailsRetryKey={setDayDetailsRetryKey}
+                          daySlots={daySlots}
+                          daySlotsAgenda={daySlotsAgenda}
+                          slotsLoading={slotsLoading}
+                          slotsError={slotsError}
                           dbg={dbg}
                           serviceUi={serviceUi}
                         />
