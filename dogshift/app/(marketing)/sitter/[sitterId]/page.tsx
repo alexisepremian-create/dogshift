@@ -368,7 +368,7 @@ function SitterPublicProfileContent({
 
   const [hydrated, setHydrated] = useState(false);
   const [currentHostId, setCurrentHostId] = useState<string | null>(null);
-  const [hostProfileCompletion, setHostProfileCompletion] = useState<number>(0);
+  const [hostProfileCompletion, setHostProfileCompletion] = useState<number | null>(null);
 
   const [apiSitter, setApiSitter] = useState<SitterCard | null>(null);
   const [apiLoaded, setApiLoaded] = useState(false);
@@ -530,7 +530,7 @@ function SitterPublicProfileContent({
     setHydrated(true);
     if (!isLoaded || !isSignedIn) {
       setCurrentHostId(null);
-      setHostProfileCompletion(0);
+      setHostProfileCompletion(null);
       setPreviewLoaded(false);
       setPreviewSitter(null);
       setProfileData(null);
@@ -548,7 +548,7 @@ function SitterPublicProfileContent({
         };
         if (!res.ok || !payload.ok) {
           setCurrentHostId(null);
-          setHostProfileCompletion(0);
+          setHostProfileCompletion(null);
           setPreviewLoaded(false);
           setPreviewSitter(null);
           setProfileData(null);
@@ -560,7 +560,7 @@ function SitterPublicProfileContent({
         const normalizedSitterId = sitterId && sitterId.trim() ? sitterId.trim() : null;
         setCurrentHostId(normalizedSitterId);
 
-        setHostProfileCompletion(typeof payload.profileCompletion === "number" ? payload.profileCompletion : 0);
+        setHostProfileCompletion(typeof payload.profileCompletion === "number" && Number.isFinite(payload.profileCompletion) ? payload.profileCompletion : null);
 
         if (!id || !normalizedSitterId) {
           setPreviewLoaded(false);
@@ -597,7 +597,7 @@ function SitterPublicProfileContent({
       } catch (error) {
         if (dbg) console.log("[ProfileContent] fetch error", error);
         setCurrentHostId(null);
-        setHostProfileCompletion(0);
+        setHostProfileCompletion(null);
         setPreviewLoaded(false);
         setPreviewSitter(null);
         setProfileData(null);
@@ -875,7 +875,12 @@ function SitterPublicProfileContent({
   );
 
   const isHostPreview = showHostChrome && isPreviewMode;
-  const shouldShowFinalizeModal = isHostPreview && previewLoaded && isHostViewingOwnStable && hostProfileCompletion < 100;
+  const shouldShowFinalizeModal =
+    isHostPreview &&
+    previewLoaded &&
+    isHostViewingOwnStable &&
+    typeof hostProfileCompletion === "number" &&
+    hostProfileCompletion < 100;
 
   const [slotsServiceType, setSlotsServiceType] = useState<"PROMENADE" | "DOGSITTING" | "PENSION">("PROMENADE");
   const [slotsDate, setSlotsDate] = useState<string>("");

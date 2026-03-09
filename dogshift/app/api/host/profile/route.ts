@@ -191,6 +191,10 @@ export async function GET(req: NextRequest) {
     };
 
     const computedProfileCompletion = computeSitterProfileCompletion(mergedProfile);
+    const resolvedProfileCompletion =
+      typeof sitterProfile?.profileCompletion === "number" && Number.isFinite(sitterProfile.profileCompletion)
+        ? sitterProfile.profileCompletion
+        : computedProfileCompletion;
 
     return NextResponse.json(
       {
@@ -198,7 +202,7 @@ export async function GET(req: NextRequest) {
         sitterId,
         published: Boolean(sitterProfile?.published),
         publishedAt: sitterProfile?.publishedAt instanceof Date ? sitterProfile.publishedAt.toISOString() : null,
-        profileCompletion: computedProfileCompletion,
+        profileCompletion: resolvedProfileCompletion,
         termsAcceptedAt: sitterProfile?.termsAcceptedAt instanceof Date ? sitterProfile.termsAcceptedAt.toISOString() : null,
         termsVersion: typeof sitterProfile?.termsVersion === "string" ? sitterProfile.termsVersion : null,
         profile: mergedProfile,
