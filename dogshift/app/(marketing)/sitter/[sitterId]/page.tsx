@@ -369,6 +369,7 @@ function SitterPublicProfileContent({
   const [hydrated, setHydrated] = useState(false);
   const [currentHostId, setCurrentHostId] = useState<string | null>(null);
   const [hostProfileCompletion, setHostProfileCompletion] = useState<number | null>(null);
+  const [hostProfileCompletionLoaded, setHostProfileCompletionLoaded] = useState(false);
 
   const [apiSitter, setApiSitter] = useState<SitterCard | null>(null);
   const [apiLoaded, setApiLoaded] = useState(false);
@@ -528,9 +529,11 @@ function SitterPublicProfileContent({
 
   useEffect(() => {
     setHydrated(true);
+    setHostProfileCompletionLoaded(false);
     if (!isLoaded || !isSignedIn) {
       setCurrentHostId(null);
       setHostProfileCompletion(null);
+      setHostProfileCompletionLoaded(true);
       setPreviewLoaded(false);
       setPreviewSitter(null);
       setProfileData(null);
@@ -549,6 +552,7 @@ function SitterPublicProfileContent({
         if (!res.ok || !payload.ok) {
           setCurrentHostId(null);
           setHostProfileCompletion(null);
+          setHostProfileCompletionLoaded(true);
           setPreviewLoaded(false);
           setPreviewSitter(null);
           setProfileData(null);
@@ -561,6 +565,7 @@ function SitterPublicProfileContent({
         setCurrentHostId(normalizedSitterId);
 
         setHostProfileCompletion(typeof payload.profileCompletion === "number" && Number.isFinite(payload.profileCompletion) ? payload.profileCompletion : null);
+        setHostProfileCompletionLoaded(true);
 
         if (!id || !normalizedSitterId) {
           setPreviewLoaded(false);
@@ -598,6 +603,7 @@ function SitterPublicProfileContent({
         if (dbg) console.log("[ProfileContent] fetch error", error);
         setCurrentHostId(null);
         setHostProfileCompletion(null);
+        setHostProfileCompletionLoaded(true);
         setPreviewLoaded(false);
         setPreviewSitter(null);
         setProfileData(null);
@@ -878,6 +884,7 @@ function SitterPublicProfileContent({
   const shouldShowFinalizeModal =
     isHostPreview &&
     previewLoaded &&
+    hostProfileCompletionLoaded &&
     isHostViewingOwnStable &&
     typeof hostProfileCompletion === "number" &&
     hostProfileCompletion < 100;
