@@ -1486,6 +1486,17 @@ function SitterPublicProfileContent({
                   <div className="mt-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-3">
                     <p className="text-sm font-semibold text-emerald-900">Disponible toute la journée</p>
                   </div>
+                ) : configuredRanges.length ? (
+                  <div className="mt-3 grid gap-2">
+                    {configuredRanges.map((range) => (
+                      <div key={`${range.startAt}-${range.endAt}-${range.status}`} className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2">
+                        <span className="text-sm font-medium text-slate-900">
+                          {formatTimeLabel(range.startAt)} - {formatTimeLabel(range.endAt)}
+                        </span>
+                        {range.status === "ON_REQUEST" ? <span className="text-xs font-semibold text-amber-700">Sur demande</span> : null}
+                      </div>
+                    ))}
+                  </div>
                 ) : daySlotsSummary.length ? (
                   <div className="mt-3 grid gap-3">
                     {daySlotsSummary.map((group: any) => (

@@ -104,6 +104,23 @@ function clampIso(iso: string, minIso: string, maxIso: string) {
   return iso;
 }
 
+function summarizeConfiguredStatus(rows: Array<{ status?: "AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE" }> | undefined) {
+  const items = Array.isArray(rows) ? rows : [];
+  let hasAvailable = false;
+  let hasOnRequest = false;
+
+  for (const row of items) {
+    if (!row || typeof row.status !== "string") continue;
+    if (row.status === "AVAILABLE") hasAvailable = true;
+    if (row.status === "ON_REQUEST") hasOnRequest = true;
+    if (row.status === "UNAVAILABLE") return "UNAVAILABLE" as const;
+  }
+
+  if (hasOnRequest) return "ON_REQUEST" as const;
+  if (hasAvailable) return "AVAILABLE" as const;
+  return null;
+}
+
 export function computeMultiDayStatusNaive(input: DayStatusMultiInput): MultiServiceDayStatus[] {
   const { sitterId, dates, now, allRules, allExceptions, allBookings, allConfigs } = input;
 
@@ -251,6 +268,15 @@ export function computeMultiDayStatusIndexed(input: DayStatusMultiInput): {
       const rules = rulesByServiceByDow[serviceType][dow] ?? [];
       const exceptions = exceptionsByServiceByDate[serviceType].get(date) ?? [];
       const config = configByService[serviceType];
+
+      if (config?.enabled === false) return "UNAVAILABLE" as const;
+
+      const exceptionStatus = summarizeConfiguredStatus(exceptions);
+      if (exceptionStatus) return exceptionStatus;
+
+      const ruleStatus = summarizeConfiguredStatus(rules);
+      if (ruleStatus) return ruleStatus;
+
       const slots = computeDaySlots({
         serviceType,
         date,
