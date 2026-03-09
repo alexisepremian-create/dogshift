@@ -1322,25 +1322,25 @@ function SitterPublicProfileContent({
                 const selectedServiceTone =
                   slotsServiceType === "PROMENADE"
                     ? {
-                        available: "bg-sky-50 text-sky-900 ring-sky-200",
-                        onRequest: "bg-sky-50 text-sky-900 ring-sky-200",
+                        available: "bg-white text-slate-900 ring-sky-400",
+                        onRequest: "bg-white text-slate-900 ring-amber-400",
                         accent: "ring-sky-500/35",
-                        range: "bg-sky-50 ring-sky-200",
+                        range: "bg-sky-50 ring-sky-300",
                         selected: "ring-sky-500",
                       }
                     : slotsServiceType === "DOGSITTING"
                       ? {
-                          available: "bg-violet-50 text-violet-900 ring-violet-200",
-                          onRequest: "bg-violet-50 text-violet-900 ring-violet-200",
+                          available: "bg-white text-slate-900 ring-violet-400",
+                          onRequest: "bg-white text-slate-900 ring-amber-400",
                           accent: "ring-violet-500/35",
-                          range: "bg-violet-50 ring-violet-200",
+                          range: "bg-violet-50 ring-violet-300",
                           selected: "ring-violet-500",
                         }
                       : {
-                          available: "bg-emerald-50 text-emerald-900 ring-emerald-200",
-                          onRequest: "bg-emerald-50 text-emerald-900 ring-emerald-200",
+                          available: "bg-white text-slate-900 ring-emerald-400",
+                          onRequest: "bg-white text-slate-900 ring-amber-400",
                           accent: "ring-emerald-500/35",
-                          range: "bg-emerald-50 ring-emerald-200",
+                          range: "bg-emerald-50 ring-emerald-300",
                           selected: "ring-emerald-500",
                         };
 
@@ -1440,12 +1440,9 @@ function SitterPublicProfileContent({
                         <span className="text-sm font-semibold leading-none">{day}</span>
                       </div>
 
-                      <div className="flex items-center justify-between">
-                        <div className="text-[11px] font-semibold">
+                      <div className="flex items-end justify-start">
+                        <div className="text-[11px] font-semibold text-slate-500">
                           {isCalendarSelected ? "Sélectionné" : isInPensionRange ? "Séjour" : ""}
-                        </div>
-                        <div className="text-[10px] font-semibold uppercase tracking-[0.04em] text-slate-500">
-                          {serviceUi.statusLabel(serviceTone)}
                         </div>
                       </div>
                     </button>
@@ -1589,7 +1586,7 @@ function SitterPublicProfileContent({
               <div className="mt-3 rounded-2xl border border-slate-200 bg-white p-4">
                 <p className="text-sm font-semibold text-slate-900">Sélection du séjour</p>
                 <p className="mt-1 text-sm text-slate-600">
-                  Choisissez une date d’arrivée, puis une date de départ directement dans le calendrier.
+                  Choisissez une date pour un séjour d’un jour, puis cliquez sur une date plus tardive si vous souhaitez étendre le séjour.
                 </p>
                 {bookingSelectionSummary ? <p className="mt-3 text-sm font-medium text-slate-900">{bookingSelectionSummary}</p> : null}
                 {pensionSelectionMessage ? <p className="mt-2 text-sm font-medium text-amber-900">{pensionSelectionMessage}</p> : null}
