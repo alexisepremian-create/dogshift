@@ -1509,9 +1509,7 @@ function SitterPublicProfileContent({
                       </div>
                     ) : dayDetails ? (
                       <div>
-                        {dayDetails.status === "AVAILABLE" ? (
-                          <p className="text-sm text-slate-700">Ce jour est disponible pour ce service.</p>
-                        ) : dayDetails.buckets.length ? (
+                        {dayDetails.buckets.length ? (
                           <div className="grid gap-2">
                             {dayDetails.buckets.map((b: any) => (
                               <div key={b.key} className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700">
@@ -1520,7 +1518,7 @@ function SitterPublicProfileContent({
                               </div>
                             ))}
                           </div>
-                        ) : (
+                        ) : dayDetails.status === "AVAILABLE" ? null : (
                           <p className="text-sm text-slate-700">Aucun détail disponible.</p>
                         )}
 
@@ -2214,7 +2212,7 @@ function SitterPublicProfileContent({
                                     {selected ? <span className={`h-2 w-2 rounded-full ${color.activeFill}`} /> : null}
                                   </span>
                                   <span className="min-w-0 flex-1">{row.service}</span>
-                                  <span className={`shrink-0 text-right ${selected ? color.activePrice : hasPrice ? "text-slate-900" : "text-slate-500"}`}>
+                                  <span className={`w-[122px] shrink-0 text-left ${selected ? color.activePrice : hasPrice ? "text-slate-900" : "text-slate-500"}`}>
                                     {hasPrice ? `CHF ${row.price}${row.service === "Pension" ? " / jour" : " / heure"}` : "Prix sur demande"}
                                   </span>
                                 </span>
