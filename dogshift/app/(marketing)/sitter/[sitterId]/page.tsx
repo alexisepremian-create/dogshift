@@ -904,6 +904,7 @@ function SitterPublicProfileContent({
         leadTimeMin: number;
         bufferBeforeMin: number;
         bufferAfterMin: number;
+        hasExplicitTimeSlots: boolean;
       }
     | null
   >(null);
@@ -1557,31 +1558,29 @@ function SitterPublicProfileContent({
                   <div className="mt-3 rounded-2xl border border-rose-200 bg-rose-50 p-3">
                     <p className="text-sm text-rose-700">Impossible de charger les créneaux pour cette date.</p>
                   </div>
+                ) : serviceSummary && !serviceSummary.hasExplicitTimeSlots ? (
+                  <div className="mt-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-3">
+                    <p className="text-sm font-semibold text-emerald-900">Disponible toute la journée</p>
+                  </div>
                 ) : daySlotsSummary.length ? (
                   <div className="mt-3 grid gap-3">
-                    {daySlotsSummary.every((group: any) => group.isFullDay) ? (
-                      <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-3">
-                        <p className="text-sm font-semibold text-emerald-900">Disponible toute la journée</p>
-                      </div>
-                    ) : (
-                      daySlotsSummary.map((group: any) => (
-                        <div key={group.key} className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
-                          <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-500">{group.label}</p>
-                          <div className="mt-2 grid gap-2">
-                            {group.ranges.map((range: any) => (
-                              <div key={`${range.startAt}-${range.endAt}`} className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2">
-                                <span className="text-sm font-medium text-slate-900">
-                                  {formatTimeLabel(range.startAt)} - {formatTimeLabel(range.endAt)}
-                                </span>
-                                {range.hasOnRequest ? (
-                                  <span className="text-xs font-semibold text-amber-700">Sur demande</span>
-                                ) : null}
-                              </div>
-                            ))}
-                          </div>
+                    {daySlotsSummary.map((group: any) => (
+                      <div key={group.key} className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                        <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-500">{group.label}</p>
+                        <div className="mt-2 grid gap-2">
+                          {group.ranges.map((range: any) => (
+                            <div key={`${range.startAt}-${range.endAt}`} className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2">
+                              <span className="text-sm font-medium text-slate-900">
+                                {formatTimeLabel(range.startAt)} - {formatTimeLabel(range.endAt)}
+                              </span>
+                              {range.hasOnRequest ? (
+                                <span className="text-xs font-semibold text-amber-700">Sur demande</span>
+                              ) : null}
+                            </div>
+                          ))}
                         </div>
-                      ))
-                    )}
+                      </div>
+                    ))}
                   </div>
                 ) : (
                   <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 p-3">
@@ -1657,22 +1656,11 @@ function SitterPublicProfileContent({
       return ranges;
     };
 
-    const isFullDayRange = (startAt: string, endAt: string) => {
-      const start = formatTimeLabel(startAt);
-      const end = formatTimeLabel(endAt);
-      return (start === "00:00" || start === "00:30" || start === "01:00") && (end === "23:30" || end === "00:00");
-    };
-
     return daySlotsAgenda
       .map((group) => ({
         key: group.key,
         label: group.label,
         ranges: mergeRanges(group.items),
-        isFullDay: false,
-      }))
-      .map((group) => ({
-        ...group,
-        isFullDay: group.ranges.length === 1 && isFullDayRange(group.ranges[0].startAt, group.ranges[0].endAt),
       }))
       .filter((group) => group.ranges.length);
   }, [daySlots, daySlotsAgenda]);
@@ -1940,6 +1928,7 @@ function SitterPublicProfileContent({
                   leadTimeMin?: number;
                   bufferBeforeMin?: number;
                   bufferAfterMin?: number;
+                  hasExplicitTimeSlots?: boolean;
                 };
                 durationMin?: number;
                 slots: Array<{ startAt: string; endAt: string; status: "AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE"; reason?: string }>;
@@ -1964,6 +1953,7 @@ function SitterPublicProfileContent({
               leadTimeMin: typeof cfg.leadTimeMin === "number" ? cfg.leadTimeMin : 0,
               bufferBeforeMin: typeof cfg.bufferBeforeMin === "number" ? cfg.bufferBeforeMin : 0,
               bufferAfterMin: typeof cfg.bufferAfterMin === "number" ? cfg.bufferAfterMin : 0,
+              hasExplicitTimeSlots: Boolean((cfg as any).hasExplicitTimeSlots),
             });
           } else {
             setServiceSummary(null);

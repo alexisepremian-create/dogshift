@@ -46,6 +46,7 @@ export type PublicServiceConfig = {
   bufferBeforeMin: number;
   bufferAfterMin: number;
   leadTimeMin: number;
+  hasExplicitTimeSlots: boolean;
 };
 
 type Interval = {
@@ -305,7 +306,26 @@ function toPublicConfig(config: ServiceConfigRow): PublicServiceConfig {
     bufferBeforeMin: config.bufferBeforeMin,
     bufferAfterMin: config.bufferAfterMin,
     leadTimeMin: config.leadTimeMin,
+    hasExplicitTimeSlots: false,
   };
+}
+
+function hasExplicitTimeWindows(rules: AvailabilityRuleRow[], exceptions: AvailabilityExceptionRow[]) {
+  const explicitRule = (rules ?? []).some((rule) => {
+    const startMin = clampMin(rule.startMin);
+    const endMin = clampMin(rule.endMin);
+    return startMin > 0 || endMin < 24 * 60;
+  });
+  if (explicitRule) return true;
+
+  const relevantExceptions = (exceptions ?? []).filter((exception) => exception.status === "AVAILABLE" || exception.status === "ON_REQUEST");
+  if (!relevantExceptions.length) return false;
+  if (relevantExceptions.length > 1) return true;
+
+  const first = relevantExceptions[0];
+  const startMin = clampMin(first.startMin);
+  const endMin = clampMin(first.endMin);
+  return startMin > 0 || endMin < 24 * 60;
 }
 
 function dayOfWeekZurich(dateIso: string) {
@@ -608,7 +628,15 @@ export async function generateDaySlots(
       durationMin: durationMinEffective,
     });
 
-    return { ok: true, slots, config: toPublicConfig(mergedConfig), durationMin: durationMinEffective };
+    return {
+      ok: true,
+      slots,
+      config: {
+        ...toPublicConfig(mergedConfig),
+        hasExplicitTimeSlots: hasExplicitTimeWindows(rules, exceptions),
+      },
+      durationMin: durationMinEffective,
+    };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     return { ok: false, error: message || "INTERNAL_ERROR" };
