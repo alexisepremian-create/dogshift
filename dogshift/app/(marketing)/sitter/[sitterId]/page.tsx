@@ -1246,7 +1246,7 @@ function SitterPublicProfileContent({
     dayDetails,
     setDayDetailsRetryKey,
     daySlots,
-    daySlotsAgenda,
+    daySlotsSummary,
     slotsLoading,
     slotsError,
     dbg,
@@ -1551,25 +1551,22 @@ function SitterPublicProfileContent({
                   <div className="mt-3 rounded-2xl border border-rose-200 bg-rose-50 p-3">
                     <p className="text-sm text-rose-700">Impossible de charger les créneaux pour cette date.</p>
                   </div>
-                ) : daySlots.length ? (
+                ) : daySlotsSummary.length ? (
                   <div className="mt-3 grid gap-3">
-                    {daySlotsAgenda.map((group: any) => (
+                    {daySlotsSummary.map((group: any) => (
                       <div key={group.key} className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
                         <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-500">{group.label}</p>
-                        <div className="mt-2 flex flex-wrap gap-2">
-                          {group.items.map((slot: any) => {
-                            const tone =
-                              slot.status === "AVAILABLE"
-                                ? "border-emerald-200 bg-emerald-50 text-emerald-800"
-                                : slot.status === "ON_REQUEST"
-                                  ? "border-amber-200 bg-amber-50 text-amber-800"
-                                  : "border-slate-200 bg-white text-slate-500";
-                            return (
-                              <div key={`${slot.startAt}-${slot.endAt}`} className={`rounded-xl border px-3 py-2 text-sm font-medium ${tone}`}>
-                                {formatTimeLabel(slot.startAt)} - {formatTimeLabel(slot.endAt)}
-                              </div>
-                            );
-                          })}
+                        <div className="mt-2 grid gap-2">
+                          {group.ranges.map((range: any) => (
+                            <div key={`${range.startAt}-${range.endAt}`} className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2">
+                              <span className="text-sm font-medium text-slate-900">
+                                {formatTimeLabel(range.startAt)} - {formatTimeLabel(range.endAt)}
+                              </span>
+                              {range.hasOnRequest ? (
+                                <span className="text-xs font-semibold text-amber-700">Sur demande</span>
+                              ) : null}
+                            </div>
+                          ))}
                         </div>
                       </div>
                     ))}
@@ -1623,6 +1620,39 @@ function SitterPublicProfileContent({
 
     return groups.filter((g) => g.items.length);
   }, [daySlots]);
+
+  const daySlotsSummary = useMemo(() => {
+    const mergeRanges = (items: typeof daySlots) => {
+      const eligible = items
+        .filter((slot) => slot.status === "AVAILABLE" || slot.status === "ON_REQUEST")
+        .slice()
+        .sort((a, b) => a.startAt.localeCompare(b.startAt));
+
+      const ranges: Array<{ startAt: string; endAt: string; hasOnRequest: boolean }> = [];
+      for (const slot of eligible) {
+        const prev = ranges[ranges.length - 1];
+        if (prev && prev.endAt === slot.startAt) {
+          prev.endAt = slot.endAt;
+          prev.hasOnRequest = prev.hasOnRequest || slot.status === "ON_REQUEST";
+          continue;
+        }
+        ranges.push({
+          startAt: slot.startAt,
+          endAt: slot.endAt,
+          hasOnRequest: slot.status === "ON_REQUEST",
+        });
+      }
+      return ranges;
+    };
+
+    return daySlotsAgenda
+      .map((group) => ({
+        key: group.key,
+        label: group.label,
+        ranges: mergeRanges(group.items),
+      }))
+      .filter((group) => group.ranges.length);
+  }, [daySlots, daySlotsAgenda]);
 
   const dogsittingDurationOptions = useMemo(() => {
     if (slotsServiceType !== "DOGSITTING") return [] as number[];
@@ -2232,7 +2262,7 @@ function SitterPublicProfileContent({
                           dayDetails={dayDetails}
                           setDayDetailsRetryKey={setDayDetailsRetryKey}
                           daySlots={daySlots}
-                          daySlotsAgenda={daySlotsAgenda}
+                          daySlotsSummary={daySlotsSummary}
                           slotsLoading={slotsLoading}
                           slotsError={slotsError}
                           dbg={dbg}
