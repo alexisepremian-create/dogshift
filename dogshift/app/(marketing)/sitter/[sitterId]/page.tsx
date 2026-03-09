@@ -114,6 +114,12 @@ function formatDateFr(iso: string) {
   return new Intl.DateTimeFormat("fr-CH", { day: "numeric", month: "short" }).format(dt);
 }
 
+function formatDateDisplay(iso: string) {
+  const parts = iso.split("-");
+  if (parts.length !== 3) return iso;
+  return `${parts[2]}-${parts[1]}-${parts[0]}`;
+}
+
 function safeStringArray(value: unknown) {
   if (!Array.isArray(value)) return [] as string[];
   return value.filter((v): v is string => typeof v === "string" && v.trim().length > 0);
@@ -1454,7 +1460,7 @@ function SitterPublicProfileContent({
             {calendarInfoDate ? (
               <div className="mt-3 rounded-2xl border border-slate-200 bg-white p-4">
                 <p className="text-xs font-semibold text-slate-500">Détails</p>
-                <p className="mt-1 text-sm font-semibold text-slate-900">{calendarInfoDate}</p>
+                <p className="mt-1 text-sm font-semibold text-slate-900">{formatDateDisplay(calendarInfoDate)}</p>
                 {(() => {
                   const row = monthDaysByDate.get(calendarInfoDate);
                   if (!row) {
@@ -1553,23 +1559,29 @@ function SitterPublicProfileContent({
                   </div>
                 ) : daySlotsSummary.length ? (
                   <div className="mt-3 grid gap-3">
-                    {daySlotsSummary.map((group: any) => (
-                      <div key={group.key} className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
-                        <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-500">{group.label}</p>
-                        <div className="mt-2 grid gap-2">
-                          {group.ranges.map((range: any) => (
-                            <div key={`${range.startAt}-${range.endAt}`} className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2">
-                              <span className="text-sm font-medium text-slate-900">
-                                {formatTimeLabel(range.startAt)} - {formatTimeLabel(range.endAt)}
-                              </span>
-                              {range.hasOnRequest ? (
-                                <span className="text-xs font-semibold text-amber-700">Sur demande</span>
-                              ) : null}
-                            </div>
-                          ))}
-                        </div>
+                    {daySlotsSummary.every((group: any) => group.isFullDay) ? (
+                      <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-3">
+                        <p className="text-sm font-semibold text-emerald-900">Disponible toute la journée</p>
                       </div>
-                    ))}
+                    ) : (
+                      daySlotsSummary.map((group: any) => (
+                        <div key={group.key} className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                          <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-500">{group.label}</p>
+                          <div className="mt-2 grid gap-2">
+                            {group.ranges.map((range: any) => (
+                              <div key={`${range.startAt}-${range.endAt}`} className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2">
+                                <span className="text-sm font-medium text-slate-900">
+                                  {formatTimeLabel(range.startAt)} - {formatTimeLabel(range.endAt)}
+                                </span>
+                                {range.hasOnRequest ? (
+                                  <span className="text-xs font-semibold text-amber-700">Sur demande</span>
+                                ) : null}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ))
+                    )}
                   </div>
                 ) : (
                   <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 p-3">
@@ -1645,11 +1657,22 @@ function SitterPublicProfileContent({
       return ranges;
     };
 
+    const isFullDayRange = (startAt: string, endAt: string) => {
+      const start = formatTimeLabel(startAt);
+      const end = formatTimeLabel(endAt);
+      return (start === "00:00" || start === "00:30" || start === "01:00") && (end === "23:30" || end === "00:00");
+    };
+
     return daySlotsAgenda
       .map((group) => ({
         key: group.key,
         label: group.label,
         ranges: mergeRanges(group.items),
+        isFullDay: false,
+      }))
+      .map((group) => ({
+        ...group,
+        isFullDay: group.ranges.length === 1 && isFullDayRange(group.ranges[0].startAt, group.ranges[0].endAt),
       }))
       .filter((group) => group.ranges.length);
   }, [daySlots, daySlotsAgenda]);
