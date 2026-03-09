@@ -5,6 +5,7 @@ import { Prisma } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
 import { ensureDbUserByClerkUserId } from "@/lib/auth/resolveDbUserId";
+import { buildEffectiveSitterCompletionProfile, computeSitterProfileCompletion } from "@/lib/sitterCompletion";
 
 export const runtime = "nodejs";
 
@@ -92,21 +93,17 @@ export async function PUT(req: NextRequest) {
 
     const pricing = normalized.pricing as Prisma.InputJsonValue;
 
-    const updated = await prisma.sitterProfile.update({
-      where: { userId: uid },
-      data: { pricing },
-      select: { pricing: true },
-    });
-
     const userRow = await prisma.user.findUnique({
       where: { id: uid },
       select: { hostProfileJson: true },
     });
 
     const hostProfileJsonRaw = typeof userRow?.hostProfileJson === "string" ? userRow.hostProfileJson : null;
+    let hostProfile: Record<string, unknown> | null = null;
     if (hostProfileJsonRaw) {
       try {
         const parsed = JSON.parse(hostProfileJsonRaw) as Record<string, unknown>;
+        hostProfile = parsed;
         const nextHostProfileJson = JSON.stringify({
           ...parsed,
           pricing: normalized.pricing,
@@ -120,6 +117,26 @@ export async function PUT(req: NextRequest) {
         // ignore malformed legacy hostProfileJson
       }
     }
+
+    const serviceConfigs = await (prisma as any).serviceConfig.findMany({
+      where: { sitterId },
+      select: { serviceType: true, enabled: true },
+    });
+    const enabledServiceTypes = Array.isArray(serviceConfigs)
+      ? serviceConfigs.filter((row) => row && row.enabled === true).map((row) => String(row.serviceType ?? ""))
+      : [];
+    const completionProfile = buildEffectiveSitterCompletionProfile({
+      profile: hostProfile,
+      enabledServiceTypes,
+      persistedPricing: normalized.pricing,
+    });
+    const completion = computeSitterProfileCompletion(completionProfile);
+
+    const updated = await prisma.sitterProfile.update({
+      where: { userId: uid },
+      data: { pricing, profileCompletion: completion },
+      select: { pricing: true, profileCompletion: true },
+    });
 
     const toDisable = (normalized.missingOrInvalid ?? [])
       .map((k) => serviceTypeForPricingKey(k))
@@ -142,7 +159,7 @@ export async function PUT(req: NextRequest) {
     }
 
     return NextResponse.json(
-      { ok: true, pricing: updated.pricing, disabledServices: toDisable },
+      { ok: true, pricing: updated.pricing, profileCompletion: updated.profileCompletion, disabledServices: toDisable },
       { status: 200, headers: { "cache-control": "no-store" } }
     );
   } catch (err) {

@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { requireSitterOwner } from "@/lib/auth/requireSitterOwner";
 import { SERVICE_DEFAULTS, type ServiceType } from "@/lib/availability/slotEngine";
 import { writeAvailabilityAuditLog } from "@/lib/availability/auditLog";
+import { buildEffectiveSitterCompletionProfile, computeSitterProfileCompletion } from "@/lib/sitterCompletion";
 
 export const runtime = "nodejs";
 
@@ -102,6 +103,47 @@ export async function PUT(req: NextRequest) {
     update: data,
   });
 
+  const [userRow, sitterProfile, serviceConfigs] = await Promise.all([
+    prisma.user.findUnique({
+      where: { id: auth.dbUserId },
+      select: { hostProfileJson: true },
+    }),
+    prisma.sitterProfile.findUnique({
+      where: { userId: auth.dbUserId },
+      select: { pricing: true },
+    }),
+    (prisma as any).serviceConfig.findMany({
+      where: { sitterId: auth.sitterId },
+      select: { serviceType: true, enabled: true },
+    }),
+  ]);
+
+  let hostProfile: unknown = null;
+  const hostProfileJsonRaw = typeof userRow?.hostProfileJson === "string" ? userRow.hostProfileJson : null;
+  if (hostProfileJsonRaw) {
+    try {
+      hostProfile = JSON.parse(hostProfileJsonRaw) as unknown;
+    } catch {
+      hostProfile = null;
+    }
+  }
+
+  const enabledServiceTypes = Array.isArray(serviceConfigs)
+    ? serviceConfigs.filter((row) => row && row.enabled === true).map((row) => String(row.serviceType ?? ""))
+    : [];
+  const completionProfile = buildEffectiveSitterCompletionProfile({
+    profile: hostProfile,
+    enabledServiceTypes,
+    persistedPricing: sitterProfile?.pricing,
+  });
+  const completion = computeSitterProfileCompletion(completionProfile);
+
+  await prisma.sitterProfile.update({
+    where: { userId: auth.dbUserId },
+    data: { profileCompletion: completion },
+    select: { id: true },
+  });
+
   try {
     await writeAvailabilityAuditLog({
       sitterId: auth.sitterId,
@@ -124,7 +166,7 @@ export async function PUT(req: NextRequest) {
   });
 
   return NextResponse.json(
-    { ok: true, enabled: updated.enabled },
+    { ok: true, enabled: updated.enabled, profileCompletion: completion },
     { status: 200, headers: { "cache-control": "no-store" } }
   );
 }
