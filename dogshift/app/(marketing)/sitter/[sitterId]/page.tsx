@@ -185,6 +185,13 @@ function formatSelectionRange(start: string, end?: string) {
   return `${formatDateFr(start)} → ${formatDateFr(end)}`;
 }
 
+function formatTimeLabel(iso: string) {
+  const hour = iso.slice(11, 13);
+  const minute = iso.slice(14, 16);
+  if (!hour || !minute) return iso;
+  return `${hour}:${minute}`;
+}
+
 function StarIcon({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true" className={className}>
@@ -1221,6 +1228,7 @@ function SitterPublicProfileContent({
     monthDaysByDate,
     setMonthRetryKey,
     slotsServiceType,
+    slotsDate,
     setSlotsDate,
     boardingStart,
     boardingEnd,
@@ -1237,6 +1245,10 @@ function SitterPublicProfileContent({
     dayDetailsError,
     dayDetails,
     setDayDetailsRetryKey,
+    daySlots,
+    daySlotsAgenda,
+    slotsLoading,
+    slotsError,
     dbg,
     serviceUi,
   }: any) => {
@@ -1365,29 +1377,61 @@ function SitterPublicProfileContent({
                         if (!isSelectableForService) return;
                         setPensionSelectionMessage(null);
                         if (slotsServiceType === "PENSION") {
+                          if (boardingStart === dateIso && boardingEnd === dateIso) {
+                            setBoardingStart("");
+                            setBoardingEnd("");
+                            setCalendarInfoDate(null);
+                            setDayDetailsOpen(false);
+                            return;
+                          }
                           if (!boardingStart) {
                             setBoardingStart(dateIso);
                             setBoardingEnd(dateIso);
+                            setCalendarInfoDate(dateIso);
+                            setDayDetailsOpen(false);
                           } else {
                             if (boardingEnd && boardingEnd > boardingStart) {
                               if (dateIso <= boardingStart) {
                                 setBoardingStart(dateIso);
                                 setBoardingEnd(dateIso);
+                                setCalendarInfoDate(dateIso);
+                                setDayDetailsOpen(false);
                                 return;
                               }
                               setBoardingEnd(dateIso);
+                              setCalendarInfoDate(dateIso);
+                              setDayDetailsOpen(false);
                               return;
                             }
                             if (dateIso < boardingStart) {
                               setBoardingStart(dateIso);
                               setBoardingEnd(dateIso);
+                              setCalendarInfoDate(dateIso);
+                              setDayDetailsOpen(false);
+                              return;
+                            }
+                            if (dateIso === boardingStart) {
+                              setBoardingStart("");
+                              setBoardingEnd("");
+                              setCalendarInfoDate(null);
+                              setDayDetailsOpen(false);
                               return;
                             }
                             setBoardingEnd(dateIso);
+                            setCalendarInfoDate(dateIso);
+                            setDayDetailsOpen(false);
                           }
                           return;
                         }
+                        if (slotsDate === dateIso) {
+                          setSlotsDate("");
+                          setCalendarInfoDate(null);
+                          setDayDetailsOpen(false);
+                          return;
+                        }
                         setSlotsDate(dateIso);
+                        setCalendarInfoDate(dateIso);
+                        setDayDetailsOpen(false);
                       }}
                       className="flex h-full w-full flex-col justify-between rounded-2xl px-2 py-2 disabled:cursor-not-allowed disabled:opacity-70"
                       aria-label={ariaLabel}
@@ -1400,16 +1444,9 @@ function SitterPublicProfileContent({
                         <div className="text-[11px] font-semibold">
                           {isCalendarSelected ? "Sélectionné" : isInPensionRange ? "Séjour" : ""}
                         </div>
-
-                        <button
-                          type="button"
-                          onClick={() => setCalendarInfoDate((prev: string | null) => (prev === dateIso ? null : dateIso))}
-                          className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-slate-200 bg-white text-[10px] font-semibold text-slate-600"
-                          aria-label={`${dateIso} — détails du jour`}
-                          title="Détails du jour"
-                        >
-                          i
-                        </button>
+                        <div className="text-[10px] font-semibold uppercase tracking-[0.04em] text-slate-500">
+                          {serviceUi.statusLabel(serviceTone)}
+                        </div>
                       </div>
                     </button>
                   </div>
@@ -1424,7 +1461,7 @@ function SitterPublicProfileContent({
                 {(() => {
                   const row = monthDaysByDate.get(calendarInfoDate);
                   if (!row) {
-                    return <p className="mt-2 text-sm text-slate-600">Ouvre la vue jour pour voir les créneaux.</p>;
+                    return <p className="mt-2 text-sm text-slate-600">Sélectionnez une date disponible pour voir les créneaux.</p>;
                   }
                   const status = statusForSelectedService(row, slotsServiceType);
                   return (
@@ -1432,7 +1469,7 @@ function SitterPublicProfileContent({
                       <div>
                         {serviceUi.current.icon} {serviceUi.current.label}: <span className="font-semibold">{serviceUi.statusLabel(status)}</span>
                       </div>
-                      <p className="text-xs text-slate-500">Ouvre la vue jour pour voir les détails et les créneaux.</p>
+                      <p className="text-xs text-slate-500">Les disponibilités affichées ci-dessous correspondent au service actuellement sélectionné.</p>
                     </div>
                   );
                 })()}
@@ -1499,6 +1536,52 @@ function SitterPublicProfileContent({
                     ) : null}
                   </div>
                 ) : null}
+              </div>
+            ) : null}
+
+            {slotsServiceType !== "PENSION" && slotsDate ? (
+              <div className="mt-3 rounded-2xl border border-slate-200 bg-white p-4">
+                <p className="text-sm font-semibold text-slate-900">Créneaux disponibles</p>
+                <p className="mt-1 text-sm text-slate-600">
+                  {serviceUi.current.label} le {formatDateFr(slotsDate)}
+                </p>
+
+                {selectedSlotNotice ? <p className="mt-3 text-sm text-amber-900">{selectedSlotNotice}</p> : null}
+
+                {slotsLoading ? (
+                  <p className="mt-3 text-sm text-slate-600">Chargement des disponibilités…</p>
+                ) : slotsError ? (
+                  <div className="mt-3 rounded-2xl border border-rose-200 bg-rose-50 p-3">
+                    <p className="text-sm text-rose-700">Impossible de charger les créneaux pour cette date.</p>
+                  </div>
+                ) : daySlots.length ? (
+                  <div className="mt-3 grid gap-3">
+                    {daySlotsAgenda.map((group: any) => (
+                      <div key={group.key} className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                        <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-500">{group.label}</p>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {group.items.map((slot: any) => {
+                            const tone =
+                              slot.status === "AVAILABLE"
+                                ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                                : slot.status === "ON_REQUEST"
+                                  ? "border-amber-200 bg-amber-50 text-amber-800"
+                                  : "border-slate-200 bg-white text-slate-500";
+                            return (
+                              <div key={`${slot.startAt}-${slot.endAt}`} className={`rounded-xl border px-3 py-2 text-sm font-medium ${tone}`}>
+                                {formatTimeLabel(slot.startAt)} - {formatTimeLabel(slot.endAt)}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                    <p className="text-sm text-slate-600">Aucun créneau disponible n’est renseigné pour cette date.</p>
+                  </div>
+                )}
               </div>
             ) : null}
 
