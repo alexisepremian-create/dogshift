@@ -1326,7 +1326,7 @@ function SitterPublicProfileContent({
                         onRequest: "bg-white text-slate-900 ring-amber-400",
                         accent: "ring-sky-500/35",
                         range: "bg-sky-50 ring-sky-300",
-                        selected: "ring-sky-500",
+                        selected: "bg-sky-50 text-sky-950 ring-sky-500 shadow-[inset_0_0_0_1px_rgba(14,165,233,0.18)]",
                       }
                     : slotsServiceType === "DOGSITTING"
                       ? {
@@ -1334,14 +1334,14 @@ function SitterPublicProfileContent({
                           onRequest: "bg-white text-slate-900 ring-amber-400",
                           accent: "ring-violet-500/35",
                           range: "bg-violet-50 ring-violet-300",
-                          selected: "ring-violet-500",
+                          selected: "bg-violet-50 text-violet-950 ring-violet-500 shadow-[inset_0_0_0_1px_rgba(139,92,246,0.18)]",
                         }
                       : {
                           available: "bg-white text-slate-900 ring-emerald-400",
                           onRequest: "bg-white text-slate-900 ring-amber-400",
                           accent: "ring-emerald-500/35",
                           range: "bg-emerald-50 ring-emerald-300",
-                          selected: "ring-emerald-500",
+                          selected: "bg-emerald-50 text-emerald-950 ring-emerald-500 shadow-[inset_0_0_0_1px_rgba(16,185,129,0.18)]",
                         };
 
                 const tone =
@@ -1437,11 +1437,11 @@ function SitterPublicProfileContent({
                       aria-label={ariaLabel}
                     >
                       <div className="flex items-start justify-end">
-                        <span className="text-sm font-semibold leading-none">{day}</span>
+                        <span className={`text-sm font-semibold leading-none ${isCalendarSelected ? "text-current" : ""}`}>{day}</span>
                       </div>
 
                       <div className="flex items-end justify-start">
-                        <div className="text-[11px] font-semibold text-slate-500">
+                        <div className={`text-[11px] font-semibold ${isCalendarSelected ? "text-current/80" : "text-slate-500"}`}>
                           {isCalendarSelected ? "Sélectionné" : isInPensionRange ? "Séjour" : ""}
                         </div>
                       </div>
