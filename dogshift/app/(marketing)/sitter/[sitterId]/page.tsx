@@ -2481,6 +2481,9 @@ function SitterPublicProfileContent({
                           } else {
                             qp.set("date", slotsDate);
                           }
+                          if (isPreviewMode) {
+                            qp.set("mode", "preview");
+                          }
                           router.push(`/sitter/${encodeURIComponent(id)}/reservation?${qp.toString()}`);
                         }}
                         disabled={!canRequestBooking}

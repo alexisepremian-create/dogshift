@@ -1,18 +1,52 @@
 import { notFound } from "next/navigation";
+import { auth, currentUser } from "@clerk/nextjs/server";
 
 import ReservationClient from "./reservation-client";
 import { prisma } from "@/lib/prisma";
+import { ensureDbUserByClerkUserId } from "@/lib/auth/resolveDbUserId";
 
 export const runtime = "nodejs";
 
-export default async function ReservationPage({ params }: { params: Promise<{ id: string }> | { id: string } }) {
-  const resolvedParams = (await Promise.resolve(params)) as { id: string };
-  const sitterId = resolvedParams?.id;
+export default async function ReservationPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ sitterId: string }> | { sitterId: string };
+  searchParams?: Promise<Record<string, string | string[] | undefined>> | Record<string, string | string[] | undefined>;
+}) {
+  const resolvedParams = (await Promise.resolve(params)) as { sitterId: string };
+  const resolvedSearchParams = ((await Promise.resolve(searchParams)) ?? {}) as Record<string, string | string[] | undefined>;
+  const sitterId = resolvedParams?.sitterId;
+  const modeRaw = resolvedSearchParams?.mode;
+  const mode = typeof modeRaw === "string" ? modeRaw : Array.isArray(modeRaw) ? modeRaw[0] : "";
 
   if (!sitterId) notFound();
 
+  let allowPreviewAccess = false;
+  if (mode === "preview") {
+    const { userId } = await auth();
+    if (userId) {
+      const clerkUser = await currentUser();
+      const email = clerkUser?.primaryEmailAddress?.emailAddress ?? "";
+      if (email) {
+        const ensured = await ensureDbUserByClerkUserId({
+          clerkUserId: userId,
+          email,
+          name: typeof clerkUser?.fullName === "string" ? clerkUser.fullName : null,
+        });
+        if (ensured?.id) {
+          const ownSitterProfile = await prisma.sitterProfile.findUnique({
+            where: { userId: ensured.id },
+            select: { sitterId: true },
+          });
+          allowPreviewAccess = ownSitterProfile?.sitterId === sitterId;
+        }
+      }
+    }
+  }
+
   const sitterProfile = await prisma.sitterProfile.findFirst({
-    where: { sitterId, published: true },
+    where: allowPreviewAccess ? { sitterId } : { sitterId, published: true },
     select: {
       sitterId: true,
       displayName: true,
