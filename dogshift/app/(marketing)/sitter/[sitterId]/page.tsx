@@ -1482,6 +1482,15 @@ function SitterPublicProfileContent({
                   <div className="mt-3 rounded-2xl border border-rose-200 bg-rose-50 p-3">
                     <p className="text-sm text-rose-700">Impossible de charger les créneaux pour cette date.</p>
                   </div>
+                ) : dayDetails?.status === "ON_REQUEST" ? (
+                  <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 p-3">
+                    <p className="text-sm font-semibold text-amber-900">Sur demande</p>
+                    <p className="mt-1 text-sm text-amber-800">Ce service est disponible uniquement sur demande pour cette date.</p>
+                  </div>
+                ) : dayDetails?.status === "UNAVAILABLE" ? (
+                  <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                    <p className="text-sm font-semibold text-slate-900">Indisponible</p>
+                  </div>
                 ) : serviceSummary && !serviceSummary.hasExplicitTimeSlots ? (
                   <div className="mt-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-3">
                     <p className="text-sm font-semibold text-emerald-900">Disponible toute la journée</p>
