@@ -881,13 +881,13 @@ function SitterPublicProfileContent({
   );
 
   const isHostPreview = showHostChrome && isPreviewMode;
-  const shouldShowFinalizeModal =
+  const canEvaluateFinalizeModal =
     isHostPreview &&
     previewLoaded &&
     hostProfileCompletionLoaded &&
     isHostViewingOwnStable &&
-    typeof hostProfileCompletion === "number" &&
-    hostProfileCompletion < 100;
+    typeof hostProfileCompletion === "number";
+  const shouldShowFinalizeModal = canEvaluateFinalizeModal && hostProfileCompletion < 100;
 
   const [slotsServiceType, setSlotsServiceType] = useState<"PROMENADE" | "DOGSITTING" | "PENSION">("PROMENADE");
   const [slotsDate, setSlotsDate] = useState<string>("");
@@ -974,8 +974,20 @@ function SitterPublicProfileContent({
   const [monthRetryKey, setMonthRetryKey] = useState(0);
 
   useEffect(() => {
-    setFinalizeModalOpen(shouldShowFinalizeModal);
-  }, [shouldShowFinalizeModal]);
+    if (!canEvaluateFinalizeModal) {
+      setFinalizeModalOpen(false);
+      return;
+    }
+    if (hostProfileCompletion === 100) {
+      setFinalizeModalOpen(false);
+      return;
+    }
+    if (hostProfileCompletion < 100) {
+      setFinalizeModalOpen(true);
+      return;
+    }
+    setFinalizeModalOpen(false);
+  }, [canEvaluateFinalizeModal, hostProfileCompletion]);
 
   useEffect(() => {
     if (!sitter?.services?.length) return;
@@ -2061,7 +2073,7 @@ function SitterPublicProfileContent({
     <div className="relative grid gap-6 overflow-hidden" data-testid="sitter-public-profile">
       <SunCornerGlow variant="sitterPublicPreview" />
       <div className="relative z-10">
-        {shouldShowFinalizeModal ? (
+        {canEvaluateFinalizeModal ? (
           <Modal
             title="Finalisez votre profil"
             open={finalizeModalOpen}
