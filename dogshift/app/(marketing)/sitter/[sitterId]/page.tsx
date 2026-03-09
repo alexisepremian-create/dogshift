@@ -1231,6 +1231,11 @@ function SitterPublicProfileContent({
     return map;
   }, [monthDays]);
 
+  const selectedDayStatus = useMemo(() => {
+    if (!slotsDate) return null;
+    return statusForSelectedService(monthDaysByDate.get(slotsDate), slotsServiceType);
+  }, [monthDaysByDate, slotsDate, slotsServiceType]);
+
   const AvailabilityCalendar = ({
     monthMeta,
     monthLoading,
@@ -1482,12 +1487,12 @@ function SitterPublicProfileContent({
                   <div className="mt-3 rounded-2xl border border-rose-200 bg-rose-50 p-3">
                     <p className="text-sm text-rose-700">Impossible de charger les créneaux pour cette date.</p>
                   </div>
-                ) : dayDetails?.status === "ON_REQUEST" ? (
+                ) : selectedDayStatus === "ON_REQUEST" ? (
                   <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 p-3">
                     <p className="text-sm font-semibold text-amber-900">Sur demande</p>
                     <p className="mt-1 text-sm text-amber-800">Ce service est disponible uniquement sur demande pour cette date.</p>
                   </div>
-                ) : dayDetails?.status === "UNAVAILABLE" ? (
+                ) : selectedDayStatus === "UNAVAILABLE" ? (
                   <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 p-3">
                     <p className="text-sm font-semibold text-slate-900">Indisponible</p>
                   </div>
