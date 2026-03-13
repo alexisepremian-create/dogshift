@@ -476,7 +476,7 @@ export default function AccountBookingsPage() {
   }
 
   return (
-    <div className="relative grid gap-6 overflow-hidden" data-testid="account-bookings-page">
+    <div className="relative grid gap-6" data-testid="account-bookings-page">
       <SunCornerGlow variant="ownerBookings" />
 
       <div className="relative z-10">
