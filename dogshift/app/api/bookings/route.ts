@@ -4,6 +4,8 @@ import type { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { DOGSHIFT_COMMISSION_RATE } from "@/lib/commission";
 import { resolveDbUserId } from "@/lib/auth/resolveDbUserId";
+import { summarizeDayStatusFromSlots } from "@/lib/availability/dayStatus";
+import { checkBoardingRange, generateDaySlots, type ServiceType } from "@/lib/availability/slotEngine";
 
 export const runtime = "nodejs";
 
@@ -112,6 +114,13 @@ function hoursRoundedToHalf(startAtIso: string, endAtIso: string) {
   const hoursRaw = minutes / 60;
   const hoursRounded = Math.ceil(hoursRaw * 2) / 2;
   return Math.max(0.5, hoursRounded);
+}
+
+function serviceToAvailabilityType(service: string): ServiceType | null {
+  if (service === "Promenade") return "PROMENADE";
+  if (service === "Garde") return "DOGSITTING";
+  if (service === "Pension") return "PENSION";
+  return null;
 }
 
 export async function POST(req: NextRequest) {
@@ -223,7 +232,11 @@ export async function POST(req: NextRequest) {
     let totalChf: number | null = null;
     let startDateTime: Date | null = null;
     let endDateTime: Date | null = null;
-    let requiredAvailabilityKeys: string[] | null = null;
+    const availabilityServiceType = serviceToAvailabilityType(service);
+
+    if (!availabilityServiceType) {
+      return NextResponse.json({ ok: false, error: "INVALID_SERVICE" }, { status: 400 });
+    }
 
     if (isDailyService) {
       if (!hasDailyDates) {
@@ -233,7 +246,6 @@ export async function POST(req: NextRequest) {
       totalChf = unit * days;
       startDateTime = new Date(`${startDate}T00:00:00Z`);
       endDateTime = new Date(`${endDate}T00:00:00Z`);
-      requiredAvailabilityKeys = dateRangeIsoInclusive(startDate, endDate);
     } else if (hasHourlyDates) {
       const hours = hoursRoundedToHalf(startAt, endAt);
       if (hours === null) {
@@ -242,9 +254,6 @@ export async function POST(req: NextRequest) {
       totalChf = unit * hours;
       startDateTime = new Date(startAt);
       endDateTime = new Date(endAt);
-
-      const startLocalIso = formatZurichIsoDate(startDateTime);
-      requiredAvailabilityKeys = [startLocalIso];
     } else {
       return NextResponse.json({ ok: false, error: "INVALID_DATES" }, { status: 400 });
     }
@@ -257,19 +266,31 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, error: "INVALID_DATES" }, { status: 400 });
     }
 
-    // Availability gating: require sitter to have marked those dates as available.
-    if (!requiredAvailabilityKeys || requiredAvailabilityKeys.length === 0) {
-      return NextResponse.json({ ok: false, error: "INVALID_DATES" }, { status: 400 });
-    }
-    const availCount = await (prisma as any).availability.count({
-      where: {
+    if (availabilityServiceType === "PENSION") {
+      const boarding = await checkBoardingRange({
         sitterId,
-        isAvailable: true,
-        dateKey: { in: requiredAvailabilityKeys },
-      },
-    });
-    if (availCount !== requiredAvailabilityKeys.length) {
-      return NextResponse.json({ ok: false, error: "DATE_NOT_AVAILABLE" }, { status: 400 });
+        startDate,
+        endDate,
+        now: new Date(),
+      });
+      if (!boarding.ok || boarding.result.status === "UNAVAILABLE") {
+        return NextResponse.json({ ok: false, error: "DATE_NOT_AVAILABLE" }, { status: 400 });
+      }
+    } else {
+      const targetDateIso = formatZurichIsoDate(startDateTime);
+      const daySlots = await generateDaySlots({
+        sitterId,
+        serviceType: availabilityServiceType,
+        date: targetDateIso,
+        now: new Date(),
+      });
+      if (!daySlots.ok) {
+        return NextResponse.json({ ok: false, error: "DATE_NOT_AVAILABLE" }, { status: 400 });
+      }
+      const dayStatus = summarizeDayStatusFromSlots(daySlots.slots);
+      if (dayStatus === "UNAVAILABLE") {
+        return NextResponse.json({ ok: false, error: "DATE_NOT_AVAILABLE" }, { status: 400 });
+      }
     }
 
     // Anti double-booking: no overlapping bookings for same sitter.
