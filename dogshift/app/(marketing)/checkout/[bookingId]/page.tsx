@@ -166,7 +166,6 @@ function CheckoutForm({
 
   const expressCheckoutOptions = useMemo(
     () => ({
-      buttonHeight: 52,
       paymentMethods: {
         applePay: "always" as const,
         googlePay: "never" as const,
@@ -176,11 +175,6 @@ function CheckoutForm({
       },
       buttonType: {
         applePay: "buy" as const,
-      },
-      layout: {
-        maxColumns: 2,
-        maxRows: 1,
-        overflow: "never" as const,
       },
     }),
     []
@@ -195,7 +189,7 @@ function CheckoutForm({
         </div>
       </div>
       {ExpressCheckoutElement ? (
-        <div className="mt-5 rounded-[26px] [--stripe-express-checkout-gap:12px] max-sm:[--stripe-express-checkout-gap:10px]">
+        <div className="mt-5 w-full">
           <ExpressCheckoutElement
             options={expressCheckoutOptions}
             onConfirm={() => void onExpressConfirm()}
