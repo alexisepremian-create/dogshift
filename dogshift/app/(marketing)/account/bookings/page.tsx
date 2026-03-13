@@ -171,7 +171,9 @@ function matchesTab(b: BookingListItem, tab: TabKey) {
   const archived = Boolean(b.archivedAt);
   if (tab === "ARCHIVED") return archived;
   if (archived) return false;
-  if (tab === "ALL") return true;
+  if (tab === "ALL") {
+    return status === "PENDING_PAYMENT" || status === "DRAFT" || status === "PENDING_ACCEPTANCE" || status === "PAID" || status === "CONFIRMED";
+  }
   if (tab === "PENDING") {
     return status === "PENDING_PAYMENT" || status === "DRAFT" || status === "PENDING_ACCEPTANCE" || status === "PAID";
   }
@@ -289,6 +291,10 @@ export default function AccountBookingsPage() {
     return "ALL";
   }, [searchParams]);
 
+  useEffect(() => {
+    setMoreOpen(false);
+  }, [activeTab]);
+
   const initialSelectedFromQuery = useMemo(() => {
     const q = searchParams?.get("id");
     return typeof q === "string" && q.trim() ? q.trim() : "";
@@ -326,7 +332,9 @@ export default function AccountBookingsPage() {
   function selectTab(key: TabKey) {
     const params = new URLSearchParams(searchParams?.toString() ?? "");
     params.delete("status");
+    params.delete("pending");
     params.set("tab", key.toLowerCase());
+    params.delete("id");
     router.replace(`/account/bookings?${params.toString()}`);
     setMoreOpen(false);
   }
@@ -523,6 +531,7 @@ export default function AccountBookingsPage() {
                         <button
                           key={key}
                           type="button"
+                          onMouseDown={(event) => event.preventDefault()}
                           onClick={() => selectTab(key)}
                           role="menuitem"
                           className={
