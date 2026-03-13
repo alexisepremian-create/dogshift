@@ -293,8 +293,8 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Anti double-booking: no overlapping bookings for same sitter.
-    const blockingStatuses = ["PENDING_PAYMENT", "PENDING_ACCEPTANCE", "PAID", "CONFIRMED"] as const;
+    // Anti double-booking: only hard-block statuses that the shared availability engine treats as UNAVAILABLE.
+    const blockingStatuses = ["PAID", "CONFIRMED"] as const;
     const overlap = await (prisma as any).booking.findFirst({
       where: {
         sitterId,
