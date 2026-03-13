@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Check, PawPrint, Search } from "lucide-react";
+import { Check, ChevronDown, PawPrint, Search } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 function normalize(text: string) {
@@ -43,6 +43,10 @@ type SortKey = "rating_desc" | "verified_first" | "price_asc" | "price_desc" | "
 
 const SERVICE_OPTIONS = ["", "Promenade", "Garde", "Pension"] as const;
 const DOG_SIZE_OPTIONS = ["", "Petit", "Moyen", "Grand"] as const;
+const SELECT_BASE_CLASS =
+  "w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 pr-11 text-sm font-medium leading-5 text-slate-900 shadow-sm outline-none transition appearance-none [-webkit-appearance:none] [-moz-appearance:none] focus:border-[var(--dogshift-blue)] focus:ring-4 focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_85%)]";
+const SELECT_COMPACT_CLASS =
+  "rounded-2xl border border-slate-300 bg-white px-4 py-2 pr-11 text-sm font-semibold leading-5 text-slate-900 shadow-sm outline-none transition appearance-none [-webkit-appearance:none] [-moz-appearance:none] md:hover:bg-slate-50 focus:border-[var(--dogshift-blue)] focus:ring-4 focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_85%)]";
 
 const LOCATION_COORDS: Record<string, { lat: number; lng: number }> = {
   geneve: { lat: 46.2044, lng: 6.1432 },
@@ -337,34 +341,44 @@ export default function SearchResultsClient() {
               <label className="block text-xs font-semibold text-slate-700" htmlFor="filter-service">
                 Service
               </label>
-              <select
-                id="filter-service"
-                value={service}
-                onChange={(e) => setService(e.target.value as (typeof SERVICE_OPTIONS)[number])}
-                className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm font-medium text-slate-900 shadow-sm outline-none transition focus:border-[var(--dogshift-blue)] focus:ring-4 focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_85%)]"
-              >
-                <option value="">Tous</option>
-                <option value="Promenade">Promenade</option>
-                <option value="Garde">Garde</option>
-                <option value="Pension">Pension</option>
-              </select>
+              <div className="relative mt-2">
+                <select
+                  id="filter-service"
+                  value={service}
+                  onChange={(e) => setService(e.target.value as (typeof SERVICE_OPTIONS)[number])}
+                  className={SELECT_BASE_CLASS}
+                >
+                  <option value="">Tous</option>
+                  <option value="Promenade">Promenade</option>
+                  <option value="Garde">Garde</option>
+                  <option value="Pension">Pension</option>
+                </select>
+                <span className="pointer-events-none absolute inset-y-0 right-4 inline-flex items-center text-slate-400" aria-hidden="true">
+                  <ChevronDown className="h-4 w-4" />
+                </span>
+              </div>
             </div>
 
             <div>
               <label className="block text-xs font-semibold text-slate-700" htmlFor="filter-dogsize">
                 Taille du chien
               </label>
-              <select
-                id="filter-dogsize"
-                value={dogSize}
-                onChange={(e) => setDogSize(e.target.value as (typeof DOG_SIZE_OPTIONS)[number])}
-                className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm font-medium text-slate-900 shadow-sm outline-none transition focus:border-[var(--dogshift-blue)] focus:ring-4 focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_85%)]"
-              >
-                <option value="">Toutes</option>
-                <option value="Petit">Petit</option>
-                <option value="Moyen">Moyen</option>
-                <option value="Grand">Grand</option>
-              </select>
+              <div className="relative mt-2">
+                <select
+                  id="filter-dogsize"
+                  value={dogSize}
+                  onChange={(e) => setDogSize(e.target.value as (typeof DOG_SIZE_OPTIONS)[number])}
+                  className={SELECT_BASE_CLASS}
+                >
+                  <option value="">Toutes</option>
+                  <option value="Petit">Petit</option>
+                  <option value="Moyen">Moyen</option>
+                  <option value="Grand">Grand</option>
+                </select>
+                <span className="pointer-events-none absolute inset-y-0 right-4 inline-flex items-center text-slate-400" aria-hidden="true">
+                  <ChevronDown className="h-4 w-4" />
+                </span>
+              </div>
             </div>
 
             <div>
@@ -403,18 +417,23 @@ export default function SearchResultsClient() {
               <label className="text-sm font-semibold text-slate-700" htmlFor="filter-sort">
                 Trier
               </label>
-              <select
-                id="filter-sort"
-                value={sort}
-                onChange={(e) => setSort(e.target.value as SortKey)}
-                className="rounded-2xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-900 shadow-sm outline-none transition md:hover:bg-slate-50 focus:border-[var(--dogshift-blue)] focus:ring-4 focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_85%)]"
-              >
-                <option value="rating_desc">Note</option>
-                <option value="verified_first">Profil vérifié</option>
-                <option value="price_asc">Prix croissant</option>
-                <option value="price_desc">Prix décroissant</option>
-                <option value="distance_asc">Distance</option>
-              </select>
+              <div className="relative">
+                <select
+                  id="filter-sort"
+                  value={sort}
+                  onChange={(e) => setSort(e.target.value as SortKey)}
+                  className={SELECT_COMPACT_CLASS}
+                >
+                  <option value="rating_desc">Note</option>
+                  <option value="verified_first">Profil vérifié</option>
+                  <option value="price_asc">Prix croissant</option>
+                  <option value="price_desc">Prix décroissant</option>
+                  <option value="distance_asc">Distance</option>
+                </select>
+                <span className="pointer-events-none absolute inset-y-0 right-4 inline-flex items-center text-slate-400" aria-hidden="true">
+                  <ChevronDown className="h-4 w-4" />
+                </span>
+              </div>
             </div>
           </div>
         </div>
