@@ -166,6 +166,7 @@ function CheckoutForm({
 
   const expressCheckoutOptions = useMemo(
     () => ({
+      buttonHeight: 52,
       paymentMethods: {
         applePay: "always" as const,
         googlePay: "never" as const,
@@ -174,7 +175,13 @@ function CheckoutForm({
         paypal: "never" as const,
       },
       buttonType: {
-        applePay: "buy" as const,
+        applePay: "check-out" as const,
+        klarna: "pay" as const,
+      },
+      layout: {
+        maxColumns: 2,
+        maxRows: 2,
+        overflow: "auto" as const,
       },
     }),
     []
