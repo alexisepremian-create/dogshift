@@ -110,6 +110,7 @@ function CheckoutForm({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [expressReady, setExpressReady] = useState(false);
+  const [cardSectionOpen, setCardSectionOpen] = useState(false);
 
   async function onPay() {
     if (!stripe || !elements) return;
@@ -187,28 +188,58 @@ function CheckoutForm({
     []
   );
 
+  useEffect(() => {
+    if (!expressReady) {
+      setCardSectionOpen(true);
+      return;
+    }
+    setCardSectionOpen(false);
+  }, [expressReady]);
+
   return (
     <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)] sm:p-8">
       <div className="flex items-start justify-between gap-6">
         <div>
           <h2 className="text-lg font-semibold tracking-tight text-slate-900">Paiement sécurisé</h2>
-          <p className="mt-1 text-sm text-slate-600">Apple Pay, TWINT, cartes et Klarna selon votre appareil et votre région.</p>
+          <p className="mt-1 text-sm text-slate-600">Choisis le moyen de paiement le plus rapide pour finaliser ta réservation.</p>
         </div>
       </div>
-      {ExpressCheckoutElement ? (
-        <div className="mt-5 w-full">
-          <ExpressCheckoutElement
-            options={expressCheckoutOptions}
-            onConfirm={() => void onExpressConfirm()}
-            onReady={(event: any) => {
-              setExpressReady(Boolean(event?.availablePaymentMethods?.applePay));
-            }}
-          />
-        </div>
-      ) : null}
-      {expressReady ? <div className="mt-5 h-px w-full bg-slate-200" /> : null}
-      <div className="mt-5">
-        <PaymentElement />
+      <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-4 sm:p-5">
+        <p className="text-sm font-semibold text-slate-900">Paiement rapide</p>
+        <p className="mt-1 text-sm text-slate-600">Apple Pay, Klarna et autres wallets compatibles apparaissent automatiquement.</p>
+        {ExpressCheckoutElement ? (
+          <div className="mt-4 w-full">
+            <ExpressCheckoutElement
+              options={expressCheckoutOptions}
+              onConfirm={() => void onExpressConfirm()}
+              onReady={(event: any) => {
+                setExpressReady(Boolean(event?.availablePaymentMethods?.applePay));
+              }}
+            />
+          </div>
+        ) : null}
+      </div>
+
+      <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
+        <button
+          type="button"
+          onClick={() => setCardSectionOpen((current) => !current)}
+          className="flex w-full items-center justify-between gap-4 text-left"
+          aria-expanded={cardSectionOpen}
+        >
+          <div>
+            <p className="text-sm font-semibold text-slate-900">Ou payer par carte</p>
+            <p className="mt-1 text-sm text-slate-600">Carte bancaire et options proposées par Stripe dans le formulaire classique.</p>
+          </div>
+          <span className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
+            {cardSectionOpen ? "Masquer" : "Carte bancaire"}
+          </span>
+        </button>
+        {cardSectionOpen ? (
+          <div className="mt-4 border-t border-slate-200 pt-4">
+            <PaymentElement />
+          </div>
+        ) : null}
       </div>
       {error ? <p className="mt-4 text-sm font-medium text-rose-600">{error}</p> : null}
       <button
@@ -219,7 +250,7 @@ function CheckoutForm({
       >
         {submitting ? "Paiement…" : "Payer"}
       </button>
-      <p className="mt-3 text-xs text-slate-500">DogShift ne stocke jamais vos informations de carte. Les paiements sont traités par Stripe.</p>
+      <p className="mt-3 text-xs text-slate-500">Aucun débit imprévu. Le montant affiché correspond exactement à votre réservation.</p>
     </div>
   );
 }
