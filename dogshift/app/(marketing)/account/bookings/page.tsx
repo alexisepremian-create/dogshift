@@ -227,6 +227,7 @@ export default function AccountBookingsPage() {
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [moreOpen, setMoreOpen] = useState(false);
+  const [currentTab, setCurrentTab] = useState<TabKey>("ALL");
   const [moreMenuPosition, setMoreMenuPosition] = useState<{ top: number; left: number } | null>(null);
   const filtersBarRef = useRef<HTMLDivElement | null>(null);
   const moreMenuRef = useRef<HTMLDivElement | null>(null);
@@ -287,7 +288,7 @@ export default function AccountBookingsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLoaded, isSignedIn]);
 
-  const activeTab = useMemo<TabKey>(() => {
+  const activeTabFromQuery = useMemo<TabKey>(() => {
     const tabQ = searchParams?.get("tab");
     if (tabQ) return tabFromQuery(tabQ);
     const statusQ = searchParams?.get("status");
@@ -296,8 +297,12 @@ export default function AccountBookingsPage() {
   }, [searchParams]);
 
   useEffect(() => {
+    setCurrentTab(activeTabFromQuery);
+  }, [activeTabFromQuery]);
+
+  useEffect(() => {
     setMoreOpen(false);
-  }, [activeTab]);
+  }, [currentTab]);
 
   useEffect(() => {
     if (!moreOpen) return;
@@ -377,6 +382,7 @@ export default function AccountBookingsPage() {
   const primaryTabs = ["ALL", "PENDING", "CONFIRMED"] as const satisfies readonly TabKey[];
 
   function selectTab(key: TabKey) {
+    setCurrentTab(key);
     const params = new URLSearchParams(searchParams?.toString() ?? "");
     params.delete("status");
     params.delete("pending");
@@ -388,14 +394,14 @@ export default function AccountBookingsPage() {
 
   const rows = useMemo(() => {
     const filtered = bookings
-      .filter((b) => matchesTab(b, activeTab))
-      .filter((b) => (activeTab === "PENDING" ? matchesPendingSubfilter(b.status, pendingSubfilter) : true));
+      .filter((b) => matchesTab(b, currentTab))
+      .filter((b) => (currentTab === "PENDING" ? matchesPendingSubfilter(b.status, pendingSubfilter) : true));
     return filtered.slice().sort((a, b) => {
       const ta = new Date(a.createdAt).getTime();
       const tb = new Date(b.createdAt).getTime();
       return (Number.isNaN(tb) ? 0 : tb) - (Number.isNaN(ta) ? 0 : ta);
     });
-  }, [activeTab, bookings, pendingSubfilter]);
+  }, [bookings, currentTab, pendingSubfilter]);
 
   useEffect(() => {
     if (loading) return;
@@ -423,14 +429,14 @@ export default function AccountBookingsPage() {
       return;
     }
 
-    const currentTab = activeTab.toLowerCase();
+    const nextTab = currentTab.toLowerCase();
     const params = new URLSearchParams(searchParams?.toString() ?? "");
     params.delete("status");
-    params.set("tab", currentTab);
+    params.set("tab", nextTab);
     params.set("id", selectedId);
     router.replace(`/account/bookings?${params.toString()}`);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab, selectedId]);
+  }, [currentTab, selectedId]);
 
   const selected = useMemo(() => {
     if (!selectedId) return null;
@@ -527,7 +533,7 @@ export default function AccountBookingsPage() {
           <div className="overflow-x-auto overflow-y-visible">
             <div className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white p-2 shadow-sm">
             {primaryTabs.map((key) => {
-              const active = key === activeTab;
+              const active = key === currentTab;
               const count = counts[key] ?? 0;
               return (
                 <button
@@ -558,7 +564,7 @@ export default function AccountBookingsPage() {
                   onClick={() => setMoreOpen((current) => !current)}
                   className={
                     "inline-flex items-center gap-2 rounded-2xl border px-4 py-2 text-sm font-semibold transition" +
-                    ((activeTab === "CANCELLED" || activeTab === "ARCHIVED")
+                    ((currentTab === "CANCELLED" || currentTab === "ARCHIVED")
                       ? " border-slate-200 bg-slate-50 text-slate-900"
                       : " border-transparent bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-900")
                   }
@@ -587,7 +593,7 @@ export default function AccountBookingsPage() {
                 role="menuitem"
                 className={
                   "flex w-full items-center rounded-xl px-3 py-2 text-left text-sm font-semibold transition" +
-                  (activeTab === "CANCELLED" ? " bg-slate-50 text-slate-900" : " text-slate-600 hover:bg-slate-50 hover:text-slate-900")
+                  (currentTab === "CANCELLED" ? " bg-slate-50 text-slate-900" : " text-slate-600 hover:bg-slate-50 hover:text-slate-900")
                 }
               >
                 Annulées / refusées
@@ -599,7 +605,7 @@ export default function AccountBookingsPage() {
                 role="menuitem"
                 className={
                   "mt-1 flex w-full items-center rounded-xl px-3 py-2 text-left text-sm font-semibold transition" +
-                  (activeTab === "ARCHIVED" ? " bg-slate-50 text-slate-900" : " text-slate-600 hover:bg-slate-50 hover:text-slate-900")
+                  (currentTab === "ARCHIVED" ? " bg-slate-50 text-slate-900" : " text-slate-600 hover:bg-slate-50 hover:text-slate-900")
                 }
               >
                 Archivées
@@ -638,13 +644,13 @@ export default function AccountBookingsPage() {
         </div>
       ) : rows.length === 0 ? (
         <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)] sm:p-8">
-          <p className="text-sm font-semibold text-slate-900">{emptyCopy(activeTab)}</p>
+          <p className="text-sm font-semibold text-slate-900">{emptyCopy(currentTab)}</p>
           <p className="mt-2 text-sm text-slate-600">
-            {activeTab === "ALL"
+            {currentTab === "ALL"
               ? "Quand tu réserves un dogsitter, la demande apparaîtra ici automatiquement."
               : "Change d’onglet pour voir d’autres réservations ou démarre une nouvelle demande."}
           </p>
-          {activeTab === "ALL" ? (
+          {currentTab === "ALL" ? (
             <div className="mt-5">
               <Link
                 href="/search"
