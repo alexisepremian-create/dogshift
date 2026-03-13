@@ -493,7 +493,7 @@ export default function AccountBookingsPage() {
 
       <div className="sticky top-0 z-10 -mx-4 px-4 py-3 sm:-mx-6 sm:px-6 lg:mx-0 lg:px-0">
         <div className="relative overflow-visible">
-          <div className="overflow-x-auto pb-4">
+          <div className="overflow-x-auto overflow-y-visible">
             <div className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white p-2 shadow-sm">
             {primaryTabs.map((key) => {
               const active = key === activeTab;
@@ -540,7 +540,7 @@ export default function AccountBookingsPage() {
                 </button>
 
                 {moreOpen ? (
-                  <div className="absolute right-0 top-[calc(100%+8px)] z-30 min-w-[220px] rounded-2xl border border-slate-200 bg-white p-2 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.28)]" role="menu">
+                  <div className="absolute right-0 top-[calc(100%+8px)] z-[60] min-w-[220px] rounded-2xl border border-slate-200 bg-white p-2 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.35)]" role="menu">
                     <button
                       type="button"
                       onMouseDown={(event) => event.preventDefault()}
