@@ -447,6 +447,104 @@ function DogShiftTimePicker({
   );
 }
 
+function DogShiftDurationPicker({
+  value,
+  onChange,
+  label,
+  id,
+}: {
+  value: number | null;
+  onChange: (next: number | null) => void;
+  label: string;
+  id: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const options = useMemo(() => Array.from({ length: 12 }, (_, i) => i + 1), []);
+
+  const display = value ? `${value} h` : "";
+
+  return (
+    <div className="relative">
+      <label className="block text-xs font-semibold text-slate-600" htmlFor={id}>
+        {label}
+      </label>
+
+      <button
+        id={id}
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="mt-2 inline-flex w-full items-center justify-between gap-3 rounded-2xl border border-slate-300 bg-white px-4 py-3 text-left text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)]"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+      >
+        <span className={display ? "text-slate-900" : "text-slate-500"}>{display || "Choisir une durée"}</span>
+      </button>
+
+      {open ? (
+        <div className="absolute left-0 top-full z-20 mt-3 w-[min(360px,calc(100vw-32px))]">
+          <div className="rounded-[20px] border border-slate-200 bg-white p-3 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.18)]">
+            <div className="flex items-center justify-between gap-3 px-1 pb-2">
+              <button
+                type="button"
+                onClick={() => setOpen(false)}
+                className="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)]"
+              >
+                Fermer
+              </button>
+            </div>
+
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-2">
+              <div className="rounded-2xl border border-slate-200 bg-white p-2">
+                <p className="px-2 pb-2 text-[11px] font-semibold text-slate-500">Durée</p>
+                <div className="max-h-56 overflow-auto">
+                  <div className="grid gap-1">
+                    {options.map((hours) => {
+                      const selected = hours === value;
+                      return (
+                        <button
+                          key={hours}
+                          type="button"
+                          onClick={() => {
+                            onChange(hours);
+                            setOpen(false);
+                          }}
+                          className={
+                            "flex w-full items-center justify-center rounded-xl px-3 py-2 text-sm font-semibold transition duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)] " +
+                            (selected
+                              ? "bg-[color-mix(in_srgb,var(--dogshift-blue),white_85%)] text-[var(--dogshift-blue)]"
+                              : "text-slate-900 hover:bg-[color-mix(in_srgb,var(--dogshift-blue),white_92%)]")
+                          }
+                        >
+                          {hours} h
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              {value ? (
+                <div className="mt-3 grid gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onChange(null);
+                      setOpen(false);
+                    }}
+                    className="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition duration-150 hover:bg-slate-50"
+                  >
+                    Effacer
+                  </button>
+                </div>
+              ) : null}
+            </div>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function DogShiftDatePicker({
   value,
   onChange,
@@ -1091,28 +1189,15 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
                       setError(null);
                     }}
                   />
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-600" htmlFor="duration_hours">
-                      Durée
-                    </label>
-                    <select
-                      id="duration_hours"
-                      value={durationHours ?? ""}
-                      onChange={(e) => {
-                        const v = e.target.value ? Number(e.target.value) : null;
-                        setDurationHours(v && Number.isFinite(v) ? v : null);
-                        setError(null);
-                      }}
-                      className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition focus:border-[var(--dogshift-blue)] focus:ring-4 focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_85%)]"
-                    >
-                      <option value="">Choisir</option>
-                      {Array.from({ length: 12 }, (_, i) => i + 1).map((h) => (
-                        <option key={h} value={h}>
-                          {h} h
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                  <DogShiftDurationPicker
+                    id="duration_hours"
+                    label="Durée"
+                    value={durationHours}
+                    onChange={(next) => {
+                      setDurationHours(next);
+                      setError(null);
+                    }}
+                  />
                 </div>
 
                 <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
