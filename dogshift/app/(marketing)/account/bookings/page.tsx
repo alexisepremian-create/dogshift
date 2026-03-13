@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
 import { CalendarDays, MapPin, Trash2 } from "lucide-react";
@@ -227,6 +227,7 @@ export default function AccountBookingsPage() {
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [moreOpen, setMoreOpen] = useState(false);
+  const moreMenuRef = useRef<HTMLDivElement | null>(null);
 
   async function loadBookings() {
     setLoading(true);
@@ -294,6 +295,22 @@ export default function AccountBookingsPage() {
   useEffect(() => {
     setMoreOpen(false);
   }, [activeTab]);
+
+  useEffect(() => {
+    if (!moreOpen) return;
+
+    function onPointerDown(event: MouseEvent) {
+      const target = event.target;
+      if (!(target instanceof Node)) return;
+      if (moreMenuRef.current?.contains(target)) return;
+      setMoreOpen(false);
+    }
+
+    document.addEventListener("mousedown", onPointerDown);
+    return () => {
+      document.removeEventListener("mousedown", onPointerDown);
+    };
+  }, [moreOpen]);
 
   const initialSelectedFromQuery = useMemo(() => {
     const q = searchParams?.get("id");
@@ -476,7 +493,7 @@ export default function AccountBookingsPage() {
 
       <div className="sticky top-0 z-10 -mx-4 px-4 py-3 sm:-mx-6 sm:px-6 lg:mx-0 lg:px-0">
         <div className="relative overflow-visible">
-          <div className="overflow-x-auto pb-20">
+          <div className="overflow-x-auto pb-4">
             <div className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white p-2 shadow-sm">
             {primaryTabs.map((key) => {
               const active = key === activeTab;
@@ -503,7 +520,7 @@ export default function AccountBookingsPage() {
               );
             })}
 
-              <div className="relative shrink-0">
+              <div ref={moreMenuRef} className="relative shrink-0">
                 <button
                   type="button"
                   onClick={() => setMoreOpen((current) => !current)}
