@@ -2,10 +2,13 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { BadgeCheck, Briefcase, CheckCircle2, FileText, Handshake, Lock, MapPin, ShieldCheck, Umbrella, UserCheck, UserPlus, Wallet } from "lucide-react";
+import { BadgeCheck, Briefcase, CheckCircle2, ChevronDown, FileText, Handshake, Lock, MapPin, ShieldCheck, Umbrella, UserCheck, UserPlus, Wallet } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import MapPreview from "@/components/MapPreview";
+
+const HERO_SELECT_CLASS =
+  "mt-1 block w-full appearance-none bg-transparent pr-8 text-sm font-medium text-slate-900 outline-none [-webkit-appearance:none] [-moz-appearance:none]";
 
 function SearchBar({ embedded = false }: { embedded?: boolean }) {
   const router = useRouter();
@@ -40,27 +43,32 @@ function SearchBar({ embedded = false }: { embedded?: boolean }) {
         <label htmlFor="service" className="block text-xs font-semibold text-slate-700">
           Service
         </label>
-        <select
-          id="service"
-          name="service"
-          value={service}
-          onChange={(e) => {
-            setService(e.target.value as (typeof serviceOptions)[number]);
-            if (error) setError("");
-          }}
-          className="mt-1 block w-full bg-transparent text-sm font-medium text-slate-900 outline-none"
-        >
-          <option value="" disabled>
-            Choisir…
-          </option>
-          {serviceOptions
-            .filter((opt) => opt)
-            .map((opt) => (
-              <option key={opt} value={opt}>
-                {opt}
-              </option>
-            ))}
-        </select>
+        <div className="relative mt-1">
+          <select
+            id="service"
+            name="service"
+            value={service}
+            onChange={(e) => {
+              setService(e.target.value as (typeof serviceOptions)[number]);
+              if (error) setError("");
+            }}
+            className={HERO_SELECT_CLASS}
+          >
+            <option value="" disabled>
+              Choisir…
+            </option>
+            {serviceOptions
+              .filter((opt) => opt)
+              .map((opt) => (
+                <option key={opt} value={opt}>
+                  {opt}
+                </option>
+              ))}
+          </select>
+          <span className="pointer-events-none absolute inset-y-0 right-0 inline-flex items-center text-slate-400" aria-hidden="true">
+            <ChevronDown className="h-4 w-4" />
+          </span>
+        </div>
       </div>
 
       <div className="rounded-2xl px-3 py-2.5 sm:px-4 md:border-l md:border-slate-200">
