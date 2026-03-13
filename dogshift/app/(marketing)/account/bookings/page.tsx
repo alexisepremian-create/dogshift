@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
-import { CalendarDays } from "lucide-react";
+import { CalendarDays, MapPin, Trash2 } from "lucide-react";
 
 import SunCornerGlow from "@/components/SunCornerGlow";
 
@@ -81,6 +81,21 @@ function formatTimeOnly(iso: string) {
   const dt = new Date(iso);
   if (Number.isNaN(dt.getTime())) return "";
   return new Intl.DateTimeFormat("fr-CH", { hour: "2-digit", minute: "2-digit" }).format(dt);
+}
+
+function summaryDateRange(startDate: string | null, endDate: string | null) {
+  if (!startDate) return "—";
+  if (!endDate || endDate === startDate) return formatDateOnly(startDate);
+  return `${formatDateOnly(startDate)} → ${formatDateOnly(endDate)}`;
+}
+
+function summaryTimeRange(startDate: string | null, endDate: string | null) {
+  if (!startDate) return "—";
+  const isHourly = !isMidnightUtc(startDate) || !isMidnightUtc(endDate);
+  if (!isHourly) return "—";
+  const start = formatTimeOnly(startDate);
+  const end = endDate ? formatTimeOnly(endDate) : "";
+  return `${start}${end ? ` – ${end}` : ""}` || "—";
 }
 
 function isMidnightUtc(iso: string | null) {
@@ -207,6 +222,8 @@ export default function AccountBookingsPage() {
   const [mobileDetailOpen, setMobileDetailOpen] = useState(false);
   const [detail, setDetail] = useState<BookingDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   async function loadBookings() {
     setLoading(true);
@@ -382,6 +399,28 @@ export default function AccountBookingsPage() {
     };
   }, [selectedId]);
 
+  async function cancelPendingBooking(bookingId: string) {
+    if (!bookingId || deletingId) return;
+    setDeletingId(bookingId);
+    try {
+      const res = await fetch(`/api/account/bookings/${encodeURIComponent(bookingId)}/cancel`, { method: "PATCH" });
+      const payload = (await res.json()) as { ok?: boolean; booking?: { status?: string } };
+      if (!res.ok || !payload.ok) {
+        setError("Impossible de supprimer cette réservation.");
+        return;
+      }
+      setBookings((prev) => prev.map((b) => (b.id === bookingId ? { ...b, status: "CANCELLED" } : b)));
+      if (selectedId === bookingId) {
+        setDetail((current) => (current ? { ...current, status: "CANCELLED", canceledAt: new Date().toISOString() } : current));
+      }
+      setConfirmDeleteId(null);
+    } catch {
+      setError("Impossible de supprimer cette réservation.");
+    } finally {
+      setDeletingId(null);
+    }
+  }
+
   if (!isLoaded || !isSignedIn) return null;
   if (error) {
     return (
@@ -511,6 +550,7 @@ export default function AccountBookingsPage() {
                     const isHourly = !isMidnightUtc(b.startDate) || !isMidnightUtc(b.endDate);
                     const service = b.service?.trim() ? b.service.trim() : "Service";
                     const isCancelled = b.status === "CANCELLED" || b.status === "PAYMENT_FAILED";
+                    const canDelete = b.status === "PENDING_PAYMENT" || b.status === "DRAFT";
                     const isSelected = b.id === selectedId;
                     const blocking = pendingBlockingReason(b.status);
                     const location = sitterLocation(b.sitter);
@@ -529,53 +569,66 @@ export default function AccountBookingsPage() {
                     })();
 
                     return (
-                      <button
+                      <div
                         key={b.id}
-                        type="button"
-                        onClick={() => {
-                          setSelectedId(b.id);
-                          setMobileDetailOpen(true);
-                        }}
                         className={
-                          "w-full rounded-3xl border p-4 text-left shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)] transition" +
+                          "group relative rounded-3xl border shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)] transition" +
                           (isSelected
                             ? " border-[color-mix(in_srgb,var(--dogshift-blue),black_10%)] bg-[color-mix(in_srgb,var(--dogshift-blue),white_96%)]"
                             : " border-slate-200 bg-white hover:bg-slate-50") +
                           (isCancelled ? " opacity-90" : "")
                         }
                       >
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="flex min-w-0 items-start gap-3">
-                            <div className="relative mt-0.5 h-10 w-10 shrink-0 overflow-hidden rounded-2xl bg-slate-100">
-                              {b.sitter.avatarUrl && avatarIsSafe(b.sitter.avatarUrl) ? (
-                                <Image src={b.sitter.avatarUrl} alt={b.sitter.name} fill className="object-cover" sizes="40px" />
-                              ) : (
-                                <div className="flex h-full w-full items-center justify-center text-sm font-semibold text-slate-600">
-                                  {initialForName(b.sitter.name)}
-                                </div>
-                              )}
+                        {canDelete ? (
+                          <button
+                            type="button"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              setConfirmDeleteId(b.id);
+                            }}
+                            className="absolute right-3 top-3 z-10 inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-white/95 text-slate-500 opacity-0 shadow-sm transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600 group-hover:opacity-100 focus:opacity-100"
+                            aria-label="Supprimer la réservation"
+                          >
+                            <Trash2 className="h-4 w-4" aria-hidden="true" />
+                          </button>
+                        ) : null}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedId(b.id);
+                            setMobileDetailOpen(true);
+                          }}
+                          className="w-full rounded-3xl p-4 text-left"
+                        >
+                          <div className="flex items-start justify-between gap-3 pr-10">
+                            <div className="flex min-w-0 items-start gap-3">
+                              <div className="relative mt-0.5 h-10 w-10 shrink-0 overflow-hidden rounded-2xl bg-slate-100">
+                                {b.sitter.avatarUrl && avatarIsSafe(b.sitter.avatarUrl) ? (
+                                  <Image src={b.sitter.avatarUrl} alt={b.sitter.name} fill className="object-cover" sizes="40px" />
+                                ) : (
+                                  <div className="flex h-full w-full items-center justify-center text-sm font-semibold text-slate-600">
+                                    {initialForName(b.sitter.name)}
+                                  </div>
+                                )}
+                              </div>
+                              <div className="min-w-0">
+                                <p className="truncate text-sm font-semibold text-slate-900">{b.sitter.name}</p>
+                                <p className="mt-1 truncate text-xs text-slate-600">
+                                  {service} • {when}{location !== "—" ? ` • ${location}` : ""}
+                                </p>
+                                {blocking ? <p className="mt-2 truncate text-xs font-medium text-slate-500">{blocking}</p> : null}
+                              </div>
                             </div>
-                            <div className="min-w-0">
-                              <p className="truncate text-sm font-semibold text-slate-900">{b.sitter.name}</p>
-                              <p className="mt-1 truncate text-xs text-slate-600">
-                                {service} • {when}{location !== "—" ? ` • ${location}` : ""}
-                              </p>
-                              {blocking ? (
-                                <p className="mt-2 truncate text-xs font-medium text-slate-500">{blocking}</p>
-                              ) : (
-                                <p className="mt-2 truncate font-mono text-[11px] text-slate-400">{b.id}</p>
-                              )}
-                            </div>
-                          </div>
 
-                          <div className="shrink-0 text-right">
-                            <StatusPill status={uiStatusForBadge(b.status)} />
-                            <p className={isCancelled ? "mt-2 text-sm font-semibold text-slate-600" : "mt-2 text-sm font-semibold text-slate-900"}>
-                              {formatChfCents(b.amount)}
-                            </p>
+                            <div className="shrink-0 text-right">
+                              <StatusPill status={uiStatusForBadge(b.status)} />
+                              <p className={isCancelled ? "mt-2 text-sm font-semibold text-slate-600" : "mt-2 text-sm font-semibold text-slate-900"}>
+                                {formatChfCents(b.amount)}
+                              </p>
+                            </div>
                           </div>
-                        </div>
-                      </button>
+                        </button>
+                      </div>
                     );
                   })}
                 </div>
@@ -618,43 +671,41 @@ export default function AccountBookingsPage() {
               </div>
 
               <div className="mt-6 grid gap-4 sm:grid-cols-2">
-                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5 sm:p-6 sm:col-span-2">
                   <p className="text-sm font-semibold text-slate-900">Résumé</p>
-                  <div className="mt-3 space-y-2 text-sm">
-                    <div className="flex items-start justify-between gap-4">
+                  <div className="mt-5 grid gap-4 text-sm">
+                    <div className="flex items-start justify-between gap-6 border-b border-slate-200/80 pb-3">
                       <p className="text-slate-600">Service</p>
                       <p className="text-right font-semibold text-slate-900">{detail?.service ?? selected?.service ?? "—"}</p>
                     </div>
-                    <div className="flex items-start justify-between gap-4">
+                    <div className="flex items-start justify-between gap-6 border-b border-slate-200/80 pb-3">
                       <p className="text-slate-600">Statut</p>
                       <p className="text-right font-semibold text-slate-900">
                         {(() => {
                           const raw = detail?.status ?? selected?.status ?? "";
                           const blocking = pendingBlockingReason(raw);
-                          if (blocking === "Paiement requis") return "Paiement requis — action attendue de votre part";
-                          if (blocking === "En attente d’acceptation") return "Paiement effectué — en attente d’acceptation du sitter";
+                          if (blocking === "Paiement requis") return "Paiement requis";
+                          if (blocking === "En attente d’acceptation") return "En attente d’acceptation";
                           return statusLabel(raw).label;
                         })()}
                       </p>
                     </div>
-                    <div className="flex items-start justify-between gap-4">
+                    <div className="flex items-start justify-between gap-6 border-b border-slate-200/80 pb-3">
                       <p className="text-slate-600">Dates</p>
-                      <p className="text-right font-semibold text-slate-900">
-                        {selected?.startDate ? formatDateOnly(selected.startDate) : "—"}
-                        {selected?.endDate ? ` → ${formatDateOnly(selected.endDate)}` : ""}
+                      <p className="text-right font-semibold text-slate-900">{summaryDateRange(selected?.startDate ?? null, selected?.endDate ?? null)}</p>
+                    </div>
+                    <div className="flex items-start justify-between gap-6 border-b border-slate-200/80 pb-3">
+                      <p className="text-slate-600">Horaire</p>
+                      <p className="text-right font-semibold text-slate-900">{summaryTimeRange(selected?.startDate ?? null, selected?.endDate ?? null)}</p>
+                    </div>
+                    <div className="flex items-start justify-between gap-6">
+                      <p className="text-slate-600">Lieu</p>
+                      <p className="inline-flex items-center gap-2 text-right font-semibold text-slate-900">
+                        <MapPin className="h-4 w-4 shrink-0 text-slate-400" aria-hidden="true" />
+                        <span>{sitterLocation(detail?.sitter ?? selected?.sitter)}</span>
                       </p>
                     </div>
-                    <div className="flex items-start justify-between gap-4">
-                      <p className="text-slate-600">Lieu</p>
-                      <p className="text-right font-semibold text-slate-900">{sitterLocation(detail?.sitter ?? selected?.sitter)}</p>
-                    </div>
                   </div>
-                </div>
-
-                <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                  <p className="text-sm font-semibold text-slate-900">Référence</p>
-                  <p className="mt-3 break-all font-mono text-xs text-slate-600">{selectedId ?? "—"}</p>
-                  {detailLoading ? <p className="mt-3 text-xs font-medium text-slate-500">Chargement du détail…</p> : null}
                 </div>
               </div>
 
@@ -668,6 +719,33 @@ export default function AccountBookingsPage() {
           </div>
         </div>
       )}
+      {confirmDeleteId ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/35 px-4">
+          <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_30px_90px_-55px_rgba(2,6,23,0.45)] sm:p-7">
+            <h2 className="text-lg font-semibold tracking-tight text-slate-900">Supprimer cette réservation ?</h2>
+            <p className="mt-3 text-sm leading-relaxed text-slate-600">
+              Cette action retirera la réservation en attente de ta liste. Tu pourras refaire une demande plus tard si besoin.
+            </p>
+            <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={() => setConfirmDeleteId(null)}
+                className="inline-flex items-center justify-center rounded-2xl border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50"
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                onClick={() => void cancelPendingBooking(confirmDeleteId)}
+                disabled={deletingId === confirmDeleteId}
+                className="inline-flex items-center justify-center rounded-2xl bg-rose-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {deletingId === confirmDeleteId ? "Suppression…" : "Supprimer"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
       </div>
     </div>
   );
