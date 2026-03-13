@@ -1315,28 +1315,6 @@ function SitterPublicProfileContent({
           </div>
         ) : (
           <div className="mt-3">
-            <div className="rounded-2xl border border-slate-200 bg-white p-4" aria-label="Légende disponibilités">
-              <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-500">Légende</p>
-              <div className="mt-3 grid gap-3 text-xs text-slate-700 sm:grid-cols-3">
-                <div className="flex items-center gap-2 rounded-xl bg-slate-50 px-3 py-2">
-                  <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" aria-hidden="true" />
-                  <span>Disponible</span>
-                </div>
-                <div className="flex items-center gap-2 rounded-xl bg-slate-50 px-3 py-2">
-                  <span className="h-2.5 w-2.5 rounded-full bg-amber-500" aria-hidden="true" />
-                  <span>Sur demande</span>
-                </div>
-                <div className="flex items-center gap-2 rounded-xl bg-slate-50 px-3 py-2">
-                  <span className="h-2.5 w-2.5 rounded-full bg-slate-300" aria-hidden="true" />
-                  <span>Indisponible</span>
-                </div>
-              </div>
-
-              <div className="mt-4 grid gap-2 text-xs text-slate-600">
-                <p>La couleur du jour indique le statut global de disponibilité.</p>
-              </div>
-            </div>
-
             <div className="mt-5 grid grid-cols-7 gap-2 text-center text-[11px] font-semibold text-slate-500">
               <div>L</div>
               <div>M</div>
