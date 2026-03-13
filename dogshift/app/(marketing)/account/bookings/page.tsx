@@ -310,6 +310,7 @@ export default function AccountBookingsPage() {
     function onPointerDown(event: MouseEvent) {
       const target = event.target;
       if (!(target instanceof Node)) return;
+      if (moreButtonRef.current?.contains(target)) return;
       if (moreMenuRef.current?.contains(target)) return;
       setMoreOpen(false);
     }
