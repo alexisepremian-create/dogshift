@@ -47,6 +47,17 @@ function formatDateLabel(value?: string) {
   return d.toLocaleDateString("fr-CH", { weekday: "short", day: "2-digit", month: "short" });
 }
 
+function formatDateLongLabel(value?: string) {
+  if (!value) return "—";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return value;
+  return new Intl.DateTimeFormat("fr-CH", {
+    weekday: "long",
+    day: "2-digit",
+    month: "long",
+  }).format(d);
+}
+
 function formatDateTimeLabel(value?: string) {
   if (!value) return "—";
   const d = new Date(value);
@@ -58,6 +69,16 @@ function formatDateTimeLabel(value?: string) {
     hour: "2-digit",
     minute: "2-digit",
   }).format(d).replace(", ", " – ");
+}
+
+function formatTimeLabel(value?: string) {
+  if (!value) return "—";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return value;
+  return new Intl.DateTimeFormat("fr-CH", {
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(d);
 }
 
 function SummaryRow({ label, value }: { label: string; value: string }) {
@@ -72,11 +93,13 @@ function SummaryRow({ label, value }: { label: string; value: string }) {
 function CheckoutForm({
   bookingId,
   PaymentElement,
+  paymentElementOptions,
   useStripe,
   useElements,
 }: {
   bookingId: string;
   PaymentElement: any;
+  paymentElementOptions?: Record<string, unknown>;
   useStripe: () => StripeInstance | null;
   useElements: () => StripeElements | null;
 }) {
@@ -118,11 +141,11 @@ function CheckoutForm({
       <div className="flex items-start justify-between gap-6">
         <div>
           <h2 className="text-lg font-semibold tracking-tight text-slate-900">Paiement sécurisé</h2>
-          <p className="mt-1 text-sm text-slate-600">Cartes, Apple Pay et méthodes locales (selon Stripe).</p>
+          <p className="mt-1 text-sm text-slate-600">Cartes, Apple Pay et Klarna.</p>
         </div>
       </div>
       <div className="mt-5">
-        <PaymentElement />
+        <PaymentElement options={paymentElementOptions} />
       </div>
       {error ? <p className="mt-4 text-sm font-medium text-rose-600">{error}</p> : null}
       <button
@@ -153,7 +176,6 @@ export default function CheckoutBookingPage() {
 
   const [booking, setBooking] = useState<BookingDto | null>(null);
   const [clientSecret, setClientSecret] = useState<string | null>(null);
-  const [intentMeta, setIntentMeta] = useState<{ livemode: boolean; intentId: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -263,7 +285,6 @@ const stripeReact = await import("@stripe/react-stripe-js");
         }
 
         setClientSecret(piPayload.clientSecret);
-        setIntentMeta({ livemode: piPayload.livemode, intentId: piPayload.intentId });
         setLoading(false);
       } catch {
         if (canceled) return;
@@ -284,6 +305,16 @@ const stripeReact = await import("@stripe/react-stripe-js");
     if (!clientSecret) return null;
     return { clientSecret, appearance: stripeAppearance };
   }, [clientSecret, stripeAppearance]);
+  const paymentElementOptions = useMemo(
+    () => ({
+      paymentMethodOrder: ["card", "klarna"],
+      wallets: {
+        applePay: "auto" as const,
+        googlePay: "never" as const,
+      },
+    }),
+    []
+  );
 
   const serviceFeeCents = useMemo(() => {
     if (!booking) return 0;
@@ -305,6 +336,18 @@ const stripeReact = await import("@stripe/react-stripe-js");
     }
     return formatDateLabel(booking.endDate);
   }, [booking]);
+
+  const bookingDateLabel = useMemo(() => {
+    if (!booking?.startDate) return "—";
+    return formatDateLongLabel(booking.startDate);
+  }, [booking]);
+
+  const bookingTimeRangeLabel = useMemo(() => {
+    if (!booking?.startDate || !booking?.endDate) return "—";
+    return `${formatTimeLabel(booking.startDate)} – ${formatTimeLabel(booking.endDate)}`;
+  }, [booking]);
+
+  const isHourlyBooking = booking?.service === "Promenade" || booking?.service === "Garde";
 
   const ElementsComp = stripeUi?.Elements as any;
   const PaymentElementComp = stripeUi?.PaymentElement as any;
@@ -362,9 +405,17 @@ const stripeReact = await import("@stripe/react-stripe-js");
                   <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-5">
                     <SummaryRow label="Service" value={booking.service ?? "—"} />
                     <div className="mt-3 h-px w-full bg-slate-200" />
-                    <SummaryRow label="Début" value={bookingStartLabel} />
-                    <div className="mt-2" />
-                    <SummaryRow label="Fin" value={bookingEndLabel} />
+                    {isHourlyBooking ? (
+                      <div className="mt-4 space-y-4">
+                        <SummaryRow label="Date" value={bookingDateLabel} />
+                        <SummaryRow label="Heure" value={bookingTimeRangeLabel} />
+                      </div>
+                    ) : (
+                      <div className="mt-4 space-y-4">
+                        <SummaryRow label="Début" value={bookingStartLabel} />
+                        <SummaryRow label="Fin" value={bookingEndLabel} />
+                      </div>
+                    )}
                   </div>
 
                   <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-5">
@@ -393,6 +444,7 @@ const stripeReact = await import("@stripe/react-stripe-js");
                   <CheckoutForm
                     bookingId={booking.id}
                     PaymentElement={PaymentElementComp}
+                    paymentElementOptions={paymentElementOptions}
                     useStripe={useStripeHook}
                     useElements={useElementsHook}
                   />
