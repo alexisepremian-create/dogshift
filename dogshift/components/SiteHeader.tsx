@@ -278,12 +278,12 @@ export default function SiteHeader() {
               href="/devenir-dogsitter"
               onClick={() => setBecomeMenuOpen(false)}
               onFocus={() => setBecomeMenuOpen(true)}
-              className={navLinkClassName + " inline-flex items-center gap-2"}
+              className={navLinkClassName.replace(" hover:underline hover:underline-offset-4", "") + " inline-flex items-center gap-2"}
               aria-haspopup="menu"
               aria-expanded={becomeMenuOpen}
             >
-              Devenir dogsitter
-              <span aria-hidden="true" className={"text-slate-400 transition" + (becomeMenuOpen ? " text-slate-700" : "")}>
+              <span className="hover:underline hover:underline-offset-4">Devenir dogsitter</span>
+              <span aria-hidden="true" className={"text-slate-400 no-underline transition" + (becomeMenuOpen ? " text-slate-700" : "")}>
                 ▾
               </span>
             </Link>
