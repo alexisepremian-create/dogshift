@@ -789,15 +789,6 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
     return Boolean(dateStart && startTime && durationHours && selectedUnitPrice);
   }, [dateEnd, dateStart, durationHours, selectedService, selectedUnitPrice, startTime, unit]);
 
-  const isDateDisabled = useMemo(() => {
-    return (iso: string) => {
-      if (!iso) return true;
-      if (iso < todayIso) return true;
-      if (!availabilityLoaded) return true;
-      return !availableDates.has(iso);
-    };
-  }, [availabilityLoaded, availableDates, todayIso]);
-
   const getCalendarDayStatus = useMemo(() => {
     return (iso: string): ServiceDayStatus => {
       if (!calendarStatusService) return "UNAVAILABLE";
@@ -806,6 +797,15 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
       return serviceStatusForLabel(row, calendarStatusService);
     };
   }, [calendarMonthStatuses, calendarStatusService, todayIso]);
+
+  const isDateDisabled = useMemo(() => {
+    return (iso: string) => {
+      if (!iso) return true;
+      if (iso < todayIso) return true;
+      const status = getCalendarDayStatus(iso);
+      return !(status === "AVAILABLE" || status === "ON_REQUEST");
+    };
+  }, [getCalendarDayStatus, todayIso]);
 
   const endTime = useMemo(() => {
     if (!startTime || !durationHours) return null;
