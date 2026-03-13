@@ -256,7 +256,7 @@ export default function HostDashboardPage() {
           <p className="text-sm font-semibold text-slate-900">Tableau de bord</p>
           <p className="mt-2 text-sm text-slate-600">Ton profil hôte n’est pas encore disponible.</p>
           <div className="mt-4">
-            <Link href="/become-sitter" className="text-sm font-semibold text-[var(--dogshift-blue)]">
+            <Link href="/devenir-dogsitter" className="text-sm font-semibold text-[var(--dogshift-blue)]">
               Créer mon profil hôte
             </Link>
           </div>

@@ -24,7 +24,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
   }
 
   if (!hostUser.sitterId) {
-    redirect("/become-sitter");
+    redirect("/devenir-dogsitter");
   }
 
   return (

@@ -307,7 +307,7 @@ export default function SiteHeader() {
                 <div className="h-px w-full bg-slate-200" />
                 <Link
                   role="menuitem"
-                  href="/become-sitter"
+                  href="/devenir-dogsitter"
                   onClick={() => setBecomeMenuOpen(false)}
                   className="flex items-center px-4 py-3 text-sm font-semibold text-slate-900 hover:bg-slate-50"
                 >
@@ -387,7 +387,7 @@ export default function SiteHeader() {
                   <span className="min-w-0 flex-1 truncate">Candidater</span>
                 </Link>
                 <Link
-                  href="/become-sitter"
+                  href="/devenir-dogsitter"
                   onClick={() => setMobileNavOpen(false)}
                   className="flex items-center gap-3 rounded-2xl px-4 py-3 text-base font-semibold text-slate-900 ring-1 ring-slate-200"
                 >

@@ -438,7 +438,7 @@ function HeroPetsittingStyle() {
                   Trouver un dog sitter
                 </Link>
                 <Link
-                  href="/become-sitter"
+                  href="/devenir-dogsitter"
                   className="inline-flex items-center justify-center rounded-2xl border border-slate-300 bg-white px-6 py-3 text-sm font-semibold text-slate-900 shadow-sm transition-all duration-200 ease-out hover:-translate-y-0.5 hover:bg-slate-50 hover:shadow-[0_14px_40px_-26px_rgba(2,6,23,0.18)] active:translate-y-0 active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)]"
                 >
                   Devenir dogsitter
@@ -544,7 +544,7 @@ function HowItWorks() {
               </div>
 
               <Link
-                href="/become-sitter"
+                href="/devenir-dogsitter"
                 className="group text-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--dogshift-blue)]"
               >
                 <div className="relative z-10 mx-auto flex h-16 w-16 items-center justify-center">
@@ -898,7 +898,7 @@ export default function Home() {
                     Trouver un dogsitter
                   </Link>
                   <Link
-                    href="/become-sitter"
+                    href="/devenir-dogsitter"
                     className="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white px-6 py-3 text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)]"
                   >
                     Devenir dogsitter

@@ -148,7 +148,7 @@ export const proxy = clerkMiddleware(async (auth, req) => {
       }
 
       const url = req.nextUrl.clone();
-      url.pathname = "/become-sitter";
+      url.pathname = "/devenir-dogsitter";
       url.search = "";
       return addLockHeaders(NextResponse.redirect(url));
     }

@@ -1132,7 +1132,7 @@ export default function AvailabilityStudioPage() {
         <p className="text-sm font-semibold text-slate-900">Disponibilités</p>
         <p className="mt-2 text-sm text-slate-600">Crée ton profil sitter pour configurer ton agenda.</p>
         <div className="mt-4">
-          <Link href="/become-sitter" className="text-sm font-semibold text-[var(--dogshift-blue)]">
+          <Link href="/devenir-dogsitter" className="text-sm font-semibold text-[var(--dogshift-blue)]">
             Devenir sitter
           </Link>
         </div>

@@ -11,7 +11,7 @@ export default async function BecomeSitterFormPage() {
   const c = await cookies();
   const unlocked = c.get("ds_invite_unlocked")?.value === "1";
   if (!unlocked) {
-    redirect("/become-sitter");
+    redirect("/devenir-dogsitter");
   }
 
   const { userId } = await auth();
@@ -52,7 +52,7 @@ export default async function BecomeSitterFormPage() {
                       Aller à mon espace
                     </Link>
                     <Link
-                      href="/become-sitter"
+                      href="/devenir-dogsitter"
                       className="inline-flex w-full items-center justify-center rounded-2xl border border-slate-300 bg-white px-6 py-3 text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50"
                     >
                       Retour
