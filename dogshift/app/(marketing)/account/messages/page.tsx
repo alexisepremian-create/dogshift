@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
-import { MessageCircle, RefreshCw } from "lucide-react";
+import { Maximize2, Minimize2, MessageCircle, RefreshCw } from "lucide-react";
 
 import SunCornerGlow from "@/components/SunCornerGlow";
 
@@ -86,6 +86,7 @@ export default function AccountMessagesPage() {
   const [threadError, setThreadError] = useState<string | null>(null);
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
 
   useEffect(() => {
     if (!isLoaded) return;
@@ -359,8 +360,13 @@ export default function AccountMessagesPage() {
         </div>
       ) : (
         <div className="h-[calc(100vh-140px)] overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)]">
-          <div className="grid h-full gap-0 lg:grid-cols-[360px_1fr]">
-            <section className="flex h-full flex-col p-4 sm:p-6">
+          <div className={"grid h-full gap-0 transition-all duration-300 ease-out " + (isExpanded ? "lg:grid-cols-[0px_1fr]" : "lg:grid-cols-[360px_1fr]")}>
+            <section
+              className={
+                "flex h-full flex-col p-4 transition-all duration-300 ease-out sm:p-6 " +
+                (isExpanded ? "hidden lg:flex lg:w-0 lg:overflow-hidden lg:border-r-0 lg:p-0 lg:opacity-0" : "lg:border-r lg:border-slate-200 lg:opacity-100")
+              }
+            >
               <p className="px-2 pb-3 text-xs font-semibold text-slate-600">Boîte de réception</p>
               <div className="min-h-0 flex-1 space-y-2 overflow-y-auto">
                 {rows.map((c) => {
@@ -460,6 +466,15 @@ export default function AccountMessagesPage() {
                         ) : null}
                       </div>
                     </div>
+                    <button
+                      type="button"
+                      onClick={() => setIsExpanded((current) => !current)}
+                      className="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white p-2 text-slate-600 shadow-sm transition hover:bg-slate-50 hover:text-slate-900"
+                      aria-label={isExpanded ? "Réduire la conversation" : "Agrandir la conversation"}
+                      title={isExpanded ? "Réduire" : "Agrandir"}
+                    >
+                      {isExpanded ? <Minimize2 className="h-4 w-4" aria-hidden="true" /> : <Maximize2 className="h-4 w-4" aria-hidden="true" />}
+                    </button>
                   </div>
 
                   <div className="flex min-h-0 flex-1 flex-col p-5">
