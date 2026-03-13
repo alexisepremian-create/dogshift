@@ -227,7 +227,10 @@ export default function AccountBookingsPage() {
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [moreOpen, setMoreOpen] = useState(false);
+  const [moreMenuPosition, setMoreMenuPosition] = useState<{ top: number; left: number } | null>(null);
+  const filtersBarRef = useRef<HTMLDivElement | null>(null);
   const moreMenuRef = useRef<HTMLDivElement | null>(null);
+  const moreButtonRef = useRef<HTMLButtonElement | null>(null);
 
   async function loadBookings() {
     setLoading(true);
@@ -309,6 +312,34 @@ export default function AccountBookingsPage() {
     document.addEventListener("mousedown", onPointerDown);
     return () => {
       document.removeEventListener("mousedown", onPointerDown);
+    };
+  }, [moreOpen]);
+
+  useEffect(() => {
+    if (!moreOpen) {
+      setMoreMenuPosition(null);
+      return;
+    }
+
+    function updateMenuPosition() {
+      const container = filtersBarRef.current;
+      const button = moreButtonRef.current;
+      if (!container || !button) return;
+
+      const containerRect = container.getBoundingClientRect();
+      const buttonRect = button.getBoundingClientRect();
+      const menuWidth = 220;
+      const left = Math.max(0, buttonRect.right - containerRect.left - menuWidth);
+      const top = buttonRect.bottom - containerRect.top + 8;
+      setMoreMenuPosition({ top, left });
+    }
+
+    updateMenuPosition();
+    window.addEventListener("resize", updateMenuPosition);
+    window.addEventListener("scroll", updateMenuPosition, true);
+    return () => {
+      window.removeEventListener("resize", updateMenuPosition);
+      window.removeEventListener("scroll", updateMenuPosition, true);
     };
   }, [moreOpen]);
 
@@ -492,7 +523,7 @@ export default function AccountBookingsPage() {
         </div>
 
       <div className="sticky top-0 z-10 -mx-4 px-4 py-3 sm:-mx-6 sm:px-6 lg:mx-0 lg:px-0">
-        <div className="relative overflow-visible">
+        <div ref={filtersBarRef} className="relative overflow-visible">
           <div className="overflow-x-auto overflow-y-visible">
             <div className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white p-2 shadow-sm">
             {primaryTabs.map((key) => {
@@ -522,6 +553,7 @@ export default function AccountBookingsPage() {
 
               <div ref={moreMenuRef} className="relative shrink-0">
                 <button
+                  ref={moreButtonRef}
                   type="button"
                   onClick={() => setMoreOpen((current) => !current)}
                   className={
@@ -538,38 +570,42 @@ export default function AccountBookingsPage() {
                     {moreOpen ? "⌃" : "⌄"}
                   </span>
                 </button>
-
-                {moreOpen ? (
-                  <div className="absolute right-0 top-[calc(100%+8px)] z-[60] min-w-[220px] rounded-2xl border border-slate-200 bg-white p-2 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.35)]" role="menu">
-                    <button
-                      type="button"
-                      onMouseDown={(event) => event.preventDefault()}
-                      onClick={() => selectTab("CANCELLED")}
-                      role="menuitem"
-                      className={
-                        "flex w-full items-center rounded-xl px-3 py-2 text-left text-sm font-semibold transition" +
-                        (activeTab === "CANCELLED" ? " bg-slate-50 text-slate-900" : " text-slate-600 hover:bg-slate-50 hover:text-slate-900")
-                      }
-                    >
-                      Annulées / refusées
-                    </button>
-                    <button
-                      type="button"
-                      onMouseDown={(event) => event.preventDefault()}
-                      onClick={() => selectTab("ARCHIVED")}
-                      role="menuitem"
-                      className={
-                        "mt-1 flex w-full items-center rounded-xl px-3 py-2 text-left text-sm font-semibold transition" +
-                        (activeTab === "ARCHIVED" ? " bg-slate-50 text-slate-900" : " text-slate-600 hover:bg-slate-50 hover:text-slate-900")
-                      }
-                    >
-                      Archivées
-                    </button>
-                  </div>
-                ) : null}
               </div>
             </div>
           </div>
+
+          {moreOpen && moreMenuPosition ? (
+            <div
+              className="absolute z-[80] w-[220px] rounded-2xl border border-slate-200 bg-white p-2 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.35)]"
+              role="menu"
+              style={{ top: moreMenuPosition.top, left: moreMenuPosition.left }}
+            >
+              <button
+                type="button"
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => selectTab("CANCELLED")}
+                role="menuitem"
+                className={
+                  "flex w-full items-center rounded-xl px-3 py-2 text-left text-sm font-semibold transition" +
+                  (activeTab === "CANCELLED" ? " bg-slate-50 text-slate-900" : " text-slate-600 hover:bg-slate-50 hover:text-slate-900")
+                }
+              >
+                Annulées / refusées
+              </button>
+              <button
+                type="button"
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => selectTab("ARCHIVED")}
+                role="menuitem"
+                className={
+                  "mt-1 flex w-full items-center rounded-xl px-3 py-2 text-left text-sm font-semibold transition" +
+                  (activeTab === "ARCHIVED" ? " bg-slate-50 text-slate-900" : " text-slate-600 hover:bg-slate-50 hover:text-slate-900")
+                }
+              >
+                Archivées
+              </button>
+            </div>
+          ) : null}
         </div>
       </div>
 
