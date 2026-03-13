@@ -224,6 +224,7 @@ export default function AccountBookingsPage() {
   const [detailLoading, setDetailLoading] = useState(false);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [moreOpen, setMoreOpen] = useState(false);
 
   async function loadBookings() {
     setLoading(true);
@@ -318,6 +319,17 @@ export default function AccountBookingsPage() {
     }
     return base;
   }, [bookings]);
+
+  const primaryTabs = ["ALL", "PENDING", "CONFIRMED"] as const satisfies readonly TabKey[];
+  const secondaryTabs = ["CANCELLED", "ARCHIVED"] as const satisfies readonly TabKey[];
+
+  function selectTab(key: TabKey) {
+    const params = new URLSearchParams(searchParams?.toString() ?? "");
+    params.delete("status");
+    params.set("tab", key.toLowerCase());
+    router.replace(`/account/bookings?${params.toString()}`);
+    setMoreOpen(false);
+  }
 
   const rows = useMemo(() => {
     const filtered = bookings
@@ -456,20 +468,15 @@ export default function AccountBookingsPage() {
 
       <div className="sticky top-0 z-10 -mx-4 px-4 py-3 sm:-mx-6 sm:px-6 lg:mx-0 lg:px-0">
         <div className="overflow-x-auto">
-          <div className="inline-flex gap-2 rounded-2xl border border-slate-200 bg-white p-2 shadow-sm">
-            {(["ALL", "PENDING", "CONFIRMED", "CANCELLED", "ARCHIVED"] as TabKey[]).map((key) => {
+          <div className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white p-2 shadow-sm">
+            {primaryTabs.map((key) => {
               const active = key === activeTab;
               const count = counts[key] ?? 0;
               return (
                 <button
                   key={key}
                   type="button"
-                  onClick={() => {
-                    const params = new URLSearchParams(searchParams?.toString() ?? "");
-                    params.delete("status");
-                    params.set("tab", key.toLowerCase());
-                    router.replace(`/account/bookings?${params.toString()}`);
-                  }}
+                  onClick={() => selectTab(key)}
                   className={
                     "inline-flex items-center gap-2 rounded-2xl border px-4 py-2 text-sm font-semibold transition" +
                     (active
@@ -486,6 +493,48 @@ export default function AccountBookingsPage() {
                 </button>
               );
             })}
+
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setMoreOpen((current) => !current)}
+                className={
+                  "inline-flex items-center gap-2 rounded-2xl border px-4 py-2 text-sm font-semibold transition" +
+                  ((activeTab === "CANCELLED" || activeTab === "ARCHIVED")
+                    ? " border-slate-200 bg-slate-50 text-slate-900"
+                    : " border-transparent bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-900")
+                }
+                aria-expanded={moreOpen}
+              >
+                Plus
+                <span className="text-base leading-none text-slate-400" aria-hidden="true">
+                  {moreOpen ? "⌃" : "⌄"}
+                </span>
+              </button>
+
+              {moreOpen ? (
+                <div className="absolute right-0 top-[calc(100%+8px)] z-20 min-w-[220px] rounded-2xl border border-slate-200 bg-white p-2 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.28)]">
+                  <div className="flex flex-col gap-1">
+                    {secondaryTabs.map((key) => {
+                      const active = key === activeTab;
+                      return (
+                        <button
+                          key={key}
+                          type="button"
+                          onClick={() => selectTab(key)}
+                          className={
+                            "rounded-xl px-3 py-2 text-left text-sm font-semibold transition" +
+                            (active ? " bg-slate-50 text-slate-900" : " text-slate-600 hover:bg-slate-50 hover:text-slate-900")
+                          }
+                        >
+                          {tabLabel(key)}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : null}
+            </div>
           </div>
         </div>
       </div>
