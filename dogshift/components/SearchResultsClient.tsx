@@ -392,7 +392,7 @@ export default function SearchResultsClient() {
               <p className="mt-2 text-xs text-slate-400">Filtre par dates disponible prochainement</p>
             </div>
           </div>
-
+  
           <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm text-slate-600">
               <span className="font-semibold text-slate-900">{filtered.length}</span>
@@ -434,82 +434,79 @@ export default function SearchResultsClient() {
                 const cheapest = candidates.length ? candidates[0] : null;
                 const cheapestUnit = cheapest?.svc === "Pension" ? " / jour" : " / heure";
                 const cheapestPrice = cheapest?.price ?? sitter.pricePerDay;
+                const sitterHref = `/sitter/${sitter.id}?mode=public`;
 
                 return (
-              <article
-                key={sitter.id}
-                className="group relative flex h-full flex-col rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_12px_40px_-28px_rgba(2,6,23,0.3)] transition will-change-transform md:hover:-translate-y-0.5 md:hover:shadow-[0_18px_60px_-40px_rgba(2,6,23,0.45)]"
-              >
-                {sitter.verified ? (
-                  <div className="absolute right-5 top-5 z-10 inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[11px] font-semibold text-emerald-800 shadow-sm">
-                    <Check className="h-3.5 w-3.5" aria-hidden="true" />
-                    Vérifié
-                  </div>
-                ) : null}
-
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex items-start gap-4">
-                    <img
-                      src={sitter.avatarUrl}
-                      alt={sitter.name}
-                      className="h-12 w-12 shrink-0 rounded-full object-cover ring-1 ring-slate-200"
-                      loading="lazy"
-                      referrerPolicy="no-referrer"
-                    />
-                    <div>
-                      <h2 className="text-base font-semibold text-slate-900">
-                        <Link href={`/sitter/${sitter.id}?mode=public`} className="md:hover:underline">
-                          {sitter.name}
-                        </Link>
-                      </h2>
-                      <p className="mt-1 text-sm text-slate-600">{sitter.city}</p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mt-4 flex min-h-[30px] flex-nowrap items-center gap-2 overflow-hidden">
-                  <span className="inline-flex shrink-0 items-center rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-700">
-                    Annulation flexible
-                  </span>
-                  {sitter.services.map((svc) => (
-                    <span
-                      key={svc}
-                      className="inline-flex shrink-0 items-center rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-700"
-                    >
-                      {svc}
-                    </span>
-                  ))}
-                </div>
-
-                <div className="mt-4 space-y-2 text-sm text-slate-600">
-                  <p className="flex items-center gap-1 leading-none">
-                    <span className="inline-flex items-center gap-1 font-medium leading-none text-slate-900">
-                      <StarIcon className="h-4 w-4 text-[#F5B301]" />
-                      {formatRatingMaybe(sitter.rating)}
-                    </span>
-                    <span className="text-slate-500 leading-none">({sitter.reviewCount} avis)</span>
-                  </p>
-                  <p>
-                    <span className="font-medium text-slate-900">Répond {sitter.responseTime}</span>
-                  </p>
-                  <p className="min-h-[60px] text-slate-600 line-clamp-3">{sitter.bio}</p>
-                </div>
-
-                <div className="mt-auto flex items-center justify-between pt-5">
-                  <p className="text-sm text-slate-600">
-                    <span className="text-slate-500">À partir de </span>
-                    <span className="text-base font-semibold text-slate-900">CHF {cheapestPrice}</span>
-                    <span className="text-slate-500">{cheapestUnit}</span>
-                  </p>
                   <Link
-                    href={`/sitter/${sitter.id}?mode=public`}
-                    className="inline-flex items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition md:hover:bg-[var(--dogshift-blue-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)]"
-                    aria-label={`Contacter ${sitter.name}`}
+                    key={sitter.id}
+                    href={sitterHref}
+                    className="group relative flex h-full cursor-pointer flex-col rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_12px_40px_-28px_rgba(2,6,23,0.3)] transition will-change-transform hover:border-[color-mix(in_srgb,var(--dogshift-blue),transparent_70%)] hover:shadow-[0_18px_60px_-40px_rgba(2,6,23,0.45)] md:hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)]"
                   >
-                    Contacter
+                    {sitter.verified ? (
+                      <div className="absolute right-5 top-5 z-10 inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[11px] font-semibold text-emerald-800 shadow-sm">
+                        <Check className="h-3.5 w-3.5" aria-hidden="true" />
+                        Vérifié
+                      </div>
+                    ) : null}
+
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex items-start gap-4">
+                        <img
+                          src={sitter.avatarUrl}
+                          alt={sitter.name}
+                          className="h-12 w-12 shrink-0 rounded-full object-cover ring-1 ring-slate-200"
+                          loading="lazy"
+                          referrerPolicy="no-referrer"
+                        />
+                        <div>
+                          <h2 className="text-base font-semibold text-slate-900 md:group-hover:underline">{sitter.name}</h2>
+                          <p className="mt-1 text-sm text-slate-600">{sitter.city}</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 flex min-h-[30px] flex-nowrap items-center gap-2 overflow-hidden">
+                      <span className="inline-flex shrink-0 items-center rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-700">
+                        Annulation flexible
+                      </span>
+                      {sitter.services.map((svc) => (
+                        <span
+                          key={svc}
+                          className="inline-flex shrink-0 items-center rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-700"
+                        >
+                          {svc}
+                        </span>
+                      ))}
+                    </div>
+
+                    <div className="mt-4 space-y-2 text-sm text-slate-600">
+                      <p className="flex items-center gap-1 leading-none">
+                        <span className="inline-flex items-center gap-1 font-medium leading-none text-slate-900">
+                          <StarIcon className="h-4 w-4 text-[#F5B301]" />
+                          {formatRatingMaybe(sitter.rating)}
+                        </span>
+                        <span className="text-slate-500 leading-none">({sitter.reviewCount} avis)</span>
+                      </p>
+                      <p>
+                        <span className="font-medium text-slate-900">Répond {sitter.responseTime}</span>
+                      </p>
+                      <p className="min-h-[60px] text-slate-600 line-clamp-3">{sitter.bio}</p>
+                    </div>
+
+                    <div className="mt-auto flex items-center justify-between pt-5">
+                      <p className="text-sm text-slate-600">
+                        <span className="text-slate-500">À partir de </span>
+                        <span className="text-base font-semibold text-slate-900">CHF {cheapestPrice}</span>
+                        <span className="text-slate-500">{cheapestUnit}</span>
+                      </p>
+                      <span
+                        className="inline-flex items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition md:group-hover:bg-[var(--dogshift-blue-hover)]"
+                        aria-label={`Contacter ${sitter.name}`}
+                      >
+                        Contacter
+                      </span>
+                    </div>
                   </Link>
-                </div>
-              </article>
                 );
               })()
             ))}
