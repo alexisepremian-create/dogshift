@@ -228,8 +228,8 @@ function CheckoutForm({
           aria-expanded={cardSectionOpen}
         >
           <p className="text-sm font-semibold text-slate-900">Carte bancaire</p>
-          <span className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
-            {cardSectionOpen ? "Masquer" : "Ouvrir"}
+          <span className="text-lg leading-none text-slate-400" aria-hidden="true">
+            {cardSectionOpen ? "⌃" : "⌄"}
           </span>
         </button>
         {cardSectionOpen ? (
