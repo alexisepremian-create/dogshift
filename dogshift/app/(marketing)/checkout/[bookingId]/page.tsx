@@ -206,7 +206,6 @@ function CheckoutForm({
       </div>
       <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-4 sm:p-5">
         <p className="text-sm font-semibold text-slate-900">Paiement rapide</p>
-        <p className="mt-1 text-sm text-slate-600">Apple Pay, Klarna et autres wallets compatibles apparaissent automatiquement.</p>
         {ExpressCheckoutElement ? (
           <div className="mt-4 w-full">
             <ExpressCheckoutElement
@@ -221,18 +220,16 @@ function CheckoutForm({
       </div>
 
       <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
+        <p className="text-sm font-semibold text-slate-900">Ou payer par carte</p>
         <button
           type="button"
           onClick={() => setCardSectionOpen((current) => !current)}
-          className="flex w-full items-center justify-between gap-4 text-left"
+          className="mt-3 flex w-full items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-left transition hover:bg-slate-100"
           aria-expanded={cardSectionOpen}
         >
-          <div>
-            <p className="text-sm font-semibold text-slate-900">Ou payer par carte</p>
-            <p className="mt-1 text-sm text-slate-600">Carte bancaire et options proposées par Stripe dans le formulaire classique.</p>
-          </div>
+          <p className="text-sm font-semibold text-slate-900">Carte bancaire</p>
           <span className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
-            {cardSectionOpen ? "Masquer" : "Carte bancaire"}
+            {cardSectionOpen ? "Masquer" : "Ouvrir"}
           </span>
         </button>
         {cardSectionOpen ? (
