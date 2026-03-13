@@ -11,6 +11,7 @@ import NotificationBell from "@/components/NotificationBell";
 export default function SiteHeader() {
   const [scrolled, setScrolled] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [becomeMenuOpen, setBecomeMenuOpen] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [mobileNavMounted, setMobileNavMounted] = useState(false);
   const [mobileBottomHidden, setMobileBottomHidden] = useState(false);
@@ -122,6 +123,10 @@ export default function SiteHeader() {
     const t = window.setTimeout(() => setMobileNavMounted(false), 180);
     return () => window.clearTimeout(t);
   }, [mobileNavMounted, mobileNavOpen]);
+
+  useEffect(() => {
+    setBecomeMenuOpen(false);
+  }, [pathname, searchParams]);
 
   if (isHostArea || isAccountArea || isHostPreview) return null;
 
@@ -264,26 +269,37 @@ export default function SiteHeader() {
           <Link href="/search" className={navLinkClassName}>
             Trouver un sitter
           </Link>
-          <div className="group relative">
+          <div
+            className="relative"
+            onMouseEnter={() => setBecomeMenuOpen(true)}
+            onMouseLeave={() => setBecomeMenuOpen(false)}
+          >
             <Link
               href="/devenir-dogsitter"
+              onClick={() => setBecomeMenuOpen(false)}
+              onFocus={() => setBecomeMenuOpen(true)}
               className={navLinkClassName + " inline-flex items-center gap-2"}
               aria-haspopup="menu"
+              aria-expanded={becomeMenuOpen}
             >
               Devenir dogsitter
-              <span aria-hidden="true" className="text-slate-400 transition group-hover:text-slate-700">
+              <span aria-hidden="true" className={"text-slate-400 transition" + (becomeMenuOpen ? " text-slate-700" : "")}>
                 ▾
               </span>
             </Link>
             <div
               role="menu"
               aria-label="Devenir dogsitter"
-              className="pointer-events-none absolute left-1/2 top-full z-50 w-52 -translate-x-1/2 pt-3 opacity-0 transition group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100"
+              className={
+                "absolute left-1/2 top-full z-50 w-52 -translate-x-1/2 pt-3 transition " +
+                (becomeMenuOpen ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0")
+              }
             >
               <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_18px_60px_-40px_rgba(2,6,23,0.18)]">
                 <Link
                   role="menuitem"
                   href="/devenir-dogsitter"
+                  onClick={() => setBecomeMenuOpen(false)}
                   className="flex items-center px-4 py-3 text-sm font-semibold text-slate-900 hover:bg-slate-50"
                 >
                   Candidater
@@ -292,6 +308,7 @@ export default function SiteHeader() {
                 <Link
                   role="menuitem"
                   href="/become-sitter"
+                  onClick={() => setBecomeMenuOpen(false)}
                   className="flex items-center px-4 py-3 text-sm font-semibold text-slate-900 hover:bg-slate-50"
                 >
                   Accès sitter
