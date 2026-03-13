@@ -297,13 +297,17 @@ function DogShiftTimePicker({
   onChange,
   label,
   id,
+  open,
+  onOpenChange,
 }: {
   value: string | null;
   onChange: (next: string | null) => void;
   label: string;
   id: string;
+  open: boolean;
+  onOpenChange: (next: boolean) => void;
 }) {
-  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement | null>(null);
   const hours = useMemo(() => Array.from({ length: 24 }, (_, i) => pad2(i)), []);
   const minutes = useMemo(() => ["00", "15", "30", "45"], []);
 
@@ -327,10 +331,28 @@ function DogShiftTimePicker({
     setDraftMinute(parsed?.mm ?? "00");
   }, [open, parsed]);
 
+  useEffect(() => {
+    if (!open) return;
+
+    const handlePointerDown = (event: MouseEvent | TouchEvent) => {
+      const target = event.target;
+      if (!(target instanceof Node)) return;
+      if (rootRef.current?.contains(target)) return;
+      onOpenChange(false);
+    };
+
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("touchstart", handlePointerDown);
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("touchstart", handlePointerDown);
+    };
+  }, [onOpenChange, open]);
+
   const display = value ?? "";
 
   return (
-    <div className="relative">
+    <div ref={rootRef} className="relative">
       <label className="block text-xs font-semibold text-slate-600" htmlFor={id}>
         {label}
       </label>
@@ -338,7 +360,7 @@ function DogShiftTimePicker({
       <button
         id={id}
         type="button"
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => onOpenChange(!open)}
         className="mt-2 inline-flex w-full items-center justify-between gap-3 rounded-2xl border border-slate-300 bg-white px-4 py-3 text-left text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)]"
         aria-haspopup="listbox"
         aria-expanded={open}
@@ -352,7 +374,7 @@ function DogShiftTimePicker({
             <div className="flex items-center justify-between gap-3 px-1 pb-2">
               <button
                 type="button"
-                onClick={() => setOpen(false)}
+                onClick={() => onOpenChange(false)}
                 className="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)]"
               >
                 Fermer
@@ -419,7 +441,7 @@ function DogShiftTimePicker({
                   type="button"
                   onClick={() => {
                     onChange(`${draftHour}:${draftMinute}`);
-                    setOpen(false);
+                    onOpenChange(false);
                   }}
                   className="inline-flex items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-4 py-2.5 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition duration-150 hover:bg-[var(--dogshift-blue-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)]"
                 >
@@ -431,7 +453,7 @@ function DogShiftTimePicker({
                     type="button"
                     onClick={() => {
                       onChange(null);
-                      setOpen(false);
+                      onOpenChange(false);
                     }}
                     className="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition duration-150 hover:bg-slate-50"
                   >
@@ -452,19 +474,41 @@ function DogShiftDurationPicker({
   onChange,
   label,
   id,
+  open,
+  onOpenChange,
 }: {
   value: number | null;
   onChange: (next: number | null) => void;
   label: string;
   id: string;
+  open: boolean;
+  onOpenChange: (next: boolean) => void;
 }) {
-  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement | null>(null);
   const options = useMemo(() => Array.from({ length: 12 }, (_, i) => i + 1), []);
 
   const display = value ? `${value} h` : "";
 
+  useEffect(() => {
+    if (!open) return;
+
+    const handlePointerDown = (event: MouseEvent | TouchEvent) => {
+      const target = event.target;
+      if (!(target instanceof Node)) return;
+      if (rootRef.current?.contains(target)) return;
+      onOpenChange(false);
+    };
+
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("touchstart", handlePointerDown);
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("touchstart", handlePointerDown);
+    };
+  }, [onOpenChange, open]);
+
   return (
-    <div className="relative">
+    <div ref={rootRef} className="relative">
       <label className="block text-xs font-semibold text-slate-600" htmlFor={id}>
         {label}
       </label>
@@ -472,7 +516,7 @@ function DogShiftDurationPicker({
       <button
         id={id}
         type="button"
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => onOpenChange(!open)}
         className="mt-2 inline-flex w-full items-center justify-between gap-3 rounded-2xl border border-slate-300 bg-white px-4 py-3 text-left text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)]"
         aria-haspopup="listbox"
         aria-expanded={open}
@@ -481,12 +525,12 @@ function DogShiftDurationPicker({
       </button>
 
       {open ? (
-        <div className="absolute left-0 top-full z-20 mt-3 w-[min(360px,calc(100vw-32px))]">
+        <div className="absolute left-0 top-full z-20 mt-3 w-[min(220px,calc(100vw-32px))]">
           <div className="rounded-[20px] border border-slate-200 bg-white p-3 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.18)]">
             <div className="flex items-center justify-between gap-3 px-1 pb-2">
               <button
                 type="button"
-                onClick={() => setOpen(false)}
+                onClick={() => onOpenChange(false)}
                 className="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)]"
               >
                 Fermer
@@ -506,7 +550,7 @@ function DogShiftDurationPicker({
                           type="button"
                           onClick={() => {
                             onChange(hours);
-                            setOpen(false);
+                            onOpenChange(false);
                           }}
                           className={
                             "flex w-full items-center justify-center rounded-xl px-3 py-2 text-sm font-semibold transition duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)] " +
@@ -529,7 +573,7 @@ function DogShiftDurationPicker({
                     type="button"
                     onClick={() => {
                       onChange(null);
-                      setOpen(false);
+                      onOpenChange(false);
                     }}
                     className="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition duration-150 hover:bg-slate-50"
                   >
@@ -620,6 +664,7 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
+  const [openPicker, setOpenPicker] = useState<"time" | "duration" | null>(null);
   const [selectedService, setSelectedService] = useState<string | null>(null);
   const [dateStart, setDateStart] = useState("");
   const [dateEnd, setDateEnd] = useState("");
@@ -1184,6 +1229,8 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
                     id="start_time"
                     label="Heure de début"
                     value={startTime}
+                    open={openPicker === "time"}
+                    onOpenChange={(next) => setOpenPicker(next ? "time" : null)}
                     onChange={(next) => {
                       setStartTime(next);
                       setError(null);
@@ -1193,6 +1240,8 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
                     id="duration_hours"
                     label="Durée"
                     value={durationHours}
+                    open={openPicker === "duration"}
+                    onOpenChange={(next) => setOpenPicker(next ? "duration" : null)}
                     onChange={(next) => {
                       setDurationHours(next);
                       setError(null);
