@@ -172,14 +172,25 @@ function getMonthGrid(month: Date) {
   return cells;
 }
 
+function monthBoundsIso(month: Date) {
+  const first = new Date(month.getFullYear(), month.getMonth(), 1);
+  const last = new Date(month.getFullYear(), month.getMonth() + 1, 0);
+  return {
+    from: toIsoDateString(first),
+    to: toIsoDateString(last),
+  };
+}
+
 function DogShiftCalendar({
   selected,
   onSelect,
   isDisabled,
+  getDayStatus,
 }: {
   selected: string;
   onSelect: (next: string) => void;
   isDisabled?: (iso: string) => boolean;
+  getDayStatus?: (iso: string) => ServiceDayStatus;
 }) {
   const [month, setMonth] = useState<Date>(() => {
     const parsed = selected ? parseIsoDateString(selected) : null;
@@ -233,6 +244,13 @@ function DogShiftCalendar({
           const iso = toIsoDateString(cell.date);
           const isSelected = selectedTs != null && cell.date.getTime() === selectedTs;
           const disabled = Boolean(isDisabled?.(iso));
+          const dayStatus = getDayStatus?.(iso) ?? "UNAVAILABLE";
+          const statusClasses =
+            dayStatus === "AVAILABLE"
+              ? " border-emerald-200 bg-emerald-50 text-emerald-900"
+              : dayStatus === "ON_REQUEST"
+                ? " border-amber-200 bg-amber-50 text-amber-900"
+                : " border-slate-100 bg-slate-100 text-slate-400";
           return (
             <button
               key={iso}
@@ -245,10 +263,13 @@ function DogShiftCalendar({
               className={
                 "group inline-flex h-9 w-9 items-center justify-center rounded-full border text-sm font-semibold transition duration-150 " +
                 (cell.inMonth ? "text-slate-900" : "text-slate-400") +
-                (disabled ? " cursor-not-allowed border-slate-100 bg-slate-100 text-slate-400" : "") +
+                (!isSelected ? statusClasses : "") +
+                (disabled ? " cursor-not-allowed" : "") +
                 (isSelected
                   ? " border-[var(--dogshift-blue)] bg-[color-mix(in_srgb,var(--dogshift-blue),white_92%)] text-[var(--dogshift-blue)] shadow-sm ring-2 ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_80%)]"
-                  : " border-transparent hover:border-[color-mix(in_srgb,var(--dogshift-blue),transparent_72%)] hover:bg-[color-mix(in_srgb,var(--dogshift-blue),white_88%)]")
+                  : !disabled
+                    ? " hover:border-[color-mix(in_srgb,var(--dogshift-blue),transparent_72%)]"
+                    : "")
               }
               aria-pressed={isSelected}
             >
@@ -433,12 +454,14 @@ function DogShiftDatePicker({
   label,
   id,
   isDisabled,
+  getDayStatus,
 }: {
   value: string;
   onChange: (next: string) => void;
   label: string;
   id: string;
   isDisabled?: (iso: string) => boolean;
+  getDayStatus?: (iso: string) => ServiceDayStatus;
 }) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement | null>(null);
@@ -484,6 +507,7 @@ function DogShiftDatePicker({
           <DogShiftCalendar
             selected={value}
             isDisabled={isDisabled}
+            getDayStatus={getDayStatus}
             onSelect={(next) => {
               onChange(next);
               setOpen(false);
@@ -513,6 +537,7 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
   const [availabilityLoaded, setAvailabilityLoaded] = useState(false);
   const [selectedDateDayStatus, setSelectedDateDayStatus] = useState<DayStatusRow | null>(null);
   const [selectedDateStatusLoaded, setSelectedDateStatusLoaded] = useState(false);
+  const [calendarMonthStatuses, setCalendarMonthStatuses] = useState<Record<string, DayStatusRow>>({});
 
   const todayIso = useMemo(() => todayZurichIsoDate(), []);
 
@@ -581,6 +606,68 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
     if (dateStart) return dateStart;
     return "";
   }, [dateStart]);
+
+  const calendarStatusService = useMemo(() => {
+    if (selectedService && sitter.services.includes(selectedService)) return selectedService;
+    if (sitter.services.length === 1) return sitter.services[0] ?? null;
+    return null;
+  }, [selectedService, sitter.services]);
+
+  useEffect(() => {
+    if (!calendarStatusService) {
+      setCalendarMonthStatuses({});
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadMonthStatuses = async (monthDate: Date) => {
+      const { from, to } = monthBoundsIso(monthDate);
+      try {
+        const qp = new URLSearchParams();
+        qp.set("from", from);
+        qp.set("to", to);
+        const res = await fetch(`/api/sitters/${encodeURIComponent(sitter.sitterId)}/day-status/multi?${qp.toString()}`, {
+          method: "GET",
+          cache: "no-store",
+        });
+        const payload = (await res.json().catch(() => null)) as { ok?: boolean; days?: DayStatusRow[] } | null;
+        if (cancelled || !res.ok || !payload?.ok || !Array.isArray(payload.days)) return;
+        const days = payload.days;
+        setCalendarMonthStatuses((prev) => {
+          const next = { ...prev };
+          for (const row of days) {
+            if (!row || typeof row.date !== "string") continue;
+            next[row.date] = row;
+          }
+          return next;
+        });
+      } catch {
+        if (cancelled) return;
+      }
+    };
+
+    const monthsToLoad = new Set<string>();
+    const current = new Date();
+    monthsToLoad.add(`${current.getFullYear()}-${current.getMonth()}`);
+    const selected = effectiveSelectedDate ? parseIsoDateString(effectiveSelectedDate) : null;
+    if (selected) {
+      monthsToLoad.add(`${selected.getFullYear()}-${selected.getMonth()}`);
+    }
+
+    void Promise.all(
+      Array.from(monthsToLoad).map((key) => {
+        const [yearRaw, monthRaw] = key.split("-");
+        const year = Number(yearRaw);
+        const month = Number(monthRaw);
+        return loadMonthStatuses(new Date(year, month, 1));
+      })
+    );
+
+    return () => {
+      cancelled = true;
+    };
+  }, [calendarStatusService, effectiveSelectedDate, sitter.sitterId]);
 
   useEffect(() => {
     if (!effectiveSelectedDate) {
@@ -710,6 +797,15 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
       return !availableDates.has(iso);
     };
   }, [availabilityLoaded, availableDates, todayIso]);
+
+  const getCalendarDayStatus = useMemo(() => {
+    return (iso: string): ServiceDayStatus => {
+      if (!calendarStatusService) return "UNAVAILABLE";
+      if (iso < todayIso) return "UNAVAILABLE";
+      const row = calendarMonthStatuses[iso] ?? null;
+      return serviceStatusForLabel(row, calendarStatusService);
+    };
+  }, [calendarMonthStatuses, calendarStatusService, todayIso]);
 
   const endTime = useMemo(() => {
     if (!startTime || !durationHours) return null;
@@ -877,6 +973,7 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
                     id="date_start"
                     label="Début"
                     value={dateStart}
+                    getDayStatus={getCalendarDayStatus}
                     isDisabled={isDateDisabled}
                     onChange={(next) => {
                       setDateStart(next);
@@ -887,6 +984,7 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
                     id="date_end"
                     label="Fin"
                     value={dateEnd}
+                    getDayStatus={getCalendarDayStatus}
                     isDisabled={isDateDisabled}
                     onChange={(next) => {
                       setDateEnd(next);
@@ -900,6 +998,7 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
                     id="date_hourly"
                     label="Date"
                     value={dateStart}
+                    getDayStatus={getCalendarDayStatus}
                     isDisabled={isDateDisabled}
                     onChange={(next) => {
                       setDateStart(next);
