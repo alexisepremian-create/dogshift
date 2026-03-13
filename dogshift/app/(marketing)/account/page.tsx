@@ -125,6 +125,7 @@ export default async function AccountDashboardPage({
 
   const statCardBase =
     "group relative overflow-hidden rounded-3xl border p-6 text-left shadow-sm transition hover:shadow-md sm:p-7";
+  const contentCardBase = "relative isolate rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8";
   const quickLinkBase =
     "group inline-flex items-center justify-between gap-3 rounded-2xl border px-5 py-4 text-sm font-semibold shadow-sm transition";
 
@@ -203,7 +204,7 @@ export default async function AccountDashboardPage({
       </div>
 
       <div className="grid gap-4 lg:grid-cols-3">
-        <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8 lg:col-span-2">
+        <div className={`${contentCardBase} lg:col-span-2`}>
           <div className="flex items-start justify-between gap-4">
             <div>
               <h2 className="text-lg font-semibold text-slate-900">Prochaine réservation</h2>
@@ -251,13 +252,13 @@ export default async function AccountDashboardPage({
           )}
         </div>
 
-        <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+        <div className={contentCardBase}>
           <h2 className="text-lg font-semibold text-slate-900">Accès rapide</h2>
           <p className="mt-1 text-sm text-slate-600">Aller à l’essentiel.</p>
           <div className="mt-5 grid gap-3">
             <Link
               href="/account/bookings"
-              className={`${quickLinkBase} border-slate-200 bg-white text-slate-900 hover:bg-slate-50 hover:opacity-95`}
+              className={`${quickLinkBase} border-slate-200 bg-white text-slate-900 hover:bg-slate-50`}
             >
               <span className="inline-flex items-center gap-3">
                 <CalendarDays className="h-4 w-4 text-slate-500" aria-hidden="true" />
@@ -267,7 +268,7 @@ export default async function AccountDashboardPage({
             </Link>
             <Link
               href="/account/messages"
-              className={`${quickLinkBase} border-slate-200 bg-white text-slate-900 hover:bg-slate-50 hover:opacity-95`}
+              className={`${quickLinkBase} border-slate-200 bg-white text-slate-900 hover:bg-slate-50`}
             >
               <span className="inline-flex items-center gap-3">
                 <MessageCircle className="h-4 w-4 text-slate-500" aria-hidden="true" />
@@ -277,7 +278,7 @@ export default async function AccountDashboardPage({
             </Link>
             <Link
               href="/account/settings"
-              className={`${quickLinkBase} border-slate-200 bg-white text-slate-900 hover:bg-slate-50 hover:opacity-95`}
+              className={`${quickLinkBase} border-slate-200 bg-white text-slate-900 hover:bg-slate-50`}
             >
               <span className="inline-flex items-center gap-3">
                 <Settings className="h-4 w-4 text-slate-500" aria-hidden="true" />
@@ -298,7 +299,7 @@ export default async function AccountDashboardPage({
             {pendingAcceptance > 0 ? (
               <Link
                 href="/account/bookings?tab=pending&pending=acceptance"
-                className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-900 transition hover:bg-slate-100/70 hover:opacity-95"
+                className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-900 transition hover:bg-slate-100"
               >
                 <span className="inline-flex items-center gap-2">
                   <AlertTriangle className="h-4 w-4 text-amber-600" aria-hidden="true" />
@@ -311,7 +312,7 @@ export default async function AccountDashboardPage({
             {unreadMessages > 0 ? (
               <Link
                 href="/account/messages"
-                className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-900 transition hover:bg-slate-100/70 hover:opacity-95"
+                className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-900 transition hover:bg-slate-100"
               >
                 <span className="inline-flex items-center gap-2">
                   <MessageCircle className="h-4 w-4 text-slate-500" aria-hidden="true" />
@@ -324,7 +325,7 @@ export default async function AccountDashboardPage({
             {stalePaymentCount > 0 ? (
               <Link
                 href="/account/bookings?tab=pending&pending=payment"
-                className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-900 transition hover:bg-slate-100/70 hover:opacity-95"
+                className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-900 transition hover:bg-slate-100"
               >
                 <span className="inline-flex items-center gap-2">
                   <Clock3 className="h-4 w-4 text-orange-600" aria-hidden="true" />
