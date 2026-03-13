@@ -253,6 +253,12 @@ function DogShiftCalendar({
               : dayStatus === "ON_REQUEST"
                 ? " border-amber-200 bg-amber-50 text-amber-900"
                 : " border-slate-100 bg-slate-100 text-slate-400";
+          const selectedClasses =
+            dayStatus === "AVAILABLE"
+              ? " border-emerald-500 bg-emerald-100 text-emerald-950 shadow-sm ring-2 ring-emerald-300"
+              : dayStatus === "ON_REQUEST"
+                ? " border-amber-500 bg-amber-100 text-amber-950 shadow-sm ring-2 ring-amber-300"
+                : " border-slate-300 bg-slate-200 text-slate-600 shadow-sm ring-2 ring-slate-300";
           return (
             <button
               key={iso}
@@ -265,13 +271,9 @@ function DogShiftCalendar({
               className={
                 "group inline-flex h-9 w-9 items-center justify-center rounded-full border text-sm font-semibold transition duration-150 " +
                 (cell.inMonth ? "text-slate-900" : "text-slate-400") +
-                (!isSelected ? statusClasses : "") +
+                (isSelected ? selectedClasses : statusClasses) +
                 (disabled ? " cursor-not-allowed" : "") +
-                (isSelected
-                  ? " border-[var(--dogshift-blue)] bg-[color-mix(in_srgb,var(--dogshift-blue),white_92%)] text-[var(--dogshift-blue)] shadow-sm ring-2 ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_80%)]"
-                  : !disabled
-                    ? " hover:border-[color-mix(in_srgb,var(--dogshift-blue),transparent_72%)]"
-                    : "")
+                (!isSelected && !disabled ? " hover:border-[color-mix(in_srgb,var(--dogshift-blue),transparent_72%)]" : "")
               }
               aria-pressed={isSelected}
             >
