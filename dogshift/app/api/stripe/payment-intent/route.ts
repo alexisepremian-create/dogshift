@@ -87,7 +87,7 @@ export async function POST(req: NextRequest) {
     const intent = await stripe.paymentIntents.create({
       amount: booking.amount,
       currency: "chf",
-      payment_method_types: ["card", "klarna"],
+      automatic_payment_methods: { enabled: true },
       application_fee_amount: 0,
       transfer_data: {
         destination,

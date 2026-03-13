@@ -93,13 +93,11 @@ function SummaryRow({ label, value }: { label: string; value: string }) {
 function CheckoutForm({
   bookingId,
   PaymentElement,
-  paymentElementOptions,
   useStripe,
   useElements,
 }: {
   bookingId: string;
   PaymentElement: any;
-  paymentElementOptions?: Record<string, unknown>;
   useStripe: () => StripeInstance | null;
   useElements: () => StripeElements | null;
 }) {
@@ -141,11 +139,11 @@ function CheckoutForm({
       <div className="flex items-start justify-between gap-6">
         <div>
           <h2 className="text-lg font-semibold tracking-tight text-slate-900">Paiement sécurisé</h2>
-          <p className="mt-1 text-sm text-slate-600">Carte bancaire et Klarna.</p>
+          <p className="mt-1 text-sm text-slate-600">Apple Pay, TWINT, cartes et Klarna selon votre appareil et votre région.</p>
         </div>
       </div>
       <div className="mt-5">
-        <PaymentElement options={paymentElementOptions} />
+        <PaymentElement />
       </div>
       {error ? <p className="mt-4 text-sm font-medium text-rose-600">{error}</p> : null}
       <button
@@ -305,16 +303,6 @@ const stripeReact = await import("@stripe/react-stripe-js");
     if (!clientSecret) return null;
     return { clientSecret, appearance: stripeAppearance };
   }, [clientSecret, stripeAppearance]);
-  const paymentElementOptions = useMemo(
-    () => ({
-      paymentMethodOrder: ["card", "klarna"],
-      wallets: {
-        applePay: "never" as const,
-        googlePay: "never" as const,
-      },
-    }),
-    []
-  );
 
   const serviceFeeCents = useMemo(() => {
     if (!booking) return 0;
@@ -444,7 +432,6 @@ const stripeReact = await import("@stripe/react-stripe-js");
                   <CheckoutForm
                     bookingId={booking.id}
                     PaymentElement={PaymentElementComp}
-                    paymentElementOptions={paymentElementOptions}
                     useStripe={useStripeHook}
                     useElements={useElementsHook}
                   />
