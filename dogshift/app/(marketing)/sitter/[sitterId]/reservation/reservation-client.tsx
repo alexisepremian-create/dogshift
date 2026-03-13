@@ -5,8 +5,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Calendar, ChevronLeft, ChevronRight } from "lucide-react";
 
-type AvailabilityPayload = { ok?: boolean; dates?: string[]; error?: string };
-
 type PricingUnit = "HOURLY" | "DAILY";
 
 type ServiceDayStatus = "AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE";
@@ -110,6 +108,10 @@ function serviceStatusForLabel(row: DayStatusRow | null, service: string): Servi
   if (service === "Garde") return row.dogsittingStatus;
   if (service === "Pension") return row.pensionStatus;
   return "UNAVAILABLE";
+}
+
+function isBookableStatus(status: ServiceDayStatus) {
+  return status === "AVAILABLE" || status === "ON_REQUEST";
 }
 
 function formatZurichIsoDate(date: Date) {
@@ -674,9 +676,6 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const [availableDates, setAvailableDates] = useState<Set<string>>(() => new Set());
-  const [availabilityLoaded, setAvailabilityLoaded] = useState(false);
   const [selectedDateDayStatus, setSelectedDateDayStatus] = useState<DayStatusRow | null>(null);
   const [selectedDateStatusLoaded, setSelectedDateStatusLoaded] = useState(false);
   const [calendarMonthStatuses, setCalendarMonthStatuses] = useState<Record<string, DayStatusRow>>({});
@@ -705,32 +704,6 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
       setDateEnd((prev) => prev || dateParam);
     }
   }, [searchParams, sitter.services]);
-
-  useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      try {
-        const res = await fetch(`/api/sitters/${encodeURIComponent(sitter.sitterId)}/availability`, { method: "GET" });
-        const payload = (await res.json().catch(() => null)) as AvailabilityPayload | null;
-        if (cancelled) return;
-        if (!res.ok || !payload?.ok || !Array.isArray(payload.dates)) {
-          setAvailableDates(new Set());
-          setAvailabilityLoaded(true);
-          return;
-        }
-        const rows = payload.dates.filter((d): d is string => typeof d === "string" && d.trim().length > 0);
-        setAvailableDates(new Set(rows));
-        setAvailabilityLoaded(true);
-      } catch {
-        if (cancelled) return;
-        setAvailableDates(new Set());
-        setAvailabilityLoaded(true);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [sitter.sitterId]);
 
   const [shouldRenderHourlyDetails, setShouldRenderHourlyDetails] = useState(false);
   const [hourlyDetailsOpen, setHourlyDetailsOpen] = useState(false);
@@ -945,9 +918,17 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
       if (!iso) return true;
       if (iso < todayIso) return true;
       const status = getCalendarDayStatus(iso);
-      return !(status === "AVAILABLE" || status === "ON_REQUEST");
+      return !isBookableStatus(status);
     };
   }, [getCalendarDayStatus, todayIso]);
+
+  const isReservationDateBookable = useMemo(() => {
+    return (iso: string) => {
+      if (!calendarStatusService || !iso || iso < todayIso) return false;
+      const row = calendarMonthStatuses[iso] ?? (selectedDateDayStatus?.date === iso ? selectedDateDayStatus : null);
+      return isBookableStatus(serviceStatusForLabel(row, calendarStatusService));
+    };
+  }, [calendarMonthStatuses, calendarStatusService, selectedDateDayStatus, todayIso]);
 
   const endTime = useMemo(() => {
     if (!startTime || !durationHours) return null;
@@ -974,11 +955,6 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
           setError("La date de fin doit être après la date de début.");
           return;
         }
-
-        if (!availabilityLoaded) {
-          setError("Chargement des disponibilités…");
-          return;
-        }
         const span = dateRangeIsoInclusive(dateStart, dateEnd);
         if (!span || span.length === 0) {
           setError("Choisis des dates.");
@@ -988,7 +964,7 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
           setError("Impossible de choisir une date passée.");
           return;
         }
-        if (span.some((d) => !availableDates.has(d))) {
+        if (span.some((d) => !isReservationDateBookable(d))) {
           setError("Une ou plusieurs dates ne sont pas disponibles.");
           return;
         }
@@ -1001,16 +977,11 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
           setError("Choisis une heure et une durée.");
           return;
         }
-
-        if (!availabilityLoaded) {
-          setError("Chargement des disponibilités…");
-          return;
-        }
         if (dateStart < todayIso) {
           setError("Impossible de choisir une date passée.");
           return;
         }
-        if (!availableDates.has(dateStart)) {
+        if (!isReservationDateBookable(dateStart)) {
           setError("Cette date n’est pas disponible.");
           return;
         }
