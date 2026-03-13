@@ -16,6 +16,14 @@ type DayStatusRow = {
   pensionStatus: ServiceDayStatus;
 };
 
+type ReservationDaySlot = {
+  startAt: string;
+  endAt: string;
+  startMin: number;
+  endMin: number;
+  status: ServiceDayStatus;
+};
+
 type SitterDto = {
   sitterId: string;
   name: string;
@@ -100,6 +108,17 @@ function formatDisplayDate(value: string) {
   const parsed = parseIsoDateString(value);
   if (!parsed) return value;
   return `${pad2(parsed.getDate())}-${pad2(parsed.getMonth() + 1)}-${parsed.getFullYear()}`;
+}
+
+function formatZurichTimeValue(value: string) {
+  const dt = new Date(value);
+  if (!Number.isFinite(dt.getTime())) return null;
+  return new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Europe/Zurich",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(dt);
 }
 
 function serviceStatusForLabel(row: DayStatusRow | null, service: string): ServiceDayStatus {
@@ -303,6 +322,7 @@ function DogShiftTimePicker({
   id,
   open,
   onOpenChange,
+  suggestedValue,
 }: {
   value: string | null;
   onChange: (next: string | null) => void;
@@ -310,21 +330,25 @@ function DogShiftTimePicker({
   id: string;
   open: boolean;
   onOpenChange: (next: boolean) => void;
+  suggestedValue?: string | null;
 }) {
   const rootRef = useRef<HTMLDivElement | null>(null);
+  const selectedHourRef = useRef<HTMLButtonElement | null>(null);
+  const selectedMinuteRef = useRef<HTMLButtonElement | null>(null);
   const hours = useMemo(() => Array.from({ length: 24 }, (_, i) => pad2(i)), []);
   const minutes = useMemo(() => ["00", "15", "30", "45"], []);
 
   const parsed = useMemo(() => {
-    if (!value) return null;
-    const parts = value.split(":");
+    const source = value || suggestedValue || "";
+    if (!source) return null;
+    const parts = source.split(":");
     if (parts.length !== 2) return null;
     const hh = parts[0] ?? "";
     const mm = parts[1] ?? "";
     if (!hours.includes(hh)) return null;
     if (!minutes.includes(mm)) return null;
     return { hh, mm };
-  }, [hours, minutes, value]);
+  }, [hours, minutes, suggestedValue, value]);
 
   const [draftHour, setDraftHour] = useState<string>(() => parsed?.hh ?? pad2(new Date().getHours()));
   const [draftMinute, setDraftMinute] = useState<string>(() => parsed?.mm ?? "00");
@@ -334,6 +358,15 @@ function DogShiftTimePicker({
     setDraftHour(parsed?.hh ?? pad2(new Date().getHours()));
     setDraftMinute(parsed?.mm ?? "00");
   }, [open, parsed]);
+
+  useEffect(() => {
+    if (!open) return;
+    const raf = requestAnimationFrame(() => {
+      selectedHourRef.current?.scrollIntoView({ block: "center" });
+      selectedMinuteRef.current?.scrollIntoView({ block: "center" });
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [draftHour, draftMinute, open]);
 
   useEffect(() => {
     if (!open) return;
@@ -396,6 +429,7 @@ function DogShiftTimePicker({
                         return (
                           <button
                             key={hh}
+                            ref={selected ? selectedHourRef : null}
                             type="button"
                             onClick={() => setDraftHour(hh)}
                             className={
@@ -422,6 +456,7 @@ function DogShiftTimePicker({
                         return (
                           <button
                             key={mm}
+                            ref={selected ? selectedMinuteRef : null}
                             type="button"
                             onClick={() => setDraftMinute(mm)}
                             className={
@@ -681,6 +716,7 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
   const [selectedDateDayStatus, setSelectedDateDayStatus] = useState<DayStatusRow | null>(null);
   const [selectedDateStatusLoaded, setSelectedDateStatusLoaded] = useState(false);
   const [calendarMonthStatuses, setCalendarMonthStatuses] = useState<Record<string, DayStatusRow>>({});
+  const [hourlyDaySlots, setHourlyDaySlots] = useState<ReservationDaySlot[]>([]);
 
   const todayIso = useMemo(() => todayZurichIsoDate(), []);
 
@@ -884,6 +920,74 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
     const raw = sitter.pricing?.[selectedService];
     return isFinitePositiveNumber(raw) ? raw : null;
   }, [selectedService, sitter.pricing]);
+
+  useEffect(() => {
+    if (unit !== "HOURLY" || !selectedService || !effectiveSelectedDate) {
+      setHourlyDaySlots([]);
+      return;
+    }
+
+    let cancelled = false;
+
+    void (async () => {
+      try {
+        const qp = new URLSearchParams();
+        qp.set("date", effectiveSelectedDate);
+        qp.set("service", selectedService);
+        const res = await fetch(`/api/sitters/${encodeURIComponent(sitter.sitterId)}/slots?${qp.toString()}`, {
+          method: "GET",
+          cache: "no-store",
+        });
+        const payload = (await res.json().catch(() => null)) as { ok?: boolean; slots?: ReservationDaySlot[] } | null;
+        if (cancelled) return;
+        if (!res.ok || !payload?.ok || !Array.isArray(payload.slots)) {
+          setHourlyDaySlots([]);
+          return;
+        }
+        setHourlyDaySlots(
+          payload.slots.filter(
+            (slot): slot is ReservationDaySlot =>
+              Boolean(slot) &&
+              typeof slot.startAt === "string" &&
+              typeof slot.endAt === "string" &&
+              typeof slot.startMin === "number" &&
+              typeof slot.endMin === "number" &&
+              (slot.status === "AVAILABLE" || slot.status === "ON_REQUEST" || slot.status === "UNAVAILABLE")
+          )
+        );
+      } catch {
+        if (cancelled) return;
+        setHourlyDaySlots([]);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [effectiveSelectedDate, selectedService, sitter.sitterId, unit]);
+
+  const firstSuggestedStartTime = useMemo(() => {
+    for (const slot of hourlyDaySlots) {
+      if (slot.status !== "AVAILABLE" && slot.status !== "ON_REQUEST") continue;
+      const timeValue = formatZurichTimeValue(slot.startAt);
+      if (timeValue) return timeValue;
+    }
+    return null;
+  }, [hourlyDaySlots]);
+
+  useEffect(() => {
+    if (unit !== "HOURLY") return;
+    if (!firstSuggestedStartTime) return;
+    const validTimes = new Set(
+      hourlyDaySlots
+        .filter((slot) => slot.status === "AVAILABLE" || slot.status === "ON_REQUEST")
+        .map((slot) => formatZurichTimeValue(slot.startAt))
+        .filter((value): value is string => Boolean(value))
+    );
+    if (!startTime || !validTimes.has(startTime)) {
+      setStartTime(firstSuggestedStartTime);
+    }
+  }, [firstSuggestedStartTime, hourlyDaySlots, startTime, unit]);
 
   const summary = useMemo(() => {
     if (!selectedService || !unit || !selectedUnitPrice) return null;
@@ -1202,6 +1306,7 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
                     id="start_time"
                     label="Heure de début"
                     value={startTime}
+                    suggestedValue={firstSuggestedStartTime}
                     open={openPicker === "time"}
                     onOpenChange={(next) => setOpenPicker(next ? "time" : null)}
                     onChange={(next) => {
