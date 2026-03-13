@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { currentUser } from "@clerk/nextjs/server";
+import type { Prisma } from "@prisma/client";
 import {
   AlertTriangle,
   BarChart3,
@@ -69,11 +70,17 @@ export default async function AccountDashboardPage({
   const now = new Date();
   const stalePaymentBefore = new Date(Date.now() - 48 * 60 * 60 * 1000);
 
+  const activeHistoryWhere: Prisma.BookingWhereInput = {
+    userId: uid,
+    archivedAt: null,
+    status: { in: ["PENDING_PAYMENT", "DRAFT", "PENDING_ACCEPTANCE", "PAID", "CONFIRMED"] },
+  };
+
   const [total, pendingPayment, pendingAcceptance, confirmed, unreadMessages, stalePaymentCount, nextBooking] = await Promise.all([
-    prisma.booking.count({ where: { userId: uid } }),
-    prisma.booking.count({ where: { userId: uid, status: { in: ["PENDING_PAYMENT", "DRAFT"] } } }),
-    prisma.booking.count({ where: { userId: uid, status: { in: ["PENDING_ACCEPTANCE", "PAID"] } } }),
-    prisma.booking.count({ where: { userId: uid, status: "CONFIRMED" } }),
+    prisma.booking.count({ where: activeHistoryWhere }),
+    prisma.booking.count({ where: { userId: uid, archivedAt: null, status: { in: ["PENDING_PAYMENT", "DRAFT"] } } }),
+    prisma.booking.count({ where: { userId: uid, archivedAt: null, status: { in: ["PENDING_ACCEPTANCE", "PAID"] } } }),
+    prisma.booking.count({ where: { userId: uid, archivedAt: null, status: "CONFIRMED" } }),
     prisma.message.count({
       where: {
         conversation: { ownerId: uid },
@@ -84,6 +91,7 @@ export default async function AccountDashboardPage({
     prisma.booking.count({
       where: {
         userId: uid,
+        archivedAt: null,
         status: { in: ["PENDING_PAYMENT", "DRAFT"] },
         createdAt: { lt: stalePaymentBefore },
       },
@@ -91,6 +99,7 @@ export default async function AccountDashboardPage({
     prisma.booking.findFirst({
       where: {
         userId: uid,
+        archivedAt: null,
         startDate: { gte: now },
         status: { in: ["CONFIRMED", "PENDING_ACCEPTANCE", "PAID", "PENDING_PAYMENT", "DRAFT"] },
       },
@@ -185,11 +194,11 @@ export default async function AccountDashboardPage({
 
         <Link href="/account/bookings?tab=all" className={`${statCardBase} border-slate-200 bg-white hover:bg-slate-50`}>
           <div className="flex items-center justify-between">
-            <p className="text-sm font-semibold text-slate-700">Total</p>
+            <p className="text-sm font-semibold text-slate-700">Historique total</p>
           </div>
           <BarChart3 className="absolute right-6 top-6 h-6 w-6 text-slate-500" aria-hidden="true" />
           <p className="mt-3 text-3xl font-semibold tracking-tight text-slate-900">{total}</p>
-          <p className="mt-2 text-xs font-medium text-slate-500">Voir toutes les réservations</p>
+          <p className="mt-2 text-xs font-medium text-slate-500">Voir l’historique actif des réservations</p>
         </Link>
       </div>
 
