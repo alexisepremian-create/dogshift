@@ -9,12 +9,31 @@ type Body = {
   amount?: unknown;
 };
 
+async function readAmount(req: NextRequest) {
+  const contentType = req.headers.get("content-type") ?? "";
+
+  if (contentType.includes("application/json")) {
+    const body = (await req.json()) as Body;
+    return typeof body?.amount === "number" ? body.amount : NaN;
+  }
+
+  const form = await req.formData();
+  const raw = form.get("amount");
+  if (typeof raw !== "string") return NaN;
+  const parsed = Number(raw);
+  return Number.isFinite(parsed) ? parsed : NaN;
+}
+
 export async function POST(req: NextRequest) {
   try {
-    const body = (await req.json()) as Body;
-    const amount = typeof body?.amount === "number" ? body.amount : NaN;
+    const contentType = req.headers.get("content-type") ?? "";
+    const expectsRedirect = !contentType.includes("application/json");
+    const amount = await readAmount(req);
 
     if (!Number.isFinite(amount) || !Number.isInteger(amount) || amount < 1 || amount > 10000) {
+      if (expectsRedirect) {
+        return NextResponse.redirect(new URL("/contribuer?canceled=1", req.url), { status: 303 });
+      }
       return NextResponse.json({ ok: false, error: "INVALID_AMOUNT" }, { status: 400 });
     }
 
@@ -22,6 +41,9 @@ export async function POST(req: NextRequest) {
 
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL;
     if (!baseUrl) {
+      if (expectsRedirect) {
+        return NextResponse.redirect(new URL("/contribuer?canceled=1", req.url), { status: 303 });
+      }
       return NextResponse.json({ ok: false, error: "MISSING_NEXT_PUBLIC_APP_URL" }, { status: 500 });
     }
 
@@ -43,11 +65,18 @@ export async function POST(req: NextRequest) {
         },
       ],
       success_url: `${baseUrl}/merci?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${baseUrl}/annule`,
+      cancel_url: `${baseUrl}/contribuer?canceled=1`,
     });
 
     if (!session.url) {
+      if (expectsRedirect) {
+        return NextResponse.redirect(new URL("/contribuer?canceled=1", req.url), { status: 303 });
+      }
       return NextResponse.json({ ok: false, error: "MISSING_SESSION_URL" }, { status: 500 });
+    }
+
+    if (expectsRedirect) {
+      return NextResponse.redirect(session.url, { status: 303 });
     }
 
     return NextResponse.json({ url: session.url }, { status: 200 });
