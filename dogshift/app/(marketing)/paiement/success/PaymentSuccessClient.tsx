@@ -70,6 +70,7 @@ export default function PaymentSuccessClient({ bookingId }: { bookingId: string 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [finalizing, setFinalizing] = useState(true);
+  const [timedOut, setTimedOut] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -100,7 +101,8 @@ export default function PaymentSuccessClient({ bookingId }: { bookingId: string 
       if (Date.now() - startedAt < 15_000) {
         timer = setTimeout(tick, 2000);
       } else {
-        setError("Paiement en attente de confirmation. Merci de réactualiser.");
+        setTimedOut(true);
+        setError("Le paiement a bien été reçu. La confirmation prend plus de temps que prévu. Vous retrouverez la réservation dans votre espace.");
         setLoading(false);
         setFinalizing(true);
       }
@@ -108,13 +110,21 @@ export default function PaymentSuccessClient({ bookingId }: { bookingId: string 
 
     async function tick() {
       try {
-        const res = await fetch(`/api/bookings/${encodeURIComponent(resolvedBookingId)}`, {
+        const res = await fetch(`/api/account/bookings/${encodeURIComponent(resolvedBookingId)}`, {
           method: "GET",
           headers: { "Content-Type": "application/json" },
           cache: "no-store",
         });
 
         const payload = (await res.json()) as { ok?: boolean; booking?: BookingDto; error?: string };
+
+        console.log("[ui][payment-success] poll response", {
+          bookingId: resolvedBookingId,
+          ok: res.ok,
+          payloadOk: payload?.ok ?? null,
+          status: payload?.booking?.status ?? null,
+          error: payload?.error ?? null,
+        });
 
         if (canceled) return;
 
@@ -127,6 +137,7 @@ export default function PaymentSuccessClient({ bookingId }: { bookingId: string 
         const nextBooking = payload.booking;
         setBooking(nextBooking);
         setError(null);
+        setTimedOut(false);
         setLoading(false);
 
         const hasAmount = typeof nextBooking.amount === "number" && Number.isFinite(nextBooking.amount);
@@ -178,7 +189,7 @@ export default function PaymentSuccessClient({ bookingId }: { bookingId: string 
   }, [booking?.status, error, finalizing, loading]);
 
   const subline = useMemo(() => {
-    if (loading) return "On attend la confirmation finale (webhook Stripe).";
+    if (loading) return "Nous vérifions la confirmation du paiement.";
     if (error) return error;
     if (booking?.status === "CONFIRMED") return "Ta réservation est confirmée par le sitter. Tu peux revenir à l’annonce.";
     if (booking?.status === "PENDING_ACCEPTANCE" || booking?.status === "PAID") {
@@ -186,7 +197,7 @@ export default function PaymentSuccessClient({ bookingId }: { bookingId: string 
     }
     if (booking?.status === "PAYMENT_FAILED") return "Aucun débit n’a été effectué. Tu peux réessayer.";
     if (booking?.status === "CANCELLED") return "Tu peux revenir à l’annonce et relancer une demande si besoin.";
-    return "On attend la confirmation finale (webhook Stripe).";
+    return "Nous vérifions la confirmation du paiement.";
   }, [booking?.status, error, loading]);
 
   const steps = useMemo(() => {
@@ -207,25 +218,22 @@ export default function PaymentSuccessClient({ bookingId }: { bookingId: string 
       <main className="mx-auto max-w-[1100px] px-4 py-14 sm:px-6">
         <div className="mx-auto grid max-w-5xl gap-8 lg:grid-cols-2">
           <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)] sm:p-10">
-            <div className="flex items-start justify-between gap-6">
-              <div>
-                <h1 className="text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">{headline}</h1>
-                <p className="mt-2 text-sm text-slate-600">{subline}</p>
-              </div>
-              <div
-                className={
-                  booking?.status === "CONFIRMED"
-                    ? "rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700"
-                    : booking?.status === "PENDING_ACCEPTANCE" || booking?.status === "PAID"
-                      ? "rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700"
-                    : booking?.status === "PAYMENT_FAILED"
-                      ? "rounded-full bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-700"
-                      : "rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700"
-                }
-              >
-                {booking?.status ?? (loading ? "CONFIRMATION" : "ETAT")}
-              </div>
+            <div>
+              <h1 className="text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">{headline}</h1>
+              <p className="mt-2 text-sm text-slate-600">{subline}</p>
             </div>
+
+            {timedOut ? (
+              <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4 text-sm text-amber-900">
+                <p className="font-semibold">Confirmation plus lente que prévu</p>
+                <p className="mt-1">Le paiement a bien été reçu. La confirmation prend plus de temps que prévu. Vous retrouverez la réservation dans votre espace.</p>
+                <div className="mt-4">
+                  <Link href="/account/bookings" className={SECONDARY_BTN}>
+                    Aller à mes réservations
+                  </Link>
+                </div>
+              </div>
+            ) : null}
 
             <div className="mt-7">
               <Step
@@ -235,7 +243,7 @@ export default function PaymentSuccessClient({ bookingId }: { bookingId: string 
               />
               <Step
                 title="Confirmation Stripe"
-                description="Nous attendons la confirmation via webhook (quelques secondes)."
+                description="Nous vérifions la confirmation du paiement."
                 state={steps.confirmation}
               />
               <Step
@@ -256,7 +264,7 @@ export default function PaymentSuccessClient({ bookingId }: { bookingId: string 
                 Retour aux sitters
               </Link>
 
-              <Link href="/post-login" className={SECONDARY_BTN}>
+              <Link href="/account/bookings" className={SECONDARY_BTN}>
                 Aller à mon espace
               </Link>
             </div>
@@ -277,7 +285,7 @@ export default function PaymentSuccessClient({ bookingId }: { bookingId: string 
               </p>
 
               <p className="mt-4 text-xs text-slate-500">
-                Si ça bloque plus de 15s, rafraîchis la page : le webhook peut arriver avec un léger délai.
+                Si ça bloque plus de 15s, rafraîchis la page.
               </p>
 
               <div className="mt-6 rounded-3xl border border-slate-200 bg-white p-6">

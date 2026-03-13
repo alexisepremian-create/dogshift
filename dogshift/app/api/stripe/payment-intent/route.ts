@@ -73,6 +73,12 @@ export async function POST(req: NextRequest) {
     if (typeof booking.stripePaymentIntentId === "string" && booking.stripePaymentIntentId.trim()) {
       try {
         const existing = await stripe.paymentIntents.retrieve(booking.stripePaymentIntentId);
+        console.log("[api][stripe][payment-intent] reuse existing", {
+          bookingId: booking.id,
+          paymentIntentId: existing.id,
+          status: existing.status,
+          livemode: existing.livemode,
+        });
         if (typeof existing.client_secret === "string" && existing.client_secret.includes("_secret_")) {
           return NextResponse.json(
             { ok: true, clientSecret: existing.client_secret, intentId: existing.id, livemode: existing.livemode },
@@ -97,6 +103,15 @@ export async function POST(req: NextRequest) {
         sitterId: booking.sitterId,
         userId,
       },
+    });
+
+    console.log("[api][stripe][payment-intent] created", {
+      bookingId: booking.id,
+      paymentIntentId: intent.id,
+      amount: booking.amount,
+      currency: "chf",
+      livemode: intent.livemode,
+      destination,
     });
 
     if (typeof intent.client_secret !== "string" || !intent.client_secret.includes("_secret_")) {

@@ -43,6 +43,12 @@ export async function setBookingStatus(
 
   const currentStatus = String(booking.status ?? "") as BookingStatus;
 
+  console.log("[bookings][setBookingStatus] transition requested", {
+    bookingId: id,
+    currentStatus,
+    nextStatus,
+  });
+
   if (currentStatus === nextStatus) {
     return { ok: true as const, changed: false as const, previousStatus: currentStatus, nextStatus };
   }
@@ -61,6 +67,12 @@ export async function setBookingStatus(
   if (!changed) {
     return { ok: true as const, changed: false as const, previousStatus: currentStatus, nextStatus };
   }
+
+  console.log("[bookings][setBookingStatus] transition applied", {
+    bookingId: id,
+    previousStatus: currentStatus,
+    nextStatus,
+  });
 
   try {
     const participants = await resolveBookingParticipants(id);
