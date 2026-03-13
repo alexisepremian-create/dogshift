@@ -92,11 +92,13 @@ function SummaryRow({ label, value }: { label: string; value: string }) {
 
 function CheckoutForm({
   bookingId,
+  ExpressCheckoutElement,
   PaymentElement,
   useStripe,
   useElements,
 }: {
   bookingId: string;
+  ExpressCheckoutElement?: any;
   PaymentElement: any;
   useStripe: () => StripeInstance | null;
   useElements: () => StripeElements | null;
@@ -107,6 +109,7 @@ function CheckoutForm({
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [expressReady, setExpressReady] = useState(false);
 
   async function onPay() {
     if (!stripe || !elements) return;
@@ -134,6 +137,49 @@ function CheckoutForm({
     }
   }
 
+  async function onExpressConfirm() {
+    if (!stripe || !elements) return;
+    setSubmitting(true);
+    setError(null);
+
+    try {
+      const result = await stripe.confirmPayment({
+        elements,
+        confirmParams: {
+          return_url: `${window.location.origin}/paiement/success?bookingId=${encodeURIComponent(bookingId)}`,
+        },
+        redirect: "if_required",
+      });
+
+      if (result.error) {
+        setError(result.error.message ?? "Paiement impossible. Réessayez.");
+        setSubmitting(false);
+        return;
+      }
+
+      router.push(`/paiement/success?bookingId=${encodeURIComponent(bookingId)}`);
+    } catch {
+      setError("Paiement impossible. Réessayez.");
+      setSubmitting(false);
+    }
+  }
+
+  const expressCheckoutOptions = useMemo(
+    () => ({
+      paymentMethods: {
+        applePay: "auto" as const,
+        googlePay: "never" as const,
+        amazonPay: "never" as const,
+        link: "never" as const,
+        paypal: "never" as const,
+      },
+      buttonType: {
+        applePay: "buy" as const,
+      },
+    }),
+    []
+  );
+
   return (
     <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)] sm:p-8">
       <div className="flex items-start justify-between gap-6">
@@ -142,6 +188,18 @@ function CheckoutForm({
           <p className="mt-1 text-sm text-slate-600">Apple Pay, TWINT, cartes et Klarna selon votre appareil et votre région.</p>
         </div>
       </div>
+      {ExpressCheckoutElement ? (
+        <div className="mt-5">
+          <ExpressCheckoutElement
+            options={expressCheckoutOptions}
+            onConfirm={() => void onExpressConfirm()}
+            onReady={(event: any) => {
+              setExpressReady(Boolean(event?.availablePaymentMethods?.applePay));
+            }}
+          />
+        </div>
+      ) : null}
+      {expressReady ? <div className="mt-5 h-px w-full bg-slate-200" /> : null}
       <div className="mt-5">
         <PaymentElement />
       </div>
@@ -166,6 +224,7 @@ export default function CheckoutBookingPage() {
   const [stripeUi, setStripeUi] = useState<{
     stripePromise: Promise<any>;
     Elements: any;
+    ExpressCheckoutElement: any;
     PaymentElement: any;
     useStripe: () => StripeInstance | null;
     useElements: () => StripeElements | null;
@@ -195,6 +254,7 @@ const stripeReact = await import("@stripe/react-stripe-js");
         setStripeUi({
           stripePromise: stripeMod.loadStripe(publishableKey),
           Elements: stripeReact.Elements,
+          ExpressCheckoutElement: stripeReact.ExpressCheckoutElement,
           PaymentElement: stripeReact.PaymentElement,
           useStripe: stripeReact.useStripe,
           useElements: stripeReact.useElements,
@@ -338,6 +398,7 @@ const stripeReact = await import("@stripe/react-stripe-js");
   const isHourlyBooking = booking?.service === "Promenade" || booking?.service === "Garde";
 
   const ElementsComp = stripeUi?.Elements as any;
+  const ExpressCheckoutElementComp = stripeUi?.ExpressCheckoutElement as any;
   const PaymentElementComp = stripeUi?.PaymentElement as any;
   const useStripeHook = (stripeUi?.useStripe ?? (() => null)) as () => StripeInstance | null;
   const useElementsHook = (stripeUi?.useElements ?? (() => null)) as () => StripeElements | null;
@@ -431,6 +492,7 @@ const stripeReact = await import("@stripe/react-stripe-js");
                 <ElementsComp stripe={stripeUi!.stripePromise} options={stripeElementsOptions!}>
                   <CheckoutForm
                     bookingId={booking.id}
+                    ExpressCheckoutElement={ExpressCheckoutElementComp}
                     PaymentElement={PaymentElementComp}
                     useStripe={useStripeHook}
                     useElements={useElementsHook}
