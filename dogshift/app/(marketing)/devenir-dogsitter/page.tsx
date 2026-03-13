@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
+import { ChevronDown } from "lucide-react";
 
 import BecomeSitterAccessForm from "@/components/BecomeSitterAccessForm";
 
@@ -65,6 +66,9 @@ function idempotencyKey() {
     return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
   }
 }
+
+const SELECT_BASE_CLASS =
+  "w-full rounded-2xl border border-slate-200 bg-white px-4 py-2 pr-11 text-sm leading-5 text-slate-900 shadow-sm outline-none transition appearance-none [-webkit-appearance:none] [-moz-appearance:none] focus:border-[var(--dogshift-blue)] focus:ring-4 focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_85%)]";
 
 export default function DevenirDogsitterPage() {
   const formRef = useRef<HTMLDivElement | null>(null);
@@ -339,18 +343,23 @@ export default function DevenirDogsitterPage() {
 
                 <label className="text-xs font-semibold text-slate-700">
                   As-tu déjà gardé des chiens ?
-                  <select
-                    value={form.hasDogExperience}
-                    onChange={(e) => {
-                      const v = e.target.value;
-                      if (v === "yes" || v === "no" || v === "") setForm((p) => ({ ...p, hasDogExperience: v }));
-                    }}
-                    className="mt-1 w-full rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm"
-                  >
-                    <option value="">Choisir…</option>
-                    <option value="yes">Oui</option>
-                    <option value="no">Non</option>
-                  </select>
+                  <div className="relative mt-1">
+                    <select
+                      value={form.hasDogExperience}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        if (v === "yes" || v === "no" || v === "") setForm((p) => ({ ...p, hasDogExperience: v }));
+                      }}
+                      className={SELECT_BASE_CLASS}
+                    >
+                      <option value="">Choisir…</option>
+                      <option value="yes">Oui</option>
+                      <option value="no">Non</option>
+                    </select>
+                    <span className="pointer-events-none absolute inset-y-0 right-4 inline-flex items-center text-slate-400" aria-hidden="true">
+                      <ChevronDown className="h-4 w-4" />
+                    </span>
+                  </div>
                 </label>
 
                 <label className="text-xs font-semibold text-slate-700">
