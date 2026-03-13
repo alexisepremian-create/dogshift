@@ -47,6 +47,19 @@ function formatDateLabel(value?: string) {
   return d.toLocaleDateString("fr-CH", { weekday: "short", day: "2-digit", month: "short" });
 }
 
+function formatDateTimeLabel(value?: string) {
+  if (!value) return "—";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return value;
+  return new Intl.DateTimeFormat("fr-CH", {
+    weekday: "short",
+    day: "2-digit",
+    month: "long",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(d).replace(", ", " – ");
+}
+
 function SummaryRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-start justify-between gap-6 text-sm">
@@ -106,9 +119,6 @@ function CheckoutForm({
         <div>
           <h2 className="text-lg font-semibold tracking-tight text-slate-900">Paiement sécurisé</h2>
           <p className="mt-1 text-sm text-slate-600">Cartes, Apple Pay et méthodes locales (selon Stripe).</p>
-        </div>
-        <div className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-700">
-          Stripe
         </div>
       </div>
       <div className="mt-5">
@@ -280,6 +290,22 @@ const stripeReact = await import("@stripe/react-stripe-js");
     return estimateServiceFeeCents(booking.amount);
   }, [booking]);
 
+  const bookingStartLabel = useMemo(() => {
+    if (!booking?.startDate) return "—";
+    if (booking.service === "Promenade" || booking.service === "Garde") {
+      return formatDateTimeLabel(booking.startDate);
+    }
+    return formatDateLabel(booking.startDate);
+  }, [booking]);
+
+  const bookingEndLabel = useMemo(() => {
+    if (!booking?.endDate) return "—";
+    if (booking.service === "Promenade" || booking.service === "Garde") {
+      return formatDateTimeLabel(booking.endDate);
+    }
+    return formatDateLabel(booking.endDate);
+  }, [booking]);
+
   const ElementsComp = stripeUi?.Elements as any;
   const PaymentElementComp = stripeUi?.PaymentElement as any;
   const useStripeHook = (stripeUi?.useStripe ?? (() => null)) as () => StripeInstance | null;
@@ -292,7 +318,6 @@ const stripeReact = await import("@stripe/react-stripe-js");
           <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <h1 className="text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">Confirmer et payer</h1>
-              <p className="mt-2 text-sm text-slate-600">Paiement intégré, sans redirection vers une page externe.</p>
             </div>
             <Link
               href={booking?.sitterId ? `/sitter/${booking.sitterId}` : "/search"}
@@ -337,15 +362,9 @@ const stripeReact = await import("@stripe/react-stripe-js");
                   <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-5">
                     <SummaryRow label="Service" value={booking.service ?? "—"} />
                     <div className="mt-3 h-px w-full bg-slate-200" />
-                    <SummaryRow
-                      label="Début"
-                      value={booking.startDate ? formatDateLabel(booking.startDate) : "—"}
-                    />
+                    <SummaryRow label="Début" value={bookingStartLabel} />
                     <div className="mt-2" />
-                    <SummaryRow
-                      label="Fin"
-                      value={booking.endDate ? formatDateLabel(booking.endDate) : "—"}
-                    />
+                    <SummaryRow label="Fin" value={bookingEndLabel} />
                   </div>
 
                   <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-5">
@@ -358,19 +377,8 @@ const stripeReact = await import("@stripe/react-stripe-js");
                       <p className="text-right text-lg font-semibold tracking-tight text-slate-900">{formatCents(booking.amount)}</p>
                     </div>
                     <p className="mt-2 text-xs text-slate-500">Devise: CHF</p>
-                    <p className="mt-2 text-xs text-slate-500">Montant calculé côté serveur et figé dans la réservation.</p>
                   </div>
                 </div>
-
-                <p className="mt-4 text-xs text-slate-500">
-                  En confirmant, vous acceptez le paiement du montant indiqué. Confirmation finale par webhook Stripe.
-                </p>
-
-                {intentMeta ? (
-                  <p className="mt-2 text-[11px] text-slate-400">
-                    Stripe intent: {intentMeta.intentId} ({intentMeta.livemode ? "LIVE" : "TEST"})
-                  </p>
-                ) : null}
 
                 <div className="mt-6 rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)]">
                   <p className="text-sm font-semibold text-slate-900">Support</p>
