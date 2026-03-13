@@ -505,7 +505,7 @@ const stripeReact = await import("@stripe/react-stripe-js");
                   <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-5">
                     <SummaryRow label="Sous-total" value={formatCents(booking.amount)} />
                     <div className="mt-2" />
-                    <SummaryRow label="Frais de service" value="0 CHF (phase pilote)" />
+                    <SummaryRow label="Frais de service" value="0 CHF" />
                     <div className="mt-4 h-px w-full bg-slate-200" />
                     <div className="mt-4 flex items-start justify-between gap-6">
                       <p className="text-sm font-semibold text-slate-900">Total</p>
