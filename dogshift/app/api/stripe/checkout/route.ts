@@ -67,7 +67,7 @@ export async function POST(req: NextRequest) {
             product_data: {
               name: "Contribution au lancement de DogShift",
               description:
-                "Contribution volontaire au lancement de DogShift (phase pilote). Aucun produit / aucune contrepartie.",
+                "Contribution volontaire au lancement de DogShift (phase pilote). Aucun produit n’est vendu. Les contributions ≥ 50 CHF peuvent recevoir un T-shirt DogShift Founder Edition en remerciement.",
             },
           },
         },
