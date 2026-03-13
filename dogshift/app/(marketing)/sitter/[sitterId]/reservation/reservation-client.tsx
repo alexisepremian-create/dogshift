@@ -344,7 +344,6 @@ function DogShiftTimePicker({
         aria-expanded={open}
       >
         <span className={display ? "text-slate-900" : "text-slate-500"}>{display || "Choisir une heure"}</span>
-        <span className="text-xs font-semibold text-slate-500">15 min</span>
       </button>
 
       {open ? (
