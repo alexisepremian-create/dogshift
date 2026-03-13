@@ -38,6 +38,7 @@ export async function POST(req: NextRequest) {
     }
 
     const amountCents = Math.round(amount * 100);
+    const requiresShipping = amount >= 50;
 
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL;
     if (!baseUrl) {
@@ -50,9 +51,13 @@ export async function POST(req: NextRequest) {
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
       currency: "chf",
-      shipping_address_collection: {
-        allowed_countries: ["CH", "FR", "BE", "DE", "IT"],
-      },
+      ...(requiresShipping
+        ? {
+            shipping_address_collection: {
+              allowed_countries: ["CH"],
+            },
+          }
+        : {}),
       name_collection: {
         individual: {
           enabled: true,
