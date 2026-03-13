@@ -61,6 +61,16 @@ export default function ConfidentialitePage() {
                 Pour toute question relative au traitement de vos données personnelles, vous pouvez contacter DogShift à l’adresse suivante : support@dogshift.ch.
               </p>
             </section>
+
+            <section>
+              <h2 className="text-base font-semibold text-slate-900">3. Paiements</h2>
+              <p className="mt-3">
+                Les paiements effectués sur la plateforme sont traités par le prestataire de paiement Stripe. DogShift ne stocke pas les données complètes des cartes bancaires.
+              </p>
+              <p className="mt-3">
+                Stripe peut traiter certaines données personnelles nécessaires au traitement des paiements conformément à sa propre politique de confidentialité.
+              </p>
+            </section>
           </div>
         </div>
       </main>

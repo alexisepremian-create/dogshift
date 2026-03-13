@@ -26,17 +26,26 @@ export default function MarketingLayout({ children }: { children: React.ReactNod
             </Link>
             <div className="flex flex-col items-start gap-1 pt-1">
               <Link
+                href="/mentions-legales"
+                className="font-semibold text-[var(--dogshift-blue)] hover:text-[var(--dogshift-blue-hover)]"
+              >
+                Mentions légales
+              </Link>
+              <Link
                 href="/cgu"
                 className="font-semibold text-[var(--dogshift-blue)] hover:text-[var(--dogshift-blue-hover)]"
               >
-                CGU
+                Conditions générales (CGU)
               </Link>
               <Link
                 href="/confidentialite"
                 className="font-semibold text-[var(--dogshift-blue)] hover:text-[var(--dogshift-blue-hover)]"
               >
-                Confidentialité
+                Politique de confidentialité
               </Link>
+              <a href="mailto:support@dogshift.ch" className="font-semibold text-[var(--dogshift-blue)] hover:text-[var(--dogshift-blue-hover)]">
+                Contact
+              </a>
               <p className="font-medium text-slate-700">© {new Date().getFullYear()} DogShift</p>
               <a href="mailto:support@dogshift.ch" className="font-medium text-slate-700">
                 Support : support@dogshift.ch

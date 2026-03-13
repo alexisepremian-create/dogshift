@@ -254,6 +254,24 @@ export default function CguPage() {
               </p>
             </section>
 
+            <section>
+              <h2 className="text-base font-semibold text-slate-900">16. Politique d’annulation et de remboursement</h2>
+              <p className="mt-3 font-medium text-slate-900">Annulation par le Propriétaire</p>
+              <p className="mt-3">
+                Les réservations peuvent être annulées avant le début du service selon les conditions suivantes :
+              </p>
+              <ul className="mt-3 list-disc space-y-2 pl-5">
+                <li>Annulation plus de 24 heures avant le début du service : remboursement intégral.</li>
+                <li>Annulation moins de 24 heures avant le début du service : le remboursement peut être partiel ou nul selon les conditions définies par le Dogsitter.</li>
+              </ul>
+              <p className="mt-4 font-medium text-slate-900">Annulation par le Dogsitter</p>
+              <p className="mt-3">En cas d’annulation par le Dogsitter, le Propriétaire est intégralement remboursé.</p>
+              <p className="mt-4 font-medium text-slate-900">Traitement des remboursements</p>
+              <p className="mt-3">
+                Les remboursements sont traités via le prestataire de paiement Stripe et peuvent prendre plusieurs jours ouvrables selon l’établissement bancaire.
+              </p>
+            </section>
+
             <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
               <p className="text-sm font-medium text-slate-900">Note importante</p>
               <p className="mt-2 text-sm text-slate-700">
