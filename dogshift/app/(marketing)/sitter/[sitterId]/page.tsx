@@ -2268,7 +2268,7 @@ function SitterPublicProfileContent({
                           serviceUi={serviceUi}
                         />
 
-                        <p className="text-sm font-medium text-slate-900">Prochaines disponibilités</p>
+                        <p className="mt-5 text-sm font-medium text-slate-900">Prochaines disponibilités</p>
                         {monthLoading ? (
                           <p className="mt-1 text-sm text-slate-600">Chargement…</p>
                         ) : monthError ? (
