@@ -801,13 +801,13 @@ export default function AccountBookingsPage() {
                 <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5 sm:p-6 sm:col-span-2">
                   <p className="text-sm font-semibold text-slate-900">Résumé</p>
                   <div className="mt-5 grid gap-4 text-sm">
-                    <div className="flex items-start justify-between gap-6 border-b border-slate-200/80 pb-3">
-                      <p className="text-slate-600">Service</p>
-                      <p className="text-right font-semibold text-slate-900">{detail?.service ?? selected?.service ?? "—"}</p>
+                    <div className="border-b border-slate-200/80 pb-3">
+                      <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Service</p>
+                      <p className="mt-1 font-semibold text-slate-900">{detail?.service ?? selected?.service ?? "—"}</p>
                     </div>
-                    <div className="flex items-start justify-between gap-6 border-b border-slate-200/80 pb-3">
-                      <p className="text-slate-600">Statut</p>
-                      <p className="text-right font-semibold text-slate-900">
+                    <div className="border-b border-slate-200/80 pb-3">
+                      <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Statut</p>
+                      <p className="mt-1 font-semibold text-slate-900">
                         {(() => {
                           const raw = detail?.status ?? selected?.status ?? "";
                           const blocking = pendingBlockingReason(raw);
@@ -817,17 +817,17 @@ export default function AccountBookingsPage() {
                         })()}
                       </p>
                     </div>
-                    <div className="flex items-start justify-between gap-6 border-b border-slate-200/80 pb-3">
-                      <p className="text-slate-600">Dates</p>
-                      <p className="text-right font-semibold text-slate-900">{summaryDateRange(selected?.startDate ?? null, selected?.endDate ?? null)}</p>
+                    <div className="border-b border-slate-200/80 pb-3">
+                      <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Dates</p>
+                      <p className="mt-1 font-semibold text-slate-900">{summaryDateRange(selected?.startDate ?? null, selected?.endDate ?? null)}</p>
                     </div>
-                    <div className="flex items-start justify-between gap-6 border-b border-slate-200/80 pb-3">
-                      <p className="text-slate-600">Horaire</p>
-                      <p className="text-right font-semibold text-slate-900">{summaryTimeRange(selected?.startDate ?? null, selected?.endDate ?? null)}</p>
+                    <div className="border-b border-slate-200/80 pb-3">
+                      <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Horaire</p>
+                      <p className="mt-1 font-semibold text-slate-900">{summaryTimeRange(selected?.startDate ?? null, selected?.endDate ?? null)}</p>
                     </div>
-                    <div className="flex items-start justify-between gap-6">
-                      <p className="text-slate-600">Lieu</p>
-                      <p className="inline-flex items-center gap-2 text-right font-semibold text-slate-900">
+                    <div>
+                      <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Lieu</p>
+                      <p className="mt-1 inline-flex items-center gap-2 font-semibold text-slate-900">
                         <MapPin className="h-4 w-4 shrink-0 text-slate-400" aria-hidden="true" />
                         <span>{sitterLocation(detail?.sitter ?? selected?.sitter)}</span>
                       </p>
