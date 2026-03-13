@@ -475,8 +475,9 @@ export default function AccountBookingsPage() {
         </div>
 
       <div className="sticky top-0 z-10 -mx-4 px-4 py-3 sm:-mx-6 sm:px-6 lg:mx-0 lg:px-0">
-        <div className="overflow-x-auto">
-          <div className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white p-2 shadow-sm">
+        <div className="relative overflow-visible">
+          <div className="overflow-x-auto pb-20">
+            <div className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white p-2 shadow-sm">
             {primaryTabs.map((key) => {
               const active = key === activeTab;
               const count = counts[key] ?? 0;
@@ -502,53 +503,54 @@ export default function AccountBookingsPage() {
               );
             })}
 
-            <div className="relative shrink-0">
-              <button
-                type="button"
-                onClick={() => setMoreOpen((current) => !current)}
-                className={
-                  "inline-flex items-center gap-2 rounded-2xl border px-4 py-2 text-sm font-semibold transition" +
-                  ((activeTab === "CANCELLED" || activeTab === "ARCHIVED")
-                    ? " border-slate-200 bg-slate-50 text-slate-900"
-                    : " border-transparent bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-900")
-                }
-                aria-expanded={moreOpen}
-                aria-haspopup="menu"
-              >
-                <span className="inline-flex items-center">Plus</span>
-                <span className="inline-flex items-center text-base leading-none text-slate-400" aria-hidden="true">
-                  {moreOpen ? "⌃" : "⌄"}
-                </span>
-              </button>
+              <div className="relative shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setMoreOpen((current) => !current)}
+                  className={
+                    "inline-flex items-center gap-2 rounded-2xl border px-4 py-2 text-sm font-semibold transition" +
+                    ((activeTab === "CANCELLED" || activeTab === "ARCHIVED")
+                      ? " border-slate-200 bg-slate-50 text-slate-900"
+                      : " border-transparent bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-900")
+                  }
+                  aria-expanded={moreOpen}
+                  aria-haspopup="menu"
+                >
+                  <span className="inline-flex items-center">Plus</span>
+                  <span className="inline-flex items-center text-base leading-none text-slate-400" aria-hidden="true">
+                    {moreOpen ? "⌃" : "⌄"}
+                  </span>
+                </button>
 
-              {moreOpen ? (
-                <div className="absolute right-0 top-[calc(100%+8px)] z-20 min-w-[220px] rounded-2xl border border-slate-200 bg-white p-2 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.28)]" role="menu">
-                  <button
-                    type="button"
-                    onMouseDown={(event) => event.preventDefault()}
-                    onClick={() => selectTab("CANCELLED")}
-                    role="menuitem"
-                    className={
-                      "flex w-full items-center rounded-xl px-3 py-2 text-left text-sm font-semibold transition" +
-                      (activeTab === "CANCELLED" ? " bg-slate-50 text-slate-900" : " text-slate-600 hover:bg-slate-50 hover:text-slate-900")
-                    }
-                  >
-                    Annulées / refusées
-                  </button>
-                  <button
-                    type="button"
-                    onMouseDown={(event) => event.preventDefault()}
-                    onClick={() => selectTab("ARCHIVED")}
-                    role="menuitem"
-                    className={
-                      "mt-1 flex w-full items-center rounded-xl px-3 py-2 text-left text-sm font-semibold transition" +
-                      (activeTab === "ARCHIVED" ? " bg-slate-50 text-slate-900" : " text-slate-600 hover:bg-slate-50 hover:text-slate-900")
-                    }
-                  >
-                    Archivées
-                  </button>
-                </div>
-              ) : null}
+                {moreOpen ? (
+                  <div className="absolute right-0 top-[calc(100%+8px)] z-30 min-w-[220px] rounded-2xl border border-slate-200 bg-white p-2 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.28)]" role="menu">
+                    <button
+                      type="button"
+                      onMouseDown={(event) => event.preventDefault()}
+                      onClick={() => selectTab("CANCELLED")}
+                      role="menuitem"
+                      className={
+                        "flex w-full items-center rounded-xl px-3 py-2 text-left text-sm font-semibold transition" +
+                        (activeTab === "CANCELLED" ? " bg-slate-50 text-slate-900" : " text-slate-600 hover:bg-slate-50 hover:text-slate-900")
+                      }
+                    >
+                      Annulées / refusées
+                    </button>
+                    <button
+                      type="button"
+                      onMouseDown={(event) => event.preventDefault()}
+                      onClick={() => selectTab("ARCHIVED")}
+                      role="menuitem"
+                      className={
+                        "mt-1 flex w-full items-center rounded-xl px-3 py-2 text-left text-sm font-semibold transition" +
+                        (activeTab === "ARCHIVED" ? " bg-slate-50 text-slate-900" : " text-slate-600 hover:bg-slate-50 hover:text-slate-900")
+                      }
+                    >
+                      Archivées
+                    </button>
+                  </div>
+                ) : null}
+              </div>
             </div>
           </div>
         </div>
