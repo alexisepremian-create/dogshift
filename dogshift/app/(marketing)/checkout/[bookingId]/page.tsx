@@ -141,7 +141,7 @@ function CheckoutForm({
       <div className="flex items-start justify-between gap-6">
         <div>
           <h2 className="text-lg font-semibold tracking-tight text-slate-900">Paiement sécurisé</h2>
-          <p className="mt-1 text-sm text-slate-600">Cartes, Apple Pay et Klarna.</p>
+          <p className="mt-1 text-sm text-slate-600">Carte bancaire et Klarna.</p>
         </div>
       </div>
       <div className="mt-5">
@@ -309,7 +309,7 @@ const stripeReact = await import("@stripe/react-stripe-js");
     () => ({
       paymentMethodOrder: ["card", "klarna"],
       wallets: {
-        applePay: "auto" as const,
+        applePay: "never" as const,
         googlePay: "never" as const,
       },
     }),
