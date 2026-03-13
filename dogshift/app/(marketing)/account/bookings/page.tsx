@@ -557,7 +557,7 @@ export default function AccountBookingsPage() {
               );
             })}
 
-              <div ref={moreMenuRef} className="relative shrink-0">
+              <div className="relative shrink-0">
                 <button
                   ref={moreButtonRef}
                   type="button"
@@ -582,6 +582,7 @@ export default function AccountBookingsPage() {
 
           {moreOpen && moreMenuPosition ? (
             <div
+              ref={moreMenuRef}
               className="absolute z-[80] w-[220px] rounded-2xl border border-slate-200 bg-white p-2 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.35)]"
               role="menu"
               style={{ top: moreMenuPosition.top, left: moreMenuPosition.left }}
