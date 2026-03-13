@@ -2532,11 +2532,6 @@ function SitterPublicProfileContent({
                         <p className="text-sm text-slate-600">Vous ne pouvez pas vous contacter vous-même.</p>
                       </div>
                     ) : null}
-
-                    <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                      <p className="text-sm font-medium text-slate-900">Sécurité</p>
-                      <p className="mt-1 text-sm text-slate-600">Paiement sécurisé via Stripe. Confirmation finale via webhook.</p>
-                    </div>
                   </div>
                 </aside>
               </div>
