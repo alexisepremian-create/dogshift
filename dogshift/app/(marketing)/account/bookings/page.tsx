@@ -411,19 +411,20 @@ export default function AccountBookingsPage() {
     };
   }, [selectedId]);
 
-  async function cancelPendingBooking(bookingId: string) {
+  async function archivePendingBooking(bookingId: string) {
     if (!bookingId || deletingId) return;
     setDeletingId(bookingId);
     try {
-      const res = await fetch(`/api/account/bookings/${encodeURIComponent(bookingId)}/cancel`, { method: "PATCH" });
-      const payload = (await res.json()) as { ok?: boolean; booking?: { status?: string } };
+      const res = await fetch(`/api/account/bookings/${encodeURIComponent(bookingId)}/archive`, { method: "POST" });
+      const payload = (await res.json()) as { ok?: boolean; archivedAt?: string };
       if (!res.ok || !payload.ok) {
         setError("Impossible de supprimer cette réservation.");
         return;
       }
-      setBookings((prev) => prev.map((b) => (b.id === bookingId ? { ...b, status: "CANCELLED" } : b)));
+      const archivedAt = typeof payload.archivedAt === "string" && payload.archivedAt.trim() ? payload.archivedAt : new Date().toISOString();
+      setBookings((prev) => prev.map((b) => (b.id === bookingId ? { ...b, archivedAt } : b)));
       if (selectedId === bookingId) {
-        setDetail((current) => (current ? { ...current, status: "CANCELLED", canceledAt: new Date().toISOString() } : current));
+        setDetail((current) => current);
       }
       setConfirmDeleteId(null);
     } catch {
@@ -467,7 +468,7 @@ export default function AccountBookingsPage() {
         </div>
 
       <div className="sticky top-0 z-10 -mx-4 px-4 py-3 sm:-mx-6 sm:px-6 lg:mx-0 lg:px-0">
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto overflow-y-visible">
           <div className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white p-2 shadow-sm">
             {primaryTabs.map((key) => {
               const active = key === activeTab;
@@ -494,7 +495,7 @@ export default function AccountBookingsPage() {
               );
             })}
 
-            <div className="relative">
+            <div className="relative shrink-0">
               <button
                 type="button"
                 onClick={() => setMoreOpen((current) => !current)}
@@ -505,6 +506,7 @@ export default function AccountBookingsPage() {
                     : " border-transparent bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-900")
                 }
                 aria-expanded={moreOpen}
+                aria-haspopup="menu"
               >
                 Plus
                 <span className="text-base leading-none text-slate-400" aria-hidden="true">
@@ -513,7 +515,7 @@ export default function AccountBookingsPage() {
               </button>
 
               {moreOpen ? (
-                <div className="absolute right-0 top-[calc(100%+8px)] z-20 min-w-[220px] rounded-2xl border border-slate-200 bg-white p-2 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.28)]">
+                <div className="absolute right-0 top-[calc(100%+8px)] z-20 min-w-[220px] rounded-2xl border border-slate-200 bg-white p-2 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.28)]" role="menu">
                   <div className="flex flex-col gap-1">
                     {secondaryTabs.map((key) => {
                       const active = key === activeTab;
@@ -522,6 +524,7 @@ export default function AccountBookingsPage() {
                           key={key}
                           type="button"
                           onClick={() => selectTab(key)}
+                          role="menuitem"
                           className={
                             "rounded-xl px-3 py-2 text-left text-sm font-semibold transition" +
                             (active ? " bg-slate-50 text-slate-900" : " text-slate-600 hover:bg-slate-50 hover:text-slate-900")
@@ -785,7 +788,7 @@ export default function AccountBookingsPage() {
               </button>
               <button
                 type="button"
-                onClick={() => void cancelPendingBooking(confirmDeleteId)}
+                onClick={() => void archivePendingBooking(confirmDeleteId)}
                 disabled={deletingId === confirmDeleteId}
                 className="inline-flex items-center justify-center rounded-2xl bg-rose-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
               >
