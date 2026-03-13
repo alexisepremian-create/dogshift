@@ -327,7 +327,10 @@ export default function AccountBookingsPage() {
   }, [bookings]);
 
   const primaryTabs = ["ALL", "PENDING", "CONFIRMED"] as const satisfies readonly TabKey[];
-  const secondaryTabs = ["CANCELLED", "ARCHIVED"] as const satisfies readonly TabKey[];
+  const secondaryTabs = [
+    { key: "CANCELLED" as const, label: "Annulées / refusées" },
+    { key: "ARCHIVED" as const, label: "Archivées" },
+  ];
 
   function selectTab(key: TabKey) {
     const params = new URLSearchParams(searchParams?.toString() ?? "");
@@ -476,7 +479,7 @@ export default function AccountBookingsPage() {
         </div>
 
       <div className="sticky top-0 z-10 -mx-4 px-4 py-3 sm:-mx-6 sm:px-6 lg:mx-0 lg:px-0">
-        <div className="overflow-x-auto overflow-y-visible">
+        <div className="relative overflow-x-auto">
           <div className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white p-2 shadow-sm">
             {primaryTabs.map((key) => {
               const active = key === activeTab;
@@ -521,33 +524,33 @@ export default function AccountBookingsPage() {
                   {moreOpen ? "⌃" : "⌄"}
                 </span>
               </button>
-
-              {moreOpen ? (
-                <div className="absolute right-0 top-[calc(100%+8px)] z-20 min-w-[220px] rounded-2xl border border-slate-200 bg-white p-2 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.28)]" role="menu">
-                  <div className="flex flex-col gap-1">
-                    {secondaryTabs.map((key) => {
-                      const active = key === activeTab;
-                      return (
-                        <button
-                          key={key}
-                          type="button"
-                          onMouseDown={(event) => event.preventDefault()}
-                          onClick={() => selectTab(key)}
-                          role="menuitem"
-                          className={
-                            "rounded-xl px-3 py-2 text-left text-sm font-semibold transition" +
-                            (active ? " bg-slate-50 text-slate-900" : " text-slate-600 hover:bg-slate-50 hover:text-slate-900")
-                          }
-                        >
-                          {tabLabel(key)}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              ) : null}
             </div>
           </div>
+
+          {moreOpen ? (
+            <div className="absolute right-0 top-[calc(100%+8px)] z-20 w-[240px] max-w-[calc(100vw-2rem)] rounded-2xl border border-slate-200 bg-white p-2 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.28)] sm:right-auto sm:left-[calc(100%-112px)]" role="menu">
+              <div className="flex flex-col gap-1">
+                {secondaryTabs.map((option) => {
+                  const active = option.key === activeTab;
+                  return (
+                    <button
+                      key={option.key}
+                      type="button"
+                      onMouseDown={(event) => event.preventDefault()}
+                      onClick={() => selectTab(option.key)}
+                      role="menuitem"
+                      className={
+                        "rounded-xl px-3 py-2 text-left text-sm font-semibold transition" +
+                        (active ? " bg-slate-50 text-slate-900" : " text-slate-600 hover:bg-slate-50 hover:text-slate-900")
+                      }
+                    >
+                      {option.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ) : null}
         </div>
       </div>
 
