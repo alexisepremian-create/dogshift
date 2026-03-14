@@ -94,10 +94,6 @@ export async function POST(req: NextRequest) {
       amount: booking.amount,
       currency: "chf",
       automatic_payment_methods: { enabled: true },
-      application_fee_amount: 0,
-      transfer_data: {
-        destination,
-      },
       metadata: {
         bookingId: booking.id,
         sitterId: booking.sitterId,
@@ -112,6 +108,7 @@ export async function POST(req: NextRequest) {
       currency: "chf",
       livemode: intent.livemode,
       destination,
+      payoutMode: "delayed_manual_transfer",
     });
 
     if (typeof intent.client_secret !== "string" || !intent.client_secret.includes("_secret_")) {

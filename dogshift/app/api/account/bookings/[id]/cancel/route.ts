@@ -61,6 +61,8 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
         startDate: true,
         endDate: true,
         stripePaymentIntentId: true,
+        stripeChargeId: true,
+        stripeTransferId: true,
         stripeRefundId: true,
         refundedAt: true,
       },
@@ -140,6 +142,8 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
         typeof booking.stripePaymentIntentId === "string" && booking.stripePaymentIntentId.trim()
           ? booking.stripePaymentIntentId.trim()
           : "";
+      const storedChargeId = typeof booking.stripeChargeId === "string" && booking.stripeChargeId.trim() ? booking.stripeChargeId.trim() : "";
+      const transferId = typeof booking.stripeTransferId === "string" && booking.stripeTransferId.trim() ? booking.stripeTransferId.trim() : "";
 
       const alreadyRefunded =
         (typeof booking.stripeRefundId === "string" && booking.stripeRefundId.trim()) || Boolean(booking.refundedAt);
@@ -173,12 +177,13 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       }
 
       try {
-        const intent = (await stripe.paymentIntents.retrieve(paymentIntentId, { expand: ["charges.data.transfer"] })) as any;
-        const expandedChargeId = typeof intent?.charges?.data?.[0]?.id === "string" ? String(intent.charges.data[0].id) : "";
+        const intent = (await stripe.paymentIntents.retrieve(paymentIntentId, { expand: ["latest_charge"] })) as any;
+        const expandedLatestChargeId = typeof intent?.latest_charge?.id === "string" ? String(intent.latest_charge.id) : "";
         const latestChargeId = typeof intent?.latest_charge === "string" ? intent.latest_charge : "";
 
         const chargeId = (() => {
-          if (expandedChargeId) return expandedChargeId;
+          if (storedChargeId) return storedChargeId;
+          if (expandedLatestChargeId) return expandedLatestChargeId;
           if (latestChargeId) return latestChargeId;
           return "";
         })();
@@ -202,8 +207,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
           {
             charge: resolvedChargeId,
             reason: "requested_by_customer",
-            reverse_transfer: true,
-            refund_application_fee: true,
+            ...(transferId ? { reverse_transfer: true, refund_application_fee: true } : null),
           } as any,
           {
             idempotencyKey: `refund:owner_cancel:${bookingId}:${paymentIntentId}`,

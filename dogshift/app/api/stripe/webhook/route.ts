@@ -8,6 +8,7 @@ import { prisma } from "@/lib/prisma";
 import { createNotification } from "@/lib/notifications/inApp";
 import { resolveBookingParticipants } from "@/lib/notifications/sendNotificationEmail";
 import { setBookingStatus } from "@/lib/bookings/setBookingStatus";
+import { syncBookingPaymentDetails } from "@/lib/stripe/bookingPayments";
 
 export const runtime = "nodejs";
 
@@ -29,7 +30,6 @@ async function markBookingPaid({
   bookingId,
   paymentIntentId,
   sessionId,
-  transferId,
   chargeId,
   eventId,
   eventType,
@@ -39,7 +39,6 @@ async function markBookingPaid({
   bookingId: string;
   paymentIntentId?: string;
   sessionId?: string;
-  transferId?: string;
   chargeId?: string;
   eventId: string;
   eventType: string;
@@ -55,21 +54,14 @@ async function markBookingPaid({
     bookingId,
     paymentIntentId: paymentIntentId || null,
     sessionId: sessionId || null,
-    transferId: transferId || null,
     chargeId: chargeId || null,
   });
 
-  const data: Record<string, unknown> = {
-  };
-
-  if (paymentIntentId) data.stripePaymentIntentId = paymentIntentId;
-  if (sessionId) data.stripeSessionId = sessionId;
-  if (transferId) data.stripeTransferId = transferId;
-
-  await (prisma as any).booking.update({
-    where: { id: bookingId },
-    data,
-    select: { id: true },
+  await syncBookingPaymentDetails({
+    bookingId,
+    paymentIntentId,
+    sessionId,
+    chargeId,
   });
 
   const res = await setBookingStatus(bookingId, "PAID" as any, { req });
@@ -284,22 +276,10 @@ export async function POST(req: NextRequest) {
         livemode: event.livemode,
       });
 
-      let transferId = "";
-      try {
-        const expanded = (await stripe.paymentIntents.retrieve(intent.id, { expand: ["charges.data.transfer"] })) as any;
-        const charge = expanded?.charges?.data?.[0];
-        const transfer = (charge as any)?.transfer;
-        if (typeof transfer === "string") transferId = transfer;
-        else if (transfer && typeof transfer.id === "string") transferId = transfer.id;
-      } catch (err) {
-        console.error("[api][stripe][webhook] expand transfer failed", { intentId: intent.id, err });
-      }
-
       await markBookingPaid({
         req,
         bookingId,
         paymentIntentId: intent.id,
-        transferId: transferId || undefined,
         eventId: event.id,
         eventType: event.type,
         livemode: event.livemode,

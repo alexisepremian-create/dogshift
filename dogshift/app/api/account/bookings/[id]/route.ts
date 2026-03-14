@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { resolveDbUserId } from "@/lib/auth/resolveDbUserId";
 import { stripe } from "@/lib/stripe";
 import { setBookingStatus } from "@/lib/bookings/setBookingStatus";
+import { syncBookingPaymentDetails } from "@/lib/stripe/bookingPayments";
 
 export const runtime = "nodejs";
 
@@ -70,6 +71,11 @@ async function reconcileBookingPaymentIfNeeded(
         stripePaymentIntentId: paymentIntentId,
       },
       select: { id: true },
+    });
+
+    await syncBookingPaymentDetails({
+      bookingId: booking.id,
+      paymentIntentId,
     });
 
     const res = await setBookingStatus(booking.id, "PAID" as any, { req });

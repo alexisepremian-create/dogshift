@@ -291,9 +291,13 @@ model Booking {
 
   stripeSessionId       String?
   stripePaymentIntentId String?
+  stripeChargeId        String?
 
   stripeTransferId            String?
   stripeApplicationFeeAmount  Int           @default(0)
+  stripeProcessingFeeAmount   Int           @default(0)
+  sitterPayoutAmount          Int?
+  payoutReleasedAt            DateTime?
 
   stripeRefundId String?
   refundedAt     DateTime?

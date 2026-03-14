@@ -71,6 +71,8 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
         status: true,
         archivedAt: true,
         stripePaymentIntentId: true,
+        stripeChargeId: true,
+        stripeTransferId: true,
         stripeRefundId: true,
         refundedAt: true,
       },
@@ -92,6 +94,8 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     }
 
     const paymentIntentId = typeof booking.stripePaymentIntentId === "string" ? booking.stripePaymentIntentId.trim() : "";
+    const storedChargeId = typeof booking.stripeChargeId === "string" ? booking.stripeChargeId.trim() : "";
+    const transferId = typeof booking.stripeTransferId === "string" ? booking.stripeTransferId.trim() : "";
     const existingRefundId = typeof booking.stripeRefundId === "string" ? booking.stripeRefundId.trim() : "";
     const existingRefundedAt = booking.refundedAt ? new Date(String(booking.refundedAt)) : null;
     const alreadyRefunded = Boolean(existingRefundId || (existingRefundedAt && Number.isFinite(existingRefundedAt.getTime())));
@@ -132,18 +136,24 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
 
     if (paymentIntentId) {
       try {
-        const intent = (await stripe.paymentIntents.retrieve(paymentIntentId, { expand: ["charges.data.transfer"] })) as any;
-        const chargeId = typeof intent?.charges?.data?.[0]?.id === "string" ? String(intent.charges.data[0].id) : "";
-        if (!chargeId) {
+        const intent = (await stripe.paymentIntents.retrieve(paymentIntentId, { expand: ["latest_charge"] })) as any;
+        const expandedLatestChargeId = typeof intent?.latest_charge?.id === "string" ? String(intent.latest_charge.id) : "";
+        const latestChargeId = typeof intent?.latest_charge === "string" ? intent.latest_charge : "";
+        const chargeId = storedChargeId || expandedLatestChargeId || latestChargeId;
+        let resolvedChargeId = chargeId;
+        if (!resolvedChargeId) {
+          const charges = await stripe.charges.list({ payment_intent: paymentIntentId, limit: 1 });
+          resolvedChargeId = typeof charges?.data?.[0]?.id === "string" ? charges.data[0].id : "";
+        }
+        if (!resolvedChargeId) {
           return NextResponse.json({ ok: false, error: "MISSING_CHARGE" }, { status: 409 });
         }
 
         const refund = await stripe.refunds.create(
           {
-            charge: chargeId,
+            charge: resolvedChargeId,
             reason: "requested_by_customer",
-            reverse_transfer: true,
-            refund_application_fee: true,
+            ...(transferId ? { reverse_transfer: true, refund_application_fee: true } : null),
           } as any,
           {
             idempotencyKey: `refund:${bookingId}:${paymentIntentId}`,
