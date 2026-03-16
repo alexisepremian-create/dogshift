@@ -19,16 +19,6 @@ const isBecomeSitterInviteProtectedRoute = createRouteMatcher([
   "/api/become-sitter/apply",
 ]);
 
-const isLockBypassRoute = createRouteMatcher([
-  "/unlock(.*)",
-  "/api/unlock(.*)",
-  "/favicon.ico",
-  "/robots.txt",
-  "/sitemap.xml",
-  "/assets(.*)",
-  "/images(.*)",
-]);
-
 type MiddlewareReqLike = {
   nextUrl?: {
     pathname?: unknown;
@@ -66,45 +56,9 @@ export const proxy = clerkMiddleware(async (auth, req) => {
 
   const pathname = String(req?.nextUrl?.pathname ?? "");
 
-  const sitePassword = process.env.SITE_PASSWORD;
-  const passwordSet = Boolean(sitePassword);
-  const unlockedCookie = req.cookies.get("site_unlocked")?.value;
-  const lockOn = passwordSet && unlockedCookie !== "1";
-
   const isApiRoute = pathname.startsWith("/api/");
   const isNextAsset = pathname.startsWith("/_next/");
   const isStaticFile = /\.[^/]+$/.test(pathname);
-  const isImagesRoute = pathname.startsWith("/images/");
-  const isFavicon = pathname === "/favicon.ico";
-
-  const headerAccept = req.headers.get("accept") || "";
-  const isRscLike =
-    req.headers.get("rsc") === "1" ||
-    req.headers.has("next-router-state-tree") ||
-    req.headers.has("next-router-prefetch") ||
-    req.headers.has("next-action") ||
-    headerAccept.includes("text/x-component");
-
-  if (
-    isRscLike &&
-    lockOn &&
-    !isApiRoute &&
-    !isFavicon &&
-    !isImagesRoute &&
-    !isLockBypassRoute(req) &&
-    !isPublicSitterRoute(req) &&
-    !isNextAsset &&
-    !isStaticFile
-  ) {
-    const next = `${reqPathname || "/"}${reqSearch || ""}`;
-    const res = NextResponse.json({ ok: false, locked: true, next }, { status: 401 });
-    res.headers.set("x-dogshift-rsc-detected", "1");
-    res.headers.set("x-dogshift-lock-layer", "proxy");
-    res.headers.set("x-dogshift-req-url", reqUrl.slice(0, 200));
-    res.headers.set("x-dogshift-req-search", (reqSearch || "").slice(0, 200));
-    res.headers.set("x-dogshift-req-host", (reqHost || "").slice(0, 200));
-    return res;
-  }
 
   const forwardedHost = (req.headers.get("x-forwarded-host") || "").split(",")[0]?.trim();
   const host = (forwardedHost || req.headers.get("host") || "").split(",")[0]?.trim().toLowerCase();
@@ -116,28 +70,13 @@ export const proxy = clerkMiddleware(async (auth, req) => {
   }
 
   const addLockHeaders = (res: NextResponse) => {
-    res.headers.set("x-site-password-set", passwordSet ? "1" : "0");
-    res.headers.set("x-site-lock-on", lockOn ? "1" : "0");
+    res.headers.set("x-site-password-set", "0");
+    res.headers.set("x-site-lock-on", "0");
     res.headers.set("x-dogshift-req-url", reqUrl.slice(0, 200));
     res.headers.set("x-dogshift-req-search", (reqSearch || "").slice(0, 200));
     res.headers.set("x-dogshift-req-host", (reqHost || "").slice(0, 200));
     return res;
   };
-  if (sitePassword) {
-    const { search } = req.nextUrl;
-
-    if (!isApiRoute && !isFavicon && !isImagesRoute && !isLockBypassRoute(req) && !isPublicSitterRoute(req) && !isNextAsset && !isStaticFile) {
-      if (unlockedCookie !== "1") {
-        const url = req.nextUrl.clone();
-        url.pathname = "/unlock";
-        url.search = `?next=${encodeURIComponent(pathname + search)}`;
-
-        const res = NextResponse.redirect(url);
-        res.headers.set("x-dogshift-lock-layer", "proxy");
-        return addLockHeaders(res);
-      }
-    }
-  }
 
   if (isBecomeSitterInviteProtectedRoute(req)) {
     const unlocked = req.cookies.get("ds_invite_unlocked")?.value ?? req.cookies.get("ds_invite")?.value;

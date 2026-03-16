@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Suspense } from "react";
-import { headers } from "next/headers";
 import { ClerkProvider } from "@clerk/nextjs";
 import { frFR } from "@clerk/localizations";
 import SessionAuthProvider from "@/components/SessionAuthProvider";
@@ -38,9 +37,6 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const siteLockOn = process.env.NODE_ENV !== "production" && Boolean(process.env.SITE_PASSWORD);
-  await headers();
-
   return (
     <html lang="fr">
       <head>
@@ -50,11 +46,6 @@ export default async function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        {siteLockOn ? (
-          <div className="fixed left-3 top-3 z-[1000] rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-900 shadow-sm">
-            SITE_LOCK=ON
-          </div>
-        ) : null}
         <ClerkProvider
           signInUrl="/login"
           signUpUrl="/signup"
