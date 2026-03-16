@@ -7,6 +7,7 @@ import { useEffect, useMemo, useState } from "react";
 import { MessageCircle } from "lucide-react";
 
 import SunCornerGlow from "@/components/SunCornerGlow";
+import { ConversationExpandProvider } from "@/components/messages/ConversationExpandContext";
 
 type ConversationListItem = {
   id: string;
@@ -60,6 +61,7 @@ export default function HostMessagesLayout({ children }: { children: React.React
   const [conversations, setConversations] = useState<ConversationListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isExpanded, setIsExpanded] = useState(false);
 
   async function loadConversations() {
     setLoading(true);
@@ -108,6 +110,9 @@ export default function HostMessagesLayout({ children }: { children: React.React
   useEffect(() => {
     const m = pathname.match(/^\/host\/messages\/([^/?#]+)/);
     const activeId = m && m[1] ? decodeURIComponent(m[1]) : null;
+    if (!activeId) {
+      setIsExpanded(false);
+    }
     if (!activeId) return;
     setConversations((prev) => prev.map((c) => (c.id === activeId ? { ...c, unreadCount: 0 } : c)));
   }, [pathname]);
@@ -151,8 +156,14 @@ export default function HostMessagesLayout({ children }: { children: React.React
               <path d="M21 3v6h-6" />
             </svg>
           </button>
-          <div className="grid h-full gap-0 lg:grid-cols-[360px_1fr]">
-            <aside className="flex h-full flex-col border-b border-slate-200 p-4 sm:p-6 lg:border-b-0 lg:border-r">
+          <ConversationExpandProvider value={{ isExpanded, setIsExpanded }}>
+            <div className={"grid h-full gap-0 transition-all duration-300 ease-out " + (isExpanded ? "lg:grid-cols-[0px_1fr]" : "lg:grid-cols-[360px_1fr]")}>
+            <aside
+              className={
+                "flex h-full flex-col border-b border-slate-200 p-4 transition-all duration-300 ease-out sm:p-6 lg:border-b-0 " +
+                (isExpanded ? "hidden lg:flex lg:w-0 lg:overflow-hidden lg:border-r-0 lg:p-0 lg:opacity-0" : "lg:border-r lg:opacity-100")
+              }
+            >
               <div className="flex items-center justify-between">
                 <p className="px-2 pb-3 text-xs font-semibold text-slate-600">Boîte de réception</p>
               </div>
@@ -235,7 +246,8 @@ export default function HostMessagesLayout({ children }: { children: React.React
             </aside>
 
             <section className="h-full min-h-0 p-4 sm:p-6">{children}</section>
-          </div>
+            </div>
+          </ConversationExpandProvider>
         </div>
       </div>
     </div>

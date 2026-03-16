@@ -5,9 +5,10 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
-import { Maximize2, Minimize2, MessageCircle, RefreshCw } from "lucide-react";
+import { MessageCircle, RefreshCw } from "lucide-react";
 
 import SunCornerGlow from "@/components/SunCornerGlow";
+import ConversationExpandToggle from "@/components/messages/ConversationExpandToggle";
 
 type ConversationListItem = {
   id: string;
@@ -466,15 +467,7 @@ export default function AccountMessagesPage() {
                         ) : null}
                       </div>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => setIsExpanded((current) => !current)}
-                      className="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white p-2 text-slate-600 shadow-sm transition hover:bg-slate-50 hover:text-slate-900"
-                      aria-label={isExpanded ? "Réduire la conversation" : "Agrandir la conversation"}
-                      title={isExpanded ? "Réduire" : "Agrandir"}
-                    >
-                      {isExpanded ? <Minimize2 className="h-4 w-4" aria-hidden="true" /> : <Maximize2 className="h-4 w-4" aria-hidden="true" />}
-                    </button>
+                    <ConversationExpandToggle isExpanded={isExpanded} onToggle={() => setIsExpanded((current) => !current)} />
                   </div>
 
                   <div className="flex min-h-0 flex-1 flex-col p-5">

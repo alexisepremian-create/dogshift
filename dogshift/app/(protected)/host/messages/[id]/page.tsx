@@ -4,6 +4,9 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 
+import { useConversationExpand } from "@/components/messages/ConversationExpandContext";
+import ConversationExpandToggle from "@/components/messages/ConversationExpandToggle";
+
 type ConversationHeader = {
   id: string;
   owner: { id: string; name: string; avatarUrl: string | null };
@@ -32,6 +35,7 @@ function formatDateTime(value: string) {
 export default function HostMessageThreadPage() {
   const params = useParams<{ id: string }>();
   const conversationId = typeof params?.id === "string" ? params.id : "";
+  const { isExpanded, setIsExpanded } = useConversationExpand();
 
   const [header, setHeader] = useState<ConversationHeader | null>(null);
   const [messages, setMessages] = useState<MessageItem[]>([]);
@@ -183,9 +187,18 @@ export default function HostMessageThreadPage() {
         <div className="rounded-3xl border border-slate-200 bg-white p-6 sm:p-8">
           <p className="text-sm font-semibold text-slate-900">Chargement…</p>
           <p className="mt-2 text-sm text-slate-600">Nous récupérons la conversation.</p>
+          <ConversationExpandToggle isExpanded={isExpanded} onToggle={() => setIsExpanded((current) => !current)} />
         </div>
       ) : (
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)]">
+          <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-5 py-4">
+            <div className="min-w-0">
+              <p className="truncate text-sm font-semibold text-slate-900">{header.owner.name}</p>
+              {header.bookingId ? <p className="mt-0.5 truncate text-xs text-slate-500">Réservation: {header.bookingId}</p> : null}
+            </div>
+            <ConversationExpandToggle isExpanded={isExpanded} onToggle={() => setIsExpanded((current) => !current)} />
+          </div>
+
           <div className="flex min-h-0 flex-1 flex-col p-6">
             <div className="min-h-0 flex-1 space-y-3 overflow-y-auto">
               {messages.length === 0 ? (
