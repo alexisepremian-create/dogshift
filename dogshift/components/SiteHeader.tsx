@@ -23,7 +23,7 @@ export default function SiteHeader() {
   const isHome = pathname === "/";
   const isHostArea = Boolean(pathname && pathname.startsWith("/host"));
   const isAccountArea = Boolean(pathname && pathname.startsWith("/account"));
-  const isHostPreview = Boolean(pathname && pathname.startsWith("/sitter/") && (searchParams?.get("mode") ?? "") === "preview");
+  const isHostPreview = Boolean(pathname && pathname.startsWith("/sitter/") && (searchParams?.get("mode") ?? "") === "preview" && isLoaded && isSignedIn);
 
   const accountHref = "/account";
 
@@ -127,6 +127,12 @@ export default function SiteHeader() {
   useEffect(() => {
     setBecomeMenuOpen(false);
   }, [pathname, searchParams]);
+
+  useEffect(() => {
+    if (!isLoaded || isSignedIn) return;
+    setUserMenuOpen(false);
+    setMobileNavOpen(false);
+  }, [isLoaded, isSignedIn]);
 
   if (isHostArea || isAccountArea || isHostPreview) return null;
 

@@ -374,6 +374,7 @@ function SitterPublicProfileContent({
 
   const { isLoaded, isSignedIn, user } = useUser();
   const isLoggedIn = Boolean(isLoaded && isSignedIn);
+  const effectivePreviewMode = Boolean(isPreviewMode && isLoggedIn);
 
   const [hydrated, setHydrated] = useState(false);
   const [currentHostId, setCurrentHostId] = useState<string | null>(null);
@@ -387,8 +388,8 @@ function SitterPublicProfileContent({
   const [availableDates, setAvailableDates] = useState<string[]>([]);
   const [apiError, setApiError] = useState<string | null>(null);
 
-  const viewMode = isPreviewMode ? "preview" : "public";
-  const isPublicView = !isPreviewMode;
+  const viewMode = effectivePreviewMode ? "preview" : "public";
+  const isPublicView = !effectivePreviewMode;
   const isHostViewingOwn = Boolean(currentHostId && id && currentHostId === id);
 
   const [previewLoaded, setPreviewLoaded] = useState(false);
@@ -400,6 +401,18 @@ function SitterPublicProfileContent({
 
   const sessionName = typeof user?.fullName === "string" ? user.fullName : "";
   const sessionImage = typeof user?.imageUrl === "string" ? user.imageUrl : null;
+
+  useEffect(() => {
+    if (!isPreviewMode) return;
+    if (!isLoaded) return;
+    if (isSignedIn) return;
+
+    const nextParams = new URLSearchParams(search);
+    nextParams.delete("mode");
+    const tail = nextParams.toString();
+    const target = tail ? `${pathname}?${tail}` : pathname;
+    router.replace(target);
+  }, [isLoaded, isPreviewMode, isSignedIn, pathname, router, search]);
 
   function buildSitterFromProfile(profile: HostProfileV1): SitterCard {
     const servicesRaw = profile.services && typeof profile.services === "object" ? profile.services : {};
@@ -446,7 +459,7 @@ function SitterPublicProfileContent({
       try {
         if (dbg) console.log("[ProfileContent] fetch start");
         const res = await fetch(
-          `/api/sitters/${encodeURIComponent(id)}${isPreviewMode ? "?mode=preview" : ""}`
+          `/api/sitters/${encodeURIComponent(id)}${effectivePreviewMode ? "?mode=preview" : ""}`
         );
         const payload = (await res.json()) as
           | {
@@ -523,7 +536,7 @@ function SitterPublicProfileContent({
         if (dbg) console.log("[ProfileContent] fetch finally");
       }
     })();
-  }, [id, isPreviewMode]);
+  }, [effectivePreviewMode, id]);
 
   useEffect(() => {
     if (!id) return;
@@ -583,7 +596,7 @@ function SitterPublicProfileContent({
           return;
         }
 
-        const shouldLoadPreview = Boolean(isPreviewMode && normalizedSitterId === id);
+        const shouldLoadPreview = Boolean(effectivePreviewMode && normalizedSitterId === id);
         if (!shouldLoadPreview) {
           setPreviewLoaded(false);
           setPreviewSitter(null);
@@ -620,14 +633,14 @@ function SitterPublicProfileContent({
         if (dbg) console.log("[ProfileContent] fetch finally");
       }
     })();
-  }, [id, isLoaded, isSignedIn, isPreviewMode]);
+  }, [effectivePreviewMode, id, isLoaded, isSignedIn]);
 
   useEffect(() => {
     // handled above
   }, [hydrated]);
 
   const sitter = useMemo(() => {
-    if (isPreviewMode && isHostViewingOwn) {
+    if (effectivePreviewMode && isHostViewingOwn) {
       if (!previewLoaded) return undefined;
       if (previewSitter) return previewSitter;
 
@@ -638,7 +651,7 @@ function SitterPublicProfileContent({
 
     if (!apiLoaded) return undefined;
     return apiSitter ?? null;
-  }, [apiLoaded, apiSitter, isHostViewingOwn, isPreviewMode, previewLoaded, previewSitter]);
+  }, [apiLoaded, apiSitter, effectivePreviewMode, isHostViewingOwn, previewLoaded, previewSitter]);
 
   const [messageOpen, setMessageOpen] = useState(false);
   const [messageStep, setMessageStep] = useState<"form" | "sent">("form");
@@ -801,9 +814,9 @@ function SitterPublicProfileContent({
     : null;
 
   const isHostViewingOwnStable = hydrated && isHostViewingOwn;
-  const showFullListing = !isHostViewingOwnStable || viewMode === "public" || isPreviewMode;
-  const showHostChrome = isPreviewMode || (isHostViewingOwnStable && viewMode !== "public");
-  const disableSelfActions = isPreviewMode || isHostViewingOwnStable;
+  const showFullListing = !isHostViewingOwnStable || viewMode === "public" || effectivePreviewMode;
+  const showHostChrome = effectivePreviewMode || (isHostViewingOwnStable && viewMode !== "public");
+  const disableSelfActions = effectivePreviewMode || isHostViewingOwnStable;
 
   useEffect(() => {
     if (process.env.NODE_ENV === "production") return;
@@ -889,7 +902,7 @@ function SitterPublicProfileContent({
     [currentHostId, profileData]
   );
 
-  const isHostPreview = showHostChrome && isPreviewMode;
+  const isHostPreview = showHostChrome && effectivePreviewMode;
   const canEvaluateFinalizeModal =
     isHostPreview &&
     previewLoaded &&
