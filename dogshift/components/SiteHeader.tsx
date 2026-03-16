@@ -150,8 +150,7 @@ export default function SiteHeader() {
             (scrolled ? " py-2" : " py-5")
           }
         >
-          <div className={"origin-left transition-transform duration-200 ease-out" + (scrolled ? " scale-100" : " scale-[1.18]")}
-          >
+          <div className="origin-left transition-transform duration-200 ease-out">
             <BrandLogo href="/" priority />
           </div>
 
