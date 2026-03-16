@@ -382,10 +382,10 @@ function HeroPetsittingStyle() {
                   L&apos;expérience Premium pour votre Chien.
                 </h1>
 
-                <div className="mt-7">
+                <div className="mt-5">
                   <Link
                     href="/search"
-                    className="inline-flex min-h-12 items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-6 py-3 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition-all duration-200 ease-out hover:bg-[var(--dogshift-blue-hover)] active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)]"
+                    className="inline-flex min-h-11 items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-5 py-2.5 text-[0.92rem] font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition-all duration-200 ease-out hover:bg-[var(--dogshift-blue-hover)] active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)]"
                   >
                     Trouver un dog sitter
                   </Link>
