@@ -446,7 +446,7 @@ function HeroPetsittingStyle() {
               </h1>
 
               <p className="mt-5 text-pretty text-base leading-relaxed text-slate-600 sm:text-lg">
-                Promenade, Garde, Pension. Trouvez un pet-sitter de confiance en 2 clics.
+                Promenade, Garde, Pension. Trouvez un dog-sitter de confiance en 2 clics.
               </p>
 
               <div className="mt-8 flex flex-col items-stretch gap-3 sm:flex-row sm:items-center">
