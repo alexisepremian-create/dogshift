@@ -1,7 +1,7 @@
 import Link from "next/link";
+import Image from "next/image";
 
 import DogShiftBot from "@/components/DogShiftBot";
-import BrandLogo from "@/components/BrandLogo";
 import PageTopOffset from "@/components/PageTopOffset";
 import SiteHeader from "@/components/SiteHeader";
 
@@ -15,7 +15,11 @@ export default function MarketingLayout({ children }: { children: React.ReactNod
         <div className="w-full px-4 py-8 text-sm text-slate-600 sm:px-6">
           <div className="flex flex-col gap-6 sm:gap-8">
             <div className="flex items-start gap-4">
-              <BrandLogo href="/" />
+              <Link href="/" aria-label="DogShift" className="inline-flex items-center">
+                <span className="flex h-11 w-11 items-center justify-center rounded-full border border-slate-200 bg-white shadow-sm">
+                  <Image src="/dogshift-logo.png" alt="DogShift" width={72} height={72} className="h-8 w-auto" />
+                </span>
+              </Link>
               <div className="grid flex-1 grid-cols-1 gap-6 pt-1 sm:grid-cols-3 sm:gap-8">
                 <div className="flex flex-col items-start gap-2">
                   <p className="font-medium text-slate-700">DogShift</p>
