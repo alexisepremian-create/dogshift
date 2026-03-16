@@ -366,7 +366,7 @@ function HeroPetsittingStyle() {
                 height={2400}
                 priority
                 sizes="100vw"
-                className="pointer-events-none absolute left-1/2 top-1/2 h-[100svh] w-auto max-w-none -translate-x-[24%] -translate-y-[60%] select-none"
+                className="pointer-events-none absolute left-[74%] top-[40%] h-full w-full max-w-none -translate-x-1/2 -translate-y-1/2 object-cover select-none"
               />
             </div>
             <div className="pointer-events-none absolute inset-x-0 top-0 z-0 h-64 bg-gradient-to-b from-white/78 via-white/34 to-transparent" />
