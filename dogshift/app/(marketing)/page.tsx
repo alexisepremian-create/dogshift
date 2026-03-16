@@ -357,43 +357,41 @@ function HeroPetsittingStyle() {
     <section className="relative w-full overflow-hidden pt-0">
       <div className="relative min-h-[100vh] w-full bg-white sm:bg-transparent">
         <div className="relative z-20 block sm:hidden">
-          <div className="mx-auto max-w-[560px] px-6 pb-0 pt-8">
-            <div className="max-w-[330px]">
-              <div className="flex items-center gap-3">
-                <div className="flex h-11 w-11 items-center justify-center rounded-full border border-slate-200 bg-white shadow-sm">
-                  <Image src="/dogshift-logo.png" alt="DogShift" width={72} height={72} priority className="h-8 w-auto" />
+          <div
+            className="relative mx-auto min-h-[860px] w-full max-w-[720px] overflow-hidden bg-white"
+            style={{
+              backgroundImage: "url('/dogshift%20mobile.png')",
+              backgroundRepeat: "no-repeat",
+              backgroundPosition: "center center",
+              backgroundSize: "cover",
+            }}
+          >
+            <div className="pointer-events-none absolute inset-x-0 top-0 z-0 h-64 bg-gradient-to-b from-white/78 via-white/34 to-transparent" />
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 z-0 h-24 bg-gradient-to-t from-white via-white/72 to-transparent" />
+
+            <div className="relative z-10 mx-auto max-w-[560px] px-6 pb-10 pt-8">
+              <div className="max-w-[330px]">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-full border border-white/70 bg-white/88 shadow-sm backdrop-blur-sm">
+                    <Image src="/dogshift-logo.png" alt="DogShift" width={72} height={72} priority className="h-8 w-auto" />
+                  </div>
+                  <p className="text-[13px] font-semibold tracking-[0.22em] text-slate-600">DOGSHIFT</p>
                 </div>
-                <p className="text-[13px] font-semibold tracking-[0.22em] text-slate-500">DOGSHIFT</p>
-              </div>
 
-              <h1 className="mt-8 text-balance text-[2.7rem] font-semibold leading-[0.98] tracking-tight text-slate-900">
-                L&apos;expérience Premium pour votre Chien.
-              </h1>
+                <h1 className="mt-8 text-balance text-[2.7rem] font-semibold leading-[0.98] tracking-tight text-slate-900">
+                  L&apos;expérience Premium pour votre Chien.
+                </h1>
 
-              <div className="mt-7">
-                <Link
-                  href="/search"
-                  className="inline-flex min-h-12 items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-6 py-3 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition-all duration-200 ease-out hover:bg-[var(--dogshift-blue-hover)] active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)]"
-                >
-                  Trouver un dog sitter
-                </Link>
+                <div className="mt-7">
+                  <Link
+                    href="/search"
+                    className="inline-flex min-h-12 items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-6 py-3 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition-all duration-200 ease-out hover:bg-[var(--dogshift-blue-hover)] active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)]"
+                  >
+                    Trouver un dog sitter
+                  </Link>
+                </div>
               </div>
             </div>
-          </div>
-
-          <div className="relative mt-0 overflow-hidden">
-            <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-20 bg-gradient-to-b from-white via-white/88 to-transparent" />
-            <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-28 bg-gradient-to-t from-white via-white/86 to-transparent" />
-            <div
-              className="mx-auto h-[620px] w-full max-w-[720px]"
-              style={{
-                backgroundImage: "url('/dogshift%20mobile.png')",
-                backgroundRepeat: "no-repeat",
-                backgroundPosition: "center 38%",
-                backgroundSize: "cover",
-              }}
-              aria-hidden="true"
-            />
           </div>
         </div>
 
