@@ -355,27 +355,51 @@ function HeroPetsittingStyle() {
 
   return (
     <section className="relative w-full overflow-hidden pt-0">
-      <div
-        className="relative min-h-[100vh] w-full bg-white sm:bg-transparent"
-      >
-        <div
-          className="absolute inset-0 z-0 sm:hidden"
-          style={{
-            backgroundImage: "url('/image%20mobile.png')",
-            backgroundRepeat: "no-repeat",
-            backgroundPosition: "85% -60px",
-            backgroundSize: "cover",
-          }}
-          aria-hidden="true"
-        />
+      <div className="relative min-h-[100vh] w-full bg-white sm:bg-transparent">
+        <div className="relative z-20 block sm:hidden">
+          <div className="mx-auto max-w-[560px] px-5 pb-6 pt-8">
+            <div className="max-w-[360px]">
+              <div className="flex items-center gap-3">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full border border-slate-200 bg-white shadow-sm">
+                  <Image src="/dogshift-logo.png" alt="DogShift" width={72} height={72} priority className="h-8 w-auto" />
+                </div>
+                <p className="text-sm font-semibold tracking-[0.18em] text-slate-500">DOGSHIFT</p>
+              </div>
 
-        <div
-          className="pointer-events-none absolute inset-0 z-10 sm:hidden"
-          style={{
-            background:
-              "linear-gradient(180deg, rgba(248,250,252,0.78) 0%, rgba(248,250,252,0.52) 22%, rgba(248,250,252,0.28) 48%, rgba(248,250,252,0.78) 100%)",
-          }}
-        />
+              <h1 className="mt-7 text-balance text-[2.55rem] font-semibold leading-[1.02] tracking-tight text-slate-900">
+                L&apos;expérience Premium pour votre Chien.
+              </h1>
+
+              <p className="mt-4 max-w-[32ch] text-pretty text-[1rem] leading-relaxed text-slate-600">
+                Trouvez un dogsitter de confiance près de chez vous, avec une expérience simple, locale et soignée.
+              </p>
+
+              <div className="mt-7">
+                <Link
+                  href="/search"
+                  className="inline-flex min-h-12 w-full items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-6 py-3 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition-all duration-200 ease-out hover:bg-[var(--dogshift-blue-hover)] active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)]"
+                >
+                  Trouver un dog sitter
+                </Link>
+              </div>
+            </div>
+          </div>
+
+          <div className="relative mt-2 overflow-hidden">
+            <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-24 bg-gradient-to-b from-white via-white/80 to-transparent" />
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-24 bg-gradient-to-t from-white via-white/72 to-transparent" />
+            <div
+              className="mx-auto h-[440px] w-full max-w-[680px]"
+              style={{
+                backgroundImage: "url('/image%20mobile.png')",
+                backgroundRepeat: "no-repeat",
+                backgroundPosition: "center bottom",
+                backgroundSize: "cover",
+              }}
+              aria-hidden="true"
+            />
+          </div>
+        </div>
 
         <div
           className="absolute inset-0 z-0 hidden sm:block"
@@ -394,6 +418,7 @@ function HeroPetsittingStyle() {
             background:
               "linear-gradient(90deg, rgba(248,250,252,0.98) 0%, rgba(248,250,252,0.96) 22%, rgba(248,250,252,0.82) 42%, rgba(248,250,252,0.25) 66%, rgba(248,250,252,0) 82%)",
           }}
+          aria-hidden="true"
         />
 
         <div className="pointer-events-none absolute inset-0 z-20 hidden lg:block">
@@ -407,7 +432,7 @@ function HeroPetsittingStyle() {
           aria-hidden="true"
         />
 
-        <div className="relative z-20 mx-auto max-w-[1200px] px-4 pb-10 sm:px-6 sm:pb-12">
+        <div className="relative z-20 mx-auto hidden max-w-[1200px] px-4 pb-10 sm:block sm:px-6 sm:pb-12">
           <div className="pt-6 sm:pt-24 lg:pt-28">
             <div className="max-w-[640px]">
               <div className="flex justify-center md:hidden">
@@ -451,6 +476,31 @@ function HeroPetsittingStyle() {
 
               <div className="mt-6 lg:hidden" />
             </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function MobileSearchIntroSection() {
+  return (
+    <section className="bg-slate-50 pb-14 pt-4 sm:hidden">
+      <div className="mx-auto max-w-[560px] px-5">
+        <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.12)]">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Recherche</p>
+          <h2 className="mt-2 text-balance text-xl font-semibold tracking-tight text-slate-900">Trouvez le bon dogsitter, sans friction</h2>
+          <p className="mt-2 text-sm leading-relaxed text-slate-600">
+            Renseignez le service et votre lieu pour découvrir les profils disponibles autour de vous.
+          </p>
+          <div className="mt-5">
+            <SearchBar embedded />
+          </div>
+          <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
+            <p className="text-sm font-medium text-slate-700">Vous souhaitez rejoindre DogShift comme dogsitter ?</p>
+            <Link href="/devenir-dogsitter" className="mt-3 inline-flex text-sm font-semibold text-slate-900 underline decoration-slate-300 underline-offset-4">
+              Devenir dogsitter
+            </Link>
           </div>
         </div>
       </div>
@@ -581,6 +631,7 @@ export default function Home() {
     <div className="min-h-screen bg-slate-50 text-slate-900">
       <main className="pb-24 md:pb-0">
         <HeroPetsittingStyle />
+        <MobileSearchIntroSection />
 
         <div ref={howReveal.ref} style={howReveal.style}>
           <HowItWorks />
