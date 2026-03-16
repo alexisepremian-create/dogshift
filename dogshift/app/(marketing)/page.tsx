@@ -358,7 +358,7 @@ function HeroPetsittingStyle() {
       <div className="relative min-h-[100vh] w-full bg-white sm:bg-transparent">
         <div className="relative z-20 block sm:hidden">
           <div
-            className="relative mx-auto h-[100vh] w-full max-w-[720px] overflow-hidden bg-white"
+            className="relative mx-auto h-[100svh] w-full max-w-[720px] overflow-hidden bg-white"
             style={{
               backgroundImage: "url('/image%20dogshift%20premium.png')",
               backgroundRepeat: "no-repeat",
@@ -378,7 +378,7 @@ function HeroPetsittingStyle() {
                   <p className="text-[13px] font-semibold tracking-[0.22em] text-slate-600">DOGSHIFT</p>
                 </div>
 
-                <h1 className="mt-8 max-w-[14ch] text-balance text-[1.95rem] font-semibold leading-[1.02] tracking-tight text-slate-900">
+                <h1 className="mt-8 max-w-[16ch] text-balance text-[1.72rem] font-semibold leading-[1.06] tracking-tight text-slate-900">
                   L&apos;expérience Premium pour votre Chien.
                 </h1>
 
