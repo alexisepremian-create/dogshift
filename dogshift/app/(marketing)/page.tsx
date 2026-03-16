@@ -357,15 +357,17 @@ function HeroPetsittingStyle() {
     <section className="relative w-full overflow-hidden pt-0">
       <div className="relative min-h-[100vh] w-full bg-white sm:bg-transparent">
         <div className="relative z-20 block sm:hidden">
-          <div
-            className="relative mx-auto h-[100svh] w-full max-w-[720px] overflow-hidden bg-white"
-            style={{
-              backgroundImage: "url('/image%20dogshift%20premium.png')",
-              backgroundRepeat: "no-repeat",
-              backgroundPosition: "74% 40%",
-              backgroundSize: "cover",
-            }}
-          >
+          <div className="relative mx-auto h-[100svh] w-full max-w-[720px] overflow-hidden bg-white">
+            <div className="absolute inset-0 z-0">
+              <Image
+                src="/image%20dogshift%20premium.png"
+                alt=""
+                fill
+                priority
+                sizes="100vw"
+                className="object-cover object-[74%_40%]"
+              />
+            </div>
             <div className="pointer-events-none absolute inset-x-0 top-0 z-0 h-64 bg-gradient-to-b from-white/78 via-white/34 to-transparent" />
             <div className="pointer-events-none absolute inset-x-0 bottom-0 z-0 h-24 bg-gradient-to-t from-white via-white/72 to-transparent" />
 
