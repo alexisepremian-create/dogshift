@@ -357,7 +357,7 @@ function HeroPetsittingStyle() {
     <section className="relative w-full overflow-hidden pt-0">
       <div className="relative min-h-[100vh] w-full bg-white sm:bg-transparent">
         <div className="relative z-20 block sm:hidden">
-          <div className="mx-auto max-w-[560px] px-6 pb-4 pt-8">
+          <div className="mx-auto max-w-[560px] px-6 pb-0 pt-8">
             <div className="max-w-[330px]">
               <div className="flex items-center gap-3">
                 <div className="flex h-11 w-11 items-center justify-center rounded-full border border-slate-200 bg-white shadow-sm">
@@ -370,10 +370,6 @@ function HeroPetsittingStyle() {
                 L&apos;expérience Premium pour votre Chien.
               </h1>
 
-              <p className="mt-5 max-w-[30ch] text-pretty text-[0.98rem] leading-relaxed text-slate-600">
-                Trouvez un dogsitter de confiance près de chez vous, avec une expérience simple, locale et soignée.
-              </p>
-
               <div className="mt-7">
                 <Link
                   href="/search"
@@ -385,8 +381,8 @@ function HeroPetsittingStyle() {
             </div>
           </div>
 
-          <div className="relative mt-8 overflow-hidden">
-            <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-28 bg-gradient-to-b from-white via-white/88 to-transparent" />
+          <div className="relative mt-0 overflow-hidden">
+            <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-20 bg-gradient-to-b from-white via-white/88 to-transparent" />
             <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-28 bg-gradient-to-t from-white via-white/86 to-transparent" />
             <div
               className="mx-auto h-[620px] w-full max-w-[720px]"
