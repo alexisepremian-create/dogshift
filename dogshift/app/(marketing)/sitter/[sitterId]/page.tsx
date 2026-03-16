@@ -284,63 +284,6 @@ export default function SitterPublicProfile() {
   if (dbg) {
     console.log("[SitterPage] rawId=", rawId, "normalized=", sitterId, "preview=", isPreviewMode);
   }
-
-  const [lockChecked, setLockChecked] = useState(false);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    console.log("[LockGuard] effect start");
-
-    let cancelled = false;
-    void (async () => {
-      let shouldSetChecked = true;
-      let shouldRedirect = false;
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 4_000);
-      try {
-        const dbg = new URLSearchParams(window.location.search).get("dbg") === "1";
-        if (dbg) console.log("[LockGuard] start", window.location.href);
-        if (window.location.pathname.startsWith("/unlock")) {
-          return;
-        }
-
-        const res = await fetch("/api/site-lock-status", {
-          cache: "no-store",
-          credentials: "include",
-          signal: controller.signal,
-        });
-        const data = (await res.json().catch(() => null)) as { ok?: boolean; lockOn?: boolean } | null;
-        if (cancelled) return;
-        if (dbg) console.log("[LockGuard] status", { ok: res.ok, data });
-
-        if (res.ok && data?.ok && data.lockOn) {
-          shouldSetChecked = false;
-          shouldRedirect = true;
-          const next = `${window.location.pathname}${window.location.search}`;
-          window.location.replace(`/unlock?next=${encodeURIComponent(next)}`);
-          return;
-        }
-      } catch (err) {
-        try {
-          const dbg = new URLSearchParams(window.location.search).get("dbg") === "1";
-          if (dbg) console.error("[LockGuard] error", err);
-        } catch {
-          // ignore
-        }
-      } finally {
-        clearTimeout(timeout);
-        if (cancelled) return;
-        if (!shouldRedirect && shouldSetChecked) setLockChecked(true);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  if (!lockChecked) return <PageLoader label="Chargement…" />;
   if (dbg) console.log("[SitterPage] render complete");
   return (
     <SitterPublicProfileContent

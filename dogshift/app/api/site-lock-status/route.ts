@@ -4,12 +4,8 @@ import type { NextRequest } from "next/server";
 export const runtime = "nodejs";
 
 export async function GET(req: NextRequest) {
-  const sitePassword = process.env.SITE_PASSWORD;
-  const passwordSet = Boolean(sitePassword);
-  const unlockedCookie = req.cookies.get("site_unlocked")?.value;
-  const lockOn = passwordSet && unlockedCookie !== "1";
-
-  const res = NextResponse.json({ ok: true, passwordSet, lockOn }, { status: 200 });
+  void req;
+  const res = NextResponse.json({ ok: true, passwordSet: false, lockOn: false }, { status: 200 });
   res.headers.set("cache-control", "no-store");
   return res;
 }
