@@ -137,6 +137,7 @@ export default function SiteHeader() {
   if (isHostArea || isAccountArea || isHostPreview) return null;
 
   const authMenuOffset = scrolled ? "-mt-[35px]" : "-mt-[56px]";
+  const mobileMenuOffset = "mt-0";
 
   return (
     <>
@@ -156,7 +157,7 @@ export default function SiteHeader() {
 
           <div
             ref={menuRef}
-            className={authMenuOffset + " relative flex items-center gap-2 transition-all duration-200 ease-out"}
+            className={mobileMenuOffset + " relative flex items-center gap-2 transition-all duration-200 ease-out md:" + authMenuOffset}
           >
             {isLoaded && isSignedIn ? <NotificationBell /> : null}
 
