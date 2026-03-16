@@ -5,7 +5,7 @@ import BecomeSitterAccessForm from "@/components/BecomeSitterAccessForm";
 
 export default async function BecomeSitterAccessPage() {
   const c = await cookies();
-  const unlocked = c.get("dogsitter_invite")?.value === "ok";
+  const unlocked = c.get("ds_invite_unlocked")?.value === "1";
   if (unlocked) {
     redirect("/become-sitter/form");
   }

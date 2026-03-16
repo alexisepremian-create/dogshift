@@ -687,6 +687,10 @@ function SitterPublicProfileContent({
   const [chatError, setChatError] = useState<string | null>(null);
 
   const [bookingCtaError, setBookingCtaError] = useState<string | null>(null);
+  const [bookingAccessCode, setBookingAccessCode] = useState("");
+  const [bookingAccessOpen, setBookingAccessOpen] = useState(false);
+  const [bookingAccessLoading, setBookingAccessLoading] = useState(false);
+  const [bookingAccessError, setBookingAccessError] = useState<string | null>(null);
 
   const shouldAutoStartChat = useMemo(() => {
     const v = (new URLSearchParams(search).get("startChat") ?? "").trim();
@@ -706,6 +710,53 @@ function SitterPublicProfileContent({
       setBookingCtaError(null);
     }
   }, [bookingCtaError, isLoaded, isSignedIn]);
+
+  async function continueToReservation() {
+    const qp = new URLSearchParams();
+    qp.set("service", serviceUi.current.label);
+    if (slotsServiceType === "PENSION") {
+      qp.set("start", boardingStart);
+      qp.set("end", boardingEnd);
+    } else {
+      qp.set("date", slotsDate);
+    }
+    if (effectivePreviewMode) {
+      qp.set("mode", "preview");
+    }
+    router.push(`/sitter/${encodeURIComponent(id)}/reservation?${qp.toString()}`);
+  }
+
+  async function verifyBookingAccessCode() {
+    if (bookingAccessLoading) return;
+    const trimmed = bookingAccessCode.trim();
+    if (!trimmed) {
+      setBookingAccessError("Merci d’entrer le code d’accès réservation.");
+      return;
+    }
+
+    setBookingAccessLoading(true);
+    setBookingAccessError(null);
+    try {
+      const res = await fetch("/api/booking-access", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: trimmed }),
+      });
+      const payload = (await res.json().catch(() => null)) as { ok?: boolean; disabled?: boolean; error?: string } | null;
+      if (!res.ok || !payload?.ok) {
+        const reason = payload?.error ?? "INVALID_CODE";
+        setBookingAccessError(reason === "CODE_REQUIRED" ? "Merci d’entrer le code d’accès réservation." : "Code invalide.");
+        return;
+      }
+      setBookingAccessOpen(false);
+      setBookingAccessCode("");
+      await continueToReservation();
+    } catch {
+      setBookingAccessError("Impossible de vérifier le code pour le moment.");
+    } finally {
+      setBookingAccessLoading(false);
+    }
+  }
 
   async function pay() {
     if (paying) return;
@@ -2482,18 +2533,8 @@ function SitterPublicProfileContent({
                             return;
                           }
                           setBookingCtaError(null);
-                          const qp = new URLSearchParams();
-                          qp.set("service", serviceUi.current.label);
-                          if (slotsServiceType === "PENSION") {
-                            qp.set("start", boardingStart);
-                            qp.set("end", boardingEnd);
-                          } else {
-                            qp.set("date", slotsDate);
-                          }
-                          if (isPreviewMode) {
-                            qp.set("mode", "preview");
-                          }
-                          router.push(`/sitter/${encodeURIComponent(id)}/reservation?${qp.toString()}`);
+                          setBookingAccessError(null);
+                          setBookingAccessOpen(true);
                         }}
                         disabled={!canRequestBooking}
                         className="inline-flex w-full items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-6 py-3 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition hover:bg-[var(--dogshift-blue-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)] disabled:cursor-not-allowed disabled:opacity-55"
@@ -2539,6 +2580,46 @@ function SitterPublicProfileContent({
                     {disableSelfActions ? (
                       <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                         <p className="text-sm text-slate-600">Vous ne pouvez pas vous contacter vous-même.</p>
+                      </div>
+                    ) : null}
+
+                    {bookingAccessOpen ? (
+                      <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                        <p className="text-sm font-semibold text-slate-900">Code requis pour la phase pilote</p>
+                        <p className="mt-1 text-sm text-slate-600">Entrez le code d’accès réservation pour continuer.</p>
+                        <label className="mt-3 block text-xs font-semibold text-slate-700">
+                          Code d’accès réservation
+                          <input
+                            type="password"
+                            value={bookingAccessCode}
+                            onChange={(e) => setBookingAccessCode(e.target.value)}
+                            className="mt-1 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm"
+                            placeholder="Code"
+                            autoFocus
+                          />
+                        </label>
+                        {bookingAccessError ? <p className="mt-3 text-sm font-medium text-rose-700">{bookingAccessError}</p> : null}
+                        <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+                          <button
+                            type="button"
+                            onClick={() => void verifyBookingAccessCode()}
+                            disabled={bookingAccessLoading}
+                            className="inline-flex h-11 items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            {bookingAccessLoading ? "Vérification…" : "Continuer"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setBookingAccessOpen(false);
+                              setBookingAccessCode("");
+                              setBookingAccessError(null);
+                            }}
+                            className="inline-flex h-11 items-center justify-center rounded-2xl border border-slate-300 bg-white px-5 text-sm font-semibold text-slate-900"
+                          >
+                            Annuler
+                          </button>
+                        </div>
                       </div>
                     ) : null}
                   </div>

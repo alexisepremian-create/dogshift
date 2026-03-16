@@ -6,6 +6,7 @@ import { DOGSHIFT_COMMISSION_RATE } from "@/lib/commission";
 import { resolveDbUserId } from "@/lib/auth/resolveDbUserId";
 import { summarizeDayStatusFromSlots } from "@/lib/availability/dayStatus";
 import { checkBoardingRange, generateDaySlots, type ServiceType } from "@/lib/availability/slotEngine";
+import { BOOKING_ACCESS_COOKIE, isBookingAccessCodeProtectionEnabled } from "@/lib/bookingAccess";
 
 export const runtime = "nodejs";
 
@@ -125,6 +126,13 @@ function serviceToAvailabilityType(service: string): ServiceType | null {
 
 export async function POST(req: NextRequest) {
   try {
+    if (isBookingAccessCodeProtectionEnabled()) {
+      const bookingAccessGranted = req.cookies.get(BOOKING_ACCESS_COOKIE)?.value === "true";
+      if (!bookingAccessGranted) {
+        return NextResponse.json({ ok: false, error: "BOOKING_ACCESS_REQUIRED" }, { status: 403 });
+      }
+    }
+
     const userId = await resolveDbUserId(req);
     if (!userId) {
       if (process.env.NODE_ENV !== "production") {

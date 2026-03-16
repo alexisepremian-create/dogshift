@@ -313,7 +313,7 @@ export default function SiteHeader() {
                 <div className="h-px w-full bg-slate-200" />
                 <Link
                   role="menuitem"
-                  href="/devenir-dogsitter"
+                  href="/become-sitter/access"
                   onClick={() => setBecomeMenuOpen(false)}
                   className="flex items-center px-4 py-3 text-sm font-semibold text-slate-900 hover:bg-slate-50"
                 >
