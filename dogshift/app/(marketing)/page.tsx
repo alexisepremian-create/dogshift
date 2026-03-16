@@ -360,9 +360,9 @@ function HeroPetsittingStyle() {
           <div
             className="relative mx-auto min-h-[860px] w-full max-w-[720px] overflow-hidden bg-white"
             style={{
-              backgroundImage: "url('/dogshift%20mobile.png')",
+              backgroundImage: "url('/image%20dogshift%20premium.png')",
               backgroundRepeat: "no-repeat",
-              backgroundPosition: "center center",
+              backgroundPosition: "left 22% center",
               backgroundSize: "cover",
             }}
           >
