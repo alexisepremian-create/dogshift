@@ -362,7 +362,7 @@ function HeroPetsittingStyle() {
             style={{
               backgroundImage: "url('/image%20dogshift%20premium.png')",
               backgroundRepeat: "no-repeat",
-              backgroundPosition: "left 22% center",
+              backgroundPosition: "58% center",
               backgroundSize: "cover",
             }}
           >
@@ -378,7 +378,7 @@ function HeroPetsittingStyle() {
                   <p className="text-[13px] font-semibold tracking-[0.22em] text-slate-600">DOGSHIFT</p>
                 </div>
 
-                <h1 className="mt-8 text-balance text-[2.7rem] font-semibold leading-[0.98] tracking-tight text-slate-900">
+                <h1 className="mt-8 max-w-[12ch] text-balance text-[2.3rem] font-semibold leading-[1] tracking-tight text-slate-900">
                   L&apos;expérience Premium pour votre Chien.
                 </h1>
 
