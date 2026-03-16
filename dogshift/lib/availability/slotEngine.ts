@@ -635,7 +635,17 @@ export async function generateDaySlots(
       (prisma as any).availabilityException.findMany({
         where: { sitterId, serviceType: input.serviceType, date: new Date(`${date}T00:00:00Z`) },
       }) as Promise<AvailabilityExceptionRow[]>,
-      (prisma as any).booking.findMany({ where: { sitterId } }) as Promise<BookingRow[]>,
+      (prisma as any).booking.findMany({
+        where: { sitterId },
+        select: {
+          status: true,
+          createdAt: true,
+          startAt: true,
+          endAt: true,
+          startDate: true,
+          endDate: true,
+        },
+      }) as Promise<BookingRow[]>,
       (prisma as any).serviceConfig.findUnique({ where: { sitterId_serviceType: { sitterId, serviceType: input.serviceType } } }) as Promise<ServiceConfigRow | null>,
     ]);
 
@@ -805,6 +815,14 @@ export async function checkBoardingRange(input: CheckBoardingRangeInput): Promis
           sitterId,
           startAt: { lt: endDt },
           endAt: { gt: startDt },
+        },
+        select: {
+          status: true,
+          createdAt: true,
+          startAt: true,
+          endAt: true,
+          startDate: true,
+          endDate: true,
         },
       }) as Promise<BookingRow[]>,
       (prisma as any).serviceConfig.findFirst({ where: { sitterId, serviceType: "PENSION" } }) as Promise<ServiceConfigRow | null>,

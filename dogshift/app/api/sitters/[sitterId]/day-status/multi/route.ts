@@ -83,6 +83,14 @@ export async function GET(
           startAt: { lt: toEnd },
           endAt: { gt: fromStart },
         },
+        select: {
+          status: true,
+          createdAt: true,
+          startAt: true,
+          endAt: true,
+          startDate: true,
+          endDate: true,
+        },
       }),
       (prisma as any).serviceConfig.findMany({ where: { sitterId } }),
     ]);
@@ -170,7 +178,7 @@ export async function GET(
     );
   } catch (err) {
     const durationMs = Date.now() - startedAt;
-    if (dbg) console.error("[api][sitters][day-status][multi][GET] error", { sitterId, from, to, durationMs, err });
+    console.error("[api][sitters][day-status][multi][GET] error", { sitterId, from, to, durationMs, err });
     return NextResponse.json(
       { ok: false, error: "INTERNAL_ERROR" },
       {

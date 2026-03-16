@@ -198,6 +198,15 @@ function formatTimeLabel(iso: string) {
   return `${hour}:${minute}`;
 }
 
+function getAvailabilityLoadErrorMessage(error: string | null | undefined) {
+  const code = typeof error === "string" ? error.trim() : "";
+  if (!code) return "Impossible de charger l’agenda pour le moment.";
+  if (code === "DAY_STATUS_NETWORK_ERROR") return "Impossible de charger l’agenda pour le moment.";
+  if (code === "INTERNAL_ERROR") return "Impossible de charger l’agenda pour le moment.";
+  if (code === "TIMEOUT") return "Le chargement de l’agenda prend plus de temps que prévu.";
+  return "Impossible de charger l’agenda pour le moment.";
+}
+
 function StarIcon({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true" className={className}>
@@ -1304,7 +1313,7 @@ function SitterPublicProfileContent({
           </div>
         ) : monthError ? (
           <div className="mt-2">
-            <p className="text-sm text-rose-700">{monthError}</p>
+            <p className="text-sm text-rose-700">{getAvailabilityLoadErrorMessage(monthError)}</p>
             <button
               type="button"
               onClick={() => setMonthRetryKey((v: number) => v + 1)}
@@ -2269,10 +2278,19 @@ function SitterPublicProfileContent({
                         />
 
                         <p className="mt-5 text-sm font-medium text-slate-900">Prochaines disponibilités</p>
-                        {monthLoading ? (
+                        {nextDaysLoading ? (
                           <p className="mt-1 text-sm text-slate-600">Chargement…</p>
-                        ) : monthError ? (
-                          <p className="mt-1 text-sm text-rose-700">{monthError}</p>
+                        ) : nextDaysError ? (
+                          <div className="mt-2">
+                            <p className="text-sm text-rose-700">{getAvailabilityLoadErrorMessage(nextDaysError)}</p>
+                            <button
+                              type="button"
+                              onClick={() => setNextDaysRetryKey((v) => v + 1)}
+                              className="mt-2 inline-flex h-9 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-xs font-semibold text-slate-700"
+                            >
+                              Réessayer
+                            </button>
+                          </div>
                         ) : nextAvail.length ? (
                           <div className="mt-2 flex flex-wrap gap-2">
                             {nextAvail.map((d) => (
