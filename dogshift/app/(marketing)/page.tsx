@@ -357,27 +357,27 @@ function HeroPetsittingStyle() {
     <section className="relative w-full overflow-hidden pt-0">
       <div className="relative min-h-[100vh] w-full bg-white sm:bg-transparent">
         <div className="relative z-20 block sm:hidden">
-          <div className="mx-auto max-w-[560px] px-5 pb-6 pt-8">
-            <div className="max-w-[360px]">
+          <div className="mx-auto max-w-[560px] px-6 pb-4 pt-8">
+            <div className="max-w-[330px]">
               <div className="flex items-center gap-3">
-                <div className="flex h-12 w-12 items-center justify-center rounded-full border border-slate-200 bg-white shadow-sm">
+                <div className="flex h-11 w-11 items-center justify-center rounded-full border border-slate-200 bg-white shadow-sm">
                   <Image src="/dogshift-logo.png" alt="DogShift" width={72} height={72} priority className="h-8 w-auto" />
                 </div>
-                <p className="text-sm font-semibold tracking-[0.18em] text-slate-500">DOGSHIFT</p>
+                <p className="text-[13px] font-semibold tracking-[0.22em] text-slate-500">DOGSHIFT</p>
               </div>
 
-              <h1 className="mt-7 text-balance text-[2.55rem] font-semibold leading-[1.02] tracking-tight text-slate-900">
+              <h1 className="mt-8 text-balance text-[2.7rem] font-semibold leading-[0.98] tracking-tight text-slate-900">
                 L&apos;expérience Premium pour votre Chien.
               </h1>
 
-              <p className="mt-4 max-w-[32ch] text-pretty text-[1rem] leading-relaxed text-slate-600">
+              <p className="mt-5 max-w-[30ch] text-pretty text-[0.98rem] leading-relaxed text-slate-600">
                 Trouvez un dogsitter de confiance près de chez vous, avec une expérience simple, locale et soignée.
               </p>
 
               <div className="mt-7">
                 <Link
                   href="/search"
-                  className="inline-flex min-h-12 w-full items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-6 py-3 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition-all duration-200 ease-out hover:bg-[var(--dogshift-blue-hover)] active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)]"
+                  className="inline-flex min-h-12 items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-6 py-3 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition-all duration-200 ease-out hover:bg-[var(--dogshift-blue-hover)] active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)]"
                 >
                   Trouver un dog sitter
                 </Link>
@@ -385,15 +385,15 @@ function HeroPetsittingStyle() {
             </div>
           </div>
 
-          <div className="relative mt-2 overflow-hidden">
-            <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-24 bg-gradient-to-b from-white via-white/80 to-transparent" />
-            <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-24 bg-gradient-to-t from-white via-white/72 to-transparent" />
+          <div className="relative mt-8 overflow-hidden">
+            <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-28 bg-gradient-to-b from-white via-white/88 to-transparent" />
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-28 bg-gradient-to-t from-white via-white/86 to-transparent" />
             <div
-              className="mx-auto h-[440px] w-full max-w-[680px]"
+              className="mx-auto h-[620px] w-full max-w-[720px]"
               style={{
-                backgroundImage: "url('/image%20mobile.png')",
+                backgroundImage: "url('/dogshift%20mobile.png')",
                 backgroundRepeat: "no-repeat",
-                backgroundPosition: "center bottom",
+                backgroundPosition: "center 38%",
                 backgroundSize: "cover",
               }}
               aria-hidden="true"
@@ -485,7 +485,7 @@ function HeroPetsittingStyle() {
 
 function MobileSearchIntroSection() {
   return (
-    <section className="bg-slate-50 pb-14 pt-4 sm:hidden">
+    <section className="bg-slate-50 pb-14 pt-1 sm:hidden">
       <div className="mx-auto max-w-[560px] px-5">
         <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.12)]">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Recherche</p>
