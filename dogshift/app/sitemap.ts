@@ -13,6 +13,14 @@ export default function sitemap(): MetadataRoute.Sitemap {
       lastModified,
     },
     {
+      url: "https://www.dogshift.ch/dog-sitter-lausanne",
+      lastModified,
+    },
+    {
+      url: "https://www.dogshift.ch/dog-sitter-geneve",
+      lastModified,
+    },
+    {
       url: "https://www.dogshift.ch/reserver",
       lastModified,
     },
