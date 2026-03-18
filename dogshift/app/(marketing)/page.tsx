@@ -28,5 +28,38 @@ export const metadata: Metadata = {
 };
 
 export default function Home() {
-  return <HomePageClient />;
+  return (
+    <>
+      <HomePageClient />
+      <section className="bg-slate-50 pb-16 pt-14 sm:pb-20 sm:pt-16">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6">
+          <div className="mx-auto max-w-5xl">
+            <h2 className="text-balance text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">
+              Dog-sitting en Suisse avec DogShift
+            </h2>
+            <div className="mt-4 space-y-4 text-sm leading-relaxed text-slate-600 sm:text-base">
+              <p>
+                DogShift est une plateforme de dog-sitting en Suisse qui permet de trouver facilement un dog sitter de confiance.
+              </p>
+              <p>
+                Que vous recherchiez une promenade de chien, une garde à domicile ou une pension pour votre chien, DogShift met en relation les
+                propriétaires avec des dogsitters vérifiés.
+              </p>
+              <p>
+                Disponible à Lausanne, Genève et dans toute la Suisse, DogShift vous permet de trouver rapidement un service de garde pour chien
+                adapté à vos besoins.
+              </p>
+              <p>
+                Nos dogsitters proposent différents services : promenade quotidienne, garde à domicile, pension longue durée et visites à domicile.
+              </p>
+              <p>
+                Grâce à un processus de sélection rigoureux et des profils vérifiés, DogShift garantit une expérience fiable, sécurisée et
+                transparente.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+    </>
+  );
 }
