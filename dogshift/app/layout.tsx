@@ -18,8 +18,28 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "DogShift",
-  description: "DogShift",
+  metadataBase: new URL("https://www.dogshift.ch"),
+  title: {
+    default: "DogShift – Dog-sitting premium en Suisse",
+    template: "%s | DogShift",
+  },
+  description: "DogShift est une plateforme de dog-sitting premium en Suisse. Trouvez un dog-sitter de confiance pour promenade, garde ou pension.",
+  alternates: {
+    canonical: "/",
+  },
+  openGraph: {
+    type: "website",
+    url: "https://www.dogshift.ch",
+    siteName: "DogShift",
+    title: "DogShift – Dog-sitting premium en Suisse",
+    description: "DogShift est une plateforme de dog-sitting premium en Suisse. Trouvez un dog-sitter de confiance pour promenade, garde ou pension.",
+    locale: "fr_CH",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "DogShift – Dog-sitting premium en Suisse",
+    description: "DogShift est une plateforme de dog-sitting premium en Suisse. Trouvez un dog-sitter de confiance pour promenade, garde ou pension.",
+  },
   icons: {
     icon: [
       { url: "/favicon.ico" },
