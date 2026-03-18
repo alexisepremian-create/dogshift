@@ -47,7 +47,7 @@ export default function Home() {
               </p>
               <p>
                 Disponible à Lausanne, Genève et dans toute la Suisse, DogShift vous permet de trouver rapidement un service de garde pour chien
-                adapté à vos besoins.
+                adapté à vos besoins, notamment pour trouver un dog sitter à Lausanne et dans votre région.
               </p>
               <p>
                 Nos dogsitters proposent différents services : promenade quotidienne, garde à domicile, pension longue durée et visites à domicile.
