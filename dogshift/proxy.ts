@@ -4,7 +4,6 @@ import { NextResponse } from "next/server";
 const isPublicRoute = createRouteMatcher([
   "/",
   "/login(.*)",
-  "/signup(.*)",
   "/sign-out(.*)",
   "/become-sitter",
   "/become-sitter/form",
@@ -13,6 +12,18 @@ const isPublicRoute = createRouteMatcher([
   "/api/become-sitter/apply",
   "/api/invites/verify",
 ]);
+
+const removedExactPaths = new Set([
+  "/signup",
+  "/access",
+  "/unlock",
+  "/travel-dog-bowl",
+  "/toys",
+  "/etiquette-produit",
+  "/abonnements-dogshift",
+]);
+
+const removedPathPrefixes = ["/signup/", "/etiquette-produit/"];
 
 const isBecomeSitterInviteProtectedRoute = createRouteMatcher([
   "/become-sitter/form",
@@ -33,6 +44,11 @@ function isPublicSitterRoute(req: MiddlewareReqLike) {
     .trim()
     .toLowerCase();
   return mode === "public" || mode === "";
+}
+
+function isRemovedPath(pathname: string) {
+  if (removedExactPaths.has(pathname)) return true;
+  return removedPathPrefixes.some((prefix) => pathname.startsWith(prefix));
 }
 
 export const proxy = clerkMiddleware(async (auth, req) => {
@@ -67,6 +83,13 @@ export const proxy = clerkMiddleware(async (auth, req) => {
     url.host = "www.dogshift.ch";
     url.protocol = "https";
     return NextResponse.redirect(url, 308);
+  }
+
+  if (isRemovedPath(pathname)) {
+    const res = new NextResponse("Gone", { status: 410 });
+    res.headers.set("x-robots-tag", "noindex, nofollow");
+    res.headers.set("cache-control", "public, max-age=0, s-maxage=86400");
+    return res;
   }
 
   const addLockHeaders = (res: NextResponse) => {
