@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { Metadata } from "next";
 
 import HomePageClient from "./HomePageClient";
@@ -55,6 +56,10 @@ export default function Home() {
               <p>
                 Grâce à un processus de sélection rigoureux et des profils vérifiés, DogShift garantit une expérience fiable, sécurisée et
                 transparente.
+              </p>
+              <p>
+                Vous recherchez un <Link href="/dog-sitter-lausanne" className="font-medium text-slate-700 underline decoration-slate-300 underline-offset-4 hover:text-slate-900">dog sitter à Lausanne</Link> ou un{" "}
+                <Link href="/dog-sitter-geneve" className="font-medium text-slate-700 underline decoration-slate-300 underline-offset-4 hover:text-slate-900">dog sitter à Genève</Link> ? Découvrez nos services disponibles dans votre région.
               </p>
             </div>
           </div>

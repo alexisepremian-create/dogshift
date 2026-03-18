@@ -13,6 +13,11 @@ type CitySeoLandingPageProps = {
     title: string;
     description: string;
   }>;
+  seoSections?: Array<{
+    title: string;
+    paragraphs: string[];
+  }>;
+  structuredData?: Record<string, unknown>;
   ctaEyebrow: string;
   ctaTitle: string;
   ctaText: string;
@@ -39,6 +44,8 @@ export default function CitySeoLandingPage({
   clarificationText,
   valueTitle = "Pourquoi choisir DogShift",
   valueItems = [],
+  seoSections = [],
+  structuredData,
   ctaEyebrow,
   ctaTitle,
   ctaText,
@@ -48,6 +55,10 @@ export default function CitySeoLandingPage({
 }: CitySeoLandingPageProps) {
   return (
     <main className="min-h-screen bg-slate-50 text-slate-900">
+      {structuredData ? (
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />
+      ) : null}
+
       <section className="mx-auto max-w-6xl px-4 pb-10 pt-14 sm:px-6 sm:pb-14 sm:pt-16">
         <div className="grid gap-8 lg:grid-cols-[1.15fr_0.85fr] lg:items-start">
           <div>
