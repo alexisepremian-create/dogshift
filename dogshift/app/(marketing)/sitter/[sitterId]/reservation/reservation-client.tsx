@@ -998,7 +998,9 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
         const qp = new URLSearchParams();
         qp.set("date", dateStart);
         qp.set("service", serviceType);
-        qp.set("durationMin", String(durationHours * 60));
+        if (serviceType === "DOGSITTING") {
+          qp.set("durationMin", String(durationHours * 60));
+        }
         const res = await fetch(`/api/sitters/${encodeURIComponent(sitter.sitterId)}/slots?${qp.toString()}`, {
           method: "GET",
           cache: "no-store",
