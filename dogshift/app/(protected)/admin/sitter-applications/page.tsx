@@ -19,7 +19,7 @@ function safeEqual(a: string, b: string) {
 export default async function AdminSitterApplicationsPage({
   searchParams,
 }: {
-  searchParams?: Record<string, string | string[] | undefined> | Promise<Record<string, string | string[] | undefined>>;
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }) {
   noStore();
 
@@ -28,11 +28,7 @@ export default async function AdminSitterApplicationsPage({
     redirect("/admin/sitters/applications");
   }
 
-  const resolvedSearchParams = (typeof (searchParams as any)?.then === "function"
-    ? await (searchParams as Promise<Record<string, string | string[] | undefined>>)
-    : (searchParams as Record<string, string | string[] | undefined> | undefined)) as
-    | Record<string, string | string[] | undefined>
-    | undefined;
+  const resolvedSearchParams = await searchParams;
 
   const expected = (process.env.HOST_ADMIN_CODE ?? "").trim();
   const raw = resolvedSearchParams?.code;
