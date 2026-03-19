@@ -175,6 +175,9 @@ function statusForSelectedService(
         promenadeStatus: "AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE";
         dogsittingStatus: "AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE";
         pensionStatus: "AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE";
+        promenadePartial?: boolean;
+        dogsittingPartial?: boolean;
+        pensionPartial?: boolean;
       }
     | undefined,
   serviceType: "PROMENADE" | "DOGSITTING" | "PENSION"
@@ -183,6 +186,22 @@ function statusForSelectedService(
   if (serviceType === "PROMENADE") return row.promenadeStatus;
   if (serviceType === "DOGSITTING") return row.dogsittingStatus;
   return row.pensionStatus;
+}
+
+function partialForSelectedService(
+  row:
+    | {
+        promenadePartial?: boolean;
+        dogsittingPartial?: boolean;
+        pensionPartial?: boolean;
+      }
+    | undefined,
+  serviceType: "PROMENADE" | "DOGSITTING" | "PENSION"
+) {
+  if (!row) return false;
+  if (serviceType === "PROMENADE") return Boolean(row.promenadePartial);
+  if (serviceType === "DOGSITTING") return Boolean(row.dogsittingPartial);
+  return Boolean(row.pensionPartial);
 }
 
 function formatSelectionRange(start: string, end?: string) {
@@ -971,6 +990,9 @@ function SitterPublicProfileContent({
       promenadeStatus: "AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE";
       dogsittingStatus: "AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE";
       pensionStatus: "AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE";
+      promenadePartial?: boolean;
+      dogsittingPartial?: boolean;
+      pensionPartial?: boolean;
     }>
   >([]);
 
@@ -980,6 +1002,9 @@ function SitterPublicProfileContent({
       promenadeStatus: "AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE";
       dogsittingStatus: "AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE";
       pensionStatus: "AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE";
+      promenadePartial?: boolean;
+      dogsittingPartial?: boolean;
+      pensionPartial?: boolean;
     }>
   >([]);
   const [nextDaysLoading, setNextDaysLoading] = useState(false);
@@ -1055,7 +1080,17 @@ function SitterPublicProfileContent({
           return;
         }
 
-        const rows = payload.days.filter((d: any) => d && typeof d.date === "string");
+        const rows = payload.days.filter(
+          (d: any): d is {
+            date: string;
+            promenadeStatus: "AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE";
+            dogsittingStatus: "AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE";
+            pensionStatus: "AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE";
+            promenadePartial?: boolean;
+            dogsittingPartial?: boolean;
+            pensionPartial?: boolean;
+          } => d && typeof d.date === "string"
+        );
         setNextDays(rows);
       } catch (error) {
         if (cancelled) return;
@@ -1079,7 +1114,8 @@ function SitterPublicProfileContent({
     for (const d of rows) {
       if (!d || typeof d.date !== "string") continue;
       const status = statusForSelectedService(d, slotsServiceType);
-      if (status === "AVAILABLE" || status === "ON_REQUEST") candidates.push(d.date);
+      const partial = partialForSelectedService(d, slotsServiceType);
+      if (status === "AVAILABLE" || status === "ON_REQUEST" || partial) candidates.push(d.date);
     }
     candidates.sort();
     return candidates.slice(0, 3);
@@ -1258,6 +1294,9 @@ function SitterPublicProfileContent({
         promenadeStatus: "AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE";
         dogsittingStatus: "AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE";
         pensionStatus: "AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE";
+        promenadePartial?: boolean;
+        dogsittingPartial?: boolean;
+        pensionPartial?: boolean;
       }
     >();
     for (const row of monthDays) {
@@ -1266,6 +1305,9 @@ function SitterPublicProfileContent({
         promenadeStatus: row.promenadeStatus,
         dogsittingStatus: row.dogsittingStatus,
         pensionStatus: row.pensionStatus,
+        promenadePartial: row.promenadePartial,
+        dogsittingPartial: row.dogsittingPartial,
+        pensionPartial: row.pensionPartial,
       });
     }
     return map;
@@ -1274,6 +1316,11 @@ function SitterPublicProfileContent({
   const selectedDayStatus = useMemo(() => {
     if (!slotsDate) return null;
     return statusForSelectedService(monthDaysByDate.get(slotsDate), slotsServiceType);
+  }, [monthDaysByDate, slotsDate, slotsServiceType]);
+
+  const selectedDayPartial = useMemo(() => {
+    if (!slotsDate) return false;
+    return partialForSelectedService(monthDaysByDate.get(slotsDate), slotsServiceType);
   }, [monthDaysByDate, slotsDate, slotsServiceType]);
 
   const AvailabilityCalendar = ({
@@ -1351,6 +1398,7 @@ function SitterPublicProfileContent({
                 const row = monthDaysByDate.get(dateIso);
 
                 const serviceTone = statusForSelectedService(row, slotsServiceType);
+                const servicePartial = partialForSelectedService(row, slotsServiceType);
 
                 const selectedServiceTone =
                   slotsServiceType === "PROMENADE"
@@ -1399,7 +1447,7 @@ function SitterPublicProfileContent({
                 return (
                   <div
                     key={dateIso}
-                    className={`flex h-14 w-full flex-col rounded-2xl ring-1 ${tone} ${focusRing} ${
+                    className={`flex h-14 w-full flex-col rounded-2xl ring-1 ${tone} ${servicePartial ? "ring-[3px] ring-amber-300" : ""} ${focusRing} ${
                       isInPensionRange ? selectedServiceTone.range : ""
                     } ${isCalendarSelected ? `${selectedServiceTone.selected}` : ""}`}
                   >
@@ -1513,6 +1561,11 @@ function SitterPublicProfileContent({
                 ) : selectedDayStatus === "UNAVAILABLE" ? (
                   <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 p-3">
                     <p className="text-sm font-semibold text-slate-900">Indisponible</p>
+                  </div>
+                ) : selectedDayPartial ? (
+                  <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 p-3">
+                    <p className="text-sm font-semibold text-amber-900">Disponibilité partielle</p>
+                    <p className="mt-1 text-sm text-amber-800">Cette date reste réservable, mais certains créneaux sont déjà bloqués par une réservation existante.</p>
                   </div>
                 ) : serviceSummary && !serviceSummary.hasExplicitTimeSlots && !dayHasBookingConflicts ? (
                   <div className="mt-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-3">
@@ -1889,6 +1942,9 @@ function SitterPublicProfileContent({
               promenadeStatus: "AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE";
               dogsittingStatus: "AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE";
               pensionStatus: "AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE";
+              promenadePartial?: boolean;
+              dogsittingPartial?: boolean;
+              pensionPartial?: boolean;
             } =>
               Boolean(
                 d &&

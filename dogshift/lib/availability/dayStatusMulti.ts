@@ -6,6 +6,9 @@ export type MultiServiceDayStatus = {
   promenadeStatus: "AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE";
   dogsittingStatus: "AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE";
   pensionStatus: "AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE";
+  promenadePartial: boolean;
+  dogsittingPartial: boolean;
+  pensionPartial: boolean;
 };
 
 export type DayStatusMultiInput = {
@@ -66,6 +69,16 @@ function bookingStartDate(b: any) {
     return Number.isNaN(dt.getTime()) ? null : dt;
   }
   return null;
+}
+
+function isBookingConflictReason(reason: unknown) {
+  return (
+    reason === "booking_existing_overlap" ||
+    reason === "booking_paid_overlap" ||
+    reason === "booking_confirmed_overlap" ||
+    reason === "booking_pending_payment_overlap" ||
+    reason === "booking_pending_acceptance_overlap"
+  );
 }
 
 function bookingEndDate(b: any) {
@@ -156,6 +169,9 @@ export function computeMultiDayStatusNaive(input: DayStatusMultiInput): MultiSer
       promenadeStatus: computeStatus("PROMENADE"),
       dogsittingStatus: computeStatus("DOGSITTING"),
       pensionStatus: computeStatus("PENSION"),
+      promenadePartial: false,
+      dogsittingPartial: false,
+      pensionPartial: false,
     };
   });
 }
@@ -269,7 +285,7 @@ export function computeMultiDayStatusIndexed(input: DayStatusMultiInput): {
       const exceptions = exceptionsByServiceByDate[serviceType].get(date) ?? [];
       const config = configByService[serviceType];
 
-      if (config?.enabled === false) return "UNAVAILABLE" as const;
+      if (config?.enabled === false) return { status: "UNAVAILABLE" as const, partial: false };
 
       const slots = computeDaySlots({
         serviceType,
@@ -280,14 +296,28 @@ export function computeMultiDayStatusIndexed(input: DayStatusMultiInput): {
         bookings,
         config,
       });
-      return summarizeDayStatusFromSlots(slots);
+      const status = summarizeDayStatusFromSlots(slots);
+      const hasBookableSlots = slots.some((slot) => slot.status === "AVAILABLE" || slot.status === "ON_REQUEST");
+      const hasBookingBlockedSlots = slots.some((slot) => slot.status === "UNAVAILABLE" && isBookingConflictReason(slot.reason));
+      const partial = hasBookableSlots && hasBookingBlockedSlots;
+      return {
+        status: partial && status === "UNAVAILABLE" ? ("AVAILABLE" as const) : status,
+        partial,
+      };
     };
+
+    const promenade = computeStatus("PROMENADE");
+    const dogsitting = computeStatus("DOGSITTING");
+    const pension = computeStatus("PENSION");
 
     return {
       date,
-      promenadeStatus: computeStatus("PROMENADE"),
-      dogsittingStatus: computeStatus("DOGSITTING"),
-      pensionStatus: computeStatus("PENSION"),
+      promenadeStatus: promenade.status,
+      dogsittingStatus: dogsitting.status,
+      pensionStatus: pension.status,
+      promenadePartial: promenade.partial,
+      dogsittingPartial: dogsitting.partial,
+      pensionPartial: pension.partial,
     };
   });
 
