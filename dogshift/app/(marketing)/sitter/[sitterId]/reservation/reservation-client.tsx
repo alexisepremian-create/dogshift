@@ -329,6 +329,7 @@ function DogShiftTimePicker({
   open,
   onOpenChange,
   allowedTimes,
+  disabled,
 }: {
   value: string | null;
   onChange: (next: string | null) => void;
@@ -337,6 +338,7 @@ function DogShiftTimePicker({
   open: boolean;
   onOpenChange: (next: boolean) => void;
   allowedTimes?: string[];
+  disabled?: boolean;
 }) {
   const rootRef = useRef<HTMLDivElement | null>(null);
   const normalizedAllowedTimes = useMemo(() => {
@@ -382,15 +384,16 @@ function DogShiftTimePicker({
       <button
         id={id}
         type="button"
+        disabled={disabled}
         onClick={() => onOpenChange(!open)}
-        className="mt-2 inline-flex w-full items-center justify-between gap-3 rounded-2xl border border-slate-300 bg-white px-4 py-3 text-left text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)]"
+        className="mt-2 inline-flex w-full items-center justify-between gap-3 rounded-2xl border border-slate-300 bg-white px-4 py-3 text-left text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)] disabled:cursor-not-allowed disabled:opacity-50"
         aria-haspopup="listbox"
         aria-expanded={open}
       >
-        <span className={display ? "text-slate-900" : "text-slate-500"}>{display || "Choisir une heure"}</span>
+        <span className={display ? "text-slate-900" : "text-slate-500"}>{display || (disabled ? "Choisir d’abord une durée" : "Choisir une heure")}</span>
       </button>
 
-      {open ? (
+      {open && !disabled ? (
         <div className="absolute left-0 top-full z-20 mt-3 w-[min(360px,calc(100vw-32px))]">
           <div className="rounded-[20px] border border-slate-200 bg-white p-3 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.18)]">
             <div className="flex items-center justify-between gap-3 px-1 pb-2">
@@ -948,7 +951,7 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
 
     const effectiveDurationHours = durationHours;
 
-    if (serviceType === "DOGSITTING" && !effectiveDurationHours) {
+    if (!effectiveDurationHours) {
       setHourlySlots([]);
       setHourlySlotsLoading(false);
       setHourlySlotsLoaded(false);
@@ -1324,6 +1327,7 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
                     value={startTime}
                     open={openPicker === "time"}
                     allowedTimes={availableStartTimes}
+                    disabled={!dateStart || !durationHours || availableStartTimes.length === 0}
                     onOpenChange={(next) => setOpenPicker(next ? "time" : null)}
                     onChange={(next) => {
                       setStartTime(next);
@@ -1356,7 +1360,7 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
                     <p className="mt-1 text-sm text-rose-700">Impossible de charger les créneaux pour cette date.</p>
                   ) : !dateStart ? (
                     <p className="mt-1 text-sm text-slate-600">Choisis une date pour voir les créneaux restants.</p>
-                  ) : unit === "HOURLY" && serviceToApiType(selectedService) === "DOGSITTING" && !durationHours ? (
+                  ) : unit === "HOURLY" && !durationHours ? (
                     <p className="mt-1 text-sm text-slate-600">Choisis une durée pour voir les créneaux restants.</p>
                   ) : bookableHourlySlots.length === 0 ? (
                     <p className="mt-1 text-sm font-medium text-rose-700">Aucun créneau libre sur cette journée.</p>
