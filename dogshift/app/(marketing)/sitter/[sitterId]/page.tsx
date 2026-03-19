@@ -1426,13 +1426,13 @@ function SitterPublicProfileContent({
                         };
 
                 const tone =
-                  row && serviceTone === "AVAILABLE"
+                  row && (serviceTone === "AVAILABLE" || servicePartial)
                     ? selectedServiceTone.available
                     : row && serviceTone === "ON_REQUEST"
                       ? selectedServiceTone.onRequest
                       : "bg-slate-100 text-slate-500 ring-slate-200";
 
-                const isSelectableForService = serviceTone === "AVAILABLE" || serviceTone === "ON_REQUEST";
+                const isSelectableForService = serviceTone === "AVAILABLE" || serviceTone === "ON_REQUEST" || servicePartial;
                 const ariaLabel = `${dateIso} — ${serviceUi.current.label}: ${serviceUi.statusLabel(serviceTone)}`;
 
                 const focusRing = isSelectableForService ? `ring-[2px] ${selectedServiceTone.accent}` : "";
@@ -1558,14 +1558,14 @@ function SitterPublicProfileContent({
                     <p className="text-sm font-semibold text-amber-900">Sur demande</p>
                     <p className="mt-1 text-sm text-amber-800">Ce service est disponible uniquement sur demande pour cette date.</p>
                   </div>
-                ) : selectedDayStatus === "UNAVAILABLE" ? (
-                  <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 p-3">
-                    <p className="text-sm font-semibold text-slate-900">Indisponible</p>
-                  </div>
                 ) : selectedDayPartial ? (
                   <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 p-3">
                     <p className="text-sm font-semibold text-amber-900">Disponibilité partielle</p>
                     <p className="mt-1 text-sm text-amber-800">Cette date reste réservable, mais certains créneaux sont déjà bloqués par une réservation existante.</p>
+                  </div>
+                ) : selectedDayStatus === "UNAVAILABLE" ? (
+                  <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                    <p className="text-sm font-semibold text-slate-900">Indisponible</p>
                   </div>
                 ) : serviceSummary && !serviceSummary.hasExplicitTimeSlots && !dayHasBookingConflicts ? (
                   <div className="mt-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-3">
