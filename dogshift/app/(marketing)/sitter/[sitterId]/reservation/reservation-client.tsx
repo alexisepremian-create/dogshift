@@ -1032,6 +1032,7 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
     const controller = new AbortController();
 
     void (async () => {
+      setHourlySlots([]);
       setHourlySlotsLoading(true);
       setHourlySlotsLoaded(false);
       setHourlySlotsError(null);
