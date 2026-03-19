@@ -65,6 +65,13 @@ export type BlockedTimeRange = {
   reason?: string;
 };
 
+export type StartAvailability = {
+  startAt: string;
+  startMin: number;
+  status: SlotStatus;
+  compatibleDurationMin: number[];
+};
+
 type Interval = {
   startMin: number;
   endMin: number;
@@ -419,6 +426,62 @@ function exactBlockedRanges(date: string, blocks: Interval[]): BlockedTimeRange[
     }));
 }
 
+function durationCandidatesForConfig(config: ServiceConfigRow) {
+  const step = Math.max(1, config.slotStepMin);
+  const min = Math.max(step, config.minDurationMin);
+  const max = Number.isFinite(config.maxDurationMin) && config.maxDurationMin > 0 ? Math.max(min, config.maxDurationMin) : min;
+  const out: number[] = [];
+  for (let duration = min; duration <= max; duration += step) {
+    out.push(duration);
+  }
+  return out;
+}
+
+function buildStartAvailabilities(input: {
+  date: string;
+  config: ServiceConfigRow;
+  configuredRanges: ConfiguredTimeRange[];
+  slotsByDuration: Map<number, DaySlot[]>;
+}): StartAvailability[] {
+  const step = Math.max(1, input.config.slotStepMin);
+  const starts = new Map<number, StartAvailability>();
+
+  for (const range of input.configuredRanges) {
+    const firstStart = Math.ceil(range.startMin / step) * step;
+    for (let startMin = firstStart; startMin < range.endMin; startMin += step) {
+      starts.set(startMin, {
+        startAt: minutesToZurichOffsetIso(input.date, startMin),
+        startMin,
+        status: "UNAVAILABLE",
+        compatibleDurationMin: [],
+      });
+    }
+  }
+
+  for (const [durationMin, slots] of input.slotsByDuration.entries()) {
+    for (const slot of slots) {
+      if (slot.status !== "AVAILABLE" && slot.status !== "ON_REQUEST") continue;
+      const current = starts.get(slot.startMin) ?? {
+        startAt: minutesToZurichOffsetIso(input.date, slot.startMin),
+        startMin: slot.startMin,
+        status: "UNAVAILABLE" as const,
+        compatibleDurationMin: [],
+      };
+      const compatibleDurationMin = current.compatibleDurationMin.includes(durationMin)
+        ? current.compatibleDurationMin
+        : [...current.compatibleDurationMin, durationMin].sort((a, b) => a - b);
+      const status: SlotStatus = slot.status === "AVAILABLE" || current.status === "AVAILABLE" ? "AVAILABLE" : "ON_REQUEST";
+      starts.set(slot.startMin, {
+        ...current,
+        status,
+        compatibleDurationMin,
+      });
+    }
+  }
+
+  return Array.from(starts.values()).sort((a, b) => a.startMin - b.startMin);
+}
+
 function normalizeExceptionIntervals(exceptions: AvailabilityExceptionRow[]) {
   return exceptions
     .map((e) => ({
@@ -623,7 +686,7 @@ export function computeDaySlots(input: ComputeDaySlotsInput): DaySlot[] {
 export async function generateDaySlots(
   input: GenerateDaySlotsInput
 ): Promise<
-  | { ok: true; slots: DaySlot[]; config: PublicServiceConfig; durationMin: number; configuredRanges: ConfiguredTimeRange[]; blockedRanges: BlockedTimeRange[] }
+  | { ok: true; slots: DaySlot[]; config: PublicServiceConfig; durationMin: number; configuredRanges: ConfiguredTimeRange[]; blockedRanges: BlockedTimeRange[]; starts: StartAvailability[] }
   | { ok: false; error: string }
 > {
   try {
@@ -681,6 +744,7 @@ export async function generateDaySlots(
     }
 
     const durationMinEffective = requestedDuration ?? mergedConfig.minDurationMin;
+    const configuredRanges = exactConfiguredRanges(date, rules, exceptions);
 
     const slots = computeDaySlots({
       date,
@@ -692,6 +756,25 @@ export async function generateDaySlots(
       config: mergedConfig,
       durationMin: durationMinEffective,
     });
+
+    const starts = new Map<number, DaySlot[]>();
+    if (input.serviceType === "PROMENADE" || input.serviceType === "DOGSITTING") {
+      for (const durationMin of durationCandidatesForConfig(mergedConfig)) {
+        starts.set(
+          durationMin,
+          computeDaySlots({
+            date,
+            serviceType: input.serviceType,
+            now,
+            rules,
+            exceptions,
+            bookings,
+            config: mergedConfig,
+            durationMin,
+          })
+        );
+      }
+    }
 
     const blockedIntervals: Interval[] = [];
     for (const booking of bookings) {
@@ -719,8 +802,14 @@ export async function generateDaySlots(
     return {
       ok: true,
       slots,
+      starts: buildStartAvailabilities({
+        date,
+        config: mergedConfig,
+        configuredRanges,
+        slotsByDuration: starts,
+      }),
       blockedRanges,
-      configuredRanges: exactConfiguredRanges(date, rules, exceptions),
+      configuredRanges,
       config: {
         ...toPublicConfig(mergedConfig),
         hasExplicitTimeSlots: hasExplicitTimeWindows(rules, exceptions),
