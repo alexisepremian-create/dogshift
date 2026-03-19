@@ -95,6 +95,7 @@ export async function GET(
       config: result.config,
       durationMin: result.durationMin,
       configuredRanges: result.configuredRanges,
+      blockedRanges: result.blockedRanges,
       slots: result.slots,
     },
     {

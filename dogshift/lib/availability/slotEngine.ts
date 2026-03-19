@@ -57,6 +57,14 @@ export type ConfiguredTimeRange = {
   status: "AVAILABLE" | "ON_REQUEST";
 };
 
+export type BlockedTimeRange = {
+  startAt: string;
+  endAt: string;
+  startMin: number;
+  endMin: number;
+  reason?: string;
+};
+
 type Interval = {
   startMin: number;
   endMin: number;
@@ -398,6 +406,19 @@ function exactConfiguredRanges(date: string, rules: AvailabilityRuleRow[], excep
     }));
 }
 
+function exactBlockedRanges(date: string, blocks: Interval[]): BlockedTimeRange[] {
+  return blocks
+    .slice()
+    .sort((a, b) => a.startMin - b.startMin || a.endMin - b.endMin)
+    .map((block) => ({
+      startAt: minutesToZurichOffsetIso(date, block.startMin),
+      endAt: minutesToZurichOffsetIso(date, block.endMin),
+      startMin: block.startMin,
+      endMin: block.endMin,
+      reason: block.reason,
+    }));
+}
+
 function normalizeExceptionIntervals(exceptions: AvailabilityExceptionRow[]) {
   return exceptions
     .map((e) => ({
@@ -602,7 +623,7 @@ export function computeDaySlots(input: ComputeDaySlotsInput): DaySlot[] {
 export async function generateDaySlots(
   input: GenerateDaySlotsInput
 ): Promise<
-  | { ok: true; slots: DaySlot[]; config: PublicServiceConfig; durationMin: number; configuredRanges: ConfiguredTimeRange[] }
+  | { ok: true; slots: DaySlot[]; config: PublicServiceConfig; durationMin: number; configuredRanges: ConfiguredTimeRange[]; blockedRanges: BlockedTimeRange[] }
   | { ok: false; error: string }
 > {
   try {
@@ -672,9 +693,33 @@ export async function generateDaySlots(
       durationMin: durationMinEffective,
     });
 
+    const blockedIntervals: Interval[] = [];
+    for (const booking of bookings) {
+      const block = bookingToBlock(booking, now);
+      if (!block) continue;
+      const startIso = getZurichDateIso(block.startAt);
+      const endIso = getZurichDateIso(block.endAt);
+      if (date < startIso || date > endIso) continue;
+      const startMin = date === startIso ? toDayMinRange(date, block.startAt) : 0;
+      const endMin = date === endIso ? toDayMinRange(date, block.endAt) : 24 * 60;
+      if (startMin === null || endMin === null || endMin <= startMin) continue;
+      blockedIntervals.push({
+        startMin: startMin - mergedConfig.bufferBeforeMin,
+        endMin: endMin + mergedConfig.bufferAfterMin,
+        status: "UNAVAILABLE",
+        reason: block.reason,
+      });
+    }
+
+    const blockedRanges = exactBlockedRanges(
+      date,
+      blockedIntervals
+    );
+
     return {
       ok: true,
       slots,
+      blockedRanges,
       configuredRanges: exactConfiguredRanges(date, rules, exceptions),
       config: {
         ...toPublicConfig(mergedConfig),
