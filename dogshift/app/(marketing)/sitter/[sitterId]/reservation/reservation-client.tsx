@@ -335,8 +335,7 @@ function DogShiftTimePicker({
 }) {
   const rootRef = useRef<HTMLDivElement | null>(null);
   const normalizedAllowedTimes = useMemo(() => {
-    const source = Array.isArray(allowedTimes) ? allowedTimes.filter((item): item is string => typeof item === "string" && item.length === 5) : [];
-    return source.length ? source : timeOptions15m();
+    return Array.isArray(allowedTimes) ? allowedTimes.filter((item): item is string => typeof item === "string" && item.length === 5) : [];
   }, [allowedTimes]);
   const hours = useMemo(() => Array.from(new Set(normalizedAllowedTimes.map((item) => item.slice(0, 2)))), [normalizedAllowedTimes]);
   const minutes = useMemo(() => Array.from(new Set(normalizedAllowedTimes.map((item) => item.slice(3, 5)))), [normalizedAllowedTimes]);
@@ -357,15 +356,15 @@ function DogShiftTimePicker({
 
   useEffect(() => {
     if (!open) return;
-    const fallback = normalizedAllowedTimes[0] ?? `${pad2(new Date().getHours())}:00`;
+    const fallback = normalizedAllowedTimes[0] ?? value ?? `${pad2(new Date().getHours())}:00`;
     const [fallbackHour, fallbackMinute] = fallback.split(":");
     setDraftHour(parsed?.hh ?? fallbackHour ?? pad2(new Date().getHours()));
     setDraftMinute(parsed?.mm ?? fallbackMinute ?? "00");
-  }, [normalizedAllowedTimes, open, parsed]);
+  }, [normalizedAllowedTimes, open, parsed, value]);
 
   const currentCandidate = `${draftHour}:${draftMinute}`;
-  const isCandidateAllowed = normalizedAllowedTimes.includes(currentCandidate);
   const hasAllowedTimes = normalizedAllowedTimes.length > 0;
+  const isCandidateAllowed = hasAllowedTimes && normalizedAllowedTimes.includes(currentCandidate);
 
   useEffect(() => {
     if (!open) return;

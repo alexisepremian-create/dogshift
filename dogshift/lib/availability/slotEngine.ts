@@ -67,7 +67,6 @@ type Interval = {
 type BookingBlock = {
   startAt: Date;
   endAt: Date;
-  kind: "HARD" | "SOFT";
   reason: string;
 };
 
@@ -82,8 +81,8 @@ export const SERVICE_DEFAULTS: Record<ServiceType, ServiceConfigDefaults> = {
     minDurationMin: 30,
     maxDurationMin: 120,
     leadTimeMin: 24 * 60,
-    bufferBeforeMin: 15,
-    bufferAfterMin: 15,
+    bufferBeforeMin: 30,
+    bufferAfterMin: 30,
     overnightRequired: false,
     checkInStartMin: null,
     checkInEndMin: null,
@@ -97,8 +96,8 @@ export const SERVICE_DEFAULTS: Record<ServiceType, ServiceConfigDefaults> = {
     minDurationMin: 120,
     maxDurationMin: 720,
     leadTimeMin: 24 * 60,
-    bufferBeforeMin: 15,
-    bufferAfterMin: 15,
+    bufferBeforeMin: 30,
+    bufferAfterMin: 30,
     overnightRequired: false,
     checkInStartMin: null,
     checkInEndMin: null,
@@ -112,8 +111,8 @@ export const SERVICE_DEFAULTS: Record<ServiceType, ServiceConfigDefaults> = {
     minDurationMin: 60,
     maxDurationMin: 24 * 60,
     leadTimeMin: 24 * 60,
-    bufferBeforeMin: 15,
-    bufferAfterMin: 15,
+    bufferBeforeMin: 30,
+    bufferAfterMin: 30,
     overnightRequired: true,
     checkInStartMin: 8 * 60,
     checkInEndMin: 19 * 60,
@@ -424,7 +423,7 @@ function bookingToBlock(b: BookingRow, now: Date): BookingBlock | null {
     const startAt = (b as any).startAt ?? (b as any).startDate;
     const endAt = (b as any).endAt ?? (b as any).endDate;
     if (!startAt || !endAt) return null;
-    return { startAt, endAt, kind: "HARD", reason: status === "PAID" ? "booking_paid_overlap" : "booking_confirmed_overlap" };
+    return { startAt, endAt, reason: status === "PAID" ? "booking_paid_overlap" : "booking_confirmed_overlap" };
   }
 
   if (status === "PENDING_PAYMENT" || status === "PENDING_ACCEPTANCE") {
@@ -438,7 +437,6 @@ function bookingToBlock(b: BookingRow, now: Date): BookingBlock | null {
     return {
       startAt,
       endAt,
-      kind: "SOFT",
       reason: status === "PENDING_PAYMENT" ? "booking_pending_payment_overlap" : "booking_pending_acceptance_overlap",
     };
   }
@@ -484,8 +482,7 @@ export function computeDaySlots(input: ComputeDaySlotsInput): DaySlot[] {
 
   if (input.config && input.config.enabled === false) return [];
 
-  const hardBlocks: Interval[] = [];
-  const softBlocks: Interval[] = [];
+  const bookingBlocks: Interval[] = [];
   for (const b of input.bookings ?? []) {
     const block = bookingToBlock(b, now);
     if (!block) continue;
@@ -500,14 +497,13 @@ export function computeDaySlots(input: ComputeDaySlotsInput): DaySlot[] {
     if (endMin <= startMin) continue;
 
     const expanded: Interval = {
-      startMin: startMin - (block.kind === "HARD" ? input.config.bufferBeforeMin : 0),
-      endMin: endMin + (block.kind === "HARD" ? input.config.bufferAfterMin : 0),
-      status: block.kind === "HARD" ? "UNAVAILABLE" : "ON_REQUEST",
+      startMin: startMin - input.config.bufferBeforeMin,
+      endMin: endMin + input.config.bufferAfterMin,
+      status: "UNAVAILABLE",
       reason: block.reason,
     };
 
-    if (block.kind === "HARD") hardBlocks.push(expanded);
-    else softBlocks.push({ ...expanded, status: "ON_REQUEST" });
+    bookingBlocks.push(expanded);
   }
 
   const baseFromRules = mergeSameStatus(normalizeRuleIntervals(input.rules));
@@ -517,8 +513,8 @@ export function computeDaySlots(input: ComputeDaySlotsInput): DaySlot[] {
     : baseFromRules;
   const baseWithExceptions = applyOverride(baseSeeded, exceptionIntervals);
 
-  // Hard blocks override the agenda to UNAVAILABLE (instead of subtracting), so we can expose UNAVAILABLE slots + reasons.
-  const hardOverrides: Interval[] = hardBlocks.map((b) => ({
+  // Booking blocks override the agenda to UNAVAILABLE (instead of subtracting), so we can expose UNAVAILABLE slots + reasons.
+  const hardOverrides: Interval[] = bookingBlocks.map((b) => ({
     startMin: b.startMin,
     endMin: b.endMin,
     status: "UNAVAILABLE",
@@ -591,16 +587,6 @@ export function computeDaySlots(input: ComputeDaySlotsInput): DaySlot[] {
       if (status !== "UNAVAILABLE" && nowMin !== null && startMin - nowMin < leadTimeMin) {
         status = "UNAVAILABLE";
         reason = "lead_time";
-      }
-
-      // Soft blocks degrade to ON_REQUEST unless already UNAVAILABLE.
-      if (status !== "UNAVAILABLE") {
-        for (const sb of softBlocks) {
-          if (sb.endMin <= startMin || sb.startMin >= endMin) continue;
-          status = "ON_REQUEST";
-          reason = sb.reason;
-          break;
-        }
       }
 
       const startAt = minutesToZurichOffsetIso(input.date, startMin);

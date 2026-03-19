@@ -271,12 +271,6 @@ export function computeMultiDayStatusIndexed(input: DayStatusMultiInput): {
 
       if (config?.enabled === false) return "UNAVAILABLE" as const;
 
-      const exceptionStatus = summarizeConfiguredStatus(exceptions);
-      if (exceptionStatus) return exceptionStatus;
-
-      const ruleStatus = summarizeConfiguredStatus(rules);
-      if (ruleStatus) return ruleStatus;
-
       const slots = computeDaySlots({
         serviceType,
         date,
