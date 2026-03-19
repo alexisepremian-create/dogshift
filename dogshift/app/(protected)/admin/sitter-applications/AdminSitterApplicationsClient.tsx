@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 
+import AdminNotesPanel from "@/components/admin/AdminNotesPanel";
+
 type AppStatus = "PENDING" | "CONTACTED" | "ACCEPTED" | "REJECTED";
 
 type ApplicationItem = {
@@ -269,6 +271,8 @@ export default function AdminSitterApplicationsClient({ adminCode }: { adminCode
                       <p>referrer: {selected.referrer ?? "—"}</p>
                     </div>
                   </div>
+
+                  <AdminNotesPanel targetType="PILOT_SITTER_APPLICATION" targetId={selected.id} title="Notes internes – candidature" />
                 </div>
               </>
             ) : null}

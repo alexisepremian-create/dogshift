@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 
 import AdminShell from "@/components/admin/AdminShell";
+import AdminNotesPanel from "@/components/admin/AdminNotesPanel";
 import { requireAdminPageAccess } from "@/lib/adminAuth";
 import { prisma } from "@/lib/prisma";
 
@@ -112,12 +113,7 @@ export default async function AdminOwnerDetailPage({ params }: { params: Promise
               )}
             </section>
 
-            <section className="rounded-3xl border border-dashed border-slate-300 bg-slate-50 p-6 sm:p-8">
-              <h3 className="text-lg font-semibold tracking-tight text-slate-900">Notes internes admin</h3>
-              <p className="mt-3 text-sm leading-relaxed text-slate-600">
-                Le bloc notes internes sera ajouté via une migration non destructive dédiée. Je n’introduis pas encore de stockage pour éviter toute prise de risque sur la base existante tant que la structure cible n’est pas validée.
-              </p>
-            </section>
+            <AdminNotesPanel targetType="USER" targetId={owner.id} />
           </div>
         </section>
       </div>

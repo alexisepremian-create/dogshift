@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 
 import AdminShell from "@/components/admin/AdminShell";
+import AdminNotesPanel from "@/components/admin/AdminNotesPanel";
 import { requireAdminPageAccess } from "@/lib/adminAuth";
 import { prisma } from "@/lib/prisma";
 
@@ -34,6 +35,7 @@ export default async function AdminSitterDetailPage({ params }: { params: Promis
       updatedAt: true,
       sitterProfile: {
         select: {
+          id: true,
           displayName: true,
           city: true,
           postalCode: true,
@@ -151,12 +153,7 @@ export default async function AdminSitterDetailPage({ params }: { params: Promis
               )}
             </section>
 
-            <section className="rounded-3xl border border-dashed border-slate-300 bg-slate-50 p-6 sm:p-8">
-              <h3 className="text-lg font-semibold tracking-tight text-slate-900">Notes internes admin</h3>
-              <p className="mt-3 text-sm leading-relaxed text-slate-600">
-                La V1 exploite les notes de vérification déjà présentes sur `SitterProfile`. Un système générique de notes internes séparées sera ajouté ensuite par migration non destructive, après validation de la structure cible.
-              </p>
-            </section>
+            {sitter.sitterProfile ? <AdminNotesPanel targetType="SITTER_PROFILE" targetId={sitter.sitterProfile.id} /> : null}
           </div>
         </section>
       </div>

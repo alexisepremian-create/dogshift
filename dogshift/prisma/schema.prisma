@@ -67,6 +67,13 @@ enum SitterApplicationStatus {
   REJECTED
 }
 
+enum AdminNoteTargetType {
+  USER
+  BOOKING
+  PILOT_SITTER_APPLICATION
+  SITTER_PROFILE
+}
+
 model User {
   id              String    @id @default(cuid())
   clerkUserId     String?   @unique
@@ -195,6 +202,25 @@ model PilotSitterApplication {
   @@index([status, createdAt])
   @@index([email, createdAt])
   @@unique([email, idempotencyKey])
+}
+
+model AdminNote {
+  id String @id @default(cuid())
+
+  targetType AdminNoteTargetType
+  targetId   String
+
+  body String
+
+  authorClerkUserId String?
+  authorUserId      String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([targetType, targetId, createdAt])
+  @@index([authorUserId, createdAt])
+  @@index([authorClerkUserId, createdAt])
 }
 
 model SitterProfile {

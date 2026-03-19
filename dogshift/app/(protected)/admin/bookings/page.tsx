@@ -79,6 +79,9 @@ export default async function AdminBookingsPage() {
                     <td className="px-5 py-4 text-slate-600">
                       <div>{formatDate(booking.startAt ?? booking.startDate)}</div>
                       <div className="text-xs text-slate-500">au {formatDate(booking.endAt ?? booking.endDate)}</div>
+                      <Link href={`/admin/bookings/${booking.id}`} className="mt-1 inline-block text-xs font-semibold text-[var(--dogshift-blue)] hover:text-[var(--dogshift-blue-hover)]">
+                        Voir la fiche
+                      </Link>
                     </td>
                     <td className="px-5 py-4 text-slate-600">{new Intl.NumberFormat("fr-CH", { style: "currency", currency: booking.currency.toUpperCase() }).format(booking.amount / 100)}</td>
                     <td className="px-5 py-4 text-slate-600">{formatDate(booking.createdAt)}</td>
