@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Calendar, ChevronLeft, ChevronRight } from "lucide-react";
 
@@ -1107,13 +1107,18 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
     return availableCount > 0 && unavailableCount > 0;
   }, [hourlySlots, hourlySlotsLoaded, unit]);
 
+  const resetInvalidHourlySelection = useCallback(() => {
+    setStartTime(null);
+    setDateEnd("");
+  }, []);
+
   useEffect(() => {
     if (!startTime) return;
     if (!availableStartTimes.includes(startTime)) {
-      setStartTime(null);
+      resetInvalidHourlySelection();
       setError("Ce créneau vient d’être réservé ou n’est plus disponible, merci de choisir un autre horaire.");
     }
-  }, [availableStartTimes, startTime]);
+  }, [availableStartTimes, resetInvalidHourlySelection, startTime]);
 
   async function onContinue() {
     if (submitting) return;
@@ -1166,6 +1171,7 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
           return;
         }
         if (!selectedHourlySlot) {
+          resetInvalidHourlySelection();
           setError("Ce créneau vient d’être réservé ou n’est plus disponible, merci de choisir un autre horaire.");
           return;
         }
