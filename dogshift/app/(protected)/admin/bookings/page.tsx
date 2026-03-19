@@ -180,8 +180,8 @@ export default async function AdminBookingsPage({
         </section>
 
         <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.12)] sm:p-8">
-          <form className="grid gap-4 xl:grid-cols-[minmax(0,1.3fr)_220px_220px_180px_180px_auto]">
-            <div className="grid gap-2">
+          <form className="grid gap-5 lg:grid-cols-2 xl:grid-cols-12 xl:items-end">
+            <div className="flex min-w-0 flex-col gap-2 xl:col-span-3">
               <label htmlFor="q" className="text-sm font-medium text-slate-700">Recherche</label>
               <input
                 id="q"
@@ -191,7 +191,7 @@ export default async function AdminBookingsPage({
                 className="h-11 rounded-2xl border border-slate-300 bg-white px-4 text-sm text-slate-900 shadow-sm outline-none transition focus:border-[var(--dogshift-blue)] focus:ring-2 focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_80%)]"
               />
             </div>
-            <div className="grid gap-2">
+            <div className="flex min-w-0 flex-col gap-2 xl:col-span-2">
               <label htmlFor="status" className="text-sm font-medium text-slate-700">Statut</label>
               <select
                 id="status"
@@ -205,7 +205,7 @@ export default async function AdminBookingsPage({
                 <option value="cancelled">Annulées / incidents paiement</option>
               </select>
             </div>
-            <div className="grid gap-2">
+            <div className="flex min-w-0 flex-col gap-2 xl:col-span-2">
               <label htmlFor="city" className="text-sm font-medium text-slate-700">Ville</label>
               <input
                 id="city"
@@ -215,7 +215,7 @@ export default async function AdminBookingsPage({
                 className="h-11 rounded-2xl border border-slate-300 bg-white px-4 text-sm text-slate-900 shadow-sm outline-none transition focus:border-[var(--dogshift-blue)] focus:ring-2 focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_80%)]"
               />
             </div>
-            <div className="grid gap-2">
+            <div className="flex min-w-0 flex-col gap-2 xl:col-span-2">
               <label htmlFor="startDate" className="text-sm font-medium text-slate-700">Du</label>
               <input
                 id="startDate"
@@ -225,7 +225,7 @@ export default async function AdminBookingsPage({
                 className="h-11 rounded-2xl border border-slate-300 bg-white px-4 text-sm text-slate-900 shadow-sm outline-none transition focus:border-[var(--dogshift-blue)] focus:ring-2 focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_80%)]"
               />
             </div>
-            <div className="grid gap-2">
+            <div className="flex min-w-0 flex-col gap-2 xl:col-span-2">
               <label htmlFor="endDate" className="text-sm font-medium text-slate-700">Au</label>
               <input
                 id="endDate"
@@ -235,19 +235,22 @@ export default async function AdminBookingsPage({
                 className="h-11 rounded-2xl border border-slate-300 bg-white px-4 text-sm text-slate-900 shadow-sm outline-none transition focus:border-[var(--dogshift-blue)] focus:ring-2 focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_80%)]"
               />
             </div>
-            <div className="flex items-end gap-3">
-              <button
-                type="submit"
-                className="inline-flex h-11 items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-5 text-sm font-semibold text-white shadow-sm transition hover:bg-[var(--dogshift-blue-hover)]"
-              >
-                Filtrer
-              </button>
-              <Link
-                href="/admin/bookings"
-                className="inline-flex h-11 items-center justify-center rounded-2xl border border-slate-300 bg-white px-5 text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50"
-              >
-                Réinitialiser
-              </Link>
+            <div className="flex min-w-0 flex-col gap-2 xl:col-span-3">
+              <span className="text-sm font-medium text-slate-700">Actions</span>
+              <div className="flex flex-col gap-3 sm:flex-row xl:justify-end">
+                <button
+                  type="submit"
+                  className="inline-flex h-11 items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-5 text-sm font-semibold text-white shadow-sm transition hover:bg-[var(--dogshift-blue-hover)]"
+                >
+                  Filtrer
+                </button>
+                <Link
+                  href="/admin/bookings"
+                  className="inline-flex h-11 items-center justify-center rounded-2xl border border-slate-300 bg-white px-5 text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50"
+                >
+                  Réinitialiser
+                </Link>
+              </div>
             </div>
           </form>
         </section>
