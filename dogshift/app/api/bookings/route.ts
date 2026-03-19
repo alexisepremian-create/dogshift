@@ -124,6 +124,10 @@ function serviceToAvailabilityType(service: string): ServiceType | null {
   return null;
 }
 
+function isConflictBlockingStatus(status: string) {
+  return status === "PENDING_PAYMENT" || status === "PENDING_ACCEPTANCE" || status === "PAID" || status === "CONFIRMED";
+}
+
 export async function POST(req: NextRequest) {
   try {
     if (isBookingAccessCodeProtectionEnabled()) {
@@ -301,19 +305,27 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Anti double-booking: only hard-block statuses that the shared availability engine treats as UNAVAILABLE.
-    const blockingStatuses = ["PAID", "CONFIRMED"] as const;
+    // Anti double-booking: backend source of truth.
+    // Block any overlap with active or in-flight bookings so the same slot cannot be reserved twice.
+    const blockingStatuses = ["PENDING_PAYMENT", "PENDING_ACCEPTANCE", "PAID", "CONFIRMED"] as const;
     const overlap = await (prisma as any).booking.findFirst({
       where: {
         sitterId,
         status: { in: blockingStatuses as any },
-        startDate: { lte: endDateTime },
-        endDate: { gte: startDateTime },
+        startDate: { lt: endDateTime },
+        endDate: { gt: startDateTime },
       },
-      select: { id: true },
+      select: { id: true, status: true, startDate: true, endDate: true },
     });
-    if (overlap?.id) {
-      return NextResponse.json({ ok: false, error: "DATE_NOT_AVAILABLE" }, { status: 400 });
+    if (overlap?.id && isConflictBlockingStatus(typeof overlap.status === "string" ? overlap.status : "")) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: "SLOT_NOT_AVAILABLE",
+          message: "Ce créneau vient d’être réservé ou n’est plus disponible, merci de choisir un autre horaire.",
+        },
+        { status: 409 }
+      );
     }
 
     const amount = toCents(totalChf);

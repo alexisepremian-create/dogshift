@@ -9,6 +9,13 @@ type PricingUnit = "HOURLY" | "DAILY";
 
 type ServiceDayStatus = "AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE";
 
+type HourlySlot = {
+  startAt: string;
+  endAt: string;
+  status: ServiceDayStatus;
+  reason?: string;
+};
+
 type DayStatusRow = {
   date: string;
   promenadeStatus: ServiceDayStatus;
@@ -112,6 +119,19 @@ function serviceStatusForLabel(row: DayStatusRow | null, service: string): Servi
 
 function isBookableStatus(status: ServiceDayStatus) {
   return status === "AVAILABLE" || status === "ON_REQUEST";
+}
+
+function serviceToApiType(service: string | null): "PROMENADE" | "DOGSITTING" | "PENSION" | null {
+  if (service === "Promenade") return "PROMENADE";
+  if (service === "Garde") return "DOGSITTING";
+  if (service === "Pension") return "PENSION";
+  return null;
+}
+
+function isoToTimeLabel(value: string) {
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return value;
+  return `${pad2(date.getHours())}:${pad2(date.getMinutes())}`;
 }
 
 function formatZurichIsoDate(date: Date) {
@@ -303,6 +323,7 @@ function DogShiftTimePicker({
   id,
   open,
   onOpenChange,
+  allowedTimes,
 }: {
   value: string | null;
   onChange: (next: string | null) => void;
@@ -310,10 +331,15 @@ function DogShiftTimePicker({
   id: string;
   open: boolean;
   onOpenChange: (next: boolean) => void;
+  allowedTimes?: string[];
 }) {
   const rootRef = useRef<HTMLDivElement | null>(null);
-  const hours = useMemo(() => Array.from({ length: 24 }, (_, i) => pad2(i)), []);
-  const minutes = useMemo(() => ["00", "15", "30", "45"], []);
+  const normalizedAllowedTimes = useMemo(() => {
+    const source = Array.isArray(allowedTimes) ? allowedTimes.filter((item): item is string => typeof item === "string" && item.length === 5) : [];
+    return source.length ? source : timeOptions15m();
+  }, [allowedTimes]);
+  const hours = useMemo(() => Array.from(new Set(normalizedAllowedTimes.map((item) => item.slice(0, 2)))), [normalizedAllowedTimes]);
+  const minutes = useMemo(() => Array.from(new Set(normalizedAllowedTimes.map((item) => item.slice(3, 5)))), [normalizedAllowedTimes]);
 
   const parsed = useMemo(() => {
     if (!value) return null;
@@ -331,9 +357,15 @@ function DogShiftTimePicker({
 
   useEffect(() => {
     if (!open) return;
-    setDraftHour(parsed?.hh ?? pad2(new Date().getHours()));
-    setDraftMinute(parsed?.mm ?? "00");
-  }, [open, parsed]);
+    const fallback = normalizedAllowedTimes[0] ?? `${pad2(new Date().getHours())}:00`;
+    const [fallbackHour, fallbackMinute] = fallback.split(":");
+    setDraftHour(parsed?.hh ?? fallbackHour ?? pad2(new Date().getHours()));
+    setDraftMinute(parsed?.mm ?? fallbackMinute ?? "00");
+  }, [normalizedAllowedTimes, open, parsed]);
+
+  const currentCandidate = `${draftHour}:${draftMinute}`;
+  const isCandidateAllowed = normalizedAllowedTimes.includes(currentCandidate);
+  const hasAllowedTimes = normalizedAllowedTimes.length > 0;
 
   useEffect(() => {
     if (!open) return;
@@ -386,6 +418,9 @@ function DogShiftTimePicker({
             </div>
 
             <div className="rounded-2xl border border-slate-200 bg-slate-50 p-2">
+              <p className="px-2 pb-2 text-[11px] font-semibold text-slate-500">
+                {hasAllowedTimes ? `${normalizedAllowedTimes.length} horaire${normalizedAllowedTimes.length > 1 ? "s" : ""} encore disponible${normalizedAllowedTimes.length > 1 ? "s" : ""}` : "Aucun horaire disponible"}
+              </p>
               <div className="grid grid-cols-2 gap-2">
                 <div className="rounded-2xl border border-slate-200 bg-white p-2">
                   <p className="px-2 pb-2 text-[11px] font-semibold text-slate-500">Heures</p>
@@ -443,11 +478,12 @@ function DogShiftTimePicker({
               <div className="mt-3 grid gap-2 sm:grid-cols-2">
                 <button
                   type="button"
+                  disabled={!hasAllowedTimes || !isCandidateAllowed}
                   onClick={() => {
                     onChange(`${draftHour}:${draftMinute}`);
                     onOpenChange(false);
                   }}
-                  className="inline-flex items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-4 py-2.5 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition duration-150 hover:bg-[var(--dogshift-blue-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)]"
+                  className="inline-flex items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-4 py-2.5 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition duration-150 hover:bg-[var(--dogshift-blue-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)] disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   Valider
                 </button>
@@ -465,6 +501,7 @@ function DogShiftTimePicker({
                   </button>
                 ) : null}
               </div>
+              {hasAllowedTimes && !isCandidateAllowed ? <p className="mt-3 text-xs font-medium text-amber-800">Ce créneau n’est plus disponible. Choisis un horaire proposé.</p> : null}
             </div>
           </div>
         </div>
@@ -681,6 +718,10 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
   const [selectedDateDayStatus, setSelectedDateDayStatus] = useState<DayStatusRow | null>(null);
   const [selectedDateStatusLoaded, setSelectedDateStatusLoaded] = useState(false);
   const [calendarMonthStatuses, setCalendarMonthStatuses] = useState<Record<string, DayStatusRow>>({});
+  const [hourlySlots, setHourlySlots] = useState<HourlySlot[]>([]);
+  const [hourlySlotsLoading, setHourlySlotsLoading] = useState(false);
+  const [hourlySlotsLoaded, setHourlySlotsLoaded] = useState(false);
+  const [hourlySlotsError, setHourlySlotsError] = useState<string | null>(null);
 
   const todayIso = useMemo(() => todayZurichIsoDate(), []);
 
@@ -900,12 +941,6 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
     return { unit, quantityLabel: `${durationHours} h`, unitLabel: "CHF / heure", subtotal };
   }, [dateEnd, dateStart, durationHours, selectedService, selectedUnitPrice, unit]);
 
-  const canSubmit = useMemo(() => {
-    if (!selectedService || !unit) return false;
-    if (unit === "DAILY") return Boolean(dateStart && dateEnd && selectedUnitPrice);
-    return Boolean(dateStart && startTime && durationHours && selectedUnitPrice);
-  }, [dateEnd, dateStart, durationHours, selectedService, selectedUnitPrice, startTime, unit]);
-
   const getCalendarDayStatus = useMemo(() => {
     return (iso: string): ServiceDayStatus => {
       if (!calendarStatusService) return "UNAVAILABLE";
@@ -936,6 +971,106 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
     if (!startTime || !durationHours) return null;
     return computeEndTime(startTime, durationHours);
   }, [durationHours, startTime]);
+
+  useEffect(() => {
+    if (unit !== "HOURLY" || !selectedService || !dateStart || !durationHours) {
+      setHourlySlots([]);
+      setHourlySlotsLoading(false);
+      setHourlySlotsLoaded(false);
+      setHourlySlotsError(null);
+      return;
+    }
+
+    const serviceType = serviceToApiType(selectedService);
+    if (!serviceType || serviceType === "PENSION") {
+      setHourlySlots([]);
+      setHourlySlotsLoaded(false);
+      return;
+    }
+
+    let cancelled = false;
+    const controller = new AbortController();
+
+    void (async () => {
+      setHourlySlotsLoading(true);
+      setHourlySlotsLoaded(false);
+      setHourlySlotsError(null);
+      try {
+        const qp = new URLSearchParams();
+        qp.set("date", dateStart);
+        qp.set("service", serviceType);
+        qp.set("durationMin", String(durationHours * 60));
+        const res = await fetch(`/api/sitters/${encodeURIComponent(sitter.sitterId)}/slots?${qp.toString()}`, {
+          method: "GET",
+          cache: "no-store",
+          signal: controller.signal,
+        });
+        const payload = (await res.json().catch(() => null)) as { ok?: boolean; slots?: HourlySlot[] } | null;
+        if (cancelled) return;
+        if (!res.ok || !payload?.ok || !Array.isArray(payload.slots)) {
+          setHourlySlots([]);
+          setHourlySlotsError("SLOTS_ERROR");
+          setHourlySlotsLoaded(true);
+          return;
+        }
+        setHourlySlots(
+          payload.slots.filter(
+            (slot): slot is HourlySlot =>
+              Boolean(slot && typeof slot.startAt === "string" && typeof slot.endAt === "string" && typeof slot.status === "string")
+          )
+        );
+        setHourlySlotsLoaded(true);
+      } catch (fetchError) {
+        if (cancelled) return;
+        if (fetchError instanceof DOMException && fetchError.name === "AbortError") return;
+        setHourlySlots([]);
+        setHourlySlotsError("SLOTS_NETWORK_ERROR");
+        setHourlySlotsLoaded(true);
+      } finally {
+        if (cancelled) return;
+        setHourlySlotsLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
+  }, [dateStart, durationHours, selectedService, sitter.sitterId, unit]);
+
+  const bookableHourlySlots = useMemo(
+    () => hourlySlots.filter((slot) => slot.status === "AVAILABLE" || slot.status === "ON_REQUEST"),
+    [hourlySlots]
+  );
+
+  const availableStartTimes = useMemo(() => bookableHourlySlots.map((slot) => isoToTimeLabel(slot.startAt)), [bookableHourlySlots]);
+
+  const selectedHourlySlot = useMemo(() => {
+    if (!startTime || !endTime) return null;
+    return bookableHourlySlots.find((slot) => isoToTimeLabel(slot.startAt) === startTime && isoToTimeLabel(slot.endAt) === endTime) ?? null;
+  }, [bookableHourlySlots, endTime, startTime]);
+
+  const canSubmit = useMemo(() => {
+    if (!selectedService || !unit) return false;
+    if (unit === "DAILY") return Boolean(dateStart && dateEnd && selectedUnitPrice);
+    return Boolean(dateStart && startTime && durationHours && selectedUnitPrice && selectedHourlySlot);
+  }, [dateEnd, dateStart, durationHours, selectedHourlySlot, selectedService, selectedUnitPrice, startTime, unit]);
+
+  const hasPartialAvailability = useMemo(() => {
+    if (unit !== "HOURLY") return false;
+    if (!hourlySlotsLoaded) return false;
+    const availableCount = hourlySlots.filter((slot) => slot.status === "AVAILABLE").length;
+    const unavailableCount = hourlySlots.filter((slot) => slot.status === "UNAVAILABLE").length;
+    return availableCount > 0 && unavailableCount > 0;
+  }, [hourlySlots, hourlySlotsLoaded, unit]);
+
+  useEffect(() => {
+    if (!startTime) return;
+    if (!availableStartTimes.includes(startTime)) {
+      setStartTime(null);
+      setError("Ce créneau vient d’être réservé ou n’est plus disponible, merci de choisir un autre horaire.");
+    }
+  }, [availableStartTimes, startTime]);
 
   async function onContinue() {
     if (submitting) return;
@@ -987,6 +1122,10 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
           setError("Cette date n’est pas disponible.");
           return;
         }
+        if (!selectedHourlySlot) {
+          setError("Ce créneau vient d’être réservé ou n’est plus disponible, merci de choisir un autre horaire.");
+          return;
+        }
 
         setDateEnd(dateStart);
       }
@@ -1013,7 +1152,7 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
         body: JSON.stringify(payload),
       });
 
-      const bookingPayload = (await bookingRes.json()) as { ok?: boolean; bookingId?: string; error?: string };
+      const bookingPayload = (await bookingRes.json()) as { ok?: boolean; bookingId?: string; error?: string; message?: string };
       const bookingId = typeof bookingPayload?.bookingId === "string" ? bookingPayload.bookingId : "";
 
       if (bookingRes.status === 401 || bookingPayload?.error === "UNAUTHORIZED") {
@@ -1024,6 +1163,10 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
       }
 
       if (!bookingRes.ok || !bookingPayload?.ok || !bookingId) {
+        if (typeof bookingPayload?.message === "string" && bookingPayload.message) {
+          setError(bookingPayload.message);
+          return;
+        }
         if (typeof bookingPayload?.error === "string" && bookingPayload.error) {
           setError(`Impossible de démarrer la réservation (${bookingPayload.error}). Réessayez.`);
         } else {
@@ -1203,6 +1346,7 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
                     label="Heure de début"
                     value={startTime}
                     open={openPicker === "time"}
+                    allowedTimes={availableStartTimes}
                     onOpenChange={(next) => setOpenPicker(next ? "time" : null)}
                     onChange={(next) => {
                       setStartTime(next);
@@ -1226,6 +1370,57 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
                   <p className="text-xs font-semibold text-slate-600">Heure de fin</p>
                   <p className="mt-1 text-sm font-semibold text-slate-900">{endTime ?? "—"}</p>
                 </div>
+
+                <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                  <p className="text-xs font-semibold text-slate-600">Disponibilité réelle</p>
+                  {hourlySlotsLoading ? (
+                    <p className="mt-1 text-sm text-slate-600">Actualisation des créneaux…</p>
+                  ) : hourlySlotsError ? (
+                    <p className="mt-1 text-sm text-rose-700">Impossible de charger les créneaux pour cette date.</p>
+                  ) : !dateStart || !durationHours ? (
+                    <p className="mt-1 text-sm text-slate-600">Choisis une date et une durée pour voir les créneaux restants.</p>
+                  ) : bookableHourlySlots.length === 0 ? (
+                    <p className="mt-1 text-sm font-medium text-rose-700">Aucun créneau libre sur cette journée.</p>
+                  ) : hasPartialAvailability ? (
+                    <>
+                      <p className="mt-1 text-sm font-semibold text-amber-900">Disponibilité partielle</p>
+                      <p className="mt-1 text-sm text-amber-800">Certains horaires sont déjà réservés. Seuls les créneaux encore libres peuvent être sélectionnés.</p>
+                    </>
+                  ) : (
+                    <p className="mt-1 text-sm font-semibold text-emerald-900">Disponible toute la journée</p>
+                  )}
+                </div>
+
+                {bookableHourlySlots.length > 0 ? (
+                  <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-4">
+                    <p className="text-xs font-semibold text-slate-600">Créneaux encore disponibles</p>
+                    <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                      {bookableHourlySlots.map((slot) => {
+                        const startLabel = isoToTimeLabel(slot.startAt);
+                        const endLabel = isoToTimeLabel(slot.endAt);
+                        const selected = selectedHourlySlot?.startAt === slot.startAt && selectedHourlySlot?.endAt === slot.endAt;
+                        return (
+                          <button
+                            key={`${slot.startAt}-${slot.endAt}`}
+                            type="button"
+                            onClick={() => {
+                              setStartTime(startLabel);
+                              setError(null);
+                            }}
+                            className={
+                              selected
+                                ? "flex items-center justify-between rounded-2xl border border-[var(--dogshift-blue)] bg-[color-mix(in_srgb,var(--dogshift-blue),white_92%)] px-4 py-3 text-left text-sm font-semibold text-[var(--dogshift-blue)]"
+                                : "flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-left text-sm font-semibold text-slate-900 transition hover:bg-slate-100"
+                            }
+                          >
+                            <span>{startLabel} - {endLabel}</span>
+                            {slot.status === "ON_REQUEST" ? <span className="text-[11px] font-semibold text-amber-700">Sur demande</span> : null}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ) : null}
               </div>
             ) : null}
 
