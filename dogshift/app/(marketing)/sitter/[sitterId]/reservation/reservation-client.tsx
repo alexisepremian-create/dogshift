@@ -1039,7 +1039,7 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
         const qp = new URLSearchParams();
         qp.set("date", dateStart);
         qp.set("service", serviceType);
-        if (serviceType === "DOGSITTING") {
+        if (effectiveDurationHours) {
           qp.set("durationMin", String((effectiveDurationHours ?? 0) * 60));
         }
         const res = await fetch(`/api/sitters/${encodeURIComponent(sitter.sitterId)}/slots?${qp.toString()}`, {
@@ -1428,7 +1428,7 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
                   ) : hasPartialAvailability ? (
                     <>
                       <p className="mt-1 text-sm font-semibold text-amber-900">Disponibilité partielle</p>
-                      <p className="mt-1 text-sm text-amber-800">Certains horaires sont déjà réservés. Seuls les créneaux encore libres peuvent être sélectionnés.</p>
+                      <p className="mt-1 text-sm text-amber-800">Certains horaires sont déjà réservés.</p>
                     </>
                   ) : (
                     <p className="mt-1 text-sm font-semibold text-emerald-900">Disponible toute la journée</p>

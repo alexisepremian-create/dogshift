@@ -77,7 +77,7 @@ export const SERVICE_DEFAULTS: Record<ServiceType, ServiceConfigDefaults> = {
   PROMENADE: {
     serviceType: "PROMENADE",
     enabled: true,
-    slotStepMin: 30,
+    slotStepMin: 15,
     minDurationMin: 30,
     maxDurationMin: 120,
     leadTimeMin: 0,
@@ -92,7 +92,7 @@ export const SERVICE_DEFAULTS: Record<ServiceType, ServiceConfigDefaults> = {
   DOGSITTING: {
     serviceType: "DOGSITTING",
     enabled: true,
-    slotStepMin: 30,
+    slotStepMin: 15,
     minDurationMin: 120,
     maxDurationMin: 720,
     leadTimeMin: 0,
@@ -645,7 +645,7 @@ export async function generateDaySlots(
       typeof input.durationMin === "number" && Number.isFinite(input.durationMin) ? Math.round(input.durationMin) : null;
 
     if (requestedDuration !== null) {
-      if (input.serviceType !== "DOGSITTING") return { ok: false, error: "INVALID_DURATION" };
+      if (input.serviceType === "PENSION") return { ok: false, error: "INVALID_DURATION" };
       if (requestedDuration <= 0) return { ok: false, error: "INVALID_DURATION" };
       if (requestedDuration < mergedConfig.minDurationMin) return { ok: false, error: "INVALID_DURATION" };
       if (requestedDuration % Math.max(1, mergedConfig.slotStepMin) !== 0) return { ok: false, error: "INVALID_DURATION" };
