@@ -28,6 +28,14 @@ type DurationPickerOption = {
   available: boolean;
 };
 
+type ConfiguredTimeRange = {
+  startAt: string;
+  endAt: string;
+  startMin: number;
+  endMin: number;
+  status: "AVAILABLE" | "ON_REQUEST";
+};
+
 type HourlyConfig = {
   minDurationMin: number;
   maxDurationMin: number;
@@ -155,6 +163,13 @@ function isoToTimeLabel(value: string) {
   const date = new Date(value);
   if (!Number.isFinite(date.getTime())) return value;
   return `${pad2(date.getHours())}:${pad2(date.getMinutes())}`;
+}
+
+function minutesToTimeLabel(totalMinutes: number) {
+  const normalized = ((totalMinutes % (24 * 60)) + 24 * 60) % (24 * 60);
+  const hh = Math.floor(normalized / 60);
+  const mm = normalized % 60;
+  return `${pad2(hh)}:${pad2(mm)}`;
 }
 
 function formatZurichIsoDate(date: Date) {
@@ -728,6 +743,7 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
   const [hourlySlotsLoaded, setHourlySlotsLoaded] = useState(false);
   const [hourlySlotsError, setHourlySlotsError] = useState<string | null>(null);
   const [hourlyConfig, setHourlyConfig] = useState<HourlyConfig | null>(null);
+  const [configuredRanges, setConfiguredRanges] = useState<ConfiguredTimeRange[]>([]);
   const [durationSlotMap, setDurationSlotMap] = useState<Record<number, HourlySlot[]>>({});
   const [durationSlotsLoading, setDurationSlotsLoading] = useState(false);
 
@@ -987,6 +1003,7 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
       setHourlySlotsLoaded(false);
       setHourlySlotsError(null);
       setHourlyConfig(null);
+      setConfiguredRanges([]);
       return;
     }
 
@@ -995,6 +1012,7 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
       setHourlySlots([]);
       setHourlySlotsLoaded(false);
       setHourlyConfig(null);
+      setConfiguredRanges([]);
       return;
     }
 
@@ -1015,13 +1033,14 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
           cache: "no-store",
           signal: controller.signal,
         });
-        const payload = (await res.json().catch(() => null)) as { ok?: boolean; slots?: HourlySlot[]; config?: HourlyConfig } | null;
+        const payload = (await res.json().catch(() => null)) as { ok?: boolean; slots?: HourlySlot[]; config?: HourlyConfig; configuredRanges?: ConfiguredTimeRange[] } | null;
         if (cancelled) return;
         if (!res.ok || !payload?.ok || !Array.isArray(payload.slots)) {
           setHourlySlots([]);
           setHourlySlotsError("SLOTS_ERROR");
           setHourlySlotsLoaded(true);
           setHourlyConfig(null);
+          setConfiguredRanges([]);
           return;
         }
         setHourlySlots(
@@ -1031,6 +1050,21 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
           )
         );
         setHourlyConfig(payload.config && typeof payload.config.minDurationMin === "number" && typeof payload.config.maxDurationMin === "number" && typeof payload.config.stepMin === "number" ? payload.config : null);
+        setConfiguredRanges(
+          Array.isArray(payload.configuredRanges)
+            ? payload.configuredRanges.filter(
+                (range): range is ConfiguredTimeRange =>
+                  Boolean(
+                    range &&
+                    typeof range.startAt === "string" &&
+                    typeof range.endAt === "string" &&
+                    typeof range.startMin === "number" &&
+                    typeof range.endMin === "number" &&
+                    (range.status === "AVAILABLE" || range.status === "ON_REQUEST")
+                  )
+              )
+            : []
+        );
         setHourlySlotsLoaded(true);
       } catch (fetchError) {
         if (cancelled) return;
@@ -1039,6 +1073,7 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
         setHourlySlotsError("SLOTS_NETWORK_ERROR");
         setHourlySlotsLoaded(true);
         setHourlyConfig(null);
+        setConfiguredRanges([]);
       } finally {
         if (cancelled) return;
         setHourlySlotsLoading(false);
@@ -1136,16 +1171,33 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
     return Array.from(values).sort();
   }, [bookableHourlySlots, durationSlotMap]);
 
+  const gridStartTimes = useMemo(() => {
+    const step = Math.max(1, hourlyConfig?.stepMin ?? 15);
+    const values = new Set<string>();
+
+    for (const range of configuredRanges) {
+      const firstStart = Math.ceil(range.startMin / step) * step;
+      for (let startMin = firstStart; startMin < range.endMin; startMin += step) {
+        values.add(minutesToTimeLabel(startMin));
+      }
+    }
+
+    for (const time of availableStartTimes) {
+      values.add(time);
+    }
+
+    return Array.from(values).sort();
+  }, [availableStartTimes, configuredRanges, hourlyConfig?.stepMin]);
+
   const timePickerSlots = useMemo(
     () =>
-      hourlySlots.map((slot) => {
-        const time = isoToTimeLabel(slot.startAt);
+      gridStartTimes.map((time) => {
         return {
           time,
           available: availableStartTimes.includes(time),
         };
       }),
-    [availableStartTimes, hourlySlots]
+    [availableStartTimes, gridStartTimes]
   );
 
   const durationOptionsForStart = useMemo<DurationPickerOption[]>(() => {
