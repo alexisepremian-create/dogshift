@@ -80,8 +80,16 @@ export async function GET(
       (prisma as any).booking.findMany({
         where: {
           sitterId,
-          startAt: { lt: toEnd },
-          endAt: { gt: fromStart },
+          OR: [
+            {
+              startAt: { lt: toEnd },
+              endAt: { gt: fromStart },
+            },
+            {
+              startDate: { lt: toEnd },
+              endDate: { gt: fromStart },
+            },
+          ],
         },
         select: {
           status: true,

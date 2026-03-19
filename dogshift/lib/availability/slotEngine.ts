@@ -584,7 +584,7 @@ export function computeDaySlots(input: ComputeDaySlotsInput): DaySlot[] {
       let reason = base.reason;
 
       // Lead time gating.
-      if (status !== "UNAVAILABLE" && nowMin !== null && startMin - nowMin < leadTimeMin) {
+      if (status !== "UNAVAILABLE" && leadTimeMin > 0 && nowMin !== null && startMin - nowMin < leadTimeMin) {
         status = "UNAVAILABLE";
         reason = "lead_time";
       }
