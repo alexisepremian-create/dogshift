@@ -286,6 +286,9 @@ export function computeMultiDayStatusIndexed(input: DayStatusMultiInput): {
       const config = configByService[serviceType];
 
       if (config?.enabled === false) return { status: "UNAVAILABLE" as const, partial: false };
+      if (serviceType === "PENSION" && bookings.length > 0) {
+        return { status: "UNAVAILABLE" as const, partial: false };
+      }
 
       const slots = computeDaySlots({
         serviceType,
