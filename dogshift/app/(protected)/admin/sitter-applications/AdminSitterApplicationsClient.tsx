@@ -59,7 +59,7 @@ function formatFrCh(iso: string) {
     .replaceAll(".", "-");
 }
 
-export default function AdminSitterApplicationsClient({ adminCode }: { adminCode: string }) {
+export default function AdminSitterApplicationsClient({ adminCode }: { adminCode?: string }) {
   const [items, setItems] = useState<ApplicationItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -69,15 +69,20 @@ export default function AdminSitterApplicationsClient({ adminCode }: { adminCode
 
   const [actionLoading, setActionLoading] = useState(false);
 
+  function adminHeaders(base?: Record<string, string>) {
+    return {
+      ...(base ?? {}),
+      ...(adminCode ? { "x-admin-code": adminCode } : {}),
+    };
+  }
+
   async function load() {
     setLoading(true);
     setError(null);
     try {
       const res = await fetch("/api/admin/pilot-sitter-applications", {
         method: "GET",
-        headers: {
-          "x-admin-code": adminCode,
-        },
+        headers: adminHeaders(),
       });
       const payload = (await res.json().catch(() => null)) as any;
       if (!res.ok || !payload?.ok || !Array.isArray(payload?.applications)) {
@@ -107,10 +112,7 @@ export default function AdminSitterApplicationsClient({ adminCode }: { adminCode
     try {
       const res = await fetch("/api/admin/pilot-sitter-applications/status", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-admin-code": adminCode,
-        },
+        headers: adminHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify({ id: selected.id, status: next }),
       });
       const payload = (await res.json().catch(() => null)) as any;

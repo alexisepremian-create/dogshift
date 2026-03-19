@@ -1,18 +1,10 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
+import { getRequestAdminAccess } from "@/lib/adminAuth";
 import { prisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
-
-function requireAdmin(req: NextRequest) {
-  const expected = (process.env.HOST_ADMIN_CODE ?? "").trim();
-  const supplied = req.headers.get("x-admin-code")?.trim() ?? "";
-  if (!expected || !supplied || supplied !== expected) {
-    return false;
-  }
-  return true;
-}
 
 function isValidStatus(value: unknown): value is "PENDING" | "CONTACTED" | "ACCEPTED" | "REJECTED" {
   return value === "PENDING" || value === "CONTACTED" || value === "ACCEPTED" || value === "REJECTED";
@@ -20,7 +12,8 @@ function isValidStatus(value: unknown): value is "PENDING" | "CONTACTED" | "ACCE
 
 export async function POST(req: NextRequest) {
   try {
-    if (!requireAdmin(req)) {
+    const admin = await getRequestAdminAccess(req);
+    if (!admin.isAdmin) {
       return NextResponse.json({ ok: false, error: "FORBIDDEN" }, { status: 403 });
     }
 

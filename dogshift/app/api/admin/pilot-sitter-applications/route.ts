@@ -1,22 +1,15 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
+import { getRequestAdminAccess } from "@/lib/adminAuth";
 import { prisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
 
-function requireAdmin(req: NextRequest) {
-  const expected = (process.env.HOST_ADMIN_CODE ?? "").trim();
-  const supplied = req.headers.get("x-admin-code")?.trim() ?? "";
-  if (!expected || !supplied || supplied !== expected) {
-    return false;
-  }
-  return true;
-}
-
 export async function GET(req: NextRequest) {
   try {
-    if (!requireAdmin(req)) {
+    const admin = await getRequestAdminAccess(req);
+    if (!admin.isAdmin) {
       return NextResponse.json({ ok: false, error: "FORBIDDEN" }, { status: 403 });
     }
 

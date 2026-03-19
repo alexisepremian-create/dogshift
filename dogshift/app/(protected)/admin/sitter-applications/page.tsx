@@ -1,7 +1,9 @@
 import crypto from "crypto";
 import { unstable_noStore as noStore } from "next/cache";
+import { redirect } from "next/navigation";
 
 import AdminSitterApplicationsClient from "./AdminSitterApplicationsClient";
+import { getAdminAccessState } from "@/lib/adminAuth";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -20,6 +22,11 @@ export default async function AdminSitterApplicationsPage({
   searchParams?: Record<string, string | string[] | undefined> | Promise<Record<string, string | string[] | undefined>>;
 }) {
   noStore();
+
+  const access = await getAdminAccessState();
+  if (access.isAdmin) {
+    redirect("/admin/sitters/applications");
+  }
 
   const resolvedSearchParams = (typeof (searchParams as any)?.then === "function"
     ? await (searchParams as Promise<Record<string, string | string[] | undefined>>)
