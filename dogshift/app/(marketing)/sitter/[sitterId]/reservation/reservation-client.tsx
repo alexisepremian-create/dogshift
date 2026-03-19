@@ -972,7 +972,7 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
   }, [durationHours, startTime]);
 
   useEffect(() => {
-    if (unit !== "HOURLY" || !selectedService || !dateStart || !durationHours) {
+    if (unit !== "HOURLY" || !selectedService || !dateStart) {
       setHourlySlots([]);
       setHourlySlotsLoading(false);
       setHourlySlotsLoaded(false);
@@ -984,6 +984,16 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
     if (!serviceType || serviceType === "PENSION") {
       setHourlySlots([]);
       setHourlySlotsLoaded(false);
+      return;
+    }
+
+    const effectiveDurationHours = durationHours;
+
+    if (serviceType === "DOGSITTING" && !effectiveDurationHours) {
+      setHourlySlots([]);
+      setHourlySlotsLoading(false);
+      setHourlySlotsLoaded(false);
+      setHourlySlotsError(null);
       return;
     }
 
@@ -999,7 +1009,7 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
         qp.set("date", dateStart);
         qp.set("service", serviceType);
         if (serviceType === "DOGSITTING") {
-          qp.set("durationMin", String(durationHours * 60));
+          qp.set("durationMin", String((effectiveDurationHours ?? 0) * 60));
         }
         const res = await fetch(`/api/sitters/${encodeURIComponent(sitter.sitterId)}/slots?${qp.toString()}`, {
           method: "GET",
@@ -1378,8 +1388,10 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
                     <p className="mt-1 text-sm text-slate-600">Actualisation des créneaux…</p>
                   ) : hourlySlotsError ? (
                     <p className="mt-1 text-sm text-rose-700">Impossible de charger les créneaux pour cette date.</p>
-                  ) : !dateStart || !durationHours ? (
-                    <p className="mt-1 text-sm text-slate-600">Choisis une date et une durée pour voir les créneaux restants.</p>
+                  ) : !dateStart ? (
+                    <p className="mt-1 text-sm text-slate-600">Choisis une date pour voir les créneaux restants.</p>
+                  ) : unit === "HOURLY" && serviceToApiType(selectedService) === "DOGSITTING" && !durationHours ? (
+                    <p className="mt-1 text-sm text-slate-600">Choisis une durée pour voir les créneaux restants.</p>
                   ) : bookableHourlySlots.length === 0 ? (
                     <p className="mt-1 text-sm font-medium text-rose-700">Aucun créneau libre sur cette journée.</p>
                   ) : hasPartialAvailability ? (
