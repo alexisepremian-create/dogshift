@@ -129,6 +129,11 @@ function serviceToApiType(service: string | null): "PROMENADE" | "DOGSITTING" | 
 }
 
 function isoToTimeLabel(value: string) {
+  if (typeof value !== "string") return "";
+  const match = value.match(/T(\d{2}):(\d{2})/);
+  if (match) {
+    return `${match[1]}:${match[2]}`;
+  }
   const date = new Date(value);
   if (!Number.isFinite(date.getTime())) return value;
   return `${pad2(date.getHours())}:${pad2(date.getMinutes())}`;
