@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 
 import AdminShell from "@/components/admin/AdminShell";
 import AdminNotesPanel from "@/components/admin/AdminNotesPanel";
+import AdminSitterActions from "@/components/admin/AdminSitterActions";
 import { requireAdminPageAccess } from "@/lib/adminAuth";
 import { prisma } from "@/lib/prisma";
 
@@ -136,6 +137,15 @@ export default async function AdminSitterDetailPage({ params }: { params: Promis
           </div>
 
           <div className="grid gap-6">
+            {sitter.sitterProfile ? (
+              <AdminSitterActions
+                sitterUserId={sitter.id}
+                initialPublished={sitter.sitterProfile.published}
+                initialVerificationStatus={sitter.sitterProfile.verificationStatus}
+                initialVerificationNotes={sitter.sitterProfile.verificationNotes}
+              />
+            ) : null}
+
             <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.12)] sm:p-8">
               <h3 className="text-lg font-semibold tracking-tight text-slate-900">Avis récents</h3>
               {sitter.reviewsReceived.length === 0 ? (
