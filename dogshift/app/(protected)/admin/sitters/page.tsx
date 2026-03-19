@@ -219,7 +219,7 @@ export default async function AdminSittersPage({
                   <th className="px-5 py-4 font-semibold">Complétion</th>
                   <th className="px-5 py-4 font-semibold">Activité</th>
                   <th className="px-5 py-4 font-semibold">Inscription</th>
-                  <th className="px-5 py-4 font-semibold">Actions</th>
+                  <th className="w-[252px] px-5 py-4 font-semibold">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 bg-white">
@@ -250,7 +250,7 @@ export default async function AdminSittersPage({
                       <div className="text-xs text-slate-500">{sitter.reviewsReceived.length} avis</div>
                     </td>
                     <td className="px-5 py-4 text-slate-600">{formatDate(sitter.createdAt)}</td>
-                    <td className="px-5 py-4">
+                    <td className="w-[252px] px-5 py-4 align-top">
                       {sitter.sitterProfile ? (
                         <AdminSitterActions
                           sitterUserId={sitter.id}

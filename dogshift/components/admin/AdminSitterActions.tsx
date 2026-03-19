@@ -22,6 +22,12 @@ const ACTIONS: Array<{ action: ActionType; label: string; tone: string }> = [
   { action: "unpublish", label: "Dépublier", tone: "border border-slate-300 bg-white hover:bg-slate-50 text-slate-900" },
 ];
 
+const COMPACT_ACTION_GROUPS: Array<Array<ActionType>> = [
+  ["approve", "reject"],
+  ["suspend", "reactivate"],
+  ["publish", "unpublish"],
+];
+
 function verificationLabel(status: VerificationStatus) {
   if (status === "approved") return "approuvé";
   if (status === "pending") return "en attente";
@@ -105,15 +111,15 @@ export default function AdminSitterActions({
   }
 
   return (
-    <section className={`rounded-3xl border border-slate-200 bg-white ${compact ? "p-4" : "p-6 sm:p-8"} shadow-[0_18px_60px_-46px_rgba(2,6,23,0.12)]`}>
-      <div className="flex flex-wrap items-start justify-between gap-3">
+    <section className={`rounded-3xl border border-slate-200 bg-white ${compact ? "w-[220px] min-w-[220px] p-3" : "p-6 sm:p-8"} shadow-[0_18px_60px_-46px_rgba(2,6,23,0.12)]`}>
+      <div className={`flex ${compact ? "flex-col gap-2" : "flex-wrap items-start justify-between gap-3"}`}>
         <div>
-          <h3 className="text-lg font-semibold tracking-tight text-slate-900">Actions rapides</h3>
-          <p className="mt-2 text-sm leading-relaxed text-slate-600">Validation, refus, suspension et publication sans quitter le panel.</p>
+          <h3 className={`${compact ? "text-sm" : "text-lg"} font-semibold tracking-tight text-slate-900`}>Actions rapides</h3>
+          {!compact ? <p className="mt-2 text-sm leading-relaxed text-slate-600">Validation, refus, suspension et publication sans quitter le panel.</p> : null}
         </div>
         <div className="flex flex-wrap gap-2 text-xs text-slate-500">
-          <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1">Statut: {verificationLabel(verificationStatus)}</span>
-          <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1">Profil: {published ? "publié" : "non publié"}</span>
+          <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1">{verificationLabel(verificationStatus)}</span>
+          <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1">{published ? "publié" : "non publié"}</span>
         </div>
       </div>
 
@@ -148,28 +154,53 @@ export default function AdminSitterActions({
         </div>
       ) : null}
 
-      <div className={`mt-5 grid gap-3 ${compact ? "sm:grid-cols-2" : "sm:grid-cols-2 xl:grid-cols-3"}`}>
-        {ACTIONS.map((item) => {
-          const allowed = actionAllowed(item.action, published, verificationStatus);
-          const help = actionHelp(item.action, published, verificationStatus);
-          return (
-            <div key={item.action} className="grid gap-1">
-              <button
-                type="button"
-                disabled={!allowed || loadingAction !== null}
-                onClick={() => void runAction(item.action)}
-                className={`inline-flex items-center justify-center rounded-2xl px-4 py-2.5 text-sm font-semibold shadow-sm transition disabled:cursor-not-allowed disabled:opacity-50 ${item.tone}`}
-              >
-                {loadingAction === item.action ? "En cours…" : item.label}
-              </button>
-              {!compact && help ? <p className="px-1 text-xs text-slate-500">{help}</p> : null}
+      {compact ? (
+        <div className="mt-4 grid gap-2">
+          {COMPACT_ACTION_GROUPS.map((group, groupIndex) => (
+            <div key={groupIndex} className="grid gap-2">
+              {group.map((actionName) => {
+                const item = ACTIONS.find((entry) => entry.action === actionName);
+                if (!item) return null;
+                const allowed = actionAllowed(item.action, published, verificationStatus);
+                return (
+                  <button
+                    key={item.action}
+                    type="button"
+                    disabled={!allowed || loadingAction !== null}
+                    onClick={() => void runAction(item.action)}
+                    className={`inline-flex h-9 w-full items-center justify-center rounded-xl px-3 text-xs font-semibold shadow-sm transition disabled:cursor-not-allowed disabled:opacity-50 ${item.tone}`}
+                  >
+                    {loadingAction === item.action ? "En cours…" : item.label}
+                  </button>
+                );
+              })}
             </div>
-          );
-        })}
-      </div>
+          ))}
+        </div>
+      ) : (
+        <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          {ACTIONS.map((item) => {
+            const allowed = actionAllowed(item.action, published, verificationStatus);
+            const help = actionHelp(item.action, published, verificationStatus);
+            return (
+              <div key={item.action} className="grid gap-1">
+                <button
+                  type="button"
+                  disabled={!allowed || loadingAction !== null}
+                  onClick={() => void runAction(item.action)}
+                  className={`inline-flex items-center justify-center rounded-2xl px-4 py-2.5 text-sm font-semibold shadow-sm transition disabled:cursor-not-allowed disabled:opacity-50 ${item.tone}`}
+                >
+                  {loadingAction === item.action ? "En cours…" : item.label}
+                </button>
+                {help ? <p className="px-1 text-xs text-slate-500">{help}</p> : null}
+              </div>
+            );
+          })}
+        </div>
+      )}
 
-      {success ? <p className="mt-4 text-sm font-medium text-emerald-700">{success}</p> : null}
-      {error ? <p className="mt-4 text-sm font-medium text-rose-600">{error}</p> : null}
+      {success ? <p className={`mt-4 font-medium text-emerald-700 ${compact ? "text-xs" : "text-sm"}`}>{success}</p> : null}
+      {error ? <p className={`mt-4 font-medium text-rose-600 ${compact ? "text-xs" : "text-sm"}`}>{error}</p> : null}
     </section>
   );
 }
