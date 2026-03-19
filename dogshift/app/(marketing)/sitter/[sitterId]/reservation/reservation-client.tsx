@@ -340,60 +340,18 @@ function DogShiftTimePicker({
 }) {
   const rootRef = useRef<HTMLDivElement | null>(null);
   const normalizedAllowedTimes = useMemo(() => {
-    return Array.isArray(allowedTimes) ? allowedTimes.filter((item): item is string => typeof item === "string" && item.length === 5) : [];
+    const values = Array.isArray(allowedTimes) ? allowedTimes.filter((item): item is string => typeof item === "string" && item.length === 5) : [];
+    return Array.from(new Set(values)).sort();
   }, [allowedTimes]);
-  const allMinuteOptions = useMemo(() => ["00", "15", "30", "45"], []);
-  const hours = useMemo(() => Array.from(new Set(normalizedAllowedTimes.map((item) => item.slice(0, 2)))), [normalizedAllowedTimes]);
-  const minutesForHour = useMemo(() => {
-    const grouped = new Map<string, string[]>();
-    for (const item of normalizedAllowedTimes) {
-      const hour = item.slice(0, 2);
-      const minute = item.slice(3, 5);
-      const bucket = grouped.get(hour) ?? [];
-      if (!bucket.includes(minute)) bucket.push(minute);
-      grouped.set(hour, bucket);
-    }
-    for (const [hour, bucket] of grouped.entries()) {
-      bucket.sort((a, b) => allMinuteOptions.indexOf(a) - allMinuteOptions.indexOf(b));
-      grouped.set(hour, bucket);
-    }
-    return grouped;
-  }, [allMinuteOptions, normalizedAllowedTimes]);
-
-  const parsed = useMemo(() => {
-    if (!value) return null;
-    const parts = value.split(":");
-    if (parts.length !== 2) return null;
-    const hh = parts[0] ?? "";
-    const mm = parts[1] ?? "";
-    if (!hours.includes(hh)) return null;
-    if (!allMinuteOptions.includes(mm)) return null;
-    return { hh, mm };
-  }, [allMinuteOptions, hours, value]);
-
-  const [draftHour, setDraftHour] = useState<string>(() => parsed?.hh ?? pad2(new Date().getHours()));
-  const [draftMinute, setDraftMinute] = useState<string>(() => parsed?.mm ?? "00");
-  const minutes = useMemo(() => minutesForHour.get(draftHour) ?? allMinuteOptions, [allMinuteOptions, draftHour, minutesForHour]);
+  const [draftValue, setDraftValue] = useState<string | null>(() => value ?? normalizedAllowedTimes[0] ?? null);
 
   useEffect(() => {
     if (!open) return;
-    const fallback = normalizedAllowedTimes[0] ?? value ?? `${pad2(new Date().getHours())}:00`;
-    const [fallbackHour, fallbackMinute] = fallback.split(":");
-    setDraftHour(parsed?.hh ?? fallbackHour ?? pad2(new Date().getHours()));
-    setDraftMinute(parsed?.mm ?? fallbackMinute ?? "00");
-  }, [normalizedAllowedTimes, open, parsed, value]);
+    setDraftValue(value && normalizedAllowedTimes.includes(value) ? value : normalizedAllowedTimes[0] ?? null);
+  }, [normalizedAllowedTimes, open, value]);
 
-  useEffect(() => {
-    const validMinutes = minutesForHour.get(draftHour) ?? [];
-    if (!validMinutes.length) return;
-    if (!validMinutes.includes(draftMinute)) {
-      setDraftMinute(validMinutes[0] ?? "00");
-    }
-  }, [draftHour, draftMinute, minutesForHour]);
-
-  const currentCandidate = `${draftHour}:${draftMinute}`;
   const hasAllowedTimes = normalizedAllowedTimes.length > 0;
-  const isCandidateAllowed = hasAllowedTimes && normalizedAllowedTimes.includes(currentCandidate);
+  const isCandidateAllowed = Boolean(draftValue && normalizedAllowedTimes.includes(draftValue));
 
   useEffect(() => {
     if (!open) return;
@@ -446,66 +404,32 @@ function DogShiftTimePicker({
             </div>
 
             <div className="rounded-2xl border border-slate-200 bg-slate-50 p-2">
-              <div className="grid grid-cols-2 gap-2">
-                <div className="rounded-2xl border border-slate-200 bg-white p-2">
-                  <p className="px-2 pb-2 text-[11px] font-semibold text-slate-500">Heures</p>
-                  <div className="max-h-56 overflow-auto">
-                    <div className="grid gap-1">
-                      {hours.map((hh) => {
-                        const selected = hh === draftHour;
-                        return (
-                          <button
-                            key={hh}
-                            type="button"
-                            onClick={() => {
-                              setDraftHour(hh);
-                              const nextMinutes = minutesForHour.get(hh) ?? [];
-                              if (nextMinutes.length && !nextMinutes.includes(draftMinute)) {
-                                setDraftMinute(nextMinutes[0] ?? "00");
-                              }
-                            }}
-                            className={
-                              "flex w-full items-center justify-center rounded-xl px-3 py-2 text-sm font-semibold transition duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)] " +
-                              (selected
-                                ? "bg-[color-mix(in_srgb,var(--dogshift-blue),white_85%)] text-[var(--dogshift-blue)]"
-                                : "text-slate-900 hover:bg-[color-mix(in_srgb,var(--dogshift-blue),white_92%)]")
-                            }
-                          >
-                            {hh}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="rounded-2xl border border-slate-200 bg-white p-2">
-                  <p className="px-2 pb-2 text-[11px] font-semibold text-slate-500">Minutes</p>
-                  <div className="max-h-56 overflow-auto">
-                    <div className="grid gap-1">
-                      {allMinuteOptions.map((mm) => {
-                        const selected = mm === draftMinute;
-                        const available = minutes.includes(mm);
-                        return (
-                          <button
-                            key={mm}
-                            type="button"
-                            disabled={!available}
-                            onClick={() => setDraftMinute(mm)}
-                            className={
-                              "flex w-full items-center justify-center rounded-xl px-3 py-2 text-sm font-semibold transition duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)] disabled:cursor-not-allowed disabled:opacity-35 " +
-                              (selected
-                                ? "bg-[color-mix(in_srgb,var(--dogshift-blue),white_85%)] text-[var(--dogshift-blue)]"
-                                : available
-                                  ? "text-slate-900 hover:bg-[color-mix(in_srgb,var(--dogshift-blue),white_92%)]"
-                                  : "text-slate-400")
-                            }
-                          >
-                            {mm}
-                          </button>
-                        );
-                      })}
-                    </div>
+              <p className="px-2 pb-2 text-[11px] font-semibold text-slate-500">
+                {hasAllowedTimes
+                  ? "Choisis parmi les horaires encore disponibles"
+                  : "Aucun horaire disponible"}
+              </p>
+              <div className="rounded-2xl border border-slate-200 bg-white p-2">
+                <div className="max-h-64 overflow-auto">
+                  <div className="grid gap-1 sm:grid-cols-2">
+                    {normalizedAllowedTimes.map((time) => {
+                      const selected = time === draftValue;
+                      return (
+                        <button
+                          key={time}
+                          type="button"
+                          onClick={() => setDraftValue(time)}
+                          className={
+                            "flex w-full items-center justify-center rounded-xl px-3 py-2 text-sm font-semibold transition duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)] " +
+                            (selected
+                              ? "bg-[color-mix(in_srgb,var(--dogshift-blue),white_85%)] text-[var(--dogshift-blue)]"
+                              : "text-slate-900 hover:bg-[color-mix(in_srgb,var(--dogshift-blue),white_92%)]")
+                          }
+                        >
+                          {time}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               </div>
@@ -515,7 +439,7 @@ function DogShiftTimePicker({
                   type="button"
                   disabled={!hasAllowedTimes || !isCandidateAllowed}
                   onClick={() => {
-                    onChange(`${draftHour}:${draftMinute}`);
+                    onChange(draftValue ?? null);
                     onOpenChange(false);
                   }}
                   className="inline-flex items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-4 py-2.5 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition duration-150 hover:bg-[var(--dogshift-blue-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)] disabled:cursor-not-allowed disabled:opacity-50"
@@ -536,7 +460,6 @@ function DogShiftTimePicker({
                   </button>
                 ) : null}
               </div>
-              {hasAllowedTimes && !isCandidateAllowed ? <p className="mt-3 text-xs font-medium text-amber-800">Ce créneau n’est plus disponible. Choisis un horaire proposé.</p> : null}
             </div>
           </div>
         </div>
