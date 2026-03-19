@@ -16,6 +16,11 @@ type HourlySlot = {
   reason?: string;
 };
 
+type TimePickerSlot = {
+  time: string;
+  available: boolean;
+};
+
 type DayStatusRow = {
   date: string;
   promenadeStatus: ServiceDayStatus;
@@ -328,7 +333,7 @@ function DogShiftTimePicker({
   id,
   open,
   onOpenChange,
-  allowedTimes,
+  slots,
   disabled,
 }: {
   value: string | null;
@@ -337,23 +342,37 @@ function DogShiftTimePicker({
   id: string;
   open: boolean;
   onOpenChange: (next: boolean) => void;
-  allowedTimes?: string[];
+  slots?: TimePickerSlot[];
   disabled?: boolean;
 }) {
   const rootRef = useRef<HTMLDivElement | null>(null);
-  const normalizedAllowedTimes = useMemo(() => {
-    const values = Array.isArray(allowedTimes) ? allowedTimes.filter((item): item is string => typeof item === "string" && item.length === 5) : [];
-    return Array.from(new Set(values)).sort();
-  }, [allowedTimes]);
-  const [draftValue, setDraftValue] = useState<string | null>(() => value ?? normalizedAllowedTimes[0] ?? null);
+  const normalizedSlots = useMemo(() => {
+    const values = Array.isArray(slots)
+      ? slots.filter(
+          (item): item is TimePickerSlot => Boolean(item && typeof item.time === "string" && item.time.length === 5 && typeof item.available === "boolean")
+        )
+      : [];
+
+    const deduped = new Map<string, boolean>();
+    for (const item of values) {
+      deduped.set(item.time, item.available);
+    }
+
+    return Array.from(deduped.entries())
+      .map(([time, available]) => ({ time, available }))
+      .sort((a, b) => a.time.localeCompare(b.time));
+  }, [slots]);
+  const selectableTimes = useMemo(() => normalizedSlots.filter((slot) => slot.available).map((slot) => slot.time), [normalizedSlots]);
+  const [draftValue, setDraftValue] = useState<string | null>(() => value ?? selectableTimes[0] ?? null);
 
   useEffect(() => {
     if (!open) return;
-    setDraftValue(value && normalizedAllowedTimes.includes(value) ? value : normalizedAllowedTimes[0] ?? null);
-  }, [normalizedAllowedTimes, open, value]);
+    setDraftValue(value && selectableTimes.includes(value) ? value : selectableTimes[0] ?? null);
+  }, [open, selectableTimes, value]);
 
-  const hasAllowedTimes = normalizedAllowedTimes.length > 0;
-  const isCandidateAllowed = Boolean(draftValue && normalizedAllowedTimes.includes(draftValue));
+  const hasSlots = normalizedSlots.length > 0;
+  const hasAllowedTimes = selectableTimes.length > 0;
+  const isCandidateAllowed = Boolean(draftValue && selectableTimes.includes(draftValue));
 
   useEffect(() => {
     if (!open) return;
@@ -408,28 +427,32 @@ function DogShiftTimePicker({
 
             <div className="rounded-2xl border border-slate-200 bg-slate-50 p-2">
               <p className="px-2 pb-2 text-[11px] font-semibold text-slate-500">
-                {hasAllowedTimes
-                  ? "Choisis parmi les horaires encore disponibles"
-                  : "Aucun horaire disponible"}
+                {hasSlots ? "Créneaux disponibles en clair, créneaux pris grisés" : "Aucun horaire disponible"}
               </p>
               <div className="rounded-2xl border border-slate-200 bg-white p-2">
                 <div className="max-h-64 overflow-auto">
                   <div className="grid gap-1 sm:grid-cols-2">
-                    {normalizedAllowedTimes.map((time) => {
-                      const selected = time === draftValue;
+                    {normalizedSlots.map((slot) => {
+                      const selected = slot.time === draftValue;
                       return (
                         <button
-                          key={time}
+                          key={slot.time}
                           type="button"
-                          onClick={() => setDraftValue(time)}
+                          disabled={!slot.available}
+                          onClick={() => {
+                            if (!slot.available) return;
+                            setDraftValue(slot.time);
+                          }}
                           className={
-                            "flex w-full items-center justify-center rounded-xl px-3 py-2 text-sm font-semibold transition duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)] " +
+                            "flex w-full items-center justify-center rounded-xl px-3 py-2 text-sm font-semibold transition duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)] disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400 disabled:line-through " +
                             (selected
                               ? "bg-[color-mix(in_srgb,var(--dogshift-blue),white_85%)] text-[var(--dogshift-blue)]"
-                              : "text-slate-900 hover:bg-[color-mix(in_srgb,var(--dogshift-blue),white_92%)]")
+                              : slot.available
+                                ? "text-slate-900 hover:bg-[color-mix(in_srgb,var(--dogshift-blue),white_92%)]"
+                                : "text-slate-400")
                           }
                         >
-                          {time}
+                          {slot.time}
                         </button>
                       );
                     })}
@@ -1017,6 +1040,15 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
     [hourlySlots]
   );
 
+  const timePickerSlots = useMemo(
+    () =>
+      hourlySlots.map((slot) => ({
+        time: isoToTimeLabel(slot.startAt),
+        available: slot.status === "AVAILABLE" || slot.status === "ON_REQUEST",
+      })),
+    [hourlySlots]
+  );
+
   const availableStartTimes = useMemo(() => bookableHourlySlots.map((slot) => isoToTimeLabel(slot.startAt)), [bookableHourlySlots]);
 
   const selectedHourlySlot = useMemo(() => {
@@ -1326,8 +1358,8 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
                     label="Heure de début"
                     value={startTime}
                     open={openPicker === "time"}
-                    allowedTimes={availableStartTimes}
-                    disabled={!dateStart || !durationHours || availableStartTimes.length === 0}
+                    slots={timePickerSlots}
+                    disabled={!dateStart || !durationHours || timePickerSlots.length === 0}
                     onOpenChange={(next) => setOpenPicker(next ? "time" : null)}
                     onChange={(next) => {
                       setStartTime(next);
