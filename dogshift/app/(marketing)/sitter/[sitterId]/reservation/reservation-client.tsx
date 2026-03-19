@@ -337,8 +337,23 @@ function DogShiftTimePicker({
   const normalizedAllowedTimes = useMemo(() => {
     return Array.isArray(allowedTimes) ? allowedTimes.filter((item): item is string => typeof item === "string" && item.length === 5) : [];
   }, [allowedTimes]);
+  const allMinuteOptions = useMemo(() => ["00", "15", "30", "45"], []);
   const hours = useMemo(() => Array.from(new Set(normalizedAllowedTimes.map((item) => item.slice(0, 2)))), [normalizedAllowedTimes]);
-  const minutes = useMemo(() => Array.from(new Set(normalizedAllowedTimes.map((item) => item.slice(3, 5)))), [normalizedAllowedTimes]);
+  const minutesForHour = useMemo(() => {
+    const grouped = new Map<string, string[]>();
+    for (const item of normalizedAllowedTimes) {
+      const hour = item.slice(0, 2);
+      const minute = item.slice(3, 5);
+      const bucket = grouped.get(hour) ?? [];
+      if (!bucket.includes(minute)) bucket.push(minute);
+      grouped.set(hour, bucket);
+    }
+    for (const [hour, bucket] of grouped.entries()) {
+      bucket.sort((a, b) => allMinuteOptions.indexOf(a) - allMinuteOptions.indexOf(b));
+      grouped.set(hour, bucket);
+    }
+    return grouped;
+  }, [allMinuteOptions, normalizedAllowedTimes]);
 
   const parsed = useMemo(() => {
     if (!value) return null;
@@ -347,12 +362,13 @@ function DogShiftTimePicker({
     const hh = parts[0] ?? "";
     const mm = parts[1] ?? "";
     if (!hours.includes(hh)) return null;
-    if (!minutes.includes(mm)) return null;
+    if (!allMinuteOptions.includes(mm)) return null;
     return { hh, mm };
-  }, [hours, minutes, value]);
+  }, [allMinuteOptions, hours, value]);
 
   const [draftHour, setDraftHour] = useState<string>(() => parsed?.hh ?? pad2(new Date().getHours()));
   const [draftMinute, setDraftMinute] = useState<string>(() => parsed?.mm ?? "00");
+  const minutes = useMemo(() => minutesForHour.get(draftHour) ?? allMinuteOptions, [allMinuteOptions, draftHour, minutesForHour]);
 
   useEffect(() => {
     if (!open) return;
@@ -361,6 +377,14 @@ function DogShiftTimePicker({
     setDraftHour(parsed?.hh ?? fallbackHour ?? pad2(new Date().getHours()));
     setDraftMinute(parsed?.mm ?? fallbackMinute ?? "00");
   }, [normalizedAllowedTimes, open, parsed, value]);
+
+  useEffect(() => {
+    const validMinutes = minutesForHour.get(draftHour) ?? [];
+    if (!validMinutes.length) return;
+    if (!validMinutes.includes(draftMinute)) {
+      setDraftMinute(validMinutes[0] ?? "00");
+    }
+  }, [draftHour, draftMinute, minutesForHour]);
 
   const currentCandidate = `${draftHour}:${draftMinute}`;
   const hasAllowedTimes = normalizedAllowedTimes.length > 0;
@@ -417,9 +441,6 @@ function DogShiftTimePicker({
             </div>
 
             <div className="rounded-2xl border border-slate-200 bg-slate-50 p-2">
-              <p className="px-2 pb-2 text-[11px] font-semibold text-slate-500">
-                {hasAllowedTimes ? `${normalizedAllowedTimes.length} horaire${normalizedAllowedTimes.length > 1 ? "s" : ""} encore disponible${normalizedAllowedTimes.length > 1 ? "s" : ""}` : "Aucun horaire disponible"}
-              </p>
               <div className="grid grid-cols-2 gap-2">
                 <div className="rounded-2xl border border-slate-200 bg-white p-2">
                   <p className="px-2 pb-2 text-[11px] font-semibold text-slate-500">Heures</p>
@@ -431,7 +452,13 @@ function DogShiftTimePicker({
                           <button
                             key={hh}
                             type="button"
-                            onClick={() => setDraftHour(hh)}
+                            onClick={() => {
+                              setDraftHour(hh);
+                              const nextMinutes = minutesForHour.get(hh) ?? [];
+                              if (nextMinutes.length && !nextMinutes.includes(draftMinute)) {
+                                setDraftMinute(nextMinutes[0] ?? "00");
+                              }
+                            }}
                             className={
                               "flex w-full items-center justify-center rounded-xl px-3 py-2 text-sm font-semibold transition duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)] " +
                               (selected
@@ -451,18 +478,22 @@ function DogShiftTimePicker({
                   <p className="px-2 pb-2 text-[11px] font-semibold text-slate-500">Minutes</p>
                   <div className="max-h-56 overflow-auto">
                     <div className="grid gap-1">
-                      {minutes.map((mm) => {
+                      {allMinuteOptions.map((mm) => {
                         const selected = mm === draftMinute;
+                        const available = minutes.includes(mm);
                         return (
                           <button
                             key={mm}
                             type="button"
+                            disabled={!available}
                             onClick={() => setDraftMinute(mm)}
                             className={
-                              "flex w-full items-center justify-center rounded-xl px-3 py-2 text-sm font-semibold transition duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)] " +
+                              "flex w-full items-center justify-center rounded-xl px-3 py-2 text-sm font-semibold transition duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)] disabled:cursor-not-allowed disabled:opacity-35 " +
                               (selected
                                 ? "bg-[color-mix(in_srgb,var(--dogshift-blue),white_85%)] text-[var(--dogshift-blue)]"
-                                : "text-slate-900 hover:bg-[color-mix(in_srgb,var(--dogshift-blue),white_92%)]")
+                                : available
+                                  ? "text-slate-900 hover:bg-[color-mix(in_srgb,var(--dogshift-blue),white_92%)]"
+                                  : "text-slate-400")
                             }
                           >
                             {mm}
@@ -1404,36 +1435,6 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
                   )}
                 </div>
 
-                {bookableHourlySlots.length > 0 ? (
-                  <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-4">
-                    <p className="text-xs font-semibold text-slate-600">Créneaux encore disponibles</p>
-                    <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                      {bookableHourlySlots.map((slot) => {
-                        const startLabel = isoToTimeLabel(slot.startAt);
-                        const endLabel = isoToTimeLabel(slot.endAt);
-                        const selected = selectedHourlySlot?.startAt === slot.startAt && selectedHourlySlot?.endAt === slot.endAt;
-                        return (
-                          <button
-                            key={`${slot.startAt}-${slot.endAt}`}
-                            type="button"
-                            onClick={() => {
-                              setStartTime(startLabel);
-                              setError(null);
-                            }}
-                            className={
-                              selected
-                                ? "flex items-center justify-between rounded-2xl border border-[var(--dogshift-blue)] bg-[color-mix(in_srgb,var(--dogshift-blue),white_92%)] px-4 py-3 text-left text-sm font-semibold text-[var(--dogshift-blue)]"
-                                : "flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-left text-sm font-semibold text-slate-900 transition hover:bg-slate-100"
-                            }
-                          >
-                            <span>{startLabel} - {endLabel}</span>
-                            {slot.status === "ON_REQUEST" ? <span className="text-[11px] font-semibold text-amber-700">Sur demande</span> : null}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ) : null}
               </div>
             ) : null}
 
