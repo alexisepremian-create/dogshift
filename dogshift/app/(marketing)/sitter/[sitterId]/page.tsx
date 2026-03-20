@@ -217,6 +217,15 @@ function formatTimeLabel(iso: string) {
   return `${hour}:${minute}`;
 }
 
+function todayZurichIsoDate() {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/Zurich",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+}
+
 function getAvailabilityLoadErrorMessage(error: string | null | undefined) {
   const code = typeof error === "string" ? error.trim() : "";
   if (!code) return "Impossible de charger l’agenda pour le moment.";
@@ -1013,6 +1022,7 @@ function SitterPublicProfileContent({
   const [monthLoading, setMonthLoading] = useState(false);
   const [monthError, setMonthError] = useState<string | null>(null);
   const [monthRetryKey, setMonthRetryKey] = useState(0);
+  const todayIso = useMemo(() => todayZurichIsoDate(), []);
 
   useEffect(() => {
     if (!canEvaluateFinalizeModal) {
@@ -1353,6 +1363,7 @@ function SitterPublicProfileContent({
     slotsError,
     dbg,
     serviceUi,
+    todayIso,
   }: any) => {
     return (
       <>
@@ -1396,6 +1407,7 @@ function SitterPublicProfileContent({
                 const day = i + 1;
                 const dateIso = `${String(monthMeta.year).padStart(4, "0")}-${String(monthMeta.month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
                 const row = monthDaysByDate.get(dateIso);
+                const isPast = dateIso < todayIso;
 
                 const serviceTone = statusForSelectedService(row, slotsServiceType);
                 const servicePartial = partialForSelectedService(row, slotsServiceType);
@@ -1426,13 +1438,15 @@ function SitterPublicProfileContent({
                         };
 
                 const tone =
-                  row && (serviceTone === "AVAILABLE" || servicePartial)
+                  isPast
+                    ? "bg-slate-400 text-slate-50 ring-slate-400"
+                    : row && (serviceTone === "AVAILABLE" || servicePartial)
                     ? selectedServiceTone.available
                     : row && serviceTone === "ON_REQUEST"
                       ? selectedServiceTone.onRequest
                       : "bg-slate-100 text-slate-500 ring-slate-200";
 
-                const isSelectableForService = serviceTone === "AVAILABLE" || serviceTone === "ON_REQUEST" || servicePartial;
+                const isSelectableForService = !isPast && (serviceTone === "AVAILABLE" || serviceTone === "ON_REQUEST" || servicePartial);
                 const ariaLabel = `${dateIso} — ${serviceUi.current.label}: ${serviceUi.statusLabel(serviceTone)}`;
 
                 const focusRing = isSelectableForService ? `ring-[2px] ${selectedServiceTone.accent}` : "";
@@ -1447,9 +1461,9 @@ function SitterPublicProfileContent({
                 return (
                   <div
                     key={dateIso}
-                    className={`flex h-14 w-full flex-col rounded-2xl ring-1 ${tone} ${servicePartial ? "ring-[3px] ring-amber-300" : ""} ${focusRing} ${
-                      isInPensionRange ? selectedServiceTone.range : ""
-                    } ${isCalendarSelected ? `${selectedServiceTone.selected}` : ""}`}
+                    className={`flex h-14 w-full flex-col rounded-2xl ring-1 ${tone} ${!isPast && servicePartial ? "ring-[3px] ring-amber-300" : ""} ${focusRing} ${
+                      !isPast && isInPensionRange ? selectedServiceTone.range : ""
+                    } ${isCalendarSelected ? `${isPast ? "ring-slate-500 shadow-[0_0_0_3px_rgba(100,116,139,0.18)]" : selectedServiceTone.selected}` : ""}`}
                   >
                     <button
                       type="button"
@@ -1514,7 +1528,7 @@ function SitterPublicProfileContent({
                         setCalendarInfoDate(dateIso);
                         setDayDetailsOpen(false);
                       }}
-                      className="flex h-full w-full flex-col justify-between rounded-2xl px-2 py-2 disabled:cursor-not-allowed disabled:opacity-70"
+                      className="flex h-full w-full flex-col justify-between rounded-2xl px-2 py-2 disabled:cursor-not-allowed"
                       aria-label={ariaLabel}
                     >
                       <div className="flex items-start justify-end">
@@ -2354,6 +2368,7 @@ function SitterPublicProfileContent({
                           slotsError={slotsError}
                           dbg={dbg}
                           serviceUi={serviceUi}
+                          todayIso={todayIso}
                         />
 
                         <p className="mt-5 text-sm font-medium text-slate-900">Prochaines disponibilités</p>
