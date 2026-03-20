@@ -171,7 +171,6 @@ function CheckoutForm({
       buttonHeight: 52,
       paymentMethods: {
         applePay: "always" as const,
-        klarna: "always" as const,
         googlePay: "never" as const,
         amazonPay: "never" as const,
         link: "never" as const,
