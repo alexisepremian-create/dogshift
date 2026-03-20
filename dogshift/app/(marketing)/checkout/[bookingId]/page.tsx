@@ -177,7 +177,6 @@ function CheckoutForm({
       },
       buttonType: {
         applePay: "check-out" as const,
-        klarna: "pay" as const,
       },
       layout: {
         maxColumns: 2,
@@ -206,28 +205,50 @@ function CheckoutForm({
       </div>
       <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-4 sm:p-5">
         <p className="text-sm font-semibold text-slate-900">Paiement rapide</p>
-        {ExpressCheckoutElement ? (
-          <div className="mt-4 w-full">
-            <ExpressCheckoutElement
-              options={expressCheckoutOptions}
-              onConfirm={() => void onExpressConfirm()}
-              onReady={(event: any) => {
-                setExpressReady(Boolean(event?.availablePaymentMethods?.applePay));
-              }}
-            />
-          </div>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          {ExpressCheckoutElement ? (
+            <div className="rounded-2xl border border-slate-200 bg-white p-3">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Apple Pay</p>
+              <ExpressCheckoutElement
+                options={expressCheckoutOptions}
+                onConfirm={() => void onExpressConfirm()}
+                onReady={(event: any) => {
+                  setExpressReady(Boolean(event?.availablePaymentMethods?.applePay));
+                }}
+              />
+            </div>
+          ) : null}
+
+          <button
+            type="button"
+            onClick={() => setCardSectionOpen(true)}
+            className="flex min-h-[82px] flex-col items-start justify-center rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left transition hover:bg-slate-50"
+          >
+            <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">TWINT</span>
+            <span className="mt-1 text-sm font-semibold text-slate-900">Payer rapidement avec TWINT</span>
+            <span className="mt-1 text-xs text-slate-500">Disponible dans les moyens de paiement ci-dessous via Stripe.</span>
+          </button>
+        </div>
+
+        {!ExpressCheckoutElement ? (
+          <p className="mt-3 text-xs text-slate-500">
+            Apple Pay dépend de l’appareil et du navigateur. TWINT reste disponible dans les moyens de paiement ci-dessous.
+          </p>
         ) : null}
       </div>
 
       <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
-        <p className="text-sm font-semibold text-slate-900">Ou payer par carte</p>
+        <p className="text-sm font-semibold text-slate-900">Autres moyens de paiement</p>
         <button
           type="button"
           onClick={() => setCardSectionOpen((current) => !current)}
           className="mt-3 flex w-full items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-left transition hover:bg-slate-100"
           aria-expanded={cardSectionOpen}
         >
-          <p className="text-sm font-semibold text-slate-900">Carte bancaire</p>
+          <div>
+            <p className="text-sm font-semibold text-slate-900">Carte bancaire, TWINT et Klarna</p>
+            <p className="mt-1 text-xs text-slate-500">Selon disponibilité Stripe et l’appareil du client.</p>
+          </div>
           <span className="text-lg leading-none text-slate-400" aria-hidden="true">
             {cardSectionOpen ? "⌃" : "⌄"}
           </span>
