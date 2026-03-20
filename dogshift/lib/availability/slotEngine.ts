@@ -92,9 +92,9 @@ export const SERVICE_DEFAULTS: Record<ServiceType, ServiceConfigDefaults> = {
   PROMENADE: {
     serviceType: "PROMENADE",
     enabled: true,
-    slotStepMin: 15,
-    minDurationMin: 30,
-    maxDurationMin: 120,
+    slotStepMin: 30,
+    minDurationMin: 60,
+    maxDurationMin: 180,
     leadTimeMin: 0,
     bufferBeforeMin: 30,
     bufferAfterMin: 30,

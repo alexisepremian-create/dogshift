@@ -108,6 +108,16 @@ function computeEndTime(startTime: string, durationHours: number) {
   return `${pad2(endH)}:${pad2(endM)}`;
 }
 
+function formatDurationHours(hours: number) {
+  if (!Number.isFinite(hours) || hours <= 0) return "";
+  const totalMinutes = Math.round(hours * 60);
+  const wholeHours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  if (minutes === 0) return `${wholeHours} h`;
+  if (wholeHours === 0) return `${minutes} min`;
+  return `${wholeHours}h${String(minutes).padStart(2, "0")}`;
+}
+
 function toIsoDateString(d: Date) {
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, "0");
@@ -572,7 +582,7 @@ function DogShiftDurationPicker({
 }) {
   const rootRef = useRef<HTMLDivElement | null>(null);
 
-  const display = value ? `${value} h` : "";
+  const display = value ? formatDurationHours(value) : "";
 
   useEffect(() => {
     if (!open) return;
@@ -649,7 +659,7 @@ function DogShiftDurationPicker({
                                 : "text-slate-400")
                           }
                         >
-                          {option.hours} h
+                          {formatDurationHours(option.hours)}
                         </button>
                       );
                     })}
@@ -1122,9 +1132,14 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
 
   const durationOptions = useMemo<DurationPickerOption[]>(() => {
     if (unit !== "HOURLY" || !hourlyConfig) return [];
-    const minHours = Math.max(1, Math.ceil(hourlyConfig.minDurationMin / 60));
-    const maxHours = Math.max(minHours, Math.floor(hourlyConfig.maxDurationMin / 60));
-    return Array.from({ length: Math.max(0, maxHours - minHours + 1) }, (_, index) => ({ hours: minHours + index, available: true }));
+    const stepMin = Math.max(1, hourlyConfig.stepMin);
+    const minDurationMin = Math.max(stepMin, hourlyConfig.minDurationMin);
+    const maxDurationMin = Math.max(minDurationMin, hourlyConfig.maxDurationMin);
+    const out: DurationPickerOption[] = [];
+    for (let durationMin = minDurationMin; durationMin <= maxDurationMin; durationMin += stepMin) {
+      out.push({ hours: durationMin / 60, available: true });
+    }
+    return out;
   }, [hourlyConfig, unit]);
 
   const displayedDurationMinSet = useMemo(
