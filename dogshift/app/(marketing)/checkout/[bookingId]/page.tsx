@@ -30,6 +30,8 @@ const PRIMARY_BTN =
   "inline-flex items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-6 py-3 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition hover:bg-[var(--dogshift-blue-hover)] disabled:cursor-not-allowed disabled:opacity-60";
 const SECONDARY_BTN =
   "inline-flex items-center justify-center rounded-2xl border border-slate-300 bg-white px-6 py-3 text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50";
+const PAYMENT_OPTION_CARD =
+  "flex w-full min-h-[88px] items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white px-4 py-4 text-left shadow-sm transition hover:bg-slate-50";
 
 function formatCents(amount: number) {
   return `CHF ${(amount / 100).toFixed(2)}`;
@@ -204,39 +206,77 @@ function CheckoutForm({
         </div>
       </div>
       <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-4 sm:p-5">
-        <p className="text-sm font-semibold text-slate-900">Paiement rapide</p>
-        <div className="mt-4 grid gap-3 sm:grid-cols-2">
-          {ExpressCheckoutElement ? (
-            <div className="rounded-2xl border border-slate-200 bg-white p-3">
-              <p className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Apple Pay</p>
-              <ExpressCheckoutElement
-                options={expressCheckoutOptions}
-                onConfirm={() => void onExpressConfirm()}
-                onReady={(event: any) => {
-                  setExpressReady(Boolean(event?.availablePaymentMethods?.applePay));
-                }}
-              />
+        <p className="text-sm font-semibold text-slate-900">Choisis ton moyen de paiement</p>
+        <div className="mt-4 space-y-3">
+          <button
+            type="button"
+            onClick={() => setCardSectionOpen(true)}
+            className={PAYMENT_OPTION_CARD}
+          >
+            <div>
+              <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Paiement rapide</span>
+              <span className="mt-1 block text-sm font-semibold text-slate-900">TWINT</span>
             </div>
-          ) : null}
+            <span className="inline-flex h-11 min-w-[96px] items-center justify-center rounded-2xl bg-[#0A2C5A] px-4 text-sm font-semibold tracking-[0.08em] text-white">
+              TWINT
+            </span>
+          </button>
+
+          <div className={PAYMENT_OPTION_CARD + " p-3"}>
+            <div>
+              <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Paiement rapide</span>
+              <span className="mt-1 block text-sm font-semibold text-slate-900">Apple Pay</span>
+            </div>
+            <div className="w-[160px] shrink-0">
+              {ExpressCheckoutElement ? (
+                <ExpressCheckoutElement
+                  options={expressCheckoutOptions}
+                  onConfirm={() => void onExpressConfirm()}
+                  onReady={(event: any) => {
+                    setExpressReady(Boolean(event?.availablePaymentMethods?.applePay));
+                  }}
+                />
+              ) : (
+                <div className="flex h-[52px] items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 text-sm font-semibold text-slate-400">
+                  Indisponible
+                </div>
+              )}
+            </div>
+          </div>
 
           <button
             type="button"
             onClick={() => setCardSectionOpen(true)}
-            className="flex min-h-[82px] items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left transition hover:bg-slate-50"
+            className={PAYMENT_OPTION_CARD}
           >
             <div>
-              <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">TWINT</span>
-              <span className="mt-1 block text-sm font-semibold text-slate-900">TWINT</span>
+              <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Paiement différé</span>
+              <span className="mt-1 block text-sm font-semibold text-slate-900">Klarna</span>
             </div>
-            <span className="inline-flex h-10 min-w-[88px] items-center justify-center rounded-2xl bg-[#0A2C5A] px-4 text-sm font-semibold tracking-[0.08em] text-white">
-              TWINT
+            <span className="inline-flex h-11 min-w-[96px] items-center justify-center rounded-2xl bg-[#FFB3C7] px-4 text-sm font-semibold tracking-[0.04em] text-[#1A1A1A]">
+              Klarna
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setCardSectionOpen(true)}
+            className={PAYMENT_OPTION_CARD}
+            aria-expanded={cardSectionOpen}
+          >
+            <div>
+              <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Moyen classique</span>
+              <span className="mt-1 block text-sm font-semibold text-slate-900">Paiement par carte</span>
+            </div>
+            <span className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700">
+              Carte
             </span>
           </button>
         </div>
       </div>
 
       <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
-        <p className="text-sm font-semibold text-slate-900">Autres moyens de paiement</p>
+        <p className="text-sm font-semibold text-slate-900">Finaliser le paiement</p>
         <button
           type="button"
           onClick={() => setCardSectionOpen((current) => !current)}
@@ -245,7 +285,7 @@ function CheckoutForm({
         >
           <div>
             <p className="text-sm font-semibold text-slate-900">Carte bancaire et Klarna</p>
-            <p className="mt-1 text-xs text-slate-500">Selon disponibilité Stripe et l’appareil du client.</p>
+            <p className="mt-1 text-xs text-slate-500">Sélectionne ensuite le moyen réellement proposé par Stripe.</p>
           </div>
           <span className="text-lg leading-none text-slate-400" aria-hidden="true">
             {cardSectionOpen ? "⌃" : "⌄"}
