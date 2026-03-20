@@ -613,11 +613,11 @@ export function computeDaySlots(input: ComputeDaySlotsInput): DaySlot[] {
 
     for (const seg of agenda) {
       if (seg.endMin <= startMin) continue;
-      if (seg.startMin >= endMin) break;
+      if (seg.startMin > endMin) break;
       if (seg.endMin <= cursor) continue;
 
       if (seg.status === "UNAVAILABLE") {
-        if (seg.startMin < endMin && seg.endMin > startMin) {
+        if (seg.startMin <= endMin && seg.endMin > startMin) {
           return { status: "UNAVAILABLE", reason: seg.reason };
         }
         continue;
