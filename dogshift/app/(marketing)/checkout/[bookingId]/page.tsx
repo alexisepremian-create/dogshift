@@ -171,6 +171,7 @@ function CheckoutForm({
       buttonHeight: 52,
       paymentMethods: {
         applePay: "always" as const,
+        klarna: "always" as const,
         googlePay: "never" as const,
         amazonPay: "never" as const,
         link: "never" as const,
@@ -181,7 +182,7 @@ function CheckoutForm({
       },
       layout: {
         maxColumns: 2,
-        maxRows: 2,
+        maxRows: 1,
         overflow: "auto" as const,
       },
     }),
@@ -207,18 +208,23 @@ function CheckoutForm({
       <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-4 sm:p-5">
         <p className="text-sm font-semibold text-slate-900">Choisis ton moyen de paiement</p>
         <div className="mt-4 space-y-3">
-          <div className={PAYMENT_OPTION_CARD + " p-3"}>
-            <div>
-              <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Paiement rapide</span>
-              <span className="mt-1 block text-sm font-semibold text-slate-900">Apple Pay</span>
+          <div className={PAYMENT_OPTION_CARD + " block p-4"}>
+            <div className="border-t border-slate-200 pt-1">
+              <PaymentElement options={paymentElementOptions} />
             </div>
-            <div className="w-[160px] shrink-0">
+          </div>
+
+          <div className={PAYMENT_OPTION_CARD + " block p-4"}>
+            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Paiement rapide</p>
+            <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-3">
               {ExpressCheckoutElement ? (
                 <ExpressCheckoutElement
                   options={expressCheckoutOptions}
                   onConfirm={() => void onExpressConfirm()}
                   onReady={(event: any) => {
-                    setExpressReady(Boolean(event?.availablePaymentMethods?.applePay));
+                    setExpressReady(
+                      Boolean(event?.availablePaymentMethods?.applePay || event?.availablePaymentMethods?.klarna)
+                    );
                   }}
                 />
               ) : (
@@ -226,16 +232,6 @@ function CheckoutForm({
                   Indisponible
                 </div>
               )}
-            </div>
-          </div>
-
-          <div className={PAYMENT_OPTION_CARD + " block p-4"}>
-            <div>
-              <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">TWINT</span>
-              <span className="mt-1 block text-sm font-semibold text-slate-900">TWINT</span>
-            </div>
-            <div className="mt-4 border-t border-slate-200 pt-4">
-              <PaymentElement options={paymentElementOptions} />
             </div>
           </div>
         </div>
