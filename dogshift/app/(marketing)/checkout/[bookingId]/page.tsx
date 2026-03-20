@@ -207,8 +207,8 @@ function CheckoutForm({
       <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-4 sm:p-5">
         <p className="text-sm font-semibold text-slate-900">Choisis ton moyen de paiement</p>
         <div className="mt-4 space-y-3">
-          <div className="mx-auto w-full max-w-[360px] overflow-hidden rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
-            <div className="mx-auto max-w-[260px]">
+          <div className="w-full overflow-hidden rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
+            <div className="w-full">
               <PaymentElement options={paymentElementOptions} />
             </div>
           </div>
@@ -394,7 +394,38 @@ const stripeReact = await import("@stripe/react-stripe-js");
 
   const canRender = useMemo(() => Boolean(clientSecret && stripeUi && !stripeUiError), [clientSecret, stripeUi, stripeUiError]);
 
-  const stripeAppearance = useMemo(() => ({ theme: "stripe" as const }), []);
+  const stripeAppearance = useMemo(
+    () => ({
+      theme: "stripe" as const,
+      variables: {
+        borderRadius: "16px",
+        spacingUnit: "4px",
+      },
+      rules: {
+        ".Tab": {
+          border: "1px solid #E2E8F0",
+          boxShadow: "none",
+          borderRadius: "12px",
+          padding: "12px 14px",
+          minHeight: "44px",
+        },
+        ".Tab:hover": {
+          color: "#0F172A",
+        },
+        ".Tab--selected": {
+          borderColor: "#2563EB",
+          boxShadow: "inset 0 0 0 1px #2563EB",
+        },
+        ".TabIcon": {
+          width: "18px",
+        },
+        ".TabLabel": {
+          fontWeight: "600",
+        },
+      },
+    }),
+    []
+  );
   const stripeElementsOptions = useMemo(() => {
     if (!clientSecret) return null;
     return { clientSecret, appearance: stripeAppearance };
