@@ -207,14 +207,16 @@ function CheckoutForm({
       <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-4 sm:p-5">
         <p className="text-sm font-semibold text-slate-900">Choisis ton moyen de paiement</p>
         <div className="mt-4 space-y-3">
-          <div className={PAYMENT_OPTION_CARD + " block p-4"}>
-            <div className="border-t border-slate-200 pt-1">
+          <div className={PAYMENT_OPTION_CARD + " block overflow-hidden p-3 sm:p-4"}>
+            <div className="-mx-1 sm:mx-0">
               <PaymentElement options={paymentElementOptions} />
             </div>
           </div>
 
           <div className={PAYMENT_OPTION_CARD + " block p-4"}>
-            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Paiement rapide</p>
+            <div className="flex flex-col items-center text-center">
+              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Paiement rapide</p>
+            </div>
             <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-3">
               {ExpressCheckoutElement ? (
                 <ExpressCheckoutElement
