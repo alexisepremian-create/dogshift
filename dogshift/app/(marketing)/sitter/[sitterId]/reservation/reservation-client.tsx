@@ -1127,6 +1127,11 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
     return Array.from({ length: Math.max(0, maxHours - minHours + 1) }, (_, index) => ({ hours: minHours + index, available: true }));
   }, [hourlyConfig, unit]);
 
+  const displayedDurationMinSet = useMemo(
+    () => new Set(durationOptions.map((option) => option.hours * 60)),
+    [durationOptions]
+  );
+
   useEffect(() => {
     setDurationSlotMap({});
     setDurationSlotsLoading(false);
@@ -1184,19 +1189,23 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
 
   const availableStartTimes = useMemo(() => {
     return startAvailabilities
-      .filter((start) => start.status === "AVAILABLE" || start.status === "ON_REQUEST")
+      .filter(
+        (start) =>
+          (start.status === "AVAILABLE" || start.status === "ON_REQUEST") &&
+          start.compatibleDurationMin.some((durationMin) => displayedDurationMinSet.has(durationMin))
+      )
       .map((start) => isoToTimeLabel(start.startAt));
-  }, [startAvailabilities]);
+  }, [displayedDurationMinSet, startAvailabilities]);
 
   const timePickerSlots = useMemo(
     () =>
       startAvailabilities.map((start) => {
         return {
           time: isoToTimeLabel(start.startAt),
-          available: start.compatibleDurationMin.length > 0,
+          available: start.compatibleDurationMin.some((durationMin) => displayedDurationMinSet.has(durationMin)),
         };
       }),
-    [startAvailabilities]
+    [displayedDurationMinSet, startAvailabilities]
   );
 
   const durationOptionsForStart = useMemo<DurationPickerOption[]>(() => {
