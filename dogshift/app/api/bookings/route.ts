@@ -124,7 +124,7 @@ function serviceToAvailabilityType(service: string): ServiceType | null {
 }
 
 function isConflictBlockingStatus(status: string) {
-  return status === "PENDING_PAYMENT" || status === "PENDING_ACCEPTANCE" || status === "PAID" || status === "CONFIRMED";
+  return status === "PENDING_ACCEPTANCE" || status === "PAID" || status === "CONFIRMED";
 }
 
 const BOOKING_CONFLICT_BUFFER_MINUTES = 30;
@@ -328,7 +328,7 @@ export async function POST(req: NextRequest) {
 
     // Anti double-booking: backend source of truth.
     // Apply the same +/- 30 min safety buffer as the shared availability engine.
-    const blockingStatuses = ["PENDING_PAYMENT", "PENDING_ACCEPTANCE", "PAID", "CONFIRMED"] as const;
+    const blockingStatuses = ["PENDING_ACCEPTANCE", "PAID", "CONFIRMED"] as const;
     const candidateWindowStart = withBuffer(startDateTime, -BOOKING_CONFLICT_BUFFER_MINUTES);
     const candidateWindowEnd = withBuffer(endDateTime, BOOKING_CONFLICT_BUFFER_MINUTES);
     const overlap = await (prisma as any).booking.findFirst({

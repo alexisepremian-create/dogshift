@@ -182,7 +182,7 @@ test("Booking CONFIRMED hard-blocks overlapping slots (no buffer)", () => {
   assert.equal(slotAt(slots, 10 * 60)?.status, "UNAVAILABLE");
 });
 
-test("Booking PENDING_PAYMENT soft-blocks within TTL, ignored after TTL", () => {
+test("Booking PENDING_PAYMENT never blocks before payment confirmation", () => {
   const date = "2026-02-16";
   const now = cetDate("2026-02-16", 8, 0);
 
@@ -221,8 +221,7 @@ test("Booking PENDING_PAYMENT soft-blocks within TTL, ignored after TTL", () => 
       } satisfies Booking,
     ],
   });
-  assert.equal(slotAt(withinTtl, 9 * 60)?.status, "ON_REQUEST");
-  assert.equal(slotAt(withinTtl, 9 * 60)?.reason, "booking_pending_payment_overlap");
+  assert.equal(slotAt(withinTtl, 9 * 60)?.status, "AVAILABLE");
 
   const expired = computeDaySlots({
     ...base,

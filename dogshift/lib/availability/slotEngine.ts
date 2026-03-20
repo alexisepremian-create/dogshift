@@ -503,25 +503,19 @@ function bookingToBlock(b: BookingRow, now: Date): BookingBlock | null {
   const status = typeof b.status === "string" ? b.status : "";
   if (status === "CANCELLED" || status === "REFUNDED" || status === "PAYMENT_FAILED" || status === "REFUND_FAILED") return null;
 
-  if (status === "CONFIRMED" || status === "PAID") {
-    const startAt = (b as any).startAt ?? (b as any).startDate;
-    const endAt = (b as any).endAt ?? (b as any).endDate;
-    if (!startAt || !endAt) return null;
-    return { startAt, endAt, reason: status === "PAID" ? "booking_paid_overlap" : "booking_confirmed_overlap" };
-  }
-
-  if (status === "PENDING_PAYMENT" || status === "PENDING_ACCEPTANCE") {
-    const createdAt = b.createdAt;
-    const ttlMs = status === "PENDING_PAYMENT" ? 30 * 60 * 1000 : 24 * 60 * 60 * 1000;
-    if (!createdAt || now.getTime() - createdAt.getTime() > ttlMs) return null;
-
+  if (status === "CONFIRMED" || status === "PAID" || status === "PENDING_ACCEPTANCE") {
     const startAt = (b as any).startAt ?? (b as any).startDate;
     const endAt = (b as any).endAt ?? (b as any).endDate;
     if (!startAt || !endAt) return null;
     return {
       startAt,
       endAt,
-      reason: status === "PENDING_PAYMENT" ? "booking_pending_payment_overlap" : "booking_pending_acceptance_overlap",
+      reason:
+        status === "CONFIRMED"
+          ? "booking_confirmed_overlap"
+          : status === "PENDING_ACCEPTANCE"
+            ? "booking_pending_acceptance_overlap"
+            : "booking_paid_overlap",
     };
   }
 
