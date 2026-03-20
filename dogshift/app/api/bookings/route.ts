@@ -4,7 +4,6 @@ import type { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { DOGSHIFT_COMMISSION_RATE } from "@/lib/commission";
 import { resolveDbUserId } from "@/lib/auth/resolveDbUserId";
-import { summarizeDayStatusFromSlots } from "@/lib/availability/dayStatus";
 import { checkBoardingRange, generateDaySlots, type ServiceType } from "@/lib/availability/slotEngine";
 import { BOOKING_ACCESS_COOKIE, isBookingAccessCodeProtectionEnabled } from "@/lib/bookingAccess";
 
@@ -132,6 +131,12 @@ const BOOKING_CONFLICT_BUFFER_MINUTES = 30;
 
 function withBuffer(date: Date, deltaMinutes: number) {
   return new Date(date.getTime() + deltaMinutes * 60 * 1000);
+}
+
+function sameInstantIso(a: string, b: string) {
+  const aTime = new Date(a).getTime();
+  const bTime = new Date(b).getTime();
+  return Number.isFinite(aTime) && Number.isFinite(bTime) && aTime === bTime;
 }
 
 export async function POST(req: NextRequest) {
@@ -296,17 +301,27 @@ export async function POST(req: NextRequest) {
       }
     } else {
       const targetDateIso = formatZurichIsoDate(startDateTime);
+      const requestedDurationMin = Math.round((endDateTime.getTime() - startDateTime.getTime()) / (60 * 1000));
+      if (!Number.isFinite(requestedDurationMin) || requestedDurationMin <= 0) {
+        return NextResponse.json({ ok: false, error: "INVALID_DATES" }, { status: 400 });
+      }
       const daySlots = await generateDaySlots({
         sitterId,
         serviceType: availabilityServiceType,
         date: targetDateIso,
         now: new Date(),
+        durationMin: requestedDurationMin,
       });
       if (!daySlots.ok) {
         return NextResponse.json({ ok: false, error: "DATE_NOT_AVAILABLE" }, { status: 400 });
       }
-      const dayStatus = summarizeDayStatusFromSlots(daySlots.slots);
-      if (dayStatus === "UNAVAILABLE") {
+      const selectedSlot = daySlots.slots.find(
+        (slot) =>
+          (slot.status === "AVAILABLE" || slot.status === "ON_REQUEST") &&
+          sameInstantIso(slot.startAt, startAt) &&
+          sameInstantIso(slot.endAt, endAt)
+      );
+      if (!selectedSlot) {
         return NextResponse.json({ ok: false, error: "DATE_NOT_AVAILABLE" }, { status: 400 });
       }
     }
