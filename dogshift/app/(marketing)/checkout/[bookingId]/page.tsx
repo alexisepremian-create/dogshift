@@ -112,7 +112,6 @@ function CheckoutForm({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [expressReady, setExpressReady] = useState(false);
-  const [cardSectionOpen, setCardSectionOpen] = useState(false);
 
   async function onPay() {
     if (!stripe || !elements) return;
@@ -189,13 +188,13 @@ function CheckoutForm({
     []
   );
 
-  useEffect(() => {
-    if (!expressReady) {
-      setCardSectionOpen(true);
-      return;
-    }
-    setCardSectionOpen(false);
-  }, [expressReady]);
+  const paymentElementOptions = useMemo(
+    () => ({
+      layout: "tabs" as const,
+      paymentMethodOrder: ["twint", "klarna", "card"],
+    }),
+    []
+  );
 
   return (
     <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)] sm:p-8">
@@ -208,20 +207,6 @@ function CheckoutForm({
       <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-4 sm:p-5">
         <p className="text-sm font-semibold text-slate-900">Choisis ton moyen de paiement</p>
         <div className="mt-4 space-y-3">
-          <button
-            type="button"
-            onClick={() => setCardSectionOpen(true)}
-            className={PAYMENT_OPTION_CARD}
-          >
-            <div>
-              <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Paiement rapide</span>
-              <span className="mt-1 block text-sm font-semibold text-slate-900">TWINT</span>
-            </div>
-            <span className="inline-flex h-11 min-w-[96px] items-center justify-center rounded-2xl bg-[#0A2C5A] px-4 text-sm font-semibold tracking-[0.08em] text-white">
-              TWINT
-            </span>
-          </button>
-
           <div className={PAYMENT_OPTION_CARD + " p-3"}>
             <div>
               <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Paiement rapide</span>
@@ -244,58 +229,16 @@ function CheckoutForm({
             </div>
           </div>
 
-          <button
-            type="button"
-            onClick={() => setCardSectionOpen(true)}
-            className={PAYMENT_OPTION_CARD}
-          >
+          <div className={PAYMENT_OPTION_CARD + " block p-4"}>
             <div>
-              <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Paiement différé</span>
-              <span className="mt-1 block text-sm font-semibold text-slate-900">Klarna</span>
+              <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">TWINT</span>
+              <span className="mt-1 block text-sm font-semibold text-slate-900">TWINT</span>
             </div>
-            <span className="inline-flex h-11 min-w-[96px] items-center justify-center rounded-2xl bg-[#FFB3C7] px-4 text-sm font-semibold tracking-[0.04em] text-[#1A1A1A]">
-              Klarna
-            </span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setCardSectionOpen(true)}
-            className={PAYMENT_OPTION_CARD}
-            aria-expanded={cardSectionOpen}
-          >
-            <div>
-              <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Moyen classique</span>
-              <span className="mt-1 block text-sm font-semibold text-slate-900">Paiement par carte</span>
+            <div className="mt-4 border-t border-slate-200 pt-4">
+              <PaymentElement options={paymentElementOptions} />
             </div>
-            <span className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700">
-              Carte
-            </span>
-          </button>
+          </div>
         </div>
-      </div>
-
-      <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
-        <p className="text-sm font-semibold text-slate-900">Finaliser le paiement</p>
-        <button
-          type="button"
-          onClick={() => setCardSectionOpen((current) => !current)}
-          className="mt-3 flex w-full items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-left transition hover:bg-slate-100"
-          aria-expanded={cardSectionOpen}
-        >
-          <div>
-            <p className="text-sm font-semibold text-slate-900">Carte bancaire et Klarna</p>
-            <p className="mt-1 text-xs text-slate-500">Sélectionne ensuite le moyen réellement proposé par Stripe.</p>
-          </div>
-          <span className="text-lg leading-none text-slate-400" aria-hidden="true">
-            {cardSectionOpen ? "⌃" : "⌄"}
-          </span>
-        </button>
-        {cardSectionOpen ? (
-          <div className="mt-4 border-t border-slate-200 pt-4">
-            <PaymentElement />
-          </div>
-        ) : null}
       </div>
       {error ? <p className="mt-4 text-sm font-medium text-rose-600">{error}</p> : null}
       <button
