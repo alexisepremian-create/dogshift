@@ -1439,12 +1439,12 @@ function SitterPublicProfileContent({
 
                 const tone =
                   isPast
-                    ? "bg-slate-400 text-slate-50 ring-slate-400"
+                    ? "bg-slate-100/80 text-slate-400 ring-slate-200"
                     : row && (serviceTone === "AVAILABLE" || servicePartial)
                     ? selectedServiceTone.available
                     : row && serviceTone === "ON_REQUEST"
                       ? selectedServiceTone.onRequest
-                      : "bg-slate-100 text-slate-500 ring-slate-200";
+                      : "border border-dashed border-slate-200 bg-slate-50 text-slate-400 ring-0";
 
                 const isSelectableForService = !isPast && (serviceTone === "AVAILABLE" || serviceTone === "ON_REQUEST" || servicePartial);
                 const ariaLabel = `${dateIso} — ${serviceUi.current.label}: ${serviceUi.statusLabel(serviceTone)}`;
@@ -1463,7 +1463,7 @@ function SitterPublicProfileContent({
                     key={dateIso}
                     className={`flex h-14 w-full flex-col rounded-2xl ring-1 ${tone} ${!isPast && servicePartial ? "ring-[3px] ring-amber-300" : ""} ${focusRing} ${
                       !isPast && isInPensionRange ? selectedServiceTone.range : ""
-                    } ${isCalendarSelected ? `${isPast ? "ring-slate-500 shadow-[0_0_0_3px_rgba(100,116,139,0.18)]" : selectedServiceTone.selected}` : ""}`}
+                    } ${isCalendarSelected ? `${isPast ? "ring-slate-300 shadow-[0_0_0_3px_rgba(148,163,184,0.12)]" : selectedServiceTone.selected}` : ""}`}
                   >
                     <button
                       type="button"
@@ -1528,7 +1528,7 @@ function SitterPublicProfileContent({
                         setCalendarInfoDate(dateIso);
                         setDayDetailsOpen(false);
                       }}
-                      className="flex h-full w-full flex-col justify-between rounded-2xl px-2 py-2 disabled:cursor-not-allowed"
+                      className="flex h-full w-full flex-col justify-between rounded-2xl px-2 py-2 disabled:cursor-not-allowed disabled:opacity-70"
                       aria-label={ariaLabel}
                     >
                       <div className="flex items-start justify-end">
