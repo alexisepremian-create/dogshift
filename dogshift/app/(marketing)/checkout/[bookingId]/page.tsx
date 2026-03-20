@@ -207,32 +207,34 @@ function CheckoutForm({
       <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-4 sm:p-5">
         <p className="text-sm font-semibold text-slate-900">Choisis ton moyen de paiement</p>
         <div className="mt-4 space-y-3">
-          <div className={PAYMENT_OPTION_CARD + " block overflow-hidden p-3 sm:p-4"}>
-            <div className="-mx-1 sm:mx-0">
+          <div className="mx-auto w-full max-w-[360px] overflow-hidden rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
+            <div className="mx-auto max-w-[260px]">
               <PaymentElement options={paymentElementOptions} />
             </div>
           </div>
 
-          <div className={PAYMENT_OPTION_CARD + " block p-4"}>
-            <div className="flex flex-col items-center text-center">
+          <div className="mx-auto w-full max-w-[360px] rounded-2xl border border-slate-200 bg-white p-4 text-center shadow-sm">
+            <div className="flex flex-col items-center justify-center text-center">
               <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Paiement rapide</p>
             </div>
-            <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-3">
-              {ExpressCheckoutElement ? (
-                <ExpressCheckoutElement
-                  options={expressCheckoutOptions}
-                  onConfirm={() => void onExpressConfirm()}
-                  onReady={(event: any) => {
-                    setExpressReady(
-                      Boolean(event?.availablePaymentMethods?.applePay || event?.availablePaymentMethods?.klarna)
-                    );
-                  }}
-                />
-              ) : (
-                <div className="flex h-[52px] items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 text-sm font-semibold text-slate-400">
-                  Indisponible
-                </div>
-              )}
+            <div className="mt-4 mx-auto w-full max-w-[320px] rounded-2xl border border-slate-200 bg-white p-3">
+              <div className="flex justify-center">
+                {ExpressCheckoutElement ? (
+                  <ExpressCheckoutElement
+                    options={expressCheckoutOptions}
+                    onConfirm={() => void onExpressConfirm()}
+                    onReady={(event: any) => {
+                      setExpressReady(
+                        Boolean(event?.availablePaymentMethods?.applePay || event?.availablePaymentMethods?.klarna)
+                      );
+                    }}
+                  />
+                ) : (
+                  <div className="flex h-[52px] w-full items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 text-sm font-semibold text-slate-400">
+                    Indisponible
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
