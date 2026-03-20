@@ -1439,12 +1439,12 @@ function SitterPublicProfileContent({
 
                 const tone =
                   isPast
-                    ? "bg-slate-100/80 text-slate-400 ring-slate-200"
+                    ? "border border-dashed border-slate-200 bg-slate-50 text-slate-400 ring-0"
                     : row && (serviceTone === "AVAILABLE" || servicePartial)
                     ? selectedServiceTone.available
                     : row && serviceTone === "ON_REQUEST"
                       ? selectedServiceTone.onRequest
-                      : "border border-dashed border-slate-200 bg-slate-50 text-slate-400 ring-0";
+                      : "bg-slate-100/80 text-slate-400 ring-slate-200";
 
                 const isSelectableForService = !isPast && (serviceTone === "AVAILABLE" || serviceTone === "ON_REQUEST" || servicePartial);
                 const ariaLabel = `${dateIso} — ${serviceUi.current.label}: ${serviceUi.statusLabel(serviceTone)}`;
@@ -1463,7 +1463,7 @@ function SitterPublicProfileContent({
                     key={dateIso}
                     className={`flex h-14 w-full flex-col rounded-2xl ring-1 ${tone} ${!isPast && servicePartial ? "ring-[3px] ring-amber-300" : ""} ${focusRing} ${
                       !isPast && isInPensionRange ? selectedServiceTone.range : ""
-                    } ${isCalendarSelected ? `${isPast ? "ring-slate-300 shadow-[0_0_0_3px_rgba(148,163,184,0.12)]" : selectedServiceTone.selected}` : ""}`}
+                    } ${isCalendarSelected ? `${isPast ? "ring-slate-200 shadow-[0_0_0_3px_rgba(148,163,184,0.08)]" : selectedServiceTone.selected}` : ""}`}
                   >
                     <button
                       type="button"
