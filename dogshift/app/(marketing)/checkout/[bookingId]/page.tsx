@@ -113,16 +113,38 @@ function CheckoutForm({
   const [error, setError] = useState<string | null>(null);
   const [expressReady, setExpressReady] = useState(false);
 
+  function routeAfterPaymentStatus(status?: string | null) {
+    const safeBookingId = encodeURIComponent(bookingId);
+    if (status === "succeeded") {
+      router.push(`/paiement/success?bookingId=${safeBookingId}`);
+      return;
+    }
+    if (status === "processing" || status === "requires_action" || status === "requires_capture") {
+      router.push(`/paiement/pending?bookingId=${safeBookingId}`);
+      return;
+    }
+    if (status === "canceled") {
+      router.push(`/paiement/failed?bookingId=${safeBookingId}&reason=cancelled`);
+      return;
+    }
+    if (status === "requires_payment_method") {
+      router.push(`/paiement/failed?bookingId=${safeBookingId}&reason=failed`);
+      return;
+    }
+    router.push(`/paiement/pending?bookingId=${safeBookingId}`);
+  }
+
   async function onPay() {
     if (!stripe || !elements) return;
     setSubmitting(true);
     setError(null);
 
     try {
+      const returnUrl = `${window.location.origin}/paiement/retour?bookingId=${encodeURIComponent(bookingId)}`;
       const result = await stripe.confirmPayment({
         elements,
         confirmParams: {
-          return_url: `${window.location.origin}/paiement/success?bookingId=${encodeURIComponent(bookingId)}`,
+          return_url: returnUrl,
         },
       });
 
@@ -132,7 +154,7 @@ function CheckoutForm({
         return;
       }
 
-      router.push(`/paiement/success?bookingId=${encodeURIComponent(bookingId)}`);
+      routeAfterPaymentStatus(result.paymentIntent?.status ?? null);
     } catch {
       setError("Paiement impossible. Réessayez.");
       setSubmitting(false);
@@ -145,10 +167,11 @@ function CheckoutForm({
     setError(null);
 
     try {
+      const returnUrl = `${window.location.origin}/paiement/retour?bookingId=${encodeURIComponent(bookingId)}`;
       const result = await stripe.confirmPayment({
         elements,
         confirmParams: {
-          return_url: `${window.location.origin}/paiement/success?bookingId=${encodeURIComponent(bookingId)}`,
+          return_url: returnUrl,
         },
         redirect: "if_required",
       });
@@ -159,7 +182,7 @@ function CheckoutForm({
         return;
       }
 
-      router.push(`/paiement/success?bookingId=${encodeURIComponent(bookingId)}`);
+      routeAfterPaymentStatus(result.paymentIntent?.status ?? null);
     } catch {
       setError("Paiement impossible. Réessayez.");
       setSubmitting(false);

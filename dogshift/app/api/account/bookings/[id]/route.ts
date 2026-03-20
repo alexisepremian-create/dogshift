@@ -56,6 +56,27 @@ async function reconcileBookingPaymentIfNeeded(
     const intent = await stripe.paymentIntents.retrieve(paymentIntentId);
     const intentStatus = typeof intent.status === "string" ? intent.status : "";
 
+    if (intentStatus === "requires_payment_method" || intentStatus === "canceled") {
+      await (prisma as any).booking.updateMany({
+        where: {
+          id: booking.id,
+          status: "PENDING_PAYMENT",
+        },
+        data: {
+          status: "PAYMENT_FAILED",
+          stripePaymentIntentId: paymentIntentId,
+        },
+      });
+
+      console.log("[api][account][bookings][id][GET] reconcile failed", {
+        bookingId: booking.id,
+        paymentIntentId,
+        intentStatus,
+      });
+
+      return "PAYMENT_FAILED";
+    }
+
     if (intentStatus !== "succeeded") {
       console.log("[api][account][bookings][id][GET] reconcile skip", {
         bookingId: booking.id,

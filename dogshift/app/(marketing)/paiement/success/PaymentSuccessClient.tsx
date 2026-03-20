@@ -102,7 +102,7 @@ export default function PaymentSuccessClient({ bookingId }: { bookingId: string 
         timer = setTimeout(tick, 2000);
       } else {
         setTimedOut(true);
-        setError("Le paiement a bien été reçu. La confirmation prend plus de temps que prévu. Vous retrouverez la réservation dans votre espace.");
+        setError("Le paiement n’est pas encore confirmé. Vérifie son statut dans ton espace ou réessaie plus tard.");
         setLoading(false);
         setFinalizing(true);
       }
@@ -177,10 +177,10 @@ export default function PaymentSuccessClient({ bookingId }: { bookingId: string 
 
   const headline = useMemo(() => {
     if (finalizing && !error && booking?.status !== "CONFIRMED" && booking?.status !== "PENDING_ACCEPTANCE" && booking?.status !== "PAID") {
-      return "On finalise encore";
+      return "Paiement en attente";
     }
     if (loading) return "Confirmation du paiement";
-    if (error) return "On finalise encore";
+    if (error) return "Paiement en attente";
     if (booking?.status === "CONFIRMED") return "Réservation confirmée";
     if (booking?.status === "PENDING_ACCEPTANCE" || booking?.status === "PAID") return "Paiement confirmé";
     if (booking?.status === "PAYMENT_FAILED") return "Paiement refusé";
@@ -226,7 +226,7 @@ export default function PaymentSuccessClient({ bookingId }: { bookingId: string 
             {timedOut ? (
               <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4 text-sm text-amber-900">
                 <p className="font-semibold">Confirmation plus lente que prévu</p>
-                <p className="mt-1">Le paiement a bien été reçu. La confirmation prend plus de temps que prévu. Vous retrouverez la réservation dans votre espace.</p>
+                <p className="mt-1">Le paiement n’est pas encore confirmé. Vérifie son statut dans ton espace avant de considérer la réservation comme payée.</p>
                 <div className="mt-4">
                   <Link href="/account/bookings" className={SECONDARY_BTN}>
                     Aller à mes réservations
