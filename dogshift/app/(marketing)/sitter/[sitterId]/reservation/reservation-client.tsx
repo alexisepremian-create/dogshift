@@ -481,13 +481,15 @@ function DogShiftTimePicker({
 
             <div className="rounded-2xl border border-slate-200 bg-slate-50 p-2">
               <p className="px-2 pb-2 text-[11px] font-semibold text-slate-500">
-                {hasSlots ? "Créneaux disponibles en clair, créneaux pris grisés" : "Aucun horaire disponible"}
+                {hasSlots ? "Heures valides en clair, heures impossibles grisées et barrées" : "Aucun horaire disponible"}
               </p>
               <div className="rounded-2xl border border-slate-200 bg-white p-2">
                 <div className="max-h-64 overflow-auto">
                   <div className="grid gap-1 sm:grid-cols-2">
                     {normalizedSlots.map((slot) => {
                       const selected = slot.time === draftValue;
+                      const unavailableClasses =
+                        "border border-slate-200 bg-slate-100 text-slate-400 line-through decoration-slate-400 decoration-2 opacity-80";
                       return (
                         <button
                           key={slot.time}
@@ -498,13 +500,14 @@ function DogShiftTimePicker({
                             setDraftValue(slot.time);
                           }}
                           className={
-                            "flex w-full items-center justify-center rounded-xl px-3 py-2 text-sm font-semibold transition duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)] disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400 disabled:line-through " +
+                            "flex w-full items-center justify-center rounded-xl px-3 py-2 text-sm font-semibold transition duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)] disabled:cursor-not-allowed " +
                             (selected
                               ? "bg-[color-mix(in_srgb,var(--dogshift-blue),white_85%)] text-[var(--dogshift-blue)]"
                               : slot.available
                                 ? "text-slate-900 hover:bg-[color-mix(in_srgb,var(--dogshift-blue),white_92%)]"
-                                : "text-slate-400")
+                                : unavailableClasses)
                           }
+                          aria-disabled={!slot.available}
                         >
                           {slot.time}
                         </button>
