@@ -142,6 +142,35 @@ function serviceStatusForLabel(row: DayStatusRow | null, service: string): Servi
   return "UNAVAILABLE";
 }
 
+function calendarServiceColorClasses(service: string | null) {
+  if (service === "Promenade") {
+    return {
+      available: " border-sky-200 bg-sky-50 text-sky-900",
+      selected: " border-sky-500 bg-sky-100 text-sky-950 shadow-sm ring-2 ring-sky-300",
+      hover: " hover:border-sky-300",
+    };
+  }
+  if (service === "Garde") {
+    return {
+      available: " border-violet-200 bg-violet-50 text-violet-900",
+      selected: " border-violet-500 bg-violet-100 text-violet-950 shadow-sm ring-2 ring-violet-300",
+      hover: " hover:border-violet-300",
+    };
+  }
+  if (service === "Pension") {
+    return {
+      available: " border-emerald-200 bg-emerald-50 text-emerald-900",
+      selected: " border-emerald-500 bg-emerald-100 text-emerald-950 shadow-sm ring-2 ring-emerald-300",
+      hover: " hover:border-emerald-300",
+    };
+  }
+  return {
+    available: " border-slate-200 bg-slate-50 text-slate-900",
+    selected: " border-slate-500 bg-slate-100 text-slate-950 shadow-sm ring-2 ring-slate-300",
+    hover: " hover:border-slate-300",
+  };
+}
+
 function isBookableStatus(status: ServiceDayStatus) {
   return status === "AVAILABLE" || status === "ON_REQUEST";
 }
@@ -238,11 +267,15 @@ function DogShiftCalendar({
   onSelect,
   isDisabled,
   getDayStatus,
+  selectedService,
+  todayIso,
 }: {
   selected: string;
   onSelect: (next: string) => void;
   isDisabled?: (iso: string) => boolean;
   getDayStatus?: (iso: string) => ServiceDayStatus;
+  selectedService?: string | null;
+  todayIso: string;
 }) {
   const [month, setMonth] = useState<Date>(() => {
     const parsed = selected ? parseIsoDateString(selected) : null;
@@ -258,6 +291,7 @@ function DogShiftCalendar({
 
   const grid = useMemo(() => getMonthGrid(month), [month]);
   const selectedTs = useMemo(() => (selected ? parseIsoDateString(selected)?.getTime() ?? null : null), [selected]);
+  const serviceColors = useMemo(() => calendarServiceColorClasses(selectedService ?? null), [selectedService]);
 
   return (
     <div className="rounded-[20px] border border-slate-200 bg-white p-4 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.18)] sm:p-5">
@@ -295,20 +329,20 @@ function DogShiftCalendar({
         {grid.map((cell) => {
           const iso = toIsoDateString(cell.date);
           const isSelected = selectedTs != null && cell.date.getTime() === selectedTs;
+          const isPast = iso < todayIso;
           const disabled = Boolean(isDisabled?.(iso));
           const dayStatus = getDayStatus?.(iso) ?? "UNAVAILABLE";
-          const statusClasses =
-            dayStatus === "AVAILABLE"
-              ? " border-emerald-200 bg-emerald-50 text-emerald-900"
-              : dayStatus === "ON_REQUEST"
-                ? " border-amber-200 bg-amber-50 text-amber-900"
-                : " border-slate-100 bg-slate-100 text-slate-400";
-          const selectedClasses =
-            dayStatus === "AVAILABLE"
-              ? " border-emerald-500 bg-emerald-100 text-emerald-950 shadow-sm ring-2 ring-emerald-300"
-              : dayStatus === "ON_REQUEST"
-                ? " border-amber-500 bg-amber-100 text-amber-950 shadow-sm ring-2 ring-amber-300"
-                : " border-slate-300 bg-slate-200 text-slate-600 shadow-sm ring-2 ring-slate-300";
+          const isBookable = dayStatus === "AVAILABLE" || dayStatus === "ON_REQUEST";
+          const statusClasses = isPast
+            ? " border-slate-300 bg-slate-400 text-slate-50"
+            : isBookable
+              ? serviceColors.available
+              : " border-slate-200 bg-slate-100 text-slate-500";
+          const selectedClasses = isPast
+            ? " border-slate-500 bg-slate-500 text-white shadow-sm ring-2 ring-slate-400"
+            : isBookable
+              ? serviceColors.selected
+              : " border-slate-300 bg-slate-200 text-slate-700 shadow-sm ring-2 ring-slate-300";
           return (
             <button
               key={iso}
@@ -320,10 +354,10 @@ function DogShiftCalendar({
               }}
               className={
                 "group inline-flex h-9 w-9 items-center justify-center rounded-full border text-sm font-semibold transition duration-150 " +
-                (cell.inMonth ? "text-slate-900" : "text-slate-400") +
+                (cell.inMonth ? "" : " opacity-45") +
                 (isSelected ? selectedClasses : statusClasses) +
                 (disabled ? " cursor-not-allowed" : "") +
-                (!isSelected && !disabled ? " hover:border-[color-mix(in_srgb,var(--dogshift-blue),transparent_72%)]" : "")
+                (!isSelected && !disabled && !isPast && isBookable ? serviceColors.hover : "")
               }
               aria-pressed={isSelected}
             >
@@ -649,6 +683,8 @@ function DogShiftDatePicker({
   id,
   isDisabled,
   getDayStatus,
+  selectedService,
+  todayIso,
 }: {
   value: string;
   onChange: (next: string) => void;
@@ -656,6 +692,8 @@ function DogShiftDatePicker({
   id: string;
   isDisabled?: (iso: string) => boolean;
   getDayStatus?: (iso: string) => ServiceDayStatus;
+  selectedService?: string | null;
+  todayIso: string;
 }) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement | null>(null);
@@ -702,6 +740,8 @@ function DogShiftDatePicker({
             selected={value}
             isDisabled={isDisabled}
             getDayStatus={getDayStatus}
+            selectedService={selectedService}
+            todayIso={todayIso}
             onSelect={(next) => {
               onChange(next);
               setOpen(false);
@@ -1378,6 +1418,8 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
                     value={dateStart}
                     getDayStatus={getCalendarDayStatus}
                     isDisabled={isDateDisabled}
+                    selectedService={calendarStatusService}
+                    todayIso={todayIso}
                     onChange={(next) => {
                       setDateStart(next);
                       setError(null);
@@ -1389,6 +1431,8 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
                     value={dateEnd}
                     getDayStatus={getCalendarDayStatus}
                     isDisabled={isDateDisabled}
+                    selectedService={calendarStatusService}
+                    todayIso={todayIso}
                     onChange={(next) => {
                       setDateEnd(next);
                       setError(null);
@@ -1403,6 +1447,8 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
                     value={dateStart}
                     getDayStatus={getCalendarDayStatus}
                     isDisabled={isDateDisabled}
+                    selectedService={calendarStatusService}
+                    todayIso={todayIso}
                     onChange={(next) => {
                       setDateStart(next);
                       setDateEnd(next);
