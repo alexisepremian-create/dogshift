@@ -2,6 +2,14 @@ import { createHash, randomBytes, timingSafeEqual } from "crypto";
 
 export const CURRENT_SITTER_CONTRACT_VERSION = "2026-03-23";
 
+const SITTER_LIFECYCLE_ORDER: readonly SitterLifecycleStatus[] = [
+  "application_received",
+  "selected",
+  "contract_to_sign",
+  "contract_signed",
+  "activated",
+];
+
 export type SitterLifecycleStatus =
   | "application_received"
   | "selected"
@@ -42,6 +50,18 @@ export function normalizeSitterLifecycleStatus(raw: unknown, published?: boolean
   }
 
   return "application_received";
+}
+
+export function compareSitterLifecycleStatus(a: SitterLifecycleStatus, b: SitterLifecycleStatus) {
+  return SITTER_LIFECYCLE_ORDER.indexOf(a) - SITTER_LIFECYCLE_ORDER.indexOf(b);
+}
+
+export function maxSitterLifecycleStatus(a: SitterLifecycleStatus, b: SitterLifecycleStatus): SitterLifecycleStatus {
+  return compareSitterLifecycleStatus(a, b) >= 0 ? a : b;
+}
+
+export function hasReachedSitterLifecycleStatus(current: SitterLifecycleStatus, target: SitterLifecycleStatus) {
+  return compareSitterLifecycleStatus(current, target) >= 0;
 }
 
 export function canAccessContractPage(status: SitterLifecycleStatus) {

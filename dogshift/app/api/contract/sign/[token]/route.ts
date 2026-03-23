@@ -7,7 +7,9 @@ import {
   contractAccessTokenMatches,
   contractSigningAllowed,
   CURRENT_SITTER_CONTRACT_VERSION,
+  hasReachedSitterLifecycleStatus,
   isContractAccessLinkExpired,
+  maxSitterLifecycleStatus,
   normalizeSitterLifecycleStatus,
   SITTER_CONTRACT_CONTENT,
   SITTER_CONTRACT_TITLE,
@@ -158,13 +160,14 @@ export async function POST(req: NextRequest, context: { params: Promise<{ token:
       signerName: signatureName,
       signedAt: signedAt.toISOString(),
     });
+    const nextLifecycleStatus = maxSitterLifecycleStatus(access.lifecycleStatus, "contract_signed");
+    const keepPublicationState = hasReachedSitterLifecycleStatus(access.lifecycleStatus, "activated");
 
     await (prisma as any).sitterProfile.update({
       where: { id: access.profile.id },
       data: {
-        lifecycleStatus: "contract_signed",
-        published: false,
-        publishedAt: null,
+        lifecycleStatus: nextLifecycleStatus,
+        ...(keepPublicationState ? {} : { published: false, publishedAt: null }),
         contractVersion: CURRENT_SITTER_CONTRACT_VERSION,
         contractAcceptedAt: signedAt,
         contractSignerName: signatureName,
@@ -179,7 +182,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ token:
     return NextResponse.json(
       {
         ok: true,
-        lifecycleStatus: "contract_signed",
+        lifecycleStatus: nextLifecycleStatus,
         contractSignedAt: signedAt.toISOString(),
         message: "Votre contrat a bien été signé. DogShift vous contactera pour la suite de l’activation.",
       },

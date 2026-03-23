@@ -6,7 +6,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { ensureDbUserByClerkUserId } from "@/lib/auth/resolveDbUserId";
 import { computeSitterProfileCompletion } from "@/lib/sitterCompletion";
-import { normalizeSitterLifecycleStatus } from "@/lib/sitterContract";
+import { hasReachedSitterLifecycleStatus, maxSitterLifecycleStatus, normalizeSitterLifecycleStatus } from "@/lib/sitterContract";
 import { CURRENT_TERMS_VERSION } from "@/lib/terms";
 
 export const runtime = "nodejs";
@@ -129,6 +129,21 @@ export async function POST(req: NextRequest) {
         select: { id: true },
       });
 
+      const existingProfile = await (tx as any).sitterProfile.findUnique({
+        where: { userId: ensured.id },
+        select: {
+          lifecycleStatus: true,
+          published: true,
+        },
+      });
+      const currentLifecycleStatus = existingProfile
+        ? normalizeSitterLifecycleStatus(existingProfile.lifecycleStatus, existingProfile.published)
+        : null;
+      const nextLifecycleStatus = currentLifecycleStatus
+        ? maxSitterLifecycleStatus(currentLifecycleStatus, lifecycleStatus)
+        : lifecycleStatus;
+      const keepPublicationState = currentLifecycleStatus ? hasReachedSitterLifecycleStatus(currentLifecycleStatus, "activated") : false;
+
       await (tx as any).sitterProfile.upsert({
         where: { userId: ensured.id },
         create: {
@@ -150,7 +165,8 @@ export async function POST(req: NextRequest) {
         },
         update: {
           sitterId,
-          lifecycleStatus,
+          ...(keepPublicationState ? {} : { published: false, publishedAt: null }),
+          lifecycleStatus: nextLifecycleStatus,
           termsAcceptedAt: now,
           termsVersion: CURRENT_TERMS_VERSION,
           profileCompletion: completion,

@@ -12,6 +12,8 @@ import {
   contractAccessTokenTtlMs,
   generateContractAccessToken,
   hashContractAccessToken,
+  hasReachedSitterLifecycleStatus,
+  maxSitterLifecycleStatus,
   normalizeSitterLifecycleStatus,
 } from "@/lib/sitterContract";
 
@@ -136,6 +138,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     const currentStatus = sitter.sitterProfile.verificationStatus;
     const currentPublished = sitter.sitterProfile.published;
     const lifecycleStatus = normalizeSitterLifecycleStatus(sitter.sitterProfile.lifecycleStatus, currentPublished);
+    const isAlreadyActivated = hasReachedSitterLifecycleStatus(lifecycleStatus, "activated");
 
     if (!actionAllowed(action, currentPublished, currentStatus, lifecycleStatus)) {
       return NextResponse.json({ ok: false, error: "INVALID_STATE_TRANSITION" }, { status: 409 });
@@ -144,9 +147,11 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     const data: Record<string, unknown> = {};
 
     if (action === "select") {
-      data.lifecycleStatus = "selected";
-      data.published = false;
-      data.publishedAt = null;
+      data.lifecycleStatus = maxSitterLifecycleStatus(lifecycleStatus, "selected");
+      if (!isAlreadyActivated) {
+        data.published = false;
+        data.publishedAt = null;
+      }
     }
 
     let generatedContractLink: string | null = null;
@@ -165,9 +170,11 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       generatedContractLink = buildContractAccessUrl(baseUrl, rawToken);
       generatedContractFingerprint = contractAccessTokenFingerprint(rawToken);
 
-      data.lifecycleStatus = "contract_to_sign";
-      data.published = false;
-      data.publishedAt = null;
+      data.lifecycleStatus = maxSitterLifecycleStatus(lifecycleStatus, "contract_to_sign");
+      if (!isAlreadyActivated) {
+        data.published = false;
+        data.publishedAt = null;
+      }
       data.contractAccessTokenHash = hashContractAccessToken(rawToken, secret);
       data.contractAccessTokenIssuedAt = issuedAt;
       data.contractAccessTokenExpiresAt = expiresAt;

@@ -11,6 +11,9 @@ import {
   contractAccessTokenTtlMs,
   generateContractAccessToken,
   hashContractAccessToken,
+  hasReachedSitterLifecycleStatus,
+  maxSitterLifecycleStatus,
+  normalizeSitterLifecycleStatus,
 } from "@/lib/sitterContract";
 
 export const runtime = "nodejs";
@@ -103,6 +106,22 @@ export async function POST(req: NextRequest) {
     const contractAccessLink = buildContractAccessUrl(baseUrl, rawToken);
     const contractLinkFingerprint = contractAccessTokenFingerprint(rawToken);
 
+    const existingProfile = await (prisma as any).sitterProfile.findUnique({
+      where: { userId: ensured.id },
+      select: {
+        id: true,
+        published: true,
+        lifecycleStatus: true,
+      },
+    });
+    const currentLifecycleStatus = existingProfile
+      ? normalizeSitterLifecycleStatus(existingProfile.lifecycleStatus, existingProfile.published)
+      : null;
+    const nextLifecycleStatus = currentLifecycleStatus
+      ? maxSitterLifecycleStatus(currentLifecycleStatus, "contract_to_sign")
+      : "contract_to_sign";
+    const keepPublicationState = currentLifecycleStatus ? hasReachedSitterLifecycleStatus(currentLifecycleStatus, "activated") : false;
+
     await (prisma as any).sitterProfile.upsert({
       where: { userId: ensured.id },
       create: {
@@ -120,9 +139,8 @@ export async function POST(req: NextRequest) {
       },
       update: {
         sitterId,
-        published: false,
-        publishedAt: null,
-        lifecycleStatus: "contract_to_sign",
+        ...(keepPublicationState ? {} : { published: false, publishedAt: null }),
+        lifecycleStatus: nextLifecycleStatus,
         displayName: `${application.firstName} ${application.lastName}`.trim() || undefined,
         city: application.city || null,
         contractAccessTokenHash: hashContractAccessToken(rawToken, secret),
@@ -168,7 +186,7 @@ export async function POST(req: NextRequest) {
         profile: {
           userId: ensured.id,
           sitterId,
-          lifecycleStatus: "contract_to_sign",
+          lifecycleStatus: nextLifecycleStatus,
           contractAccessTokenIssuedAt: issuedAt.toISOString(),
           contractAccessTokenExpiresAt: expiresAt.toISOString(),
         },
