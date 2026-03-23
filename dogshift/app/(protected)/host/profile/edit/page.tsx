@@ -7,6 +7,7 @@ import { Pencil } from "lucide-react";
 
 import SunCornerGlow from "@/components/SunCornerGlow";
 import { useHostUser } from "@/components/HostUserProvider";
+import { isActivatedStatus } from "@/lib/sitterContract";
 import { CURRENT_TERMS_VERSION } from "@/lib/terms";
 
 import type { DogSize, ServiceType } from "@/lib/mockSitters";
@@ -72,7 +73,7 @@ function getMonthGrid(month: Date) {
 }
 
 export default function HostProfileEditPage() {
-  const { sitterId, profile: remoteProfile, published: remotePublished, termsAcceptedAt, termsVersion } = useHostUser();
+  const { sitterId, profile: remoteProfile, published: remotePublished, termsAcceptedAt, termsVersion, lifecycleStatus } = useHostUser();
 
   const termsOk = Boolean(termsAcceptedAt) && termsVersion === CURRENT_TERMS_VERSION;
 
@@ -137,7 +138,7 @@ export default function HostProfileEditPage() {
     return getHostCompletion(effectiveProfile).percent;
   }, [profile, verificationStatus]);
 
-  const canPublish = termsOk && completionPercent >= 100;
+  const canPublish = termsOk && completionPercent >= 100 && isActivatedStatus(lifecycleStatus);
 
   useEffect(() => {
     if (typeof window === "undefined") return;

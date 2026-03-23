@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { useUser } from "@clerk/nextjs";
 
@@ -21,6 +22,7 @@ import {
   type HostVerificationStatus,
 } from "@/lib/hostProfile";
 import { loadHostBookings, loadHostRequestStatus } from "@/lib/hostBookings";
+import { isActivatedStatus } from "@/lib/sitterContract";
 function monthTitle(date: Date) {
   return new Intl.DateTimeFormat("fr-CH", { month: "long", year: "numeric" }).format(date);
 }
@@ -89,8 +91,9 @@ function HostAvatar({ src, alt }: { src: string | null; alt: string }) {
 }
 
 export default function HostDashboardPage() {
+  const router = useRouter();
   const { isLoaded, isSignedIn, user } = useUser();
-  const { sitterId, profile: remoteProfile } = useHostUser();
+  const { sitterId, profile: remoteProfile, lifecycleStatus, activationCodeIssuedAt } = useHostUser();
   const [unreadTick, setUnreadTick] = useState(0);
   const [verificationStatus, setVerificationStatus] = useState<"not_verified" | "pending" | "approved" | "rejected">(
     "not_verified"
@@ -98,6 +101,10 @@ export default function HostDashboardPage() {
   const [verificationLoaded, setVerificationLoaded] = useState(false);
   const [reviewCount, setReviewCount] = useState(0);
   const [averageRating, setAverageRating] = useState<number | null>(null);
+  const [activationCode, setActivationCode] = useState("");
+  const [activationSubmitting, setActivationSubmitting] = useState(false);
+  const [activationError, setActivationError] = useState<string | null>(null);
+  const [activationSuccess, setActivationSuccess] = useState<string | null>(null);
 
   const completionCardDismissed = useSyncExternalStore(
     (onStoreChange) => {
@@ -250,6 +257,8 @@ export default function HostDashboardPage() {
   }, [sitterId, unreadTick]);
 
   const rating = averageRating === null ? "—" : formatRating(averageRating);
+  const needsActivation = lifecycleStatus === "contract_signed";
+  const activated = isActivatedStatus(lifecycleStatus);
 
   const todos = useMemo(() => {
     const base = getHostTodos(profile);
@@ -296,11 +305,85 @@ export default function HostDashboardPage() {
     );
   }
 
+  async function submitActivationCode() {
+    if (activationSubmitting) return;
+    setActivationSubmitting(true);
+    setActivationError(null);
+    setActivationSuccess(null);
+
+    try {
+      const res = await fetch("/api/host/activation-code", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: activationCode }),
+      });
+      const payload = (await res.json().catch(() => null)) as { ok?: boolean; error?: string } | null;
+      if (!res.ok || !payload?.ok) {
+        if (payload?.error === "CODE_REQUIRED") {
+          setActivationError("Merci d’entrer votre code d’activation.");
+        } else if (payload?.error === "INVALID_ACTIVATION_CODE") {
+          setActivationError("Le code d’activation saisi est invalide.");
+        } else if (payload?.error === "ACTIVATION_CODE_NOT_ISSUED") {
+          setActivationError("Votre code d’activation n’a pas encore été émis.");
+        } else {
+          setActivationError("Impossible d’activer le compte pour le moment.");
+        }
+        return;
+      }
+
+      setActivationSuccess("Compte activé avec succès.");
+      setActivationCode("");
+      router.refresh();
+    } catch {
+      setActivationError("Impossible d’activer le compte pour le moment.");
+    } finally {
+      setActivationSubmitting(false);
+    }
+  }
+
   return (
     <div className="relative grid gap-6 overflow-hidden" data-testid="host-dashboard">
       <SunCornerGlow variant="sitterDashboard" />
 
       <div className="relative z-10">
+        {needsActivation ? (
+          <section className="mb-6 rounded-3xl border border-amber-200 bg-amber-50 p-6 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.16)]">
+            <h2 className="text-lg font-semibold text-slate-900">Activation finale du compte</h2>
+            <p className="mt-2 text-sm text-slate-700">
+              Votre contrat a bien été signé. Vous recevrez votre code d’activation par courrier.
+            </p>
+            <div className="mt-4 grid gap-3 sm:max-w-md">
+              <input
+                type="text"
+                value={activationCode}
+                onChange={(e) => setActivationCode(e.target.value)}
+                placeholder="Entrer le code d’activation"
+                className="h-12 rounded-2xl border border-slate-300 bg-white px-4 text-sm text-slate-900 outline-none transition focus:border-[var(--dogshift-blue)] focus:ring-2 focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_80%)]"
+              />
+              <button
+                type="button"
+                onClick={() => void submitActivationCode()}
+                disabled={activationSubmitting}
+                className="inline-flex items-center justify-center rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {activationSubmitting ? "Vérification…" : "Valider le code"}
+              </button>
+              {typeof activationCodeIssuedAt === "string" && activationCodeIssuedAt ? (
+                <p className="text-xs text-slate-500">Code émis par DogShift, en attente de validation.</p>
+              ) : null}
+              {activationError ? <p className="text-sm font-medium text-rose-600">{activationError}</p> : null}
+              {activationSuccess ? <p className="text-sm font-medium text-emerald-700">{activationSuccess}</p> : null}
+            </div>
+          </section>
+        ) : null}
+
+        {activated ? (
+          <section className="mb-6 rounded-3xl border border-emerald-200 bg-emerald-50 p-4">
+            <p className="text-sm font-semibold text-emerald-900">Compte activé</p>
+            <p className="mt-1 text-sm text-emerald-900/80">Votre compte dogsitter est activé. Vous pouvez finaliser votre publication si le reste du profil est prêt.</p>
+          </section>
+        ) : null}
+
         <div className="grid gap-4 sm:grid-cols-[1fr_auto] sm:items-end">
           <div>
             <p className="text-sm font-semibold text-slate-600">Tableau de bord</p>

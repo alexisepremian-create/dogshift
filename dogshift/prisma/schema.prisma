@@ -67,6 +67,14 @@ enum SitterApplicationStatus {
   REJECTED
 }
 
+enum SitterLifecycleStatus {
+  application_received
+  selected
+  contract_to_sign
+  contract_signed
+  activated
+}
+
 enum AdminNoteTargetType {
   USER
   BOOKING
@@ -248,6 +256,18 @@ model SitterProfile {
   termsAcceptedAt   DateTime?
   termsVersion      String?
   profileCompletion Int       @default(0)
+
+  lifecycleStatus        SitterLifecycleStatus @default(application_received)
+  contractVersion        String?
+  contractAcceptedAt     DateTime?
+  contractSignerName     String?
+  contractSignedAt       DateTime?
+  contractSignatureValue String?
+  contractSnapshot       Json?
+  activationCodeHash     String?
+  activationCodeIssuedAt DateTime?
+  activationCodeUsedAt   DateTime?
+  activatedAt            DateTime?
 
   verificationStatus      VerificationStatus @default(not_verified)
   idDocumentUrl           String?

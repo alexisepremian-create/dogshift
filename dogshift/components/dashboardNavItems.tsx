@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
-import { LayoutDashboard, MessageSquare, Pencil, User, CalendarDays, Settings, Wallet, SlidersHorizontal } from "lucide-react";
+import { LayoutDashboard, MessageSquare, Pencil, User, CalendarDays, Settings, Wallet, SlidersHorizontal, FileText } from "lucide-react";
 
 import { useHostUser } from "@/components/HostUserProvider";
 
@@ -41,6 +41,7 @@ export function useHostDashboardNavItems() {
     if (pathname?.startsWith("/dashboard/availability")) return "availability";
     if (pathname?.startsWith("/host/messages")) return "messages";
     if (pathname?.startsWith("/host/requests")) return "requests";
+    if (pathname?.startsWith("/host/contract")) return "contract";
     if (pathname?.startsWith("/host/profile")) return "profile";
     if (pathname?.startsWith("/host/wallet")) return "wallet";
     if (pathname?.startsWith("/host/settings")) return "settings";
@@ -66,6 +67,14 @@ export function useHostDashboardNavItems() {
         href: "/dashboard/availability",
         icon: <SlidersHorizontal className="h-5 w-5" aria-hidden="true" />,
         active: activeKey === "availability",
+      },
+      {
+        key: "contract",
+        label: "Contrat",
+        description: "Signature et activation du compte.",
+        href: "/host/contract",
+        icon: <FileText className="h-5 w-5" aria-hidden="true" />,
+        active: activeKey === "contract",
       },
       {
         key: "public",

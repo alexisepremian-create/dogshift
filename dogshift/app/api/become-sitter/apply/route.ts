@@ -6,6 +6,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { ensureDbUserByClerkUserId } from "@/lib/auth/resolveDbUserId";
 import { computeSitterProfileCompletion } from "@/lib/sitterCompletion";
+import { normalizeSitterLifecycleStatus } from "@/lib/sitterContract";
 import { CURRENT_TERMS_VERSION } from "@/lib/terms";
 
 export const runtime = "nodejs";
@@ -109,6 +110,7 @@ export async function POST(req: NextRequest) {
 
     const completion = computeSitterProfileCompletion(hostProfile);
     const hostProfileJson = JSON.stringify(hostProfile);
+    const lifecycleStatus = normalizeSitterLifecycleStatus("application_received", false);
 
     await prisma.$transaction(async (tx) => {
       if (invite.type === "single_use") {
@@ -127,13 +129,14 @@ export async function POST(req: NextRequest) {
         select: { id: true },
       });
 
-      await tx.sitterProfile.upsert({
+      await (tx as any).sitterProfile.upsert({
         where: { userId: ensured.id },
         create: {
           userId: ensured.id,
           sitterId,
           published: false,
           publishedAt: null,
+          lifecycleStatus,
           termsAcceptedAt: now,
           termsVersion: CURRENT_TERMS_VERSION,
           profileCompletion: completion,
@@ -147,6 +150,7 @@ export async function POST(req: NextRequest) {
         },
         update: {
           sitterId,
+          lifecycleStatus,
           termsAcceptedAt: now,
           termsVersion: CURRENT_TERMS_VERSION,
           profileCompletion: completion,

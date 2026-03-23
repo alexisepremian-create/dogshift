@@ -2,6 +2,7 @@ import { auth, currentUser } from "@clerk/nextjs/server";
 
 import { prisma } from "@/lib/prisma";
 import { ensureDbUserByClerkUserId } from "@/lib/auth/resolveDbUserId";
+import { normalizeSitterLifecycleStatus, type SitterLifecycleStatus } from "@/lib/sitterContract";
 
 function normalizePersistedPricing(raw: unknown) {
   if (!raw || typeof raw !== "object") return null;
@@ -21,6 +22,10 @@ export type HostUserData = {
   termsAcceptedAt: string | null;
   termsVersion: string | null;
   profileCompletion: number;
+  lifecycleStatus: SitterLifecycleStatus;
+  contractSignedAt: string | null;
+  activatedAt: string | null;
+  activationCodeIssuedAt: string | null;
 };
 
 export function makeHostUserValuePreview(args: {
@@ -35,6 +40,10 @@ export function makeHostUserValuePreview(args: {
     termsAcceptedAt: null,
     termsVersion: null,
     profileCompletion: 0,
+    lifecycleStatus: "application_received",
+    contractSignedAt: null,
+    activatedAt: null,
+    activationCodeIssuedAt: null,
   };
 }
 
@@ -49,6 +58,10 @@ export async function getHostUserData(): Promise<HostUserData> {
       termsAcceptedAt: null,
       termsVersion: null,
       profileCompletion: 0,
+      lifecycleStatus: "application_received",
+      contractSignedAt: null,
+      activatedAt: null,
+      activationCodeIssuedAt: null,
     };
   }
 
@@ -84,10 +97,14 @@ export async function getHostUserData(): Promise<HostUserData> {
       termsAcceptedAt: null,
       termsVersion: null,
       profileCompletion: 0,
+      lifecycleStatus: "application_received",
+      contractSignedAt: null,
+      activatedAt: null,
+      activationCodeIssuedAt: null,
     };
   }
 
-  const sitterProfile = await prisma.sitterProfile.findUnique({
+  const sitterProfile = await (prisma as any).sitterProfile.findUnique({
     where: { userId: user.id },
     select: {
       sitterId: true,
@@ -97,6 +114,10 @@ export async function getHostUserData(): Promise<HostUserData> {
       termsAcceptedAt: true,
       termsVersion: true,
       profileCompletion: true,
+      lifecycleStatus: true,
+      contractSignedAt: true,
+      activatedAt: true,
+      activationCodeIssuedAt: true,
     },
   });
 
@@ -111,6 +132,10 @@ export async function getHostUserData(): Promise<HostUserData> {
       termsAcceptedAt: null,
       termsVersion: null,
       profileCompletion: 0,
+      lifecycleStatus: "application_received",
+      contractSignedAt: null,
+      activatedAt: null,
+      activationCodeIssuedAt: null,
     };
   }
 
@@ -126,6 +151,10 @@ export async function getHostUserData(): Promise<HostUserData> {
       termsAcceptedAt: null,
       termsVersion: null,
       profileCompletion: 0,
+      lifecycleStatus: "application_received",
+      contractSignedAt: null,
+      activatedAt: null,
+      activationCodeIssuedAt: null,
     };
   }
 
@@ -168,6 +197,10 @@ export async function getHostUserData(): Promise<HostUserData> {
 
   const termsAcceptedAt = sitterProfile?.termsAcceptedAt instanceof Date ? sitterProfile.termsAcceptedAt.toISOString() : null;
   const termsVersion = typeof sitterProfile?.termsVersion === "string" ? sitterProfile.termsVersion : null;
+  const lifecycleStatus = normalizeSitterLifecycleStatus(sitterProfile?.lifecycleStatus, Boolean(sitterProfile?.published));
+  const contractSignedAt = sitterProfile?.contractSignedAt instanceof Date ? sitterProfile.contractSignedAt.toISOString() : null;
+  const activatedAt = sitterProfile?.activatedAt instanceof Date ? sitterProfile.activatedAt.toISOString() : null;
+  const activationCodeIssuedAt = sitterProfile?.activationCodeIssuedAt instanceof Date ? sitterProfile.activationCodeIssuedAt.toISOString() : null;
   console.info("[hostUser] loaded", {
     clerkUserId: userId,
     dbUserId: user.id,
@@ -175,6 +208,7 @@ export async function getHostUserData(): Promise<HostUserData> {
     termsAcceptedAt,
     termsVersion,
     profileCompletion: typeof sitterProfile?.profileCompletion === "number" ? sitterProfile.profileCompletion : 0,
+    lifecycleStatus,
   });
 
   return {
@@ -185,5 +219,9 @@ export async function getHostUserData(): Promise<HostUserData> {
     termsAcceptedAt,
     termsVersion,
     profileCompletion: typeof sitterProfile?.profileCompletion === "number" ? sitterProfile.profileCompletion : 0,
+    lifecycleStatus,
+    contractSignedAt,
+    activatedAt,
+    activationCodeIssuedAt,
   };
 }

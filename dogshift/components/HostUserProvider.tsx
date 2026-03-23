@@ -2,6 +2,8 @@
 
 import { createContext, useContext } from "react";
 
+import type { SitterLifecycleStatus } from "@/lib/sitterContract";
+
 export type HostUser = {
   sitterId: string | null;
   published: boolean;
@@ -10,6 +12,10 @@ export type HostUser = {
   termsAcceptedAt: string | null;
   termsVersion: string | null;
   profileCompletion: number;
+  lifecycleStatus: SitterLifecycleStatus;
+  contractSignedAt: string | null;
+  activatedAt: string | null;
+  activationCodeIssuedAt: string | null;
 };
 
 export function makeHostUserValuePreview(args: { sitterId: string | null; profile: unknown }): HostUser {
@@ -21,6 +27,10 @@ export function makeHostUserValuePreview(args: { sitterId: string | null; profil
     termsAcceptedAt: null,
     termsVersion: null,
     profileCompletion: 0,
+    lifecycleStatus: "application_received",
+    contractSignedAt: null,
+    activatedAt: null,
+    activationCodeIssuedAt: null,
   };
 }
 

@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { ensureDbUserByClerkUserId } from "@/lib/auth/resolveDbUserId";
 import { buildEffectiveSitterCompletionProfile, computeSitterProfileCompletion } from "@/lib/sitterCompletion";
 import { checkSitterSensitiveActionGate } from "@/lib/sitterGuards";
+import { normalizeSitterLifecycleStatus } from "@/lib/sitterContract";
 import { CURRENT_TERMS_VERSION } from "@/lib/terms";
 
 export const runtime = "nodejs";
@@ -95,7 +96,7 @@ export async function GET(req: NextRequest) {
 
     const uid = ensured.id;
 
-    const hasSitterProfile = await prisma.sitterProfile.findUnique({ where: { userId: uid }, select: { id: true } });
+    const hasSitterProfile = await (prisma as any).sitterProfile.findUnique({ where: { userId: uid }, select: { id: true } });
     if (!hasSitterProfile) {
       return NextResponse.json({ ok: false, error: "FORBIDDEN" }, { status: 403 });
     }
@@ -129,18 +130,31 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    const sitterProfile = await prisma.sitterProfile.upsert({
+    const sitterProfile = await (prisma as any).sitterProfile.upsert({
       where: { userId: uid },
       create: {
         userId: uid,
         sitterId,
         published: false,
         publishedAt: null,
+        lifecycleStatus: normalizeSitterLifecycleStatus("application_received", false),
       },
       update: {
         sitterId,
       },
-      select: { published: true, publishedAt: true, pricing: true, profileCompletion: true, termsAcceptedAt: true, termsVersion: true, verificationStatus: true },
+      select: {
+        published: true,
+        publishedAt: true,
+        pricing: true,
+        profileCompletion: true,
+        termsAcceptedAt: true,
+        termsVersion: true,
+        verificationStatus: true,
+        lifecycleStatus: true,
+        contractSignedAt: true,
+        activatedAt: true,
+        activationCodeIssuedAt: true,
+      },
     });
 
     const serviceConfigs = await (prisma as any).serviceConfig.findMany({
@@ -174,6 +188,8 @@ export async function GET(req: NextRequest) {
       });
     }
 
+    const lifecycleStatus = normalizeSitterLifecycleStatus(sitterProfile?.lifecycleStatus, Boolean(sitterProfile?.published));
+
     return NextResponse.json(
       {
         ok: true,
@@ -183,6 +199,10 @@ export async function GET(req: NextRequest) {
         profileCompletion: resolvedProfileCompletion,
         termsAcceptedAt: sitterProfile?.termsAcceptedAt instanceof Date ? sitterProfile.termsAcceptedAt.toISOString() : null,
         termsVersion: typeof sitterProfile?.termsVersion === "string" ? sitterProfile.termsVersion : null,
+        lifecycleStatus,
+        contractSignedAt: sitterProfile?.contractSignedAt instanceof Date ? sitterProfile.contractSignedAt.toISOString() : null,
+        activatedAt: sitterProfile?.activatedAt instanceof Date ? sitterProfile.activatedAt.toISOString() : null,
+        activationCodeIssuedAt: sitterProfile?.activationCodeIssuedAt instanceof Date ? sitterProfile.activationCodeIssuedAt.toISOString() : null,
         profile: mergedProfile,
       },
       { status: 200 }
@@ -307,7 +327,7 @@ export async function POST(req: NextRequest) {
     const latProvided = typeof latRaw === "number" && Number.isFinite(latRaw) ? latRaw : null;
     const lngProvided = typeof lngRaw === "number" && Number.isFinite(lngRaw) ? lngRaw : null;
 
-    const existingProfile = await prisma.sitterProfile.findUnique({
+    const existingProfile = await (prisma as any).sitterProfile.findUnique({
       where: { userId: uid },
       select: {
         published: true,
@@ -316,6 +336,7 @@ export async function POST(req: NextRequest) {
         termsVersion: true,
         profileCompletion: true,
         verificationStatus: true,
+        lifecycleStatus: true,
       },
     });
 
@@ -352,11 +373,14 @@ export async function POST(req: NextRequest) {
     const attemptingFirstPublish = wantsPublish && !isCurrentlyPublished;
     let publishBlocked: null | { error: string; status: number; profileCompletion?: number; termsVersion: string } = null;
 
+    const lifecycleStatus = normalizeSitterLifecycleStatus(existingProfile?.lifecycleStatus, Boolean(existingProfile?.published));
+
     if (attemptingFirstPublish) {
       const gate = checkSitterSensitiveActionGate({
         termsAcceptedAt: existingProfile?.termsAcceptedAt ?? null,
         termsVersion: existingProfile?.termsVersion ?? null,
         profileCompletion: completion,
+        lifecycleStatus,
       });
 
       if (!gate.ok) {
@@ -425,13 +449,14 @@ export async function POST(req: NextRequest) {
       updateData.lng = finalLng;
     }
 
-    await prisma.sitterProfile.upsert({
+    await (prisma as any).sitterProfile.upsert({
       where: { userId: uid },
       create: {
         userId: uid,
         sitterId,
         published: willPublish,
         publishedAt,
+        lifecycleStatus,
         displayName,
         city,
         postalCode,
@@ -454,6 +479,7 @@ export async function POST(req: NextRequest) {
         sitterId,
         published: willPublish,
         profileCompletion: completion,
+        lifecycleStatus,
         publishBlocked,
         profile: normalized,
       },

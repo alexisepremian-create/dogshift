@@ -25,7 +25,7 @@ export default async function AdminSitterDetailPage({ params }: { params: Promis
   await requireAdminPageAccess();
   const { id } = await params;
 
-  const sitter = await prisma.user.findUnique({
+  const sitter = await (prisma as any).user.findUnique({
     where: { id },
     select: {
       id: true,
@@ -48,6 +48,8 @@ export default async function AdminSitterDetailPage({ params }: { params: Promis
           verificationNotes: true,
           services: true,
           pricing: true,
+          lifecycleStatus: true,
+          activationCodeIssuedAt: true,
         },
       },
       sitterBookings: {
@@ -118,7 +120,7 @@ export default async function AdminSitterDetailPage({ params }: { params: Promis
                 <p className="mt-4 text-sm text-slate-600">Aucune réservation liée pour le moment.</p>
               ) : (
                 <div className="mt-5 grid gap-3">
-                  {sitter.sitterBookings.map((booking) => (
+                  {sitter.sitterBookings.map((booking: any) => (
                     <div key={booking.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                       <div className="flex flex-wrap items-start justify-between gap-2">
                         <p className="font-semibold text-slate-900">{booking.user.name?.trim() || booking.user.email}</p>
@@ -143,6 +145,12 @@ export default async function AdminSitterDetailPage({ params }: { params: Promis
                 initialPublished={sitter.sitterProfile.published}
                 initialVerificationStatus={sitter.sitterProfile.verificationStatus}
                 initialVerificationNotes={sitter.sitterProfile.verificationNotes}
+                initialLifecycleStatus={sitter.sitterProfile.lifecycleStatus ?? "application_received"}
+                initialActivationCodeIssuedAt={
+                  sitter.sitterProfile.activationCodeIssuedAt instanceof Date
+                    ? sitter.sitterProfile.activationCodeIssuedAt.toISOString()
+                    : null
+                }
               />
             ) : null}
 
@@ -152,7 +160,7 @@ export default async function AdminSitterDetailPage({ params }: { params: Promis
                 <p className="mt-4 text-sm text-slate-600">Aucun avis reçu pour le moment.</p>
               ) : (
                 <div className="mt-5 grid gap-3">
-                  {sitter.reviewsReceived.map((review) => (
+                  {sitter.reviewsReceived.map((review: any) => (
                     <div key={review.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                       <p className="text-sm font-semibold text-slate-900">Note: {review.rating}/5</p>
                       <p className="mt-2 text-sm leading-relaxed text-slate-700">{review.comment || "Aucun commentaire."}</p>

@@ -72,7 +72,7 @@ export default async function AdminSittersPage({
   };
 
   const [sitters, totalSitters, publishedCount, pendingCount, approvedCount] = await Promise.all([
-    prisma.user.findMany({
+    (prisma as any).user.findMany({
       where,
       orderBy: [{ createdAt: "desc" }],
       take: 100,
@@ -91,6 +91,8 @@ export default async function AdminSittersPage({
             verificationNotes: true,
             published: true,
             profileCompletion: true,
+            lifecycleStatus: true,
+            activationCodeIssuedAt: true,
           },
         },
       },
@@ -223,7 +225,7 @@ export default async function AdminSittersPage({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 bg-white">
-                {sitters.map((sitter) => (
+                {sitters.map((sitter: any) => (
                   <tr key={sitter.id} className="align-top">
                     <td className="px-5 py-4">
                       <div className="font-medium text-slate-900">{sitter.name?.trim() || sitter.sitterId || "—"}</div>
@@ -257,6 +259,12 @@ export default async function AdminSittersPage({
                           initialPublished={sitter.sitterProfile.published}
                           initialVerificationStatus={sitter.sitterProfile.verificationStatus}
                           initialVerificationNotes={sitter.sitterProfile.verificationNotes}
+                          initialLifecycleStatus={sitter.sitterProfile.lifecycleStatus ?? "application_received"}
+                          initialActivationCodeIssuedAt={
+                            sitter.sitterProfile.activationCodeIssuedAt instanceof Date
+                              ? sitter.sitterProfile.activationCodeIssuedAt.toISOString()
+                              : null
+                          }
                           compact
                         />
                       ) : (
