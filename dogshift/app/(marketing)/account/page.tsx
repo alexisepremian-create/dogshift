@@ -292,52 +292,56 @@ export default async function AccountDashboardPage({
       </div>
 
       {hasUrgent ? (
-        <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
-          <h2 className="text-lg font-semibold text-slate-900">À traiter</h2>
-          <p className="mt-1 text-sm text-slate-600">Petites alertes, gros gain de clarté.</p>
+        <div className="relative isolate overflow-hidden rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+          <div className="absolute inset-0 z-0 bg-white/95" aria-hidden="true" />
 
-          <div className="mt-5 space-y-2">
-            {pendingAcceptance > 0 ? (
-              <Link
-                href="/account/bookings?tab=pending&pending=acceptance"
-                className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-900 transition hover:bg-slate-100"
-              >
-                <span className="inline-flex items-center gap-2">
-                  <AlertTriangle className="h-4 w-4 text-amber-600" aria-hidden="true" />
-                  {pendingAcceptance} réservation{pendingAcceptance > 1 ? "s" : ""} en attente d’acceptation
-                </span>
-                <ChevronRight className="h-4 w-4 text-slate-400 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
-              </Link>
-            ) : null}
+          <div className="relative z-10">
+            <h2 className="text-lg font-semibold text-slate-900">À traiter</h2>
+            <p className="mt-1 text-sm text-slate-600">Petites alertes, gros gain de clarté.</p>
 
-            {unreadMessages > 0 ? (
-              <Link
-                href="/account/messages"
-                className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-900 transition hover:bg-slate-100"
-              >
-                <span className="inline-flex items-center gap-2">
-                  <MessageCircle className="h-4 w-4 text-slate-500" aria-hidden="true" />
-                  {unreadMessages} nouveau{unreadMessages > 1 ? "x" : ""} message{unreadMessages > 1 ? "s" : ""}
-                </span>
-                <ChevronRight className="h-4 w-4 text-slate-400 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
-              </Link>
-            ) : null}
+            <div className="mt-5 space-y-2">
+              {pendingAcceptance > 0 ? (
+                <Link
+                  href="/account/bookings?tab=pending&pending=acceptance"
+                  className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50"
+                >
+                  <span className="inline-flex items-center gap-2">
+                    <AlertTriangle className="h-4 w-4 text-amber-600" aria-hidden="true" />
+                    {pendingAcceptance} réservation{pendingAcceptance > 1 ? "s" : ""} en attente d’acceptation
+                  </span>
+                  <ChevronRight className="h-4 w-4 text-slate-400 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+                </Link>
+              ) : null}
 
-            {stalePaymentCount > 0 ? (
-              <Link
-                href="/account/bookings?tab=pending&pending=payment"
-                className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-900 transition hover:bg-slate-100"
-              >
-                <span className="inline-flex items-center gap-2">
-                  <Clock3 className="h-4 w-4 text-orange-600" aria-hidden="true" />
-                  {stalePaymentCount} paiement{stalePaymentCount > 1 ? "s" : ""} en attente depuis plus de 48h
-                </span>
-                <ChevronRight className="h-4 w-4 text-slate-400 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
-              </Link>
-            ) : null}
+              {unreadMessages > 0 ? (
+                <Link
+                  href="/account/messages"
+                  className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50"
+                >
+                  <span className="inline-flex items-center gap-2">
+                    <MessageCircle className="h-4 w-4 text-slate-500" aria-hidden="true" />
+                    {unreadMessages} nouveau{unreadMessages > 1 ? "x" : ""} message{unreadMessages > 1 ? "s" : ""}
+                  </span>
+                  <ChevronRight className="h-4 w-4 text-slate-400 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+                </Link>
+              ) : null}
+
+              {stalePaymentCount > 0 ? (
+                <Link
+                  href="/account/bookings?tab=pending&pending=payment"
+                  className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50"
+                >
+                  <span className="inline-flex items-center gap-2">
+                    <Clock3 className="h-4 w-4 text-orange-600" aria-hidden="true" />
+                    {stalePaymentCount} paiement{stalePaymentCount > 1 ? "s" : ""} en attente depuis plus de 48h
+                  </span>
+                  <ChevronRight className="h-4 w-4 text-slate-400 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+                </Link>
+              ) : null}
+            </div>
+
+            <p className="mt-4 text-sm text-slate-600">Pense à répondre rapidement pour améliorer ton taux de réponse.</p>
           </div>
-
-          <p className="mt-4 text-sm text-slate-600">Pense à répondre rapidement pour améliorer ton taux de réponse.</p>
         </div>
       ) : null}
 
