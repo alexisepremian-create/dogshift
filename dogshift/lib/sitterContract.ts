@@ -1,4 +1,4 @@
-import { createHash } from "crypto";
+import { createHash, randomBytes, timingSafeEqual } from "crypto";
 
 export const CURRENT_SITTER_CONTRACT_VERSION = "2026-03-23";
 
@@ -42,6 +42,10 @@ export function canAccessContractPage(status: SitterLifecycleStatus) {
   return status === "selected" || status === "contract_to_sign" || status === "contract_signed" || status === "activated";
 }
 
+export function canGenerateContractAccessLink(status: SitterLifecycleStatus) {
+  return status === "selected" || status === "contract_to_sign";
+}
+
 export function isContractSignedStatus(status: SitterLifecycleStatus) {
   return status === "contract_signed" || status === "activated";
 }
@@ -56,6 +60,48 @@ export function normalizeActivationCode(raw: string) {
 
 export function hashActivationCode(raw: string) {
   return createHash("sha256").update(normalizeActivationCode(raw)).digest("hex");
+}
+
+export function generateContractAccessToken() {
+  return randomBytes(32).toString("hex");
+}
+
+export function hashContractAccessToken(rawToken: string, secret: string) {
+  return createHash("sha256").update(`${rawToken}${secret}`).digest("hex");
+}
+
+export function contractAccessTokenFingerprint(rawToken: string) {
+  return createHash("sha256").update(rawToken).digest("hex").slice(0, 12);
+}
+
+export function contractAccessTokenMatches(expectedHash: string | null | undefined, rawToken: string, secret: string) {
+  if (!expectedHash || !rawToken || !secret) return false;
+  const candidateHash = hashContractAccessToken(rawToken, secret);
+  const a = Buffer.from(expectedHash);
+  const b = Buffer.from(candidateHash);
+  if (a.length !== b.length) return false;
+  return timingSafeEqual(a, b);
+}
+
+export function contractAccessTokenTtlMs() {
+  const raw = (process.env.SITTER_CONTRACT_LINK_TTL_HOURS || "").trim();
+  const parsed = raw ? Number.parseInt(raw, 10) : NaN;
+  const hours = Number.isFinite(parsed) && parsed > 0 ? parsed : 72;
+  return hours * 60 * 60 * 1000;
+}
+
+export function buildContractAccessUrl(baseUrl: string, rawToken: string) {
+  return `${baseUrl.replace(/\/$/, "")}/contract/sign/${encodeURIComponent(rawToken)}`;
+}
+
+export function isContractAccessLinkExpired(expiresAt: Date | string | null | undefined, now = Date.now()) {
+  if (!expiresAt) return true;
+  const ts = expiresAt instanceof Date ? expiresAt.getTime() : new Date(expiresAt).getTime();
+  return !Number.isFinite(ts) || ts <= now;
+}
+
+export function contractSigningAllowed(status: SitterLifecycleStatus) {
+  return status === "selected" || status === "contract_to_sign";
 }
 
 export function buildSignedContractSnapshot(args: {

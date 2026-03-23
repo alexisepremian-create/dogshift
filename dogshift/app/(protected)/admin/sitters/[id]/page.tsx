@@ -50,6 +50,8 @@ export default async function AdminSitterDetailPage({ params }: { params: Promis
           pricing: true,
           lifecycleStatus: true,
           activationCodeIssuedAt: true,
+          contractAccessTokenIssuedAt: true,
+          contractAccessTokenExpiresAt: true,
         },
       },
       sitterBookings: {
@@ -149,6 +151,16 @@ export default async function AdminSitterDetailPage({ params }: { params: Promis
                 initialActivationCodeIssuedAt={
                   sitter.sitterProfile.activationCodeIssuedAt instanceof Date
                     ? sitter.sitterProfile.activationCodeIssuedAt.toISOString()
+                    : null
+                }
+                initialContractAccessTokenIssuedAt={
+                  sitter.sitterProfile.contractAccessTokenIssuedAt instanceof Date
+                    ? sitter.sitterProfile.contractAccessTokenIssuedAt.toISOString()
+                    : null
+                }
+                initialContractAccessTokenExpiresAt={
+                  sitter.sitterProfile.contractAccessTokenExpiresAt instanceof Date
+                    ? sitter.sitterProfile.contractAccessTokenExpiresAt.toISOString()
                     : null
                 }
               />

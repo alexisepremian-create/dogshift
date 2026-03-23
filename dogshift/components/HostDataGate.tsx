@@ -1,26 +1,23 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useHostUser } from "@/components/HostUserProvider";
 import PageLoader from "@/components/ui/PageLoader";
-import { canAccessContractPage, isContractSignedStatus } from "@/lib/sitterContract";
+import { isContractSignedStatus } from "@/lib/sitterContract";
 
 const HOST_READY_LATCH_BY_USER_ID = new Map<string, true>();
 
 export default function HostDataGate({ children }: { children: React.ReactNode }) {
   const host = useHostUser();
   const router = useRouter();
-  const pathname = usePathname();
   const { isLoaded, isSignedIn, user } = useUser();
   const [readyToRender, setReadyToRender] = useState(false);
   const [timedOut, setTimedOut] = useState(false);
   const warnedTimeoutRef = useRef(false);
-  const isContractPage = pathname === "/host/contract";
-  const contractAccessible = canAccessContractPage(host.lifecycleStatus);
   const contractSigned = isContractSignedStatus(host.lifecycleStatus);
 
   const hostReady = useMemo(() => {
@@ -57,15 +54,6 @@ export default function HostDataGate({ children }: { children: React.ReactNode }
 
     router.replace("/account");
   }, [host, hostReady, isLoaded, isSignedIn, latched, router, userId]);
-
-  useEffect(() => {
-    if (!isLoaded || !isSignedIn) return;
-    if (!host.sitterId) return;
-    if (contractSigned) return;
-    if (!contractAccessible) return;
-    if (isContractPage) return;
-    router.replace("/host/contract");
-  }, [contractAccessible, contractSigned, host.sitterId, isContractPage, isLoaded, isSignedIn, router]);
 
   useEffect(() => {
     if (!hostReady) return;
@@ -167,13 +155,13 @@ export default function HostDataGate({ children }: { children: React.ReactNode }
     return <PageLoader label="Chargement…" />;
   }
 
-  if (host.sitterId && !contractSigned && !contractAccessible) {
+  if (host.sitterId && !contractSigned) {
     return (
       <div className="fixed inset-0 z-50 flex w-full items-center justify-center bg-white font-sans">
         <div className="w-full max-w-lg rounded-3xl border border-slate-200 bg-white p-6 text-center shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)]">
-          <p className="text-base font-semibold text-slate-900">Votre candidature est en cours de traitement</p>
+          <p className="text-base font-semibold text-slate-900">Signature du contrat requise</p>
           <p className="mt-2 text-sm text-slate-600">
-            Votre accès complet sera débloqué dès que DogShift vous aura sélectionné et ouvert l’étape de signature du contrat.
+            Votre accès complet au dashboard sera débloqué une fois votre contrat signé via le lien sécurisé envoyé par DogShift par email.
           </p>
           <div className="mt-5 flex justify-center">
             <Link

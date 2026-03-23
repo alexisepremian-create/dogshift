@@ -93,6 +93,8 @@ export default async function AdminSittersPage({
             profileCompletion: true,
             lifecycleStatus: true,
             activationCodeIssuedAt: true,
+            contractAccessTokenIssuedAt: true,
+            contractAccessTokenExpiresAt: true,
           },
         },
       },
@@ -263,6 +265,16 @@ export default async function AdminSittersPage({
                           initialActivationCodeIssuedAt={
                             sitter.sitterProfile.activationCodeIssuedAt instanceof Date
                               ? sitter.sitterProfile.activationCodeIssuedAt.toISOString()
+                              : null
+                          }
+                          initialContractAccessTokenIssuedAt={
+                            sitter.sitterProfile.contractAccessTokenIssuedAt instanceof Date
+                              ? sitter.sitterProfile.contractAccessTokenIssuedAt.toISOString()
+                              : null
+                          }
+                          initialContractAccessTokenExpiresAt={
+                            sitter.sitterProfile.contractAccessTokenExpiresAt instanceof Date
+                              ? sitter.sitterProfile.contractAccessTokenExpiresAt.toISOString()
                               : null
                           }
                           compact

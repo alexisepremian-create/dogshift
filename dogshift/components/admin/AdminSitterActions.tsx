@@ -2,10 +2,10 @@
 
 import { useState } from "react";
 
-import { lifecycleStatusLabel, type SitterLifecycleStatus } from "@/lib/sitterContract";
+import { canGenerateContractAccessLink, lifecycleStatusLabel, type SitterLifecycleStatus } from "@/lib/sitterContract";
 
 type VerificationStatus = "not_verified" | "pending" | "approved" | "rejected";
-type ActionType = "select" | "approve" | "reject" | "suspend" | "reactivate" | "publish" | "unpublish" | "issue_activation_code";
+type ActionType = "select" | "generate_contract_link" | "approve" | "reject" | "suspend" | "reactivate" | "publish" | "unpublish" | "issue_activation_code";
 
 type Props = {
   sitterUserId: string;
@@ -14,11 +14,14 @@ type Props = {
   initialVerificationNotes: string | null;
   initialLifecycleStatus?: SitterLifecycleStatus;
   initialActivationCodeIssuedAt?: string | null;
+  initialContractAccessTokenIssuedAt?: string | null;
+  initialContractAccessTokenExpiresAt?: string | null;
   compact?: boolean;
 };
 
 const ACTIONS: Array<{ action: ActionType; label: string; tone: string }> = [
   { action: "select", label: "Sélectionner", tone: "bg-indigo-600 hover:bg-indigo-700 text-white" },
+  { action: "generate_contract_link", label: "Générer lien contrat", tone: "bg-violet-600 hover:bg-violet-700 text-white" },
   { action: "approve", label: "Valider", tone: "bg-emerald-600 hover:bg-emerald-700 text-white" },
   { action: "reject", label: "Refuser", tone: "bg-rose-600 hover:bg-rose-700 text-white" },
   { action: "suspend", label: "Suspendre", tone: "bg-slate-900 hover:bg-slate-800 text-white" },
@@ -29,6 +32,7 @@ const ACTIONS: Array<{ action: ActionType; label: string; tone: string }> = [
 
 const COMPACT_ACTION_GROUPS: Array<Array<ActionType>> = [
   ["select"],
+  ["generate_contract_link"],
   ["approve", "reject"],
   ["suspend", "reactivate"],
   ["publish", "unpublish"],
@@ -43,6 +47,7 @@ function verificationLabel(status: VerificationStatus) {
 
 function actionAllowed(action: ActionType, published: boolean, verificationStatus: VerificationStatus, lifecycleStatus: SitterLifecycleStatus) {
   if (action === "select") return lifecycleStatus === "application_received";
+  if (action === "generate_contract_link") return canGenerateContractAccessLink(lifecycleStatus);
   if (action === "approve") return verificationStatus === "pending" || verificationStatus === "rejected" || verificationStatus === "not_verified";
   if (action === "reject") return verificationStatus === "pending" || verificationStatus === "approved";
   if (action === "suspend") return published && verificationStatus === "approved";
@@ -60,6 +65,9 @@ function actionHelp(action: ActionType, published: boolean, verificationStatus: 
   }
   if ((action === "publish" || action === "reactivate") && lifecycleStatus !== "activated") {
     return "Activation finale requise avant publication.";
+  }
+  if (action === "generate_contract_link" && !canGenerateContractAccessLink(lifecycleStatus)) {
+    return "Le lien sécurisé ne peut être émis qu’avant la signature du contrat.";
   }
   if (action === "select" && lifecycleStatus !== "application_received") {
     return "La sélection est déjà effectuée ou dépassée.";
@@ -89,6 +97,8 @@ export default function AdminSitterActions({
   initialVerificationNotes,
   initialLifecycleStatus = "application_received",
   initialActivationCodeIssuedAt = null,
+  initialContractAccessTokenIssuedAt = null,
+  initialContractAccessTokenExpiresAt = null,
   compact = false,
 }: Props) {
   const [published, setPublished] = useState(initialPublished);
@@ -97,6 +107,10 @@ export default function AdminSitterActions({
   const [notes, setNotes] = useState(initialVerificationNotes ?? "");
   const [activationCodeDraft, setActivationCodeDraft] = useState("");
   const [activationCodeIssuedAt, setActivationCodeIssuedAt] = useState<string | null>(initialActivationCodeIssuedAt);
+  const [contractAccessTokenIssuedAt, setContractAccessTokenIssuedAt] = useState<string | null>(initialContractAccessTokenIssuedAt);
+  const [contractAccessTokenExpiresAt, setContractAccessTokenExpiresAt] = useState<string | null>(initialContractAccessTokenExpiresAt);
+  const [latestContractAccessLink, setLatestContractAccessLink] = useState<string | null>(null);
+  const [latestContractAccessFingerprint, setLatestContractAccessFingerprint] = useState<string | null>(null);
   const [loadingAction, setLoadingAction] = useState<ActionType | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -130,6 +144,10 @@ export default function AdminSitterActions({
       setNotes(typeof payload.profile.verificationNotes === "string" ? payload.profile.verificationNotes : "");
       setLifecycleStatus((payload.profile.lifecycleStatus as SitterLifecycleStatus) ?? lifecycleStatus);
       setActivationCodeIssuedAt(typeof payload.profile.activationCodeIssuedAt === "string" ? payload.profile.activationCodeIssuedAt : null);
+      setContractAccessTokenIssuedAt(typeof payload.profile.contractAccessTokenIssuedAt === "string" ? payload.profile.contractAccessTokenIssuedAt : null);
+      setContractAccessTokenExpiresAt(typeof payload.profile.contractAccessTokenExpiresAt === "string" ? payload.profile.contractAccessTokenExpiresAt : null);
+      setLatestContractAccessLink(typeof payload.contractAccessLink === "string" ? payload.contractAccessLink : null);
+      setLatestContractAccessFingerprint(typeof payload.contractAccessTokenFingerprint === "string" ? payload.contractAccessTokenFingerprint : null);
       if (action === "issue_activation_code") {
         setActivationCodeDraft("");
       }
@@ -169,7 +187,37 @@ export default function AdminSitterActions({
                 ? "Profil refusé: vous pouvez le revalider si la situation a été corrigée."
                 : lifecycleStatus === "application_received"
                   ? "Candidature reçue: sélectionnez le dogsitter pour ouvrir la signature du contrat."
+                  : lifecycleStatus === "contract_to_sign"
+                    ? "Lien de signature émis: la candidate doit signer le contrat via son lien sécurisé personnel."
                   : "Profil non vérifié: validation possible, mais publication bloquée tant que le profil n’est pas approuvé."}
+        </div>
+      ) : null}
+
+      {!compact ? (
+        <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-xs font-semibold text-slate-700">Lien sécurisé de signature</p>
+              <p className="mt-1 text-xs leading-relaxed text-slate-500">Usage unique, personnel, invalide après signature ou expiration.</p>
+            </div>
+            <button
+              type="button"
+              disabled={!actionAllowed("generate_contract_link", published, verificationStatus, lifecycleStatus) || loadingAction !== null}
+              onClick={() => void runAction("generate_contract_link")}
+              className="inline-flex items-center justify-center rounded-2xl bg-violet-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {loadingAction === "generate_contract_link" ? "En cours…" : contractAccessTokenIssuedAt ? "Régénérer le lien" : "Générer le lien"}
+            </button>
+          </div>
+          {contractAccessTokenIssuedAt ? <p className="mt-3 text-xs text-slate-500">Lien émis le {contractAccessTokenIssuedAt}.</p> : null}
+          {contractAccessTokenExpiresAt ? <p className="mt-1 text-xs text-slate-500">Expiration prévue le {contractAccessTokenExpiresAt}.</p> : null}
+          {latestContractAccessFingerprint ? <p className="mt-1 text-xs text-slate-500">Empreinte du lien courant: {latestContractAccessFingerprint}</p> : null}
+          {latestContractAccessLink ? (
+            <div className="mt-3 rounded-2xl border border-violet-200 bg-white p-3">
+              <p className="text-xs font-semibold text-slate-700">Dernier lien généré</p>
+              <p className="mt-2 break-all text-xs text-slate-600">{latestContractAccessLink}</p>
+            </div>
+          ) : null}
         </div>
       ) : null}
 
