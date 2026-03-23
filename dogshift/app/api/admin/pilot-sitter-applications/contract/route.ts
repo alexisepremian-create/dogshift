@@ -144,16 +144,18 @@ export async function POST(req: NextRequest) {
       const text = [
         `Bonjour ${recipientName || ""},`.trim(),
         "",
-        "Votre candidature dogsitter a été acceptée par DogShift.",
+        "Félicitations — votre candidature dogsitter a été retenue pour la phase pilote DogShift.",
+        "Nous sélectionnons avec soin les profils qui correspondent au niveau de qualité attendu sur la plateforme.",
         "Pour signer votre contrat, utilisez votre lien personnel et sécurisé :",
         contractAccessLink,
         "",
         "Ce lien est strictement personnel, à usage unique, et expirera automatiquement.",
+        "Temps estimé : 1 minute.",
         "Après signature, votre contrat sera enregistré par DogShift. La suite sera gérée manuellement par notre équipe.",
         "",
         "— DogShift",
       ].join("\n");
-      const html = `<!doctype html><html lang="fr"><body style="margin:0;padding:24px;background:#f8fafc;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;"><div style="max-width:560px;margin:0 auto;background:#fff;border:1px solid #e2e8f0;border-radius:18px;padding:24px;"><div style="font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:#64748b;font-weight:700;">DogShift</div><h1 style="margin:12px 0 0;font-size:22px;line-height:1.25;color:#0f172a;">Signature de votre contrat dogsitter</h1><p style="margin:12px 0 0;font-size:14px;line-height:1.6;color:#334155;">Votre candidature a été acceptée. Pour signer votre contrat, utilisez votre lien sécurisé personnel.</p><div style="margin-top:18px;"><a href="${contractAccessLink}" style="display:inline-block;background:#0b0b0c;color:#fff;text-decoration:none;font-weight:700;font-size:14px;padding:12px 18px;border-radius:12px;">Accéder au contrat</a></div><p style="margin:18px 0 0;font-size:13px;line-height:1.6;color:#64748b;">Ce lien est unique, personnel et expirera automatiquement.</p><p style="margin:8px 0 0;font-size:13px;line-height:1.6;word-break:break-word;"><a href="${contractAccessLink}" style="color:#0f172a;text-decoration:underline;">${contractAccessLink}</a></p><p style="margin:16px 0 0;font-size:12px;line-height:1.6;color:#64748b;">Après signature, votre contrat sera enregistré par DogShift. Aucun dashboard sitter n’est ouvert à ce stade.</p></div></body></html>`;
+      const html = `<!doctype html><html lang="fr"><body style="margin:0;padding:24px;background:#f8fafc;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;"><div style="max-width:560px;margin:0 auto;background:#fff;border:1px solid #e2e8f0;border-radius:18px;padding:24px;"><div style="font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:#64748b;font-weight:700;">DogShift</div><h1 style="margin:12px 0 0;font-size:22px;line-height:1.25;color:#0f172a;">Signature de votre contrat dogsitter</h1><p style="margin:12px 0 0;font-size:14px;line-height:1.6;color:#334155;">Félicitations — votre candidature a été retenue pour la phase pilote DogShift. Nous sélectionnons avec soin des profils fiables, alignés avec le niveau de qualité attendu sur la plateforme.</p><div style="margin-top:18px;"><a href="${contractAccessLink}" style="display:inline-block;background:#0b0b0c;color:#fff;text-decoration:none;font-weight:700;font-size:14px;padding:12px 18px;border-radius:12px;">Accéder au contrat</a></div><p style="margin:10px 0 0;font-size:12px;line-height:1.6;color:#64748b;">Temps estimé : 1 minute.</p><p style="margin:18px 0 0;font-size:13px;line-height:1.6;color:#64748b;">Ce lien est unique, personnel et expirera automatiquement.</p><p style="margin:8px 0 0;font-size:13px;line-height:1.6;word-break:break-word;"><a href="${contractAccessLink}" style="color:#0f172a;text-decoration:underline;">${contractAccessLink}</a></p><p style="margin:16px 0 0;font-size:12px;line-height:1.6;color:#64748b;">Après signature, votre contrat sera enregistré par DogShift. Aucun dashboard sitter n’est ouvert à ce stade.</p></div></body></html>`;
       await sendEmail({ to: application.email, subject, text, html });
     }
 
