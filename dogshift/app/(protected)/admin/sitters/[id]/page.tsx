@@ -21,6 +21,11 @@ function formatDate(value: Date | null) {
     .replaceAll(".", "-");
 }
 
+function formatContractSnapshotDownload(snapshot: unknown) {
+  const content = typeof snapshot === "string" ? snapshot : JSON.stringify(snapshot, null, 2);
+  return `data:application/json;charset=utf-8,${encodeURIComponent(content)}`;
+}
+
 export default async function AdminSitterDetailPage({ params }: { params: Promise<{ id: string }> }) {
   await requireAdminPageAccess();
   const { id } = await params;
@@ -52,6 +57,10 @@ export default async function AdminSitterDetailPage({ params }: { params: Promis
           activationCodeIssuedAt: true,
           contractAccessTokenIssuedAt: true,
           contractAccessTokenExpiresAt: true,
+          contractSignerName: true,
+          contractSignedAt: true,
+          contractVersion: true,
+          contractSnapshot: true,
         },
       },
       sitterBookings: {
@@ -159,6 +168,40 @@ export default async function AdminSitterDetailPage({ params }: { params: Promis
                     : null
                 }
               />
+            ) : null}
+
+            {sitter.sitterProfile ? (
+              <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.12)] sm:p-8">
+                <h3 className="text-lg font-semibold tracking-tight text-slate-900">Contrat</h3>
+                <div className="mt-4 grid gap-3 text-sm text-slate-600 sm:grid-cols-2">
+                  <p><span className="font-semibold text-slate-900">Lien envoyé le :</span> {formatDate(sitter.sitterProfile.contractAccessTokenIssuedAt || null)}</p>
+                  <p><span className="font-semibold text-slate-900">Lien expire le :</span> {formatDate(sitter.sitterProfile.contractAccessTokenExpiresAt || null)}</p>
+                  <p><span className="font-semibold text-slate-900">Signataire :</span> {sitter.sitterProfile.contractSignerName || "—"}</p>
+                  <p><span className="font-semibold text-slate-900">Contrat signé le :</span> {formatDate(sitter.sitterProfile.contractSignedAt || null)}</p>
+                  <p><span className="font-semibold text-slate-900">Version contrat :</span> {sitter.sitterProfile.contractVersion || "—"}</p>
+                  <p><span className="font-semibold text-slate-900">Statut :</span> {sitter.sitterProfile.contractSignedAt ? "contrat signé" : sitter.sitterProfile.contractAccessTokenIssuedAt ? "contrat envoyé" : "contrat non envoyé"}</p>
+                </div>
+
+                {sitter.sitterProfile.contractSnapshot ? (
+                  <>
+                    <div className="mt-5 flex flex-wrap gap-3">
+                      <a
+                        href={formatContractSnapshotDownload(sitter.sitterProfile.contractSnapshot)}
+                        download={`dogshift-contrat-signe-${sitter.sitterId || sitter.id}.json`}
+                        className="inline-flex items-center justify-center rounded-2xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50"
+                      >
+                        Télécharger le snapshot signé
+                      </a>
+                    </div>
+                    <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                      <p className="text-xs font-semibold text-slate-700">Snapshot du contrat signé</p>
+                      <pre className="mt-3 overflow-x-auto whitespace-pre-wrap text-xs leading-6 text-slate-700">{JSON.stringify(sitter.sitterProfile.contractSnapshot, null, 2)}</pre>
+                    </div>
+                  </>
+                ) : (
+                  <p className="mt-4 text-sm text-slate-600">Aucun snapshot signé disponible pour le moment.</p>
+                )}
+              </section>
             ) : null}
 
             <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.12)] sm:p-8">

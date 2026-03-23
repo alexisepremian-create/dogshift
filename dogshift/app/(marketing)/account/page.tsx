@@ -18,7 +18,7 @@ import {
 import SunCornerGlow from "@/components/SunCornerGlow";
 import HowItWorksSchema, { OWNER_HOW_IT_WORKS_CONTENT } from "@/components/HowItWorksSchema";
 import { prisma } from "@/lib/prisma";
-import { isActivatedStatus, lifecycleStatusLabel } from "@/lib/sitterContract";
+import { isActivatedStatus } from "@/lib/sitterContract";
 import { getUserContexts } from "@/lib/userContexts";
 
 export const dynamic = "force-dynamic";
@@ -46,42 +46,6 @@ function FilledSunIcon({ className }: { className?: string }) {
   );
 }
 
-function SitterAccessState({ lifecycleStatus }: { lifecycleStatus: string }) {
-  const label = lifecycleStatusLabel(lifecycleStatus as any);
-  const description =
-    lifecycleStatus === "selected" || lifecycleStatus === "contract_to_sign"
-      ? "Votre accès sitter n’est pas encore activé. Merci de signer votre contrat via le lien sécurisé reçu par email."
-      : lifecycleStatus === "contract_signed"
-        ? "Votre contrat a bien été signé. Votre compte est en cours d’activation finale."
-        : "Votre accès sitter n’est pas encore disponible. DogShift vous contactera dès que votre compte pourra être activé.";
-
-  return (
-    <div className="relative grid gap-6 overflow-hidden" data-testid="account-sitter-state">
-      <SunCornerGlow variant="ownerDashboard" />
-      <div className="relative z-10 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
-        <p className="text-sm font-semibold text-slate-600">Mon espace</p>
-        <h1 className="mt-2 text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">Accès sitter non encore activé</h1>
-        <p className="mt-4 text-sm text-slate-600">Statut actuel : {label}.</p>
-        <p className="mt-2 text-sm text-slate-600">{description}</p>
-        <div className="mt-6 flex flex-wrap gap-3">
-          <Link
-            href="/"
-            className="inline-flex items-center justify-center rounded-2xl border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50"
-          >
-            Retour accueil
-          </Link>
-          <Link
-            href="/help"
-            className="inline-flex items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-5 py-3 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition hover:bg-[var(--dogshift-blue-hover)]"
-          >
-            Centre d’aide
-          </Link>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 export default async function AccountDashboardPage({
   searchParams,
 }: {
@@ -99,7 +63,6 @@ export default async function AccountDashboardPage({
     if (contexts.sitterLifecycleStatus && isActivatedStatus(contexts.sitterLifecycleStatus)) {
       redirect("/host");
     }
-    return <SitterAccessState lifecycleStatus={contexts.sitterLifecycleStatus ?? "application_received"} />;
   }
 
   const uid = contexts.dbUserId;

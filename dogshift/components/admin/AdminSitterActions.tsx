@@ -20,7 +20,7 @@ type Props = {
 
 const ACTIONS: Array<{ action: ActionType; label: string; tone: string }> = [
   { action: "select", label: "Sélectionner", tone: "bg-indigo-600 hover:bg-indigo-700 text-white" },
-  { action: "generate_contract_link", label: "Générer lien contrat", tone: "bg-violet-600 hover:bg-violet-700 text-white" },
+  { action: "generate_contract_link", label: "Envoyer le contrat", tone: "bg-violet-600 hover:bg-violet-700 text-white" },
   { action: "approve", label: "Valider", tone: "bg-emerald-600 hover:bg-emerald-700 text-white" },
   { action: "reject", label: "Refuser", tone: "bg-rose-600 hover:bg-rose-700 text-white" },
   { action: "suspend", label: "Suspendre", tone: "bg-slate-900 hover:bg-slate-800 text-white" },
@@ -62,7 +62,7 @@ function actionHelp(action: ActionType, published: boolean, verificationStatus: 
     return "Réservé aux profils approuvés.";
   }
   if ((action === "publish" || action === "reactivate") && lifecycleStatus !== "activated") {
-    return "Activation finale requise avant publication.";
+    return "Publication réservée aux comptes activés manuellement.";
   }
   if (action === "generate_contract_link" && !canGenerateContractAccessLink(lifecycleStatus)) {
     return "Le lien sécurisé ne peut être émis qu’avant la signature du contrat.";
@@ -164,7 +164,9 @@ export default function AdminSitterActions({
               ? "Profil approuvé et publié: vous pouvez le suspendre ou le dépublier si nécessaire."
               : lifecycleStatus === "activated"
                 ? "Profil approuvé et activé: publication ou réactivation disponibles."
-                : "Profil approuvé mais non activé: la candidate doit signer son contrat via le lien sécurisé avant tout accès dashboard."
+                : lifecycleStatus === "contract_signed"
+                  ? "Contrat signé: la suite de l’activation est gérée manuellement par DogShift."
+                  : "Profil approuvé mais non activé: envoyez le contrat sécurisé puis gérez l’activation plus tard, hors dashboard." 
             : verificationStatus === "pending"
               ? "Profil en attente de revue: validation ou refus disponibles."
               : verificationStatus === "rejected"
@@ -172,7 +174,7 @@ export default function AdminSitterActions({
                 : lifecycleStatus === "application_received"
                   ? "Candidature reçue: sélectionnez le dogsitter pour ouvrir la signature du contrat."
                   : lifecycleStatus === "contract_to_sign"
-                    ? "Lien de signature émis: la candidate doit signer le contrat via son lien sécurisé personnel."
+                    ? "Contrat envoyé: la candidate doit signer via son lien sécurisé personnel."
                   : "Profil non vérifié: validation possible, mais publication bloquée tant que le profil n’est pas approuvé."}
         </div>
       ) : null}
@@ -190,10 +192,12 @@ export default function AdminSitterActions({
               onClick={() => void runAction("generate_contract_link")}
               className="inline-flex items-center justify-center rounded-2xl bg-violet-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {loadingAction === "generate_contract_link" ? "En cours…" : contractAccessTokenIssuedAt ? "Régénérer le lien" : "Générer le lien"}
+              {loadingAction === "generate_contract_link" ? "En cours…" : contractAccessTokenIssuedAt ? "Renvoyer le contrat" : "Envoyer le contrat"}
             </button>
           </div>
-          {contractAccessTokenIssuedAt ? <p className="mt-3 text-xs text-slate-500">Lien émis le {contractAccessTokenIssuedAt}.</p> : null}
+          {!contractAccessTokenIssuedAt ? <p className="mt-3 text-xs text-slate-500">Statut contrat : non envoyé.</p> : null}
+          {contractAccessTokenIssuedAt && lifecycleStatus !== "contract_signed" ? <p className="mt-3 text-xs text-slate-500">Statut contrat : envoyé le {contractAccessTokenIssuedAt}.</p> : null}
+          {lifecycleStatus === "contract_signed" ? <p className="mt-3 text-xs text-emerald-700">Statut contrat : signé.</p> : null}
           {contractAccessTokenExpiresAt ? <p className="mt-1 text-xs text-slate-500">Expiration prévue le {contractAccessTokenExpiresAt}.</p> : null}
           {latestContractAccessFingerprint ? <p className="mt-1 text-xs text-slate-500">Empreinte du lien courant: {latestContractAccessFingerprint}</p> : null}
           {latestContractAccessLink ? (

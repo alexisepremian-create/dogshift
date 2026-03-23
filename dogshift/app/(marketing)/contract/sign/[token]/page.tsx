@@ -101,7 +101,7 @@ export default function SecureContractSigningPage() {
         return;
       }
 
-      setSuccess(next.message ?? "Votre contrat a bien été signé. Vous recevrez votre code d’activation par courrier.");
+      setSuccess(next.message ?? "Votre contrat a bien été signé. DogShift vous contactera pour la suite de l’activation.");
       const refreshed = await fetch(`/api/contract/sign/${encodeURIComponent(token)}`, { method: "GET", cache: "no-store" });
       const refreshedPayload = (await refreshed.json().catch(() => null)) as ContractPayload | null;
       if (refreshed.ok && refreshedPayload?.ok) {
@@ -139,7 +139,7 @@ export default function SecureContractSigningPage() {
             <div className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
               <p className="text-sm font-semibold text-emerald-900">Contrat signé</p>
               <p className="mt-1 text-sm text-emerald-900/80">
-                Votre contrat a bien été signé. Vous recevrez votre code d’activation par courrier.
+                Votre contrat a bien été signé. Aucun accès dashboard n’est ouvert à ce stade ; DogShift vous contactera pour l’activation ultérieure.
               </p>
             </div>
           ) : null}
