@@ -1,7 +1,7 @@
-import { auth, currentUser } from "@clerk/nextjs/server";
+import { auth } from "@clerk/nextjs/server";
 
 import { prisma } from "@/lib/prisma";
-import { ensureDbUserByClerkUserId } from "@/lib/auth/resolveDbUserId";
+import { ensureDbUserFromClerkAuth } from "@/lib/auth/resolveDbUserId";
 import { normalizeSitterLifecycleStatus, type SitterLifecycleStatus } from "@/lib/sitterContract";
 
 function normalizePersistedPricing(raw: unknown) {
@@ -70,21 +70,20 @@ export async function getHostUserData(): Promise<HostUserData> {
     | null;
 
   if (!user) {
-    const clerkUser = await currentUser();
-    const primaryEmail = clerkUser?.primaryEmailAddress?.emailAddress ?? "";
-    if (!primaryEmail) {
-      throw new Error("[hostUser] missing primary email for ensureDbUser");
-    }
-
-    const ensured = await ensureDbUserByClerkUserId({
-      clerkUserId: userId,
-      email: primaryEmail,
-      name: typeof clerkUser?.fullName === "string" ? clerkUser.fullName : null,
-    });
+    const ensured = await ensureDbUserFromClerkAuth();
     if (ensured?.id) {
       user = (await (prisma as any).user.findUnique({ where: { id: ensured.id } })) as
         | ({ id: string; sitterId?: string | null; hostProfileJson?: string | null } & Record<string, unknown>)
         | null;
+      console.info("[hostUser] ensured db user from clerk auth", {
+        clerkUserId: userId,
+        dbUserId: ensured.id,
+        created: ensured.created,
+      });
+    } else {
+      console.warn("[hostUser] failed to ensure db user from clerk auth", {
+        clerkUserId: userId,
+      });
     }
   }
 
