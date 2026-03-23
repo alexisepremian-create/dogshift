@@ -1,13 +1,11 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useHostUser } from "@/components/HostUserProvider";
 import PageLoader from "@/components/ui/PageLoader";
-import { isContractSignedStatus } from "@/lib/sitterContract";
 
 const HOST_READY_LATCH_BY_USER_ID = new Map<string, true>();
 
@@ -18,7 +16,6 @@ export default function HostDataGate({ children }: { children: React.ReactNode }
   const [readyToRender, setReadyToRender] = useState(false);
   const [timedOut, setTimedOut] = useState(false);
   const warnedTimeoutRef = useRef(false);
-  const contractSigned = isContractSignedStatus(host.lifecycleStatus);
 
   const hostReady = useMemo(() => {
     if (!host.sitterId) return false;
@@ -118,36 +115,6 @@ export default function HostDataGate({ children }: { children: React.ReactNode }
     });
   }, [host, hostReady, isLoaded, isSignedIn, latched, userId, waiting]);
 
-  if (isLoaded && isSignedIn && host.sitterId && !contractSigned) {
-    console.warn("[HostDataGate][diagnostic] contract gate blocking dashboard", {
-      userId,
-      sitterId: host.sitterId,
-      lifecycleStatus: host.lifecycleStatus,
-      contractSigned,
-      contractSignedAt: host.contractSignedAt,
-      activatedAt: host.activatedAt,
-      reason: "CONTRACT_NOT_SIGNED",
-    });
-    return (
-      <div className="fixed inset-0 z-50 flex w-full items-center justify-center bg-white font-sans">
-        <div className="w-full max-w-lg rounded-3xl border border-slate-200 bg-white p-6 text-center shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)]">
-          <p className="text-base font-semibold text-slate-900">Signature du contrat requise</p>
-          <p className="mt-2 text-sm text-slate-600">
-            Votre accès complet au dashboard sera débloqué une fois votre contrat signé via le lien sécurisé envoyé par DogShift par email.
-          </p>
-          <div className="mt-5 flex justify-center">
-            <Link
-              href="/"
-              className="inline-flex items-center justify-center rounded-2xl border border-slate-300 bg-white px-6 py-3 text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50"
-            >
-              Retour accueil
-            </Link>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   if (waiting && timedOut) {
     if (!warnedTimeoutRef.current) {
       warnedTimeoutRef.current = true;
@@ -197,12 +164,6 @@ export default function HostDataGate({ children }: { children: React.ReactNode }
             >
               Réessayer
             </button>
-            <Link
-              href="/"
-              className="inline-flex w-full items-center justify-center rounded-2xl border border-slate-300 bg-white px-6 py-3 text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50"
-            >
-              Retour accueil
-            </Link>
           </div>
         </div>
       </div>

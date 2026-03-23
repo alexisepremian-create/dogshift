@@ -4,6 +4,7 @@ import HostHydrationGate from "@/components/HostHydrationGate";
 import { HostUserProvider } from "@/components/HostUserProvider";
 import PageLoader from "@/components/ui/PageLoader";
 import { getHostUserData } from "@/lib/hostUser";
+import { isActivatedStatus } from "@/lib/sitterContract";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@clerk/nextjs/server";
@@ -43,6 +44,10 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   if (!hostUser.sitterId) {
     redirect("/devenir-dogsitter");
+  }
+
+  if (!isActivatedStatus(hostUser.lifecycleStatus)) {
+    redirect("/");
   }
 
   return (

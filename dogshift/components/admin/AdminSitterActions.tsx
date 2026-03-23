@@ -5,7 +5,7 @@ import { useState } from "react";
 import { canGenerateContractAccessLink, lifecycleStatusLabel, type SitterLifecycleStatus } from "@/lib/sitterContract";
 
 type VerificationStatus = "not_verified" | "pending" | "approved" | "rejected";
-type ActionType = "select" | "generate_contract_link" | "approve" | "reject" | "suspend" | "reactivate" | "publish" | "unpublish" | "issue_activation_code";
+type ActionType = "select" | "generate_contract_link" | "approve" | "reject" | "suspend" | "reactivate" | "publish" | "unpublish";
 
 type Props = {
   sitterUserId: string;
@@ -13,7 +13,6 @@ type Props = {
   initialVerificationStatus: VerificationStatus;
   initialVerificationNotes: string | null;
   initialLifecycleStatus?: SitterLifecycleStatus;
-  initialActivationCodeIssuedAt?: string | null;
   initialContractAccessTokenIssuedAt?: string | null;
   initialContractAccessTokenExpiresAt?: string | null;
   compact?: boolean;
@@ -54,7 +53,6 @@ function actionAllowed(action: ActionType, published: boolean, verificationStatu
   if (action === "reactivate") return !published && verificationStatus === "approved" && lifecycleStatus === "activated";
   if (action === "publish") return !published && verificationStatus === "approved" && lifecycleStatus === "activated";
   if (action === "unpublish") return published;
-  if (action === "issue_activation_code") return lifecycleStatus === "contract_signed";
   return true;
 }
 
@@ -71,9 +69,6 @@ function actionHelp(action: ActionType, published: boolean, verificationStatus: 
   }
   if (action === "select" && lifecycleStatus !== "application_received") {
     return "La sélection est déjà effectuée ou dépassée.";
-  }
-  if (action === "issue_activation_code" && lifecycleStatus !== "contract_signed") {
-    return "Le code d’activation ne peut être émis qu’après signature du contrat.";
   }
   if (action === "suspend" && !published) {
     return "Profil déjà non publié.";
@@ -96,7 +91,6 @@ export default function AdminSitterActions({
   initialVerificationStatus,
   initialVerificationNotes,
   initialLifecycleStatus = "application_received",
-  initialActivationCodeIssuedAt = null,
   initialContractAccessTokenIssuedAt = null,
   initialContractAccessTokenExpiresAt = null,
   compact = false,
@@ -105,8 +99,6 @@ export default function AdminSitterActions({
   const [verificationStatus, setVerificationStatus] = useState<VerificationStatus>(initialVerificationStatus);
   const [lifecycleStatus, setLifecycleStatus] = useState<SitterLifecycleStatus>(initialLifecycleStatus);
   const [notes, setNotes] = useState(initialVerificationNotes ?? "");
-  const [activationCodeDraft, setActivationCodeDraft] = useState("");
-  const [activationCodeIssuedAt, setActivationCodeIssuedAt] = useState<string | null>(initialActivationCodeIssuedAt);
   const [contractAccessTokenIssuedAt, setContractAccessTokenIssuedAt] = useState<string | null>(initialContractAccessTokenIssuedAt);
   const [contractAccessTokenExpiresAt, setContractAccessTokenExpiresAt] = useState<string | null>(initialContractAccessTokenExpiresAt);
   const [latestContractAccessLink, setLatestContractAccessLink] = useState<string | null>(null);
@@ -127,15 +119,11 @@ export default function AdminSitterActions({
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ action, notes, activationCode: activationCodeDraft }),
+        body: JSON.stringify({ action, notes }),
       });
       const payload = (await res.json().catch(() => null)) as any;
       if (!res.ok || !payload?.ok || !payload?.profile) {
-        if (payload?.error === "ACTIVATION_CODE_REQUIRED") {
-          setError("Merci d’entrer un code d’activation avant l’émission.");
-        } else {
-          setError("Impossible d’exécuter l’action admin.");
-        }
+        setError("Impossible d’exécuter l’action admin.");
         return;
       }
 
@@ -143,14 +131,10 @@ export default function AdminSitterActions({
       setVerificationStatus(payload.profile.verificationStatus as VerificationStatus);
       setNotes(typeof payload.profile.verificationNotes === "string" ? payload.profile.verificationNotes : "");
       setLifecycleStatus((payload.profile.lifecycleStatus as SitterLifecycleStatus) ?? lifecycleStatus);
-      setActivationCodeIssuedAt(typeof payload.profile.activationCodeIssuedAt === "string" ? payload.profile.activationCodeIssuedAt : null);
       setContractAccessTokenIssuedAt(typeof payload.profile.contractAccessTokenIssuedAt === "string" ? payload.profile.contractAccessTokenIssuedAt : null);
       setContractAccessTokenExpiresAt(typeof payload.profile.contractAccessTokenExpiresAt === "string" ? payload.profile.contractAccessTokenExpiresAt : null);
       setLatestContractAccessLink(typeof payload.contractAccessLink === "string" ? payload.contractAccessLink : null);
       setLatestContractAccessFingerprint(typeof payload.contractAccessTokenFingerprint === "string" ? payload.contractAccessTokenFingerprint : null);
-      if (action === "issue_activation_code") {
-        setActivationCodeDraft("");
-      }
       setSuccess("Action enregistrée.");
     } catch {
       setError("Impossible d’exécuter l’action admin.");
@@ -180,7 +164,7 @@ export default function AdminSitterActions({
               ? "Profil approuvé et publié: vous pouvez le suspendre ou le dépublier si nécessaire."
               : lifecycleStatus === "activated"
                 ? "Profil approuvé et activé: publication ou réactivation disponibles."
-                : "Profil approuvé mais non activé: finalisez d’abord le contrat et le code d’activation."
+                : "Profil approuvé mais non activé: la candidate doit signer son contrat via le lien sécurisé avant tout accès dashboard."
             : verificationStatus === "pending"
               ? "Profil en attente de revue: validation ou refus disponibles."
               : verificationStatus === "rejected"
@@ -218,32 +202,6 @@ export default function AdminSitterActions({
               <p className="mt-2 break-all text-xs text-slate-600">{latestContractAccessLink}</p>
             </div>
           ) : null}
-        </div>
-      ) : null}
-
-      {!compact ? (
-        <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-          <label className="block text-xs font-semibold text-slate-700" htmlFor={`sitter_admin_activation_code_${sitterUserId}`}>
-            Code d’activation à émettre
-          </label>
-          <div className="mt-2 flex gap-2">
-            <input
-              id={`sitter_admin_activation_code_${sitterUserId}`}
-              value={activationCodeDraft}
-              onChange={(e) => setActivationCodeDraft(e.target.value)}
-              className="h-11 flex-1 rounded-2xl border border-slate-300 bg-white px-4 text-sm text-slate-900 shadow-sm outline-none transition focus:border-[var(--dogshift-blue)] focus:ring-2 focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_80%)]"
-              placeholder="Ex. DS-2026-4581"
-            />
-            <button
-              type="button"
-              disabled={!actionAllowed("issue_activation_code", published, verificationStatus, lifecycleStatus) || loadingAction !== null}
-              onClick={() => void runAction("issue_activation_code")}
-              className="inline-flex items-center justify-center rounded-2xl bg-slate-900 px-4 text-sm font-semibold text-white shadow-sm transition disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {loadingAction === "issue_activation_code" ? "En cours…" : "Émettre"}
-            </button>
-          </div>
-          {activationCodeIssuedAt ? <p className="mt-2 text-xs text-slate-500">Dernier code émis le {activationCodeIssuedAt}.</p> : null}
         </div>
       ) : null}
 

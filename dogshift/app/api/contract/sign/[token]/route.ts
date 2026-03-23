@@ -162,7 +162,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ token:
     await (prisma as any).sitterProfile.update({
       where: { id: access.profile.id },
       data: {
-        lifecycleStatus: "contract_signed",
+        lifecycleStatus: "activated",
         published: false,
         publishedAt: null,
         contractVersion: CURRENT_SITTER_CONTRACT_VERSION,
@@ -172,6 +172,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ token:
         contractSignatureValue: signatureName,
         contractSnapshot: snapshot,
         contractAccessTokenUsedAt: signedAt,
+        activatedAt: signedAt,
       },
       select: { id: true },
     });
@@ -179,9 +180,10 @@ export async function POST(req: NextRequest, context: { params: Promise<{ token:
     return NextResponse.json(
       {
         ok: true,
-        lifecycleStatus: "contract_signed",
+        lifecycleStatus: "activated",
         contractSignedAt: signedAt.toISOString(),
-        message: "Votre contrat a bien été signé. Vous recevrez votre code d’activation par courrier.",
+        activatedAt: signedAt.toISOString(),
+        message: "Votre contrat a bien été signé. Votre accès DogShift est maintenant activé.",
       },
       { status: 200 }
     );

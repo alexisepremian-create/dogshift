@@ -262,11 +262,6 @@ export default async function AdminSittersPage({
                           initialVerificationStatus={sitter.sitterProfile.verificationStatus}
                           initialVerificationNotes={sitter.sitterProfile.verificationNotes}
                           initialLifecycleStatus={sitter.sitterProfile.lifecycleStatus ?? "application_received"}
-                          initialActivationCodeIssuedAt={
-                            sitter.sitterProfile.activationCodeIssuedAt instanceof Date
-                              ? sitter.sitterProfile.activationCodeIssuedAt.toISOString()
-                              : null
-                          }
                           initialContractAccessTokenIssuedAt={
                             sitter.sitterProfile.contractAccessTokenIssuedAt instanceof Date
                               ? sitter.sitterProfile.contractAccessTokenIssuedAt.toISOString()
