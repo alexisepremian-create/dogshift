@@ -12,12 +12,18 @@ export type SitterLifecycleStatus =
 export const SITTER_CONTRACT_TITLE = "Contrat d’engagement Dogsitter DogShift";
 
 export const SITTER_CONTRACT_CONTENT = [
-  "1. Le dogsitter confirme intervenir via DogShift dans un cadre professionnel, sérieux et conforme aux engagements de la plateforme.",
-  "2. Le dogsitter s’engage à fournir des informations exactes, à maintenir son profil à jour et à exécuter les prestations avec diligence.",
-  "3. Le dogsitter respecte les consignes transmises par les owners, la sécurité des animaux et les règles applicables en Suisse.",
-  "4. Le dogsitter accepte que DogShift puisse suspendre ou retirer l’accès au service en cas de non-respect des engagements, de comportement inadéquat ou de manquement opérationnel.",
-  "5. Tant que le compte n’est pas activé par DogShift au moyen d’un code d’activation valide, aucune activation définitive n’est acquise.",
-  "6. La signature électronique par nom saisi et confirmation expresse vaut engagement contractuel, horodaté et conservé par DogShift.",
+  "Ce document constitue un engagement contractuel entre le dogsitter et DogShift. Il doit être signé avant toute activation de compte. En signant, le dogsitter reconnaît avoir compris et accepté l’ensemble des conditions ci-dessous.",
+  "1. Statut et rôle\nLe dogsitter agit en tant qu’indépendant. DogShift agit uniquement comme plateforme de mise en relation et ne fournit aucune prestation de garde. Le dogsitter est seul responsable des services rendus.",
+  "2. Responsabilité\nLe dogsitter assume l’entière responsabilité des dommages matériels, corporels ou immatériels causés durant les prestations. DogShift ne peut être tenu responsable des actes du dogsitter ou du propriétaire.",
+  "3. Assurance responsabilité civile\nLe dogsitter s’engage à disposer d’une assurance responsabilité civile couvrant explicitement la garde d’animaux, y compris dans un cadre rémunéré. Une preuve peut être demandée à tout moment.",
+  "4. Casier judiciaire\nLe dogsitter certifie disposer d’un casier judiciaire vierge et s’engage à informer immédiatement DogShift de tout changement. DogShift se réserve le droit de demander un extrait officiel.",
+  "5. Expérience et compétences\nLe dogsitter déclare avoir l’expérience nécessaire pour gérer des chiens de différentes tailles et comportements, et s’engage à assurer leur sécurité en toute circonstance.",
+  "6. Fiabilité et comportement\nLe dogsitter s’engage à être ponctuel, fiable, respectueux, et à maintenir un comportement professionnel avec les propriétaires.",
+  "7. Communication et incidents\nLe dogsitter doit informer immédiatement le propriétaire en cas de problème et tenir DogShift informé en cas d’incident grave.",
+  "8. Contribution à la plateforme\nLe dogsitter s’engage à signaler tout bug, erreur ou dysfonctionnement rencontré afin d’améliorer la plateforme.",
+  "9. Engagement de fidélité (phase pilote)\nDans le cadre de la phase pilote (0% de commission), le dogsitter s’engage à ne pas contourner la plateforme pour les mises en relation initiées via DogShift.",
+  "10. Positionnement DogShift\nLe dogsitter comprend que DogShift est une plateforme premium et s’engage à maintenir un niveau de qualité élevé.",
+  "11. Résiliation\nDogShift se réserve le droit de suspendre ou supprimer un compte en cas de non-respect des présentes conditions.",
 ].join("\n\n");
 
 export function normalizeSitterLifecycleStatus(raw: unknown, published?: boolean | null): SitterLifecycleStatus {
