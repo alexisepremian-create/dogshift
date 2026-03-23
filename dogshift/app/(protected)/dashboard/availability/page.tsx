@@ -1638,24 +1638,21 @@ export default function AvailabilityStudioPage() {
                     <li>Promenade et garde : CHF / heure. Pension : CHF / jour.</li>
                     <li>Les clients peuvent ensuite t’envoyer des demandes de réservation sur tes créneaux disponibles.</li>
                     <li>Les horaires pour les promenades et le dogsitting sont proposés toutes les 30 minutes.</li>
-                    <li>15 minutes sont automatiquement bloquées avant et après chaque réservation pour te laisser le temps de t’organiser.</li>
+                    <li>30 minutes sont automatiquement bloquées avant et après chaque réservation pour te laisser le temps de t’organiser.</li>
                     <li>Les réservations doivent être faites au moins 24h à l’avance.</li>
                   </ul>
-                </div>
-
-                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                  <p className="text-sm font-semibold text-slate-900">Phase pilote</p>
-                  <div className="mt-2 grid gap-1 text-sm text-slate-700">
-                    <p>Les tarifs se règlent ici avant d’activer un service.</p>
-                    <p>Promenade : 15–25 CHF / heure</p>
-                    <p>Garde : 18–30 CHF / heure</p>
-                    <p>Pension : 35–60 CHF / jour</p>
-                  </div>
                 </div>
 
                 <div>
                   <p className="text-sm font-semibold text-slate-900">Pension</p>
                   <p className="mt-2">Pour la pension, les horaires d’arrivée et de départ dépendent des disponibilités que tu as définies.</p>
+                </div>
+
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                  <p className="text-sm font-semibold text-slate-900">Phase pilote</p>
+                  <div className="mt-2 grid gap-1 text-sm text-slate-700">
+                    <p>Les tarifs sont encadrés durant la phase pilote.</p>
+                  </div>
                 </div>
               </div>
             </div>
