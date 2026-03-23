@@ -147,6 +147,7 @@ export type NotificationPayload =
   | { kind: "bookingReminder"; bookingId: string; startsAtIso: string }
   | { kind: "bookingCancelled"; bookingId: string; dashboard: "account" | "host" }
   | { kind: "bookingRefunded"; bookingId: string; dashboard: "account" | "host" }
+  | { kind: "bookingAutoExpiredRefunded"; bookingId: string; deadlineHours: number }
   | { kind: "bookingRefundFailed"; bookingId: string; dashboard: "account" | "host" };
 
 async function resolveConversationLabel(conversationId: string) {
@@ -197,6 +198,8 @@ export async function sendNotificationEmail(params: {
         return "Réservation annulée – DogShift";
       case "bookingRefunded":
         return payload.dashboard === "host" ? "Réservation annulée – DogShift" : "Remboursement effectué – DogShift";
+      case "bookingAutoExpiredRefunded":
+        return "Réservation expirée et remboursée – DogShift";
       case "bookingRefundFailed":
         return "Remboursement impossible – DogShift";
       default:
@@ -282,6 +285,16 @@ export async function sendNotificationEmail(params: {
         return (
           `Bonjour,\n\n` +
           `Un remboursement a été effectué pour une réservation.\n\n` +
+          (url ? `Voir la réservation : ${url}\n\n` : "") +
+          `— DogShift\n`
+        );
+      }
+      case "bookingAutoExpiredRefunded": {
+        const url = bookingUrl(payload.bookingId, "account");
+        return (
+          `Bonjour,\n\n` +
+          `La réservation n’a pas été acceptée à temps par le dogsitter.\n` +
+          `Comme le début du service approche à moins de ${payload.deadlineHours}h, la réservation a été annulée automatiquement et le remboursement a été déclenché.\n\n` +
           (url ? `Voir la réservation : ${url}\n\n` : "") +
           `— DogShift\n`
         );
@@ -400,6 +413,18 @@ export async function sendNotificationEmail(params: {
           subtitle: payload.dashboard === "host"
             ? "Une réservation a été annulée. Le remboursement du propriétaire a été traité conformément aux conditions applicables."
             : "Le remboursement a été effectué.",
+          summaryRows: rows,
+          ctaLabel: url ? "Voir la réservation" : undefined,
+          ctaUrl: url || undefined,
+        }).html;
+      }
+      case "bookingAutoExpiredRefunded": {
+        const url = bookingUrl(payload.bookingId, "account");
+        const rows = await resolveBookingSummaryRows(payload.bookingId);
+        return renderEmailLayout({
+          logoUrl,
+          title: "Réservation expirée et remboursée",
+          subtitle: `Le dogsitter n’a pas accepté à temps. La réservation a été annulée automatiquement et le remboursement a été déclenché avant J-${payload.deadlineHours}h.`,
           summaryRows: rows,
           ctaLabel: url ? "Voir la réservation" : undefined,
           ctaUrl: url || undefined,

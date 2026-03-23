@@ -10,6 +10,10 @@ export async function setBookingStatus(
   nextStatus: BookingStatus,
   opts?: {
     req?: NextRequest;
+    notificationContext?: {
+      refundReason?: "auto_expired_unaccepted";
+      deadlineHours?: number;
+    };
   }
 ) {
   const id = (bookingId || "").trim();
@@ -148,8 +152,18 @@ export async function setBookingStatus(
           req: opts?.req,
           recipientUserId: ownerId,
           key: "bookingRefunded",
-          entityId: id,
-          payload: { kind: "bookingRefunded", bookingId: id, dashboard: "account" },
+          entityId:
+            opts?.notificationContext?.refundReason === "auto_expired_unaccepted"
+              ? `${id}:auto_expired_refunded`
+              : id,
+          payload:
+            opts?.notificationContext?.refundReason === "auto_expired_unaccepted"
+              ? {
+                  kind: "bookingAutoExpiredRefunded",
+                  bookingId: id,
+                  deadlineHours: opts?.notificationContext?.deadlineHours ?? 24,
+                }
+              : { kind: "bookingRefunded", bookingId: id, dashboard: "account" },
         });
       }
       if (sitterId) {
