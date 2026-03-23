@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 import AdminNotesPanel from "@/components/admin/AdminNotesPanel";
+import type { SitterLifecycleStatus } from "@/lib/sitterContract";
 
 type AppStatus = "PENDING" | "CONTACTED" | "ACCEPTED" | "REJECTED";
 
@@ -29,9 +30,25 @@ type ApplicationItem = {
   referrer: string | null;
   userAgent: string | null;
   ip: string | null;
+  linkedUserId: string | null;
+  sitterProfileId: string | null;
+  sitterLifecycleStatus: SitterLifecycleStatus | null;
+  contractAccessTokenIssuedAt: string | null;
+  contractAccessTokenExpiresAt: string | null;
+  contractSignedAt: string | null;
   createdAt: string;
   updatedAt: string;
 };
+
+function contractStatusLabel(item: ApplicationItem) {
+  if (item.contractSignedAt || item.sitterLifecycleStatus === "contract_signed" || item.sitterLifecycleStatus === "activated") {
+    return "contrat signé";
+  }
+  if (item.contractAccessTokenIssuedAt || item.sitterLifecycleStatus === "contract_to_sign") {
+    return "contrat envoyé";
+  }
+  return "contrat non envoyé";
+}
 
 function statusLabel(status: AppStatus) {
   if (status === "PENDING") return "En attente";
@@ -70,6 +87,8 @@ export default function AdminSitterApplicationsClient({ adminCode }: { adminCode
   const selected = useMemo(() => items.find((i) => i.id === selectedId) ?? null, [items, selectedId]);
 
   const [actionLoading, setActionLoading] = useState(false);
+  const [contractActionLoading, setContractActionLoading] = useState(false);
+  const [success, setSuccess] = useState<string | null>(null);
 
   function adminHeaders(base?: Record<string, string>) {
     return {
@@ -101,6 +120,31 @@ export default function AdminSitterApplicationsClient({ adminCode }: { adminCode
     }
   }
 
+  async function sendContract() {
+    if (!selected || selected.status !== "ACCEPTED" || contractActionLoading) return;
+    setContractActionLoading(true);
+    setError(null);
+    setSuccess(null);
+    try {
+      const res = await fetch("/api/admin/pilot-sitter-applications/contract", {
+        method: "POST",
+        headers: adminHeaders({ "Content-Type": "application/json" }),
+        body: JSON.stringify({ id: selected.id }),
+      });
+      const payload = (await res.json().catch(() => null)) as any;
+      if (!res.ok || !payload?.ok) {
+        setError("Impossible d’envoyer le contrat.");
+        return;
+      }
+      setSuccess("Contrat envoyé avec lien sécurisé.");
+      await load();
+    } catch {
+      setError("Impossible d’envoyer le contrat.");
+    } finally {
+      setContractActionLoading(false);
+    }
+  }
+
   useEffect(() => {
     void load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -111,6 +155,7 @@ export default function AdminSitterApplicationsClient({ adminCode }: { adminCode
     if (actionLoading) return;
     setActionLoading(true);
     setError(null);
+    setSuccess(null);
     try {
       const res = await fetch("/api/admin/pilot-sitter-applications/status", {
         method: "POST",
@@ -155,6 +200,7 @@ export default function AdminSitterApplicationsClient({ adminCode }: { adminCode
       </div>
 
       {error ? <p className="mt-4 text-sm font-medium text-rose-600">{error}</p> : null}
+      {success ? <p className="mt-4 text-sm font-medium text-emerald-700">{success}</p> : null}
 
       {loading ? (
         <p className="mt-4 text-sm text-slate-600">Chargement…</p>
@@ -205,6 +251,7 @@ export default function AdminSitterApplicationsClient({ adminCode }: { adminCode
                   <div className="flex flex-col items-end gap-2">
                     <span className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold ${statusTone(selected.status)}`}>{statusLabel(selected.status)}</span>
                     <p className="text-xs text-slate-500">Reçu: {formatFrCh(selected.createdAt)}</p>
+                    <p className="text-xs text-slate-500">{contractStatusLabel(selected)}</p>
                   </div>
                 </div>
 
@@ -260,6 +307,31 @@ export default function AdminSitterApplicationsClient({ adminCode }: { adminCode
                       >
                         Refusé
                       </button>
+                    </div>
+                  </div>
+
+                  <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <p className="text-xs font-semibold text-slate-700">Contrat</p>
+                        <p className="mt-2 text-sm text-slate-600">Flow MVP : lien unique, email, page de signature publique, statut admin.</p>
+                      </div>
+                      <button
+                        type="button"
+                        disabled={selected.status !== "ACCEPTED" || contractActionLoading}
+                        onClick={() => void sendContract()}
+                        className="inline-flex items-center justify-center rounded-2xl bg-violet-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {contractActionLoading ? "En cours…" : selected.contractAccessTokenIssuedAt ? "Renvoyer le contrat" : "Envoyer le contrat"}
+                      </button>
+                    </div>
+                    <div className="mt-3 grid gap-1 text-xs text-slate-500">
+                      <p>Statut contrat : {contractStatusLabel(selected)}.</p>
+                      {selected.sitterLifecycleStatus ? <p>Lifecycle sitter : {selected.sitterLifecycleStatus}.</p> : null}
+                      {selected.contractAccessTokenIssuedAt ? <p>Lien envoyé le : {formatFrCh(selected.contractAccessTokenIssuedAt)}.</p> : null}
+                      {selected.contractAccessTokenExpiresAt ? <p>Expiration prévue le : {formatFrCh(selected.contractAccessTokenExpiresAt)}.</p> : null}
+                      {selected.contractSignedAt ? <p>Contrat signé le : {formatFrCh(selected.contractSignedAt)}.</p> : null}
+                      {selected.status !== "ACCEPTED" ? <p>Le contrat n’est disponible qu’après acceptation de la candidature.</p> : null}
                     </div>
                   </div>
 
