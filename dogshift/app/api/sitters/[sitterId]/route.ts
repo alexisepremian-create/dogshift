@@ -4,6 +4,7 @@ import type { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { resolveDbUserId } from "@/lib/auth/resolveDbUserId";
 import { getSitterReviewSnapshot, type SitterReviewItem } from "@/lib/sitterReviews";
+import { isActivatedStatus, normalizeSitterLifecycleStatus, type SitterLifecycleStatus } from "@/lib/sitterContract";
 
 export const runtime = "nodejs";
 
@@ -18,6 +19,8 @@ type SitterDetail = {
   pricing: unknown;
   dogSizes: unknown;
   verified: boolean;
+  lifecycleStatus: SitterLifecycleStatus;
+  trustBadgeEligible: boolean;
   lat: number | null;
   lng: number | null;
   countReviews: number;
@@ -94,6 +97,7 @@ export async function GET(
         bio: true,
         avatarUrl: true,
         verificationStatus: true,
+        lifecycleStatus: true,
         lat: true,
         lng: true,
         services: true,
@@ -142,6 +146,8 @@ export async function GET(
     const enabledServices = enabledServicesFromConfig.length
       ? enabledServicesFromConfig
       : Object.keys(pricing).filter((svc) => svc === "Promenade" || svc === "Garde" || svc === "Pension");
+    const lifecycleStatus = normalizeSitterLifecycleStatus(sitterProfile.lifecycleStatus, Boolean(sitterProfile.published));
+    const verified = typeof (sitterProfile as any)?.verificationStatus === "string" ? (sitterProfile as any).verificationStatus === "approved" : false;
 
     const sitter: SitterDetail = {
       sitterId: String(sitterProfile.sitterId ?? ""),
@@ -153,7 +159,9 @@ export async function GET(
       services: enabledServices,
       pricing,
       dogSizes: sitterProfile.dogSizes ?? null,
-      verified: typeof (sitterProfile as any)?.verificationStatus === "string" ? (sitterProfile as any).verificationStatus === "approved" : false,
+      verified,
+      lifecycleStatus,
+      trustBadgeEligible: verified && isActivatedStatus(lifecycleStatus),
       lat: typeof sitterProfile.lat === "number" && Number.isFinite(sitterProfile.lat) ? sitterProfile.lat : null,
       lng: typeof sitterProfile.lng === "number" && Number.isFinite(sitterProfile.lng) ? sitterProfile.lng : null,
       countReviews: 0,

@@ -42,6 +42,7 @@ type SitterCard = {
   bio: string;
   responseTime: string;
   verified: boolean;
+  trustBadgeEligible: boolean;
   lat: number;
   lng: number;
   avatarUrl: string;
@@ -430,6 +431,7 @@ function SitterPublicProfileContent({
       bio: profile.bio ?? "",
       responseTime: "~1h",
       verified: profile.verificationStatus === "verified",
+      trustBadgeEligible: false,
       lat: 0,
       lng: 0,
       avatarUrl:
@@ -467,6 +469,7 @@ function SitterPublicProfileContent({
                 pricing: unknown;
                 dogSizes: unknown;
                 verified?: boolean;
+                trustBadgeEligible?: boolean;
                 lat: number | null;
                 lng: number | null;
               };
@@ -508,6 +511,7 @@ function SitterPublicProfileContent({
           bio: payload.sitter.bio ?? "",
           responseTime: "~1h",
           verified: typeof payload.sitter.verified === "boolean" ? payload.sitter.verified : false,
+          trustBadgeEligible: payload.sitter.trustBadgeEligible === true,
           lat: typeof payload.sitter.lat === "number" && Number.isFinite(payload.sitter.lat) ? payload.sitter.lat : 0,
           lng: typeof payload.sitter.lng === "number" && Number.isFinite(payload.sitter.lng) ? payload.sitter.lng : 0,
           avatarUrl: payload.sitter.avatarUrl ?? "https://i.pravatar.cc/160?img=7",
@@ -639,6 +643,7 @@ function SitterPublicProfileContent({
               ...previewSitter,
               rating: apiSitter.rating,
               reviewCount: apiSitter.reviewCount,
+              trustBadgeEligible: apiSitter.trustBadgeEligible,
               reviews: apiSitter.reviews,
             }
           : previewSitter;
@@ -2178,6 +2183,7 @@ function SitterPublicProfileContent({
   const ratingLabel = formatRatingMaybe(sitter.rating);
   const reviewCountLabel = sitter.reviewCount ?? 0;
   const visibleReviews = Array.isArray(sitter.reviews) ? sitter.reviews : [];
+  const primaryServiceLabel = sitter.services[0] ?? "Dogsitter";
 
   const content = (
     <div className="relative grid gap-6 overflow-hidden" data-testid="sitter-public-profile">
@@ -2257,7 +2263,10 @@ function SitterPublicProfileContent({
                       <div>
                         <h1 className="text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">{sitter.name}</h1>
                         <p className="mt-1 text-sm text-slate-600">{sitter.city}</p>
-                        <div className="mt-3 flex flex-wrap items-center gap-2">
+                        <div className="mt-6 flex flex-wrap items-center gap-2">
+                          <span className="inline-flex items-center rounded-full bg-slate-900 px-3 py-1 text-xs font-semibold text-white">
+                            {primaryServiceLabel}
+                          </span>
                           <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
                             <StarIcon className="h-4 w-4 text-[#F5B301]" />
                             {ratingLabel}
@@ -2265,15 +2274,35 @@ function SitterPublicProfileContent({
                           <span className="inline-flex items-center rounded-full bg-white px-3 py-1 text-xs font-medium text-slate-600 ring-1 ring-slate-200">
                             {reviewCountLabel} avis
                           </span>
-                          <span className="inline-flex items-center rounded-full bg-white px-3 py-1 text-xs font-medium text-slate-600 ring-1 ring-slate-200">
-                            Répond en {sitter.responseTime}
-                          </span>
                           {sitter.verified ? (
                             <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-800 shadow-sm">
                               Vérifié manuellement
                             </span>
                           ) : null}
                         </div>
+
+                        {sitter.trustBadgeEligible ? (
+                          <Tooltip label="Ce dogsitter a été sélectionné et validé manuellement par DogShift selon des critères de qualité stricts.">
+                            {({ triggerProps }) => (
+                              <div
+                                {...triggerProps}
+                                className="mt-4 inline-flex max-w-xl items-start gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-left shadow-sm"
+                              >
+                                <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-white">
+                                  <svg viewBox="0 0 20 20" aria-hidden="true" className="h-5 w-5" fill="none">
+                                    <path d="M5 10.5l3.1 3.1L15 6.8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                  </svg>
+                                </span>
+                                <div>
+                                  <p className="text-sm font-semibold text-emerald-950">Dogsitter sélectionné et validé par DogShift</p>
+                                  <p className="mt-1 text-xs font-medium leading-relaxed text-emerald-900/80">
+                                    Membre vérifié – phase pilote.
+                                  </p>
+                                </div>
+                              </div>
+                            )}
+                          </Tooltip>
+                        ) : null}
                       </div>
                     </div>
 
