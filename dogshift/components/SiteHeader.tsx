@@ -8,6 +8,11 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import BrandLogo from "@/components/BrandLogo";
 import NotificationBell from "@/components/NotificationBell";
 
+type AccountContextPayload = {
+  ok?: boolean;
+  monEspaceHref?: string;
+};
+
 export default function SiteHeader() {
   const [scrolled, setScrolled] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
@@ -15,6 +20,7 @@ export default function SiteHeader() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [mobileNavMounted, setMobileNavMounted] = useState(false);
   const [mobileBottomHidden, setMobileBottomHidden] = useState(false);
+  const [accountHref, setAccountHref] = useState("/account");
   const { isLoaded, isSignedIn } = useUser();
   const clerk = useClerk();
   const router = useRouter();
@@ -24,8 +30,6 @@ export default function SiteHeader() {
   const isHostArea = Boolean(pathname && pathname.startsWith("/host"));
   const isAccountArea = Boolean(pathname && pathname.startsWith("/account"));
   const isHostPreview = Boolean(pathname && pathname.startsWith("/sitter/") && (searchParams?.get("mode") ?? "") === "preview" && isLoaded && isSignedIn);
-
-  const accountHref = "/account";
 
   const signOutRedirectUrl = "/login?force=1";
 
@@ -132,6 +136,32 @@ export default function SiteHeader() {
     if (!isLoaded || isSignedIn) return;
     setUserMenuOpen(false);
     setMobileNavOpen(false);
+  }, [isLoaded, isSignedIn]);
+
+  useEffect(() => {
+    if (!isLoaded) return;
+    if (!isSignedIn) {
+      setAccountHref("/account");
+      return;
+    }
+
+    let cancelled = false;
+
+    void (async () => {
+      try {
+        const res = await fetch("/api/account/context", { method: "GET", cache: "no-store" });
+        const payload = (await res.json().catch(() => null)) as AccountContextPayload | null;
+        if (cancelled) return;
+        setAccountHref(typeof payload?.monEspaceHref === "string" ? payload.monEspaceHref : "/account");
+      } catch {
+        if (cancelled) return;
+        setAccountHref("/account");
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [isLoaded, isSignedIn]);
 
   if (isHostArea || isAccountArea || isHostPreview) return null;

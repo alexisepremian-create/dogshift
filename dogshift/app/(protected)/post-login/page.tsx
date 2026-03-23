@@ -3,6 +3,7 @@ import { auth } from "@clerk/nextjs/server";
 
 import { ensureDbUserFromClerkAuth } from "@/lib/auth/resolveDbUserId";
 import { prisma } from "@/lib/prisma";
+import { isActivatedStatus, normalizeSitterLifecycleStatus, type SitterLifecycleStatus } from "@/lib/sitterContract";
 import PageLoader from "@/components/ui/PageLoader";
 
 export default async function PostLoginPage({
@@ -17,6 +18,7 @@ export default async function PostLoginPage({
 
   let dbUserId: string;
   let hasSitterProfile: boolean;
+  let sitterLifecycleStatus: SitterLifecycleStatus | null;
   let decidedRedirect: "/host" | "/account";
 
   try {
@@ -30,19 +32,20 @@ export default async function PostLoginPage({
     }
 
     dbUserId = dbUser.id;
-    const sitterProfile = await prisma.sitterProfile.findUnique({ where: { userId: dbUserId }, select: { id: true } });
+    const sitterProfile = await prisma.sitterProfile.findUnique({ where: { userId: dbUserId }, select: { id: true, lifecycleStatus: true, published: true } });
     hasSitterProfile = Boolean(sitterProfile?.id);
-    decidedRedirect = hasSitterProfile ? "/host" : "/account";
+    sitterLifecycleStatus = sitterProfile ? normalizeSitterLifecycleStatus(sitterProfile.lifecycleStatus, sitterProfile.published) : null;
+    decidedRedirect = sitterLifecycleStatus && isActivatedStatus(sitterLifecycleStatus) ? "/host" : "/account";
   } catch (e) {
     console.log("[post-login] db check failed", { userId });
     return <PageLoader label="Chargement…" />;
   }
 
-  console.log("[post-login]", { userId, dbUserId, hasSitterProfile, decidedRedirect });
+  console.log("[post-login]", { userId, dbUserId, hasSitterProfile, sitterLifecycleStatus, decidedRedirect });
 
   const nextRaw = searchParams?.next;
   const next = typeof nextRaw === "string" ? nextRaw.trim() : "";
-  if (hasSitterProfile && next) {
+  if (decidedRedirect === "/host" && next) {
     redirect(next);
   }
   redirect(decidedRedirect);

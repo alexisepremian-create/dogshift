@@ -18,7 +18,6 @@ import {
 import SunCornerGlow from "@/components/SunCornerGlow";
 import HowItWorksSchema, { OWNER_HOW_IT_WORKS_CONTENT } from "@/components/HowItWorksSchema";
 import { prisma } from "@/lib/prisma";
-import { isActivatedStatus } from "@/lib/sitterContract";
 import { getUserContexts } from "@/lib/userContexts";
 
 export const dynamic = "force-dynamic";
@@ -57,12 +56,6 @@ export default async function AccountDashboardPage({
     contexts = await getUserContexts();
   } catch {
     redirect("/login");
-  }
-
-  if (contexts.hasSitterProfile) {
-    if (contexts.sitterLifecycleStatus && isActivatedStatus(contexts.sitterLifecycleStatus)) {
-      redirect("/host");
-    }
   }
 
   const uid = contexts.dbUserId;
