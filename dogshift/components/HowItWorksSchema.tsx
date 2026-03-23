@@ -17,7 +17,7 @@ type HowItWorksSchemaProps = {
 };
 
 const CARD_BASE =
-  "group relative overflow-hidden rounded-3xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-[0_18px_60px_-46px_rgba(2,6,23,0.22)] sm:p-6";
+  "group relative z-10 overflow-hidden rounded-3xl border border-slate-200 bg-white/95 p-5 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.18)] backdrop-blur-[2px] transition hover:-translate-y-0.5 hover:shadow-[0_18px_60px_-46px_rgba(2,6,23,0.22)] sm:p-6";
 
 export const OWNER_HOW_IT_WORKS_CONTENT = {
   title: "Comment fonctionnent les réservations",
@@ -81,8 +81,10 @@ export const SITTER_HOW_IT_WORKS_CONTENT = {
 
 export default function HowItWorksSchema({ title, intro, steps, note, moreHref, moreLabel = "En savoir plus" }: HowItWorksSchemaProps) {
   return (
-    <section className="rounded-[2rem] border border-slate-200 bg-[linear-gradient(180deg,#ffffff_0%,#f8fafc_100%)] p-6 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)] sm:p-8">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+    <section className="relative isolate overflow-hidden rounded-[2rem] border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)] sm:p-8">
+      <div className="absolute inset-0 z-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.98)_0%,rgba(248,250,252,0.96)_100%)]" aria-hidden="true" />
+
+      <div className="relative z-10 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div className="max-w-2xl">
           <p className="text-sm font-semibold text-[var(--dogshift-blue)]">Comment ça fonctionne</p>
           <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">{title}</h2>
@@ -95,7 +97,7 @@ export default function HowItWorksSchema({ title, intro, steps, note, moreHref, 
         ) : null}
       </div>
 
-      <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="relative z-10 mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {steps.map((step, index) => {
           const Icon = step.icon;
           return (
@@ -115,7 +117,7 @@ export default function HowItWorksSchema({ title, intro, steps, note, moreHref, 
         })}
       </div>
 
-      <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4 text-sm text-amber-900 sm:px-5">
+      <div className="relative z-10 mt-6 rounded-2xl border border-amber-200 bg-amber-50/95 px-4 py-4 text-sm text-amber-900 shadow-sm backdrop-blur-[2px] sm:px-5">
         <p className="font-semibold">Bon à savoir</p>
         <p className="mt-1 leading-6">{note}</p>
       </div>
