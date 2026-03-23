@@ -17,6 +17,7 @@ type BookingListItem = {
   startDate: string | null;
   endDate: string | null;
   status: string;
+  hasReview: boolean;
   amount: number;
   currency: string;
   platformFeeAmount: number;
@@ -209,6 +210,14 @@ function matchesPendingSubfilter(status: string, sub: "payment" | "acceptance" |
   if (sub === "payment") return s === "PENDING_PAYMENT" || s === "DRAFT";
   if (sub === "acceptance") return s === "PENDING_ACCEPTANCE" || s === "PAID";
   return true;
+}
+
+function canLeaveReview(booking: BookingListItem) {
+  if (booking.hasReview) return false;
+  if (String(booking.status ?? "") !== "CONFIRMED") return false;
+  if (!booking.endDate) return false;
+  const endTs = new Date(booking.endDate).getTime();
+  return Number.isFinite(endTs) && Date.now() > endTs;
 }
 
 export default function AccountBookingsPage() {
@@ -681,6 +690,7 @@ export default function AccountBookingsPage() {
                     const isSelected = b.id === selectedId;
                     const blocking = pendingBlockingReason(b.status);
                     const location = sitterLocation(b.sitter);
+                    const reviewEligible = canLeaveReview(b);
 
                     const when = (() => {
                       if (!b.startDate) return "—";
@@ -744,6 +754,15 @@ export default function AccountBookingsPage() {
                                   {service} • {when}{location !== "—" ? ` • ${location}` : ""}
                                 </p>
                                 {blocking ? <p className="mt-2 truncate text-xs font-medium text-slate-500">{blocking}</p> : null}
+                                {b.hasReview ? (
+                                  <p className="mt-2 inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-800">
+                                    Avis laissé
+                                  </p>
+                                ) : reviewEligible ? (
+                                  <p className="mt-2 inline-flex items-center rounded-full border border-[color-mix(in_srgb,var(--dogshift-blue),white_65%)] bg-[color-mix(in_srgb,var(--dogshift-blue),white_92%)] px-2.5 py-1 text-[11px] font-semibold text-[color-mix(in_srgb,var(--dogshift-blue),black_20%)]">
+                                    Laisser un avis
+                                  </p>
+                                ) : null}
                               </div>
                             </div>
 
@@ -755,6 +774,26 @@ export default function AccountBookingsPage() {
                             </div>
                           </div>
                         </button>
+
+                        {b.hasReview || reviewEligible ? (
+                          <div className="border-t border-slate-200 px-4 pb-4 pt-3">
+                            {b.hasReview ? (
+                              <Link
+                                href={`/account/bookings/${encodeURIComponent(b.id)}/review`}
+                                className="inline-flex items-center justify-center rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-800 transition hover:bg-emerald-100"
+                              >
+                                Avis laissé
+                              </Link>
+                            ) : (
+                              <Link
+                                href={`/account/bookings/${encodeURIComponent(b.id)}/review`}
+                                className="inline-flex items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition hover:bg-[var(--dogshift-blue-hover)]"
+                              >
+                                Laisser un avis
+                              </Link>
+                            )}
+                          </div>
+                        ) : null}
                       </div>
                     );
                   })}

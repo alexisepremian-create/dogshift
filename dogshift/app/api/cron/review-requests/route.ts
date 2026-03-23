@@ -154,7 +154,7 @@ export async function GET(req: NextRequest) {
             : null) ??
           (typeof b.sitter?.name === "string" && b.sitter.name.trim() ? b.sitter.name.trim() : "ton sitter");
 
-        const reviewUrl = baseUrl ? `${baseUrl}/account/bookings/${encodeURIComponent(bookingId)}?review=1` : "";
+        const reviewUrl = baseUrl ? `${baseUrl}/account/bookings/${encodeURIComponent(bookingId)}/review` : "";
 
         const rows: EmailSummaryRow[] = [];
         const service = typeof b.service === "string" && b.service.trim() ? b.service.trim() : "";
@@ -167,12 +167,12 @@ export async function GET(req: NextRequest) {
         if (amount) rows.push({ label: "Montant", value: amount });
         rows.push({ label: "Référence", value: bookingId });
 
-        const subject = `Comment s’est passée la prestation avec ${sitterName} ?`;
+        const subject = `Comment s’est passée votre réservation avec ${sitterName} ?`;
 
         const rendered = renderEmailLayout({
           logoUrl,
           title: "Noter votre sitter",
-          subtitle: `Comment s’est passée la prestation avec ${sitterName} ?`,
+          subtitle: `Votre réservation avec ${sitterName} est maintenant terminée. Comment s’est-elle passée ?`,
           summaryTitle: "Résumé",
           summaryRows: rows,
           ctaLabel: reviewUrl ? "Laisser un avis" : undefined,
@@ -182,7 +182,8 @@ export async function GET(req: NextRequest) {
 
         const text =
           `Bonjour,\n\n` +
-          `Comment s’est passée la prestation avec ${sitterName} ?\n\n` +
+          `Votre réservation avec ${sitterName} est maintenant terminée.\n\n` +
+          `Comment s’est-elle passée ? Votre avis est très important pour la communauté DogShift.\n\n` +
           (reviewUrl ? `Laisser un avis : ${reviewUrl}\n\n` : "") +
           `Votre avis aide la communauté DogShift.\n\n` +
           `— DogShift\n`;

@@ -25,6 +25,7 @@ type AccountBookingListItem = {
   startDate: string | null;
   endDate: string | null;
   status: string;
+  hasReview: boolean;
   amount: number;
   currency: string;
   platformFeeAmount: number;
@@ -75,6 +76,7 @@ export async function GET(req: NextRequest) {
         startDate: true,
         endDate: true,
         status: true,
+        review: { select: { id: true } },
         amount: true,
         currency: true,
         platformFeeAmount: true,
@@ -144,6 +146,7 @@ export async function GET(req: NextRequest) {
         startDate: b.startDate instanceof Date ? b.startDate.toISOString() : b.startDate ? new Date(b.startDate).toISOString() : null,
         endDate: b.endDate instanceof Date ? b.endDate.toISOString() : b.endDate ? new Date(b.endDate).toISOString() : null,
         status: String(b.status ?? "PENDING_PAYMENT"),
+        hasReview: Boolean(b.review?.id),
         amount: typeof b.amount === "number" ? b.amount : 0,
         currency: typeof b.currency === "string" ? b.currency : "chf",
         platformFeeAmount: typeof b.platformFeeAmount === "number" ? b.platformFeeAmount : 0,
