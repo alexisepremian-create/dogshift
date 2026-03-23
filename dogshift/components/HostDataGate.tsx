@@ -30,6 +30,24 @@ export default function HostDataGate({ children }: { children: React.ReactNode }
   const latched = Boolean(userId && HOST_READY_LATCH_BY_USER_ID.get(userId));
 
   useEffect(() => {
+    console.info("[HostDataGate][diagnostic] state snapshot", {
+      userId,
+      isLoaded,
+      isSignedIn,
+      sitterId: host.sitterId,
+      lifecycleStatus: host.lifecycleStatus,
+      published: host.published,
+      profileCompletion: host.profileCompletion,
+      contractSignedAt: host.contractSignedAt,
+      activatedAt: host.activatedAt,
+      hostReady,
+      readyToRender,
+      timedOut,
+      latched,
+    });
+  }, [host.activatedAt, host.contractSignedAt, host.lifecycleStatus, host.profileCompletion, host.published, host.sitterId, hostReady, isLoaded, isSignedIn, latched, readyToRender, timedOut, userId]);
+
+  useEffect(() => {
     if (!userId) return;
     setReadyToRender(Boolean(HOST_READY_LATCH_BY_USER_ID.get(userId)));
     setTimedOut(false);
@@ -101,6 +119,15 @@ export default function HostDataGate({ children }: { children: React.ReactNode }
   }, [host, hostReady, isLoaded, isSignedIn, latched, userId, waiting]);
 
   if (isLoaded && isSignedIn && host.sitterId && !contractSigned) {
+    console.warn("[HostDataGate][diagnostic] contract gate blocking dashboard", {
+      userId,
+      sitterId: host.sitterId,
+      lifecycleStatus: host.lifecycleStatus,
+      contractSigned,
+      contractSignedAt: host.contractSignedAt,
+      activatedAt: host.activatedAt,
+      reason: "CONTRACT_NOT_SIGNED",
+    });
     return (
       <div className="fixed inset-0 z-50 flex w-full items-center justify-center bg-white font-sans">
         <div className="w-full max-w-lg rounded-3xl border border-slate-200 bg-white p-6 text-center shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)]">
@@ -132,6 +159,16 @@ export default function HostDataGate({ children }: { children: React.ReactNode }
         hostReady,
         hostUserDataKeys: Object.keys(host ?? {}),
         latched,
+      });
+      console.warn("[HostDataGate][diagnostic] timeout details", {
+        userId,
+        sitterId: host.sitterId,
+        lifecycleStatus: host.lifecycleStatus,
+        profileCompletion: host.profileCompletion,
+        contractSignedAt: host.contractSignedAt,
+        activatedAt: host.activatedAt,
+        hostReady,
+        readyToRender,
       });
     }
 

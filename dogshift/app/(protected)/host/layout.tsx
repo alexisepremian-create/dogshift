@@ -21,6 +21,9 @@ export default async function HostLayout({
   }
 
   const { userId } = await auth();
+  console.info("[host-layout][diagnostic] auth state", {
+    userId: userId ?? null,
+  });
   if (!userId) {
     redirect("/login");
   }
@@ -28,7 +31,20 @@ export default async function HostLayout({
   let hostUser: Awaited<ReturnType<typeof getHostUserData>>;
   try {
     hostUser = await getHostUserData();
-  } catch {
+    console.info("[host-layout][diagnostic] getHostUserData resolved", {
+      userId,
+      sitterId: hostUser.sitterId,
+      lifecycleStatus: hostUser.lifecycleStatus,
+      profileCompletion: hostUser.profileCompletion,
+      contractSignedAt: hostUser.contractSignedAt,
+      activatedAt: hostUser.activatedAt,
+    });
+  } catch (error) {
+    console.error("[host-layout][diagnostic] dashboard unavailable fallback", {
+      userId,
+      reason: "GET_HOST_USER_DATA_THROW",
+      error: error instanceof Error ? { name: error.name, message: error.message, stack: error.stack } : error,
+    });
     return (
       <div className="fixed inset-0 z-50 flex w-full items-center justify-center bg-white font-sans">
         <div className="w-full max-w-lg rounded-3xl border border-slate-200 bg-white p-6 text-center shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)]">
@@ -50,6 +66,11 @@ export default async function HostLayout({
   }
 
   if (!hostUser.sitterId) {
+    console.warn("[host-layout][diagnostic] redirecting because sitterId is missing", {
+      userId,
+      hostUser,
+      reason: "MISSING_SITTER_ID",
+    });
     redirect("/account");
   }
 

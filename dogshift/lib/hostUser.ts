@@ -50,6 +50,9 @@ export function makeHostUserValuePreview(args: {
 export async function getHostUserData(): Promise<HostUserData> {
   const { userId } = await auth();
   if (!userId) {
+    console.warn("[hostUser][diagnostic] auth returned no userId", {
+      reason: "NO_AUTH_USER",
+    });
     return {
       sitterId: null,
       published: false,
@@ -68,6 +71,12 @@ export async function getHostUserData(): Promise<HostUserData> {
   let user = (await (prisma as any).user.findUnique({ where: { clerkUserId: userId } })) as
     | ({ id: string; sitterId?: string | null; hostProfileJson?: string | null } & Record<string, unknown>)
     | null;
+
+  console.info("[hostUser][diagnostic] initial user lookup", {
+    clerkUserId: userId,
+    foundUser: Boolean(user?.id),
+    userSitterId: (user as any)?.sitterId ?? null,
+  });
 
   if (!user) {
     const ensured = await ensureDbUserFromClerkAuth();
@@ -88,6 +97,10 @@ export async function getHostUserData(): Promise<HostUserData> {
   }
 
   if (!user?.id) {
+    console.warn("[hostUser][diagnostic] unable to resolve db user", {
+      clerkUserId: userId,
+      reason: "DB_USER_NOT_RESOLVED",
+    });
     return {
       sitterId: null,
       published: false,
@@ -118,6 +131,16 @@ export async function getHostUserData(): Promise<HostUserData> {
       activatedAt: true,
       activationCodeIssuedAt: true,
     },
+  });
+
+  console.info("[hostUser][diagnostic] sitterProfile lookup", {
+    clerkUserId: userId,
+    dbUserId: user.id,
+    hasSitterProfile: Boolean(sitterProfile),
+    persistedLifecycleStatus: sitterProfile?.lifecycleStatus ?? null,
+    published: typeof sitterProfile?.published === "boolean" ? sitterProfile.published : null,
+    contractSignedAt: sitterProfile?.contractSignedAt instanceof Date ? sitterProfile.contractSignedAt.toISOString() : null,
+    activatedAt: sitterProfile?.activatedAt instanceof Date ? sitterProfile.activatedAt.toISOString() : null,
   });
 
   // Authorization rule: allow /host ONLY if a SitterProfile exists for this DB user.
@@ -200,17 +223,7 @@ export async function getHostUserData(): Promise<HostUserData> {
   const contractSignedAt = sitterProfile?.contractSignedAt instanceof Date ? sitterProfile.contractSignedAt.toISOString() : null;
   const activatedAt = sitterProfile?.activatedAt instanceof Date ? sitterProfile.activatedAt.toISOString() : null;
   const activationCodeIssuedAt = sitterProfile?.activationCodeIssuedAt instanceof Date ? sitterProfile.activationCodeIssuedAt.toISOString() : null;
-  console.info("[hostUser] loaded", {
-    clerkUserId: userId,
-    dbUserId: user.id,
-    sitterId,
-    termsAcceptedAt,
-    termsVersion,
-    profileCompletion: typeof sitterProfile?.profileCompletion === "number" ? sitterProfile.profileCompletion : 0,
-    lifecycleStatus,
-  });
-
-  return {
+  const hostUserData: HostUserData = {
     sitterId,
     published: Boolean(sitterProfile?.published),
     publishedAt: sitterProfile?.publishedAt instanceof Date ? sitterProfile.publishedAt.toISOString() : null,
@@ -223,4 +236,24 @@ export async function getHostUserData(): Promise<HostUserData> {
     activatedAt,
     activationCodeIssuedAt,
   };
+  console.info("[hostUser] loaded", {
+    clerkUserId: userId,
+    dbUserId: user.id,
+    sitterId,
+    termsAcceptedAt,
+    termsVersion,
+    profileCompletion: typeof sitterProfile?.profileCompletion === "number" ? sitterProfile.profileCompletion : 0,
+    lifecycleStatus,
+  });
+  console.info("[hostUser][diagnostic] return payload", {
+    clerkUserId: userId,
+    dbUserId: user.id,
+    sitterId: hostUserData.sitterId,
+    lifecycleStatus: hostUserData.lifecycleStatus,
+    profileCompletion: hostUserData.profileCompletion,
+    contractSignedAt: hostUserData.contractSignedAt,
+    activatedAt: hostUserData.activatedAt,
+  });
+
+  return hostUserData;
 }
