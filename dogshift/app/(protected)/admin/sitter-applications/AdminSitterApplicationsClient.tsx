@@ -82,9 +82,19 @@ export default function AdminSitterApplicationsClient({ adminCode }: { adminCode
   const [items, setItems] = useState<ApplicationItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
+
+  const filteredItems = useMemo(() => {
+    const needle = searchTerm.trim().toLowerCase();
+    if (!needle) return items;
+    return items.filter((item) => {
+      const haystack = `${item.firstName} ${item.lastName} ${item.city}`.toLowerCase();
+      return haystack.includes(needle);
+    });
+  }, [items, searchTerm]);
 
   const [selectedId, setSelectedId] = useState<string>("");
-  const selected = useMemo(() => items.find((i) => i.id === selectedId) ?? null, [items, selectedId]);
+  const selected = useMemo(() => filteredItems.find((i) => i.id === selectedId) ?? items.find((i) => i.id === selectedId) ?? filteredItems[0] ?? null, [filteredItems, items, selectedId]);
 
   const [actionLoading, setActionLoading] = useState(false);
   const [contractActionLoading, setContractActionLoading] = useState(false);
@@ -213,8 +223,27 @@ export default function AdminSitterApplicationsClient({ adminCode }: { adminCode
         <div className="mt-6 grid gap-6 lg:grid-cols-[320px_1fr]">
           <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
             <p className="text-xs font-semibold text-slate-600">Liste</p>
+            <div className="relative mt-3">
+              <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4 text-slate-400" aria-hidden="true">
+                <svg viewBox="0 0 20 20" fill="none" className="h-4 w-4" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M14.1667 14.1667L17.5 17.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                  <circle cx="8.75" cy="8.75" r="5.83333" stroke="currentColor" strokeWidth="1.8" />
+                </svg>
+              </span>
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Rechercher par nom ou ville…"
+                className="h-11 w-full rounded-2xl border border-slate-300 bg-white pl-11 pr-4 text-sm text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-[var(--dogshift-blue)] focus:ring-2 focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_80%)]"
+              />
+            </div>
             <div className="mt-3 grid gap-2">
-              {items.map((a) => (
+              {filteredItems.length === 0 ? (
+                <div className="rounded-2xl border border-slate-200 bg-white px-4 py-5 text-sm font-medium text-slate-600">
+                  Aucun candidat trouvé
+                </div>
+              ) : filteredItems.map((a) => (
                 <button
                   key={a.id}
                   type="button"
