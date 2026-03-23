@@ -100,6 +100,27 @@ export default function HostDataGate({ children }: { children: React.ReactNode }
     });
   }, [host, hostReady, isLoaded, isSignedIn, latched, userId, waiting]);
 
+  if (isLoaded && isSignedIn && host.sitterId && !contractSigned) {
+    return (
+      <div className="fixed inset-0 z-50 flex w-full items-center justify-center bg-white font-sans">
+        <div className="w-full max-w-lg rounded-3xl border border-slate-200 bg-white p-6 text-center shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)]">
+          <p className="text-base font-semibold text-slate-900">Signature du contrat requise</p>
+          <p className="mt-2 text-sm text-slate-600">
+            Votre accès complet au dashboard sera débloqué une fois votre contrat signé via le lien sécurisé envoyé par DogShift par email.
+          </p>
+          <div className="mt-5 flex justify-center">
+            <Link
+              href="/"
+              className="inline-flex items-center justify-center rounded-2xl border border-slate-300 bg-white px-6 py-3 text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50"
+            >
+              Retour accueil
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (waiting && timedOut) {
     if (!warnedTimeoutRef.current) {
       warnedTimeoutRef.current = true;
@@ -153,27 +174,6 @@ export default function HostDataGate({ children }: { children: React.ReactNode }
 
   if (waiting) {
     return <PageLoader label="Chargement…" />;
-  }
-
-  if (host.sitterId && !contractSigned) {
-    return (
-      <div className="fixed inset-0 z-50 flex w-full items-center justify-center bg-white font-sans">
-        <div className="w-full max-w-lg rounded-3xl border border-slate-200 bg-white p-6 text-center shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)]">
-          <p className="text-base font-semibold text-slate-900">Signature du contrat requise</p>
-          <p className="mt-2 text-sm text-slate-600">
-            Votre accès complet au dashboard sera débloqué une fois votre contrat signé via le lien sécurisé envoyé par DogShift par email.
-          </p>
-          <div className="mt-5 flex justify-center">
-            <Link
-              href="/"
-              className="inline-flex items-center justify-center rounded-2xl border border-slate-300 bg-white px-6 py-3 text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50"
-            >
-              Retour accueil
-            </Link>
-          </div>
-        </div>
-      </div>
-    );
   }
 
   return <>{children}</>;
