@@ -53,6 +53,8 @@ type BookingStep = "form" | "confirm" | "sent";
 
 type AvailabilityPayload = { ok?: boolean; dates?: string[]; error?: string };
 
+const DOG_SIZE_ORDER = ["Petit", "Moyen", "Grand"] as const;
+
 function formatRating(rating: number) {
   return rating % 1 === 0 ? rating.toFixed(0) : rating.toFixed(1);
 }
@@ -141,6 +143,22 @@ function formatReviewDate(iso: string) {
 function safeStringArray(value: unknown) {
   if (!Array.isArray(value)) return [] as string[];
   return value.filter((v): v is string => typeof v === "string" && v.trim().length > 0);
+}
+
+function safeDogSizes(value: unknown) {
+  const found = new Set<(typeof DOG_SIZE_ORDER)[number]>();
+  if (Array.isArray(value)) {
+    for (const entry of value) {
+      if (entry === "Petit" || entry === "Moyen" || entry === "Grand") found.add(entry);
+    }
+  }
+  if (value && typeof value === "object") {
+    const obj = value as Record<string, unknown>;
+    for (const key of DOG_SIZE_ORDER) {
+      if (obj[key] === true) found.add(key);
+    }
+  }
+  return DOG_SIZE_ORDER.filter((size) => found.has(size));
 }
 
 function safePricingMap(value: unknown) {
@@ -505,7 +523,7 @@ function SitterPublicProfileContent({
           reviewCount: typeof payload.sitter.countReviews === "number" && Number.isFinite(payload.sitter.countReviews) ? payload.sitter.countReviews : 0,
           pricePerDay,
           services,
-          dogSizes: safeStringArray(payload.sitter.dogSizes),
+          dogSizes: safeDogSizes(payload.sitter.dogSizes),
           availableDates: [],
           pricing,
           bio: payload.sitter.bio ?? "",
@@ -2183,6 +2201,7 @@ function SitterPublicProfileContent({
   const ratingLabel = formatRatingMaybe(sitter.rating);
   const reviewCountLabel = sitter.reviewCount ?? 0;
   const visibleReviews = Array.isArray(sitter.reviews) ? sitter.reviews : [];
+  const dogSizeBadges = sitter.dogSizes;
 
   const content = (
     <div className="relative grid gap-6 overflow-hidden" data-testid="sitter-public-profile">
@@ -2276,6 +2295,17 @@ function SitterPublicProfileContent({
                             </span>
                           ) : null}
                         </div>
+                        {dogSizeBadges.length > 0 ? (
+                          <div className="mt-3 flex flex-wrap items-center gap-2">
+                            <span className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Tailles de chien acceptées</span>
+                            {dogSizeBadges.map((size) => (
+                              <span key={size} className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-700">
+                                <span aria-hidden="true">{size === "Petit" ? "🐶" : size === "Moyen" ? "🐕" : "🐕‍🦺"}</span>
+                                <span>{size}</span>
+                              </span>
+                            ))}
+                          </div>
+                        ) : null}
                       </div>
                     </div>
 

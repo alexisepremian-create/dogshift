@@ -78,6 +78,7 @@ function haversineKm(a: { lat: number; lng: number }, b: { lat: number; lng: num
 type ServiceType = "Promenade" | "Garde" | "Pension";
 
 const SERVICE_ORDER: readonly ServiceType[] = ["Promenade", "Garde", "Pension"];
+const DOG_SIZE_ORDER = ["Petit", "Moyen", "Grand"] as const;
 
 type SitterListItem = {
   sitterId: string;
@@ -144,8 +145,30 @@ function parsePricing(value: unknown): Partial<Record<ServiceType, number>> {
 }
 
 function parseDogSizes(value: unknown): string[] {
-  if (!Array.isArray(value)) return [];
-  return value.filter((v): v is string => typeof v === "string" && v.trim().length > 0);
+  const found = new Set<(typeof DOG_SIZE_ORDER)[number]>();
+  if (Array.isArray(value)) {
+    for (const v of value) {
+      if (v === "Petit" || v === "Moyen" || v === "Grand") found.add(v);
+    }
+  }
+  if (value && typeof value === "object") {
+    const obj = value as Record<string, unknown>;
+    for (const key of DOG_SIZE_ORDER) {
+      if (obj[key] === true) found.add(key);
+    }
+  }
+  return DOG_SIZE_ORDER.filter((size) => found.has(size));
+}
+
+function formatDogSizesCompact(dogSizes: string[]) {
+  if (dogSizes.length === 3) return "Tous types de chiens";
+  return dogSizes
+    .map((size) => {
+      if (size === "Petit") return "Petits";
+      if (size === "Moyen") return "Moyens";
+      return "Grands";
+    })
+    .join(" • ");
 }
 
 function toUiSitter(row: SitterListItem): UiSitter | null {
@@ -466,6 +489,7 @@ export default function SearchResultsClient() {
                 const cheapestUnit = cheapest?.svc === "Pension" ? " / jour" : " / heure";
                 const cheapestPrice = cheapest?.price ?? sitter.pricePerDay;
                 const sitterHref = `/sitter/${sitter.id}?mode=public`;
+                const dogSizesLabel = formatDogSizesCompact(sitter.dogSizes);
 
                 return (
                   <Link
@@ -506,6 +530,8 @@ export default function SearchResultsClient() {
                         </span>
                       ))}
                     </div>
+
+                    {dogSizesLabel ? <p className="mt-3 text-xs font-medium text-slate-500">{dogSizesLabel}</p> : null}
 
                     <div className="mt-4 space-y-2 text-sm text-slate-600">
                       <p className="flex items-center gap-1 leading-none">
