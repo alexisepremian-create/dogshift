@@ -3,12 +3,14 @@ import { unstable_noStore as noStore } from "next/cache";
 
 import { prisma } from "@/lib/prisma";
 import { ensureDbUserByClerkUserId } from "@/lib/auth/resolveDbUserId";
+import { normalizeSitterLifecycleStatus, type SitterLifecycleStatus } from "@/lib/sitterContract";
 
 export type UserContexts = {
   userId: string;
   primaryEmail: string;
   dbUserId: string;
   hasSitterProfile: boolean;
+  sitterLifecycleStatus: SitterLifecycleStatus | null;
   hasOwnerContext: boolean;
 };
 
@@ -39,7 +41,7 @@ export async function getUserContexts(): Promise<UserContexts> {
   }
 
   const [sitterProfile, ownerBooking, ownerConversation] = await Promise.all([
-    prisma.sitterProfile.findUnique({ where: { userId: dbUser.id }, select: { id: true } }),
+    prisma.sitterProfile.findUnique({ where: { userId: dbUser.id }, select: { id: true, lifecycleStatus: true, published: true } }),
     prisma.booking.findFirst({ where: { userId: dbUser.id }, select: { id: true } }),
     prisma.conversation.findFirst({ where: { ownerId: dbUser.id }, select: { id: true } }),
   ]);
@@ -49,6 +51,7 @@ export async function getUserContexts(): Promise<UserContexts> {
     primaryEmail,
     dbUserId: dbUser.id,
     hasSitterProfile: Boolean(sitterProfile),
+    sitterLifecycleStatus: sitterProfile ? normalizeSitterLifecycleStatus(sitterProfile.lifecycleStatus, sitterProfile.published) : null,
     hasOwnerContext: Boolean(ownerBooking || ownerConversation),
   };
 }
