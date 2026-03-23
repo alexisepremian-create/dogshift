@@ -2183,7 +2183,6 @@ function SitterPublicProfileContent({
   const ratingLabel = formatRatingMaybe(sitter.rating);
   const reviewCountLabel = sitter.reviewCount ?? 0;
   const visibleReviews = Array.isArray(sitter.reviews) ? sitter.reviews : [];
-  const primaryServiceLabel = sitter.services[0] ?? "Dogsitter";
 
   const content = (
     <div className="relative grid gap-6 overflow-hidden" data-testid="sitter-public-profile">
@@ -2264,9 +2263,6 @@ function SitterPublicProfileContent({
                         <h1 className="text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">{sitter.name}</h1>
                         <p className="mt-1 text-sm text-slate-600">{sitter.city}</p>
                         <div className="mt-6 flex flex-wrap items-center gap-2">
-                          <span className="inline-flex items-center rounded-full bg-slate-900 px-3 py-1 text-xs font-semibold text-white">
-                            {primaryServiceLabel}
-                          </span>
                           <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
                             <StarIcon className="h-4 w-4 text-[#F5B301]" />
                             {ratingLabel}
@@ -2276,33 +2272,10 @@ function SitterPublicProfileContent({
                           </span>
                           {sitter.verified ? (
                             <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-800 shadow-sm">
-                              Vérifié manuellement
+                              Vérifié
                             </span>
                           ) : null}
                         </div>
-
-                        {sitter.trustBadgeEligible ? (
-                          <Tooltip label="Ce dogsitter a été sélectionné et validé manuellement par DogShift selon des critères de qualité stricts.">
-                            {({ triggerProps }) => (
-                              <div
-                                {...triggerProps}
-                                className="mt-4 inline-flex max-w-xl items-start gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-left shadow-sm"
-                              >
-                                <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-white">
-                                  <svg viewBox="0 0 20 20" aria-hidden="true" className="h-5 w-5" fill="none">
-                                    <path d="M5 10.5l3.1 3.1L15 6.8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                                  </svg>
-                                </span>
-                                <div>
-                                  <p className="text-sm font-semibold text-emerald-950">Dogsitter sélectionné et validé par DogShift</p>
-                                  <p className="mt-1 text-xs font-medium leading-relaxed text-emerald-900/80">
-                                    Membre vérifié – phase pilote.
-                                  </p>
-                                </div>
-                              </div>
-                            )}
-                          </Tooltip>
-                        ) : null}
                       </div>
                     </div>
 

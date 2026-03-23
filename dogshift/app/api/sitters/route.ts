@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 import { prisma } from "@/lib/prisma";
+import { getSitterReviewSnapshot } from "@/lib/sitterReviews";
 
 export const runtime = "nodejs";
 
@@ -18,6 +19,8 @@ type SitterListItem = {
   services: unknown;
   pricing: unknown;
   dogSizes: unknown;
+  averageRating: number | null;
+  countReviews: number;
   updatedAt: string;
 };
 
@@ -67,9 +70,19 @@ export async function GET(_req: NextRequest) {
       },
     });
 
-    const rows: SitterListItem[] = sitters
-      .map((s: DbRow): SitterListItem => {
-      const name = String((s.displayName ?? s.user?.name ?? "") ?? "").trim();
+    const rowsRaw = await Promise.all(
+      sitters.map(async (s: DbRow): Promise<SitterListItem | null> => {
+      const name = String(s.displayName ?? "").trim();
+      if (!String(s.sitterId ?? "").trim()) return null;
+      let averageRating: number | null = null;
+      let countReviews = 0;
+      try {
+        const snapshot = await getSitterReviewSnapshot(String(s.sitterId ?? ""));
+        averageRating = snapshot.averageRating;
+        countReviews = snapshot.countReviews;
+      } catch (err) {
+        console.error("[api][sitters] review aggregate failed", err);
+      }
       return {
         sitterId: String(s.sitterId ?? ""),
         name,
@@ -83,10 +96,14 @@ export async function GET(_req: NextRequest) {
         services: s.services ?? null,
         pricing: s.pricing ?? null,
         dogSizes: s.dogSizes ?? null,
+        averageRating,
+        countReviews,
         updatedAt: s.updatedAt.toISOString(),
       };
     })
-      .filter((row: SitterListItem) => Boolean(row.sitterId));
+    );
+
+    const rows: SitterListItem[] = rowsRaw.filter((row): row is SitterListItem => Boolean(row?.sitterId));
 
     if (process.env.NODE_ENV !== "production") {
       const anyDb = prisma as unknown as { sitterProfile?: { count?: (args: unknown) => Promise<number> } };

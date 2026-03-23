@@ -4,7 +4,7 @@ import type { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { resolveDbUserId } from "@/lib/auth/resolveDbUserId";
 import { getSitterReviewSnapshot, type SitterReviewItem } from "@/lib/sitterReviews";
-import { isActivatedStatus, normalizeSitterLifecycleStatus, type SitterLifecycleStatus } from "@/lib/sitterContract";
+import { normalizeSitterLifecycleStatus, type SitterLifecycleStatus } from "@/lib/sitterContract";
 
 export const runtime = "nodejs";
 
@@ -103,12 +103,7 @@ export async function GET(
         services: true,
         pricing: true,
         dogSizes: true,
-        user: {
-          select: {
-            name: true,
-            image: true,
-          },
-        },
+        user: { select: { image: true } },
       },
     });
 
@@ -128,7 +123,7 @@ export async function GET(
       }
     }
 
-    const name = String((sitterProfile.displayName ?? sitterProfile.user?.name ?? "") ?? "").trim();
+    const name = String(sitterProfile.displayName ?? "").trim();
     const pricing = normalizePersistedPricing(sitterProfile.pricing);
 
     const serviceConfigs = await (prisma as any).serviceConfig.findMany({
@@ -161,7 +156,7 @@ export async function GET(
       dogSizes: sitterProfile.dogSizes ?? null,
       verified,
       lifecycleStatus,
-      trustBadgeEligible: verified && isActivatedStatus(lifecycleStatus),
+      trustBadgeEligible: false,
       lat: typeof sitterProfile.lat === "number" && Number.isFinite(sitterProfile.lat) ? sitterProfile.lat : null,
       lng: typeof sitterProfile.lng === "number" && Number.isFinite(sitterProfile.lng) ? sitterProfile.lng : null,
       countReviews: 0,

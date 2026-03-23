@@ -84,11 +84,14 @@ type SitterListItem = {
   postalCode: string;
   bio: string;
   avatarUrl: string | null;
+  verified: boolean;
   lat: number | null;
   lng: number | null;
   services: unknown;
   pricing: unknown;
   dogSizes: unknown;
+  averageRating: number | null;
+  countReviews: number;
   updatedAt: string;
 };
 
@@ -151,15 +154,15 @@ function toUiSitter(row: SitterListItem): UiSitter | null {
     name: row.name,
     city: row.city,
     postalCode: row.postalCode,
-    rating: null,
-    reviewCount: 0,
+    rating: typeof row.averageRating === "number" && Number.isFinite(row.averageRating) ? row.averageRating : null,
+    reviewCount: typeof row.countReviews === "number" && Number.isFinite(row.countReviews) ? row.countReviews : 0,
     pricePerDay,
     services,
     dogSizes,
     pricing,
     bio: row.bio,
     responseTime: "~1h",
-    verified: false,
+    verified: row.verified,
     lat: typeof row.lat === "number" && Number.isFinite(row.lat) ? row.lat : 0,
     lng: typeof row.lng === "number" && Number.isFinite(row.lng) ? row.lng : 0,
     avatarUrl: row.avatarUrl ?? "https://i.pravatar.cc/160?img=7",
@@ -484,10 +487,7 @@ export default function SearchResultsClient() {
                       </div>
                     </div>
 
-                    <div className="mt-4 flex min-h-[30px] flex-nowrap items-center gap-2 overflow-hidden">
-                      <span className="inline-flex shrink-0 items-center rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-700">
-                        Annulation flexible
-                      </span>
+                    <div className="mt-4 flex min-h-[30px] flex-wrap items-center gap-2 overflow-hidden">
                       {sitter.services.map((svc) => (
                         <span
                           key={svc}
