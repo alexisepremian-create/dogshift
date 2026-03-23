@@ -131,7 +131,7 @@ export default function SecureContractSigningPage() {
           <h1 className="mt-2 text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">Accès sécurisé au contrat</h1>
           <div className="mt-4 flex flex-wrap items-center gap-2 text-xs font-medium text-slate-600">
             <span className="inline-flex items-center rounded-full bg-slate-100 px-3 py-1">Version: {contractVersion}</span>
-            {payload?.sitter?.name ? <span className="inline-flex items-center rounded-full bg-slate-100 px-3 py-1">Candidate: {payload.sitter.name}</span> : null}
+            {payload?.sitter?.name ? <span className="inline-flex items-center rounded-full bg-slate-100 px-3 py-1">Candidat(e): {payload.sitter.name}</span> : null}
           </div>
           {error ? <p className="mt-4 text-sm font-medium text-rose-600">{error}</p> : null}
           {success ? <p className="mt-4 text-sm font-medium text-emerald-700">{success}</p> : null}
