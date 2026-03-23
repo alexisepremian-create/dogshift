@@ -7,6 +7,7 @@ import { useUser } from "@clerk/nextjs";
 
 import SunCornerGlow from "@/components/SunCornerGlow";
 import { useHostUser } from "@/components/HostUserProvider";
+import HowItWorksSchema, { SITTER_HOW_IT_WORKS_CONTENT } from "@/components/HowItWorksSchema";
 import PageLoader from "@/components/ui/PageLoader";
 
 import { getSitterById } from "@/lib/mockSitters";
@@ -476,6 +477,10 @@ export default function HostDashboardPage() {
               </Link>
             </div>
           </section>
+        </div>
+
+        <div className="mt-8">
+          <HowItWorksSchema {...SITTER_HOW_IT_WORKS_CONTENT} />
         </div>
 
       </div>

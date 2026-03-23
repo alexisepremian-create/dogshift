@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 
 import SunCornerGlow from "@/components/SunCornerGlow";
+import HowItWorksSchema, { OWNER_HOW_IT_WORKS_CONTENT } from "@/components/HowItWorksSchema";
 import { prisma } from "@/lib/prisma";
 import { getUserContexts } from "@/lib/userContexts";
 
@@ -339,6 +340,8 @@ export default async function AccountDashboardPage({
           <p className="mt-4 text-sm text-slate-600">Pense à répondre rapidement pour améliorer ton taux de réponse.</p>
         </div>
       ) : null}
+
+      <HowItWorksSchema {...OWNER_HOW_IT_WORKS_CONTENT} />
     </div>
   );
 }
