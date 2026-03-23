@@ -3,6 +3,7 @@ import type { NextRequest } from "next/server";
 
 import { prisma } from "@/lib/prisma";
 import { resolveDbUserId } from "@/lib/auth/resolveDbUserId";
+import { getSitterReviewSnapshot, type SitterReviewItem } from "@/lib/sitterReviews";
 
 export const runtime = "nodejs";
 
@@ -21,6 +22,7 @@ type SitterDetail = {
   lng: number | null;
   countReviews: number;
   averageRating: number | null;
+  reviews: SitterReviewItem[];
 };
 
 function normalizePersistedPricing(raw: unknown) {
@@ -156,19 +158,14 @@ export async function GET(
       lng: typeof sitterProfile.lng === "number" && Number.isFinite(sitterProfile.lng) ? sitterProfile.lng : null,
       countReviews: 0,
       averageRating: null,
+      reviews: [],
     };
 
     try {
-      const agg = await (prisma as any).review.aggregate({
-        where: { sitterId },
-        _count: { id: true },
-        _avg: { rating: true },
-      });
-
-      const count = typeof agg?._count?.id === "number" ? agg._count.id : 0;
-      const avg = typeof agg?._avg?.rating === "number" && Number.isFinite(agg._avg.rating) ? agg._avg.rating : null;
-      sitter.countReviews = count;
-      sitter.averageRating = avg;
+      const snapshot = await getSitterReviewSnapshot(sitterId);
+      sitter.countReviews = snapshot.countReviews;
+      sitter.averageRating = snapshot.averageRating;
+      sitter.reviews = snapshot.reviews;
     } catch (err) {
       console.error("[api][sitters][sitterId] review aggregate failed", err);
     }

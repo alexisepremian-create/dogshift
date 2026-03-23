@@ -17,6 +17,16 @@ type ServiceType = "Promenade" | "Garde" | "Pension";
 
 type PricingMap = Record<string, number>;
 
+type SitterReview = {
+  id: string;
+  bookingId: string;
+  rating: number;
+  comment: string | null;
+  authorName: string;
+  anonymous: boolean;
+  createdAt: string;
+};
+
 type SitterCard = {
   id: string;
   name: string;
@@ -35,6 +45,7 @@ type SitterCard = {
   lat: number;
   lng: number;
   avatarUrl: string;
+  reviews: SitterReview[];
 };
 
 type BookingStep = "form" | "confirm" | "sent";
@@ -118,6 +129,12 @@ function formatDateDisplay(iso: string) {
   const parts = iso.split("-");
   if (parts.length !== 3) return iso;
   return `${parts[2]}-${parts[1]}-${parts[0]}`;
+}
+
+function formatReviewDate(iso: string) {
+  const dt = new Date(iso);
+  if (Number.isNaN(dt.getTime())) return "";
+  return new Intl.DateTimeFormat("fr-CH", { day: "numeric", month: "short", year: "numeric" }).format(dt);
 }
 
 function safeStringArray(value: unknown) {
@@ -419,6 +436,7 @@ function SitterPublicProfileContent({
         profile.avatarDataUrl && profile.avatarDataUrl.trim()
           ? profile.avatarDataUrl
           : (sessionImage ?? "https://i.pravatar.cc/160?img=7"),
+      reviews: apiSitter?.reviews ?? [],
     };
   }
 
@@ -442,6 +460,7 @@ function SitterPublicProfileContent({
                 postalCode: string;
                 countReviews?: number;
                 averageRating?: number | null;
+                reviews?: SitterReview[];
                 bio: string;
                 avatarUrl: string | null;
                 services: unknown;
@@ -492,6 +511,7 @@ function SitterPublicProfileContent({
           lat: typeof payload.sitter.lat === "number" && Number.isFinite(payload.sitter.lat) ? payload.sitter.lat : 0,
           lng: typeof payload.sitter.lng === "number" && Number.isFinite(payload.sitter.lng) ? payload.sitter.lng : 0,
           avatarUrl: payload.sitter.avatarUrl ?? "https://i.pravatar.cc/160?img=7",
+          reviews: Array.isArray(payload.sitter.reviews) ? payload.sitter.reviews : [],
         };
 
         setApiSitter(sitter);
@@ -613,7 +633,16 @@ function SitterPublicProfileContent({
   const sitter = useMemo(() => {
     if (effectivePreviewMode && isHostViewingOwn) {
       if (!previewLoaded) return undefined;
-      if (previewSitter) return previewSitter;
+      if (previewSitter) {
+        return apiSitter
+          ? {
+              ...previewSitter,
+              rating: apiSitter.rating,
+              reviewCount: apiSitter.reviewCount,
+              reviews: apiSitter.reviews,
+            }
+          : previewSitter;
+      }
 
       // If no draft profile is available for preview, fall back to the DB-backed API profile.
       if (!apiLoaded) return undefined;
@@ -2148,6 +2177,7 @@ function SitterPublicProfileContent({
 
   const ratingLabel = formatRatingMaybe(sitter.rating);
   const reviewCountLabel = sitter.reviewCount ?? 0;
+  const visibleReviews = Array.isArray(sitter.reviews) ? sitter.reviews : [];
 
   const content = (
     <div className="relative grid gap-6 overflow-hidden" data-testid="sitter-public-profile">
@@ -2408,6 +2438,51 @@ function SitterPublicProfileContent({
                   <div className="mt-7">
                     <h2 className="text-sm font-semibold text-slate-900">À propos</h2>
                     <p className="mt-3 text-sm leading-relaxed text-slate-600">{sitter.bio}</p>
+                  </div>
+
+                  <div className="mt-7 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <h2 className="text-sm font-semibold text-slate-900">Avis</h2>
+                        <p className="mt-1 text-sm text-slate-600">Retours laissés après des réservations terminées.</p>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="inline-flex items-center gap-1 rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-700 ring-1 ring-slate-200">
+                          <StarIcon className="h-4 w-4 text-[#F5B301]" />
+                          {ratingLabel}
+                        </span>
+                        <span className="inline-flex items-center rounded-full bg-white px-3 py-1 text-xs font-medium text-slate-600 ring-1 ring-slate-200">
+                          {reviewCountLabel} avis
+                        </span>
+                      </div>
+                    </div>
+
+                    {visibleReviews.length === 0 ? (
+                      <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-4">
+                        <p className="text-sm font-semibold text-slate-900">Aucun avis pour le moment</p>
+                        <p className="mt-1 text-sm text-slate-600">Ce sitter n’a pas encore reçu d’avis publié.</p>
+                      </div>
+                    ) : (
+                      <div className="mt-4 grid gap-3">
+                        {visibleReviews.map((review) => (
+                          <article key={review.id} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                            <div className="flex flex-wrap items-start justify-between gap-3">
+                              <div>
+                                <p className="text-sm font-semibold text-slate-900">{review.authorName}</p>
+                                <p className="mt-1 text-xs font-medium text-slate-500">{formatReviewDate(review.createdAt)}</p>
+                              </div>
+                              <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
+                                <StarIcon className="h-4 w-4 text-[#F5B301]" />
+                                {formatRating(review.rating)}
+                              </span>
+                            </div>
+                            <p className="mt-3 text-sm leading-6 text-slate-600">
+                              {review.comment?.trim() ? review.comment.trim() : "Aucun commentaire ajouté."}
+                            </p>
+                          </article>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </section>
 

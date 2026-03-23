@@ -11,7 +11,6 @@ import HowItWorksSchema, { SITTER_HOW_IT_WORKS_CONTENT } from "@/components/HowI
 import PageLoader from "@/components/ui/PageLoader";
 
 import { getSitterById } from "@/lib/mockSitters";
-import { loadReviewsFromStorage, type DogShiftReview } from "@/lib/reviews";
 import { getUnreadHostMessageCount } from "@/lib/hostMessages";
 import {
   getDefaultHostProfile,
@@ -97,6 +96,8 @@ export default function HostDashboardPage() {
     "not_verified"
   );
   const [verificationLoaded, setVerificationLoaded] = useState(false);
+  const [reviewCount, setReviewCount] = useState(0);
+  const [averageRating, setAverageRating] = useState<number | null>(null);
 
   const completionCardDismissed = useSyncExternalStore(
     (onStoreChange) => {
@@ -199,9 +200,43 @@ export default function HostDashboardPage() {
 
   const completionUiReady = Boolean(sitterId) && verificationLoaded;
 
-  const storedReviews = useMemo<DogShiftReview[]>(() => {
-    if (!sitterId) return [];
-    return loadReviewsFromStorage(sitterId);
+  useEffect(() => {
+    if (!sitterId) {
+      setReviewCount(0);
+      setAverageRating(null);
+      return;
+    }
+
+    let cancelled = false;
+
+    void (async () => {
+      try {
+        const res = await fetch(`/api/sitters/${encodeURIComponent(sitterId)}?mode=preview`, { method: "GET" });
+        const payload = (await res.json().catch(() => null)) as
+          | { ok?: boolean; sitter?: { countReviews?: number; averageRating?: number | null } }
+          | null;
+
+        if (cancelled) return;
+        if (!res.ok || !payload?.ok || !payload.sitter) {
+          setReviewCount(0);
+          setAverageRating(null);
+          return;
+        }
+
+        setReviewCount(typeof payload.sitter.countReviews === "number" && Number.isFinite(payload.sitter.countReviews) ? payload.sitter.countReviews : 0);
+        setAverageRating(
+          typeof payload.sitter.averageRating === "number" && Number.isFinite(payload.sitter.averageRating) ? payload.sitter.averageRating : null
+        );
+      } catch {
+        if (cancelled) return;
+        setReviewCount(0);
+        setAverageRating(null);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [sitterId]);
 
   const unreadMessages = useMemo(() => {
@@ -213,11 +248,6 @@ export default function HostDashboardPage() {
       return 0;
     }
   }, [sitterId, unreadTick]);
-
-  const reviewCount = storedReviews.length;
-  const averageRating = reviewCount
-    ? storedReviews.reduce((acc, r) => acc + (Number.isFinite(r.rating) ? r.rating : 0), 0) / reviewCount
-    : null;
 
   const rating = averageRating === null ? "—" : formatRating(averageRating);
 
