@@ -24,6 +24,24 @@ type SitterListItem = {
   updatedAt: string;
 };
 
+const SERVICE_ORDER = ["Promenade", "Garde", "Pension"] as const;
+
+function normalizePublicServices(raw: unknown) {
+  const found = new Set<(typeof SERVICE_ORDER)[number]>();
+  if (Array.isArray(raw)) {
+    for (const value of raw) {
+      if (value === "Promenade" || value === "Garde" || value === "Pension") found.add(value);
+    }
+  }
+  if (raw && typeof raw === "object") {
+    const obj = raw as Record<string, unknown>;
+    for (const key of SERVICE_ORDER) {
+      if (obj[key] === true) found.add(key);
+    }
+  }
+  return SERVICE_ORDER.filter((service) => found.has(service));
+}
+
 type DbRow = {
   sitterId: string;
   displayName: string | null;
@@ -93,7 +111,7 @@ export async function GET(_req: NextRequest) {
         verified: typeof s.verificationStatus === "string" ? s.verificationStatus === "approved" : false,
         lat: typeof s.lat === "number" && Number.isFinite(s.lat) ? s.lat : null,
         lng: typeof s.lng === "number" && Number.isFinite(s.lng) ? s.lng : null,
-        services: s.services ?? null,
+        services: normalizePublicServices(s.services),
         pricing: s.pricing ?? null,
         dogSizes: s.dogSizes ?? null,
         averageRating,

@@ -77,6 +77,8 @@ function haversineKm(a: { lat: number; lng: number }, b: { lat: number; lng: num
 
 type ServiceType = "Promenade" | "Garde" | "Pension";
 
+const SERVICE_ORDER: readonly ServiceType[] = ["Promenade", "Garde", "Pension"];
+
 type SitterListItem = {
   sitterId: string;
   name: string;
@@ -115,12 +117,19 @@ type UiSitter = {
 };
 
 function parseServices(value: unknown): ServiceType[] {
-  if (!Array.isArray(value)) return [];
-  const cleaned: ServiceType[] = [];
-  for (const v of value) {
-    if (v === "Promenade" || v === "Garde" || v === "Pension") cleaned.push(v);
+  const found = new Set<ServiceType>();
+  if (Array.isArray(value)) {
+    for (const v of value) {
+      if (v === "Promenade" || v === "Garde" || v === "Pension") found.add(v);
+    }
   }
-  return cleaned;
+  if (value && typeof value === "object") {
+    const obj = value as Record<string, unknown>;
+    for (const key of SERVICE_ORDER) {
+      if (obj[key] === true) found.add(key);
+    }
+  }
+  return SERVICE_ORDER.filter((service) => found.has(service));
 }
 
 function parsePricing(value: unknown): Partial<Record<ServiceType, number>> {
