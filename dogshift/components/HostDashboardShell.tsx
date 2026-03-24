@@ -8,7 +8,6 @@ import { useClerk } from "@clerk/nextjs";
 import HostContractAmendmentModal from "@/components/HostContractAmendmentModal";
 import DashboardMobileNav from "@/components/DashboardMobileNav";
 import HostSidebar from "@/components/HostSidebar";
-import HostTermsModal from "@/components/HostTermsModal";
 import { useHostUser } from "@/components/HostUserProvider";
 import { useHostDashboardNavItems } from "@/components/dashboardNavItems";
 
@@ -25,7 +24,6 @@ export default function HostDashboardShell({ children }: { children: React.React
 
   return (
     <div className="min-h-screen bg-white text-slate-900">
-      {isPublicPreview || !host.sitterId ? null : <HostTermsModal />}
       {isPublicPreview || !host.sitterId ? null : <HostContractAmendmentModal />}
       <div className="flex min-h-screen">
         <div className="relative z-40 hidden shrink-0 lg:block">
