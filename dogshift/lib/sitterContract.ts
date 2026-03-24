@@ -1,6 +1,6 @@
 import { createHash, randomBytes, timingSafeEqual } from "crypto";
 
-export const CURRENT_SITTER_CONTRACT_VERSION = "2026-03-23";
+export const CURRENT_SITTER_CONTRACT_VERSION = "2026-03-24";
 
 const SITTER_LIFECYCLE_ORDER: readonly SitterLifecycleStatus[] = [
   "application_received",
@@ -23,7 +23,7 @@ export const SITTER_CONTRACT_CONTENT = [
   "Ce document constitue un engagement contractuel entre le dogsitter et DogShift. Il doit être signé avant toute activation de compte. En signant, le dogsitter reconnaît avoir compris et accepté l’ensemble des conditions ci-dessous.",
   "1. Statut et rôle\nLe dogsitter agit en tant qu’indépendant. DogShift agit uniquement comme plateforme de mise en relation et ne fournit aucune prestation de garde. Le dogsitter est seul responsable des services rendus.",
   "2. Responsabilité\nLe dogsitter assume l’entière responsabilité des dommages matériels, corporels ou immatériels causés durant les prestations. DogShift ne peut être tenu responsable des actes du dogsitter ou du propriétaire.",
-  "3. Assurance responsabilité civile\nLe dogsitter s’engage à disposer d’une assurance responsabilité civile couvrant explicitement la garde d’animaux, y compris dans un cadre rémunéré. Une preuve peut être demandée à tout moment.",
+  "3. Assurance responsabilité civile\nLe dogsitter s’engage à disposer d’une assurance responsabilité civile valide couvrant les dommages pouvant survenir dans le cadre de ses prestations (promenade, garde, pension).\n\nCette assurance doit idéalement inclure une couverture en cas de faute grave.\n\nEn l’absence de couverture pour faute grave, le dogsitter reconnaît assumer personnellement les conséquences financières en cas de négligence grave.\n\nLe dogsitter s’engage à pouvoir fournir une preuve d’assurance sur demande.",
   "4. Casier judiciaire\nLe dogsitter certifie disposer d’un casier judiciaire vierge et s’engage à informer immédiatement DogShift de tout changement. DogShift se réserve le droit de demander un extrait officiel.",
   "5. Expérience et compétences\nLe dogsitter déclare avoir l’expérience nécessaire pour gérer des chiens de différentes tailles et comportements, et s’engage à assurer leur sécurité en toute circonstance.",
   "6. Fiabilité et comportement\nLe dogsitter s’engage à être ponctuel, fiable, respectueux, et à maintenir un comportement professionnel avec les propriétaires.",
