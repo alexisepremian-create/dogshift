@@ -4,6 +4,7 @@ import { VerificationStatus } from "@prisma/client";
 import AdminSitterActions from "@/components/admin/AdminSitterActions";
 import AdminShell from "@/components/admin/AdminShell";
 import { requireAdminPageAccess } from "@/lib/adminAuth";
+import { getActiveContractAmendment, isContractVersionAtLeast } from "@/lib/contractAmendments";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -71,6 +72,8 @@ export default async function AdminSittersPage({
       : {}),
   };
 
+  const activeAmendment = await getActiveContractAmendment();
+
   const [sitters, totalSitters, publishedCount, pendingCount, approvedCount] = await Promise.all([
     (prisma as any).user.findMany({
       where,
@@ -92,9 +95,17 @@ export default async function AdminSittersPage({
             published: true,
             profileCompletion: true,
             lifecycleStatus: true,
+            contractVersion: true,
             activationCodeIssuedAt: true,
             contractAccessTokenIssuedAt: true,
             contractAccessTokenExpiresAt: true,
+            contractAmendmentAcceptances: activeAmendment
+              ? {
+                  where: { amendmentId: activeAmendment.id },
+                  select: { acceptedAt: true, amendmentVersion: true },
+                  take: 1,
+                }
+              : false,
           },
         },
       },
@@ -220,6 +231,7 @@ export default async function AdminSittersPage({
                   <th className="px-5 py-4 font-semibold">Localisation</th>
                   <th className="px-5 py-4 font-semibold">Statut</th>
                   <th className="px-5 py-4 font-semibold">Publié</th>
+                  <th className="px-5 py-4 font-semibold">Avenant à jour</th>
                   <th className="px-5 py-4 font-semibold">Complétion</th>
                   <th className="px-5 py-4 font-semibold">Activité</th>
                   <th className="px-5 py-4 font-semibold">Inscription</th>
@@ -229,6 +241,16 @@ export default async function AdminSittersPage({
               <tbody className="divide-y divide-slate-100 bg-white">
                 {sitters.map((sitter: any) => (
                   <tr key={sitter.id} className="align-top">
+                    {(() => {
+                      const acceptance = Array.isArray(sitter.sitterProfile?.contractAmendmentAcceptances)
+                        ? sitter.sitterProfile.contractAmendmentAcceptances[0]
+                        : null;
+                      const amendmentUpToDate = !activeAmendment
+                        ? true
+                        : isContractVersionAtLeast(sitter.sitterProfile?.contractVersion ?? null, activeAmendment.version) ||
+                          (acceptance?.acceptedAt && acceptance?.amendmentVersion === activeAmendment.version);
+                      return (
+                        <>
                     <td className="px-5 py-4">
                       <div className="font-medium text-slate-900">{sitter.name?.trim() || sitter.sitterId || "—"}</div>
                       <div className="mt-1 text-xs text-slate-500">{sitter.sitterId || "—"}</div>
@@ -248,6 +270,11 @@ export default async function AdminSittersPage({
                       )}
                     </td>
                     <td className="px-5 py-4 text-slate-600">{publishedLabel(sitter.sitterProfile?.published)}</td>
+                    <td className="px-5 py-4 text-slate-600">
+                      <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold ${amendmentUpToDate ? "border-emerald-200 bg-emerald-50 text-emerald-900" : "border-rose-200 bg-rose-50 text-rose-900"}`}>
+                        {amendmentUpToDate ? "Oui" : "Non"}
+                      </span>
+                    </td>
                     <td className="px-5 py-4 text-slate-600">{typeof sitter.sitterProfile?.profileCompletion === "number" ? `${sitter.sitterProfile.profileCompletion}%` : "—"}</td>
                     <td className="px-5 py-4 text-slate-600">
                       <div>{sitter.sitterBookings.length} réservations</div>
@@ -278,6 +305,9 @@ export default async function AdminSittersPage({
                         <span className="text-sm text-slate-500">—</span>
                       )}
                     </td>
+                        </>
+                      );
+                    })()}
                   </tr>
                 ))}
               </tbody>

@@ -151,6 +151,7 @@ export default async function AdminDashboardPage() {
             <div className="grid gap-3 sm:grid-cols-2 lg:w-[460px]">
               <ActionLink href="/admin/sitters/applications" title="Traiter les candidatures" description="Accéder directement au panel existant des candidatures dogsitter phase pilote." />
               <ActionLink href="/admin/sitters" title="Suivre les sitters" description="Voir les profils sitters, leur publication et leur état de vérification." />
+              <ActionLink href="/admin/avenants" title="Gérer les avenants" description="Créer, activer et suivre les avenants contractuels obligatoires côté sitters." />
               <ActionLink href="/admin/owners" title="Contrôler les propriétaires" description="Accéder aux fiches propriétaires et à leur historique de réservations." />
               <ActionLink href="/admin/bookings" title="Surveiller les réservations" description="Contrôler les statuts, dates et montants des réservations existantes." />
             </div>

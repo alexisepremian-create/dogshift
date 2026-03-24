@@ -6,11 +6,13 @@ import { prisma } from "@/lib/prisma";
 import { isActivatedStatus, normalizeSitterLifecycleStatus, type SitterLifecycleStatus } from "@/lib/sitterContract";
 import PageLoader from "@/components/ui/PageLoader";
 
+type PostLoginPageProps = {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+};
+
 export default async function PostLoginPage({
   searchParams,
-}: {
-  searchParams?: Record<string, string | string[] | undefined>;
-}) {
+}: PostLoginPageProps) {
   const { userId } = await auth();
   if (!userId) {
     redirect("/login");
@@ -43,7 +45,8 @@ export default async function PostLoginPage({
 
   console.log("[post-login]", { userId, dbUserId, hasSitterProfile, sitterLifecycleStatus, decidedRedirect });
 
-  const nextRaw = searchParams?.next;
+  const resolvedSearchParams = searchParams ? await searchParams : undefined;
+  const nextRaw = resolvedSearchParams?.next;
   const next = typeof nextRaw === "string" ? nextRaw.trim() : "";
   if (decidedRedirect === "/host" && next) {
     redirect(next);

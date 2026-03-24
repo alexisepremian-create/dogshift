@@ -47,7 +47,7 @@ function serviceLabelForType(serviceType: string) {
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { sitterId: string } | Promise<{ sitterId: string }> }
+  { params }: { params: Promise<{ sitterId: string }> }
 ) {
   try {
     const { searchParams } = new URL(req.url);
@@ -55,9 +55,7 @@ export async function GET(
     const isPreviewMode = viewModeRaw === "preview";
     const viewerId = isPreviewMode ? await resolveDbUserId(req) : null;
 
-    const resolvedParams = (typeof (params as any)?.then === "function"
-      ? await (params as Promise<{ sitterId: string }>)
-      : (params as { sitterId: string })) as { sitterId: string };
+    const resolvedParams = await params;
 
     const sitterIdRaw = typeof resolvedParams?.sitterId === "string" ? resolvedParams.sitterId : "";
     const input = sitterIdRaw.trim();

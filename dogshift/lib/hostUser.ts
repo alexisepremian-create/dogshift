@@ -1,8 +1,17 @@
 import { auth } from "@clerk/nextjs/server";
 
+import { getHostContractAmendmentState, type HostContractAmendmentState } from "@/lib/contractAmendments";
 import { prisma } from "@/lib/prisma";
 import { ensureDbUserFromClerkAuth } from "@/lib/auth/resolveDbUserId";
 import { normalizeSitterLifecycleStatus, type SitterLifecycleStatus } from "@/lib/sitterContract";
+
+const DEFAULT_HOST_CONTRACT_AMENDMENT_STATE: HostContractAmendmentState = {
+  activeAmendment: null,
+  isUpToDate: true,
+  acceptedAt: null,
+  acceptedVersion: null,
+  needsAcceptance: false,
+};
 
 function normalizePersistedPricing(raw: unknown) {
   if (!raw || typeof raw !== "object") return null;
@@ -26,6 +35,7 @@ export type HostUserData = {
   contractSignedAt: string | null;
   activatedAt: string | null;
   activationCodeIssuedAt: string | null;
+  contractAmendment: HostContractAmendmentState;
 };
 
 export function makeHostUserValuePreview(args: {
@@ -44,6 +54,7 @@ export function makeHostUserValuePreview(args: {
     contractSignedAt: null,
     activatedAt: null,
     activationCodeIssuedAt: null,
+    contractAmendment: DEFAULT_HOST_CONTRACT_AMENDMENT_STATE,
   };
 }
 
@@ -65,6 +76,7 @@ export async function getHostUserData(): Promise<HostUserData> {
       contractSignedAt: null,
       activatedAt: null,
       activationCodeIssuedAt: null,
+      contractAmendment: DEFAULT_HOST_CONTRACT_AMENDMENT_STATE,
     };
   }
 
@@ -113,6 +125,7 @@ export async function getHostUserData(): Promise<HostUserData> {
       contractSignedAt: null,
       activatedAt: null,
       activationCodeIssuedAt: null,
+      contractAmendment: DEFAULT_HOST_CONTRACT_AMENDMENT_STATE,
     };
   }
 
@@ -120,6 +133,7 @@ export async function getHostUserData(): Promise<HostUserData> {
     where: { userId: user.id },
     select: {
       sitterId: true,
+      id: true,
       published: true,
       publishedAt: true,
       pricing: true,
@@ -127,6 +141,7 @@ export async function getHostUserData(): Promise<HostUserData> {
       termsVersion: true,
       profileCompletion: true,
       lifecycleStatus: true,
+      contractVersion: true,
       contractSignedAt: true,
       activatedAt: true,
       activationCodeIssuedAt: true,
@@ -158,6 +173,7 @@ export async function getHostUserData(): Promise<HostUserData> {
       contractSignedAt: null,
       activatedAt: null,
       activationCodeIssuedAt: null,
+      contractAmendment: DEFAULT_HOST_CONTRACT_AMENDMENT_STATE,
     };
   }
 
@@ -177,6 +193,7 @@ export async function getHostUserData(): Promise<HostUserData> {
       contractSignedAt: null,
       activatedAt: null,
       activationCodeIssuedAt: null,
+      contractAmendment: DEFAULT_HOST_CONTRACT_AMENDMENT_STATE,
     };
   }
 
@@ -220,9 +237,14 @@ export async function getHostUserData(): Promise<HostUserData> {
   const termsAcceptedAt = sitterProfile?.termsAcceptedAt instanceof Date ? sitterProfile.termsAcceptedAt.toISOString() : null;
   const termsVersion = typeof sitterProfile?.termsVersion === "string" ? sitterProfile.termsVersion : null;
   const lifecycleStatus = normalizeSitterLifecycleStatus(sitterProfile?.lifecycleStatus, Boolean(sitterProfile?.published));
+  const contractVersion = typeof sitterProfile?.contractVersion === "string" ? sitterProfile.contractVersion : null;
   const contractSignedAt = sitterProfile?.contractSignedAt instanceof Date ? sitterProfile.contractSignedAt.toISOString() : null;
   const activatedAt = sitterProfile?.activatedAt instanceof Date ? sitterProfile.activatedAt.toISOString() : null;
   const activationCodeIssuedAt = sitterProfile?.activationCodeIssuedAt instanceof Date ? sitterProfile.activationCodeIssuedAt.toISOString() : null;
+  const contractAmendment = await getHostContractAmendmentState({
+    sitterProfileId: typeof sitterProfile?.id === "string" ? sitterProfile.id : null,
+    contractVersion,
+  });
   const hostUserData: HostUserData = {
     sitterId,
     published: Boolean(sitterProfile?.published),
@@ -235,6 +257,7 @@ export async function getHostUserData(): Promise<HostUserData> {
     contractSignedAt,
     activatedAt,
     activationCodeIssuedAt,
+    contractAmendment,
   };
   console.info("[hostUser] loaded", {
     clerkUserId: userId,

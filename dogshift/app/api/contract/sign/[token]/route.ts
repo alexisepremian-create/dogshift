@@ -81,7 +81,11 @@ async function resolveContractAccess(rawToken: string): Promise<
 
   const lifecycleStatus = normalizeSitterLifecycleStatus(profile.lifecycleStatus, profile.published);
 
-  if (profile.contractAccessTokenUsedAt instanceof Date || lifecycleStatus === "contract_signed" || lifecycleStatus === "activated") {
+  if (profile.contractSignedAt instanceof Date || lifecycleStatus === "contract_signed" || lifecycleStatus === "activated") {
+    return { ok: false, status: 409, error: "CONTRACT_ALREADY_SIGNED" };
+  }
+
+  if (profile.contractAccessTokenUsedAt instanceof Date) {
     return { ok: false, status: 410, error: "CONTRACT_LINK_ALREADY_USED" };
   }
 

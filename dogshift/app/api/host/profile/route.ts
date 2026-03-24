@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { ensureDbUserByClerkUserId } from "@/lib/auth/resolveDbUserId";
 import { buildEffectiveSitterCompletionProfile, computeSitterProfileCompletion } from "@/lib/sitterCompletion";
 import { checkSitterSensitiveActionGate } from "@/lib/sitterGuards";
+import { getHostContractAmendmentState } from "@/lib/contractAmendments";
 import { normalizeSitterLifecycleStatus } from "@/lib/sitterContract";
 import { CURRENT_TERMS_VERSION } from "@/lib/terms";
 
@@ -376,11 +377,16 @@ export async function POST(req: NextRequest) {
     const lifecycleStatus = normalizeSitterLifecycleStatus(existingProfile?.lifecycleStatus, Boolean(existingProfile?.published));
 
     if (attemptingFirstPublish) {
+      const contractAmendmentState = await getHostContractAmendmentState({
+        sitterProfileId: existingProfile?.id ?? null,
+        contractVersion: typeof existingProfile?.contractVersion === "string" ? existingProfile.contractVersion : null,
+      });
       const gate = checkSitterSensitiveActionGate({
         termsAcceptedAt: existingProfile?.termsAcceptedAt ?? null,
         termsVersion: existingProfile?.termsVersion ?? null,
         profileCompletion: completion,
         lifecycleStatus,
+        isContractAmendmentUpToDate: contractAmendmentState.isUpToDate,
       });
 
       if (!gate.ok) {

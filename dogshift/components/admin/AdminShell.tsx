@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { BarChart3, CalendarDays, FileText, LayoutDashboard, LogOut, Settings, ShieldAlert, Users } from "lucide-react";
+import { BarChart3, CalendarDays, FileText, LayoutDashboard, LogOut, ScrollText, Settings, ShieldAlert, Users } from "lucide-react";
 import { type ReactNode, useState } from "react";
 
 const navItems = [
   { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/admin/sitters", label: "Dogsitters", icon: Users },
+  { href: "/admin/avenants", label: "Avenants", icon: ScrollText },
   { href: "/admin/owners", label: "Propriétaires", icon: FileText },
   { href: "/admin/bookings", label: "Réservations", icon: CalendarDays },
   { href: "/admin/incidents", label: "Signalements", icon: ShieldAlert },

@@ -281,6 +281,7 @@ model SitterProfile {
   verificationNotes       String?
 
   verificationAccessLogs VerificationAccessLog[]
+  contractAmendmentAcceptances SitterContractAmendmentAcceptance[]
 
   stripeAccountId               String?
   stripeAccountStatus           String?
@@ -315,6 +316,47 @@ model VerificationAccessLog {
 
   @@index([sitterProfileId, createdAt])
   @@index([sitterId, createdAt])
+}
+
+model ContractAmendment {
+  id String @id @default(cuid())
+
+  title   String
+  content String
+  version String @unique
+
+  isActive    Boolean   @default(false)
+  activatedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  acceptances SitterContractAmendmentAcceptance[]
+
+  @@index([isActive, createdAt])
+  @@index([createdAt])
+}
+
+model SitterContractAmendmentAcceptance {
+  id String @id @default(cuid())
+
+  amendmentId     String
+  sitterProfileId String
+
+  amendmentVersion String
+  amendmentTitle   String
+  amendmentContent String
+  acceptedAt       DateTime @default(now())
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  amendment     ContractAmendment @relation(fields: [amendmentId], references: [id], onDelete: Cascade)
+  sitterProfile SitterProfile     @relation(fields: [sitterProfileId], references: [id], onDelete: Cascade)
+
+  @@unique([amendmentId, sitterProfileId])
+  @@index([sitterProfileId, acceptedAt])
+  @@index([amendmentId, acceptedAt])
 }
 
 model Booking {

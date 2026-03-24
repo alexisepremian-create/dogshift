@@ -15,8 +15,10 @@ import {
   Settings,
 } from "lucide-react";
 
+import ContractAmendmentBlockingModal from "@/components/ContractAmendmentBlockingModal";
 import SunCornerGlow from "@/components/SunCornerGlow";
 import HowItWorksSchema, { OWNER_HOW_IT_WORKS_CONTENT } from "@/components/HowItWorksSchema";
+import { getHostUserData } from "@/lib/hostUser";
 import { prisma } from "@/lib/prisma";
 import { getUserContexts } from "@/lib/userContexts";
 
@@ -59,6 +61,7 @@ export default async function AccountDashboardPage({
   }
 
   const uid = contexts.dbUserId;
+  const hostUser = contexts.hasSitterProfile ? await getHostUserData().catch(() => null) : null;
 
   const clerkUser = await currentUser();
   const rawName = typeof clerkUser?.fullName === "string" ? clerkUser.fullName : "";
@@ -147,6 +150,7 @@ export default async function AccountDashboardPage({
 
   return (
     <div className="relative grid gap-6 overflow-hidden" data-testid="account-dashboard">
+      {hostUser?.sitterId ? <ContractAmendmentBlockingModal sitterId={hostUser.sitterId} state={hostUser.contractAmendment} /> : null}
       <SunCornerGlow variant="ownerDashboard" />
 
       <div className="relative z-10">

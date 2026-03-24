@@ -6,13 +6,15 @@ export type SitterGateState =
   | { ok: false; status: 403; error: "TERMS_NOT_ACCEPTED" }
   | { ok: false; status: 403; error: "PROFILE_INCOMPLETE"; profileCompletion: number }
   | { ok: false; status: 403; error: "CONTRACT_NOT_SIGNED" }
-  | { ok: false; status: 403; error: "ACCOUNT_NOT_ACTIVATED" };
+  | { ok: false; status: 403; error: "ACCOUNT_NOT_ACTIVATED" }
+  | { ok: false; status: 403; error: "CONTRACT_AMENDMENT_REQUIRED" };
 
 export function checkSitterSensitiveActionGate(args: {
   termsAcceptedAt: Date | null;
   termsVersion: string | null;
   profileCompletion: number;
   lifecycleStatus: SitterLifecycleStatus;
+  isContractAmendmentUpToDate?: boolean;
 }): SitterGateState {
   const termsOk = Boolean(args.termsAcceptedAt) && args.termsVersion === CURRENT_TERMS_VERSION;
   if (!termsOk) {
@@ -29,6 +31,10 @@ export function checkSitterSensitiveActionGate(args: {
 
   if (!isActivatedStatus(args.lifecycleStatus)) {
     return { ok: false, status: 403, error: "ACCOUNT_NOT_ACTIVATED" };
+  }
+
+  if (args.isContractAmendmentUpToDate === false) {
+    return { ok: false, status: 403, error: "CONTRACT_AMENDMENT_REQUIRED" };
   }
 
   return { ok: true };

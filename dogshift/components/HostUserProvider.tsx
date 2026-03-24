@@ -2,6 +2,7 @@
 
 import { createContext, useContext } from "react";
 
+import type { HostContractAmendmentState } from "@/lib/contractAmendments";
 import type { SitterLifecycleStatus } from "@/lib/sitterContract";
 
 export type HostUser = {
@@ -16,6 +17,7 @@ export type HostUser = {
   contractSignedAt: string | null;
   activatedAt: string | null;
   activationCodeIssuedAt: string | null;
+  contractAmendment: HostContractAmendmentState;
 };
 
 export function makeHostUserValuePreview(args: { sitterId: string | null; profile: unknown }): HostUser {
@@ -31,6 +33,13 @@ export function makeHostUserValuePreview(args: { sitterId: string | null; profil
     contractSignedAt: null,
     activatedAt: null,
     activationCodeIssuedAt: null,
+    contractAmendment: {
+      activeAmendment: null,
+      isUpToDate: true,
+      acceptedAt: null,
+      acceptedVersion: null,
+      needsAcceptance: false,
+    },
   };
 }
 

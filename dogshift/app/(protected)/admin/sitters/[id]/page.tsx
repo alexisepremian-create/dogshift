@@ -4,6 +4,7 @@ import AdminShell from "@/components/admin/AdminShell";
 import AdminNotesPanel from "@/components/admin/AdminNotesPanel";
 import AdminSitterActions from "@/components/admin/AdminSitterActions";
 import { requireAdminPageAccess } from "@/lib/adminAuth";
+import { getActiveContractAmendment, isContractVersionAtLeast } from "@/lib/contractAmendments";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -61,6 +62,14 @@ export default async function AdminSitterDetailPage({ params }: { params: Promis
           contractSignedAt: true,
           contractVersion: true,
           contractSnapshot: true,
+          contractAmendmentAcceptances: {
+            orderBy: { acceptedAt: "desc" },
+            select: {
+              amendmentId: true,
+              amendmentVersion: true,
+              acceptedAt: true,
+            },
+          },
         },
       },
       sitterBookings: {
@@ -90,6 +99,13 @@ export default async function AdminSitterDetailPage({ params }: { params: Promis
   });
 
   if (!sitter) notFound();
+
+  const activeAmendment = await getActiveContractAmendment();
+  const latestAcceptance = Array.isArray(sitter.sitterProfile?.contractAmendmentAcceptances) ? sitter.sitterProfile.contractAmendmentAcceptances[0] : null;
+  const amendmentUpToDate = !activeAmendment
+    ? true
+    : isContractVersionAtLeast(sitter.sitterProfile?.contractVersion ?? null, activeAmendment.version) ||
+      (latestAcceptance?.acceptedAt && latestAcceptance?.amendmentVersion === activeAmendment.version);
 
   return (
     <AdminShell>
@@ -180,6 +196,9 @@ export default async function AdminSitterDetailPage({ params }: { params: Promis
                   <p><span className="font-semibold text-slate-900">Contrat signé le :</span> {formatDate(sitter.sitterProfile.contractSignedAt || null)}</p>
                   <p><span className="font-semibold text-slate-900">Version contrat :</span> {sitter.sitterProfile.contractVersion || "—"}</p>
                   <p><span className="font-semibold text-slate-900">Statut :</span> {sitter.sitterProfile.contractSignedAt ? "contrat signé" : sitter.sitterProfile.contractAccessTokenIssuedAt ? "contrat envoyé" : "contrat non envoyé"}</p>
+                  <p><span className="font-semibold text-slate-900">Avenant à jour :</span> {amendmentUpToDate ? "Oui" : "Non"}</p>
+                  <p><span className="font-semibold text-slate-900">Avenant actif :</span> {activeAmendment ? `${activeAmendment.title} (${activeAmendment.version})` : "Aucun"}</p>
+                  <p><span className="font-semibold text-slate-900">Accepté le :</span> {latestAcceptance?.acceptedAt ? formatDate(latestAcceptance.acceptedAt) : amendmentUpToDate && activeAmendment ? "Inclus dans le contrat" : "—"}</p>
                 </div>
 
                 {sitter.sitterProfile.contractSnapshot ? (
