@@ -255,21 +255,57 @@ export default function CguPage() {
             </section>
 
             <section>
-              <h2 className="text-base font-semibold text-slate-900">16. Politique d’annulation et de remboursement</h2>
-              <p className="mt-3 font-medium text-slate-900">Annulation par le Propriétaire</p>
+              <h2 className="text-base font-semibold text-slate-900">16. Annulation et remboursement</h2>
+
+              <h3 className="mt-5 text-sm font-semibold text-slate-900">16.1 Réservations standards</h3>
+              <p className="mt-3">Pour les réservations confirmées plus de vingt-quatre (24) heures avant le début de la prestation :</p>
+              <ul className="mt-3 list-disc space-y-2 pl-5">
+                <li>Le Propriétaire peut annuler sa réservation directement depuis la plateforme.</li>
+                <li>Le remboursement est effectué conformément aux conditions applicables au moment de la réservation.</li>
+                <li>Le remboursement est intégral sauf indication contraire spécifique.</li>
+              </ul>
+
+              <h3 className="mt-5 text-sm font-semibold text-slate-900">16.2 Réservations de dernière minute</h3>
               <p className="mt-3">
-                Les réservations peuvent être annulées avant le début du service selon les conditions suivantes :
+                Une réservation est considérée comme « de dernière minute » lorsqu’elle est effectuée moins de vingt-quatre (24) heures avant le
+                début de la prestation.
+              </p>
+              <p className="mt-3">Dans ce cas :</p>
+              <ul className="mt-3 list-disc space-y-2 pl-5">
+                <li>La réservation est confirmée immédiatement après paiement.</li>
+                <li>Le paiement est immédiat et définitif.</li>
+                <li>Le Propriétaire ne peut plus annuler la réservation en ligne après confirmation.</li>
+                <li>Aucun remboursement n’est effectué en cas d’annulation ou de changement d’avis du Propriétaire.</li>
+              </ul>
+
+              <h3 className="mt-5 text-sm font-semibold text-slate-900">16.3 Annulation par le Dogsitter</h3>
+              <p className="mt-3">Si le Dogsitter annule une réservation confirmée (quelle que soit la date) :</p>
+              <ul className="mt-3 list-disc space-y-2 pl-5">
+                <li>Le Propriétaire est remboursé intégralement du montant payé.</li>
+                <li>Le remboursement est effectué via le moyen de paiement initial.</li>
+                <li>
+                  Le délai de réception dépend de l’établissement bancaire du Propriétaire (généralement quelques jours ouvrables).
+                </li>
+              </ul>
+
+              <h3 className="mt-5 text-sm font-semibold text-slate-900">16.4 Cas exceptionnels</h3>
+              <p className="mt-3">
+                DogShift se réserve le droit d’accorder un remboursement total ou partiel dans des situations exceptionnelles, notamment :
               </p>
               <ul className="mt-3 list-disc space-y-2 pl-5">
-                <li>Annulation plus de 24 heures avant le début du service : remboursement intégral.</li>
-                <li>Annulation moins de 24 heures avant le début du service : le remboursement peut être partiel ou nul selon les conditions définies par le Dogsitter.</li>
+                <li>problème majeur lié au Dogsitter (absence, comportement inapproprié, etc.) ;</li>
+                <li>impossibilité d’exécuter la prestation ;</li>
+                <li>incident imputable à la plateforme.</li>
               </ul>
-              <p className="mt-4 font-medium text-slate-900">Annulation par le Dogsitter</p>
-              <p className="mt-3">En cas d’annulation par le Dogsitter, le Propriétaire est intégralement remboursé.</p>
-              <p className="mt-4 font-medium text-slate-900">Traitement des remboursements</p>
-              <p className="mt-3">
-                Les remboursements sont traités via le prestataire de paiement Stripe et peuvent prendre plusieurs jours ouvrables selon l’établissement bancaire.
-              </p>
+              <p className="mt-3">Chaque situation est évaluée au cas par cas.</p>
+
+              <h3 className="mt-5 text-sm font-semibold text-slate-900">16.5 Délais de remboursement</h3>
+              <p className="mt-3">Lorsque le remboursement est validé :</p>
+              <ul className="mt-3 list-disc space-y-2 pl-5">
+                <li>il est initié immédiatement via le prestataire de paiement (Stripe) ;</li>
+                <li>le délai effectif dépend de la banque du client ;</li>
+                <li>DogShift ne peut être tenu responsable des délais bancaires.</li>
+              </ul>
             </section>
 
             <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
