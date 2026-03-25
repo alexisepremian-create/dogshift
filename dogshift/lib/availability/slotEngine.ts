@@ -95,7 +95,7 @@ export const SERVICE_DEFAULTS: Record<ServiceType, ServiceConfigDefaults> = {
     slotStepMin: 30,
     minDurationMin: 60,
     maxDurationMin: 180,
-    leadTimeMin: 0,
+    leadTimeMin: 30,
     bufferBeforeMin: 30,
     bufferAfterMin: 30,
     overnightRequired: false,
@@ -134,6 +134,12 @@ export const SERVICE_DEFAULTS: Record<ServiceType, ServiceConfigDefaults> = {
     checkOutStartMin: 8 * 60,
     checkOutEndMin: 12 * 60,
   },
+};
+
+const HARD_MIN_DURATION_MIN: Record<ServiceType, number> = {
+  PROMENADE: 60,
+  DOGSITTING: 120,
+  PENSION: 60,
 };
 
 type AvailabilityRuleRow = {
@@ -678,7 +684,7 @@ export function computeDaySlots(input: ComputeDaySlotsInput): DaySlot[] {
 }
 
 export async function generateDaySlots(
-  input: GenerateDaySlotsInput
+  input: GenerateDaySlotsInput & { dbg?: boolean }
 ): Promise<
   | { ok: true; slots: DaySlot[]; config: PublicServiceConfig; durationMin: number; configuredRanges: ConfiguredTimeRange[]; blockedRanges: BlockedTimeRange[]; starts: StartAvailability[] }
   | { ok: false; error: string }
@@ -718,6 +724,30 @@ export async function generateDaySlots(
       sitterId,
       enabled: config?.enabled ?? true,
     };
+
+    // Enforce service-level minimum duration, even if DB config is lower.
+    mergedConfig.minDurationMin = Math.max(mergedConfig.minDurationMin, HARD_MIN_DURATION_MIN[input.serviceType] ?? 0);
+
+    // Targeted debug to explain "configuredRanges endMin > expected".
+    // Enable via /api/sitters/:id/slots?dbg=1
+    if (input.dbg === true) {
+      console.log("[availability][generateDaySlots][debug]", {
+        sitterId,
+        serviceType: input.serviceType,
+        date,
+        dow,
+        mergedConfig: {
+          slotStepMin: mergedConfig.slotStepMin,
+          minDurationMin: mergedConfig.minDurationMin,
+          maxDurationMin: mergedConfig.maxDurationMin,
+          leadTimeMin: mergedConfig.leadTimeMin,
+          bufferBeforeMin: mergedConfig.bufferBeforeMin,
+          bufferAfterMin: mergedConfig.bufferAfterMin,
+        },
+        rules: (rules ?? []).map((r) => ({ startMin: r.startMin, endMin: r.endMin, status: r.status })),
+        exceptions: (exceptions ?? []).map((e) => ({ startMin: e.startMin, endMin: e.endMin, status: e.status })),
+      });
+    }
 
     const requestedDuration =
       typeof input.durationMin === "number" && Number.isFinite(input.durationMin) ? Math.round(input.durationMin) : null;

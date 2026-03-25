@@ -46,7 +46,7 @@ export async function GET(
     return NextResponse.json({ ok: false, error: "INVALID_DURATION" }, { status: 400 });
   }
 
-  const result = await generateDaySlots({ sitterId, serviceType, date, durationMin: durationMin ?? undefined });
+  const result = await generateDaySlots({ sitterId, serviceType, date, durationMin: durationMin ?? undefined, dbg });
   const durationMs = Date.now() - startedAt;
 
   if (dbg) {

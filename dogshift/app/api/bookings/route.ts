@@ -324,6 +324,26 @@ export async function POST(req: NextRequest) {
       if (!selectedSlot) {
         return NextResponse.json({ ok: false, error: "DATE_NOT_AVAILABLE" }, { status: 400 });
       }
+
+      // Hard guard: ensure the selection ends within the configured availability range.
+      // This prevents cases where a start time exists but the chosen duration would exceed
+      // the sitter's real end-of-availability window.
+      const startMin = typeof (selectedSlot as any).startMin === "number" ? (selectedSlot as any).startMin : null;
+      const endMin = typeof (selectedSlot as any).endMin === "number" ? (selectedSlot as any).endMin : null;
+      const ranges = Array.isArray((daySlots as any).configuredRanges) ? ((daySlots as any).configuredRanges as any[]) : [];
+      const configuredRange = Number.isFinite(startMin)
+        ? ranges.find((r) => r && typeof r.startMin === "number" && typeof r.endMin === "number" && startMin >= r.startMin && startMin < r.endMin) ?? null
+        : null;
+      if (configuredRange && Number.isFinite(endMin) && typeof configuredRange.endMin === "number" && endMin > configuredRange.endMin) {
+        return NextResponse.json(
+          {
+            ok: false,
+            error: "DATE_NOT_AVAILABLE",
+            message: "Ce créneau dépasse la plage de disponibilité du sitter. Choisis un autre horaire ou une durée plus courte.",
+          },
+          { status: 400 }
+        );
+      }
     }
 
     // Anti double-booking: backend source of truth.

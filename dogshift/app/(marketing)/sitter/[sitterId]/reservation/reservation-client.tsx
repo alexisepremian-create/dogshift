@@ -35,6 +35,14 @@ type StartAvailability = {
   compatibleDurationMin: number[];
 };
 
+type ConfiguredTimeRange = {
+  startAt: string;
+  endAt: string;
+  startMin: number;
+  endMin: number;
+  status: "AVAILABLE" | "ON_REQUEST";
+};
+
 type HourlyConfig = {
   minDurationMin: number;
   maxDurationMin: number;
@@ -770,6 +778,8 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
+  const LEAD_TIME_MINUTES = 30;
+
   const [openPicker, setOpenPicker] = useState<"time" | "duration" | null>(null);
   const [selectedService, setSelectedService] = useState<string | null>(null);
   const [dateStart, setDateStart] = useState("");
@@ -783,16 +793,22 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
   const [selectedDateDayStatus, setSelectedDateDayStatus] = useState<DayStatusRow | null>(null);
   const [selectedDateStatusLoaded, setSelectedDateStatusLoaded] = useState(false);
   const [calendarMonthStatuses, setCalendarMonthStatuses] = useState<Record<string, DayStatusRow>>({});
-  const [hourlySlots, setHourlySlots] = useState<HourlySlot[]>([]);
-  const [hourlySlotsLoading, setHourlySlotsLoading] = useState(false);
-  const [hourlySlotsLoaded, setHourlySlotsLoaded] = useState(false);
-  const [hourlySlotsError, setHourlySlotsError] = useState<string | null>(null);
+  const [, setHourlySlots] = useState<HourlySlot[]>([]);
+  const [, setHourlySlotsLoading] = useState(false);
+  const [, setHourlySlotsLoaded] = useState(false);
+  const [, setHourlySlotsError] = useState<string | null>(null);
   const [hourlyConfig, setHourlyConfig] = useState<HourlyConfig | null>(null);
   const [startAvailabilities, setStartAvailabilities] = useState<StartAvailability[]>([]);
+  const [configuredRanges, setConfiguredRanges] = useState<ConfiguredTimeRange[]>([]);
   const [durationSlotMap, setDurationSlotMap] = useState<Record<number, HourlySlot[]>>({});
   const [durationSlotsLoading, setDurationSlotsLoading] = useState(false);
 
   const todayIso = useMemo(() => todayZurichIsoDate(), []);
+  const now = useMemo(() => new Date(), [dateStart]);
+  const nowMs = now.getTime();
+  const isTodaySelected = Boolean(dateStart && dateStart === todayIso);
+  const earliestAllowedMs = useMemo(() => (isTodaySelected ? nowMs + LEAD_TIME_MINUTES * 60 * 1000 : nowMs), [isTodaySelected, nowMs]);
+  const earliestAllowedTimeLabel = `${pad2(new Date(earliestAllowedMs).getHours())}:${pad2(new Date(earliestAllowedMs).getMinutes())}`;
 
   useEffect(() => {
     const serviceParam = (searchParams.get("service") ?? "").trim();
@@ -1049,6 +1065,7 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
       setHourlySlotsError(null);
       setHourlyConfig(null);
       setStartAvailabilities([]);
+      setConfiguredRanges([]);
       return;
     }
 
@@ -1058,6 +1075,7 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
       setHourlySlotsLoaded(false);
       setHourlyConfig(null);
       setStartAvailabilities([]);
+      setConfiguredRanges([]);
       return;
     }
 
@@ -1078,7 +1096,13 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
           cache: "no-store",
           signal: controller.signal,
         });
-        const payload = (await res.json().catch(() => null)) as { ok?: boolean; slots?: HourlySlot[]; config?: HourlyConfig; starts?: StartAvailability[] } | null;
+        const payload = (await res.json().catch(() => null)) as {
+          ok?: boolean;
+          slots?: HourlySlot[];
+          config?: HourlyConfig;
+          starts?: StartAvailability[];
+          configuredRanges?: ConfiguredTimeRange[];
+        } | null;
         if (cancelled) return;
         if (!res.ok || !payload?.ok || !Array.isArray(payload.slots)) {
           setHourlySlots([]);
@@ -1086,6 +1110,7 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
           setHourlySlotsLoaded(true);
           setHourlyConfig(null);
           setStartAvailabilities([]);
+          setConfiguredRanges([]);
           return;
         }
         setHourlySlots(
@@ -1109,6 +1134,21 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
               )
             : []
         );
+        setConfiguredRanges(
+          Array.isArray(payload.configuredRanges)
+            ? payload.configuredRanges.filter(
+                (range): range is ConfiguredTimeRange =>
+                  Boolean(
+                    range &&
+                    typeof range.startAt === "string" &&
+                    typeof range.endAt === "string" &&
+                    typeof range.startMin === "number" &&
+                    typeof range.endMin === "number" &&
+                    (range.status === "AVAILABLE" || range.status === "ON_REQUEST")
+                  )
+              )
+            : []
+        );
         setHourlySlotsLoaded(true);
       } catch (fetchError) {
         if (cancelled) return;
@@ -1118,6 +1158,7 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
         setHourlySlotsLoaded(true);
         setHourlyConfig(null);
         setStartAvailabilities([]);
+        setConfiguredRanges([]);
       } finally {
         if (cancelled) return;
         setHourlySlotsLoading(false);
@@ -1145,6 +1186,20 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
   const displayedDurationMinSet = useMemo(
     () => new Set(durationOptions.map((option) => option.hours * 60)),
     [durationOptions]
+  );
+
+  const minDurationMinForService = useMemo(() => {
+    if (unit !== "HOURLY" || !hourlyConfig) return null;
+    const stepMin = Math.max(1, hourlyConfig.stepMin);
+    return Math.max(stepMin, hourlyConfig.minDurationMin);
+  }, [hourlyConfig, unit]);
+
+  const configuredEndMinForStartMin = useCallback(
+    (startMin: number) => {
+      const range = configuredRanges.find((r) => startMin >= r.startMin && startMin < r.endMin) ?? null;
+      return range?.endMin ?? null;
+    },
+    [configuredRanges]
   );
 
   useEffect(() => {
@@ -1203,24 +1258,85 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
   }, [dateStart, durationOptions, selectedService, sitter.sitterId, unit]);
 
   const availableStartTimes = useMemo(() => {
-    return startAvailabilities
-      .filter(
-        (start) =>
-          (start.status === "AVAILABLE" || start.status === "ON_REQUEST") &&
-          start.compatibleDurationMin.some((durationMin) => displayedDurationMinSet.has(durationMin))
-      )
-      .map((start) => isoToTimeLabel(start.startAt));
-  }, [displayedDurationMinSet, startAvailabilities]);
+    if (unit !== "HOURLY") return [];
+    if (!minDurationMinForService) return [];
+
+    const out = startAvailabilities
+      .filter((start) => start.status === "AVAILABLE" || start.status === "ON_REQUEST")
+      .filter((start) => {
+        // Must support at least the minimum duration.
+        const supportsMin = start.compatibleDurationMin.includes(minDurationMinForService);
+        // Must fit within configured availability window.
+        const endMin = configuredEndMinForStartMin(start.startMin);
+        const fitsRange = endMin !== null && start.startMin + minDurationMinForService <= endMin;
+
+        if (process.env.NODE_ENV !== "production") {
+          const label = isoToTimeLabel(start.startAt);
+          if (label === "15:30") {
+            console.log("[reservation][hourly][start-debug]", {
+              selectedService,
+              dateStart,
+              label,
+              startMin: start.startMin,
+              minDurationMinForService,
+              compatibleDurationMin: start.compatibleDurationMin,
+              configuredRange: endMin === null ? null : { endMin },
+              supportsMin,
+              fitsRange,
+              earliestAllowedMs: isTodaySelected ? earliestAllowedMs : null,
+              startAt: start.startAt,
+            });
+          }
+        }
+
+        return supportsMin && fitsRange;
+      })
+      .filter((start) => {
+        if (!isTodaySelected) return true;
+        const ts = new Date(start.startAt).getTime();
+        return Number.isFinite(ts) && ts >= earliestAllowedMs;
+      })
+      .map((start) => isoToTimeLabel(start.startAt))
+      .filter(Boolean)
+      .sort((a, b) => a.localeCompare(b));
+
+    if (process.env.NODE_ENV !== "production") {
+      // One-shot-ish snapshot to understand configured ranges & min duration.
+      if (dateStart && selectedService === "Promenade") {
+        console.log("[reservation][hourly][debug-snapshot]", {
+          selectedService,
+          dateStart,
+          minDurationMinForService,
+          configuredRanges: configuredRanges.map((r) => ({ startMin: r.startMin, endMin: r.endMin, status: r.status })),
+          startAvailabilitiesCount: startAvailabilities.length,
+          availableStartTimesCount: out.length,
+        });
+      }
+    }
+
+    return out;
+  }, [
+    configuredEndMinForStartMin,
+    configuredRanges,
+    dateStart,
+    earliestAllowedMs,
+    isTodaySelected,
+    minDurationMinForService,
+    selectedService,
+    startAvailabilities,
+    unit,
+  ]);
 
   const timePickerSlots = useMemo(
     () =>
       startAvailabilities.map((start) => {
+        const time = isoToTimeLabel(start.startAt);
         return {
-          time: isoToTimeLabel(start.startAt),
-          available: start.compatibleDurationMin.some((durationMin) => displayedDurationMinSet.has(durationMin)),
+          time,
+          available: availableStartTimes.includes(time),
         };
       }),
-    [displayedDurationMinSet, startAvailabilities]
+    [availableStartTimes, startAvailabilities]
   );
 
   const durationOptionsForStart = useMemo<DurationPickerOption[]>(() => {
@@ -1228,16 +1344,18 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
       return durationOptions.map((option) => ({ ...option, available: false }));
     }
 
-    const startAvailability = startAvailabilities.find((start) => isoToTimeLabel(start.startAt) === startTime) ?? null;
-    const compatibleDurationHours = new Set(
-      (startAvailability?.compatibleDurationMin ?? []).map((durationMin) => durationMin / 60)
-    );
-
     return durationOptions.map((option) => {
-      const available = compatibleDurationHours.has(option.hours);
+      const slots = durationSlotMap[option.hours] ?? [];
+      const available = slots.some((slot) => {
+        if (!(slot.status === "AVAILABLE" || slot.status === "ON_REQUEST")) return false;
+        if (isoToTimeLabel(slot.startAt) !== startTime) return false;
+        const startMs = new Date(slot.startAt).getTime();
+        if (isTodaySelected && Number.isFinite(startMs) && startMs < earliestAllowedMs) return false;
+        return true;
+      });
       return { ...option, available };
     });
-  }, [durationOptions, startAvailabilities, startTime]);
+  }, [durationOptions, durationSlotMap, earliestAllowedMs, isTodaySelected, startTime]);
 
   const selectedDurationSlots = useMemo(() => {
     if (!durationHours) return [];
@@ -1246,8 +1364,17 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
 
   const selectedHourlySlot = useMemo(() => {
     if (!startTime || !endTime) return null;
-    return selectedDurationSlots.find((slot) => isoToTimeLabel(slot.startAt) === startTime && isoToTimeLabel(slot.endAt) === endTime && (slot.status === "AVAILABLE" || slot.status === "ON_REQUEST")) ?? null;
-  }, [endTime, selectedDurationSlots, startTime]);
+    return (
+      selectedDurationSlots.find((slot) => {
+        if (isoToTimeLabel(slot.startAt) !== startTime) return false;
+        if (isoToTimeLabel(slot.endAt) !== endTime) return false;
+        if (!(slot.status === "AVAILABLE" || slot.status === "ON_REQUEST")) return false;
+        if (!isTodaySelected) return true;
+        const startMs = new Date(slot.startAt).getTime();
+        return Number.isFinite(startMs) && startMs >= earliestAllowedMs;
+      }) ?? null
+    );
+  }, [earliestAllowedMs, endTime, isTodaySelected, selectedDurationSlots, startTime]);
 
   const canSubmit = useMemo(() => {
     if (!selectedService || !unit) return false;
@@ -1255,13 +1382,28 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
     return Boolean(dateStart && startTime && durationHours && selectedUnitPrice && selectedHourlySlot);
   }, [dateEnd, dateStart, durationHours, selectedHourlySlot, selectedService, selectedUnitPrice, startTime, unit]);
 
-  const hasPartialAvailability = useMemo(() => {
-    if (unit !== "HOURLY") return false;
-    if (!hourlySlotsLoaded) return false;
-    const availableCount = hourlySlots.filter((slot) => slot.status === "AVAILABLE").length;
-    const unavailableCount = hourlySlots.filter((slot) => slot.status === "UNAVAILABLE").length;
-    return availableCount > 0 && unavailableCount > 0;
-  }, [hourlySlots, hourlySlotsLoaded, unit]);
+  const hasLeadTimeOnlyForToday = useMemo(() => {
+    if (!isTodaySelected) return false;
+    if (availableStartTimes.length > 0) return false;
+
+    const compatibleStarts = startAvailabilities.filter(
+      (start) =>
+        (start.status === "AVAILABLE" || start.status === "ON_REQUEST") &&
+        start.compatibleDurationMin.some((durationMin) => displayedDurationMinSet.has(durationMin))
+    );
+
+    return compatibleStarts.some((start) => {
+      const ts = new Date(start.startAt).getTime();
+      return Number.isFinite(ts) && ts >= nowMs && ts < earliestAllowedMs;
+    });
+  }, [
+    availableStartTimes.length,
+    displayedDurationMinSet,
+    earliestAllowedMs,
+    isTodaySelected,
+    nowMs,
+    startAvailabilities,
+  ]);
 
   const resetInvalidHourlySelection = useCallback(() => {
     setStartTime(null);
@@ -1272,9 +1414,26 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
     if (!startTime) return;
     if (!availableStartTimes.includes(startTime)) {
       resetInvalidHourlySelection();
+      if (isTodaySelected) {
+        const startAvailability = startAvailabilities.find((s) => isoToTimeLabel(s.startAt) === startTime);
+        const startMs = startAvailability ? new Date(startAvailability.startAt).getTime() : NaN;
+        if (Number.isFinite(startMs) && startMs < earliestAllowedMs) {
+          setError(`Ce créneau doit commencer au moins ${LEAD_TIME_MINUTES} min dans le futur (à partir de ${earliestAllowedTimeLabel}).`);
+          return;
+        }
+      }
       setError("Ce créneau vient d’être réservé ou n’est plus disponible, merci de choisir un autre horaire.");
     }
-  }, [availableStartTimes, resetInvalidHourlySelection, startTime]);
+  }, [
+    LEAD_TIME_MINUTES,
+    availableStartTimes,
+    earliestAllowedMs,
+    earliestAllowedTimeLabel,
+    isTodaySelected,
+    resetInvalidHourlySelection,
+    startAvailabilities,
+    startTime,
+  ]);
 
   useEffect(() => {
     if (!durationHours) return;
@@ -1328,6 +1487,14 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
         if (dateStart < todayIso) {
           setError("Impossible de choisir une date passée.");
           return;
+        }
+        if (isTodaySelected) {
+          const startAvailability = startAvailabilities.find((s) => isoToTimeLabel(s.startAt) === startTime);
+          const startMs = startAvailability ? new Date(startAvailability.startAt).getTime() : NaN;
+          if (Number.isFinite(startMs) && startMs < earliestAllowedMs) {
+            setError(`Ce créneau doit commencer au moins ${LEAD_TIME_MINUTES} min dans le futur (à partir de ${earliestAllowedTimeLabel}).`);
+            return;
+          }
         }
         if (!isReservationDateBookable(dateStart)) {
           setError("Cette date n’est pas disponible.");
@@ -1593,29 +1760,9 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
                   <p className="mt-1 text-sm font-semibold text-slate-900">{endTime ?? "—"}</p>
                 </div>
 
-                <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                  <p className="text-xs font-semibold text-slate-600">Disponibilité réelle</p>
-                  {hourlySlotsLoading ? (
-                    <p className="mt-1 text-sm text-slate-600">Actualisation des créneaux…</p>
-                  ) : hourlySlotsError ? (
-                    <p className="mt-1 text-sm text-rose-700">Impossible de charger les créneaux pour cette date.</p>
-                  ) : !dateStart ? (
-                    <p className="mt-1 text-sm text-slate-600">Choisis une date pour voir les créneaux restants.</p>
-                  ) : unit === "HOURLY" && !startTime ? (
-                    <p className="mt-1 text-sm text-slate-600">Choisis une heure de début pour voir les durées compatibles.</p>
-                  ) : durationSlotsLoading ? (
-                    <p className="mt-1 text-sm text-slate-600">Actualisation des durées compatibles…</p>
-                  ) : availableStartTimes.length === 0 ? (
-                    <p className="mt-1 text-sm font-medium text-rose-700">Aucun créneau libre sur cette journée.</p>
-                  ) : hasPartialAvailability ? (
-                    <>
-                      <p className="mt-1 text-sm font-semibold text-amber-900">Disponibilité partielle</p>
-                      <p className="mt-1 text-sm text-amber-800">Certains horaires sont déjà réservés.</p>
-                    </>
-                  ) : (
-                    <p className="mt-1 text-sm font-semibold text-emerald-900">Disponible toute la journée</p>
-                  )}
-                </div>
+                {isTodaySelected && hasLeadTimeOnlyForToday ? (
+                  <p className="mt-4 text-sm font-medium text-rose-700">Aucun créneau disponible pour aujourd’hui.</p>
+                ) : null}
 
               </div>
             ) : null}
