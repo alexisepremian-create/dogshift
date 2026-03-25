@@ -5,6 +5,10 @@ import { prisma } from "@/lib/prisma";
 import { resolveDbUserId } from "@/lib/auth/resolveDbUserId";
 import { getSitterReviewSnapshot, type SitterReviewItem } from "@/lib/sitterReviews";
 import { normalizeSitterLifecycleStatus, type SitterLifecycleStatus } from "@/lib/sitterContract";
+import {
+  normalizePersistedPublicPricing,
+  resolvePublicEnabledServices,
+} from "@/lib/sitterEnabledServices";
 
 export const runtime = "nodejs";
 
@@ -32,23 +36,6 @@ type SitterDetail = {
   averageRating: number | null;
   reviews: SitterReviewItem[];
 };
-
-function normalizePersistedPricing(raw: unknown) {
-  if (!raw || typeof raw !== "object") return {} as Record<string, number>;
-  const obj = raw as Record<string, unknown>;
-  const out: Record<string, number> = {};
-  if (typeof obj.Promenade === "number" && Number.isFinite(obj.Promenade) && obj.Promenade > 0) out.Promenade = obj.Promenade;
-  if (typeof obj.Garde === "number" && Number.isFinite(obj.Garde) && obj.Garde > 0) out.Garde = obj.Garde;
-  if (typeof obj.Pension === "number" && Number.isFinite(obj.Pension) && obj.Pension > 0) out.Pension = obj.Pension;
-  return out;
-}
-
-function serviceLabelForType(serviceType: string) {
-  if (serviceType === "PROMENADE") return "Promenade";
-  if (serviceType === "DOGSITTING") return "Garde";
-  if (serviceType === "PENSION") return "Pension";
-  return null;
-}
 
 export async function GET(
   req: NextRequest,
@@ -127,23 +114,23 @@ export async function GET(
     }
 
     const name = String(sitterProfile.displayName ?? "").trim();
-    const pricing = normalizePersistedPricing(sitterProfile.pricing);
+    const pricing = normalizePersistedPublicPricing(sitterProfile.pricing);
 
     const serviceConfigs = await (prisma as any).serviceConfig.findMany({
       where: { sitterId },
       select: { serviceType: true, enabled: true },
     });
 
-    const enabledServicesFromConfig = Array.isArray(serviceConfigs)
-      ? serviceConfigs
-          .filter((row) => row && row.enabled === true)
-          .map((row) => serviceLabelForType(String(row.serviceType ?? "")))
-          .filter((value): value is NonNullable<ReturnType<typeof serviceLabelForType>> => value !== null)
-      : [];
-
-    const enabledServices = enabledServicesFromConfig.length
-      ? enabledServicesFromConfig
-      : Object.keys(pricing).filter((svc) => svc === "Promenade" || svc === "Garde" || svc === "Pension");
+    const enabledServices = resolvePublicEnabledServices({
+      serviceConfigs: Array.isArray(serviceConfigs)
+        ? serviceConfigs.map((row: { serviceType?: unknown; enabled?: unknown }) => ({
+            serviceType: String(row?.serviceType ?? ""),
+            enabled: Boolean(row?.enabled),
+          }))
+        : [],
+      pricing: sitterProfile.pricing,
+      servicesJson: sitterProfile.services,
+    });
     const lifecycleStatus = normalizeSitterLifecycleStatus(sitterProfile.lifecycleStatus, Boolean(sitterProfile.published));
     const verified = typeof (sitterProfile as any)?.verificationStatus === "string" ? (sitterProfile as any).verificationStatus === "approved" : false;
 

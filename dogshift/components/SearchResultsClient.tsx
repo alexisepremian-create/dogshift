@@ -526,11 +526,11 @@ export default function SearchResultsClient() {
                       </div>
                     </div>
 
-                    <div className="mt-4 flex min-h-[30px] flex-wrap items-center gap-2 overflow-hidden">
+                    <div className="mt-4 flex min-h-[30px] flex-wrap items-center justify-start gap-1.5 sm:gap-2">
                       {sitter.services.map((svc) => (
                         <span
                           key={svc}
-                          className="inline-flex shrink-0 items-center rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-700"
+                          className="inline-flex shrink-0 items-center rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-700 sm:px-3"
                         >
                           {svc}
                         </span>

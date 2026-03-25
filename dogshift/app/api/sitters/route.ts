@@ -3,6 +3,7 @@ import type { NextRequest } from "next/server";
 
 import { prisma } from "@/lib/prisma";
 import { getSitterReviewSnapshot } from "@/lib/sitterReviews";
+import { resolvePublicEnabledServices } from "@/lib/sitterEnabledServices";
 
 export const runtime = "nodejs";
 
@@ -23,24 +24,6 @@ type SitterListItem = {
   countReviews: number;
   updatedAt: string;
 };
-
-const SERVICE_ORDER = ["Promenade", "Garde", "Pension"] as const;
-
-function normalizePublicServices(raw: unknown) {
-  const found = new Set<(typeof SERVICE_ORDER)[number]>();
-  if (Array.isArray(raw)) {
-    for (const value of raw) {
-      if (value === "Promenade" || value === "Garde" || value === "Pension") found.add(value);
-    }
-  }
-  if (raw && typeof raw === "object") {
-    const obj = raw as Record<string, unknown>;
-    for (const key of SERVICE_ORDER) {
-      if (obj[key] === true) found.add(key);
-    }
-  }
-  return SERVICE_ORDER.filter((service) => found.has(service));
-}
 
 type DbRow = {
   sitterId: string;
@@ -88,6 +71,34 @@ export async function GET(_req: NextRequest) {
       },
     });
 
+    const sitterIds = sitters
+      .map((s) => String(s.sitterId ?? "").trim())
+      .filter((id): id is string => Boolean(id));
+
+    const configRows: { sitterId: string; serviceType: string; enabled: boolean }[] = [];
+    if (sitterIds.length > 0) {
+      const raw = (await (prisma as any).serviceConfig.findMany({
+        where: { sitterId: { in: sitterIds } },
+        select: { sitterId: true, serviceType: true, enabled: true },
+      })) as { sitterId?: unknown; serviceType?: unknown; enabled?: unknown }[];
+      for (const row of raw ?? []) {
+        const sid = String(row?.sitterId ?? "").trim();
+        if (!sid) continue;
+        configRows.push({
+          sitterId: sid,
+          serviceType: String(row?.serviceType ?? ""),
+          enabled: Boolean(row?.enabled),
+        });
+      }
+    }
+
+    const configsBySitter = new Map<string, { serviceType: string; enabled: boolean }[]>();
+    for (const row of configRows) {
+      const list = configsBySitter.get(row.sitterId) ?? [];
+      list.push(row);
+      configsBySitter.set(row.sitterId, list);
+    }
+
     const rowsRaw = await Promise.all(
       sitters.map(async (s: DbRow): Promise<SitterListItem | null> => {
       const name = String(s.displayName ?? "").trim();
@@ -111,7 +122,11 @@ export async function GET(_req: NextRequest) {
         verified: typeof s.verificationStatus === "string" ? s.verificationStatus === "approved" : false,
         lat: typeof s.lat === "number" && Number.isFinite(s.lat) ? s.lat : null,
         lng: typeof s.lng === "number" && Number.isFinite(s.lng) ? s.lng : null,
-        services: normalizePublicServices(s.services),
+        services: resolvePublicEnabledServices({
+          serviceConfigs: configsBySitter.get(String(s.sitterId ?? "")) ?? [],
+          pricing: s.pricing,
+          servicesJson: s.services,
+        }),
         pricing: s.pricing ?? null,
         dogSizes: s.dogSizes ?? null,
         averageRating,
