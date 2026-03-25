@@ -1813,7 +1813,7 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
               </button>
 
               <p className="mt-3 text-xs text-slate-500">
-                Le montant final est calculé côté serveur au moment de la réservation.
+                Le montant final est calculé au moment de la réservation.
               </p>
             </div>
           </aside>
