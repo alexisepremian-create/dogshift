@@ -4,8 +4,8 @@ import type { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { resolveDbUserId } from "@/lib/auth/resolveDbUserId";
 import { stripe } from "@/lib/stripe";
-import { setBookingStatus } from "@/lib/bookings/setBookingStatus";
 import { syncBookingPaymentDetails } from "@/lib/stripe/bookingPayments";
+import { transitionBookingAfterStripePaymentSuccess } from "@/lib/bookings/transitionBookingAfterPayment";
 
 export const runtime = "nodejs";
 
@@ -99,16 +99,20 @@ async function reconcileBookingPaymentIfNeeded(
       paymentIntentId,
     });
 
-    const res = await setBookingStatus(booking.id, "PAID" as any, { req });
+    const res = await transitionBookingAfterStripePaymentSuccess(req, booking.id, {
+      source: "account-booking-get-reconcile",
+    });
 
     console.log("[api][account][bookings][id][GET] reconcile updated", {
       bookingId: booking.id,
       paymentIntentId,
-      changed: res.ok ? res.changed : null,
+      changed: res.changed,
+      targetStatus: "targetStatus" in res ? res.targetStatus : null,
+      ok: res.ok,
     });
 
-    if (res.ok && res.changed) {
-      return "PAID";
+    if (res.ok && res.changed && "targetStatus" in res && res.targetStatus) {
+      return res.targetStatus;
     }
   } catch (err) {
     console.error("[api][account][bookings][id][GET] reconcile error", {
