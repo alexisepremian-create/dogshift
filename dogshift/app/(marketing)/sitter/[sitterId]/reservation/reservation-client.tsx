@@ -336,8 +336,8 @@ function DogShiftCalendar({
       </div>
 
       <div className="mt-4 grid grid-cols-7 gap-1">
-        {(["L", "M", "M", "J", "V", "S", "D"] as const).map((d) => (
-          <p key={d} className="text-center text-[11px] font-semibold text-slate-500">
+        {(["L", "M", "M", "J", "V", "S", "D"] as const).map((d, idx) => (
+          <p key={`dow-${idx}-${d}`} className="text-center text-[11px] font-semibold text-slate-500">
             {d}
           </p>
         ))}
