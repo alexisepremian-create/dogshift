@@ -1,11 +1,15 @@
 import Stripe from "stripe";
 
-const key = process.env.STRIPE_SECRET_KEY;
+let stripeSingleton: Stripe | null = null;
 
-if (!key) {
-  throw new Error("Missing STRIPE_SECRET_KEY");
+export function getStripe(): Stripe {
+  if (stripeSingleton) return stripeSingleton;
+  const key = process.env.STRIPE_SECRET_KEY;
+  if (!key) {
+    throw new Error("Missing STRIPE_SECRET_KEY");
+  }
+  stripeSingleton = new Stripe(key, {
+    apiVersion: "2025-12-15.clover",
+  });
+  return stripeSingleton;
 }
-
-export const stripe = new Stripe(key, {
-  apiVersion: "2025-12-15.clover",
-});

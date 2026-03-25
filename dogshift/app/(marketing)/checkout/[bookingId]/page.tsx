@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+import type { ReactNode } from "react";
 
 type BookingStatus =
   | "DRAFT"
@@ -83,12 +84,38 @@ function formatTimeLabel(value?: string) {
   }).format(d);
 }
 
-function SummaryRow({ label, value }: { label: string; value: string }) {
+function SummaryRow({ label, value }: { label: ReactNode; value: string }) {
   return (
     <div className="flex items-start justify-between gap-6 text-sm">
       <p className="text-slate-600">{label}</p>
       <p className="text-right font-semibold text-slate-900">{value}</p>
     </div>
+  );
+}
+
+function InfoTooltip({ text }: { text: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <span
+      className="relative inline-flex"
+      onMouseEnter={() => setOpen(true)}
+      onMouseLeave={() => setOpen(false)}
+    >
+      <button
+        type="button"
+        aria-label="Info"
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+        className="inline-flex h-5 w-5 items-center justify-center rounded-full text-[11px] font-semibold text-slate-400 transition hover:text-slate-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)]"
+      >
+        ⓘ
+      </button>
+      {open ? (
+        <span className="absolute left-1/2 top-full z-20 mt-2 w-[min(280px,calc(100vw-48px))] -translate-x-1/2 rounded-2xl border border-slate-200 bg-white p-3 text-xs font-medium leading-relaxed text-slate-700 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.25)]">
+          {text}
+        </span>
+      ) : null}
+    </span>
   );
 }
 
@@ -111,7 +138,7 @@ function CheckoutForm({
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [expressReady, setExpressReady] = useState(false);
+  const [expressApplePayReady, setExpressApplePayReady] = useState<boolean | null>(null);
 
   function routeAfterPaymentStatus(status?: string | null) {
     const safeBookingId = encodeURIComponent(bookingId);
@@ -196,6 +223,7 @@ function CheckoutForm({
         applePay: "always" as const,
         googlePay: "never" as const,
         amazonPay: "never" as const,
+        klarna: "never" as const,
         link: "never" as const,
         paypal: "never" as const,
       },
@@ -214,7 +242,11 @@ function CheckoutForm({
   const paymentElementOptions = useMemo(
     () => ({
       layout: "tabs" as const,
-      paymentMethodOrder: ["twint", "klarna", "card"],
+      paymentMethodOrder: ["twint", "card"],
+      wallets: {
+        applePay: "never" as const,
+        googlePay: "never" as const,
+      },
     }),
     []
   );
@@ -230,34 +262,42 @@ function CheckoutForm({
       <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-4 sm:p-5">
         <p className="text-sm font-semibold text-slate-900">Choisis ton moyen de paiement</p>
         <div className="mt-4 space-y-3">
+          {expressApplePayReady ? (
+            <div className="mx-auto w-full max-w-[360px] rounded-2xl border border-slate-200 bg-white p-4 text-center shadow-sm">
+              <div className="flex flex-col items-center justify-center text-center">
+                <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Paiement rapide</p>
+              </div>
+              <div className="mt-4 mx-auto w-full max-w-[320px] rounded-2xl border border-slate-200 bg-white p-3">
+                <div className="flex justify-center">
+                  {ExpressCheckoutElement ? (
+                    <ExpressCheckoutElement
+                      options={expressCheckoutOptions}
+                      onConfirm={() => void onExpressConfirm()}
+                      onReady={(event: any) => {
+                        setExpressApplePayReady(Boolean(event?.availablePaymentMethods?.applePay));
+                      }}
+                    />
+                  ) : null}
+                </div>
+              </div>
+            </div>
+          ) : ExpressCheckoutElement && expressApplePayReady === null ? (
+            // Mount once to detect Apple Pay availability, but don't show the "Paiement rapide" block
+            // if Apple Pay is not available on the device/browser.
+            <div className="hidden">
+              <ExpressCheckoutElement
+                options={expressCheckoutOptions}
+                onConfirm={() => void onExpressConfirm()}
+                onReady={(event: any) => {
+                  setExpressApplePayReady(Boolean(event?.availablePaymentMethods?.applePay));
+                }}
+              />
+            </div>
+          ) : null}
+
           <div className="w-full overflow-hidden rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
             <div className="w-full">
               <PaymentElement options={paymentElementOptions} />
-            </div>
-          </div>
-
-          <div className="mx-auto w-full max-w-[360px] rounded-2xl border border-slate-200 bg-white p-4 text-center shadow-sm">
-            <div className="flex flex-col items-center justify-center text-center">
-              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Paiement rapide</p>
-            </div>
-            <div className="mt-4 mx-auto w-full max-w-[320px] rounded-2xl border border-slate-200 bg-white p-3">
-              <div className="flex justify-center">
-                {ExpressCheckoutElement ? (
-                  <ExpressCheckoutElement
-                    options={expressCheckoutOptions}
-                    onConfirm={() => void onExpressConfirm()}
-                    onReady={(event: any) => {
-                      setExpressReady(
-                        Boolean(event?.availablePaymentMethods?.applePay || event?.availablePaymentMethods?.klarna)
-                      );
-                    }}
-                  />
-                ) : (
-                  <div className="flex h-[52px] w-full items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 text-sm font-semibold text-slate-400">
-                    Indisponible
-                  </div>
-                )}
-              </div>
             </div>
           </div>
         </div>
@@ -367,6 +407,7 @@ const stripeReact = await import("@stripe/react-stripe-js");
           error?: string;
           paymentFeeAmount?: number;
           totalOwnerAmount?: number;
+          reused?: boolean;
         };
         if (canceled) return;
         if (!piRes.ok || !piPayload.ok || typeof piPayload.clientSecret !== "string") {
@@ -403,6 +444,18 @@ const stripeReact = await import("@stripe/react-stripe-js");
           );
           setLoading(false);
           return;
+        }
+
+        if (process.env.NODE_ENV !== "production") {
+          console.log("[checkout][payment-intent]", {
+            bookingId,
+            bookingAmount: payload.booking.amount,
+            intentId: piPayload.intentId,
+            livemode: piPayload.livemode,
+            reused: Boolean(piPayload.reused),
+            paymentFeeAmount: piPayload.paymentFeeAmount,
+            totalOwnerAmount: piPayload.totalOwnerAmount,
+          });
         }
 
         setClientSecret(piPayload.clientSecret);
@@ -570,7 +623,15 @@ const stripeReact = await import("@stripe/react-stripe-js");
                   <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-5">
                     <SummaryRow label="Sous-total" value={formatCents(booking.amount)} />
                     <div className="mt-2" />
-                    <SummaryRow label="Frais de paiement (estimés)" value={formatCents(paymentFeeAmount)} />
+                    <SummaryRow
+                      label={
+                        <span className="inline-flex items-center gap-2">
+                          <span>Frais de paiement (estimés)</span>
+                          <InfoTooltip text="Ces frais correspondent aux coûts de traitement du paiement (ex: carte bancaire). Ils peuvent légèrement varier selon le moyen de paiement utilisé." />
+                        </span>
+                      }
+                      value={formatCents(paymentFeeAmount)}
+                    />
                     <div className="mt-4 h-px w-full bg-slate-200" />
                     <div className="mt-4 flex items-start justify-between gap-6">
                       <p className="text-sm font-semibold text-slate-900">Total</p>
