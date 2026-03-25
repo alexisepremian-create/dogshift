@@ -468,7 +468,8 @@ function SitterPublicProfileContent({
       try {
         if (dbg) console.log("[ProfileContent] fetch start");
         const res = await fetch(
-          `/api/sitters/${encodeURIComponent(id)}${effectivePreviewMode ? "?mode=preview" : ""}`
+          `/api/sitters/${encodeURIComponent(id)}${effectivePreviewMode ? "?mode=preview" : ""}`,
+          { cache: "no-store" }
         );
         const payload = (await res.json()) as
           | {

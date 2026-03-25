@@ -8,6 +8,11 @@ import { normalizeSitterLifecycleStatus, type SitterLifecycleStatus } from "@/li
 
 export const runtime = "nodejs";
 
+/** Public sitter detail must not be cached: HTML shell is dynamic and JSON must stay fresh for profile edits. */
+const NO_STORE_JSON_HEADERS = {
+  "Cache-Control": "private, no-store, max-age=0, must-revalidate",
+} as const;
+
 type SitterDetail = {
   sitterId: string;
   name: string;
@@ -61,7 +66,7 @@ export async function GET(
     const input = sitterIdRaw.trim();
 
     if (!input) {
-      return NextResponse.json({ ok: false, error: "INVALID_ID" }, { status: 400 });
+      return NextResponse.json({ ok: false, error: "INVALID_ID" }, { status: 400, headers: NO_STORE_JSON_HEADERS });
     }
 
     let sitterId = input;
@@ -106,7 +111,7 @@ export async function GET(
     });
 
     if (!sitterProfile) {
-      return NextResponse.json({ ok: false, error: "NOT_FOUND" }, { status: 404 });
+      return NextResponse.json({ ok: false, error: "NOT_FOUND" }, { status: 404, headers: NO_STORE_JSON_HEADERS });
     }
 
     if (!sitterProfile.published) {
@@ -115,9 +120,9 @@ export async function GET(
         // Allow preview for the profile owner.
       } else {
         if (process.env.NODE_ENV !== "production") {
-          return NextResponse.json({ ok: false, error: "NOT_PUBLISHED" }, { status: 403 });
+          return NextResponse.json({ ok: false, error: "NOT_PUBLISHED" }, { status: 403, headers: NO_STORE_JSON_HEADERS });
         }
-        return NextResponse.json({ ok: false, error: "NOT_FOUND" }, { status: 404 });
+        return NextResponse.json({ ok: false, error: "NOT_FOUND" }, { status: 404, headers: NO_STORE_JSON_HEADERS });
       }
     }
 
@@ -171,9 +176,9 @@ export async function GET(
       console.error("[api][sitters][sitterId] review aggregate failed", err);
     }
 
-    return NextResponse.json({ ok: true, sitter }, { status: 200 });
+    return NextResponse.json({ ok: true, sitter }, { status: 200, headers: NO_STORE_JSON_HEADERS });
   } catch (err) {
     console.error("[api][sitters][sitterId] error", err);
-    return NextResponse.json({ ok: false, error: "INTERNAL_ERROR" }, { status: 500 });
+    return NextResponse.json({ ok: false, error: "INTERNAL_ERROR" }, { status: 500, headers: NO_STORE_JSON_HEADERS });
   }
 }
