@@ -2,8 +2,10 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { Suspense, useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { useSearchParams } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
+import { X } from "lucide-react";
 
 import SunCornerGlow from "@/components/SunCornerGlow";
 import { useHostUser } from "@/components/HostUserProvider";
@@ -31,6 +33,88 @@ function formatRating(rating: number) {
 
 const HOST_COMPLETION_CARD_DISMISSED_KEY = "ds_host_completion_card_dismissed_v1";
 const HOST_COMPLETION_CARD_DISMISSED_EVENT = "ds_host_completion_card_dismissed";
+
+const DOGSHIFT_BANNER_ACCOUNT_ACTIVATED_CLOSED_KEY = "dogshift_banner_account_activated_closed";
+const DOGSHIFT_BANNER_ACCOUNT_ACTIVATED_CLOSED_EVENT = "dogshift:banner_account_activated_closed";
+
+function subscribeAccountActivatedBannerClosed(onStoreChange: () => void) {
+  if (typeof window === "undefined") return () => {};
+
+  const onCustom = () => onStoreChange();
+  const onStorage = (e: StorageEvent) => {
+    if (e.key === DOGSHIFT_BANNER_ACCOUNT_ACTIVATED_CLOSED_KEY) onStoreChange();
+  };
+  window.addEventListener(DOGSHIFT_BANNER_ACCOUNT_ACTIVATED_CLOSED_EVENT, onCustom);
+  window.addEventListener("storage", onStorage);
+  return () => {
+    window.removeEventListener(DOGSHIFT_BANNER_ACCOUNT_ACTIVATED_CLOSED_EVENT, onCustom);
+    window.removeEventListener("storage", onStorage);
+  };
+}
+
+function readAccountActivatedBannerClosed(): boolean {
+  try {
+    return window.localStorage.getItem(DOGSHIFT_BANNER_ACCOUNT_ACTIVATED_CLOSED_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function AccountActivatedBanner() {
+  const searchParams = useSearchParams();
+  const debugShow = searchParams.get("showBanner") === "1";
+  const persistedClosed = useSyncExternalStore(
+    subscribeAccountActivatedBannerClosed,
+    readAccountActivatedBannerClosed,
+    () => false
+  );
+  const [exiting, setExiting] = useState(false);
+  const [sessionDismissed, setSessionDismissed] = useState(false);
+
+  useEffect(() => {
+    if (searchParams.get("showBanner") === "1") {
+      setSessionDismissed(false);
+    }
+  }, [searchParams]);
+
+  const shouldShow = !sessionDismissed && (debugShow || !persistedClosed || exiting);
+  if (!shouldShow) return null;
+
+  function dismiss() {
+    setExiting(true);
+    window.setTimeout(() => {
+      try {
+        window.localStorage.setItem(DOGSHIFT_BANNER_ACCOUNT_ACTIVATED_CLOSED_KEY, "1");
+        window.dispatchEvent(new Event(DOGSHIFT_BANNER_ACCOUNT_ACTIVATED_CLOSED_EVENT));
+      } catch {
+        // ignore
+      }
+      setSessionDismissed(true);
+      setExiting(false);
+    }, 200);
+  }
+
+  return (
+    <section
+      className={`relative mb-6 rounded-3xl border border-emerald-200 bg-emerald-50 p-4 pr-10 transition duration-200 ease-out motion-reduce:transition-none ${
+        exiting ? "pointer-events-none opacity-0 -translate-y-1" : "translate-y-0 opacity-100"
+      }`}
+    >
+      <button
+        type="button"
+        aria-label="Fermer la bannière"
+        onClick={dismiss}
+        className="absolute right-3 top-3 cursor-pointer rounded-lg p-1 text-slate-400 transition-colors hover:text-slate-600 focus-visible:outline focus-visible:ring-2 focus-visible:ring-emerald-600/40 focus-visible:ring-offset-2"
+      >
+        <X className="h-4 w-4" aria-hidden="true" strokeWidth={2} />
+      </button>
+      <p className="text-sm font-semibold text-emerald-900">Compte activé</p>
+      <p className="mt-1 text-sm text-emerald-900/80">
+        Votre compte dogsitter est activé. Vous pouvez finaliser votre publication si le reste du profil est prêt.
+      </p>
+    </section>
+  );
+}
 
 function StarIcon({ className }: { className?: string }) {
   return (
@@ -301,10 +385,9 @@ export default function HostDashboardPage() {
       <SunCornerGlow variant="sitterDashboard" />
 
       <div className="relative z-10">
-        <section className="mb-6 rounded-3xl border border-emerald-200 bg-emerald-50 p-4">
-          <p className="text-sm font-semibold text-emerald-900">Compte activé</p>
-          <p className="mt-1 text-sm text-emerald-900/80">Votre compte dogsitter est activé. Vous pouvez finaliser votre publication si le reste du profil est prêt.</p>
-        </section>
+        <Suspense fallback={null}>
+          <AccountActivatedBanner />
+        </Suspense>
 
         <div className="grid gap-4 sm:grid-cols-[1fr_auto] sm:items-end">
           <div>
