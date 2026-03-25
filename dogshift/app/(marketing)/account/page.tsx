@@ -61,7 +61,15 @@ export default async function AccountDashboardPage({
   }
 
   const uid = contexts.dbUserId;
-  const hostUser = contexts.hasSitterProfile ? await getHostUserData().catch(() => null) : null;
+  // Business rule: an OWNER must never see the sitter contract amendment modal.
+  // `contexts.hasSitterProfile` only means a SitterProfile exists, not the user's actual role.
+  const dbUserRole = await prisma.user.findUnique({
+    where: { id: uid },
+    select: { role: true },
+  });
+
+  const isSitterRole = dbUserRole?.role === "SITTER";
+  const hostUser = contexts.hasSitterProfile && isSitterRole ? await getHostUserData().catch(() => null) : null;
 
   const clerkUser = await currentUser();
   const rawName = typeof clerkUser?.fullName === "string" ? clerkUser.fullName : "";
