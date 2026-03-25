@@ -271,7 +271,7 @@ function CheckoutForm({
       >
         {submitting ? "Paiement…" : "Payer"}
       </button>
-      <p className="mt-3 text-xs text-slate-500">Aucun débit imprévu. Le montant affiché correspond exactement à votre réservation.</p>
+      <p className="mt-3 text-xs text-slate-500">Aucun débit imprévu. Le total affiché inclut les frais de paiement estimés.</p>
     </div>
   );
 }
@@ -294,6 +294,8 @@ export default function CheckoutBookingPage() {
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [paymentFeeAmount, setPaymentFeeAmount] = useState<number>(0);
+  const [totalOwnerAmount, setTotalOwnerAmount] = useState<number>(0);
 
   useEffect(() => {
     let canceled = false;
@@ -363,6 +365,8 @@ const stripeReact = await import("@stripe/react-stripe-js");
           intentId?: string;
           livemode?: boolean;
           error?: string;
+          paymentFeeAmount?: number;
+          totalOwnerAmount?: number;
         };
         if (canceled) return;
         if (!piRes.ok || !piPayload.ok || typeof piPayload.clientSecret !== "string") {
@@ -402,6 +406,12 @@ const stripeReact = await import("@stripe/react-stripe-js");
         }
 
         setClientSecret(piPayload.clientSecret);
+        setPaymentFeeAmount(typeof piPayload.paymentFeeAmount === "number" ? piPayload.paymentFeeAmount : 0);
+        setTotalOwnerAmount(
+          typeof piPayload.totalOwnerAmount === "number" && Number.isFinite(piPayload.totalOwnerAmount)
+            ? piPayload.totalOwnerAmount
+            : payload.booking.amount
+        );
         setLoading(false);
       } catch {
         if (canceled) return;
@@ -560,11 +570,11 @@ const stripeReact = await import("@stripe/react-stripe-js");
                   <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-5">
                     <SummaryRow label="Sous-total" value={formatCents(booking.amount)} />
                     <div className="mt-2" />
-                    <SummaryRow label="Frais de service" value="0 CHF" />
+                    <SummaryRow label="Frais de paiement (estimés)" value={formatCents(paymentFeeAmount)} />
                     <div className="mt-4 h-px w-full bg-slate-200" />
                     <div className="mt-4 flex items-start justify-between gap-6">
                       <p className="text-sm font-semibold text-slate-900">Total</p>
-                      <p className="text-right text-lg font-semibold tracking-tight text-slate-900">{formatCents(booking.amount)}</p>
+                      <p className="text-right text-lg font-semibold tracking-tight text-slate-900">{formatCents(totalOwnerAmount)}</p>
                     </div>
                     <p className="mt-2 text-xs text-slate-500">Devise: CHF</p>
                   </div>

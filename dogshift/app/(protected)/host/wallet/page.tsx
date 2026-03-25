@@ -321,7 +321,7 @@ export default function HostWalletPage() {
                 <section className="grid gap-2">
                   <p className="font-semibold text-slate-900">Pendant la phase pilote : 0% de commission DogShift</p>
                   <p>
-                    DogShift ne prélève aucune commission pendant la phase pilote. Vous conservez 100% du montant des réservations (hors frais Stripe).
+                    DogShift ne prélève aucune commission pendant la phase pilote. Vous conservez 100% du montant des réservations (frais Stripe inclus).
                   </p>
                 </section>
               </div>
@@ -379,7 +379,7 @@ export default function HostWalletPage() {
           <p className="text-sm leading-relaxed text-slate-600">
             🎉 <span className="font-semibold text-slate-900">Phase pilote : 0% de commission DogShift</span>
             <br />
-            Vous conservez 100% du montant des réservations (hors frais Stripe).
+            Vous conservez 100% du montant des réservations (frais Stripe inclus).
           </p>
         </div>
 

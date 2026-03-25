@@ -67,7 +67,12 @@ export async function syncBookingPaymentDetails(params: {
 
     const grossAmount = typeof booking.amount === "number" ? booking.amount : 0;
     const platformFeeAmount = typeof booking.platformFeeAmount === "number" ? booking.platformFeeAmount : 0;
-    const payoutAmount = Math.max(0, grossAmount - stripeFeeAmount - platformFeeAmount);
+    // Current business goal: pay the sitter the full reservation amount (gross),
+    // and charge Stripe processing fees to DogShift's side (so the sitter doesn't
+    // get reduced by Stripe fees).
+    // If Stripe refuses the transfer due to insufficient available funds, the
+    // cron job will fallback to the previous net payout calculation.
+    const payoutAmount = Math.max(0, grossAmount - platformFeeAmount);
 
     await (prisma as any).booking.update({
       where: { id: bookingId },

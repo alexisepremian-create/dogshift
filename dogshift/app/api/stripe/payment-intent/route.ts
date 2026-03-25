@@ -4,6 +4,7 @@ import type { NextRequest } from "next/server";
 import { stripe } from "@/lib/stripe";
 import { prisma } from "@/lib/prisma";
 import { resolveDbUserId } from "@/lib/auth/resolveDbUserId";
+import { estimateStripePaymentFeeCents } from "@/lib/stripe/paymentFeeEstimate";
 
 export const runtime = "nodejs";
 
@@ -90,25 +91,36 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    const paymentFeeAmount = estimateStripePaymentFeeCents(booking.amount);
+    const totalOwnerAmount = booking.amount + paymentFeeAmount;
+
+    if (!Number.isFinite(totalOwnerAmount) || totalOwnerAmount <= 0) {
+      return NextResponse.json({ ok: false, error: "INVALID_TOTAL_AMOUNT" }, { status: 500 });
+    }
+
     const intent = await stripe.paymentIntents.create({
-      amount: booking.amount,
+      amount: totalOwnerAmount,
       currency: "chf",
       automatic_payment_methods: { enabled: true },
       metadata: {
         bookingId: booking.id,
         sitterId: booking.sitterId,
         userId,
+        paymentFeeAmount: String(paymentFeeAmount),
+        totalOwnerAmount: String(totalOwnerAmount),
       },
     });
 
     console.log("[api][stripe][payment-intent] created", {
       bookingId: booking.id,
       paymentIntentId: intent.id,
-      amount: booking.amount,
+      amount: totalOwnerAmount,
       currency: "chf",
       livemode: intent.livemode,
       destination,
       payoutMode: "delayed_manual_transfer",
+      paymentFeeAmount,
+      totalOwnerAmount,
     });
 
     if (typeof intent.client_secret !== "string" || !intent.client_secret.includes("_secret_")) {
@@ -123,7 +135,7 @@ export async function POST(req: NextRequest) {
     });
 
     return NextResponse.json(
-      { ok: true, clientSecret: intent.client_secret, intentId: intent.id, livemode: intent.livemode },
+      { ok: true, clientSecret: intent.client_secret, intentId: intent.id, livemode: intent.livemode, paymentFeeAmount, totalOwnerAmount },
       { status: 200 }
     );
   } catch (err) {
