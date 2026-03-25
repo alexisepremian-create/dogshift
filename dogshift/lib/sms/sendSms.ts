@@ -1,5 +1,5 @@
 import { Vonage } from "@vonage/server-sdk";
-import { SMSFailure } from "@vonage/sms";
+import { SMSFailure, TypeEnum } from "@vonage/sms";
 
 /**
  * Transactional SMS only (server-side). Uses Vonage SMS API.
@@ -60,6 +60,29 @@ function getVonageSmsContext(): VonageSmsContext | null {
   return vonageContextCache;
 }
 
+/**
+ * NFC + replace typographic punctuation with ASCII so GSM/Latin paths behave;
+ * full UTF-8 accent preservation relies on {@link TypeEnum.UNICODE} below.
+ */
+function normalizeVonageSmsText(raw: string): string {
+  let s = raw.normalize("NFC");
+  s = s.replace(/\u2018|\u2019|\u2032/gu, "'"); // ‘ ’ ′ → '
+  s = s.replace(/\u201C|\u201D|\u201E/gu, '"'); // “ ” „ → "
+  s = s.replace(/\u00A0|\u202F/gu, " "); // NBSP, narrow NBSP
+  s = s.replace(/\u2026/gu, "..."); // …
+  s = s.replace(/\u2013|\u2014/gu, "-"); // – —
+  return s;
+}
+
+/** True if any codepoint outside 7-bit ASCII (needs Vonage `unicode` type for correct delivery). */
+function smsNeedsUnicodeType(text: string): boolean {
+  for (const ch of text) {
+    const cp = ch.codePointAt(0);
+    if (cp !== undefined && cp > 0x7f) return true;
+  }
+  return false;
+}
+
 function vonageErrorDetail(err: SMSFailure): string {
   try {
     const failed = err.getFailedMessages();
@@ -84,7 +107,8 @@ function vonageErrorDetail(err: SMSFailure): string {
 export async function sendSms(params: { to: string; body: string }): Promise<SendSmsResult> {
   try {
     const to = normalizePhone(params.to);
-    const body = typeof params.body === "string" ? params.body.trim() : "";
+    const bodyRaw = typeof params.body === "string" ? params.body.trim() : "";
+    const body = normalizeVonageSmsText(bodyRaw);
 
     if (!to || !body) {
       console.info("[sms] skip: missing to/body", { hasTo: Boolean(to), hasBody: Boolean(body) });
@@ -97,10 +121,12 @@ export async function sendSms(params: { to: string; body: string }): Promise<Sen
     }
 
     try {
+      const useUnicode = smsNeedsUnicodeType(body);
       await ctx.client.sms.send({
         to,
         from: ctx.from,
         text: body,
+        ...(useUnicode ? { type: TypeEnum.UNICODE } : {}),
       });
     } catch (err) {
       if (err instanceof SMSFailure) {
