@@ -8,7 +8,6 @@ import { executeHostInitiatedFullRefund } from "@/lib/bookings/hostInitiatedFull
 
 type PrismaBookingDelegate = {
   findUnique: (args: unknown) => Promise<unknown>;
-  update: (args: unknown) => Promise<unknown>;
 };
 
 type PrismaClientLike = {
@@ -47,6 +46,17 @@ function isMigrationMissingError(err: unknown) {
   return msg.includes("no such table") || msg.includes("does not exist") || msg.includes("P2021");
 }
 
+function isServiceCompleted(endDate: unknown): boolean {
+  if (!endDate) return false;
+  const end = endDate instanceof Date ? endDate.getTime() : new Date(String(endDate)).getTime();
+  if (!Number.isFinite(end)) return false;
+  return Date.now() > end;
+}
+
+/**
+ * Sitter cancels a CONFIRMED booking → full refund to the owner (same Stripe path as decline).
+ * Scope: all CONFIRMED bookings that are not past endDate (service not completed).
+ */
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> | { id: string } }) {
   try {
     const params = (await ctx.params) as { id?: string };
@@ -69,6 +79,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
         sitterId: true,
         status: true,
         archivedAt: true,
+        endDate: true,
         stripePaymentIntentId: true,
         stripeChargeId: true,
         stripeTransferId: true,
@@ -88,8 +99,12 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     }
 
     const status = String(booking.status ?? "");
-    if (status !== "PENDING_ACCEPTANCE" && status !== "PAID") {
+    if (status !== "CONFIRMED") {
       return NextResponse.json({ ok: false, error: "INVALID_STATUS" }, { status: 409 });
+    }
+
+    if (isServiceCompleted(booking.endDate)) {
+      return NextResponse.json({ ok: false, error: "ALREADY_COMPLETED" }, { status: 409 });
     }
 
     const paymentIntentId = typeof booking.stripePaymentIntentId === "string" ? booking.stripePaymentIntentId.trim() : "";
@@ -113,13 +128,18 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
 
     if (refundOutcome.result === "REFUND_FAILED") {
       return NextResponse.json(
-        { ok: false, error: "REFUND_FAILED", message: "La réservation a été refusée, mais le remboursement a échoué. Contacte le support." },
+        {
+          ok: false,
+          error: "REFUND_FAILED",
+          message:
+            refundOutcome.message ||
+            "La réservation a été annulée, mais le remboursement a échoué. Contacte le support.",
+        },
         { status: 502 }
       );
     }
 
-    const body = refundOutcome.body;
-    return NextResponse.json(body, { status: 200 });
+    return NextResponse.json(refundOutcome.body, { status: 200 });
   } catch (err) {
     if (isMigrationMissingError(err)) {
       return NextResponse.json(
@@ -127,7 +147,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
         { status: 500 }
       );
     }
-    console.error("[api][host][requests][decline][POST] error", err);
+    console.error("[api][host][requests][cancel-confirmed][POST] error", err);
     return NextResponse.json({ ok: false, error: "INTERNAL_ERROR" }, { status: 500 });
   }
 }

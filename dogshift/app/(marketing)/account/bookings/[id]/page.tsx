@@ -171,18 +171,25 @@ function canCancelBooking(booking: BookingDetail, normalizedStatus: string) {
 function cancelTooltip(booking: BookingDetail, cancellable: boolean) {
   if (cancellable) return undefined;
 
+  const raw = String(booking.status ?? "");
   const startIso = booking.startDate;
+  let past24hWindow = false;
   if (startIso) {
     const startTs = new Date(startIso).getTime();
     if (Number.isFinite(startTs)) {
       const limit = startTs - 24 * 60 * 60 * 1000;
-      if (Date.now() > limit) {
-        return "Annulation possible jusqu’à 24h avant le début de la prestation";
-      }
+      past24hWindow = Date.now() > limit;
     }
   }
 
-  return "Pour annuler une réservation confirmée, contacte le sitter/support.";
+  if (past24hWindow) {
+    if (raw === "CONFIRMED") {
+      return "Tu ne peux plus annuler en ligne à moins de 24 h du début. Si le sitter ne peut pas assurer la prestation, il peut annuler depuis son compte : tu seras alors remboursé intégralement.";
+    }
+    return "Tu ne peux plus annuler en ligne à moins de 24 h du début. Contacte le sitter ou le support.";
+  }
+
+  return "Pour cette réservation, contacte le sitter ou le support.";
 }
 
 function statusLabel(status: string) {
@@ -466,7 +473,9 @@ export default function AccountBookingDetailPage() {
           return;
         }
         if (payload.error === "CANNOT_CANCEL_TOO_LATE") {
-          setCancelError("Cette réservation est confirmée et ne peut plus être annulée en ligne (moins de 24h avant le début).");
+          setCancelError(
+            "Cette réservation est confirmée et ne peut plus être annulée en ligne à moins de 24 h du début. Si le sitter ne peut pas assurer la prestation, il peut annuler depuis son compte : tu seras alors remboursé intégralement."
+          );
           return;
         }
         if (payload.error === "MISSING_START_DATE") {
@@ -618,6 +627,26 @@ export default function AccountBookingDetailPage() {
                   ) : null}
                 </div>
               </div>
+
+              {String(booking.status ?? "") === "REFUNDED" ? (
+                <div className="mt-6 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-950">
+                  <p className="font-semibold">Réservation annulée — remboursement effectué</p>
+                  <p className="mt-1 text-emerald-950/85">
+                    Le montant payé t’a été remboursé intégralement. Le crédit peut apparaître sur ton compte avec un délai de
+                    quelques jours ouvrables selon ta banque (traitement Stripe).
+                  </p>
+                </div>
+              ) : null}
+
+              {String(booking.status ?? "") === "REFUND_FAILED" ? (
+                <div className="mt-6 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900">
+                  <p className="font-semibold">Remboursement non finalisé</p>
+                  <p className="mt-1 text-rose-900/90">
+                    La réservation est annulée, mais le remboursement automatique a échoué. Écris-nous au support : nous te
+                    aiderons à finaliser le remboursement.
+                  </p>
+                </div>
+              ) : null}
 
               <div className="mt-6 grid gap-3">
                 <div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">

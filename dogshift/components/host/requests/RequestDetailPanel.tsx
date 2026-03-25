@@ -78,7 +78,8 @@ export function RequestDetailPanel({
 }) {
   const [copied, setCopied] = useState(false);
   const [opening, setOpening] = useState(false);
-  const [decisionLoading, setDecisionLoading] = useState<"ACCEPT" | "DECLINE" | null>(null);
+  const [decisionLoading, setDecisionLoading] = useState<"ACCEPT" | "DECLINE" | "CANCEL_CONFIRMED" | null>(null);
+  const [confirmCancelOpen, setConfirmCancelOpen] = useState(false);
   const [localStatus, setLocalStatus] = useState<string | null>(null);
   const router = useRouter();
 
@@ -119,8 +120,9 @@ export function RequestDetailPanel({
   const effectiveStatus = localStatus ?? request.status;
   const isPendingPayment = effectiveStatus === "PENDING_PAYMENT" || effectiveStatus === "DRAFT";
   const isToAccept = effectiveStatus === "PENDING_ACCEPTANCE" || effectiveStatus === "PAID";
+  const isConfirmedBooking = effectiveStatus === "CONFIRMED";
   const isDone = effectiveStatus === "CANCELLED" || effectiveStatus === "REFUNDED" || effectiveStatus === "REFUND_FAILED";
-  const hasActions = isToAccept || isPendingPayment || isDone;
+  const hasActions = isToAccept || isPendingPayment || isDone || isConfirmedBooking;
 
   const refundNote =
     effectiveStatus === "REFUNDED"
@@ -243,6 +245,22 @@ export function RequestDetailPanel({
           <section className="rounded-2xl border border-slate-200 bg-white p-3 sm:p-4">
             <p className="text-sm font-semibold text-slate-900">Actions</p>
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              {isConfirmedBooking ? (
+                <div className="sm:col-span-2">
+                  <p className="mb-3 text-sm text-slate-600">
+                    Si tu ne peux pas assurer la prestation, le propriétaire est remboursé intégralement via Stripe.
+                  </p>
+                  <button
+                    type="button"
+                    disabled={decisionLoading !== null}
+                    onClick={() => setConfirmCancelOpen(true)}
+                    className="inline-flex w-full items-center justify-center rounded-2xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-sm font-semibold text-rose-900 shadow-sm transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+                  >
+                    Annuler la réservation et rembourser le propriétaire
+                  </button>
+                </div>
+              ) : null}
+
               {isToAccept ? (
                 <>
                   <button
@@ -326,6 +344,71 @@ export function RequestDetailPanel({
             </div>
           </section>
         ) : null}
+      </div>
+
+      <div className={`fixed inset-0 z-50 ${confirmCancelOpen ? "" : "hidden"}`}>
+        <button
+          type="button"
+          aria-label="Fermer"
+          onClick={() => {
+            if (decisionLoading) return;
+            setConfirmCancelOpen(false);
+          }}
+          className="absolute inset-0 bg-black/40"
+        />
+        <div className="absolute left-1/2 top-1/2 w-[min(92vw,440px)] -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.35)]">
+          <p className="text-sm font-semibold text-slate-900">Annuler cette réservation confirmée&nbsp;?</p>
+          <p className="mt-2 text-sm text-slate-600">
+            Le propriétaire sera remboursé intégralement (même montant que le paiement). Utilise cette action seulement si tu ne
+            peux pas honorer la prestation. Le crédit sur son compte peut prendre quelques jours ouvrables.
+          </p>
+          <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            <button
+              type="button"
+              disabled={decisionLoading !== null}
+              onClick={() => setConfirmCancelOpen(false)}
+              className="inline-flex items-center justify-center rounded-2xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              Retour
+            </button>
+            <button
+              type="button"
+              disabled={decisionLoading !== null}
+              onClick={async () => {
+                if (decisionLoading) return;
+                setDecisionLoading("CANCEL_CONFIRMED");
+                try {
+                  const res = await fetch(`/api/host/requests/${encodeURIComponent(request.id)}/cancel-confirmed`, {
+                    method: "POST",
+                  });
+                  const payload = (await res.json()) as {
+                    ok?: boolean;
+                    status?: string;
+                    error?: string;
+                    message?: string;
+                  };
+                  if (!res.ok || !payload.ok) {
+                    setDecisionLoading(null);
+                    return;
+                  }
+                  const nextStatus =
+                    typeof payload.status === "string" && payload.status.trim() ? payload.status.trim() : "REFUNDED";
+                  setConfirmCancelOpen(false);
+                  onStatusChange?.(request.id, nextStatus);
+                  setLocalStatus(nextStatus);
+                  onRefresh?.();
+                } catch {
+                  setDecisionLoading(null);
+                } finally {
+                  setDecisionLoading(null);
+                }
+              }}
+              className="inline-flex items-center justify-center rounded-2xl bg-rose-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {decisionLoading === "CANCEL_CONFIRMED" ? "Annulation…" : "Confirmer l’annulation"}
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );

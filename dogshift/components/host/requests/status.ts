@@ -58,7 +58,7 @@ export function statusMeta(status: BookingStatus): StatusMeta {
 
   if (status === "REFUNDED") {
     return {
-      label: "Annulée",
+      label: "Remboursée",
       classes:
         "inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-semibold leading-5 text-slate-700",
     };
