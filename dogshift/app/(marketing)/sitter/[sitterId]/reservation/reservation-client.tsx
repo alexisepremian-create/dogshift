@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Calendar, ChevronLeft, ChevronRight } from "lucide-react";
 
 import { useMaintenance } from "@/components/platform/MaintenanceProvider";
-import { DEFAULT_MAINTENANCE_PUBLIC_MESSAGE } from "@/lib/platform/maintenanceConstants";
+import { maintenanceBookingUserMessage } from "@/lib/platform/maintenanceConstants";
 import { cancellationPolicyVariantFromStartMs } from "@/lib/reservation/cancellationPolicyUi";
 
 type PricingUnit = "HOURLY" | "DAILY";
@@ -781,7 +781,7 @@ function DogShiftDatePicker({
 export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { maintenanceMode, bannerMessage } = useMaintenance();
+  const { maintenanceMode, adminNote } = useMaintenance();
 
   const LEAD_TIME_MINUTES = 30;
   const LAST_MINUTE_MAX_HOURS = 24;
@@ -1643,11 +1643,7 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
       const bookingId = typeof bookingPayload?.bookingId === "string" ? bookingPayload.bookingId : "";
 
       if (bookingRes.status === 503 || bookingPayload?.error === "MAINTENANCE") {
-        setError(
-          typeof bookingPayload?.message === "string" && bookingPayload.message.trim()
-            ? bookingPayload.message.trim()
-            : bannerMessage ?? DEFAULT_MAINTENANCE_PUBLIC_MESSAGE
-        );
+        setError(maintenanceBookingUserMessage(adminNote));
         return;
       }
 

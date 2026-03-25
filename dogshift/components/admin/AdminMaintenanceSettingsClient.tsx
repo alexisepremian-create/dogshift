@@ -106,10 +106,11 @@ export default function AdminMaintenanceSettingsClient() {
 
       <div>
         <label htmlFor="maintenanceMessage" className="text-sm font-semibold text-slate-900">
-          Message personnalisé (optionnel)
+          Précision affichée aux utilisateurs (optionnel)
         </label>
         <p className="mt-1 text-xs text-slate-500">
-          Laisser vide pour utiliser le message par défaut affiché sur le site et dans les réponses API 503.
+          S’affiche sous le bandeau (horaires, détail). Les pages ajoutent automatiquement la précision pertinente (réservations,
+          contributions…). Utilisé aussi dans les réponses API 503 si renseigné.
         </p>
         <textarea
           id="maintenanceMessage"

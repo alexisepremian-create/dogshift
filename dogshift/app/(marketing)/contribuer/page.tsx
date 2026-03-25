@@ -5,7 +5,7 @@ import { Gift, Shirt } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { useMaintenance } from "@/components/platform/MaintenanceProvider";
-import { DEFAULT_MAINTENANCE_PUBLIC_MESSAGE } from "@/lib/platform/maintenanceConstants";
+import { MAINTENANCE_CONTEXT_CONTRIBUTIONS } from "@/lib/platform/maintenanceConstants";
 
 export default function ContribuerPage({
   searchParams,
@@ -14,7 +14,7 @@ export default function ContribuerPage({
 }) {
   const canceled = searchParams?.canceled === "1";
   const redirectedMaintenance = searchParams?.maintenance === "1";
-  const { maintenanceMode, bannerMessage } = useMaintenance();
+  const { maintenanceMode } = useMaintenance();
   const paymentPaused = maintenanceMode || redirectedMaintenance;
   const [selectedAmount, setSelectedAmount] = useState<number>(10);
   const [useCustomAmount, setUseCustomAmount] = useState(false);
@@ -41,11 +41,11 @@ export default function ContribuerPage({
         {canceled ? (
           <p className="text-sm font-medium text-slate-700">Paiement annulé — vous pouvez réessayer à tout moment.</p>
         ) : null}
-        {paymentPaused ? (
-          <p className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm font-medium text-amber-950">
-            {maintenanceMode ? bannerMessage ?? DEFAULT_MAINTENANCE_PUBLIC_MESSAGE : DEFAULT_MAINTENANCE_PUBLIC_MESSAGE}
-            {redirectedMaintenance && !maintenanceMode ? " Les paiements sont temporairement indisponibles." : ""}
-          </p>
+        {redirectedMaintenance && !maintenanceMode ? (
+          <div className="rounded-2xl border border-[color-mix(in_srgb,#6b5a7a_28%,transparent)] bg-[color-mix(in_srgb,#e8e4f2_38%,#f8fafc_62%)] p-4 text-sm text-slate-800">
+            <p className="font-semibold text-[var(--dogshift-blue)]">{MAINTENANCE_CONTEXT_CONTRIBUTIONS}</p>
+            <p className="mt-1 text-xs text-slate-600">Le bandeau peut mettre une seconde à apparaître — réessaie si besoin.</p>
+          </div>
         ) : null}
       </div>
 

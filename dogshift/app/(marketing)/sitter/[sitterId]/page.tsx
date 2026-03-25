@@ -13,7 +13,7 @@ import { appendHostMessage } from "@/lib/hostMessages";
 import { BUCKET_LABELS_FR, bucketDetailFr, mapReasonToBucket } from "@/lib/availability/reasonBuckets";
 import PageLoader from "@/components/ui/PageLoader";
 import { useMaintenance } from "@/components/platform/MaintenanceProvider";
-import { DEFAULT_MAINTENANCE_PUBLIC_MESSAGE } from "@/lib/platform/maintenanceConstants";
+import { maintenanceBookingUserMessage } from "@/lib/platform/maintenanceConstants";
 
 type ServiceType = "Promenade" | "Garde" | "Pension";
 
@@ -376,7 +376,7 @@ function SitterPublicProfileContent({
   search: string;
 }) {
   const router = useRouter();
-  const { maintenanceMode, bannerMessage } = useMaintenance();
+  const { maintenanceMode, adminNote } = useMaintenance();
   if (dbg) console.log("[ProfileContent] render");
   const actionsRef = useRef<HTMLDivElement | null>(null);
   const id = sitterId;
@@ -740,7 +740,7 @@ function SitterPublicProfileContent({
 
   async function continueToReservation() {
     if (maintenanceMode) {
-      setBookingCtaError(bannerMessage ?? DEFAULT_MAINTENANCE_PUBLIC_MESSAGE);
+      setBookingCtaError(maintenanceBookingUserMessage(adminNote));
       return;
     }
     const qp = new URLSearchParams();
@@ -795,7 +795,7 @@ function SitterPublicProfileContent({
     setPayError(null);
 
     if (maintenanceMode) {
-      setPayError(bannerMessage ?? DEFAULT_MAINTENANCE_PUBLIC_MESSAGE);
+      setPayError(maintenanceBookingUserMessage(adminNote));
       setPaying(false);
       return;
     }
@@ -843,11 +843,7 @@ function SitterPublicProfileContent({
       const bookingId = typeof bookingPayload?.bookingId === "string" ? bookingPayload.bookingId : "";
 
       if (bookingRes.status === 503 || bookingPayload?.error === "MAINTENANCE") {
-        setPayError(
-          typeof bookingPayload?.message === "string" && bookingPayload.message.trim()
-            ? bookingPayload.message.trim()
-            : bannerMessage ?? DEFAULT_MAINTENANCE_PUBLIC_MESSAGE
-        );
+        setPayError(maintenanceBookingUserMessage(adminNote));
         return;
       }
 
@@ -2683,7 +2679,7 @@ function SitterPublicProfileContent({
                           e.preventDefault();
                           e.stopPropagation();
                           if (maintenanceMode) {
-                            setBookingCtaError(bannerMessage ?? DEFAULT_MAINTENANCE_PUBLIC_MESSAGE);
+                            setBookingCtaError(maintenanceBookingUserMessage(adminNote));
                             return;
                           }
                           if (!isLoaded) {

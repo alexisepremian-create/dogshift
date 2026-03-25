@@ -284,13 +284,14 @@ export default function SiteHeader() {
       <div
         className={
           scrolled
-            ? `fixed left-1/2 top-4 z-50 hidden -translate-x-1/2 items-center rounded-full border border-slate-200/70 bg-white/80 px-6 ${
+            ? `fixed left-1/2 z-50 hidden -translate-x-1/2 items-center rounded-full border border-slate-200/70 bg-white/80 px-6 ${
                 isHome ? "shadow-[0_18px_60px_-44px_rgba(2,6,23,0.25)]" : "shadow-none"
               } backdrop-blur md:flex`
-            : `fixed left-1/2 top-4 z-50 hidden -translate-x-1/2 items-center rounded-full border border-slate-200/70 bg-white px-8 ${
+            : `fixed left-1/2 z-50 hidden -translate-x-1/2 items-center rounded-full border border-slate-200/70 bg-white px-8 ${
                 isHome ? "shadow-[0_18px_60px_-44px_rgba(2,6,23,0.18)]" : "shadow-none"
               } md:flex`
         }
+        style={{ top: "calc(1rem + var(--ds-maintenance-banner-height, 0px))" }}
       >
         <nav
           aria-label="Navigation principale"

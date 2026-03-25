@@ -11,7 +11,7 @@ import {
   cancellationPolicyVariantFromStartMs,
   type CancellationPolicyVariant,
 } from "@/lib/reservation/cancellationPolicyUi";
-import { DEFAULT_MAINTENANCE_PUBLIC_MESSAGE } from "@/lib/platform/maintenanceConstants";
+import { maintenanceBookingUserMessage } from "@/lib/platform/maintenanceConstants";
 
 type BookingStatus =
   | "DRAFT"
@@ -365,7 +365,7 @@ function CheckoutForm({
 export default function CheckoutBookingPage() {
   const params = useParams<{ bookingId: string }>();
   const bookingId = typeof params?.bookingId === "string" ? params.bookingId : "";
-  const { maintenanceMode, bannerMessage, loading: maintLoading } = useMaintenance();
+  const { maintenanceMode, adminNote, loading: maintLoading } = useMaintenance();
 
   const [stripeUi, setStripeUi] = useState<{
     stripePromise: Promise<any>;
@@ -432,7 +432,7 @@ const stripeReact = await import("@stripe/react-stripe-js");
 
         if (!maintLoading && maintenanceMode) {
           setClientSecret(null);
-          setError(bannerMessage ?? DEFAULT_MAINTENANCE_PUBLIC_MESSAGE);
+          setError(maintenanceBookingUserMessage(adminNote));
           setLoading(false);
           return;
         }
@@ -470,11 +470,7 @@ const stripeReact = await import("@stripe/react-stripe-js");
         if (canceled) return;
         if (piRes.status === 503 || piPayload.error === "MAINTENANCE") {
           setClientSecret(null);
-          setError(
-            typeof piPayload.message === "string" && piPayload.message.trim()
-              ? piPayload.message.trim()
-              : bannerMessage ?? DEFAULT_MAINTENANCE_PUBLIC_MESSAGE
-          );
+          setError(maintenanceBookingUserMessage(adminNote));
           setLoading(false);
           return;
         }
@@ -544,7 +540,7 @@ const stripeReact = await import("@stripe/react-stripe-js");
     return () => {
       canceled = true;
     };
-  }, [bannerMessage, bookingId, maintLoading, maintenanceMode]);
+  }, [adminNote, bookingId, maintLoading, maintenanceMode]);
 
   const canRender = useMemo(
     () => Boolean(clientSecret && stripeUi && !stripeUiError && !maintenanceMode),
