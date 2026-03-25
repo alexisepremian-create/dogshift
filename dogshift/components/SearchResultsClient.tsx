@@ -171,6 +171,12 @@ function formatDogSizesCompact(dogSizes: string[]) {
     .join(" • ");
 }
 
+function formatDogSizesLabeled(dogSizes: string[]) {
+  if (!dogSizes.length) return "";
+  const label = dogSizes.length > 1 ? "Taille(s) de chien acceptée(s) :" : "Taille(s) de chien acceptée(s) :";
+  return `${label} ${dogSizes.join(" · ")}`;
+}
+
 function toUiSitter(row: SitterListItem): UiSitter | null {
   const sitterId = String(row.sitterId ?? "").trim();
   if (!sitterId) return null;
@@ -489,7 +495,7 @@ export default function SearchResultsClient() {
                 const cheapestUnit = cheapest?.svc === "Pension" ? " / jour" : " / heure";
                 const cheapestPrice = cheapest?.price ?? sitter.pricePerDay;
                 const sitterHref = `/sitter/${sitter.id}?mode=public`;
-                const dogSizesLabel = formatDogSizesCompact(sitter.dogSizes);
+                const dogSizesLabel = formatDogSizesLabeled(sitter.dogSizes);
 
                 return (
                   <Link
@@ -531,7 +537,11 @@ export default function SearchResultsClient() {
                       ))}
                     </div>
 
-                    {dogSizesLabel ? <p className="mt-3 text-xs font-medium text-slate-500">{dogSizesLabel}</p> : null}
+                    {dogSizesLabel ? (
+                      <p className="mt-3 text-xs font-medium text-slate-500">
+                        <span className="text-slate-600">{dogSizesLabel}</span>
+                      </p>
+                    ) : null}
 
                     <div className="mt-4 space-y-2 text-sm text-slate-600">
                       <p className="flex items-center gap-1 leading-none">

@@ -2201,7 +2201,9 @@ function SitterPublicProfileContent({
   const ratingLabel = formatRatingMaybe(sitter.rating);
   const reviewCountLabel = sitter.reviewCount ?? 0;
   const visibleReviews = Array.isArray(sitter.reviews) ? sitter.reviews : [];
-  const dogSizeBadges = sitter.dogSizes;
+  const dbgDogSizesParam = new URLSearchParams(search).get("dbgDogSizes") === "1";
+  const dogSizeBadges =
+    process.env.NODE_ENV !== "production" && dbgDogSizesParam ? ["Petit", "Moyen", "Grand"] : sitter.dogSizes;
 
   const content = (
     <div className="relative grid gap-6 overflow-hidden" data-testid="sitter-public-profile">
@@ -2295,17 +2297,6 @@ function SitterPublicProfileContent({
                             </span>
                           ) : null}
                         </div>
-                        {dogSizeBadges.length > 0 ? (
-                          <div className="mt-3 flex flex-wrap items-center gap-2">
-                            <span className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Tailles de chien acceptées</span>
-                            {dogSizeBadges.map((size) => (
-                              <span key={size} className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-700">
-                                <span aria-hidden="true">{size === "Petit" ? "🐶" : size === "Moyen" ? "🐕" : "🐕‍🦺"}</span>
-                                <span>{size}</span>
-                              </span>
-                            ))}
-                          </div>
-                        ) : null}
                       </div>
                     </div>
 
@@ -2320,6 +2311,21 @@ function SitterPublicProfileContent({
                             (typeof (sitter.pricing as unknown as Record<string, unknown> | null)?.Pension === "number" ? "/ jour" : " / heure")}
                         </span>
                       </div>
+                      {dogSizeBadges.length > 0 ? (
+                        <div className="mt-4 border-t border-slate-200/70 pt-3.5 text-left">
+                          <p className="text-sm text-slate-600">Tailles acceptées</p>
+                          <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[13px] font-medium leading-none text-slate-700">
+                            {dogSizeBadges.map((size) => (
+                              <span key={size} className="inline-flex items-center gap-1.5 whitespace-nowrap">
+                                <span aria-hidden="true" className="text-[15px] leading-none">
+                                  {size === "Petit" ? "🐶" : size === "Moyen" ? "🐕" : "🐕‍🦺"}
+                                </span>
+                                <span>{size}</span>
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      ) : null}
                     </div>
                   </div>
 
