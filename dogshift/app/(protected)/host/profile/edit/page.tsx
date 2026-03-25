@@ -2,15 +2,15 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useEffect, useMemo, useState } from "react";
-import { Pencil } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Info, Pencil } from "lucide-react";
 
 import SunCornerGlow from "@/components/SunCornerGlow";
 import { useHostUser } from "@/components/HostUserProvider";
 import { isActivatedStatus } from "@/lib/sitterContract";
 import { CURRENT_TERMS_VERSION } from "@/lib/terms";
 
-import type { DogSize, ServiceType } from "@/lib/mockSitters";
+import type { DogSize } from "@/lib/mockSitters";
 import {
   getDefaultHostProfile,
   getHostCompletion,
@@ -24,53 +24,6 @@ const DOG_SIZE_LABELS: Record<DogSize, string> = {
   Moyen: "Moyen",
   Grand: "Grand",
 };
-
-function formatZurichIsoDate(date: Date) {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Europe/Zurich",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(date);
-}
-
-function toIsoDateString(d: Date) {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
-
-function monthTitle(date: Date) {
-  return new Intl.DateTimeFormat("fr-CH", { month: "long", year: "numeric" }).format(date);
-}
-
-function addMonths(date: Date, delta: number) {
-  return new Date(date.getFullYear(), date.getMonth() + delta, 1);
-}
-
-function getMonthGrid(month: Date) {
-  const firstOfMonth = new Date(month.getFullYear(), month.getMonth(), 1);
-  const daysInMonth = new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate();
-  // Monday-first index (0..6)
-  const jsDay = firstOfMonth.getDay();
-  const leading = (jsDay + 6) % 7;
-
-  const cells: Array<{ date: Date; inMonth: boolean }> = [];
-  for (let i = 0; i < leading; i += 1) {
-    const d = new Date(month.getFullYear(), month.getMonth(), 1 - (leading - i));
-    cells.push({ date: d, inMonth: false });
-  }
-  for (let day = 1; day <= daysInMonth; day += 1) {
-    cells.push({ date: new Date(month.getFullYear(), month.getMonth(), day), inMonth: true });
-  }
-  while (cells.length % 7 !== 0) {
-    const last = cells[cells.length - 1]?.date ?? new Date(month.getFullYear(), month.getMonth() + 1, 0);
-    const d = new Date(last.getFullYear(), last.getMonth(), last.getDate() + 1);
-    cells.push({ date: d, inMonth: false });
-  }
-  return cells;
-}
 
 export default function HostProfileEditPage() {
   const { sitterId, profile: remoteProfile, published: remotePublished, termsAcceptedAt, termsVersion, lifecycleStatus } = useHostUser();
@@ -101,8 +54,26 @@ export default function HostProfileEditPage() {
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [presentationTipsOpen, setPresentationTipsOpen] = useState(false);
+  const presentationTipsRef = useRef<HTMLDivElement | null>(null);
 
-
+  useEffect(() => {
+    if (!presentationTipsOpen) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setPresentationTipsOpen(false);
+    };
+    const onPointerDown = (e: MouseEvent) => {
+      const el = presentationTipsRef.current;
+      if (!el || !(e.target instanceof Node) || el.contains(e.target)) return;
+      setPresentationTipsOpen(false);
+    };
+    document.addEventListener("keydown", onKeyDown);
+    document.addEventListener("pointerdown", onPointerDown, true);
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      document.removeEventListener("pointerdown", onPointerDown, true);
+    };
+  }, [presentationTipsOpen]);
 
   useEffect(() => {
     if (!sitterId) return;
@@ -199,19 +170,9 @@ export default function HostProfileEditPage() {
     }
   }
 
-  const activeServices = useMemo(
-    () => (Object.keys(profile.services) as ServiceType[]).filter((svc) => profile.services[svc]),
-    [profile.services]
-  );
-
   function onSave() {
     setSaved(false);
     setError(null);
-
-    if (activeServices.length === 0) {
-      setError("Active au moins un service.");
-      return;
-    }
 
     if (!sitterId) return;
     const nextProfile: HostProfileV1 = {
@@ -255,7 +216,7 @@ export default function HostProfileEditPage() {
 
   if (!sitterId) {
     return (
-      <div className="relative grid gap-6 overflow-hidden" data-testid="host-profile-edit">
+      <div className="relative grid gap-6 overflow-x-hidden" data-testid="host-profile-edit">
         <SunCornerGlow variant="sitterProfile" />
         <div className="relative z-10 rounded-3xl border border-slate-200 bg-white p-6">
           <p className="text-sm font-semibold text-slate-900">Profil hôte</p>
@@ -271,7 +232,7 @@ export default function HostProfileEditPage() {
   }
 
   return (
-    <div className="relative grid gap-6 overflow-hidden" data-testid="host-profile-edit">
+    <div className="relative grid gap-6 overflow-x-hidden" data-testid="host-profile-edit">
       <SunCornerGlow variant="sitterProfile" />
 
       <div className="relative z-10">
@@ -386,9 +347,64 @@ export default function HostProfileEditPage() {
               </div>
 
               <div id="description" className="scroll-mt-24 border-t border-slate-200 p-6 sm:p-8">
-                <div className="flex items-start justify-between gap-4">
-                  <h2 className="text-base font-semibold text-slate-900">Présentation</h2>
-                  <p className="text-xs font-semibold text-slate-500">{profile.bio.length}/320</p>
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex min-w-0 flex-1 items-center gap-1.5">
+                    <h2 className="text-base font-semibold text-slate-900">Présentation</h2>
+                    <div
+                      ref={presentationTipsRef}
+                      className="relative shrink-0"
+                      onMouseEnter={() => {
+                        if (typeof window === "undefined") return;
+                        if (window.matchMedia("(hover: hover) and (pointer: fine)").matches) {
+                          setPresentationTipsOpen(true);
+                        }
+                      }}
+                      onMouseLeave={() => {
+                        if (typeof window === "undefined") return;
+                        if (window.matchMedia("(hover: hover) and (pointer: fine)").matches) {
+                          setPresentationTipsOpen(false);
+                        }
+                      }}
+                    >
+                      <button
+                        type="button"
+                        aria-expanded={presentationTipsOpen}
+                        aria-controls="presentation-help-popover"
+                        onClick={() => setPresentationTipsOpen((v) => !v)}
+                        className="inline-flex rounded-lg p-0.5 text-slate-400 outline-none transition hover:text-slate-500 focus-visible:ring-2 focus-visible:ring-[var(--dogshift-blue)] focus-visible:ring-offset-2"
+                      >
+                        <span className="sr-only">Conseils pour rédiger votre présentation</span>
+                        <Info className="h-4 w-4" aria-hidden="true" strokeWidth={2} />
+                      </button>
+                      {presentationTipsOpen ? (
+                        <div className="absolute left-0 top-full z-20 pt-2" role="presentation">
+                          <div
+                            id="presentation-help-popover"
+                            role="region"
+                            aria-label="Conseils pour la présentation"
+                            className="w-[min(calc(100vw-2rem),400px)] max-w-[400px] rounded-xl border border-slate-200/90 bg-white p-5 text-sm leading-relaxed text-slate-600 shadow-lg shadow-slate-900/10"
+                          >
+                            <p className="text-slate-700">Décris ton expérience et ton approche avec les chiens.</p>
+                            <p className="mt-2.5 text-slate-600">Précise par exemple :</p>
+                            <div className="mt-2 grid grid-cols-1 gap-x-4 gap-y-2 sm:grid-cols-2">
+                              <ul className="list-disc space-y-1.5 pl-4 text-slate-500 marker:text-slate-400">
+                                <li>types de chiens acceptés (âge, taille, caractère)</li>
+                                <li>expérience (promenades, garde, pension)</li>
+                              </ul>
+                              <ul className="list-disc space-y-1.5 pl-4 text-slate-500 marker:text-slate-400">
+                                <li>environnement (appartement, maison, jardin)</li>
+                                <li>habitudes (sorties, présence à domicile)</li>
+                              </ul>
+                            </div>
+                            <p className="mt-3 text-slate-700">
+                              Une description claire inspire confiance et augmente tes chances de recevoir des demandes.
+                            </p>
+                          </div>
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+                  <p className="shrink-0 text-xs font-semibold text-slate-500">{profile.bio.length}/320</p>
                 </div>
                 <textarea
                   value={profile.bio}
@@ -396,41 +412,6 @@ export default function HostProfileEditPage() {
                   className="mt-4 w-full min-h-[140px] rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition focus:border-[var(--dogshift-blue)] focus:ring-4 focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_85%)]"
                   placeholder="Décrivez votre expérience, votre approche et comment vous prenez soin des chiens."
                 />
-              </div>
-
-              <div id="services" className="scroll-mt-24 border-t border-slate-200 p-6 sm:p-8">
-                <h2 className="text-base font-semibold text-slate-900">Services</h2>
-                <p className="mt-2 text-sm text-slate-600">Active les services que tu proposes. Les tarifs se gèrent maintenant depuis Disponibilités.</p>
-
-                <div className="mt-4 grid gap-3 sm:grid-cols-3">
-                  {(["Promenade", "Garde", "Pension"] as const).map((svc) => (
-                    <button
-                      key={svc}
-                      type="button"
-                      onClick={() =>
-                        setProfile((p) => ({
-                          ...p,
-                          services: { ...p.services, [svc]: !p.services[svc] },
-                        }))
-                      }
-                      className={
-                        profile.services[svc]
-                          ? "rounded-2xl border border-[var(--dogshift-blue)] bg-[color-mix(in_srgb,var(--dogshift-blue),white_92%)] px-4 py-3 text-sm font-semibold text-[var(--dogshift-blue)]"
-                          : "rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 hover:bg-slate-50"
-                      }
-                    >
-                      {svc}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div id="horaires" className="scroll-mt-24 border-t border-slate-200 p-6 sm:p-8">
-                <h2 className="text-base font-semibold text-slate-900">Horaires & règles</h2>
-                <p className="mt-2 text-sm text-slate-600">
-                  Les disponibilités (calendrier) sont globales. Cette section servira à définir les horaires (ex. promenades) et les règles (min/max stay)
-                  par service.
-                </p>
               </div>
 
               <div id="dogSizes" className="scroll-mt-24 border-t border-slate-200 p-6 sm:p-8">
@@ -455,31 +436,6 @@ export default function HostProfileEditPage() {
                       {DOG_SIZE_LABELS[size]}
                     </button>
                   ))}
-                </div>
-
-                <div className="mt-6 flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                  <div>
-                    <p className="text-sm font-semibold text-slate-900">Annulation flexible</p>
-                    <p className="mt-1 text-sm text-slate-600">Le client peut annuler facilement (mock).</p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setProfile((p) => ({ ...p, cancellationFlexible: !p.cancellationFlexible }))}
-                    className={
-                      profile.cancellationFlexible
-                        ? "inline-flex h-9 w-14 items-center rounded-full bg-[var(--dogshift-blue)] p-1 transition"
-                        : "inline-flex h-9 w-14 items-center rounded-full bg-slate-200 p-1 transition"
-                    }
-                    aria-label="Annulation flexible"
-                  >
-                    <span
-                      className={
-                        profile.cancellationFlexible
-                          ? "h-7 w-7 translate-x-5 rounded-full bg-white shadow-sm transition"
-                          : "h-7 w-7 translate-x-0 rounded-full bg-white shadow-sm transition"
-                      }
-                    />
-                  </button>
                 </div>
 
                 {profile.services.Pension ? (
@@ -850,7 +806,7 @@ export default function HostProfileEditPage() {
 
                 <button
                   type="button"
-                  disabled={saving || activeServices.length === 0}
+                  disabled={saving}
                   onClick={onSave}
                   className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-[var(--dogshift-blue)] px-6 py-3 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition hover:bg-[var(--dogshift-blue-hover)] disabled:cursor-not-allowed disabled:opacity-60"
                 >
