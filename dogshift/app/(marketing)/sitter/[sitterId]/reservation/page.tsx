@@ -13,11 +13,11 @@ export default async function ReservationPage({
   params,
   searchParams,
 }: {
-  params: Promise<{ sitterId: string }> | { sitterId: string };
-  searchParams?: Promise<Record<string, string | string[] | undefined>> | Record<string, string | string[] | undefined>;
+  params: Promise<{ sitterId: string }>;
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const resolvedParams = (await Promise.resolve(params)) as { sitterId: string };
-  const resolvedSearchParams = ((await Promise.resolve(searchParams)) ?? {}) as Record<string, string | string[] | undefined>;
+  const resolvedParams = await params;
+  const resolvedSearchParams = (await searchParams) ?? {};
   const sitterId = resolvedParams?.sitterId;
   const modeRaw = resolvedSearchParams?.mode;
   const mode = typeof modeRaw === "string" ? modeRaw : Array.isArray(modeRaw) ? modeRaw[0] : "";

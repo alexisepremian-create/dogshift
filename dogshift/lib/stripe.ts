@@ -13,3 +13,12 @@ export function getStripe(): Stripe {
   });
   return stripeSingleton;
 }
+
+// Backward-compatible export for existing imports.
+// This stays lazy: Stripe is only initialized when a property is accessed.
+export const stripe = new Proxy({} as Stripe, {
+  get(_target, prop) {
+    const s = getStripe();
+    return (s as any)[prop];
+  },
+});

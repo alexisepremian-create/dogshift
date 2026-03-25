@@ -8,14 +8,10 @@ export const runtime = "nodejs";
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } | Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const resolvedParams =
-      typeof (params as any)?.then === "function"
-        ? await (params as Promise<{ id: string }>)
-        : (params as { id: string });
-
+    const resolvedParams = await params;
     const bookingId = typeof resolvedParams?.id === "string" ? resolvedParams.id : "";
     if (!bookingId) {
       return NextResponse.json({ ok: false, error: "INVALID_ID" }, { status: 400 });

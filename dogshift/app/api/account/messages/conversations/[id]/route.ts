@@ -11,7 +11,7 @@ function isMigrationMissingError(err: unknown) {
   return msg.includes("no such table") || msg.includes("does not exist") || msg.includes("P2021");
 }
 
-export async function GET(req: NextRequest, { params }: { params: { id: string } | Promise<{ id: string }> }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const ownerId = await resolveDbUserId(req);
     if (!ownerId) {
@@ -21,7 +21,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
       return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
     }
 
-    const resolvedParams = typeof (params as any)?.then === "function" ? await (params as Promise<{ id: string }>) : (params as { id: string });
+    const resolvedParams = await params;
     const conversationId = typeof resolvedParams?.id === "string" ? resolvedParams.id : "";
     if (!conversationId) {
       if (process.env.NODE_ENV !== "production") {

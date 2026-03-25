@@ -48,7 +48,7 @@ function throttleBucket10Min() {
   return Math.floor(Date.now() / (10 * 60 * 1000));
 }
 
-export async function POST(req: NextRequest, { params }: { params: { id: string } | Promise<{ id: string }> }) {
+export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { uid, sitterId } = await resolveDbUserAndSitterId();
     if (!uid) {
@@ -65,7 +65,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
     }
 
-    const resolvedParams = typeof (params as any)?.then === "function" ? await (params as Promise<{ id: string }>) : (params as { id: string });
+    const resolvedParams = await params;
     const conversationId = typeof resolvedParams?.id === "string" ? resolvedParams.id : "";
     if (!conversationId) {
       if (process.env.NODE_ENV !== "production") {

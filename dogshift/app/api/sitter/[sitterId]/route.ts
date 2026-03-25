@@ -7,14 +7,10 @@ export const runtime = "nodejs";
 
 export async function GET(
   _req: NextRequest,
-  { params }: { params: { sitterId: string } | Promise<{ sitterId: string }> }
+  { params }: { params: Promise<{ sitterId: string }> }
 ) {
   try {
-    const resolvedParams = (typeof (params as any)?.then === "function"
-      ? await (params as Promise<{ sitterId: string }>)
-      : (params as { sitterId: string })) as {
-      sitterId: string;
-    };
+    const resolvedParams = await params;
     const sitterId = typeof resolvedParams?.sitterId === "string" ? resolvedParams.sitterId : "";
 
     if (!sitterId) {

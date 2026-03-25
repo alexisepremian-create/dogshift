@@ -11,14 +11,14 @@ function isMigrationMissingError(err: unknown) {
   return msg.includes("no such table") || msg.includes("does not exist") || msg.includes("P2021");
 }
 
-export async function POST(req: NextRequest, { params }: { params: { id: string } | Promise<{ id: string }> }) {
+export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const userId = await resolveDbUserId(req);
     if (!userId) {
       return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
     }
 
-    const resolvedParams = typeof (params as any)?.then === "function" ? await (params as Promise<{ id: string }>) : (params as { id: string });
+    const resolvedParams = await params;
     const bookingId = typeof resolvedParams?.id === "string" ? resolvedParams.id : "";
     if (!bookingId) {
       return NextResponse.json({ ok: false, error: "INVALID_ID" }, { status: 400 });

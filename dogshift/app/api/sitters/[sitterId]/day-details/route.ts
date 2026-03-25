@@ -37,7 +37,7 @@ type DayDetailsOk = {
   };
 };
 
-export async function GET(req: NextRequest, { params }: { params: { sitterId: string } | Promise<{ sitterId: string }> }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ sitterId: string }> }) {
   const startedAt = Date.now();
   const resolved = (await params) as { sitterId?: string };
   const sitterId = typeof resolved?.sitterId === "string" ? resolved.sitterId.trim() : "";

@@ -34,7 +34,7 @@ function todayZurichIsoDate() {
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { sitterId: string } | Promise<{ sitterId: string }> }
+  { params }: { params: Promise<{ sitterId: string }> }
 ) {
   const startedAt = Date.now();
   const requestId = typeof (globalThis as any).crypto?.randomUUID === "function" ? (globalThis as any).crypto.randomUUID() : `r_${startedAt}`;

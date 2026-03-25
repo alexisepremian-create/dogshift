@@ -17,7 +17,7 @@ function normalizeService(value: string): ServiceType | null {
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { sitterId: string } | Promise<{ sitterId: string }> }
+  { params }: { params: Promise<{ sitterId: string }> }
 ) {
   const startedAt = Date.now();
   const resolved = (await params) as { sitterId?: string };
