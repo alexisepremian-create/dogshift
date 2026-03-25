@@ -82,24 +82,29 @@ function Badge({ tone, children }: { tone: "emerald" | "slate" | "rose"; childre
 function WalletMetricHint({ text }: { text: string }) {
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLSpanElement>(null);
-  const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const hideTimerRef = useRef<number | null>(null);
 
-  const show = () => {
-    if (hideTimerRef.current) {
-      window.clearTimeout(hideTimerRef.current);
+  const clearHideTimer = () => {
+    const id = hideTimerRef.current;
+    if (id !== null) {
+      window.clearTimeout(id);
       hideTimerRef.current = null;
     }
+  };
+
+  const show = () => {
+    clearHideTimer();
     setOpen(true);
   };
 
   const hideSoon = () => {
-    if (hideTimerRef.current) window.clearTimeout(hideTimerRef.current);
-    hideTimerRef.current = window.setTimeout(() => setOpen(false), 90);
+    clearHideTimer();
+    hideTimerRef.current = window.setTimeout(() => setOpen(false), 90) as unknown as number;
   };
 
   useEffect(() => {
     return () => {
-      if (hideTimerRef.current) window.clearTimeout(hideTimerRef.current);
+      clearHideTimer();
     };
   }, []);
 
