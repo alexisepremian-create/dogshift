@@ -137,23 +137,23 @@ export function MaintenanceProvider({ children }: { children: React.ReactNode })
       role="status"
       className="shrink-0 border-b border-[#5E52D4] bg-[#7969F0] px-3 py-2 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.12)] sm:px-5 sm:py-2.5"
     >
-      <div className="mx-auto flex w-full max-w-4xl items-start justify-center gap-2 sm:gap-2.5">
-        <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-white/85 sm:h-4 sm:w-4" strokeWidth={2} aria-hidden />
-        <div className="min-w-0 flex-1 text-center">
-          <p className="text-balance text-xs font-semibold leading-tight text-white sm:text-[13px] sm:leading-snug">
+      <div className="mx-auto flex w-full max-w-4xl flex-col items-center px-0.5 text-center sm:px-1">
+        <div className="inline-flex max-w-full items-center gap-1 sm:gap-1.5">
+          <Info className="h-3 w-3 shrink-0 text-white/85 sm:h-3.5 sm:w-3.5" strokeWidth={2.25} aria-hidden />
+          <p className="min-w-0 text-balance text-left text-xs font-semibold leading-tight text-white sm:text-[13px] sm:leading-snug">
             {MAINTENANCE_BANNER_PRIMARY}
           </p>
-          {contextualLine ? (
-            <p className="mt-1 text-pretty text-[11px] font-medium leading-tight text-white/90 sm:mt-1 sm:text-xs sm:leading-snug">
-              {contextualLine}
-            </p>
-          ) : null}
-          {adminNote ? (
-            <p className="mx-auto mt-1.5 max-w-xl border-t border-white/20 pt-1.5 text-[11px] leading-snug text-white/75 sm:text-xs">
-              {adminNote}
-            </p>
-          ) : null}
         </div>
+        {contextualLine ? (
+          <p className="mt-1 max-w-xl text-pretty text-[11px] font-medium leading-tight text-white/90 sm:text-xs sm:leading-snug">
+            {contextualLine}
+          </p>
+        ) : null}
+        {adminNote ? (
+          <p className="mx-auto mt-1.5 max-w-xl border-t border-white/20 pt-1.5 text-[11px] leading-snug text-white/75 sm:text-xs">
+            {adminNote}
+          </p>
+        ) : null}
       </div>
     </div>
   ) : null;
