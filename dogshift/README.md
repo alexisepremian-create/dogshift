@@ -56,6 +56,19 @@ If the token is missing, the map will show a non-blocking fallback message (no c
   - Ouvrir `/admin/host`
   - Résultat: affichage des profils soumis (stockage mock)
 
+### SMS (Vonage, server-only)
+
+Transactional SMS (e.g. booking webhooks) use [Vonage SMS](https://developer.vonage.com/en/messaging/sms/overview). Set in Vercel / `.env.local`:
+
+```bash
+VONAGE_API_KEY=...
+VONAGE_API_SECRET=...
+# Optional: alphanumeric sender (≤11 chars) or your Vonage number in E.164
+# VONAGE_SMS_FROM=DogShift
+```
+
+If credentials are missing, `sendSms` skips with `VONAGE_NOT_CONFIGURED` (no crash). **Debug:** `GET /api/debug/sms-test?to=+41...` — same rules as email-test (open in dev; in production send header `x-dogshift-admin-secret` when `DOGSHIFT_ADMIN_SECRET` is set).
+
 ### Run locally
 
 ```bash
