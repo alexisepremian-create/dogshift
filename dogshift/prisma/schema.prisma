@@ -623,3 +623,12 @@ model VerificationToken {
 
   @@unique([identifier, token])
 }
+
+/// Singleton row `id = "global"` — platform-wide toggles (maintenance, etc.).
+model PlatformSettings {
+  id                 String   @id
+  maintenanceMode    Boolean  @default(false)
+  maintenanceMessage String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+}

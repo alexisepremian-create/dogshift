@@ -1,3 +1,4 @@
+import AdminMaintenanceSettingsClient from "@/components/admin/AdminMaintenanceSettingsClient";
 import AdminShell from "@/components/admin/AdminShell";
 import { requireAdminPageAccess } from "@/lib/adminAuth";
 
@@ -13,8 +14,11 @@ export default async function AdminSettingsPage() {
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Settings</p>
           <h2 className="mt-3 text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">Configuration admin</h2>
           <p className="mt-3 max-w-3xl text-sm leading-relaxed text-slate-600 sm:text-base">
-            Cette section centralisera les futurs paramètres internes: rôles admin, politiques de modération, templates d’emails internes et préférences opérationnelles.
+            Paramètres plateforme : maintenance, futurs rôles admin et préférences opérationnelles.
           </p>
+          <div className="mt-8 border-t border-slate-100 pt-8">
+            <AdminMaintenanceSettingsClient />
+          </div>
         </section>
       </div>
     </AdminShell>

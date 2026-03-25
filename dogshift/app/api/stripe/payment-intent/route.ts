@@ -3,6 +3,7 @@ import type { NextRequest } from "next/server";
 
 import { getStripe } from "@/lib/stripe";
 import { prisma } from "@/lib/prisma";
+import { commerceBlockedResponse } from "@/lib/platform/maintenance";
 import { resolveDbUserId } from "@/lib/auth/resolveDbUserId";
 import { estimateStripePaymentFeeCents } from "@/lib/stripe/paymentFeeEstimate";
 
@@ -14,6 +15,9 @@ type Body = {
 
 export async function POST(req: NextRequest) {
   try {
+    const maintenance = await commerceBlockedResponse();
+    if (maintenance) return maintenance;
+
     const stripe = getStripe();
     const db = prisma as any;
     const userId = await resolveDbUserId(req);

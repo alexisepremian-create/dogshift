@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 import { prisma } from "@/lib/prisma";
+import { commerceBlockedResponse } from "@/lib/platform/maintenance";
 import { DOGSHIFT_COMMISSION_RATE } from "@/lib/commission";
 import { resolveDbUserId } from "@/lib/auth/resolveDbUserId";
 import { checkBoardingRange, generateDaySlots, type ServiceType } from "@/lib/availability/slotEngine";
@@ -143,6 +144,9 @@ function sameInstantIso(a: string, b: string) {
 
 export async function POST(req: NextRequest) {
   try {
+    const maintenance = await commerceBlockedResponse();
+    if (maintenance) return maintenance;
+
     if (isBookingAccessCodeProtectionEnabled()) {
       const bookingAccessGranted = req.cookies.get(BOOKING_ACCESS_COOKIE)?.value === "true";
       if (!bookingAccessGranted) {

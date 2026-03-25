@@ -5,6 +5,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Calendar, ChevronLeft, ChevronRight } from "lucide-react";
 
+import { useMaintenance } from "@/components/platform/MaintenanceProvider";
+import { DEFAULT_MAINTENANCE_PUBLIC_MESSAGE } from "@/lib/platform/maintenanceConstants";
 import { cancellationPolicyVariantFromStartMs } from "@/lib/reservation/cancellationPolicyUi";
 
 type PricingUnit = "HOURLY" | "DAILY";
@@ -779,6 +781,7 @@ function DogShiftDatePicker({
 export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { maintenanceMode, bannerMessage } = useMaintenance();
 
   const LEAD_TIME_MINUTES = 30;
   const LAST_MINUTE_MAX_HOURS = 24;
@@ -1435,10 +1438,21 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
   }, [earliestAllowedMs, endTime, isTodaySelected, selectedDurationSlots, startTime]);
 
   const canSubmit = useMemo(() => {
+    if (maintenanceMode) return false;
     if (!selectedService || !unit) return false;
     if (unit === "DAILY") return Boolean(dateStart && dateEnd && selectedUnitPrice);
     return Boolean(dateStart && startTime && durationHours && selectedUnitPrice && selectedHourlySlot);
-  }, [dateEnd, dateStart, durationHours, selectedHourlySlot, selectedService, selectedUnitPrice, startTime, unit]);
+  }, [
+    dateEnd,
+    dateStart,
+    durationHours,
+    maintenanceMode,
+    selectedHourlySlot,
+    selectedService,
+    selectedUnitPrice,
+    startTime,
+    unit,
+  ]);
 
   const recapCancellationVariant = useMemo(() => {
     if (!selectedService || !unit) return null;
@@ -1627,6 +1641,15 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
 
       const bookingPayload = (await bookingRes.json()) as { ok?: boolean; bookingId?: string; error?: string; message?: string };
       const bookingId = typeof bookingPayload?.bookingId === "string" ? bookingPayload.bookingId : "";
+
+      if (bookingRes.status === 503 || bookingPayload?.error === "MAINTENANCE") {
+        setError(
+          typeof bookingPayload?.message === "string" && bookingPayload.message.trim()
+            ? bookingPayload.message.trim()
+            : bannerMessage ?? DEFAULT_MAINTENANCE_PUBLIC_MESSAGE
+        );
+        return;
+      }
 
       if (bookingRes.status === 401 || bookingPayload?.error === "UNAUTHORIZED") {
         const callbackUrl = `/sitter/${encodeURIComponent(sitter.sitterId)}/reservation`;

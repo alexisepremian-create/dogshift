@@ -4,12 +4,18 @@ import Link from "next/link";
 import { Gift, Shirt } from "lucide-react";
 import { useMemo, useState } from "react";
 
+import { useMaintenance } from "@/components/platform/MaintenanceProvider";
+import { DEFAULT_MAINTENANCE_PUBLIC_MESSAGE } from "@/lib/platform/maintenanceConstants";
+
 export default function ContribuerPage({
   searchParams,
 }: {
-  searchParams?: { canceled?: string };
+  searchParams?: { canceled?: string; maintenance?: string };
 }) {
   const canceled = searchParams?.canceled === "1";
+  const redirectedMaintenance = searchParams?.maintenance === "1";
+  const { maintenanceMode, bannerMessage } = useMaintenance();
+  const paymentPaused = maintenanceMode || redirectedMaintenance;
   const [selectedAmount, setSelectedAmount] = useState<number>(10);
   const [useCustomAmount, setUseCustomAmount] = useState(false);
   const [customAmount, setCustomAmount] = useState("");
@@ -35,6 +41,12 @@ export default function ContribuerPage({
         {canceled ? (
           <p className="text-sm font-medium text-slate-700">Paiement annulé — vous pouvez réessayer à tout moment.</p>
         ) : null}
+        {paymentPaused ? (
+          <p className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm font-medium text-amber-950">
+            {maintenanceMode ? bannerMessage ?? DEFAULT_MAINTENANCE_PUBLIC_MESSAGE : DEFAULT_MAINTENANCE_PUBLIC_MESSAGE}
+            {redirectedMaintenance && !maintenanceMode ? " Les paiements sont temporairement indisponibles." : ""}
+          </p>
+        ) : null}
       </div>
 
       <div className="mt-8 rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-44px_rgba(2,6,23,0.16)] sm:p-8">
@@ -42,6 +54,7 @@ export default function ContribuerPage({
         <p className="mt-2 text-sm text-slate-600">Vous serez redirigé vers Stripe Checkout dans le même onglet pour finaliser votre contribution.</p>
 
         <form action="/api/stripe/checkout" method="POST" className="mt-5">
+          <fieldset disabled={paymentPaused} className="min-w-0 border-0 p-0">
           <div className="flex flex-wrap gap-2">
             {[5, 10, 20, 50, 100].map((amount) => {
               const active = !useCustomAmount && selectedAmount === amount;
@@ -116,12 +129,13 @@ export default function ContribuerPage({
 
               <button
                 type="button"
+                disabled={paymentPaused}
                 onClick={() => {
                   setUseCustomAmount(false);
                   setCustomAmount("");
                   setSelectedAmount(50);
                 }}
-                className="inline-flex items-center justify-center rounded-2xl border border-[var(--dogshift-blue)] bg-white px-4 py-2.5 text-sm font-semibold text-[var(--dogshift-blue)] shadow-sm transition hover:bg-[color-mix(in_srgb,var(--dogshift-blue),white_94%)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)]"
+                className="inline-flex items-center justify-center rounded-2xl border border-[var(--dogshift-blue)] bg-white px-4 py-2.5 text-sm font-semibold text-[var(--dogshift-blue)] shadow-sm transition hover:bg-[color-mix(in_srgb,var(--dogshift-blue),white_94%)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Contribuer 50 CHF — recevoir le T-shirt Founder
               </button>
@@ -133,12 +147,13 @@ export default function ContribuerPage({
           <div className="mt-6 flex flex-wrap items-center justify-end gap-3">
             <button
               type="submit"
-              disabled={!(Number.isFinite(amountToPay) && amountToPay >= 1)}
+              disabled={paymentPaused || !(Number.isFinite(amountToPay) && amountToPay >= 1)}
               className="inline-flex items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-6 py-3 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition hover:bg-[var(--dogshift-blue-hover)] disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)]"
             >
               Contribuer
             </button>
           </div>
+          </fieldset>
         </form>
       </div>
 

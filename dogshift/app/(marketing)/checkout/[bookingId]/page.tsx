@@ -6,10 +6,12 @@ import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { AlertTriangle, Info } from "lucide-react";
 
+import { useMaintenance } from "@/components/platform/MaintenanceProvider";
 import {
   cancellationPolicyVariantFromStartMs,
   type CancellationPolicyVariant,
 } from "@/lib/reservation/cancellationPolicyUi";
+import { DEFAULT_MAINTENANCE_PUBLIC_MESSAGE } from "@/lib/platform/maintenanceConstants";
 
 type BookingStatus =
   | "DRAFT"
@@ -363,6 +365,7 @@ function CheckoutForm({
 export default function CheckoutBookingPage() {
   const params = useParams<{ bookingId: string }>();
   const bookingId = typeof params?.bookingId === "string" ? params.bookingId : "";
+  const { maintenanceMode, bannerMessage, loading: maintLoading } = useMaintenance();
 
   const [stripeUi, setStripeUi] = useState<{
     stripePromise: Promise<any>;
@@ -427,6 +430,16 @@ const stripeReact = await import("@stripe/react-stripe-js");
         setLoading(true);
         setError(null);
 
+        if (!maintLoading && maintenanceMode) {
+          setClientSecret(null);
+          setError(bannerMessage ?? DEFAULT_MAINTENANCE_PUBLIC_MESSAGE);
+          setLoading(false);
+          return;
+        }
+        if (maintLoading) {
+          return;
+        }
+
         const res = await fetch(`/api/bookings/${encodeURIComponent(bookingId)}`, { cache: "no-store" });
         const payload = (await res.json()) as { ok?: boolean; booking?: BookingDto; error?: string };
         if (canceled) return;
@@ -449,11 +462,22 @@ const stripeReact = await import("@stripe/react-stripe-js");
           intentId?: string;
           livemode?: boolean;
           error?: string;
+          message?: string;
           paymentFeeAmount?: number;
           totalOwnerAmount?: number;
           reused?: boolean;
         };
         if (canceled) return;
+        if (piRes.status === 503 || piPayload.error === "MAINTENANCE") {
+          setClientSecret(null);
+          setError(
+            typeof piPayload.message === "string" && piPayload.message.trim()
+              ? piPayload.message.trim()
+              : bannerMessage ?? DEFAULT_MAINTENANCE_PUBLIC_MESSAGE
+          );
+          setLoading(false);
+          return;
+        }
         if (!piRes.ok || !piPayload.ok || typeof piPayload.clientSecret !== "string") {
           setError("Impossible d’initialiser le paiement.");
           setLoading(false);
@@ -520,9 +544,12 @@ const stripeReact = await import("@stripe/react-stripe-js");
     return () => {
       canceled = true;
     };
-  }, [bookingId]);
+  }, [bannerMessage, bookingId, maintLoading, maintenanceMode]);
 
-  const canRender = useMemo(() => Boolean(clientSecret && stripeUi && !stripeUiError), [clientSecret, stripeUi, stripeUiError]);
+  const canRender = useMemo(
+    () => Boolean(clientSecret && stripeUi && !stripeUiError && !maintenanceMode),
+    [clientSecret, stripeUi, stripeUiError, maintenanceMode]
+  );
 
   const stripeAppearance = useMemo(
     () => ({

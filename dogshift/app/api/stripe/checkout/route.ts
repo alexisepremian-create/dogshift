@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 import { stripe } from "@/lib/stripe";
+import { commerceBlockedResponse } from "@/lib/platform/maintenance";
 
 export const runtime = "nodejs";
 
@@ -28,6 +29,15 @@ export async function POST(req: NextRequest) {
   try {
     const contentType = req.headers.get("content-type") ?? "";
     const expectsRedirect = !contentType.includes("application/json");
+
+    const maintenance = await commerceBlockedResponse();
+    if (maintenance) {
+      if (expectsRedirect) {
+        return NextResponse.redirect(new URL("/contribuer?maintenance=1", req.url), { status: 303 });
+      }
+      return maintenance;
+    }
+
     const amount = await readAmount(req);
 
     if (!Number.isFinite(amount) || !Number.isInteger(amount) || amount < 1 || amount > 10000) {

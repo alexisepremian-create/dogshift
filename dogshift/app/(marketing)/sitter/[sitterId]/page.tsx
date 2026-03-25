@@ -12,6 +12,8 @@ import SunCornerGlow from "@/components/SunCornerGlow";
 import { appendHostMessage } from "@/lib/hostMessages";
 import { BUCKET_LABELS_FR, bucketDetailFr, mapReasonToBucket } from "@/lib/availability/reasonBuckets";
 import PageLoader from "@/components/ui/PageLoader";
+import { useMaintenance } from "@/components/platform/MaintenanceProvider";
+import { DEFAULT_MAINTENANCE_PUBLIC_MESSAGE } from "@/lib/platform/maintenanceConstants";
 
 type ServiceType = "Promenade" | "Garde" | "Pension";
 
@@ -374,6 +376,7 @@ function SitterPublicProfileContent({
   search: string;
 }) {
   const router = useRouter();
+  const { maintenanceMode, bannerMessage } = useMaintenance();
   if (dbg) console.log("[ProfileContent] render");
   const actionsRef = useRef<HTMLDivElement | null>(null);
   const id = sitterId;
@@ -736,6 +739,10 @@ function SitterPublicProfileContent({
   }, [bookingCtaError, isLoaded, isSignedIn]);
 
   async function continueToReservation() {
+    if (maintenanceMode) {
+      setBookingCtaError(bannerMessage ?? DEFAULT_MAINTENANCE_PUBLIC_MESSAGE);
+      return;
+    }
     const qp = new URLSearchParams();
     qp.set("service", serviceUi.current.label);
     if (slotsServiceType === "PENSION") {
@@ -787,6 +794,12 @@ function SitterPublicProfileContent({
     setPaying(true);
     setPayError(null);
 
+    if (maintenanceMode) {
+      setPayError(bannerMessage ?? DEFAULT_MAINTENANCE_PUBLIC_MESSAGE);
+      setPaying(false);
+      return;
+    }
+
     const isHourlyService = selectedService === "Promenade" || selectedService === "Garde";
     const hasHourlyDates = Boolean(selectedSlot && selectedSlot.startAt && selectedSlot.endAt);
     const hasDailyDates = Boolean(bookingStart && bookingEnd);
@@ -826,8 +839,17 @@ function SitterPublicProfileContent({
         }),
       });
 
-      const bookingPayload = (await bookingRes.json()) as { ok?: boolean; bookingId?: string; error?: string };
+      const bookingPayload = (await bookingRes.json()) as { ok?: boolean; bookingId?: string; error?: string; message?: string };
       const bookingId = typeof bookingPayload?.bookingId === "string" ? bookingPayload.bookingId : "";
+
+      if (bookingRes.status === 503 || bookingPayload?.error === "MAINTENANCE") {
+        setPayError(
+          typeof bookingPayload?.message === "string" && bookingPayload.message.trim()
+            ? bookingPayload.message.trim()
+            : bannerMessage ?? DEFAULT_MAINTENANCE_PUBLIC_MESSAGE
+        );
+        return;
+      }
 
       if (!bookingRes.ok || !bookingPayload?.ok || !bookingId) {
         setPayError("Impossible de démarrer la réservation. Réessayez.");
@@ -2660,6 +2682,10 @@ function SitterPublicProfileContent({
                         onClick={(e) => {
                           e.preventDefault();
                           e.stopPropagation();
+                          if (maintenanceMode) {
+                            setBookingCtaError(bannerMessage ?? DEFAULT_MAINTENANCE_PUBLIC_MESSAGE);
+                            return;
+                          }
                           if (!isLoaded) {
                             setBookingCtaError("Chargement de la session… Réessaie dans une seconde.");
                             return;
@@ -2680,7 +2706,7 @@ function SitterPublicProfileContent({
                           setBookingAccessError(null);
                           setBookingAccessOpen(true);
                         }}
-                        disabled={!canRequestBooking}
+                        disabled={!canRequestBooking || maintenanceMode}
                         className="inline-flex w-full items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-6 py-3 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition hover:bg-[var(--dogshift-blue-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)] disabled:cursor-not-allowed disabled:opacity-55"
                       >
                         Demander une réservation
