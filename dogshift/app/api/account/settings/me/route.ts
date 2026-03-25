@@ -160,6 +160,7 @@ export async function GET(req: NextRequest) {
         id: true,
         email: true,
         name: true,
+        phone: true,
         emailVerified: true,
         passwordHash: true,
         role: true,
@@ -201,6 +202,7 @@ export async function GET(req: NextRequest) {
           firstName,
           lastName,
           email: String((user as any).email ?? ""),
+          phone: typeof (user as any).phone === "string" ? String((user as any).phone) : null,
         },
         security: {
           googleConnected,
@@ -223,6 +225,7 @@ export async function GET(req: NextRequest) {
 type PatchBody = {
   firstName?: unknown;
   lastName?: unknown;
+  phone?: unknown;
   notifications?: unknown;
   preferences?: unknown;
 };
@@ -258,6 +261,8 @@ export async function PATCH(req: NextRequest) {
 
     const firstName = typeof body?.firstName === "string" ? body.firstName.trim() : "";
     const lastName = typeof body?.lastName === "string" ? body.lastName.trim() : "";
+    const phoneRaw = typeof body?.phone === "string" ? body.phone.trim() : undefined;
+    const phone = phoneRaw !== undefined ? (phoneRaw ? phoneRaw : null) : undefined;
 
     const user = await prisma.user.findUnique({ where: { id: dbUser.id }, select: { id: true, hostProfileJson: true } });
     if (!user) {
@@ -304,10 +309,19 @@ export async function PATCH(req: NextRequest) {
       where: { id: dbUser.id },
       data: {
         ...(name ? { name } : {}),
+        ...(phone !== undefined ? { phone } : {}),
         hostProfileJson,
       },
       select: { id: true },
     });
+
+    // If phone is removed, automatically disable global last-minute bookings for sitters.
+    if (phone === null) {
+      await prisma.sitterProfile.updateMany({
+        where: { userId: dbUser.id, lastMinuteEnabled: true },
+        data: { lastMinuteEnabled: false },
+      });
+    }
 
     return NextResponse.json({ ok: true }, { status: 200 });
   } catch (err) {

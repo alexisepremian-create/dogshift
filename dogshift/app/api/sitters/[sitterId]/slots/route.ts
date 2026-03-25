@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 import { generateDaySlots, TIMEZONE_ZURICH, type ServiceType } from "@/lib/availability/slotEngine";
+import { prisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
 
@@ -45,6 +46,12 @@ export async function GET(
   if (durationMin !== null && !Number.isFinite(durationMin)) {
     return NextResponse.json({ ok: false, error: "INVALID_DURATION" }, { status: 400 });
   }
+
+  const sitterProfile = await (prisma as any).sitterProfile.findUnique({
+    where: { sitterId },
+    select: { lastMinuteEnabled: true },
+  });
+  const lastMinuteEnabled = Boolean(sitterProfile?.lastMinuteEnabled);
 
   const result = await generateDaySlots({ sitterId, serviceType, date, durationMin: durationMin ?? undefined, dbg });
   const durationMs = Date.now() - startedAt;
@@ -93,6 +100,7 @@ export async function GET(
       date,
       timezone: TIMEZONE_ZURICH,
       config: result.config,
+      lastMinuteEnabled,
       durationMin: result.durationMin,
       starts: result.starts,
       configuredRanges: result.configuredRanges,

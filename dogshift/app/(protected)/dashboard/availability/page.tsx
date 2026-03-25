@@ -232,6 +232,10 @@ export default function AvailabilityStudioPage() {
   const sitterId = host.sitterId;
   const remoteProfile = (host.profile && typeof host.profile === "object" ? (host.profile as Partial<HostProfileV1>) : null);
 
+  const [lastMinuteEnabledGlobal, setLastMinuteEnabledGlobal] = useState<boolean | null>(null);
+  const [lastMinuteSavingGlobal, setLastMinuteSavingGlobal] = useState(false);
+  const [lastMinutePhonePresent, setLastMinutePhonePresent] = useState<boolean | null>(null);
+
   const [configByService, setConfigByService] = useState<Record<ServiceTypeApi, ServiceConfig | null>>({
     PROMENADE: null,
     DOGSITTING: null,
@@ -308,6 +312,46 @@ export default function AvailabilityStudioPage() {
   const exceptionDrawerRef = useRef<HTMLDivElement | null>(null);
   const exceptionDrawerRestoreFocusRef = useRef<HTMLElement | null>(null);
   const exceptionDrawerInitialSnapshotRef = useRef<string>("");
+
+  async function refetchLastMinuteGlobal() {
+    try {
+      const res = await fetch("/api/sitters/me/last-minute", { method: "GET", cache: "no-store" });
+      const payload = (await res.json().catch(() => null)) as any;
+      if (!res.ok || !payload?.ok) throw new Error(payload?.error ?? "LAST_MINUTE_ERROR");
+      setLastMinuteEnabledGlobal(Boolean(payload.lastMinuteEnabled));
+      setLastMinutePhonePresent(typeof payload.phonePresent === "boolean" ? payload.phonePresent : null);
+    } catch {
+      setLastMinuteEnabledGlobal(null);
+      setLastMinutePhonePresent(null);
+    }
+  }
+
+  async function saveLastMinuteGlobal(next: boolean) {
+    setLastMinuteSavingGlobal(true);
+    setError(null);
+    setTopError(null);
+    const prev = lastMinuteEnabledGlobal;
+    setLastMinuteEnabledGlobal(next);
+    try {
+      const res = await fetch("/api/sitters/me/last-minute", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ lastMinuteEnabled: next }),
+      });
+      const payload = (await res.json().catch(() => null)) as any;
+      if (!res.ok || !payload?.ok) {
+        const msg = typeof payload?.message === "string" && payload.message.trim() ? payload.message.trim() : payload?.error ?? "SAVE_ERROR";
+        throw new Error(msg);
+      }
+      await refetchLastMinuteGlobal();
+    } catch (e) {
+      await refetchLastMinuteGlobal();
+      setLastMinuteEnabledGlobal(prev ?? false);
+      setError(e instanceof Error ? e.message : "SAVE_ERROR");
+    } finally {
+      setLastMinuteSavingGlobal(false);
+    }
+  }
 
   const monthStatusByDate = useMemo(() => {
     const map = new Map<string, (typeof monthDays)[number]>();
@@ -538,12 +582,19 @@ export default function AvailabilityStudioPage() {
     try {
       const services: ServiceTypeApi[] = ["PROMENADE", "DOGSITTING", "PENSION"];
 
+      await refetchLastMinuteGlobal();
+
       const cfgPairs = await Promise.all(
         services.map(async (svc) => {
           const res = await fetch(`/api/sitters/me/service-config?service=${encodeURIComponent(svc)}`, { method: "GET", cache: "no-store" });
           const payload = (await res.json().catch(() => null)) as any;
           if (!res.ok || !payload?.ok || typeof payload?.enabled !== "boolean") throw new Error("CONFIG_ERROR");
-          return [svc, { enabled: payload.enabled } satisfies ServiceConfig] as const;
+          return [
+            svc,
+            {
+              enabled: payload.enabled,
+            } satisfies ServiceConfig,
+          ] as const;
         })
       );
       if (token !== refreshTokenRef.current) return;
@@ -2073,6 +2124,50 @@ export default function AvailabilityStudioPage() {
                   </button>
                 );
               })}
+            </div>
+          </div>
+
+          <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-4">
+            <div className="flex items-start justify-between gap-4">
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-slate-900">Accepter les réservations de dernière minute</p>
+                <p className="mt-1 text-xs text-slate-600">
+                  Permet aux propriétaires de réserver à moins de 24h. Ces réservations sont confirmées immédiatement après paiement.
+                </p>
+                {lastMinutePhonePresent === false ? (
+                  <p className="mt-2 text-xs font-medium text-amber-700">
+                    Ajoutez un numéro de téléphone dans les paramètres pour activer cette option.
+                  </p>
+                ) : null}
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={lastMinuteEnabledGlobal === true}
+                disabled={lastMinuteEnabledGlobal === null || lastMinuteSavingGlobal || lastMinutePhonePresent === false}
+                onClick={() => {
+                  if (lastMinuteEnabledGlobal === null) return;
+                  void saveLastMinuteGlobal(!lastMinuteEnabledGlobal);
+                }}
+                className={
+                  lastMinuteEnabledGlobal === true
+                    ? "relative inline-flex h-6 w-11 shrink-0 items-center rounded-full bg-slate-900 transition disabled:opacity-50"
+                    : "relative inline-flex h-6 w-11 shrink-0 items-center rounded-full bg-slate-300 transition disabled:opacity-50"
+                }
+                aria-label={
+                  lastMinuteEnabledGlobal === true
+                    ? "Désactiver les réservations de dernière minute"
+                    : "Activer les réservations de dernière minute"
+                }
+              >
+                <span
+                  className={
+                    lastMinuteEnabledGlobal === true
+                      ? "inline-block h-5 w-5 translate-x-5 rounded-full bg-white shadow transition"
+                      : "inline-block h-5 w-5 translate-x-1 rounded-full bg-white shadow transition"
+                  }
+                />
+              </button>
             </div>
           </div>
 

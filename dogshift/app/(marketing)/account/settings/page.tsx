@@ -40,7 +40,7 @@ type SettingsState = {
 
 type MeResponse = {
   ok?: boolean;
-  profile?: { firstName: string; lastName: string; email: string };
+  profile?: { firstName: string; lastName: string; email: string; phone?: string | null };
   security?: { googleConnected: boolean; emailVerified: boolean; passwordSet: boolean };
   settings?: SettingsState;
   emailVerificationStatus?: "verified" | "unverified" | "pending";
@@ -105,7 +105,12 @@ export default function AccountSettingsPage() {
   const [profileFirstName, setProfileFirstName] = useState("");
   const [profileLastName, setProfileLastName] = useState("");
   const [profileEmail, setProfileEmail] = useState("");
-  const [profileSnapshot, setProfileSnapshot] = useState<{ firstName: string; lastName: string }>({ firstName: "", lastName: "" });
+  const [profilePhone, setProfilePhone] = useState("");
+  const [profileSnapshot, setProfileSnapshot] = useState<{ firstName: string; lastName: string; phone: string }>({
+    firstName: "",
+    lastName: "",
+    phone: "",
+  });
   const [security, setSecurity] = useState<{ googleConnected: boolean; emailVerified: boolean; passwordSet: boolean } | null>(null);
   const [emailVerificationStatus, setEmailVerificationStatus] = useState<"verified" | "unverified" | "pending">("unverified");
   const [lastVerificationEmailSentAt, setLastVerificationEmailSentAt] = useState<string | null>(null);
@@ -166,8 +171,10 @@ export default function AccountSettingsPage() {
         setProfileSnapshot({
           firstName: payload.profile.firstName ?? "",
           lastName: payload.profile.lastName ?? "",
+          phone: typeof payload.profile.phone === "string" ? payload.profile.phone : "",
         });
         setProfileEmail(payload.profile.email ?? email ?? "");
+        setProfilePhone(typeof payload.profile.phone === "string" ? payload.profile.phone : "");
         setSecurity(payload.security);
 
         setEmailVerificationStatus(payload.emailVerificationStatus ?? (payload.security.emailVerified ? "verified" : "unverified"));
@@ -240,9 +247,10 @@ export default function AccountSettingsPage() {
   const profileDirty = useMemo(() => {
     return (
       profileFirstName.trim() !== profileSnapshot.firstName.trim() ||
-      profileLastName.trim() !== profileSnapshot.lastName.trim()
+      profileLastName.trim() !== profileSnapshot.lastName.trim() ||
+      (isHost ? profilePhone.trim() !== profileSnapshot.phone.trim() : false)
     );
-  }, [profileFirstName, profileLastName, profileSnapshot.firstName, profileSnapshot.lastName]);
+  }, [isHost, profileFirstName, profileLastName, profilePhone, profileSnapshot.firstName, profileSnapshot.lastName, profileSnapshot.phone]);
 
   if (!mounted) {
     return <div className="grid gap-6" />;
@@ -378,6 +386,23 @@ export default function AccountSettingsPage() {
             </div>
             <p className="mt-2 text-xs text-slate-500">Ton email est géré par ton fournisseur de connexion.</p>
           </div>
+
+          {isHost ? (
+            <div className="sm:col-span-2">
+              <label className={labelBase} htmlFor="phone">
+                Numéro de téléphone
+              </label>
+              <input
+                id="phone"
+                value={profilePhone}
+                disabled={meLoading || profileSubmitting}
+                onChange={(e) => setProfilePhone(e.target.value)}
+                className={inputBase}
+                placeholder="+41 79 123 45 67"
+              />
+              <p className="mt-2 text-xs text-slate-500">Utilisé pour les notifications SMS de dernière minute</p>
+            </div>
+          ) : null}
         </div>
 
         {profileDirty ? (
@@ -389,6 +414,7 @@ export default function AccountSettingsPage() {
                 setMeError(null);
                 setProfileFirstName(profileSnapshot.firstName);
                 setProfileLastName(profileSnapshot.lastName);
+                setProfilePhone(profileSnapshot.phone);
               }}
               className="inline-flex items-center justify-center rounded-2xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
             >
@@ -404,7 +430,7 @@ export default function AccountSettingsPage() {
                   const res = await fetch("/api/account/settings/me", {
                     method: "PATCH",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ firstName: profileFirstName, lastName: profileLastName }),
+                    body: JSON.stringify({ firstName: profileFirstName, lastName: profileLastName, ...(isHost ? { phone: profilePhone } : null) }),
                   });
                   const payload = (await res.json()) as { ok?: boolean };
                   if (!res.ok || !payload.ok) {
@@ -413,7 +439,7 @@ export default function AccountSettingsPage() {
                     return;
                   }
 
-                  setProfileSnapshot({ firstName: profileFirstName, lastName: profileLastName });
+                  setProfileSnapshot({ firstName: profileFirstName, lastName: profileLastName, phone: profilePhone });
                   router.refresh();
                   setToast("Informations mises à jour");
                 } catch {

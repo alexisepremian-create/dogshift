@@ -779,6 +779,7 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
   const searchParams = useSearchParams();
 
   const LEAD_TIME_MINUTES = 30;
+  const LAST_MINUTE_MAX_HOURS = 24;
 
   const [openPicker, setOpenPicker] = useState<"time" | "duration" | null>(null);
   const [selectedService, setSelectedService] = useState<string | null>(null);
@@ -800,6 +801,7 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
   const [hourlyConfig, setHourlyConfig] = useState<HourlyConfig | null>(null);
   const [startAvailabilities, setStartAvailabilities] = useState<StartAvailability[]>([]);
   const [configuredRanges, setConfiguredRanges] = useState<ConfiguredTimeRange[]>([]);
+  const [lastMinuteEnabled, setLastMinuteEnabled] = useState<boolean | null>(null);
   const [durationSlotMap, setDurationSlotMap] = useState<Record<number, HourlySlot[]>>({});
   const [durationSlotsLoading, setDurationSlotsLoading] = useState(false);
 
@@ -808,6 +810,10 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
   const nowMs = now.getTime();
   const isTodaySelected = Boolean(dateStart && dateStart === todayIso);
   const earliestAllowedMs = useMemo(() => (isTodaySelected ? nowMs + LEAD_TIME_MINUTES * 60 * 1000 : nowMs), [isTodaySelected, nowMs]);
+  const earliestLastMinuteAllowedMs = useMemo(
+    () => (lastMinuteEnabled === false ? nowMs + LAST_MINUTE_MAX_HOURS * 60 * 60 * 1000 : nowMs),
+    [LAST_MINUTE_MAX_HOURS, lastMinuteEnabled, nowMs]
+  );
   const earliestAllowedTimeLabel = `${pad2(new Date(earliestAllowedMs).getHours())}:${pad2(new Date(earliestAllowedMs).getMinutes())}`;
 
   useEffect(() => {
@@ -1066,6 +1072,7 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
       setHourlyConfig(null);
       setStartAvailabilities([]);
       setConfiguredRanges([]);
+      setLastMinuteEnabled(null);
       return;
     }
 
@@ -1102,6 +1109,7 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
           config?: HourlyConfig;
           starts?: StartAvailability[];
           configuredRanges?: ConfiguredTimeRange[];
+          lastMinuteEnabled?: boolean;
         } | null;
         if (cancelled) return;
         if (!res.ok || !payload?.ok || !Array.isArray(payload.slots)) {
@@ -1111,6 +1119,7 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
           setHourlyConfig(null);
           setStartAvailabilities([]);
           setConfiguredRanges([]);
+          setLastMinuteEnabled(null);
           return;
         }
         setHourlySlots(
@@ -1149,6 +1158,7 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
               )
             : []
         );
+        setLastMinuteEnabled(typeof payload.lastMinuteEnabled === "boolean" ? payload.lastMinuteEnabled : null);
         setHourlySlotsLoaded(true);
       } catch (fetchError) {
         if (cancelled) return;
@@ -1159,9 +1169,51 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
         setHourlyConfig(null);
         setStartAvailabilities([]);
         setConfiguredRanges([]);
+        setLastMinuteEnabled(null);
       } finally {
         if (cancelled) return;
         setHourlySlotsLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
+  }, [dateStart, selectedService, sitter.sitterId, unit]);
+
+  useEffect(() => {
+    if (unit !== "DAILY" || !selectedService || !dateStart) {
+      if (unit !== "HOURLY") setLastMinuteEnabled(null);
+      return;
+    }
+
+    const serviceType = serviceToApiType(selectedService);
+    if (!serviceType) {
+      setLastMinuteEnabled(null);
+      return;
+    }
+
+    let cancelled = false;
+    const controller = new AbortController();
+
+    void (async () => {
+      try {
+        const qp = new URLSearchParams();
+        qp.set("date", dateStart);
+        qp.set("service", serviceType);
+        const res = await fetch(`/api/sitters/${encodeURIComponent(sitter.sitterId)}/slots?${qp.toString()}`, {
+          method: "GET",
+          cache: "no-store",
+          signal: controller.signal,
+        });
+        const payload = (await res.json().catch(() => null)) as { ok?: boolean; lastMinuteEnabled?: boolean } | null;
+        if (cancelled) return;
+        setLastMinuteEnabled(typeof payload?.lastMinuteEnabled === "boolean" ? payload.lastMinuteEnabled : null);
+      } catch (err) {
+        if (cancelled) return;
+        if (err instanceof DOMException && err.name === "AbortError") return;
+        setLastMinuteEnabled(null);
       }
     })();
 
@@ -1292,9 +1344,11 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
         return supportsMin && fitsRange;
       })
       .filter((start) => {
-        if (!isTodaySelected) return true;
         const ts = new Date(start.startAt).getTime();
-        return Number.isFinite(ts) && ts >= earliestAllowedMs;
+        if (!Number.isFinite(ts)) return false;
+        if (ts < earliestLastMinuteAllowedMs) return false;
+        if (!isTodaySelected) return true;
+        return ts >= earliestAllowedMs;
       })
       .map((start) => isoToTimeLabel(start.startAt))
       .filter(Boolean)
@@ -1320,8 +1374,10 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
     configuredRanges,
     dateStart,
     earliestAllowedMs,
+    earliestLastMinuteAllowedMs,
     isTodaySelected,
     minDurationMinForService,
+    lastMinuteEnabled,
     selectedService,
     startAvailabilities,
     unit,
@@ -1475,6 +1531,17 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
           setError("Une ou plusieurs dates ne sont pas disponibles.");
           return;
         }
+
+        const startMs = new Date(`${dateStart}T00:00:00.000Z`).getTime();
+        const deltaMs = startMs - Date.now();
+        if (Number.isFinite(deltaMs) && deltaMs < LEAD_TIME_MINUTES * 60 * 1000) {
+          setError("Les réservations doivent être effectuées au minimum 30 minutes à l’avance.");
+          return;
+        }
+        if (lastMinuteEnabled === false && Number.isFinite(startMs) && startMs < nowMs + LAST_MINUTE_MAX_HOURS * 60 * 60 * 1000) {
+          setError("Les réservations doivent être effectuées au minimum 24h à l’avance.");
+          return;
+        }
       } else {
         if (!dateStart) {
           setError("Choisis une date.");
@@ -1503,6 +1570,19 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
         if (!selectedHourlySlot) {
           resetInvalidHourlySelection();
           setError("Ce créneau vient d’être réservé ou n’est plus disponible, merci de choisir un autre horaire.");
+          return;
+        }
+
+        const startMs = new Date(selectedHourlySlot.startAt).getTime();
+        const deltaMs = startMs - Date.now();
+        if (Number.isFinite(deltaMs) && deltaMs < LEAD_TIME_MINUTES * 60 * 1000) {
+          resetInvalidHourlySelection();
+          setError("Les réservations doivent être effectuées au minimum 30 minutes à l’avance.");
+          return;
+        }
+        if (lastMinuteEnabled === false && Number.isFinite(deltaMs) && deltaMs < LAST_MINUTE_MAX_HOURS * 60 * 60 * 1000) {
+          resetInvalidHourlySelection();
+          setError("Les réservations doivent être effectuées au minimum 24h à l’avance.");
           return;
         }
 
@@ -1659,6 +1739,11 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
                 <p className="mt-2 text-sm text-slate-600">
                   Services disponibles le {formatDisplayDate(effectiveSelectedDate)} selon les disponibilités du sitter.
                 </p>
+              ) : null}
+              {lastMinuteEnabled === true ? (
+                <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-900">
+                  Réservation de dernière minute disponible
+                </div>
               ) : null}
               <div className="mt-4 grid gap-2">
                 {selectablePricingRows.map((row) => {

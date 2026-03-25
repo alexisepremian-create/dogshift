@@ -88,6 +88,7 @@ model User {
   email           String    @unique
   name            String?
   image           String?
+  phone           String?   @db.VarChar(20)
   emailVerified   DateTime?
   passwordHash    String?
   hostProfileJson String?
@@ -287,6 +288,8 @@ model SitterProfile {
   stripeAccountStatus           String?
   stripeOnboardingCompletedAt   DateTime?
 
+  lastMinuteEnabled Boolean @default(false)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -395,6 +398,8 @@ model Booking {
   refundedAt     DateTime?
 
   reviewRequestEmailSentAt DateTime?
+
+  lastMinuteSmsSentAt DateTime?
 
   archivedAt DateTime?
 
@@ -520,6 +525,8 @@ model ServiceConfig {
   leadTimeMin      Int
   bufferBeforeMin  Int
   bufferAfterMin   Int
+
+  lastMinuteEnabled Boolean @default(false)
 
   overnightRequired Boolean @default(false)
   checkInStartMin   Int?

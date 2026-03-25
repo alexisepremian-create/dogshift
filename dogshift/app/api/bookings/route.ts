@@ -128,6 +128,8 @@ function isConflictBlockingStatus(status: string) {
 }
 
 const BOOKING_CONFLICT_BUFFER_MINUTES = 30;
+const MIN_LEAD_TIME_MINUTES = 30;
+const DEFAULT_MIN_ADVANCE_HOURS = 24;
 
 function withBuffer(date: Date, deltaMinutes: number) {
   return new Date(date.getTime() + deltaMinutes * 60 * 1000);
@@ -287,6 +289,41 @@ export async function POST(req: NextRequest) {
 
     if (!startDateTime || !endDateTime || !Number.isFinite(startDateTime.getTime()) || !Number.isFinite(endDateTime.getTime())) {
       return NextResponse.json({ ok: false, error: "INVALID_DATES" }, { status: 400 });
+    }
+
+    // Product rules:
+    // - <30min: always blocked
+    // - 30min-24h: allowed only if sitter's global last-minute is enabled
+    // - >24h: normal flow
+    const deltaMs = startDateTime.getTime() - Date.now();
+    const minLeadMs = MIN_LEAD_TIME_MINUTES * 60 * 1000;
+    if (!Number.isFinite(deltaMs) || deltaMs < minLeadMs) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: "LEAD_TIME",
+          message: "Les réservations doivent être effectuées au minimum 30 minutes à l’avance.",
+        },
+        { status: 400 }
+      );
+    }
+
+    const sitterLastMinute = await (prisma as any).sitterProfile.findUnique({
+      where: { sitterId },
+      select: { lastMinuteEnabled: true },
+    });
+    const lastMinuteEnabled = Boolean(sitterLastMinute?.lastMinuteEnabled);
+
+    const minAdvanceMs = DEFAULT_MIN_ADVANCE_HOURS * 60 * 60 * 1000;
+    if (deltaMs < minAdvanceMs && !lastMinuteEnabled) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: "LAST_MINUTE_DISABLED",
+          message: "Les réservations doivent être effectuées au minimum 24h à l’avance.",
+        },
+        { status: 400 }
+      );
     }
 
     if (availabilityServiceType === "PENSION") {

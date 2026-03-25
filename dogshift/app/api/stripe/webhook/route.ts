@@ -9,8 +9,13 @@ import { createNotification } from "@/lib/notifications/inApp";
 import { resolveBookingParticipants } from "@/lib/notifications/sendNotificationEmail";
 import { setBookingStatus } from "@/lib/bookings/setBookingStatus";
 import { syncBookingPaymentDetails } from "@/lib/stripe/bookingPayments";
+import { sendSms } from "@/lib/sms/sendSms";
+import { getUserPhone } from "@/lib/user/getUserPhone";
 
 export const runtime = "nodejs";
+
+const MIN_LEAD_TIME_MINUTES = 30;
+const DEFAULT_MIN_ADVANCE_HOURS = 24;
 
 function getStripeAccountHeader(req: NextRequest) {
   return req.headers.get("stripe-account") || req.headers.get("Stripe-Account") || "";
@@ -64,7 +69,39 @@ async function markBookingPaid({
     chargeId,
   });
 
-  const res = await setBookingStatus(bookingId, "PAID" as any, { req });
+  const booking = await (prisma as any).booking.findUnique({
+    where: { id: bookingId },
+    select: { id: true, status: true, sitterId: true, service: true, startDate: true },
+  });
+  if (!booking?.id) {
+    console.error("[webhook][stripe] reconcile:markPaid booking not found after sync", { bookingId });
+    return;
+  }
+
+  const startDate = booking.startDate instanceof Date ? booking.startDate : booking.startDate ? new Date(booking.startDate) : null;
+  if (!startDate || Number.isNaN(startDate.getTime())) {
+    console.error("[webhook][stripe] reconcile:markPaid missing startDate", { bookingId });
+    return;
+  }
+
+  const deltaMs = startDate.getTime() - Date.now();
+  const minLeadMs = MIN_LEAD_TIME_MINUTES * 60 * 1000;
+  const minAdvanceMs = DEFAULT_MIN_ADVANCE_HOURS * 60 * 60 * 1000;
+
+  const sitterLastMinute = await (prisma as any).sitterProfile.findUnique({
+    where: { sitterId: booking.sitterId },
+    select: { lastMinuteEnabled: true },
+  });
+  const lastMinuteEnabled = Boolean(sitterLastMinute?.lastMinuteEnabled);
+
+  const isLastMinuteWindow = Number.isFinite(deltaMs) && deltaMs >= minLeadMs && deltaMs < minAdvanceMs;
+  const shouldAutoConfirm = isLastMinuteWindow && lastMinuteEnabled;
+
+  if (Number.isFinite(deltaMs) && deltaMs < minLeadMs) {
+    console.warn("[webhook][stripe] reconcile:markPaid booking start <30min (unexpected)", { bookingId, deltaMs });
+  }
+
+  const res = await setBookingStatus(bookingId, (shouldAutoConfirm ? "CONFIRMED" : "PAID") as any, { req });
   if (!res.ok) {
     console.error("[webhook][stripe] reconcile:markPaid:setBookingStatus failed", {
       bookingId,
@@ -79,7 +116,21 @@ async function markBookingPaid({
   });
 
   if (res.ok && res.changed) {
-    await notifyPendingAcceptance(req, bookingId);
+    if (shouldAutoConfirm) {
+      await notifyLastMinuteConfirmed(req, bookingId);
+
+      // Best-effort SMS to sitter, idempotent.
+      try {
+        const participants = await resolveBookingParticipants(bookingId);
+        if (participants?.sitter?.id) {
+          await sendLastMinuteSmsIfNeeded({ bookingId, sitterUserId: participants.sitter.id, startDate });
+        }
+      } catch {
+        // best-effort
+      }
+    } else {
+      await notifyPendingAcceptance(req, bookingId);
+    }
   }
 }
 
@@ -153,6 +204,124 @@ async function notifyPendingAcceptance(req: NextRequest, bookingId: string) {
     }
   } catch (err) {
     console.error("[api][stripe][webhook] notifyPendingAcceptance failed", { bookingId, err });
+  }
+}
+
+async function notifyLastMinuteConfirmed(req: NextRequest, bookingId: string) {
+  try {
+    const participants = await resolveBookingParticipants(bookingId);
+    if (!participants) return;
+
+    if (participants.owner?.id) {
+      try {
+        await createNotification({
+          userId: participants.owner.id,
+          type: "paymentReceived",
+          title: "Paiement reçu",
+          body: null,
+          entityId: bookingId,
+          url: `/account/bookings?id=${encodeURIComponent(bookingId)}`,
+          idempotencyKey: `paymentReceived:${bookingId}:payment_received`,
+          metadata: { bookingId },
+        });
+      } catch (err) {
+        console.error("[api][stripe][webhook] in-app notification failed (paymentReceived owner)", err);
+      }
+
+      try {
+        await createNotification({
+          userId: participants.owner.id,
+          type: "bookingConfirmed",
+          title: "Réservation confirmée",
+          body: null,
+          entityId: bookingId,
+          url: `/account/bookings?id=${encodeURIComponent(bookingId)}`,
+          idempotencyKey: `bookingConfirmed:${bookingId}:owner`,
+          metadata: { bookingId },
+        });
+      } catch (err) {
+        console.error("[api][stripe][webhook] in-app notification failed (bookingConfirmed owner)", err);
+      }
+    }
+
+    if (participants.sitter?.id) {
+      try {
+        await createNotification({
+          userId: participants.sitter.id,
+          type: "paymentReceived",
+          title: "Paiement reçu",
+          body: null,
+          entityId: bookingId,
+          url: "/host/requests",
+          idempotencyKey: `paymentReceived:${bookingId}:payment_received`,
+          metadata: { bookingId },
+        });
+      } catch (err) {
+        console.error("[api][stripe][webhook] in-app notification failed (paymentReceived sitter)", err);
+      }
+
+      try {
+        await createNotification({
+          userId: participants.sitter.id,
+          type: "bookingConfirmed",
+          title: "Réservation confirmée",
+          body: null,
+          entityId: bookingId,
+          url: "/host/requests",
+          idempotencyKey: `bookingConfirmed:${bookingId}:sitter`,
+          metadata: { bookingId },
+        });
+      } catch (err) {
+        console.error("[api][stripe][webhook] in-app notification failed (bookingConfirmed sitter)", err);
+      }
+    }
+  } catch (err) {
+    console.error("[api][stripe][webhook] notifyLastMinuteConfirmed failed", { bookingId, err });
+  }
+}
+
+function formatHourZurich(dt: Date) {
+  try {
+    return new Intl.DateTimeFormat("fr-CH", {
+      timeZone: "Europe/Zurich",
+      hour: "2-digit",
+      minute: "2-digit",
+    }).format(dt);
+  } catch {
+    return dt.toISOString();
+  }
+}
+
+async function sendLastMinuteSmsIfNeeded(params: { bookingId: string; sitterUserId: string; startDate: Date }) {
+  const bookingId = params.bookingId;
+  const sitterUserId = params.sitterUserId;
+
+  const claimed = await (prisma as any).booking.updateMany({
+    where: { id: bookingId, lastMinuteSmsSentAt: null },
+    data: { lastMinuteSmsSentAt: new Date() },
+  });
+  if ((claimed?.count ?? 0) !== 1) return;
+
+  try {
+    const sitterUser = await prisma.user.findUnique({
+      where: { id: sitterUserId },
+      select: { id: true, phone: true, hostProfileJson: true },
+    });
+    const to = getUserPhone(sitterUser ?? { userId: sitterUserId });
+    if (!to) {
+      console.warn("[sms][last-minute] missing sitter phone", { bookingId, userId: sitterUserId });
+      return;
+    }
+
+    const hour = formatHourZurich(params.startDate);
+    const body = `DogShift : nouvelle réservation de dernière minute confirmée (aujourd’hui ${hour}). Consulte les détails sur la plateforme.`;
+
+    const res = await sendSms({ to, body });
+    if (!res.ok) {
+      console.warn("[sms][last-minute] send failed", { bookingId, sitterUserId, error: res.error, skipped: res.skipped ?? false });
+    }
+  } catch (err) {
+    console.warn("[sms][last-minute] send crashed", { bookingId, sitterUserId, err });
   }
 }
 
