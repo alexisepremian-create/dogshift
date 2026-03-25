@@ -28,7 +28,9 @@ export async function GET(req: NextRequest) {
     if (!to) return NextResponse.json({ ok: false, error: "MISSING_TO" }, { status: 400 });
 
     const text =
-      (searchParams.get("text") || "").trim() || "DogShift — SMS test (debug).";
+      (searchParams.get("text") || "").trim() ||
+      `🐶 SMS test (debug)
+Message de pipeline Vonage.`;
 
     const res = await sendSms({ to, body: text });
 

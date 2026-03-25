@@ -5,6 +5,7 @@ import { createNotification } from "@/lib/notifications/inApp";
 import { resolveBookingParticipants } from "@/lib/notifications/sendNotificationEmail";
 import { setBookingStatus } from "@/lib/bookings/setBookingStatus";
 import { sendSms } from "@/lib/sms/sendSms";
+import { smsLastMinuteConfirmedBody } from "@/lib/sms/templates";
 import { getUserPhone } from "@/lib/user/getUserPhone";
 
 const MIN_LEAD_TIME_MINUTES = 30;
@@ -186,7 +187,7 @@ async function sendLastMinuteSmsIfNeeded(params: { bookingId: string; sitterUser
     }
 
     const hour = formatHourZurich(params.startDate);
-    const body = `DogShift : nouvelle réservation de dernière minute confirmée (aujourd’hui ${hour}). Consulte les détails sur la plateforme.`;
+    const body = smsLastMinuteConfirmedBody(hour);
 
     console.info("[payment-transition][sms] sending Vonage last-minute", { bookingId, sitterUserId });
     const res = await sendSms({ to, body });
