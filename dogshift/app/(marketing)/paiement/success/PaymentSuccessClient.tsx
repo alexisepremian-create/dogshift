@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
+import { estimateStripePaymentFeeCents } from "@/lib/stripe/paymentFeeEstimate";
+
 type BookingStatus = "DRAFT" | "PENDING_PAYMENT" | "PENDING_ACCEPTANCE" | "PAID" | "CONFIRMED" | "PAYMENT_FAILED" | "CANCELLED";
 
 type BookingDto = {
@@ -213,6 +215,18 @@ export default function PaymentSuccessClient({ bookingId }: { bookingId: string 
     } as const;
   }, [booking?.status]);
 
+  const paymentBreakdown = useMemo(() => {
+    const amount = booking?.amount;
+    if (typeof amount !== "number" || !Number.isFinite(amount) || amount <= 0) return null;
+    const fee = estimateStripePaymentFeeCents(amount);
+    const total = amount + fee;
+    return {
+      subtotal: amount,
+      fee,
+      total,
+    };
+  }, [booking?.amount]);
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white text-slate-900">
       <main className="mx-auto max-w-[1100px] px-4 py-14 sm:px-6">
@@ -275,9 +289,29 @@ export default function PaymentSuccessClient({ bookingId }: { bookingId: string 
               <h2 className="text-lg font-semibold tracking-tight text-slate-900">Détails</h2>
 
               <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-5">
-                <p className="text-sm text-slate-600">Montant</p>
-                <p className="mt-1 text-xl font-semibold tracking-tight text-slate-900">{booking ? formatCents(booking.amount) : "—"}</p>
-                <p className="mt-2 text-xs text-slate-500">Devise: CHF</p>
+                <p className="text-sm text-slate-600">Total payé</p>
+                <p className="mt-1 text-xl font-semibold tracking-tight text-slate-900">
+                  {paymentBreakdown ? formatCents(paymentBreakdown.total) : booking ? formatCents(booking.amount) : "—"}
+                </p>
+
+                {paymentBreakdown ? (
+                  <div className="mt-4 space-y-2 text-sm">
+                    <div className="flex items-center justify-between text-slate-700">
+                      <span>Sous-total</span>
+                      <span className="font-medium">{formatCents(paymentBreakdown.subtotal)}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-slate-700">
+                      <span>Frais de paiement</span>
+                      <span className="font-medium">{formatCents(paymentBreakdown.fee)}</span>
+                    </div>
+                    <div className="flex items-center justify-between border-t border-slate-200 pt-2 text-slate-900">
+                      <span className="font-semibold">Total payé</span>
+                      <span className="font-semibold">{formatCents(paymentBreakdown.total)}</span>
+                    </div>
+                  </div>
+                ) : null}
+
+                <p className="mt-3 text-xs text-slate-500">Devise: CHF</p>
               </div>
 
               <p className="mt-4 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-xs text-slate-700">
