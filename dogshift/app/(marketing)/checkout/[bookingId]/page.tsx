@@ -4,6 +4,12 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
+import { AlertTriangle, Info } from "lucide-react";
+
+import {
+  cancellationPolicyVariantFromStartMs,
+  type CancellationPolicyVariant,
+} from "@/lib/reservation/cancellationPolicyUi";
 
 type BookingStatus =
   | "DRAFT"
@@ -93,6 +99,39 @@ function SummaryRow({ label, value }: { label: ReactNode; value: string }) {
   );
 }
 
+function CancellationPolicyEncart({ variant }: { variant: CancellationPolicyVariant }) {
+  const isLastMinute = variant === "lastMinute";
+  return (
+    <div
+      className={`flex gap-3 rounded-2xl border p-4 text-sm leading-relaxed ${
+        isLastMinute ? "border-amber-200 bg-amber-50 text-amber-950" : "border-slate-200 bg-slate-50 text-slate-800"
+      }`}
+      role="note"
+    >
+      <span className="mt-0.5 shrink-0" aria-hidden="true">
+        {isLastMinute ? (
+          <AlertTriangle className="h-5 w-5 text-amber-700" strokeWidth={2} />
+        ) : (
+          <Info className="h-5 w-5 text-slate-600" strokeWidth={2} />
+        )}
+      </span>
+      <div className="min-w-0 space-y-1.5">
+        {isLastMinute ? (
+          <>
+            <p className="font-semibold">Réservation de dernière minute :</p>
+            <p>confirmation immédiate après paiement et non remboursable, sauf si le dogsitter annule.</p>
+          </>
+        ) : (
+          <>
+            <p>Annulation gratuite jusqu’à 24h avant la prestation.</p>
+            <p>Passé ce délai, la réservation n’est plus remboursable, sauf si le dogsitter annule.</p>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function InfoTooltip({ text }: { text: string }) {
   const [open, setOpen] = useState(false);
   return (
@@ -121,12 +160,14 @@ function InfoTooltip({ text }: { text: string }) {
 
 function CheckoutForm({
   bookingId,
+  cancellationPolicyVariant,
   ExpressCheckoutElement,
   PaymentElement,
   useStripe,
   useElements,
 }: {
   bookingId: string;
+  cancellationPolicyVariant: CancellationPolicyVariant;
   ExpressCheckoutElement?: any;
   PaymentElement: any;
   useStripe: () => StripeInstance | null;
@@ -258,6 +299,9 @@ function CheckoutForm({
           <h2 className="text-lg font-semibold tracking-tight text-slate-900">Paiement sécurisé</h2>
           <p className="mt-1 text-sm text-slate-600">Choisis le moyen de paiement le plus rapide pour finaliser ta réservation.</p>
         </div>
+      </div>
+      <div className="mt-6">
+        <CancellationPolicyEncart variant={cancellationPolicyVariant} />
       </div>
       <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-4 sm:p-5">
         <p className="text-sm font-semibold text-slate-900">Choisis ton moyen de paiement</p>
@@ -550,6 +594,12 @@ const stripeReact = await import("@stripe/react-stripe-js");
 
   const isHourlyBooking = booking?.service === "Promenade" || booking?.service === "Garde";
 
+  const checkoutCancellationVariant = useMemo(() => {
+    if (!booking?.startDate) return "standard" as const;
+    const startMs = new Date(booking.startDate).getTime();
+    return cancellationPolicyVariantFromStartMs(Number.isFinite(startMs) ? startMs : null);
+  }, [booking?.startDate]);
+
   const ElementsComp = stripeUi?.Elements as any;
   const ExpressCheckoutElementComp = stripeUi?.ExpressCheckoutElement as any;
   const PaymentElementComp = stripeUi?.PaymentElement as any;
@@ -653,6 +703,7 @@ const stripeReact = await import("@stripe/react-stripe-js");
                 <ElementsComp stripe={stripeUi!.stripePromise} options={stripeElementsOptions!}>
                   <CheckoutForm
                     bookingId={booking.id}
+                    cancellationPolicyVariant={checkoutCancellationVariant}
                     ExpressCheckoutElement={ExpressCheckoutElementComp}
                     PaymentElement={PaymentElementComp}
                     useStripe={useStripeHook}

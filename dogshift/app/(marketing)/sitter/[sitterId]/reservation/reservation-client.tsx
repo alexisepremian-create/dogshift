@@ -5,6 +5,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Calendar, ChevronLeft, ChevronRight } from "lucide-react";
 
+import { cancellationPolicyVariantFromStartMs } from "@/lib/reservation/cancellationPolicyUi";
+
 type PricingUnit = "HOURLY" | "DAILY";
 
 type ServiceDayStatus = "AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE";
@@ -1438,6 +1440,18 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
     return Boolean(dateStart && startTime && durationHours && selectedUnitPrice && selectedHourlySlot);
   }, [dateEnd, dateStart, durationHours, selectedHourlySlot, selectedService, selectedUnitPrice, startTime, unit]);
 
+  const recapCancellationVariant = useMemo(() => {
+    if (!selectedService || !unit) return null;
+    if (unit === "DAILY") {
+      if (!dateStart) return null;
+      const startMs = new Date(`${dateStart}T00:00:00Z`).getTime();
+      return cancellationPolicyVariantFromStartMs(Number.isFinite(startMs) ? startMs : null);
+    }
+    if (!dateStart || !selectedHourlySlot) return null;
+    const startMs = new Date(selectedHourlySlot.startAt).getTime();
+    return cancellationPolicyVariantFromStartMs(Number.isFinite(startMs) ? startMs : null);
+  }, [dateStart, selectedHourlySlot, selectedService, unit]);
+
   const hasLeadTimeOnlyForToday = useMemo(() => {
     if (!isTodaySelected) return false;
     if (availableStartTimes.length > 0) return false;
@@ -1892,6 +1906,22 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
               </div>
 
               {error ? <p className="mt-4 text-sm font-medium text-rose-600">{error}</p> : null}
+
+              {recapCancellationVariant ? (
+                <p className="mt-4 border-t border-slate-200 pt-4 text-xs leading-relaxed text-slate-600">
+                  {recapCancellationVariant === "lastMinute" ? (
+                    <>
+                      <span className="font-semibold text-slate-800">Dernière minute : </span>
+                      après paiement, confirmation immédiate ; somme non remboursable sauf si le dogsitter annule.
+                    </>
+                  ) : (
+                    <>
+                      Annulation gratuite jusqu’à 24h avant la prestation ; passé ce délai, non remboursable sauf si le dogsitter
+                      annule.
+                    </>
+                  )}
+                </p>
+              ) : null}
 
               <button type="button" disabled={!canSubmit || submitting} onClick={() => void onContinue()} className={`mt-6 ${PRIMARY_BTN}`}>
                 {submitting ? "Redirection…" : "Continuer"}
