@@ -118,6 +118,11 @@ export const proxy = clerkMiddleware(async (auth, req) => {
 
   if (isPublicRoute(req)) return addLockHeaders(NextResponse.next());
   if (pathname.startsWith("/api/")) {
+    // Clerk's `auth()` in route handlers relies on middleware to
+    // evaluate the request/cookies. Without calling `auth()` here,
+    // local requests can appear unauthenticated even when the browser
+    // is signed in, causing repeated 401s.
+    await auth();
     return addLockHeaders(NextResponse.next());
   }
 
