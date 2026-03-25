@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useUser } from "@clerk/nextjs";
-import { ArrowDownRight, ArrowUpRight, Briefcase, CreditCard, RefreshCw, Wallet } from "lucide-react";
+import { ArrowDownRight, ArrowUpRight, Briefcase, CreditCard, Info, RefreshCw, Wallet } from "lucide-react";
 
 import SunCornerGlow from "@/components/SunCornerGlow";
 
@@ -78,6 +78,67 @@ function Badge({ tone, children }: { tone: "emerald" | "slate" | "rose"; childre
   return <span className={`${base} border-slate-200 bg-slate-50 text-slate-700`}>{children}</span>;
 }
 
+/** Infobulle discrète : survol desktop (léger délai à la sortie), tap mobile, fermeture au clic extérieur. */
+function WalletMetricHint({ text }: { text: string }) {
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef<HTMLSpanElement>(null);
+  const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const show = () => {
+    if (hideTimerRef.current) {
+      window.clearTimeout(hideTimerRef.current);
+      hideTimerRef.current = null;
+    }
+    setOpen(true);
+  };
+
+  const hideSoon = () => {
+    if (hideTimerRef.current) window.clearTimeout(hideTimerRef.current);
+    hideTimerRef.current = window.setTimeout(() => setOpen(false), 90);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (hideTimerRef.current) window.clearTimeout(hideTimerRef.current);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [open]);
+
+  return (
+    <span ref={wrapRef} className="relative inline-flex shrink-0">
+      <button
+        type="button"
+        aria-label="Informations sur cette donnée"
+        aria-expanded={open}
+        onMouseEnter={show}
+        onMouseLeave={hideSoon}
+        onClick={() => setOpen((v) => !v)}
+        className="inline-flex h-7 w-7 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)]"
+      >
+        <Info className="h-3.5 w-3.5" strokeWidth={2} aria-hidden="true" />
+      </button>
+      {open ? (
+        <span
+          role="tooltip"
+          onMouseEnter={show}
+          onMouseLeave={hideSoon}
+          className="absolute right-0 bottom-[calc(100%+4px)] z-30 w-[min(16.5rem,calc(100vw-2.5rem))] rounded-2xl border border-slate-200 bg-white p-3 text-left text-xs font-medium leading-snug text-slate-700 shadow-[0_12px_40px_-28px_rgba(2,6,23,0.35)]"
+        >
+          {text}
+        </span>
+      ) : null}
+    </span>
+  );
+}
+
 export default function OwnerWalletPage() {
   const { isLoaded, isSignedIn } = useUser();
 
@@ -123,7 +184,7 @@ export default function OwnerWalletPage() {
   const cardBase = "relative overflow-hidden rounded-3xl border p-5 shadow-sm";
 
   return (
-    <div className="relative grid gap-6 overflow-hidden" data-testid="owner-wallet-page">
+    <div className="relative grid gap-6 overflow-x-hidden overflow-y-visible" data-testid="owner-wallet-page">
       <SunCornerGlow variant="ownerDashboard" />
 
       <div className="relative z-10 grid gap-6">
@@ -134,7 +195,7 @@ export default function OwnerWalletPage() {
             <span>Portefeuille</span>
           </h1>
           <div className="mt-3 flex min-h-[32px] items-center">
-            <p className="text-sm text-slate-600">Solde, paiements, remboursements et historique.</p>
+            <p className="text-sm text-slate-600">Synthèse de vos paiements, remboursements et historique.</p>
           </div>
         </div>
 
@@ -152,48 +213,59 @@ export default function OwnerWalletPage() {
         ) : null}
 
         {!loading && !error ? (
-          <div className="grid gap-4 sm:grid-cols-3">
-          <div
-            className={`${cardBase} border-[color-mix(in_srgb,var(--dogshift-blue),white_55%)] bg-[color-mix(in_srgb,var(--dogshift-blue),white_92%)]`}
-          >
-            <div className="flex items-center gap-2">
-              <span className="inline-flex h-8 w-8 items-center justify-center rounded-2xl border border-[color-mix(in_srgb,var(--dogshift-blue),white_70%)] bg-white/70">
-                <Briefcase className="h-4 w-4 text-[rgb(37,99,235)]" aria-hidden="true" />
-              </span>
-              <p className="text-sm font-semibold text-slate-900">Solde</p>
-            </div>
-            <p className="mt-3 text-3xl font-semibold tracking-tight text-slate-900">{formatChfCents(summary.netBalance)}</p>
-            <p className="mt-2 text-xs font-medium text-slate-600">Net (paiements – remboursements)</p>
-          </div>
-
-          <div className={`${cardBase} border-emerald-200 bg-emerald-50`}>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="inline-flex h-8 w-8 items-center justify-center rounded-2xl border border-emerald-200 bg-white/70">
-                  <CreditCard className="h-4 w-4 text-[rgb(16,185,129)]" aria-hidden="true" />
-                </span>
-                <p className="text-sm font-semibold text-slate-900">Paiements</p>
+          <div className="grid gap-4 sm:grid-cols-3 sm:items-stretch">
+            <div className={`${cardBase} flex flex-col overflow-visible border-slate-200 bg-white`}>
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex min-w-0 items-center gap-2">
+                  <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50">
+                    <CreditCard className="h-4 w-4 text-slate-700" aria-hidden="true" />
+                  </span>
+                  <p className="text-sm font-semibold leading-snug text-slate-900">Total dépensé</p>
+                </div>
+                <div className="flex shrink-0 items-center gap-0.5">
+                  <WalletMetricHint text="Montant total que vous avez payé pour vos réservations sur DogShift." />
+                  <ArrowUpRight className="h-5 w-5 text-slate-400" aria-hidden="true" />
+                </div>
               </div>
-              <ArrowUpRight className="h-5 w-5 text-slate-400" aria-hidden="true" />
+              <p className="mt-4 text-3xl font-semibold tracking-tight text-slate-900">{formatChfCents(summary.totalPaid)}</p>
+              <p className="mt-3 text-xs leading-relaxed text-slate-600">Montant total payé pour vos réservations</p>
             </div>
-            <p className="mt-3 text-3xl font-semibold tracking-tight text-emerald-800">{formatChfCents(summary.totalPaid)}</p>
-            <p className="mt-2 text-xs font-medium text-slate-600">Total payé</p>
-          </div>
 
-          <div className={`${cardBase} border-rose-200 bg-rose-50`}>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="inline-flex h-8 w-8 items-center justify-center rounded-2xl border border-rose-200 bg-white/70">
-                  <RefreshCw className="h-4 w-4 text-[rgb(239,68,68)]" aria-hidden="true" />
-                </span>
-                <p className="text-sm font-semibold text-slate-900">Remboursements</p>
+            <div className={`${cardBase} flex flex-col overflow-visible border-rose-200 bg-rose-50`}>
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex min-w-0 items-center gap-2">
+                  <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-2xl border border-rose-200 bg-white/80">
+                    <RefreshCw className="h-4 w-4 text-rose-600" aria-hidden="true" />
+                  </span>
+                  <p className="text-sm font-semibold leading-snug text-slate-900">Total remboursé</p>
+                </div>
+                <div className="flex shrink-0 items-center gap-0.5">
+                  <WalletMetricHint text="Montant que vous avez récupéré suite à des annulations ou incidents." />
+                  <ArrowDownRight className="h-5 w-5 text-slate-400" aria-hidden="true" />
+                </div>
               </div>
-              <ArrowDownRight className="h-5 w-5 text-slate-400" aria-hidden="true" />
+              <p className="mt-4 text-3xl font-semibold tracking-tight text-rose-800">{formatChfCents(summary.totalRefunded)}</p>
+              <p className="mt-3 text-xs leading-relaxed text-slate-700">Montant remboursé suite aux annulations</p>
             </div>
-            <p className="mt-3 text-3xl font-semibold tracking-tight text-rose-700">{formatChfCents(summary.totalRefunded)}</p>
-            <p className="mt-2 text-xs font-medium text-slate-600">Total remboursé</p>
+
+            <div
+              className={`${cardBase} flex flex-col overflow-visible border-2 border-[color-mix(in_srgb,var(--dogshift-blue),transparent_55%)] bg-[color-mix(in_srgb,var(--dogshift-blue),white_92%)] shadow-[0_12px_40px_-28px_rgba(37,99,235,0.35)] sm:min-h-0`}
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex min-w-0 items-center gap-2">
+                  <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-2xl border border-[color-mix(in_srgb,var(--dogshift-blue),white_70%)] bg-white/80">
+                    <Briefcase className="h-4 w-4 text-[rgb(37,99,235)]" aria-hidden="true" />
+                  </span>
+                  <p className="text-sm font-semibold text-slate-900">Coût net</p>
+                </div>
+                <WalletMetricHint text="Montant réellement dépensé (paiements moins remboursements)." />
+              </div>
+              <p className="mt-4 text-3xl font-semibold tracking-tight text-slate-900 sm:text-[2rem] sm:leading-none">
+                {formatChfCents(summary.netBalance)}
+              </p>
+              <p className="mt-3 text-xs leading-relaxed text-slate-700">Montant réellement dépensé</p>
+            </div>
           </div>
-        </div>
 
         ) : null}
 

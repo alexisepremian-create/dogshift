@@ -175,6 +175,12 @@ export async function GET(req: NextRequest) {
 
     history.sort((a, b) => new Date(b.dateIso).getTime() - new Date(a.dateIso).getTime());
 
+    // Summary (centimes CHF, aligné UI « Total dépensé / Total remboursé / Coût net ») :
+    // - totalPaid : somme booking.amount pour résas avec PI Stripe et statut PAID | CONFIRMED | REFUNDED | REFUND_FAILED
+    // - totalRefunded : somme booking.amount pour statut REFUNDED avec stripeRefundId (remboursements réussis)
+    // - netBalance : totalPaid - totalRefunded
+    // Les entrées REFUND_FAILED n’entrent pas dans totalRefunded ; elles restent visibles dans history.
+
     return NextResponse.json(
       {
         ok: true,
