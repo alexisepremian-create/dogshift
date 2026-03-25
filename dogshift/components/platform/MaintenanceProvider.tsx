@@ -66,6 +66,9 @@ export function MaintenanceProvider({ children }: { children: React.ReactNode })
   const [loading, setLoading] = useState(true);
   const bannerRef = useRef<HTMLDivElement | null>(null);
 
+  const isAdminRoute = Boolean(pathname?.startsWith("/admin"));
+  const showPublicBanner = maintenanceMode && !isAdminRoute;
+
   const contextualLine = useMemo(() => getMaintenanceContextLine(pathname ?? null), [pathname]);
 
   const refresh = useCallback(async () => {
@@ -96,7 +99,7 @@ export function MaintenanceProvider({ children }: { children: React.ReactNode })
   }, [refresh]);
 
   useLayoutEffect(() => {
-    if (!maintenanceMode) {
+    if (!showPublicBanner) {
       syncBannerHeightVarPx(0);
       return;
     }
@@ -121,39 +124,45 @@ export function MaintenanceProvider({ children }: { children: React.ReactNode })
       ro.disconnect();
       syncBannerHeightVarPx(0);
     };
-  }, [maintenanceMode, contextualLine, adminNote]);
+  }, [showPublicBanner, contextualLine, adminNote]);
 
   const value = useMemo(
     () => ({ maintenanceMode, adminNote, refresh, loading }),
     [maintenanceMode, adminNote, refresh, loading]
   );
 
-  const banner = maintenanceMode ? (
+  const banner = showPublicBanner ? (
     <div
       ref={bannerRef}
       role="status"
-      className="shrink-0 border-b border-[#5E52D4] bg-[#7969F0] px-4 py-4 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.12)] sm:px-6 sm:py-[1.125rem]"
+      className="shrink-0 border-b border-[#5E52D4] bg-[#7969F0] px-3 py-2 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.12)] sm:px-5 sm:py-2.5"
     >
-      <div className="mx-auto flex w-full max-w-3xl flex-col items-center px-1 text-center sm:px-2">
-        <Info className="mb-1.5 h-4 w-4 shrink-0 text-white/85 sm:mb-2" strokeWidth={2} aria-hidden />
-        <p className="text-balance text-sm font-semibold leading-snug text-white sm:text-[0.9375rem] sm:leading-snug">
-          {MAINTENANCE_BANNER_PRIMARY}
-        </p>
-        {contextualLine ? (
-          <p className="mt-3 text-pretty text-sm font-medium leading-snug text-white/92 sm:mt-3.5">
-            {contextualLine}
+      <div className="mx-auto flex w-full max-w-4xl items-start justify-center gap-2 sm:gap-2.5">
+        <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-white/85 sm:h-4 sm:w-4" strokeWidth={2} aria-hidden />
+        <div className="min-w-0 flex-1 text-center">
+          <p className="text-balance text-xs font-semibold leading-tight text-white sm:text-[13px] sm:leading-snug">
+            {MAINTENANCE_BANNER_PRIMARY}
           </p>
-        ) : null}
-        {adminNote ? (
-          <p className="mx-auto mt-4 max-w-2xl border-t border-white/25 pt-3 text-sm leading-relaxed text-white/80 sm:mt-5 sm:max-w-xl">
-            {adminNote}
-          </p>
-        ) : null}
+          {contextualLine ? (
+            <p className="mt-1 text-pretty text-[11px] font-medium leading-tight text-white/90 sm:mt-1 sm:text-xs sm:leading-snug">
+              {contextualLine}
+            </p>
+          ) : null}
+          {adminNote ? (
+            <p className="mx-auto mt-1.5 max-w-xl border-t border-white/20 pt-1.5 text-[11px] leading-snug text-white/75 sm:text-xs">
+              {adminNote}
+            </p>
+          ) : null}
+        </div>
       </div>
     </div>
   ) : null;
 
   if (!maintenanceMode) {
+    return <MaintenanceContext.Provider value={value}>{children}</MaintenanceContext.Provider>;
+  }
+
+  if (isAdminRoute) {
     return <MaintenanceContext.Provider value={value}>{children}</MaintenanceContext.Provider>;
   }
 
