@@ -105,9 +105,13 @@ export async function POST(req: NextRequest) {
     const rawToken = generateContractAccessToken();
     const issuedAt = new Date();
     const expiresAt = new Date(issuedAt.getTime() + contractAccessTokenTtlMs());
-    const issuedContractVersion = CURRENT_SITTER_CONTRACT_VERSION;
     const contractAccessLink = buildContractAccessUrl(baseUrl, rawToken);
     const contractLinkFingerprint = contractAccessTokenFingerprint(rawToken);
+    // Each resend must create a new contract "version" that will require a fresh signature.
+    // We bind the contract access version to the generated token fingerprint so:
+    // - same token => same version
+    // - new resend => new version, even if the contract template is unchanged
+    const issuedContractVersion = `${CURRENT_SITTER_CONTRACT_VERSION}-${contractLinkFingerprint}`;
 
     const existingProfile = await (prisma as any).sitterProfile.findUnique({
       where: { userId: ensured.id },
@@ -208,7 +212,20 @@ export async function POST(req: NextRequest) {
       { status: 200 },
     );
   } catch (err) {
-    console.error("[api][admin][pilot-sitter-applications][contract][POST] error", err);
+    const e = err as {
+      name?: string;
+      message?: string;
+      stack?: string;
+      code?: string;
+      meta?: unknown;
+    };
+    console.error("[api][admin][pilot-sitter-applications][contract][POST] error", {
+      name: e?.name ?? null,
+      code: e?.code ?? null,
+      message: e?.message ?? null,
+      meta: e?.meta ?? null,
+      stack: e?.stack ?? null,
+    });
     return NextResponse.json({ ok: false, error: "INTERNAL_ERROR" }, { status: 500 });
   }
 }
