@@ -64,6 +64,7 @@ enum SitterApplicationStatus {
   PENDING
   CONTACTED
   ACCEPTED
+  ACTIVATED
   REJECTED
 }
 

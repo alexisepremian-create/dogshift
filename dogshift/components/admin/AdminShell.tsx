@@ -7,7 +7,8 @@ import { type ReactNode, useState } from "react";
 
 const navItems = [
   { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/admin/sitters", label: "Dogsitters", icon: Users },
+  { href: "/admin/sitters/applications", label: "Candidatures", icon: Users },
+  { href: "/admin/sitters?published=published", label: "Dogsitters actifs", icon: Users },
   { href: "/admin/avenants", label: "Avenants", icon: ScrollText },
   { href: "/admin/owners", label: "Propriétaires", icon: FileText },
   { href: "/admin/bookings", label: "Réservations", icon: CalendarDays },
@@ -55,7 +56,8 @@ export default function AdminShell({ children }: { children: ReactNode }) {
           <nav className="grid gap-1 px-3 pb-4 sm:px-5 lg:pb-6">
             {navItems.map((item) => {
               const Icon = item.icon;
-              const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
+              const hrefPath = item.href.split("?")[0] || item.href;
+              const active = pathname === hrefPath || pathname.startsWith(`${hrefPath}/`);
               return (
                 <Link
                   key={item.href}

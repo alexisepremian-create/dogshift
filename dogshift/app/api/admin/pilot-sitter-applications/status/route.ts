@@ -6,8 +6,8 @@ import { prisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
 
-function isValidStatus(value: unknown): value is "PENDING" | "CONTACTED" | "ACCEPTED" | "REJECTED" {
-  return value === "PENDING" || value === "CONTACTED" || value === "ACCEPTED" || value === "REJECTED";
+function isValidStatus(value: unknown): value is "PENDING" | "CONTACTED" | "ACCEPTED" | "ACTIVATED" | "REJECTED" {
+  return value === "PENDING" || value === "CONTACTED" || value === "ACCEPTED" || value === "ACTIVATED" || value === "REJECTED";
 }
 
 export async function POST(req: NextRequest) {

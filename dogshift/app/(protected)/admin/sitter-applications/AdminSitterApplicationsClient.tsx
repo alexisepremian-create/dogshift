@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import AdminNotesPanel from "@/components/admin/AdminNotesPanel";
 import type { SitterLifecycleStatus } from "@/lib/sitterContract";
 
-type AppStatus = "PENDING" | "CONTACTED" | "ACCEPTED" | "REJECTED";
+type AppStatus = "PENDING" | "CONTACTED" | "ACCEPTED" | "ACTIVATED" | "REJECTED";
 
 type ApplicationItem = {
   id: string;
@@ -72,11 +72,13 @@ function statusLabel(status: AppStatus) {
   if (status === "PENDING") return "En attente";
   if (status === "CONTACTED") return "Contacté";
   if (status === "ACCEPTED") return "Accepté";
+  if (status === "ACTIVATED") return "Activé";
   return "Refusé";
 }
 
 function statusTone(status: AppStatus) {
   if (status === "ACCEPTED") return "border-emerald-200 bg-emerald-50 text-emerald-900";
+  if (status === "ACTIVATED") return "border-violet-200 bg-violet-50 text-violet-950";
   if (status === "CONTACTED") return "border-sky-200 bg-sky-50 text-sky-900";
   if (status === "REJECTED") return "border-rose-200 bg-rose-50 text-rose-900";
   return "border-slate-200 bg-slate-50 text-slate-800";
@@ -101,15 +103,25 @@ export default function AdminSitterApplicationsClient({ adminCode }: { adminCode
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"ALL" | AppStatus>("ALL");
 
   const filteredItems = useMemo(() => {
     const needle = searchTerm.trim().toLowerCase();
-    if (!needle) return items;
     return items.filter((item) => {
+      if (statusFilter !== "ALL" && item.status !== statusFilter) return false;
+      if (!needle) return true;
       const haystack = `${item.firstName} ${item.lastName} ${item.city}`.toLowerCase();
       return haystack.includes(needle);
     });
-  }, [items, searchTerm]);
+  }, [items, searchTerm, statusFilter]);
+
+  const statusCounts = useMemo(() => {
+    const counts: Record<string, number> = { ALL: items.length };
+    for (const it of items) {
+      counts[it.status] = (counts[it.status] ?? 0) + 1;
+    }
+    return counts as Record<"ALL" | AppStatus, number>;
+  }, [items]);
 
   const [selectedId, setSelectedId] = useState<string>("");
   const selected = useMemo(() => filteredItems.find((i) => i.id === selectedId) ?? items.find((i) => i.id === selectedId) ?? filteredItems[0] ?? null, [filteredItems, items, selectedId]);
@@ -154,7 +166,7 @@ export default function AdminSitterApplicationsClient({ adminCode }: { adminCode
   }
 
   async function sendContract() {
-    if (!selected || selected.status !== "ACCEPTED" || contractActionLoading) return;
+    if (!selected || (selected.status !== "ACCEPTED" && selected.status !== "ACTIVATED") || contractActionLoading) return;
     setContractActionLoading(true);
     setError(null);
     setSuccess(null);
@@ -316,6 +328,39 @@ export default function AdminSitterApplicationsClient({ adminCode }: { adminCode
         <div className="mt-6 grid gap-6 lg:grid-cols-[320px_1fr]">
           <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
             <p className="text-xs font-semibold text-slate-600">Liste</p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {(
+                [
+                  { key: "ALL" as const, label: "Toutes" },
+                  { key: "PENDING" as const, label: "En attente" },
+                  { key: "CONTACTED" as const, label: "Contactées" },
+                  { key: "ACCEPTED" as const, label: "Acceptées" },
+                  { key: "ACTIVATED" as const, label: "Activées" },
+                  { key: "REJECTED" as const, label: "Refusées" },
+                ] as const
+              ).map((opt) => {
+                const active = statusFilter === opt.key;
+                const count = statusCounts[opt.key] ?? 0;
+                return (
+                  <button
+                    key={opt.key}
+                    type="button"
+                    onClick={() => setStatusFilter(opt.key)}
+                    className={
+                      "inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold transition " +
+                      (active
+                        ? "border-[var(--dogshift-blue)] bg-white text-[var(--dogshift-blue)]"
+                        : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50")
+                    }
+                  >
+                    <span>{opt.label}</span>
+                    <span className={"rounded-full px-2 py-0.5 text-[11px] " + (active ? "bg-[color-mix(in_srgb,var(--dogshift-blue),white_86%)]" : "bg-slate-100")}>
+                      {count}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
             <div className="relative mt-3">
               <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4 text-slate-400" aria-hidden="true">
                 <svg viewBox="0 0 20 20" fill="none" className="h-4 w-4" xmlns="http://www.w3.org/2000/svg">
@@ -424,6 +469,14 @@ export default function AdminSitterApplicationsClient({ adminCode }: { adminCode
                       <button
                         type="button"
                         disabled={actionLoading}
+                        onClick={() => void setStatus("ACTIVATED")}
+                        className="inline-flex items-center justify-center rounded-2xl bg-violet-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-violet-700 disabled:opacity-60"
+                      >
+                        Activé
+                      </button>
+                      <button
+                        type="button"
+                        disabled={actionLoading}
                         onClick={() => void setStatus("REJECTED")}
                         className="inline-flex items-center justify-center rounded-2xl bg-rose-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-rose-700 disabled:opacity-60"
                       >
@@ -440,7 +493,7 @@ export default function AdminSitterApplicationsClient({ adminCode }: { adminCode
                       </div>
                       <button
                         type="button"
-                        disabled={selected.status !== "ACCEPTED" || contractActionLoading}
+                        disabled={(selected.status !== "ACCEPTED" && selected.status !== "ACTIVATED") || contractActionLoading}
                         onClick={() => void sendContract()}
                         className="inline-flex items-center justify-center rounded-2xl bg-violet-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-60"
                       >
@@ -493,7 +546,9 @@ export default function AdminSitterApplicationsClient({ adminCode }: { adminCode
                           {selected.contractAccessTokenIssuedAt ? <p>Lien envoyé le : {formatFrCh(selected.contractAccessTokenIssuedAt)}.</p> : null}
                           {selected.contractAccessTokenExpiresAt ? <p>Expiration prévue le : {formatFrCh(selected.contractAccessTokenExpiresAt)}.</p> : null}
                           {selected.contractSignedAt ? <p>Contrat signé le : {formatFrCh(selected.contractSignedAt)}.</p> : null}
-                          {selected.status !== "ACCEPTED" ? <p>Le contrat n’est disponible qu’après acceptation de la candidature.</p> : null}
+                          {selected.status !== "ACCEPTED" && selected.status !== "ACTIVATED" ? (
+                            <p>Le contrat est disponible après acceptation ou activation de la candidature.</p>
+                          ) : null}
                         </div>
                       </div>
                     </div>

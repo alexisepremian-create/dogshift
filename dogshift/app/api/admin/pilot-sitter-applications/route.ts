@@ -31,7 +31,7 @@ export async function GET(req: NextRequest) {
             availabilityText: string;
             consentInterview: boolean;
             consentPrivacy: boolean;
-            status: "PENDING" | "CONTACTED" | "ACCEPTED" | "REJECTED";
+            status: "PENDING" | "CONTACTED" | "ACCEPTED" | "ACTIVATED" | "REJECTED";
             utmSource: string | null;
             utmMedium: string | null;
             utmCampaign: string | null;
