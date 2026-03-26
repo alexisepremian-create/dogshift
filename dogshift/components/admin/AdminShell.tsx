@@ -8,7 +8,7 @@ import { type ReactNode, useState } from "react";
 const navItems = [
   { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/admin/sitters/applications", label: "Candidatures", icon: Users },
-  { href: "/admin/sitters?published=published", label: "Dogsitters actifs", icon: Users },
+  { href: "/admin/sitters/active", label: "Dogsitters actifs", icon: Users },
   { href: "/admin/avenants", label: "Avenants", icon: ScrollText },
   { href: "/admin/owners", label: "Propriétaires", icon: FileText },
   { href: "/admin/bookings", label: "Réservations", icon: CalendarDays },
