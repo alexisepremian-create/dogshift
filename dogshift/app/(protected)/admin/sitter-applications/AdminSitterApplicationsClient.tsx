@@ -223,7 +223,7 @@ export default function AdminSitterApplicationsClient({ adminCode }: { adminCode
     void (async () => {
       try {
         setContractDetailsLoading(true);
-        const res = await fetch(`/api/admin/pilot-sitter-applications/contract-details?id=${encodeURIComponent(selected.id)}`, {
+        const res = await fetch(`/api/admin/pilot-sitter-applications/contract-details?applicationId=${encodeURIComponent(selected.id)}`, {
           method: "GET",
           headers: adminHeaders(),
           cache: "no-store",
@@ -256,13 +256,37 @@ export default function AdminSitterApplicationsClient({ adminCode }: { adminCode
     setContractModal({ kind: "current", title, version, content });
   }
 
-  function openSignedContractSnapshot() {
-    const snap = contractDetails?.profile?.contractSnapshot;
+  async function openSignedContractSnapshot() {
+    // Refresh once at click-time so we don't depend on a potentially stale payload.
+    let latest = contractDetails;
+    if (selected?.id) {
+      try {
+        const res = await fetch(`/api/admin/pilot-sitter-applications/contract-details?applicationId=${encodeURIComponent(selected.id)}`, {
+          method: "GET",
+          headers: adminHeaders(),
+          cache: "no-store",
+        });
+        const payload = (await res.json().catch(() => null)) as ContractDetailsPayload | null;
+        if (res.ok && payload?.ok) {
+          latest = payload;
+          setContractDetails(payload);
+        }
+      } catch {
+        // keep latest (best effort)
+      }
+    }
+
+    const profile = latest?.profile ?? null;
+    const snap = profile?.contractSnapshot;
     const title = typeof snap?.title === "string" && snap.title.trim() ? snap.title.trim() : "Contrat signé";
-    const version = typeof snap?.version === "string" && snap.version.trim() ? snap.version.trim() : "—";
-    const content = typeof snap?.content === "string" ? snap.content : "";
-    const signerName = typeof snap?.signerName === "string" ? snap.signerName : null;
-    const signedAt = typeof snap?.signedAt === "string" ? snap.signedAt : null;
+    const version =
+      (typeof snap?.version === "string" && snap.version.trim()) || (typeof profile?.contractVersion === "string" && profile.contractVersion.trim())
+        ? (snap?.version as string) || (profile?.contractVersion as string)
+        : "—";
+    const content =
+      typeof snap?.content === "string" ? snap.content : typeof latest?.currentContract?.content === "string" ? latest.currentContract.content : "";
+    const signerName = typeof snap?.signerName === "string" ? snap.signerName : typeof profile?.contractSignerName === "string" ? profile.contractSignerName : null;
+    const signedAt = typeof snap?.signedAt === "string" ? snap.signedAt : typeof profile?.contractSignedAt === "string" ? profile.contractSignedAt : null;
 
     const meta = (
       <div className="mt-3 grid gap-1 text-xs text-slate-600">
@@ -555,8 +579,8 @@ export default function AdminSitterApplicationsClient({ adminCode }: { adminCode
                           </div>
                           <button
                             type="button"
-                            disabled={!contractDetails?.profile?.contractSnapshot}
-                            onClick={() => openSignedContractSnapshot()}
+                            disabled={!contractDetails?.profile?.contractSignedAt}
+                            onClick={() => void openSignedContractSnapshot()}
                             className="inline-flex items-center justify-center rounded-2xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
                           >
                             Voir le contrat signé

@@ -14,7 +14,8 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ ok: false, error: "FORBIDDEN" }, { status: 403 });
     }
 
-    const id = (req.nextUrl.searchParams.get("id") ?? "").trim();
+    const applicationId = (req.nextUrl.searchParams.get("applicationId") ?? "").trim();
+    const id = applicationId || (req.nextUrl.searchParams.get("id") ?? "").trim();
     if (!id) {
       return NextResponse.json({ ok: false, error: "INVALID_ID" }, { status: 400 });
     }
