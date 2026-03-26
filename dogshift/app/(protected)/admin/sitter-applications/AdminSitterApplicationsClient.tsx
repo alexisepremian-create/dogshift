@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 
 import AdminNotesPanel from "@/components/admin/AdminNotesPanel";
 import type { SitterLifecycleStatus } from "@/lib/sitterContract";
@@ -106,6 +107,10 @@ export default function AdminSitterApplicationsClient({ adminCode }: { adminCode
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<"ALL" | AppStatus>("ALL");
 
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const applicationIdFromUrl = searchParams.get("applicationId") ?? "";
+
   const filteredItems = useMemo(() => {
     const needle = searchTerm.trim().toLowerCase();
     return items.filter((item) => {
@@ -124,7 +129,12 @@ export default function AdminSitterApplicationsClient({ adminCode }: { adminCode
     return counts as Record<"ALL" | AppStatus, number>;
   }, [items]);
 
-  const [selectedId, setSelectedId] = useState<string>("");
+  const [selectedId, setSelectedId] = useState<string>(applicationIdFromUrl);
+  useEffect(() => {
+    if (applicationIdFromUrl && applicationIdFromUrl !== selectedId) {
+      setSelectedId(applicationIdFromUrl);
+    }
+  }, [applicationIdFromUrl, selectedId]);
   const selected = useMemo(() => filteredItems.find((i) => i.id === selectedId) ?? items.find((i) => i.id === selectedId) ?? filteredItems[0] ?? null, [filteredItems, items, selectedId]);
 
   const [actionLoading, setActionLoading] = useState(false);
@@ -392,7 +402,12 @@ export default function AdminSitterApplicationsClient({ adminCode }: { adminCode
                 <button
                   key={a.id}
                   type="button"
-                  onClick={() => setSelectedId(a.id)}
+                  onClick={() => {
+                    setSelectedId(a.id);
+                    const next = new URLSearchParams(searchParams.toString());
+                    next.set("applicationId", a.id);
+                    void router.push(`/admin/sitters/applications?${next.toString()}`);
+                  }}
                   className={
                     "w-full rounded-2xl border px-4 py-3 text-left transition " +
                     (a.id === selectedId ? "border-[var(--dogshift-blue)] bg-white" : "border-slate-200 bg-white hover:bg-slate-50")
