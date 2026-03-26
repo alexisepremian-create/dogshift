@@ -128,9 +128,14 @@ export async function POST(req: NextRequest) {
     if (currentLifecycleStatus && !canAccessContractPage(currentLifecycleStatus)) {
       return NextResponse.json({ ok: false, error: "CONTRACT_LINK_INVALID_STATE" }, { status: 409 });
     }
-    const nextLifecycleStatus = currentLifecycleStatus
-      ? maxSitterLifecycleStatus(currentLifecycleStatus, "contract_to_sign")
-      : "contract_to_sign";
+    const willResetSignatureProof = Boolean(existingProfile?.contractVersion && existingProfile.contractVersion !== issuedContractVersion);
+    // Critical invariant: a profile must never remain "contract_signed" if we reset signature proof fields.
+    // If we issue a new contract version that requires a fresh signature, we downgrade to "contract_to_sign".
+    const nextLifecycleStatus = willResetSignatureProof
+      ? "contract_to_sign"
+      : currentLifecycleStatus
+        ? maxSitterLifecycleStatus(currentLifecycleStatus, "contract_to_sign")
+        : "contract_to_sign";
     const keepPublicationState = currentLifecycleStatus ? hasReachedSitterLifecycleStatus(currentLifecycleStatus, "activated") : false;
 
     await (prisma as any).sitterProfile.upsert({
@@ -156,8 +161,9 @@ export async function POST(req: NextRequest) {
         contractAccessTokenIssuedAt: issuedAt,
         contractAccessTokenExpiresAt: expiresAt,
         contractAccessTokenUsedAt: null,
-        ...(existingProfile?.contractVersion && existingProfile.contractVersion !== issuedContractVersion
+        ...(willResetSignatureProof
           ? {
+              contractVersion: null,
               contractAcceptedAt: null,
               contractSignerName: null,
               contractSignedAt: null,
