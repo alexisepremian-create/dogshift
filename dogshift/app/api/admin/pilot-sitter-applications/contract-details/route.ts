@@ -46,6 +46,7 @@ export async function GET(req: NextRequest) {
                 contractAccessTokenUsedAt: true,
                 contractSignerName: true,
                 contractSignedAt: true,
+                lifecycleStatus: true,
                 contractSnapshot: true,
               },
             },
@@ -95,6 +96,7 @@ export async function GET(req: NextRequest) {
               contractAccessTokenUsedAt: profile.contractAccessTokenUsedAt instanceof Date ? profile.contractAccessTokenUsedAt.toISOString() : null,
               contractSignerName: typeof profile.contractSignerName === "string" ? profile.contractSignerName : null,
               contractSignedAt: profile.contractSignedAt instanceof Date ? profile.contractSignedAt.toISOString() : null,
+              lifecycleStatus: typeof profile.lifecycleStatus === "string" ? profile.lifecycleStatus : null,
               contractSnapshot: profile.contractSnapshot ?? fallbackSnapshot,
             }
           : null,
