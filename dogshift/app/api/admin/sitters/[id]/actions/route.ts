@@ -13,6 +13,7 @@ import {
   contractAccessTokenTtlMs,
   generateContractAccessToken,
   getContractTokenSecret,
+  getContractTokenSecretDiagnostics,
   hashContractAccessToken,
   hasReachedSitterLifecycleStatus,
   maxSitterLifecycleStatus,
@@ -284,6 +285,24 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
         });
         return NextResponse.json({ ok: false, error: "CONTRACT_LINK_PERSISTENCE_MISMATCH" }, { status: 500 });
       }
+
+      const recomputedPrefix = hashContractAccessToken(generatedContractToken, secret).slice(0, 16);
+      const storedPrefix =
+        typeof updatedProfile.contractAccessTokenHash === "string"
+          ? updatedProfile.contractAccessTokenHash.slice(0, 16)
+          : "";
+      console.info("[contract-token][mint]", {
+        route: "admin/sitters/actions/generate_contract_link",
+        via: "getContractTokenSecret",
+        ...getContractTokenSecretDiagnostics(),
+        tokenFingerprint: generatedContractFingerprint,
+        tokenLen: generatedContractToken.length,
+        recomputedHashPrefix: recomputedPrefix,
+        storedHashPrefix: storedPrefix,
+        hashPrefixesMatch: recomputedPrefix === storedPrefix,
+        postPersistMatches: okPersisted,
+        sitterProfileId: updatedProfile.id,
+      });
 
       if (contractEmail) {
         await sendEmail(contractEmail);

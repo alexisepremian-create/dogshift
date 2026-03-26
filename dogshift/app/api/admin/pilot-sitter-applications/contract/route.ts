@@ -14,6 +14,7 @@ import {
   contractAccessTokenTtlMs,
   generateContractAccessToken,
   getContractTokenSecret,
+  getContractTokenSecretDiagnostics,
   hashContractAccessToken,
   hasReachedSitterLifecycleStatus,
   maxSitterLifecycleStatus,
@@ -203,6 +204,22 @@ export async function POST(req: NextRequest) {
       });
       return NextResponse.json({ ok: false, error: "CONTRACT_LINK_PERSISTENCE_MISMATCH" }, { status: 500 });
     }
+
+    const recomputedPrefix = hashContractAccessToken(rawToken, secret).slice(0, 16);
+    const storedPrefix =
+      typeof persisted?.contractAccessTokenHash === "string" ? persisted.contractAccessTokenHash.slice(0, 16) : "";
+    console.info("[contract-token][mint]", {
+      route: "admin/pilot-sitter-applications/contract",
+      via: "getContractTokenSecret",
+      ...getContractTokenSecretDiagnostics(),
+      tokenFingerprint: contractLinkFingerprint,
+      tokenLen: rawToken.length,
+      recomputedHashPrefix: recomputedPrefix,
+      storedHashPrefix: storedPrefix,
+      hashPrefixesMatch: recomputedPrefix === storedPrefix,
+      postPersistMatches: okPersisted,
+      sitterProfileId: persisted?.id ?? null,
+    });
 
     if (application.email) {
       const recipientName = `${application.firstName} ${application.lastName}`.trim();

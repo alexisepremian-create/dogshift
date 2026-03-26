@@ -5,9 +5,12 @@ import { prisma } from "@/lib/prisma";
 import {
   buildSignedContractSnapshot,
   canAccessContractPage,
+  contractAccessTokenFingerprint,
   contractAccessTokenMatches,
   CURRENT_SITTER_CONTRACT_VERSION,
   getContractTokenSecret,
+  getContractTokenSecretDiagnostics,
+  hashContractAccessToken,
   hasReachedSitterLifecycleStatus,
   isContractAccessLinkExpired,
   maxSitterLifecycleStatus,
@@ -56,9 +59,20 @@ async function resolveContractAccess(rawToken: string, mode: ContractAccessMode)
 > {
   const token = typeof rawToken === "string" ? rawToken.trim() : "";
   const secret = getContractTokenSecret();
+  const secretDiag = getContractTokenSecretDiagnostics();
   if (!token || !secret) {
+    console.warn("[contract-token][resolve][reject]", {
+      step: "missing_token_or_secret",
+      mode,
+      ...secretDiag,
+      tokenLen: token.length,
+      via: "getContractTokenSecret",
+    });
     return { ok: false, status: 400, error: "INVALID_CONTRACT_LINK" };
   }
+
+  const candidateHashPrefix = hashContractAccessToken(token, secret).slice(0, 16);
+  const tokenFingerprint = contractAccessTokenFingerprint(token);
 
   const profiles = (await (prisma as any).sitterProfile.findMany({
     where: {
@@ -92,6 +106,27 @@ async function resolveContractAccess(rawToken: string, mode: ContractAccessMode)
 
   const profile = profiles.find((entry) => contractAccessTokenMatches(entry.contractAccessTokenHash, token, secret));
   if (!profile?.id || !profile.sitterId) {
+    const sample = profiles.length
+      ? profiles
+          .slice(0, 8)
+          .map((p) => ({
+            id: p.id,
+            storedHashPrefix:
+              typeof p.contractAccessTokenHash === "string" ? p.contractAccessTokenHash.slice(0, 16) : null,
+            wouldMatch: contractAccessTokenMatches(p.contractAccessTokenHash, token, secret),
+          }))
+      : [];
+    console.warn("[contract-token][resolve][no-row-match]", {
+      step: "hash_lookup",
+      mode,
+      ...secretDiag,
+      via: "getContractTokenSecret",
+      tokenFingerprint,
+      tokenLen: token.length,
+      candidateHashPrefix,
+      profilesWithHashCount: profiles.length,
+      sampleStoredPrefixes: sample,
+    });
     return { ok: false, status: 404, error: "INVALID_CONTRACT_LINK" };
   }
 
@@ -106,24 +141,85 @@ async function resolveContractAccess(rawToken: string, mode: ContractAccessMode)
     profile.contractVersion.trim() === accessVersion;
 
   if (profile.contractAccessTokenUsedAt instanceof Date) {
+    console.warn("[contract-token][resolve][reject]", {
+      step: "already_used",
+      mode,
+      ...secretDiag,
+      tokenFingerprint,
+      profileId: profile.id,
+    });
     return { ok: false, status: 410, error: "CONTRACT_LINK_ALREADY_USED" };
   }
 
   if (isContractAccessLinkExpired(profile.contractAccessTokenExpiresAt)) {
+    console.warn("[contract-token][resolve][reject]", {
+      step: "expired",
+      mode,
+      ...secretDiag,
+      tokenFingerprint,
+      profileId: profile.id,
+      expiresAt:
+        profile.contractAccessTokenExpiresAt instanceof Date
+          ? profile.contractAccessTokenExpiresAt.toISOString()
+          : profile.contractAccessTokenExpiresAt,
+    });
     return { ok: false, status: 410, error: "CONTRACT_LINK_EXPIRED" };
   }
 
   if (mode === "sign" && alreadySignedForAccessVersion) {
+    console.warn("[contract-token][resolve][reject]", {
+      step: "already_signed_version",
+      mode,
+      ...secretDiag,
+      tokenFingerprint,
+      profileId: profile.id,
+    });
     return { ok: false, status: 409, error: "CONTRACT_ALREADY_SIGNED" };
   }
 
   if (mode === "read" && alreadySignedForAccessVersion) {
+    const roStoredPrefix =
+      typeof profile.contractAccessTokenHash === "string" ? profile.contractAccessTokenHash.slice(0, 16) : null;
+    console.info("[contract-token][resolve][ok]", {
+      step: "access_granted_readonly",
+      mode,
+      ...secretDiag,
+      via: "getContractTokenSecret",
+      tokenFingerprint,
+      candidateHashPrefix,
+      storedHashPrefix: roStoredPrefix,
+      prefixesAligned: roStoredPrefix === candidateHashPrefix,
+      profileId: profile.id,
+      readonlyView: true,
+    });
     return { ok: true, profile, lifecycleStatus, readonlyView: true, accessVersion, signedForThisVersion: true };
   }
 
   if (!canAccessContractPage(lifecycleStatus)) {
+    console.warn("[contract-token][resolve][reject]", {
+      step: "invalid_lifecycle",
+      mode,
+      ...secretDiag,
+      tokenFingerprint,
+      profileId: profile.id,
+      lifecycleStatus,
+    });
     return { ok: false, status: 409, error: "CONTRACT_LINK_INVALID_STATE" };
   }
+
+  const storedHashPrefix =
+    typeof profile.contractAccessTokenHash === "string" ? profile.contractAccessTokenHash.slice(0, 16) : null;
+  console.info("[contract-token][resolve][ok]", {
+    step: "access_granted",
+    mode,
+    ...secretDiag,
+    via: "getContractTokenSecret",
+    tokenFingerprint,
+    candidateHashPrefix,
+    storedHashPrefix,
+    prefixesAligned: storedHashPrefix === candidateHashPrefix,
+    profileId: profile.id,
+  });
 
   return {
     ok: true,

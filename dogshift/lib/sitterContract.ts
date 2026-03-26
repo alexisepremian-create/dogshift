@@ -107,6 +107,26 @@ export function getContractTokenSecret() {
   return (process.env.NEXTAUTH_SECRET || "").trim();
 }
 
+/** Non-sensitive diagnostics: confirms which env branch is active and a stable fingerprint of the effective secret. */
+export function getContractTokenSecretDiagnostics() {
+  const contractEnv = (process.env.CONTRACT_TOKEN_SECRET || "").trim();
+  const nextAuthEnv = (process.env.NEXTAUTH_SECRET || "").trim();
+  const secret = getContractTokenSecret();
+  const source: "CONTRACT_TOKEN_SECRET" | "NEXTAUTH_SECRET_FALLBACK" | "MISSING" = contractEnv
+    ? "CONTRACT_TOKEN_SECRET"
+    : nextAuthEnv
+      ? "NEXTAUTH_SECRET_FALLBACK"
+      : "MISSING";
+  const secretSha256Prefix12 =
+    secret.length > 0 ? createHash("sha256").update(secret, "utf8").digest("hex").slice(0, 12) : null;
+  return {
+    source,
+    secretLength: secret.length,
+    secretSha256Prefix12,
+    contractEnvDefined: contractEnv.length > 0,
+  };
+}
+
 export function contractAccessTokenMatches(expectedHash: string | null | undefined, rawToken: string, secret: string) {
   if (!expectedHash || !rawToken || !secret) return false;
   const candidateHash = hashContractAccessToken(rawToken, secret);
