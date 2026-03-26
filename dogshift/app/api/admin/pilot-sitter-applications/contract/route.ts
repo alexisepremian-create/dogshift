@@ -13,6 +13,7 @@ import {
   contractAccessTokenFingerprint,
   contractAccessTokenTtlMs,
   generateContractAccessToken,
+  getContractTokenSecret,
   hashContractAccessToken,
   hasReachedSitterLifecycleStatus,
   maxSitterLifecycleStatus,
@@ -58,7 +59,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, error: "INVALID_ID" }, { status: 400 });
     }
 
-    const secret = (process.env.NEXTAUTH_SECRET || "").trim();
+    const secret = getContractTokenSecret();
     const baseUrl = publicBaseUrlFromRequest(req);
     if (!secret || !baseUrl) {
       return NextResponse.json({ ok: false, error: "CONFIG_ERROR" }, { status: 500 });

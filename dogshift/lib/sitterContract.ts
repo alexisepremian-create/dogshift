@@ -100,6 +100,13 @@ export function contractAccessTokenFingerprint(rawToken: string) {
   return createHash("sha256").update(rawToken).digest("hex").slice(0, 12);
 }
 
+export function getContractTokenSecret() {
+  const primary = (process.env.CONTRACT_TOKEN_SECRET || "").trim();
+  if (primary) return primary;
+  // Backward-compat fallback (legacy NextAuth deployments).
+  return (process.env.NEXTAUTH_SECRET || "").trim();
+}
+
 export function contractAccessTokenMatches(expectedHash: string | null | undefined, rawToken: string, secret: string) {
   if (!expectedHash || !rawToken || !secret) return false;
   const candidateHash = hashContractAccessToken(rawToken, secret);

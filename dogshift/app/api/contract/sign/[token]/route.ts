@@ -7,6 +7,7 @@ import {
   canAccessContractPage,
   contractAccessTokenMatches,
   CURRENT_SITTER_CONTRACT_VERSION,
+  getContractTokenSecret,
   hasReachedSitterLifecycleStatus,
   isContractAccessLinkExpired,
   maxSitterLifecycleStatus,
@@ -54,7 +55,7 @@ async function resolveContractAccess(rawToken: string, mode: ContractAccessMode)
   | { ok: false; status: number; error: string }
 > {
   const token = typeof rawToken === "string" ? rawToken.trim() : "";
-  const secret = (process.env.NEXTAUTH_SECRET || "").trim();
+  const secret = getContractTokenSecret();
   if (!token || !secret) {
     return { ok: false, status: 400, error: "INVALID_CONTRACT_LINK" };
   }
