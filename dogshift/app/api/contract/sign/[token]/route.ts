@@ -27,6 +27,7 @@ type ContractAccessRecord = {
   contractSignedAt?: Date | null;
   contractSnapshot?: unknown;
   contractVersion?: string | null;
+  contractSignedPdfUrl?: string | null;
   contractAccessTokenHash?: string | null;
   contractAccessTokenVersion?: string | null;
   contractAccessTokenIssuedAt?: Date | null;
@@ -72,6 +73,7 @@ async function resolveContractAccess(rawToken: string, mode: ContractAccessMode)
       contractSignedAt: true,
       contractSnapshot: true,
       contractVersion: true,
+      contractSignedPdfUrl: true,
       contractAccessTokenHash: true,
       contractAccessTokenVersion: true,
       contractAccessTokenIssuedAt: true,
@@ -156,6 +158,18 @@ export async function GET(_req: NextRequest, context: { params: Promise<{ token:
       }
     }
 
+    const fallbackSnapshot =
+      access.profile.contractSnapshot ??
+      (access.profile.contractSignedAt instanceof Date && typeof access.profile.contractSignerName === "string"
+        ? buildSignedContractSnapshot({
+            sitterId: access.profile.sitterId,
+            userId: access.profile.userId,
+            signerName: access.profile.contractSignerName,
+            signedAt: access.profile.contractSignedAt.toISOString(),
+            version: access.accessVersion,
+          })
+        : null);
+
     return NextResponse.json(
       {
         ok: true,
@@ -172,6 +186,8 @@ export async function GET(_req: NextRequest, context: { params: Promise<{ token:
           version: access.accessVersion,
           content: SITTER_CONTRACT_CONTENT,
         },
+        contractSnapshot: fallbackSnapshot ?? null,
+        contractSignedPdfUrl: access.profile.contractSignedPdfUrl ?? null,
         lifecycleStatus: access.lifecycleStatus,
         contractSignerName: typeof access.profile.contractSignerName === "string" ? access.profile.contractSignerName : null,
         contractSignedAt: access.profile.contractSignedAt instanceof Date ? access.profile.contractSignedAt.toISOString() : null,
@@ -230,6 +246,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ token:
         contractSignedAt: signedAt,
         contractSignatureValue: signatureName,
         contractSnapshot: snapshot,
+        contractSignedPdfUrl: null,
         contractAccessTokenUsedAt: signedAt,
       },
       select: { id: true },

@@ -9,6 +9,8 @@ type ContractPayload = {
   ok?: boolean;
   readonly?: boolean;
   signedForThisVersion?: boolean;
+  contractSnapshot?: any;
+  contractSignedPdfUrl?: string | null;
   infoMessage?: string | null;
   sitter?: {
     sitterId?: string | null;
@@ -39,6 +41,20 @@ export default function SecureContractSigningPage() {
   const [signatureName, setSignatureName] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState<string | null>(null);
+  const [pdfLoading, setPdfLoading] = useState(false);
+  const [pdfError, setPdfError] = useState<string | null>(null);
+
+  function formatSignedAtHumanFrCh(iso: string) {
+    const dt = new Date(iso);
+    if (!(dt instanceof Date) || Number.isNaN(dt.getTime())) return iso;
+    return new Intl.DateTimeFormat("fr-CH", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    }).format(dt);
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -125,11 +141,61 @@ export default function SecureContractSigningPage() {
     return <PageLoader label="Chargement du contrat…" />;
   }
 
-  // Display "Contrat signé" only when the *current contract version* for this token is already signed.
+  // Signature inputs are disabled once signed (for this token version).
   const isSigned = success !== null || payload?.signedForThisVersion === true;
+  const showSignedBanner = Boolean(isSigned && payload?.contractSignerName && payload?.contractSignedAt);
   const contractTitle = payload?.contract?.title ?? "Contrat DogShift";
   const contractVersion = payload?.contract?.version ?? "—";
   const contractContent = payload?.contract?.content ?? "";
+  const signedAtHuman = payload?.contractSignedAt ? formatSignedAtHumanFrCh(payload.contractSignedAt) : null;
+
+  async function downloadBlob(blob: Blob, filename: string) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  async function downloadSignedContractPdf() {
+    if (!payload?.contractSnapshot || !payload?.contractSignerName || !payload?.contractSignedAt) return;
+    if (pdfLoading) return;
+    setPdfLoading(true);
+    setPdfError(null);
+    try {
+      const res = await fetch("/api/contract/generate-pdf", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contractSnapshot: payload.contractSnapshot,
+          contractSignerName: payload.contractSignerName,
+          contractSignedAt: payload.contractSignedAt,
+          contractVersion: contractVersion,
+        }),
+      });
+
+      const contentType = res.headers.get("content-type") ?? "";
+      if (contentType.includes("application/pdf")) {
+        const blob = await res.blob();
+        await downloadBlob(blob, `dogshift-contrat-signe-${contractVersion}.pdf`);
+        return;
+      }
+
+      const data = (await res.json().catch(() => null)) as any;
+      const pdfUrl = data?.pdfUrl as string | undefined;
+      if (!pdfUrl) throw new Error("missing pdfUrl");
+      const pdfRes = await fetch(pdfUrl);
+      const blob = await pdfRes.blob();
+      await downloadBlob(blob, `dogshift-contrat-signe-${contractVersion}.pdf`);
+    } catch {
+      setPdfError("Impossible de télécharger le PDF pour le moment.");
+    } finally {
+      setPdfLoading(false);
+    }
+  }
 
   return (
     <main className="min-h-screen bg-slate-50 px-4 py-10 sm:px-6 lg:px-8">
@@ -144,12 +210,30 @@ export default function SecureContractSigningPage() {
           {error ? <p className="mt-4 text-sm font-medium text-rose-600">{error}</p> : null}
           {success ? <p className="mt-4 text-sm font-medium text-emerald-700">{success}</p> : null}
           {payload?.readonly && payload.infoMessage ? <p className="mt-4 text-sm font-medium text-slate-700">{payload.infoMessage}</p> : null}
-          {isSigned ? (
+          {showSignedBanner ? (
             <div className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
               <p className="text-sm font-semibold text-emerald-900">Contrat signé</p>
+              {signedAtHuman ? <p className="mt-1 text-xs text-slate-600">{`Signé le ${signedAtHuman}`}</p> : null}
+              {payload?.contractSignerName && signedAtHuman ? (
+                <p className="mt-2 whitespace-pre-line text-xs text-slate-600">{`Signé électroniquement par:\n${payload.contractSignerName}\n\nLe: ${signedAtHuman}`}</p>
+              ) : null}
               <p className="mt-1 text-sm text-emerald-900/80">
                 Votre contrat a bien été signé. Aucun accès dashboard n’est ouvert à ce stade ; DogShift vous contactera pour l’activation ultérieure.
               </p>
+
+              {payload?.contractSnapshot && payload?.contractSignerName && payload?.contractSignedAt ? (
+                <div className="mt-4">
+                  <button
+                    type="button"
+                    onClick={() => void downloadSignedContractPdf()}
+                    disabled={pdfLoading}
+                    className="inline-flex w-full items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[var(--dogshift-blue-hover)] disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+                  >
+                    {pdfLoading ? "Génération…" : "Télécharger le contrat signé (PDF)"}
+                  </button>
+                  {pdfError ? <p className="mt-2 text-xs text-rose-600">{pdfError}</p> : null}
+                </div>
+              ) : null}
             </div>
           ) : null}
         </section>

@@ -101,6 +101,18 @@ function formatFrCh(iso: string) {
     .replaceAll(".", "-");
 }
 
+function formatSignedAtHumanFrCh(iso: string) {
+  const dt = new Date(iso);
+  if (!(dt instanceof Date) || Number.isNaN(dt.getTime())) return iso;
+  return new Intl.DateTimeFormat("fr-CH", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(dt);
+}
+
 export default function AdminSitterApplicationsClient({ adminCode }: { adminCode?: string }) {
   const [items, setItems] = useState<ApplicationItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -144,7 +156,17 @@ export default function AdminSitterApplicationsClient({ adminCode }: { adminCode
   const [contractDetails, setContractDetails] = useState<ContractDetailsPayload | null>(null);
   const [contractDetailsLoading, setContractDetailsLoading] = useState(false);
   const [contractModal, setContractModal] = useState<
-    null | { kind: "current" | "signed"; title: string; version: string; content: string; meta?: ReactNode }
+    null | {
+      kind: "current" | "signed";
+      title: string;
+      version: string;
+      content: string;
+      meta?: ReactNode;
+      contractSnapshot?: any;
+      contractSignerName?: string | null;
+      contractSignedAt?: string | null;
+      signedAtHuman?: string | null;
+    }
   >(null);
 
   function adminHeaders(base?: Record<string, string>) {
@@ -288,23 +310,71 @@ export default function AdminSitterApplicationsClient({ adminCode }: { adminCode
       typeof snap?.content === "string" ? snap.content : typeof latest?.currentContract?.content === "string" ? latest.currentContract.content : "";
     const signerName = typeof snap?.signerName === "string" ? snap.signerName : typeof profile?.contractSignerName === "string" ? profile.contractSignerName : null;
     const signedAt = typeof snap?.signedAt === "string" ? snap.signedAt : typeof profile?.contractSignedAt === "string" ? profile.contractSignedAt : null;
+    const signedAtHuman = signedAt ? formatSignedAtHumanFrCh(signedAt) : null;
 
-    const meta = (
-      <div className="mt-3 grid gap-1 text-xs text-slate-600">
-        {signerName ? (
-          <p>
-            <span className="font-semibold text-slate-900">Signé par :</span> {signerName}
-          </p>
-        ) : null}
-        {signedAt ? (
-          <p>
-            <span className="font-semibold text-slate-900">Signé le :</span> {formatFrCh(signedAt)}
-          </p>
-        ) : null}
-      </div>
-    );
+    const meta =
+      signerName && signedAtHuman ? (
+        <div className="mt-2 whitespace-pre-line text-xs text-slate-600">
+          {`Signé électroniquement par:\n${signerName}\n\nLe: ${signedAtHuman}`}
+        </div>
+      ) : null;
 
-    setContractModal({ kind: "signed", title, version, content, meta });
+    setContractModal({
+      kind: "signed",
+      title,
+      version,
+      content,
+      meta,
+      contractSnapshot: snap ?? latest?.profile?.contractSnapshot ?? null,
+      contractSignerName: signerName,
+      contractSignedAt: signedAt,
+      signedAtHuman,
+    });
+  }
+
+  function downloadBlob(blob: Blob, filename: string) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  async function downloadSignedContractPdf() {
+    if (!contractModal || contractModal.kind !== "signed") return;
+    if (!contractModal.contractSnapshot || !contractModal.contractSignerName || !contractModal.contractSignedAt) return;
+
+    try {
+      const res = await fetch("/api/contract/generate-pdf", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contractSnapshot: contractModal.contractSnapshot,
+          contractSignerName: contractModal.contractSignerName,
+          contractSignedAt: contractModal.contractSignedAt,
+          contractVersion: contractModal.version,
+        }),
+      });
+
+      const contentType = res.headers.get("content-type") ?? "";
+      if (contentType.includes("application/pdf")) {
+        const blob = await res.blob();
+        downloadBlob(blob, `dogshift-contrat-signe-${contractModal.version}.pdf`);
+        return;
+      }
+
+      const data = (await res.json().catch(() => null)) as any;
+      const pdfUrl = data?.pdfUrl;
+      if (!pdfUrl) return;
+      const pdfRes = await fetch(pdfUrl);
+      const blob = await pdfRes.blob();
+      downloadBlob(blob, `dogshift-contrat-signe-${contractModal.version}.pdf`);
+    } catch {
+      // ignore
+    }
   }
 
   async function setStatus(next: AppStatus) {
@@ -626,7 +696,10 @@ export default function AdminSitterApplicationsClient({ adminCode }: { adminCode
           <div className="w-full max-w-3xl rounded-3xl border border-slate-200 bg-white shadow-[0_18px_60px_-46px_rgba(2,6,23,0.45)]">
             <div className="flex items-start justify-between gap-4 border-b border-slate-200 px-6 py-5">
               <div className="min-w-0">
-                <p className="text-xs font-semibold text-slate-600">Contrat dogsitter</p>
+                <p className="text-xs font-semibold text-slate-600">{contractModal.kind === "signed" && contractModal.contractSignerName ? "Contrat signé" : "Contrat dogsitter"}</p>
+                {contractModal.kind === "signed" && contractModal.contractSignerName && contractModal.signedAtHuman ? (
+                  <p className="mt-1 text-sm text-slate-600">{`Signé le ${contractModal.signedAtHuman}`}</p>
+                ) : null}
                 <p className="mt-1 truncate text-base font-semibold text-slate-900">{contractModal.title}</p>
                 <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-600">
                   <span className="inline-flex items-center rounded-full bg-slate-100 px-3 py-1">Version : {contractModal.version}</span>
@@ -657,6 +730,15 @@ export default function AdminSitterApplicationsClient({ adminCode }: { adminCode
               </div>
             </div>
             <div className="flex items-center justify-end gap-2 border-t border-slate-200 px-6 py-4">
+              {contractModal.kind === "signed" && contractModal.contractSignerName && contractModal.contractSignedAt && contractModal.contractSnapshot ? (
+                <button
+                  type="button"
+                  onClick={() => void downloadSignedContractPdf()}
+                  className="inline-flex items-center justify-center rounded-2xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50"
+                >
+                  Télécharger le contrat signé (PDF)
+                </button>
+              ) : null}
               <button
                 type="button"
                 onClick={() => setContractModal(null)}
