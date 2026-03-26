@@ -3,7 +3,7 @@ import type { NextRequest } from "next/server";
 
 import { getRequestAdminAccess } from "@/lib/adminAuth";
 import { prisma } from "@/lib/prisma";
-import { CURRENT_SITTER_CONTRACT_VERSION, SITTER_CONTRACT_CONTENT, SITTER_CONTRACT_TITLE } from "@/lib/sitterContract";
+import { buildSignedContractSnapshot, CURRENT_SITTER_CONTRACT_VERSION, SITTER_CONTRACT_CONTENT, SITTER_CONTRACT_TITLE } from "@/lib/sitterContract";
 
 export const runtime = "nodejs";
 
@@ -54,6 +54,25 @@ export async function GET(req: NextRequest) {
 
     const profile = user?.sitterProfile ?? null;
 
+    // Some real-world signers may have `contractSignedAt` set by older flows but a missing `contractSnapshot`.
+    // For admin traceability, we rebuild a signed snapshot on-the-fly (no DB write) so the "Voir le contrat signé" button
+    // remains available regardless of token usage.
+    const signedAtIso = profile?.contractSignedAt instanceof Date ? profile.contractSignedAt.toISOString() : null;
+    const fallbackSnapshot =
+      !profile?.contractSnapshot &&
+      signedAtIso &&
+      typeof profile?.contractSignerName === "string" &&
+      typeof (user?.id ?? "") === "string" &&
+      typeof (user?.sitterId ?? "") === "string"
+        ? buildSignedContractSnapshot({
+            sitterId: user?.sitterId as string,
+            userId: user?.id as string,
+            signerName: profile?.contractSignerName as string,
+            signedAt: signedAtIso,
+            version: typeof profile.contractVersion === "string" ? profile.contractVersion : CURRENT_SITTER_CONTRACT_VERSION,
+          })
+        : null;
+
     return NextResponse.json(
       {
         ok: true,
@@ -75,7 +94,7 @@ export async function GET(req: NextRequest) {
               contractAccessTokenUsedAt: profile.contractAccessTokenUsedAt instanceof Date ? profile.contractAccessTokenUsedAt.toISOString() : null,
               contractSignerName: typeof profile.contractSignerName === "string" ? profile.contractSignerName : null,
               contractSignedAt: profile.contractSignedAt instanceof Date ? profile.contractSignedAt.toISOString() : null,
-              contractSnapshot: profile.contractSnapshot ?? null,
+              contractSnapshot: profile.contractSnapshot ?? fallbackSnapshot,
             }
           : null,
       },
