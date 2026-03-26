@@ -9,6 +9,7 @@ import {
   buildContractAccessUrl,
   canAccessContractPage,
   CURRENT_SITTER_CONTRACT_VERSION,
+  contractAccessTokenMatches,
   contractAccessTokenFingerprint,
   contractAccessTokenTtlMs,
   generateContractAccessToken,
@@ -138,7 +139,7 @@ export async function POST(req: NextRequest) {
         : "contract_to_sign";
     const keepPublicationState = currentLifecycleStatus ? hasReachedSitterLifecycleStatus(currentLifecycleStatus, "activated") : false;
 
-    await (prisma as any).sitterProfile.upsert({
+    const persisted = await (prisma as any).sitterProfile.upsert({
       where: { userId: ensured.id },
       create: {
         userId: ensured.id,
@@ -177,8 +178,30 @@ export async function POST(req: NextRequest) {
         lifecycleStatus: true,
         contractAccessTokenIssuedAt: true,
         contractAccessTokenExpiresAt: true,
+        contractAccessTokenHash: true,
+        contractAccessTokenVersion: true,
+        contractAccessTokenUsedAt: true,
       },
     });
+
+    const okPersisted = contractAccessTokenMatches(persisted?.contractAccessTokenHash, rawToken, secret);
+    const sameIssuedAt = persisted?.contractAccessTokenIssuedAt instanceof Date && persisted.contractAccessTokenIssuedAt.getTime() === issuedAt.getTime();
+    const sameExpiresAt = persisted?.contractAccessTokenExpiresAt instanceof Date && persisted.contractAccessTokenExpiresAt.getTime() === expiresAt.getTime();
+    const sameVersion = typeof persisted?.contractAccessTokenVersion === "string" && persisted.contractAccessTokenVersion === issuedContractVersion;
+    const usedCleared = persisted?.contractAccessTokenUsedAt == null;
+    if (!okPersisted || !sameIssuedAt || !sameExpiresAt || !sameVersion || !usedCleared) {
+      console.error("[api][admin][pilot-sitter-applications][contract] generated link not persisted as expected", {
+        applicationId: application.id,
+        userId: ensured.id,
+        sitterProfileId: persisted?.id ?? null,
+        okPersisted,
+        sameIssuedAt,
+        sameExpiresAt,
+        sameVersion,
+        usedCleared,
+      });
+      return NextResponse.json({ ok: false, error: "CONTRACT_LINK_PERSISTENCE_MISMATCH" }, { status: 500 });
+    }
 
     if (application.email) {
       const recipientName = `${application.firstName} ${application.lastName}`.trim();
