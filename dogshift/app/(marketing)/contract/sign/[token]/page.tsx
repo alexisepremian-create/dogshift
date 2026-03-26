@@ -8,6 +8,7 @@ import PageLoader from "@/components/ui/PageLoader";
 type ContractPayload = {
   ok?: boolean;
   readonly?: boolean;
+  signedForThisVersion?: boolean;
   infoMessage?: string | null;
   sitter?: {
     sitterId?: string | null;
@@ -124,7 +125,8 @@ export default function SecureContractSigningPage() {
     return <PageLoader label="Chargement du contrat…" />;
   }
 
-  const isSigned = success !== null || payload?.lifecycleStatus === "contract_signed" || payload?.lifecycleStatus === "activated" || payload?.readonly === true;
+  // Display "Contrat signé" only when the *current contract version* for this token is already signed.
+  const isSigned = success !== null || payload?.signedForThisVersion === true;
   const contractTitle = payload?.contract?.title ?? "Contrat DogShift";
   const contractVersion = payload?.contract?.version ?? "—";
   const contractContent = payload?.contract?.content ?? "";

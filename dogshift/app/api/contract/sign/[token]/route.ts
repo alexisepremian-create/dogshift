@@ -48,6 +48,7 @@ async function resolveContractAccess(rawToken: string, mode: ContractAccessMode)
       lifecycleStatus: ReturnType<typeof normalizeSitterLifecycleStatus>;
       readonlyView: boolean;
       accessVersion: string;
+      signedForThisVersion: boolean;
     }
   | { ok: false; status: number; error: string }
 > {
@@ -114,14 +115,21 @@ async function resolveContractAccess(rawToken: string, mode: ContractAccessMode)
   }
 
   if (mode === "read" && alreadySignedForAccessVersion) {
-    return { ok: true, profile, lifecycleStatus, readonlyView: true, accessVersion };
+    return { ok: true, profile, lifecycleStatus, readonlyView: true, accessVersion, signedForThisVersion: true };
   }
 
   if (!canAccessContractPage(lifecycleStatus)) {
     return { ok: false, status: 409, error: "CONTRACT_LINK_INVALID_STATE" };
   }
 
-  return { ok: true, profile, lifecycleStatus, readonlyView: false, accessVersion };
+  return {
+    ok: true,
+    profile,
+    lifecycleStatus,
+    readonlyView: false,
+    accessVersion,
+    signedForThisVersion: false,
+  };
 }
 
 export async function GET(_req: NextRequest, context: { params: Promise<{ token: string }> }) {
@@ -152,6 +160,7 @@ export async function GET(_req: NextRequest, context: { params: Promise<{ token:
       {
         ok: true,
         readonly: access.readonlyView,
+        signedForThisVersion: access.signedForThisVersion,
         infoMessage: access.readonlyView ? "Cette version du contrat a déjà été signée. Ce lien permet uniquement la consultation." : null,
         sitter: {
           sitterId: access.profile.sitterId,
