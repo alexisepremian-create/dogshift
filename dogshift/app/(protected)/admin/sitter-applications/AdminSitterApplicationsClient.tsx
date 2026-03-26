@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 
 import AdminNotesPanel from "@/components/admin/AdminNotesPanel";
 import type { SitterLifecycleStatus } from "@/lib/sitterContract";
@@ -38,6 +38,24 @@ type ApplicationItem = {
   contractSignedAt: string | null;
   createdAt: string;
   updatedAt: string;
+};
+
+type ContractDetailsPayload = {
+  ok?: boolean;
+  currentContract?: { title?: string; version?: string; content?: string };
+  profile?: {
+    userId?: string | null;
+    sitterId?: string | null;
+    profileId?: string;
+    contractVersion?: string | null;
+    contractAccessTokenIssuedAt?: string | null;
+    contractAccessTokenExpiresAt?: string | null;
+    contractAccessTokenUsedAt?: string | null;
+    contractSignerName?: string | null;
+    contractSignedAt?: string | null;
+    contractSnapshot?: any;
+  } | null;
+  error?: string;
 };
 
 function contractStatusLabel(item: ApplicationItem) {
@@ -99,6 +117,11 @@ export default function AdminSitterApplicationsClient({ adminCode }: { adminCode
   const [actionLoading, setActionLoading] = useState(false);
   const [contractActionLoading, setContractActionLoading] = useState(false);
   const [success, setSuccess] = useState<string | null>(null);
+  const [contractDetails, setContractDetails] = useState<ContractDetailsPayload | null>(null);
+  const [contractDetailsLoading, setContractDetailsLoading] = useState(false);
+  const [contractModal, setContractModal] = useState<
+    null | { kind: "current" | "signed"; title: string; version: string; content: string; meta?: ReactNode }
+  >(null);
 
   function adminHeaders(base?: Record<string, string>) {
     return {
@@ -159,6 +182,76 @@ export default function AdminSitterApplicationsClient({ adminCode }: { adminCode
     void load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (!selected?.id) {
+      setContractDetails(null);
+      return;
+    }
+
+    void (async () => {
+      try {
+        setContractDetailsLoading(true);
+        const res = await fetch(`/api/admin/pilot-sitter-applications/contract-details?id=${encodeURIComponent(selected.id)}`, {
+          method: "GET",
+          headers: adminHeaders(),
+          cache: "no-store",
+        });
+        const payload = (await res.json().catch(() => null)) as ContractDetailsPayload | null;
+        if (cancelled) return;
+        if (!res.ok || !payload?.ok) {
+          setContractDetails({ ok: false, error: payload?.error || "LOAD_FAILED" });
+          return;
+        }
+        setContractDetails(payload);
+      } catch {
+        if (cancelled) return;
+        setContractDetails({ ok: false, error: "LOAD_FAILED" });
+      } finally {
+        if (!cancelled) setContractDetailsLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [adminCode, selected?.id]);
+
+  function openCurrentContractPreview() {
+    const current = contractDetails?.currentContract;
+    const title = (current?.title ?? "").trim() || "Contrat dogsitter";
+    const version = (current?.version ?? "").trim() || "—";
+    const content = (current?.content ?? "").trim() || "";
+    setContractModal({ kind: "current", title, version, content });
+  }
+
+  function openSignedContractSnapshot() {
+    const snap = contractDetails?.profile?.contractSnapshot;
+    const title = typeof snap?.title === "string" && snap.title.trim() ? snap.title.trim() : "Contrat signé";
+    const version = typeof snap?.version === "string" && snap.version.trim() ? snap.version.trim() : "—";
+    const content = typeof snap?.content === "string" ? snap.content : "";
+    const signerName = typeof snap?.signerName === "string" ? snap.signerName : null;
+    const signedAt = typeof snap?.signedAt === "string" ? snap.signedAt : null;
+
+    const meta = (
+      <div className="mt-3 grid gap-1 text-xs text-slate-600">
+        {signerName ? (
+          <p>
+            <span className="font-semibold text-slate-900">Signé par :</span> {signerName}
+          </p>
+        ) : null}
+        {signedAt ? (
+          <p>
+            <span className="font-semibold text-slate-900">Signé le :</span> {formatFrCh(signedAt)}
+          </p>
+        ) : null}
+      </div>
+    );
+
+    setContractModal({ kind: "signed", title, version, content, meta });
+  }
 
   async function setStatus(next: AppStatus) {
     if (!selected) return;
@@ -342,8 +435,8 @@ export default function AdminSitterApplicationsClient({ adminCode }: { adminCode
                   <div className="rounded-2xl border border-slate-200 bg-white p-4">
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div>
-                        <p className="text-xs font-semibold text-slate-700">Contrat</p>
-                        <p className="mt-2 text-sm text-slate-600">Flow MVP : lien unique, email, page de signature publique, statut admin.</p>
+                        <p className="text-sm font-semibold text-slate-900">Gestion du contrat</p>
+                        <p className="mt-1 text-sm text-slate-600">Prévisualisation du contrat actuel + accès au contrat signé.</p>
                       </div>
                       <button
                         type="button"
@@ -354,13 +447,55 @@ export default function AdminSitterApplicationsClient({ adminCode }: { adminCode
                         {contractActionLoading ? "En cours…" : selected.contractAccessTokenIssuedAt ? "Renvoyer le contrat" : "Envoyer le contrat"}
                       </button>
                     </div>
-                    <div className="mt-3 grid gap-1 text-xs text-slate-500">
-                      <p>Statut contrat : {contractStatusLabel(selected)}.</p>
-                      {selected.sitterLifecycleStatus ? <p>Lifecycle sitter : {selected.sitterLifecycleStatus}.</p> : null}
-                      {selected.contractAccessTokenIssuedAt ? <p>Lien envoyé le : {formatFrCh(selected.contractAccessTokenIssuedAt)}.</p> : null}
-                      {selected.contractAccessTokenExpiresAt ? <p>Expiration prévue le : {formatFrCh(selected.contractAccessTokenExpiresAt)}.</p> : null}
-                      {selected.contractSignedAt ? <p>Contrat signé le : {formatFrCh(selected.contractSignedAt)}.</p> : null}
-                      {selected.status !== "ACCEPTED" ? <p>Le contrat n’est disponible qu’après acceptation de la candidature.</p> : null}
+
+                    <div className="mt-4 grid gap-3 lg:grid-cols-2">
+                      <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="text-xs font-semibold text-slate-700">Contrat actuel</p>
+                            <p className="mt-1 text-xs text-slate-500">
+                              Version : {contractDetails?.currentContract?.version ?? "—"}
+                              {contractDetailsLoading ? " (chargement…)" : ""}
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            disabled={contractDetailsLoading || !(contractDetails?.currentContract?.content || "").trim()}
+                            onClick={() => openCurrentContractPreview()}
+                            className="inline-flex items-center justify-center rounded-2xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            Prévisualiser le contrat
+                          </button>
+                        </div>
+                        <p className="mt-3 text-xs text-slate-600">
+                          Le contenu affiché correspond au modèle actuellement actif (celui qui serait envoyé aujourd’hui).
+                        </p>
+                      </div>
+
+                      <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="text-xs font-semibold text-slate-700">Contrats envoyés / signés</p>
+                            <p className="mt-1 text-xs text-slate-500">Statut : {contractStatusLabel(selected)}.</p>
+                          </div>
+                          <button
+                            type="button"
+                            disabled={!contractDetails?.profile?.contractSnapshot}
+                            onClick={() => openSignedContractSnapshot()}
+                            className="inline-flex items-center justify-center rounded-2xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            Voir le contrat signé
+                          </button>
+                        </div>
+
+                        <div className="mt-3 grid gap-1 text-xs text-slate-600">
+                          {selected.sitterLifecycleStatus ? <p>Lifecycle sitter : {selected.sitterLifecycleStatus}.</p> : null}
+                          {selected.contractAccessTokenIssuedAt ? <p>Lien envoyé le : {formatFrCh(selected.contractAccessTokenIssuedAt)}.</p> : null}
+                          {selected.contractAccessTokenExpiresAt ? <p>Expiration prévue le : {formatFrCh(selected.contractAccessTokenExpiresAt)}.</p> : null}
+                          {selected.contractSignedAt ? <p>Contrat signé le : {formatFrCh(selected.contractSignedAt)}.</p> : null}
+                          {selected.status !== "ACCEPTED" ? <p>Le contrat n’est disponible qu’après acceptation de la candidature.</p> : null}
+                        </div>
+                      </div>
                     </div>
                   </div>
 
@@ -380,6 +515,54 @@ export default function AdminSitterApplicationsClient({ adminCode }: { adminCode
           </div>
         </div>
       )}
+
+      {contractModal ? (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4 sm:items-center">
+          <div className="w-full max-w-3xl rounded-3xl border border-slate-200 bg-white shadow-[0_18px_60px_-46px_rgba(2,6,23,0.45)]">
+            <div className="flex items-start justify-between gap-4 border-b border-slate-200 px-6 py-5">
+              <div className="min-w-0">
+                <p className="text-xs font-semibold text-slate-600">Contrat dogsitter</p>
+                <p className="mt-1 truncate text-base font-semibold text-slate-900">{contractModal.title}</p>
+                <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-600">
+                  <span className="inline-flex items-center rounded-full bg-slate-100 px-3 py-1">Version : {contractModal.version}</span>
+                  {contractModal.kind === "signed" ? (
+                    <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 font-semibold text-emerald-900">
+                      Snapshot signé (figé)
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center rounded-full border border-sky-200 bg-sky-50 px-3 py-1 font-semibold text-sky-900">
+                      Contrat actuel (prévisualisation)
+                    </span>
+                  )}
+                </div>
+                {contractModal.meta ?? null}
+              </div>
+              <button
+                type="button"
+                onClick={() => setContractModal(null)}
+                className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-300 bg-white text-slate-900 shadow-sm transition hover:bg-slate-50"
+                aria-label="Fermer"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="max-h-[70vh] overflow-auto px-6 py-5">
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+                <p className="whitespace-pre-wrap text-sm leading-7 text-slate-700">{contractModal.content}</p>
+              </div>
+            </div>
+            <div className="flex items-center justify-end gap-2 border-t border-slate-200 px-6 py-4">
+              <button
+                type="button"
+                onClick={() => setContractModal(null)}
+                className="inline-flex items-center justify-center rounded-2xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50"
+              >
+                Fermer
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </section>
   );
 }
