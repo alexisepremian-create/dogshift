@@ -692,9 +692,9 @@ export default function AdminSitterApplicationsClient({ adminCode }: { adminCode
       )}
 
       {contractModal ? (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4 sm:items-center">
-          <div className="w-full max-w-3xl rounded-3xl border border-slate-200 bg-white shadow-[0_18px_60px_-46px_rgba(2,6,23,0.45)]">
-            <div className="flex items-start justify-between gap-4 border-b border-slate-200 px-6 py-5">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-6 sm:px-6 sm:py-8">
+          <div className="flex max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-[0_18px_60px_-46px_rgba(2,6,23,0.45)]">
+            <div className="flex shrink-0 items-start justify-between gap-4 border-b border-slate-200 px-6 py-5">
               <div className="min-w-0">
                 <p className="text-xs font-semibold text-slate-600">{contractModal.kind === "signed" && contractModal.contractSignerName ? "Contrat signé" : "Contrat dogsitter"}</p>
                 {contractModal.kind === "signed" && contractModal.contractSignerName && contractModal.signedAtHuman ? (
@@ -718,18 +718,18 @@ export default function AdminSitterApplicationsClient({ adminCode }: { adminCode
               <button
                 type="button"
                 onClick={() => setContractModal(null)}
-                className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-300 bg-white text-slate-900 shadow-sm transition hover:bg-slate-50"
+                className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-slate-300 bg-white text-slate-900 shadow-sm transition hover:bg-slate-50"
                 aria-label="Fermer"
               >
                 ✕
               </button>
             </div>
-            <div className="max-h-[70vh] overflow-auto px-6 py-5">
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-6 py-5">
               <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
                 <p className="whitespace-pre-wrap text-sm leading-7 text-slate-700">{contractModal.content}</p>
               </div>
             </div>
-            <div className="flex items-center justify-end gap-2 border-t border-slate-200 px-6 py-4">
+            <div className="flex shrink-0 items-center justify-end gap-2 border-t border-slate-200 px-6 py-4">
               {contractModal.kind === "signed" && contractModal.contractSignerName && contractModal.contractSignedAt && contractModal.contractSnapshot ? (
                 <button
                   type="button"
