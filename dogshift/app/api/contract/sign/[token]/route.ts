@@ -140,6 +140,26 @@ async function resolveContractAccess(rawToken: string, mode: ContractAccessMode)
     typeof profile.contractVersion === "string" &&
     profile.contractVersion.trim() === accessVersion;
 
+  // After POST /sign, the magic link is marked used immediately. Reads must still return the
+  // signed contract (snapshot, signer, dates) so the client can show proof + PDF download.
+  if (mode === "read" && alreadySignedForAccessVersion) {
+    const roStoredPrefix =
+      typeof profile.contractAccessTokenHash === "string" ? profile.contractAccessTokenHash.slice(0, 16) : null;
+    console.info("[contract-token][resolve][ok]", {
+      step: "access_granted_readonly",
+      mode,
+      ...secretDiag,
+      via: "getContractTokenSecret",
+      tokenFingerprint,
+      candidateHashPrefix,
+      storedHashPrefix: roStoredPrefix,
+      prefixesAligned: roStoredPrefix === candidateHashPrefix,
+      profileId: profile.id,
+      readonlyView: true,
+    });
+    return { ok: true, profile, lifecycleStatus, readonlyView: true, accessVersion, signedForThisVersion: true };
+  }
+
   if (profile.contractAccessTokenUsedAt instanceof Date) {
     console.warn("[contract-token][resolve][reject]", {
       step: "already_used",
@@ -175,24 +195,6 @@ async function resolveContractAccess(rawToken: string, mode: ContractAccessMode)
       profileId: profile.id,
     });
     return { ok: false, status: 409, error: "CONTRACT_ALREADY_SIGNED" };
-  }
-
-  if (mode === "read" && alreadySignedForAccessVersion) {
-    const roStoredPrefix =
-      typeof profile.contractAccessTokenHash === "string" ? profile.contractAccessTokenHash.slice(0, 16) : null;
-    console.info("[contract-token][resolve][ok]", {
-      step: "access_granted_readonly",
-      mode,
-      ...secretDiag,
-      via: "getContractTokenSecret",
-      tokenFingerprint,
-      candidateHashPrefix,
-      storedHashPrefix: roStoredPrefix,
-      prefixesAligned: roStoredPrefix === candidateHashPrefix,
-      profileId: profile.id,
-      readonlyView: true,
-    });
-    return { ok: true, profile, lifecycleStatus, readonlyView: true, accessVersion, signedForThisVersion: true };
   }
 
   if (!canAccessContractPage(lifecycleStatus)) {
@@ -239,7 +241,9 @@ export async function GET(_req: NextRequest, context: { params: Promise<{ token:
       return NextResponse.json({ ok: false, error: access.error }, { status: access.status });
     }
 
-    if (access.readonlyView) {
+    // One-time consultation: mark link used on first readonly open when not already consumed
+    // (e.g. legacy flow). After POST /sign, usedAt is already set — do not 410 here.
+    if (access.readonlyView && access.profile.contractAccessTokenUsedAt == null) {
       const consumedAt = new Date();
       const consumed = await (prisma as any).sitterProfile.updateMany({
         where: {
