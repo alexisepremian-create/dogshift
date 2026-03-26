@@ -91,6 +91,22 @@ export default function CguPage() {
                 <li>Refuser toute réservation si les conditions de sécurité ne sont pas réunies (consignes insuffisantes, chien agressif non déclaré, etc.).</li>
               </ul>
               <p className="mt-3">
+                Le Dogsitter s’engage à disposer, pendant toute la durée de son activité sur la plateforme, d’une assurance responsabilité civile privée valide
+                couvrant explicitement la garde d’animaux. Cette assurance doit également couvrir une activité accessoire rémunérée, telle que le dogsitting,
+                conformément aux conditions définies par l’assureur du Dogsitter.
+              </p>
+              <p className="mt-3">
+                Le Dogsitter s’engage à ne pas dépasser les seuils de revenus éventuellement fixés par son assurance dans le cadre d’une activité accessoire
+                rémunérée (ces seuils varient selon les assureurs et les contrats).
+              </p>
+              <p className="mt-3">
+                Il appartient au Dogsitter de vérifier auprès de son assureur que la garde d’animaux est bien couverte, y compris en cas de faute grave, et
+                d’activer les options nécessaires le cas échéant.
+              </p>
+              <p className="mt-3">
+                DogShift décline toute responsabilité en cas de défaut ou d’insuffisance de couverture d’assurance du Dogsitter.
+              </p>
+              <p className="mt-3">
                 DogShift peut demander au Dogsitter de confirmer l’existence d’une assurance RC personnelle ou de fournir des justificatifs, à des fins de sécurité
                 et de qualité.
               </p>
