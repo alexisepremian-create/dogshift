@@ -46,6 +46,7 @@ export async function GET(req: NextRequest) {
                 contractAccessTokenUsedAt: true,
                 contractSignerName: true,
                 contractSignedAt: true,
+                contractSignatureValue: true,
                 lifecycleStatus: true,
                 contractSnapshot: true,
               },
@@ -55,6 +56,12 @@ export async function GET(req: NextRequest) {
       : null;
 
     const profile = user?.sitterProfile ?? null;
+    const signerNameFallback =
+      profile && typeof profile.contractSignerName === "string" && profile.contractSignerName.trim()
+        ? profile.contractSignerName.trim()
+        : profile && typeof (profile as any).contractSignatureValue === "string" && (profile as any).contractSignatureValue.trim()
+          ? ((profile as any).contractSignatureValue as string).trim()
+          : null;
 
     // Some real-world signers may have `contractSignedAt` set by older flows but a missing `contractSnapshot`.
     // For admin traceability, we rebuild a signed snapshot on-the-fly (no DB write) so the "Voir le contrat signé" button
@@ -63,15 +70,15 @@ export async function GET(req: NextRequest) {
     const fallbackSnapshot =
       !profile?.contractSnapshot &&
       signedAtIso &&
-      typeof profile?.contractSignerName === "string" &&
+      typeof signerNameFallback === "string" &&
       typeof (user?.id ?? "") === "string" &&
       typeof (user?.sitterId ?? "") === "string"
         ? buildSignedContractSnapshot({
             sitterId: user?.sitterId as string,
             userId: user?.id as string,
-            signerName: profile?.contractSignerName as string,
+            signerName: signerNameFallback as string,
             signedAt: signedAtIso,
-            version: typeof profile.contractVersion === "string" ? profile.contractVersion : CURRENT_SITTER_CONTRACT_VERSION,
+            version: typeof profile?.contractVersion === "string" ? profile.contractVersion : CURRENT_SITTER_CONTRACT_VERSION,
           })
         : null;
 
@@ -94,7 +101,7 @@ export async function GET(req: NextRequest) {
               contractAccessTokenIssuedAt: profile.contractAccessTokenIssuedAt instanceof Date ? profile.contractAccessTokenIssuedAt.toISOString() : null,
               contractAccessTokenExpiresAt: profile.contractAccessTokenExpiresAt instanceof Date ? profile.contractAccessTokenExpiresAt.toISOString() : null,
               contractAccessTokenUsedAt: profile.contractAccessTokenUsedAt instanceof Date ? profile.contractAccessTokenUsedAt.toISOString() : null,
-              contractSignerName: typeof profile.contractSignerName === "string" ? profile.contractSignerName : null,
+              contractSignerName: signerNameFallback,
               contractSignedAt: profile.contractSignedAt instanceof Date ? profile.contractSignedAt.toISOString() : null,
               lifecycleStatus: typeof profile.lifecycleStatus === "string" ? profile.lifecycleStatus : null,
               contractSnapshot: profile.contractSnapshot ?? fallbackSnapshot,
