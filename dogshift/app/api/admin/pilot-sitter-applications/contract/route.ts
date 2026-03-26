@@ -7,6 +7,7 @@ import { sendEmail } from "@/lib/email/sendEmail";
 import { prisma } from "@/lib/prisma";
 import {
   buildContractAccessUrl,
+  canAccessContractPage,
   contractAccessTokenFingerprint,
   contractAccessTokenTtlMs,
   generateContractAccessToken,
@@ -117,6 +118,9 @@ export async function POST(req: NextRequest) {
     const currentLifecycleStatus = existingProfile
       ? normalizeSitterLifecycleStatus(existingProfile.lifecycleStatus, existingProfile.published)
       : null;
+    if (currentLifecycleStatus && !canAccessContractPage(currentLifecycleStatus)) {
+      return NextResponse.json({ ok: false, error: "CONTRACT_LINK_INVALID_STATE" }, { status: 409 });
+    }
     const nextLifecycleStatus = currentLifecycleStatus
       ? maxSitterLifecycleStatus(currentLifecycleStatus, "contract_to_sign")
       : "contract_to_sign";

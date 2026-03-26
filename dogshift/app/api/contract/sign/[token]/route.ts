@@ -37,8 +37,15 @@ type ContractAccessRecord = {
   } | null;
 };
 
-async function resolveContractAccess(rawToken: string): Promise<
-  | { ok: true; profile: ContractAccessRecord; lifecycleStatus: ReturnType<typeof normalizeSitterLifecycleStatus> }
+type ContractAccessMode = "read" | "sign";
+
+async function resolveContractAccess(rawToken: string, mode: ContractAccessMode): Promise<
+  | {
+      ok: true;
+      profile: ContractAccessRecord;
+      lifecycleStatus: ReturnType<typeof normalizeSitterLifecycleStatus>;
+      readonlyView: boolean;
+    }
   | { ok: false; status: number; error: string }
 > {
   const token = typeof rawToken === "string" ? rawToken.trim() : "";
@@ -80,10 +87,7 @@ async function resolveContractAccess(rawToken: string): Promise<
   }
 
   const lifecycleStatus = normalizeSitterLifecycleStatus(profile.lifecycleStatus, profile.published);
-
-  if (profile.contractSignedAt instanceof Date || lifecycleStatus === "contract_signed" || lifecycleStatus === "activated") {
-    return { ok: false, status: 409, error: "CONTRACT_ALREADY_SIGNED" };
-  }
+  const alreadySigned = profile.contractSignedAt instanceof Date || lifecycleStatus === "contract_signed" || lifecycleStatus === "activated";
 
   if (profile.contractAccessTokenUsedAt instanceof Date) {
     return { ok: false, status: 410, error: "CONTRACT_LINK_ALREADY_USED" };
@@ -93,24 +97,50 @@ async function resolveContractAccess(rawToken: string): Promise<
     return { ok: false, status: 410, error: "CONTRACT_LINK_EXPIRED" };
   }
 
+  if (mode === "sign" && alreadySigned) {
+    return { ok: false, status: 409, error: "CONTRACT_ALREADY_SIGNED" };
+  }
+
+  if (mode === "read" && alreadySigned) {
+    return { ok: true, profile, lifecycleStatus, readonlyView: true };
+  }
+
   if (!contractSigningAllowed(lifecycleStatus)) {
     return { ok: false, status: 409, error: "CONTRACT_LINK_INVALID_STATE" };
   }
 
-  return { ok: true, profile, lifecycleStatus };
+  return { ok: true, profile, lifecycleStatus, readonlyView: false };
 }
 
 export async function GET(_req: NextRequest, context: { params: Promise<{ token: string }> }) {
   try {
     const { token } = await context.params;
-    const access = await resolveContractAccess(token);
+    const access = await resolveContractAccess(token, "read");
     if (!access.ok) {
       return NextResponse.json({ ok: false, error: access.error }, { status: access.status });
+    }
+
+    if (access.readonlyView) {
+      const consumedAt = new Date();
+      const consumed = await (prisma as any).sitterProfile.updateMany({
+        where: {
+          id: access.profile.id,
+          contractAccessTokenUsedAt: null,
+        },
+        data: {
+          contractAccessTokenUsedAt: consumedAt,
+        },
+      });
+      if (!consumed?.count) {
+        return NextResponse.json({ ok: false, error: "CONTRACT_LINK_ALREADY_USED" }, { status: 410 });
+      }
     }
 
     return NextResponse.json(
       {
         ok: true,
+        readonly: access.readonlyView,
+        infoMessage: access.readonlyView ? "Ce contrat a déjà été signé. Ce lien permet uniquement la consultation." : null,
         sitter: {
           sitterId: access.profile.sitterId,
           name: access.profile.user?.name ?? null,
@@ -136,7 +166,7 @@ export async function GET(_req: NextRequest, context: { params: Promise<{ token:
 export async function POST(req: NextRequest, context: { params: Promise<{ token: string }> }) {
   try {
     const { token } = await context.params;
-    const access = await resolveContractAccess(token);
+    const access = await resolveContractAccess(token, "sign");
     if (!access.ok) {
       return NextResponse.json({ ok: false, error: access.error }, { status: access.status });
     }

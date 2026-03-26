@@ -7,6 +7,8 @@ import PageLoader from "@/components/ui/PageLoader";
 
 type ContractPayload = {
   ok?: boolean;
+  readonly?: boolean;
+  infoMessage?: string | null;
   sitter?: {
     sitterId?: string | null;
     name?: string | null;
@@ -52,6 +54,8 @@ export default function SecureContractSigningPage() {
             setError("Ce lien de signature a déjà été utilisé et n’est plus valide.");
           } else if (next?.error === "CONTRACT_LINK_EXPIRED") {
             setError("Ce lien de signature a expiré. Contactez DogShift pour recevoir un nouveau lien.");
+        } else if (next?.error === "CONTRACT_ALREADY_SIGNED") {
+          setError("Ce contrat a déjà été signé.");
           } else {
             setError("Ce lien de signature est invalide ou n’est plus disponible.");
           }
@@ -95,6 +99,8 @@ export default function SecureContractSigningPage() {
           setError("Ce lien de signature a déjà été utilisé et n’est plus valide.");
         } else if (next?.error === "CONTRACT_LINK_EXPIRED") {
           setError("Ce lien de signature a expiré. Contactez DogShift pour recevoir un nouveau lien.");
+        } else if (next?.error === "CONTRACT_ALREADY_SIGNED") {
+          setError("Ce contrat a déjà été signé. Ce lien ne permet plus de signer.");
         } else {
           setError("Impossible de signer le contrat pour le moment.");
         }
@@ -118,7 +124,7 @@ export default function SecureContractSigningPage() {
     return <PageLoader label="Chargement du contrat…" />;
   }
 
-  const isSigned = success !== null || payload?.lifecycleStatus === "contract_signed" || payload?.lifecycleStatus === "activated";
+  const isSigned = success !== null || payload?.lifecycleStatus === "contract_signed" || payload?.lifecycleStatus === "activated" || payload?.readonly === true;
   const contractTitle = payload?.contract?.title ?? "Contrat DogShift";
   const contractVersion = payload?.contract?.version ?? "—";
   const contractContent = payload?.contract?.content ?? "";
@@ -135,6 +141,7 @@ export default function SecureContractSigningPage() {
           </div>
           {error ? <p className="mt-4 text-sm font-medium text-rose-600">{error}</p> : null}
           {success ? <p className="mt-4 text-sm font-medium text-emerald-700">{success}</p> : null}
+          {payload?.readonly && payload.infoMessage ? <p className="mt-4 text-sm font-medium text-slate-700">{payload.infoMessage}</p> : null}
           {isSigned ? (
             <div className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
               <p className="text-sm font-semibold text-emerald-900">Contrat signé</p>
