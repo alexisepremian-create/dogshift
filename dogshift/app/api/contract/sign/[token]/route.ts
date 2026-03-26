@@ -4,8 +4,8 @@ import type { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import {
   buildSignedContractSnapshot,
+  canAccessContractPage,
   contractAccessTokenMatches,
-  contractSigningAllowed,
   CURRENT_SITTER_CONTRACT_VERSION,
   hasReachedSitterLifecycleStatus,
   isContractAccessLinkExpired,
@@ -26,7 +26,9 @@ type ContractAccessRecord = {
   contractSignerName?: string | null;
   contractSignedAt?: Date | null;
   contractSnapshot?: unknown;
+  contractVersion?: string | null;
   contractAccessTokenHash?: string | null;
+  contractAccessTokenVersion?: string | null;
   contractAccessTokenIssuedAt?: Date | null;
   contractAccessTokenExpiresAt?: Date | null;
   contractAccessTokenUsedAt?: Date | null;
@@ -45,6 +47,7 @@ async function resolveContractAccess(rawToken: string, mode: ContractAccessMode)
       profile: ContractAccessRecord;
       lifecycleStatus: ReturnType<typeof normalizeSitterLifecycleStatus>;
       readonlyView: boolean;
+      accessVersion: string;
     }
   | { ok: false; status: number; error: string }
 > {
@@ -67,7 +70,9 @@ async function resolveContractAccess(rawToken: string, mode: ContractAccessMode)
       contractSignerName: true,
       contractSignedAt: true,
       contractSnapshot: true,
+      contractVersion: true,
       contractAccessTokenHash: true,
+      contractAccessTokenVersion: true,
       contractAccessTokenIssuedAt: true,
       contractAccessTokenExpiresAt: true,
       contractAccessTokenUsedAt: true,
@@ -87,7 +92,14 @@ async function resolveContractAccess(rawToken: string, mode: ContractAccessMode)
   }
 
   const lifecycleStatus = normalizeSitterLifecycleStatus(profile.lifecycleStatus, profile.published);
-  const alreadySigned = profile.contractSignedAt instanceof Date || lifecycleStatus === "contract_signed" || lifecycleStatus === "activated";
+  const accessVersion =
+    typeof profile.contractAccessTokenVersion === "string" && profile.contractAccessTokenVersion.trim()
+      ? profile.contractAccessTokenVersion.trim()
+      : CURRENT_SITTER_CONTRACT_VERSION;
+  const alreadySignedForAccessVersion =
+    profile.contractSignedAt instanceof Date &&
+    typeof profile.contractVersion === "string" &&
+    profile.contractVersion.trim() === accessVersion;
 
   if (profile.contractAccessTokenUsedAt instanceof Date) {
     return { ok: false, status: 410, error: "CONTRACT_LINK_ALREADY_USED" };
@@ -97,19 +109,19 @@ async function resolveContractAccess(rawToken: string, mode: ContractAccessMode)
     return { ok: false, status: 410, error: "CONTRACT_LINK_EXPIRED" };
   }
 
-  if (mode === "sign" && alreadySigned) {
+  if (mode === "sign" && alreadySignedForAccessVersion) {
     return { ok: false, status: 409, error: "CONTRACT_ALREADY_SIGNED" };
   }
 
-  if (mode === "read" && alreadySigned) {
-    return { ok: true, profile, lifecycleStatus, readonlyView: true };
+  if (mode === "read" && alreadySignedForAccessVersion) {
+    return { ok: true, profile, lifecycleStatus, readonlyView: true, accessVersion };
   }
 
-  if (!contractSigningAllowed(lifecycleStatus)) {
+  if (!canAccessContractPage(lifecycleStatus)) {
     return { ok: false, status: 409, error: "CONTRACT_LINK_INVALID_STATE" };
   }
 
-  return { ok: true, profile, lifecycleStatus, readonlyView: false };
+  return { ok: true, profile, lifecycleStatus, readonlyView: false, accessVersion };
 }
 
 export async function GET(_req: NextRequest, context: { params: Promise<{ token: string }> }) {
@@ -140,7 +152,7 @@ export async function GET(_req: NextRequest, context: { params: Promise<{ token:
       {
         ok: true,
         readonly: access.readonlyView,
-        infoMessage: access.readonlyView ? "Ce contrat a déjà été signé. Ce lien permet uniquement la consultation." : null,
+        infoMessage: access.readonlyView ? "Cette version du contrat a déjà été signée. Ce lien permet uniquement la consultation." : null,
         sitter: {
           sitterId: access.profile.sitterId,
           name: access.profile.user?.name ?? null,
@@ -148,7 +160,7 @@ export async function GET(_req: NextRequest, context: { params: Promise<{ token:
         },
         contract: {
           title: SITTER_CONTRACT_TITLE,
-          version: CURRENT_SITTER_CONTRACT_VERSION,
+          version: access.accessVersion,
           content: SITTER_CONTRACT_CONTENT,
         },
         lifecycleStatus: access.lifecycleStatus,
@@ -193,6 +205,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ token:
       userId: access.profile.userId,
       signerName: signatureName,
       signedAt: signedAt.toISOString(),
+      version: access.accessVersion,
     });
     const nextLifecycleStatus = maxSitterLifecycleStatus(access.lifecycleStatus, "contract_signed");
     const keepPublicationState = hasReachedSitterLifecycleStatus(access.lifecycleStatus, "activated");
@@ -202,7 +215,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ token:
       data: {
         lifecycleStatus: nextLifecycleStatus,
         ...(keepPublicationState ? {} : { published: false, publishedAt: null }),
-        contractVersion: CURRENT_SITTER_CONTRACT_VERSION,
+        contractVersion: access.accessVersion,
         contractAcceptedAt: signedAt,
         contractSignerName: signatureName,
         contractSignedAt: signedAt,

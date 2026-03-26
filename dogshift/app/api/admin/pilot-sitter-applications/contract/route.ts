@@ -8,6 +8,7 @@ import { prisma } from "@/lib/prisma";
 import {
   buildContractAccessUrl,
   canAccessContractPage,
+  CURRENT_SITTER_CONTRACT_VERSION,
   contractAccessTokenFingerprint,
   contractAccessTokenTtlMs,
   generateContractAccessToken,
@@ -78,7 +79,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, error: "NOT_FOUND" }, { status: 404 });
     }
 
-    if (application.status !== "ACCEPTED") {
+    if (application.status !== "ACCEPTED" && application.status !== "ACTIVATED") {
       return NextResponse.json({ ok: false, error: "INVALID_STATE_TRANSITION" }, { status: 409 });
     }
 
@@ -104,6 +105,7 @@ export async function POST(req: NextRequest) {
     const rawToken = generateContractAccessToken();
     const issuedAt = new Date();
     const expiresAt = new Date(issuedAt.getTime() + contractAccessTokenTtlMs());
+    const issuedContractVersion = CURRENT_SITTER_CONTRACT_VERSION;
     const contractAccessLink = buildContractAccessUrl(baseUrl, rawToken);
     const contractLinkFingerprint = contractAccessTokenFingerprint(rawToken);
 
@@ -113,6 +115,7 @@ export async function POST(req: NextRequest) {
         id: true,
         published: true,
         lifecycleStatus: true,
+        contractVersion: true,
       },
     });
     const currentLifecycleStatus = existingProfile
@@ -135,6 +138,7 @@ export async function POST(req: NextRequest) {
         publishedAt: null,
         lifecycleStatus: "contract_to_sign",
         contractAccessTokenHash: hashContractAccessToken(rawToken, secret),
+        contractAccessTokenVersion: issuedContractVersion,
         contractAccessTokenIssuedAt: issuedAt,
         contractAccessTokenExpiresAt: expiresAt,
         contractAccessTokenUsedAt: null,
@@ -144,9 +148,19 @@ export async function POST(req: NextRequest) {
         ...(keepPublicationState ? {} : { published: false, publishedAt: null }),
         lifecycleStatus: nextLifecycleStatus,
         contractAccessTokenHash: hashContractAccessToken(rawToken, secret),
+        contractAccessTokenVersion: issuedContractVersion,
         contractAccessTokenIssuedAt: issuedAt,
         contractAccessTokenExpiresAt: expiresAt,
         contractAccessTokenUsedAt: null,
+        ...(existingProfile?.contractVersion && existingProfile.contractVersion !== issuedContractVersion
+          ? {
+              contractAcceptedAt: null,
+              contractSignerName: null,
+              contractSignedAt: null,
+              contractSignatureValue: null,
+              contractSnapshot: null,
+            }
+          : {}),
       },
       select: {
         id: true,

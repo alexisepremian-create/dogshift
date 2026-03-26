@@ -39,6 +39,7 @@ export async function GET(req: NextRequest) {
               select: {
                 id: true,
                 contractVersion: true,
+                contractAccessTokenVersion: true,
                 contractAccessTokenIssuedAt: true,
                 contractAccessTokenExpiresAt: true,
                 contractAccessTokenUsedAt: true,
@@ -68,6 +69,7 @@ export async function GET(req: NextRequest) {
               sitterId: user?.sitterId ?? null,
               profileId: profile.id,
               contractVersion: typeof profile.contractVersion === "string" ? profile.contractVersion : null,
+              contractAccessTokenVersion: typeof profile.contractAccessTokenVersion === "string" ? profile.contractAccessTokenVersion : null,
               contractAccessTokenIssuedAt: profile.contractAccessTokenIssuedAt instanceof Date ? profile.contractAccessTokenIssuedAt.toISOString() : null,
               contractAccessTokenExpiresAt: profile.contractAccessTokenExpiresAt instanceof Date ? profile.contractAccessTokenExpiresAt.toISOString() : null,
               contractAccessTokenUsedAt: profile.contractAccessTokenUsedAt instanceof Date ? profile.contractAccessTokenUsedAt.toISOString() : null,

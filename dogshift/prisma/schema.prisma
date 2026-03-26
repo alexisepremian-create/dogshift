@@ -267,6 +267,7 @@ model SitterProfile {
   contractSignatureValue String?
   contractSnapshot       Json?
   contractAccessTokenHash   String?
+  contractAccessTokenVersion String?
   contractAccessTokenIssuedAt DateTime?
   contractAccessTokenExpiresAt DateTime?
   contractAccessTokenUsedAt DateTime?

@@ -48,6 +48,7 @@ type ContractDetailsPayload = {
     sitterId?: string | null;
     profileId?: string;
     contractVersion?: string | null;
+    contractAccessTokenVersion?: string | null;
     contractAccessTokenIssuedAt?: string | null;
     contractAccessTokenExpiresAt?: string | null;
     contractAccessTokenUsedAt?: string | null;
@@ -181,7 +182,7 @@ export default function AdminSitterApplicationsClient({ adminCode }: { adminCode
       const payload = (await res.json().catch(() => null)) as any;
       if (!res.ok || !payload?.ok) {
         if (payload?.error === "CONTRACT_LINK_INVALID_STATE") {
-          setError("Le contrat est déjà signé/activé: aucun nouveau lien de signature ne peut être émis.");
+          setError("Renvoi impossible: état du profil incohérent pour la gestion du contrat.");
         } else {
           setError("Impossible d’envoyer le contrat.");
         }
@@ -552,7 +553,6 @@ export default function AdminSitterApplicationsClient({ adminCode }: { adminCode
                           {selected.contractAccessTokenIssuedAt ? <p>Lien envoyé le : {formatFrCh(selected.contractAccessTokenIssuedAt)}.</p> : null}
                           {selected.contractAccessTokenExpiresAt ? <p>Expiration prévue le : {formatFrCh(selected.contractAccessTokenExpiresAt)}.</p> : null}
                           {selected.contractSignedAt ? <p>Contrat signé le : {formatFrCh(selected.contractSignedAt)}.</p> : null}
-                          {selected.contractSignedAt ? <p>Renvoi autorisé: le nouveau lien ouvre le contrat en lecture seule.</p> : null}
                           {selected.status !== "ACCEPTED" && selected.status !== "ACTIVATED" ? (
                             <p>Le contrat est disponible après acceptation ou activation de la candidature.</p>
                           ) : null}

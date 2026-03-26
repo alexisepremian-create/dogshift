@@ -55,7 +55,7 @@ export default function SecureContractSigningPage() {
           } else if (next?.error === "CONTRACT_LINK_EXPIRED") {
             setError("Ce lien de signature a expiré. Contactez DogShift pour recevoir un nouveau lien.");
         } else if (next?.error === "CONTRACT_ALREADY_SIGNED") {
-          setError("Ce contrat a déjà été signé.");
+          setError("Cette version du contrat a déjà été signée.");
           } else {
             setError("Ce lien de signature est invalide ou n’est plus disponible.");
           }
@@ -100,7 +100,7 @@ export default function SecureContractSigningPage() {
         } else if (next?.error === "CONTRACT_LINK_EXPIRED") {
           setError("Ce lien de signature a expiré. Contactez DogShift pour recevoir un nouveau lien.");
         } else if (next?.error === "CONTRACT_ALREADY_SIGNED") {
-          setError("Ce contrat a déjà été signé. Ce lien ne permet plus de signer.");
+          setError("Cette version du contrat a déjà été signée. Ce lien ne permet plus de signer.");
         } else {
           setError("Impossible de signer le contrat pour le moment.");
         }

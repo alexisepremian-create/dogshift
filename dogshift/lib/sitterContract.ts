@@ -135,10 +135,11 @@ export function buildSignedContractSnapshot(args: {
   userId: string;
   signerName: string;
   signedAt: string;
+  version: string;
 }) {
   return {
     title: SITTER_CONTRACT_TITLE,
-    version: CURRENT_SITTER_CONTRACT_VERSION,
+    version: args.version,
     content: SITTER_CONTRACT_CONTENT,
     signerName: args.signerName,
     signedAt: args.signedAt,
