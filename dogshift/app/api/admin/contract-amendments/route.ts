@@ -7,10 +7,25 @@ import { prisma } from "@/lib/prisma";
 export const runtime = "nodejs";
 
 function hasMissingStatusColumnError(err: unknown) {
-  const e = err as { code?: string; meta?: { column_name?: string; column?: string; target?: string | string[] } };
-  if (e?.code !== "P2022") return false;
-  const column = String(e?.meta?.column_name ?? e?.meta?.column ?? e?.meta?.target ?? "").toLowerCase();
-  return column.includes("status");
+  const e = err as {
+    code?: string;
+    message?: string;
+    meta?: { column_name?: string; column?: string; target?: string | string[] };
+  };
+  const msg = String(e?.message ?? "").toLowerCase();
+  const metaColumn = String(e?.meta?.column_name ?? e?.meta?.column ?? e?.meta?.target ?? "").toLowerCase();
+
+  // Prisma P2022 (column does not exist)
+  if (e?.code === "P2022" && metaColumn.includes("status")) return true;
+
+  // Some deployments surface a raw DB error message without Prisma code/meta.
+  // Examples:
+  // - "ContractAmendment.status does not exist in the current database"
+  // - "column \"status\" does not exist"
+  if (msg.includes("contractamendment.status")) return true;
+  if (msg.includes("column") && msg.includes("status") && msg.includes("does not exist")) return true;
+
+  return false;
 }
 
 function errorPayload(err: unknown) {
