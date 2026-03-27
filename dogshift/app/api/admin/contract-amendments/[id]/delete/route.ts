@@ -2,7 +2,11 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 import { getRequestAdminAccess } from "@/lib/adminAuth";
-import { contractAmendmentStatusColumnExists } from "@/lib/contractAmendments/statusSupport";
+import {
+  contractAmendmentStatusColumnExists,
+  legacyFindAmendmentById,
+  legacySoftDeleteAmendment,
+} from "@/lib/contractAmendments/statusSupport";
 import { prisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
@@ -46,13 +50,10 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     const supportsStatus = await contractAmendmentStatusColumnExists();
     console.info("[contract-amendment][status-preflight]", { route: "admin/contract-amendments/:id/delete", id, supportsStatus });
 
-    const current = await (prisma as any).contractAmendment.findUnique({
-      where: { id },
-      select: { id: true, isActive: true },
-    });
-    if (!current?.id) {
-      return NextResponse.json({ ok: false, error: "NOT_FOUND", message: "Avenant introuvable." }, { status: 404 });
-    }
+    const current = supportsStatus
+      ? await (prisma as any).contractAmendment.findUnique({ where: { id }, select: { id: true } })
+      : await legacyFindAmendmentById(id);
+    if (!current?.id) return NextResponse.json({ ok: false, error: "NOT_FOUND", message: "Avenant introuvable." }, { status: 404 });
 
     const acceptanceCount = await (prisma as any).sitterContractAmendmentAcceptance.count({
       where: { amendmentId: id },
@@ -77,14 +78,10 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
         data: { isActive: false, status: "DELETED", activatedAt: null },
       });
     } else {
-      amendment = await (prisma as any).contractAmendment.update({
-        where: { id },
-        data: {
-          isActive: false,
-          activatedAt: null,
-        },
-      });
-      amendment = { ...amendment, status: "DELETED" };
+      amendment = await legacySoftDeleteAmendment(id);
+      if (!amendment?.id) {
+        return NextResponse.json({ ok: false, error: "NOT_FOUND", message: "Avenant introuvable." }, { status: 404 });
+      }
       console.warn("[contract-amendment][delete][legacy-mode]", {
         amendmentId: id,
         acceptanceCount,

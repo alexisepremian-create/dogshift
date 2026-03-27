@@ -2,7 +2,11 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 import { getRequestAdminAccess } from "@/lib/adminAuth";
-import { getContractAmendmentStatusSupport } from "@/lib/contractAmendments/statusSupport";
+import {
+  getContractAmendmentStatusSupport,
+  legacyCreateAmendment,
+  legacyDeactivateAllActiveAmendments,
+} from "@/lib/contractAmendments/statusSupport";
 import { prisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
@@ -175,22 +179,10 @@ export async function POST(req: NextRequest) {
     } else {
       if (isActive) {
         console.info("[contract-amendment][write][legacy-mode]", { op: "updateMany_deactivate_current_active" });
-        await (prisma as any).contractAmendment.updateMany({
-          where: { isActive: true },
-          data: { isActive: false, activatedAt: null },
-        });
+        await legacyDeactivateAllActiveAmendments();
       }
       console.info("[contract-amendment][write][legacy-mode]", { op: "create_amendment", isActive });
-      amendment = await (prisma as any).contractAmendment.create({
-        data: {
-          title,
-          content,
-          version,
-          isActive,
-          activatedAt: isActive ? new Date() : null,
-        },
-      });
-      amendment = { ...amendment, status: isActive ? "ACTIVE" : "INACTIVE" };
+      amendment = await legacyCreateAmendment({ title, content, version, isActive });
       console.warn("[api][admin][contract-amendments][POST] legacy mode (status column missing)");
     }
 

@@ -2,7 +2,12 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 import { getRequestAdminAccess } from "@/lib/adminAuth";
-import { contractAmendmentStatusColumnExists } from "@/lib/contractAmendments/statusSupport";
+import {
+  contractAmendmentStatusColumnExists,
+  legacyDeactivateAllActiveAmendments,
+  legacyFindAmendmentById,
+  legacySetAmendmentActive,
+} from "@/lib/contractAmendments/statusSupport";
 import { prisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
@@ -63,15 +68,15 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       });
     } else {
       // Legacy DB (no status column): only manage isActive/activatedAt
-      await (prisma as any).contractAmendment.updateMany({
-        where: { isActive: true },
-        data: { isActive: false, activatedAt: null },
-      });
-      amendment = await (prisma as any).contractAmendment.update({
-        where: { id },
-        data: { isActive: true, activatedAt: new Date() },
-      });
-      amendment = { ...amendment, status: "ACTIVE" };
+      const current = await legacyFindAmendmentById(id);
+      if (!current?.id) {
+        return NextResponse.json({ ok: false, error: "NOT_FOUND", message: "Avenant introuvable." }, { status: 404 });
+      }
+      await legacyDeactivateAllActiveAmendments();
+      amendment = await legacySetAmendmentActive(id);
+      if (!amendment?.id) {
+        return NextResponse.json({ ok: false, error: "NOT_FOUND", message: "Avenant introuvable." }, { status: 404 });
+      }
       console.warn("[contract-amendment][activate][legacy-mode]", { amendmentId: id });
     }
 

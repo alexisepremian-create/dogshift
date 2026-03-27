@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { randomUUID } from "crypto";
 
 type StatusSupport = {
   supportsStatus: boolean;
@@ -54,5 +55,107 @@ export async function getContractAmendmentStatusSupport(): Promise<StatusSupport
 export async function contractAmendmentStatusColumnExists(): Promise<boolean> {
   const s = await getContractAmendmentStatusSupport();
   return s.supportsStatus;
+}
+
+type LegacyAmendmentRow = {
+  id: string;
+  title: string;
+  content: string;
+  version: string;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+  activatedAt: Date | null;
+};
+
+export async function legacyDeactivateAllActiveAmendments() {
+  await prisma.$executeRaw`
+    UPDATE "ContractAmendment"
+    SET "isActive" = false,
+        "activatedAt" = NULL,
+        "updatedAt" = NOW()
+    WHERE "isActive" = true
+  `;
+}
+
+export async function legacyCreateAmendment(args: {
+  title: string;
+  content: string;
+  version: string;
+  isActive: boolean;
+}) {
+  const id = randomUUID();
+  const rows = (await prisma.$queryRaw`
+    INSERT INTO "ContractAmendment" ("id", "title", "content", "version", "isActive", "activatedAt", "updatedAt")
+    VALUES (
+      ${id},
+      ${args.title},
+      ${args.content},
+      ${args.version},
+      ${args.isActive},
+      ${args.isActive ? prisma.$queryRaw`NOW()` : null},
+      NOW()
+    )
+    RETURNING "id", "title", "content", "version", "isActive", "createdAt", "updatedAt", "activatedAt"
+  `) as LegacyAmendmentRow[];
+
+  const row = rows?.[0];
+  if (!row?.id) throw new Error("legacyCreateAmendment: insert failed");
+  return { ...row, status: row.isActive ? "ACTIVE" : "INACTIVE" as const };
+}
+
+export async function legacySetAmendmentActive(id: string) {
+  const rows = (await prisma.$queryRaw`
+    UPDATE "ContractAmendment"
+    SET "isActive" = true,
+        "activatedAt" = NOW(),
+        "updatedAt" = NOW()
+    WHERE "id" = ${id}
+    RETURNING "id", "title", "content", "version", "isActive", "createdAt", "updatedAt", "activatedAt"
+  `) as LegacyAmendmentRow[];
+  const row = rows?.[0];
+  if (!row?.id) return null;
+  return { ...row, status: "ACTIVE" as const };
+}
+
+export async function legacySetAmendmentInactive(id: string) {
+  const rows = (await prisma.$queryRaw`
+    UPDATE "ContractAmendment"
+    SET "isActive" = false,
+        "activatedAt" = NULL,
+        "updatedAt" = NOW()
+    WHERE "id" = ${id}
+    RETURNING "id", "title", "content", "version", "isActive", "createdAt", "updatedAt", "activatedAt"
+  `) as LegacyAmendmentRow[];
+  const row = rows?.[0];
+  if (!row?.id) return null;
+  return { ...row, status: "INACTIVE" as const };
+}
+
+export async function legacySoftDeleteAmendment(id: string) {
+  // No status column in legacy DB; we tombstone by forcing inactive.
+  const rows = (await prisma.$queryRaw`
+    UPDATE "ContractAmendment"
+    SET "isActive" = false,
+        "activatedAt" = NULL,
+        "updatedAt" = NOW()
+    WHERE "id" = ${id}
+    RETURNING "id", "title", "content", "version", "isActive", "createdAt", "updatedAt", "activatedAt"
+  `) as LegacyAmendmentRow[];
+  const row = rows?.[0];
+  if (!row?.id) return null;
+  return { ...row, status: "DELETED" as const };
+}
+
+export async function legacyFindAmendmentById(id: string) {
+  const rows = (await prisma.$queryRaw`
+    SELECT "id", "title", "content", "version", "isActive", "createdAt", "updatedAt", "activatedAt"
+    FROM "ContractAmendment"
+    WHERE "id" = ${id}
+    LIMIT 1
+  `) as LegacyAmendmentRow[];
+  const row = rows?.[0];
+  if (!row?.id) return null;
+  return { ...row, status: row.isActive ? ("ACTIVE" as const) : ("INACTIVE" as const) };
 }
 

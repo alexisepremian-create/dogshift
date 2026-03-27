@@ -2,7 +2,11 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 import { getRequestAdminAccess } from "@/lib/adminAuth";
-import { contractAmendmentStatusColumnExists } from "@/lib/contractAmendments/statusSupport";
+import {
+  contractAmendmentStatusColumnExists,
+  legacyFindAmendmentById,
+  legacySetAmendmentInactive,
+} from "@/lib/contractAmendments/statusSupport";
 import { prisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
@@ -58,11 +62,14 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
         data: { isActive: false, status: "INACTIVE", activatedAt: null },
       });
     } else {
-      amendment = await (prisma as any).contractAmendment.update({
-        where: { id },
-        data: { isActive: false, activatedAt: null },
-      });
-      amendment = { ...amendment, status: "INACTIVE" };
+      const current = await legacyFindAmendmentById(id);
+      if (!current?.id) {
+        return NextResponse.json({ ok: false, error: "NOT_FOUND", message: "Avenant introuvable." }, { status: 404 });
+      }
+      amendment = await legacySetAmendmentInactive(id);
+      if (!amendment?.id) {
+        return NextResponse.json({ ok: false, error: "NOT_FOUND", message: "Avenant introuvable." }, { status: 404 });
+      }
       console.warn("[contract-amendment][deactivate][legacy-mode]", { amendmentId: id });
     }
 
