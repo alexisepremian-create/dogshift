@@ -73,6 +73,8 @@ type LegacyAmendmentRow = {
   activatedAt: Date | null;
 };
 
+export const LEGACY_SOFT_DELETED_PREFIX = "[[SOFT_DELETED_AT:";
+
 export async function legacyDeactivateAllActiveAmendments() {
   await legacyDeactivateAllActiveAmendmentsWithDb(prisma as any);
 }
@@ -165,11 +167,16 @@ export async function legacySetAmendmentInactive(id: string) {
 
 export async function legacySoftDeleteAmendment(id: string) {
   // No status column in legacy DB; we tombstone by forcing inactive.
+  const deletedMarker = `${LEGACY_SOFT_DELETED_PREFIX}${new Date().toISOString()}]]`;
   const rows = (await prisma.$queryRaw`
     UPDATE "ContractAmendment"
     SET "isActive" = false,
         "activatedAt" = NULL,
-        "updatedAt" = NOW()
+        "updatedAt" = NOW(),
+        "content" = CASE
+          WHEN position(${deletedMarker} in "content") = 1 THEN "content"
+          ELSE (${deletedMarker} || E'\n' || "content")
+        END
     WHERE "id" = ${id}
     RETURNING "id", "title", "content", "version", "isActive", "createdAt", "updatedAt", "activatedAt"
   `) as LegacyAmendmentRow[];

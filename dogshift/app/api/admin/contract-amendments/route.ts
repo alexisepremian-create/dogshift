@@ -4,6 +4,7 @@ import type { NextRequest } from "next/server";
 import { getRequestAdminAccess } from "@/lib/adminAuth";
 import {
   getContractAmendmentStatusSupport,
+  LEGACY_SOFT_DELETED_PREFIX,
   legacyCreateAmendment,
   legacyDeactivateAllActiveAmendments,
   legacyCreateAmendmentWithDb,
@@ -42,6 +43,7 @@ export async function GET(req: NextRequest) {
     let amendments: any[] = [];
     if (support.supportsStatus) {
       amendments = await (prisma as any).contractAmendment.findMany({
+        where: { status: { not: "DELETED" } },
         orderBy: [{ isActive: "desc" }, { createdAt: "desc" }],
         include: {
           acceptances: {
@@ -68,6 +70,7 @@ export async function GET(req: NextRequest) {
     } else {
       const legacyAmendments = await (prisma as any).contractAmendment.findMany({
         orderBy: [{ isActive: "desc" }, { createdAt: "desc" }],
+        where: { content: { not: { startsWith: LEGACY_SOFT_DELETED_PREFIX } } },
         select: {
           id: true,
           title: true,
