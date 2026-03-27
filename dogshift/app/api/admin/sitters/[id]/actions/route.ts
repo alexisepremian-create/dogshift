@@ -7,7 +7,7 @@ import { sendEmail } from "@/lib/email/sendEmail";
 import { prisma } from "@/lib/prisma";
 import {
   buildContractAccessUrl,
-  canGenerateContractAccessLink,
+  CURRENT_SITTER_CONTRACT_VERSION,
   contractAccessTokenMatches,
   contractAccessTokenFingerprint,
   contractAccessTokenTtlMs,
@@ -62,7 +62,7 @@ function parseAction(value: unknown): ActionType | null {
 
 function actionAllowed(action: ActionType, published: boolean, verificationStatus: VerificationStatus, lifecycleStatus: string) {
   if (action === "select") return lifecycleStatus === "application_received";
-  if (action === "generate_contract_link") return canGenerateContractAccessLink(lifecycleStatus as any);
+  if (action === "generate_contract_link") return true;
   if (action === "approve") return verificationStatus === VerificationStatus.pending || verificationStatus === VerificationStatus.rejected || verificationStatus === VerificationStatus.not_verified;
   if (action === "reject") return verificationStatus === VerificationStatus.pending || verificationStatus === VerificationStatus.approved;
   if (action === "suspend") return published && verificationStatus === VerificationStatus.approved;
@@ -111,6 +111,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
             verificationStatus: true,
             verificationNotes: true,
             lifecycleStatus: true,
+            contractVersion: true,
             contractAccessTokenIssuedAt: true,
             contractAccessTokenExpiresAt: true,
           },
@@ -128,6 +129,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
             verificationStatus: VerificationStatus;
             verificationNotes?: string | null;
             lifecycleStatus?: string | null;
+            contractVersion?: string | null;
             contractAccessTokenIssuedAt?: Date | null;
             contractAccessTokenExpiresAt?: Date | null;
           } | null;
@@ -179,16 +181,26 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       generatedContractToken = rawToken;
       generatedContractIssuedAt = issuedAt;
       generatedContractExpiresAt = expiresAt;
+      const issuedContractVersion = `${CURRENT_SITTER_CONTRACT_VERSION}-${generatedContractFingerprint}`;
 
-      data.lifecycleStatus = maxSitterLifecycleStatus(lifecycleStatus, "contract_to_sign");
+      // Always re-issue a fresh signature session regardless of previous state ("already sent"/signed).
+      data.lifecycleStatus = "contract_to_sign";
       if (!isAlreadyActivated) {
         data.published = false;
         data.publishedAt = null;
       }
       data.contractAccessTokenHash = hashContractAccessToken(rawToken, secret);
+      data.contractAccessTokenVersion = issuedContractVersion;
       data.contractAccessTokenIssuedAt = issuedAt;
       data.contractAccessTokenExpiresAt = expiresAt;
       data.contractAccessTokenUsedAt = null;
+      data.contractVersion = null;
+      data.contractAcceptedAt = null;
+      data.contractSignerName = null;
+      data.contractSignedAt = null;
+      data.contractSignatureValue = null;
+      data.contractSnapshot = null;
+      data.contractSignedPdfUrl = null;
 
       if (sitter.email) {
         const logoUrl = `${baseUrl.replace(/\/$/, "")}/dogshift-logo.png`;
@@ -264,6 +276,8 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
         contractAccessTokenIssuedAt: true,
         contractAccessTokenExpiresAt: true,
         contractAccessTokenHash: true,
+        contractAccessTokenVersion: true,
+        contractAccessTokenUsedAt: true,
       },
     });
 
@@ -276,12 +290,19 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       const okPersisted = contractAccessTokenMatches(updatedProfile.contractAccessTokenHash, generatedContractToken, secret);
       const sameIssuedAt = updatedProfile.contractAccessTokenIssuedAt instanceof Date && updatedProfile.contractAccessTokenIssuedAt.getTime() === generatedContractIssuedAt.getTime();
       const sameExpiresAt = updatedProfile.contractAccessTokenExpiresAt instanceof Date && updatedProfile.contractAccessTokenExpiresAt.getTime() === generatedContractExpiresAt.getTime();
-      if (!okPersisted || !sameIssuedAt || !sameExpiresAt) {
+      const expectedVersion = `${CURRENT_SITTER_CONTRACT_VERSION}-${generatedContractFingerprint}`;
+      const sameVersion =
+        typeof updatedProfile.contractAccessTokenVersion === "string" &&
+        updatedProfile.contractAccessTokenVersion === expectedVersion;
+      const usedCleared = updatedProfile.contractAccessTokenUsedAt == null;
+      if (!okPersisted || !sameIssuedAt || !sameExpiresAt || !sameVersion || !usedCleared) {
         console.error("[api][admin][sitters][actions] generated link not persisted as expected", {
           sitterProfileId: updatedProfile.id,
           okPersisted,
           sameIssuedAt,
           sameExpiresAt,
+          sameVersion,
+          usedCleared,
         });
         return NextResponse.json({ ok: false, error: "CONTRACT_LINK_PERSISTENCE_MISMATCH" }, { status: 500 });
       }
@@ -305,7 +326,28 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       });
 
       if (contractEmail) {
+        console.info("[contract-email][send][start]", {
+          route: "admin/sitters/actions/generate_contract_link",
+          sitterId: sitter.id,
+          sitterProfileId: updatedProfile.id,
+          to: contractEmail.to,
+          tokenFingerprint: generatedContractFingerprint,
+        });
         await sendEmail(contractEmail);
+        console.info("[contract-email][send][ok]", {
+          route: "admin/sitters/actions/generate_contract_link",
+          sitterId: sitter.id,
+          sitterProfileId: updatedProfile.id,
+          to: contractEmail.to,
+          tokenFingerprint: generatedContractFingerprint,
+        });
+      } else {
+        console.warn("[contract-email][send][skipped_no_recipient]", {
+          route: "admin/sitters/actions/generate_contract_link",
+          sitterId: sitter.id,
+          sitterProfileId: updatedProfile.id,
+          tokenFingerprint: generatedContractFingerprint,
+        });
       }
     }
 
