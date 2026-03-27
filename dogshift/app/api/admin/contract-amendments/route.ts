@@ -32,6 +32,7 @@ export async function GET(req: NextRequest) {
     }
 
     const supportsStatus = await contractAmendmentStatusColumnExists();
+    console.info("[contract-amendment][status-preflight]", { route: "admin/contract-amendments[GET]", supportsStatus });
     let amendments: any[] = [];
     if (supportsStatus) {
       amendments = await (prisma as any).contractAmendment.findMany({
@@ -149,6 +150,7 @@ export async function POST(req: NextRequest) {
     }
 
     const supportsStatus = await contractAmendmentStatusColumnExists();
+    console.info("[contract-amendment][status-preflight]", { route: "admin/contract-amendments[POST]", supportsStatus, isActive });
     let amendment: any;
     if (supportsStatus) {
       if (isActive) {

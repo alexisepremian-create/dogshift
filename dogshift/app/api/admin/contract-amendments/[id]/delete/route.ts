@@ -43,6 +43,9 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       return NextResponse.json({ ok: false, error: "INVALID_ID" }, { status: 400 });
     }
 
+    const supportsStatus = await contractAmendmentStatusColumnExists();
+    console.info("[contract-amendment][status-preflight]", { route: "admin/contract-amendments/:id/delete", id, supportsStatus });
+
     const current = await (prisma as any).contractAmendment.findUnique({
       where: { id },
       select: { id: true, isActive: true },
@@ -68,7 +71,6 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     }
 
     let amendment: any;
-    const supportsStatus = await contractAmendmentStatusColumnExists();
     if (supportsStatus) {
       amendment = await (prisma as any).contractAmendment.update({
         where: { id },

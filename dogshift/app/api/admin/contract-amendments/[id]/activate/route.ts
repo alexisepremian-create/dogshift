@@ -36,6 +36,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       return NextResponse.json({ ok: false, error: "INVALID_ID" }, { status: 400 });
     }
     const supportsStatus = await contractAmendmentStatusColumnExists();
+    console.info("[contract-amendment][status-preflight]", { route: "admin/contract-amendments/:id/activate", id, supportsStatus });
     let amendment: any;
 
     if (supportsStatus) {

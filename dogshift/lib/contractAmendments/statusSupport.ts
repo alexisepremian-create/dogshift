@@ -9,15 +9,16 @@ export async function contractAmendmentStatusColumnExists(): Promise<boolean> {
 
   try {
     const rows = (await prisma.$queryRaw`
-      SELECT 1
-      FROM information_schema.columns
-      WHERE table_schema = 'public'
-        AND lower(table_name) = lower('ContractAmendment')
-        AND column_name = 'status'
-      LIMIT 1
-    `) as Array<{ "?column?": number }> | Array<{ [k: string]: unknown }>;
+      SELECT EXISTS (
+        SELECT 1
+        FROM pg_attribute a
+        WHERE a.attrelid = to_regclass('public."ContractAmendment"')
+          AND a.attname = 'status'
+          AND a.attisdropped = false
+      ) AS "exists"
+    `) as Array<{ exists: boolean }>;
 
-    const exists = Array.isArray(rows) && rows.length > 0;
+    const exists = Boolean(rows?.[0]?.exists);
     cached = { value: exists, checkedAtMs: now };
     return exists;
   } catch (err) {
