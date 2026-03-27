@@ -129,9 +129,9 @@ export default function AdminContractAmendmentsClient() {
     setSuccess(null);
     try {
       const res = await fetch(`/api/admin/contract-amendments/${id}/activate`, { method: "POST" });
-      const payload = (await res.json().catch(() => null)) as { ok?: boolean } | null;
+      const payload = (await res.json().catch(() => null)) as { ok?: boolean; message?: string; error?: string } | null;
       if (!res.ok || !payload?.ok) {
-        setError("Impossible d’activer l’avenant.");
+        setError(payload?.message || `Impossible d’activer l’avenant${payload?.error ? ` (${payload.error})` : ""}.`);
         return;
       }
       setSuccess("Avenant activé.");
@@ -150,9 +150,9 @@ export default function AdminContractAmendmentsClient() {
     setSuccess(null);
     try {
       const res = await fetch(`/api/admin/contract-amendments/${id}/deactivate`, { method: "POST" });
-      const payload = (await res.json().catch(() => null)) as { ok?: boolean } | null;
+      const payload = (await res.json().catch(() => null)) as { ok?: boolean; message?: string; error?: string } | null;
       if (!res.ok || !payload?.ok) {
-        setError("Impossible de désactiver l’avenant.");
+        setError(payload?.message || `Impossible de désactiver l’avenant${payload?.error ? ` (${payload.error})` : ""}.`);
         return;
       }
       setSuccess("Avenant désactivé.");
@@ -171,12 +171,12 @@ export default function AdminContractAmendmentsClient() {
     setSuccess(null);
     try {
       const res = await fetch(`/api/admin/contract-amendments/${id}/delete`, { method: "POST" });
-      const payload = (await res.json().catch(() => null)) as { ok?: boolean; error?: string } | null;
+      const payload = (await res.json().catch(() => null)) as { ok?: boolean; error?: string; message?: string } | null;
       if (!res.ok || !payload?.ok) {
         if (payload?.error === "AMENDMENT_HAS_SIGNATURES") {
           setError("Suppression bloquée: cet avenant a deja des signatures (active PILOT_MODE pour bypass).");
         } else {
-          setError("Impossible de supprimer l’avenant.");
+          setError(payload?.message || `Impossible de supprimer l’avenant${payload?.error ? ` (${payload.error})` : ""}.`);
         }
         return;
       }

@@ -6,6 +6,30 @@ import { prisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
 
+function hasMissingStatusColumnError(err: unknown) {
+  const e = err as { code?: string; meta?: { column_name?: string; column?: string; target?: string | string[] } };
+  if (e?.code !== "P2022") return false;
+  const column = String(e?.meta?.column_name ?? e?.meta?.column ?? e?.meta?.target ?? "").toLowerCase();
+  return column.includes("status");
+}
+
+function errorPayload(err: unknown) {
+  const e = err as {
+    name?: string;
+    code?: string;
+    message?: string;
+    stack?: string;
+    meta?: unknown;
+  };
+  return {
+    name: e?.name ?? null,
+    code: e?.code ?? null,
+    message: e?.message ?? null,
+    meta: e?.meta ?? null,
+    stack: e?.stack ?? null,
+  };
+}
+
 export async function POST(req: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
     const access = await getRequestAdminAccess(req);
@@ -17,26 +41,56 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     if (!id) {
       return NextResponse.json({ ok: false, error: "INVALID_ID" }, { status: 400 });
     }
-    const current = await (prisma as any).contractAmendment.findUnique({
-      where: { id },
-      select: { id: true, status: true },
-    });
-    if (!current?.id) {
-      return NextResponse.json({ ok: false, error: "NOT_FOUND" }, { status: 404 });
-    }
-    if (current.status === "DELETED") {
-      return NextResponse.json({ ok: false, error: "DELETED_AMENDMENT" }, { status: 409 });
+    let amendment: any;
+    try {
+      const current = await (prisma as any).contractAmendment.findUnique({
+        where: { id },
+        select: { id: true, status: true },
+      });
+      if (!current?.id) {
+        return NextResponse.json({ ok: false, error: "NOT_FOUND", message: "Avenant introuvable." }, { status: 404 });
+      }
+      if (current.status === "DELETED") {
+        return NextResponse.json(
+          { ok: false, error: "DELETED_AMENDMENT", message: "Avenant deja supprime; desactivation impossible." },
+          { status: 409 },
+        );
+      }
+
+      amendment = await (prisma as any).contractAmendment.update({
+        where: { id },
+        data: { isActive: false, status: "INACTIVE", activatedAt: null },
+      });
+    } catch (err) {
+      if (!hasMissingStatusColumnError(err)) throw err;
+      // Legacy DB fallback (status column not migrated yet)
+      amendment = await (prisma as any).contractAmendment.update({
+        where: { id },
+        data: { isActive: false, activatedAt: null },
+      });
+      amendment = { ...amendment, status: "INACTIVE" };
+      console.warn("[contract-amendment][deactivate][legacy-fallback]", { amendmentId: id });
     }
 
-    const amendment = await (prisma as any).contractAmendment.update({
-      where: { id },
-      data: { isActive: false, status: "INACTIVE", activatedAt: null },
+    console.info("[contract-amendment][deactivate][ok]", {
+      amendmentId: id,
+      nextStatus: "INACTIVE",
+      isActive: false,
     });
 
     return NextResponse.json({ ok: true, amendment });
   } catch (err) {
-    console.error("[api][admin][contract-amendments][deactivate][POST] error", err);
-    return NextResponse.json({ ok: false, error: "INTERNAL_ERROR" }, { status: 500 });
+    const detail = errorPayload(err);
+    console.error("[api][admin][contract-amendments][deactivate][POST] error", detail);
+    return NextResponse.json(
+      {
+        ok: false,
+        error: "INTERNAL_ERROR",
+        message: detail.message ?? "Erreur serveur durant la desactivation.",
+        code: detail.code ?? null,
+      },
+      { status: 500 },
+    );
   }
 }
 

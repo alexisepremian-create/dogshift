@@ -36,21 +36,49 @@ export function isContractVersionAtLeast(current: unknown, minimum: unknown) {
   return compareContractVersions(current, minimum) >= 0;
 }
 
+function hasMissingStatusColumnError(err: unknown) {
+  const e = err as { code?: string; meta?: { column_name?: string; column?: string; target?: string | string[] } };
+  if (e?.code !== "P2022") return false;
+  const column = String(e?.meta?.column_name ?? e?.meta?.column ?? e?.meta?.target ?? "").toLowerCase();
+  return column.includes("status");
+}
+
 export async function getActiveContractAmendment(): Promise<ActiveContractAmendment | null> {
-  const amendment = await (prisma as any).contractAmendment.findFirst({
-    where: { status: "ACTIVE", isActive: true },
-    orderBy: [{ activatedAt: "desc" }, { createdAt: "desc" }],
-    select: {
-      id: true,
-      title: true,
-      content: true,
-      version: true,
-      createdAt: true,
-      activatedAt: true,
-      status: true,
-      isActive: true,
-    },
-  });
+  let amendment: any;
+  try {
+    amendment = await (prisma as any).contractAmendment.findFirst({
+      where: { status: "ACTIVE", isActive: true },
+      orderBy: [{ activatedAt: "desc" }, { createdAt: "desc" }],
+      select: {
+        id: true,
+        title: true,
+        content: true,
+        version: true,
+        createdAt: true,
+        activatedAt: true,
+        status: true,
+        isActive: true,
+      },
+    });
+  } catch (err) {
+    if (!hasMissingStatusColumnError(err)) throw err;
+    amendment = await (prisma as any).contractAmendment.findFirst({
+      where: { isActive: true },
+      orderBy: [{ activatedAt: "desc" }, { createdAt: "desc" }],
+      select: {
+        id: true,
+        title: true,
+        content: true,
+        version: true,
+        createdAt: true,
+        activatedAt: true,
+        isActive: true,
+      },
+    });
+    if (amendment?.id) {
+      amendment = { ...amendment, status: "ACTIVE" };
+    }
+  }
 
   if (!amendment?.id) return null;
 
