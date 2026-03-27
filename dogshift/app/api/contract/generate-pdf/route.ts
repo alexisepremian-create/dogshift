@@ -5,6 +5,7 @@ import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from "pdf
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
+import { formatSwissDateTimeHuman } from "@/lib/datetime/formatSwissDateTime";
 import { prisma } from "@/lib/prisma";
 import { presignGetObject, presignPutObject } from "@/lib/r2";
 
@@ -22,15 +23,7 @@ const MARGIN = 54;
 const FOOTER_MIN_CLEARANCE = 76;
 
 function formatSignedAtFr(iso: string) {
-  const dt = new Date(iso);
-  if (!(dt instanceof Date) || Number.isNaN(dt.getTime())) return iso;
-  return new Intl.DateTimeFormat("fr-CH", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(dt);
+  return formatSwissDateTimeHuman(iso);
 }
 
 async function tryLoadLogoPngBytes(): Promise<Uint8Array | null> {

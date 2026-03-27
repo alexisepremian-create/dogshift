@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 
+import { formatSwissDateTimeHuman } from "@/lib/datetime/formatSwissDateTime";
 import PageLoader from "@/components/ui/PageLoader";
 
 type ContractPayload = {
@@ -45,15 +46,7 @@ export default function SecureContractSigningPage() {
   const [pdfError, setPdfError] = useState<string | null>(null);
 
   function formatSignedAtHumanFrCh(iso: string) {
-    const dt = new Date(iso);
-    if (!(dt instanceof Date) || Number.isNaN(dt.getTime())) return iso;
-    return new Intl.DateTimeFormat("fr-CH", {
-      day: "numeric",
-      month: "long",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    }).format(dt);
+    return formatSwissDateTimeHuman(iso);
   }
 
   useEffect(() => {

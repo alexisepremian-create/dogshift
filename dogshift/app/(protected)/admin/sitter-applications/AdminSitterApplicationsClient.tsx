@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import AdminNotesPanel from "@/components/admin/AdminNotesPanel";
+import { formatSwissDateTimeCompact, formatSwissDateTimeHuman } from "@/lib/datetime/formatSwissDateTime";
 import type { SitterLifecycleStatus } from "@/lib/sitterContract";
 
 type AppStatus = "PENDING" | "CONTACTED" | "ACCEPTED" | "ACTIVATED" | "REJECTED";
@@ -88,29 +89,11 @@ function statusTone(status: AppStatus) {
 }
 
 function formatFrCh(iso: string) {
-  const dt = new Date(iso);
-  if (!(dt instanceof Date) || Number.isNaN(dt.getTime())) return iso;
-  return new Intl.DateTimeFormat("fr-CH", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  })
-    .format(dt)
-    .replaceAll(".", "-");
+  return formatSwissDateTimeCompact(iso);
 }
 
 function formatSignedAtHumanFrCh(iso: string) {
-  const dt = new Date(iso);
-  if (!(dt instanceof Date) || Number.isNaN(dt.getTime())) return iso;
-  return new Intl.DateTimeFormat("fr-CH", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(dt);
+  return formatSwissDateTimeHuman(iso);
 }
 
 export default function AdminSitterApplicationsClient({ adminCode }: { adminCode?: string }) {
