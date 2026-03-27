@@ -134,6 +134,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    console.info("[CREATE AMENDMENT ROUTE HIT]");
     const access = await getRequestAdminAccess(req);
     if (!access.isAdmin) {
       return NextResponse.json({ ok: false, error: "FORBIDDEN" }, { status: 403 });
