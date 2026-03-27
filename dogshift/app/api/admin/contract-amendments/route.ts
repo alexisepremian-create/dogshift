@@ -6,6 +6,8 @@ import {
   getContractAmendmentStatusSupport,
   legacyCreateAmendment,
   legacyDeactivateAllActiveAmendments,
+  legacyCreateAmendmentWithDb,
+  legacyDeactivateAllActiveAmendmentsWithDb,
 } from "@/lib/contractAmendments/statusSupport";
 import { prisma } from "@/lib/prisma";
 
@@ -177,12 +179,16 @@ export async function POST(req: NextRequest) {
         },
       });
     } else {
+      console.info("[contract-amendment][write][legacy-mode]", { op: "create_flow", isActive, transactional: isActive });
       if (isActive) {
-        console.info("[contract-amendment][write][legacy-mode]", { op: "updateMany_deactivate_current_active" });
-        await legacyDeactivateAllActiveAmendments();
+        amendment = await prisma.$transaction(async (tx) => {
+          await legacyDeactivateAllActiveAmendmentsWithDb(tx as any);
+          return await legacyCreateAmendmentWithDb(tx as any, { title, content, version, isActive });
+        });
+      } else {
+        console.info("[contract-amendment][write][legacy-mode]", { op: "create_amendment", isActive });
+        amendment = await legacyCreateAmendmentWithDb(prisma as any, { title, content, version, isActive });
       }
-      console.info("[contract-amendment][write][legacy-mode]", { op: "create_amendment", isActive });
-      amendment = await legacyCreateAmendment({ title, content, version, isActive });
       console.warn("[api][admin][contract-amendments][POST] legacy mode (status column missing)");
     }
 

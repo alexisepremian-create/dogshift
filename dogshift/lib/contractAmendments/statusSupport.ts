@@ -1,6 +1,11 @@
 import { prisma } from "@/lib/prisma";
 import { randomUUID } from "crypto";
 
+type DbClient = {
+  $executeRawUnsafe: (query: string, ...values: any[]) => Promise<number>;
+  $queryRawUnsafe: (query: string, ...values: any[]) => Promise<any>;
+};
+
 type StatusSupport = {
   supportsStatus: boolean;
   pgAttributeExists: boolean;
@@ -69,13 +74,14 @@ type LegacyAmendmentRow = {
 };
 
 export async function legacyDeactivateAllActiveAmendments() {
-  await prisma.$executeRaw`
-    UPDATE "ContractAmendment"
-    SET "isActive" = false,
-        "activatedAt" = NULL,
-        "updatedAt" = NOW()
-    WHERE "isActive" = true
-  `;
+  await legacyDeactivateAllActiveAmendmentsWithDb(prisma as any);
+}
+
+export async function legacyDeactivateAllActiveAmendmentsWithDb(db: DbClient) {
+  const sql =
+    'UPDATE "ContractAmendment" SET "isActive" = false, "activatedAt" = NULL, "updatedAt" = NOW() WHERE "isActive" = true';
+  console.info("[contract-amendment][legacy-sql]", { op: "deactivate_all_active", sql });
+  await db.$executeRawUnsafe(sql);
 }
 
 export async function legacyCreateAmendment(args: {
@@ -84,20 +90,45 @@ export async function legacyCreateAmendment(args: {
   version: string;
   isActive: boolean;
 }) {
+  return legacyCreateAmendmentWithDb(prisma as any, args);
+}
+
+export async function legacyCreateAmendmentWithDb(
+  db: DbClient,
+  args: { title: string; content: string; version: string; isActive: boolean },
+) {
   const id = randomUUID();
-  const rows = (await prisma.$queryRaw`
-    INSERT INTO "ContractAmendment" ("id", "title", "content", "version", "isActive", "activatedAt", "updatedAt")
-    VALUES (
-      ${id},
-      ${args.title},
-      ${args.content},
-      ${args.version},
-      ${args.isActive},
-      ${args.isActive ? prisma.$queryRaw`NOW()` : null},
-      NOW()
-    )
-    RETURNING "id", "title", "content", "version", "isActive", "createdAt", "updatedAt", "activatedAt"
-  `) as LegacyAmendmentRow[];
+  const sql =
+    'INSERT INTO "ContractAmendment" ("id","title","content","version","isActive","activatedAt","updatedAt") ' +
+    "VALUES ($1,$2,$3,$4,$5,CASE WHEN $5 THEN NOW() ELSE NULL END,NOW()) " +
+    'RETURNING "id","title","content","version","isActive","createdAt","updatedAt","activatedAt"';
+  const params = [id, args.title, args.content, args.version, args.isActive];
+  console.info("[contract-amendment][legacy-sql]", {
+    op: "create_amendment",
+    sql,
+    params: {
+      id,
+      titleLen: args.title.length,
+      contentLen: args.content.length,
+      version: args.version,
+      isActive: args.isActive,
+    },
+  });
+  let rows: LegacyAmendmentRow[];
+  try {
+    rows = (await db.$queryRawUnsafe(sql, ...params)) as LegacyAmendmentRow[];
+  } catch (err) {
+    console.error("[contract-amendment][legacy-sql][error]", {
+      op: "create_amendment",
+      message: (err as any)?.message ?? null,
+      code: (err as any)?.code ?? null,
+      meta: (err as any)?.meta ?? null,
+      sql,
+      version: args.version,
+      isActive: args.isActive,
+    });
+    throw err;
+  }
 
   const row = rows?.[0];
   if (!row?.id) throw new Error("legacyCreateAmendment: insert failed");
