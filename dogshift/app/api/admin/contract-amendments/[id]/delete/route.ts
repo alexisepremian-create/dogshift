@@ -2,16 +2,10 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 import { getRequestAdminAccess } from "@/lib/adminAuth";
+import { contractAmendmentStatusColumnExists } from "@/lib/contractAmendments/statusSupport";
 import { prisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
-
-function hasMissingStatusColumnError(err: unknown) {
-  const e = err as { code?: string; meta?: { column_name?: string; column?: string; target?: string | string[] } };
-  if (e?.code !== "P2022") return false;
-  const column = String(e?.meta?.column_name ?? e?.meta?.column ?? e?.meta?.target ?? "").toLowerCase();
-  return column.includes("status");
-}
 
 function errorPayload(err: unknown) {
   const e = err as {
@@ -74,14 +68,13 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     }
 
     let amendment: any;
-    try {
+    const supportsStatus = await contractAmendmentStatusColumnExists();
+    if (supportsStatus) {
       amendment = await (prisma as any).contractAmendment.update({
         where: { id },
         data: { isActive: false, status: "DELETED", activatedAt: null },
       });
-    } catch (err) {
-      if (!hasMissingStatusColumnError(err)) throw err;
-      // Legacy DB fallback (status column not migrated yet)
+    } else {
       amendment = await (prisma as any).contractAmendment.update({
         where: { id },
         data: {
@@ -90,7 +83,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
         },
       });
       amendment = { ...amendment, status: "DELETED" };
-      console.warn("[contract-amendment][delete][legacy-fallback]", {
+      console.warn("[contract-amendment][delete][legacy-mode]", {
         amendmentId: id,
         acceptanceCount,
         pilotModeBypass: bypass,

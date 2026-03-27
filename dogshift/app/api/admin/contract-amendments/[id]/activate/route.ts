@@ -2,16 +2,10 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 import { getRequestAdminAccess } from "@/lib/adminAuth";
+import { contractAmendmentStatusColumnExists } from "@/lib/contractAmendments/statusSupport";
 import { prisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
-
-function hasMissingStatusColumnError(err: unknown) {
-  const e = err as { code?: string; meta?: { column_name?: string; column?: string; target?: string | string[] } };
-  if (e?.code !== "P2022") return false;
-  const column = String(e?.meta?.column_name ?? e?.meta?.column ?? e?.meta?.target ?? "").toLowerCase();
-  return column.includes("status");
-}
 
 function errorPayload(err: unknown) {
   const e = err as {
@@ -41,8 +35,10 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     if (!id) {
       return NextResponse.json({ ok: false, error: "INVALID_ID" }, { status: 400 });
     }
+    const supportsStatus = await contractAmendmentStatusColumnExists();
     let amendment: any;
-    try {
+
+    if (supportsStatus) {
       const current = await (prisma as any).contractAmendment.findUnique({
         where: { id },
         select: { id: true, status: true },
@@ -64,9 +60,8 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
         where: { id },
         data: { isActive: true, status: "ACTIVE", activatedAt: new Date() },
       });
-    } catch (err) {
-      if (!hasMissingStatusColumnError(err)) throw err;
-      // Legacy DB fallback (status column not migrated yet)
+    } else {
+      // Legacy DB (no status column): only manage isActive/activatedAt
       await (prisma as any).contractAmendment.updateMany({
         where: { isActive: true },
         data: { isActive: false, activatedAt: null },
@@ -76,7 +71,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
         data: { isActive: true, activatedAt: new Date() },
       });
       amendment = { ...amendment, status: "ACTIVE" };
-      console.warn("[contract-amendment][activate][legacy-fallback]", { amendmentId: id });
+      console.warn("[contract-amendment][activate][legacy-mode]", { amendmentId: id });
     }
 
     console.info("[contract-amendment][activate][ok]", {

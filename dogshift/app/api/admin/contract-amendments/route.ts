@@ -2,31 +2,10 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 import { getRequestAdminAccess } from "@/lib/adminAuth";
+import { contractAmendmentStatusColumnExists } from "@/lib/contractAmendments/statusSupport";
 import { prisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
-
-function hasMissingStatusColumnError(err: unknown) {
-  const e = err as {
-    code?: string;
-    message?: string;
-    meta?: { column_name?: string; column?: string; target?: string | string[] };
-  };
-  const msg = String(e?.message ?? "").toLowerCase();
-  const metaColumn = String(e?.meta?.column_name ?? e?.meta?.column ?? e?.meta?.target ?? "").toLowerCase();
-
-  // Prisma P2022 (column does not exist)
-  if (e?.code === "P2022" && metaColumn.includes("status")) return true;
-
-  // Some deployments surface a raw DB error message without Prisma code/meta.
-  // Examples:
-  // - "ContractAmendment.status does not exist in the current database"
-  // - "column \"status\" does not exist"
-  if (msg.includes("contractamendment.status")) return true;
-  if (msg.includes("column") && msg.includes("status") && msg.includes("does not exist")) return true;
-
-  return false;
-}
 
 function errorPayload(err: unknown) {
   const e = err as {
@@ -52,8 +31,9 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ ok: false, error: "FORBIDDEN" }, { status: 403 });
     }
 
+    const supportsStatus = await contractAmendmentStatusColumnExists();
     let amendments: any[] = [];
-    try {
+    if (supportsStatus) {
       amendments = await (prisma as any).contractAmendment.findMany({
         orderBy: [{ isActive: "desc" }, { createdAt: "desc" }],
         include: {
@@ -78,11 +58,7 @@ export async function GET(req: NextRequest) {
           },
         },
       });
-    } catch (err) {
-      if (!hasMissingStatusColumnError(err)) {
-        throw err;
-      }
-      // Backward compatibility when DB migration for status is not yet applied.
+    } else {
       const legacyAmendments = await (prisma as any).contractAmendment.findMany({
         orderBy: [{ isActive: "desc" }, { createdAt: "desc" }],
         select: {
@@ -118,7 +94,7 @@ export async function GET(req: NextRequest) {
         ...a,
         status: a?.isActive ? "ACTIVE" : "INACTIVE",
       }));
-      console.warn("[api][admin][contract-amendments][GET] legacy fallback used (status column missing)");
+      console.warn("[api][admin][contract-amendments][GET] legacy mode (status column missing)");
     }
 
     const sitters = await prisma.user.findMany({
@@ -172,15 +148,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, error: "INVALID_INPUT" }, { status: 400 });
     }
 
+    const supportsStatus = await contractAmendmentStatusColumnExists();
     let amendment: any;
-    try {
+    if (supportsStatus) {
       if (isActive) {
         await (prisma as any).contractAmendment.updateMany({
           where: { status: "ACTIVE" },
           data: { isActive: false, status: "INACTIVE", activatedAt: null },
         });
       }
-
       amendment = await (prisma as any).contractAmendment.create({
         data: {
           title,
@@ -191,11 +167,7 @@ export async function POST(req: NextRequest) {
           activatedAt: isActive ? new Date() : null,
         },
       });
-    } catch (err) {
-      if (!hasMissingStatusColumnError(err)) {
-        throw err;
-      }
-      // Backward compatibility when DB migration for status is not yet applied.
+    } else {
       if (isActive) {
         await (prisma as any).contractAmendment.updateMany({
           where: { isActive: true },
@@ -212,7 +184,7 @@ export async function POST(req: NextRequest) {
         },
       });
       amendment = { ...amendment, status: isActive ? "ACTIVE" : "INACTIVE" };
-      console.warn("[api][admin][contract-amendments][POST] legacy fallback used (status column missing)");
+      console.warn("[api][admin][contract-amendments][POST] legacy mode (status column missing)");
     }
 
     return NextResponse.json({ ok: true, amendment });
