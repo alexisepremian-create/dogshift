@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { BarChart3, CalendarDays, FileText, LayoutDashboard, LogOut, ScrollText, Settings, ShieldAlert, Users } from "lucide-react";
+import { BarChart3, CalendarDays, FileText, LayoutDashboard, LogOut, ReceiptText, ScrollText, Settings, ShieldAlert, Users } from "lucide-react";
 import { type ReactNode, useState } from "react";
 
 const navItems = [
@@ -10,6 +10,7 @@ const navItems = [
   { href: "/admin/sitters/applications", label: "Candidatures", icon: Users },
   { href: "/admin/sitters/active", label: "Dogsitters actifs", icon: Users },
   { href: "/admin/avenants", label: "Avenants", icon: ScrollText },
+  { href: "/admin/couts-abonnements", label: "Coûts & abonnements", icon: ReceiptText },
   { href: "/admin/owners", label: "Propriétaires", icon: FileText },
   { href: "/admin/bookings", label: "Réservations", icon: CalendarDays },
   { href: "/admin/incidents", label: "Signalements", icon: ShieldAlert },

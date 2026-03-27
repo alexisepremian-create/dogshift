@@ -89,6 +89,20 @@ enum ContractAmendmentStatus {
   DELETED
 }
 
+enum ServiceCostType {
+  hosting
+  db
+  payment
+  email
+  auth
+  other
+}
+
+enum ServiceCostBillingType {
+  fixed
+  variable
+}
+
 model User {
   id              String    @id @default(cuid())
   clerkUserId     String?   @unique
@@ -348,6 +362,25 @@ model ContractAmendment {
 
   @@index([status, createdAt])
   @@index([isActive, createdAt])
+  @@index([createdAt])
+}
+
+model ServiceCost {
+  id String @id @default(cuid())
+
+  name      String
+  type      ServiceCostType
+  costType  ServiceCostBillingType
+  monthlyCost Float
+  notes     String?
+  active    Boolean @default(true)
+  estimatedCostPerBooking Float?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([active, createdAt])
+  @@index([type, createdAt])
   @@index([createdAt])
 }
 
