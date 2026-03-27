@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 import { getRequestAdminAccess } from "@/lib/adminAuth";
-import { contractAmendmentStatusColumnExists } from "@/lib/contractAmendments/statusSupport";
+import { getContractAmendmentStatusSupport } from "@/lib/contractAmendments/statusSupport";
 import { prisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
@@ -31,10 +31,10 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ ok: false, error: "FORBIDDEN" }, { status: 403 });
     }
 
-    const supportsStatus = await contractAmendmentStatusColumnExists();
-    console.info("[contract-amendment][status-preflight]", { route: "admin/contract-amendments[GET]", supportsStatus });
+    const support = await getContractAmendmentStatusSupport();
+    console.info("[contract-amendment][status-preflight]", { route: "admin/contract-amendments[GET]", ...support });
     let amendments: any[] = [];
-    if (supportsStatus) {
+    if (support.supportsStatus) {
       amendments = await (prisma as any).contractAmendment.findMany({
         orderBy: [{ isActive: "desc" }, { createdAt: "desc" }],
         include: {
@@ -150,16 +150,18 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, error: "INVALID_INPUT" }, { status: 400 });
     }
 
-    const supportsStatus = await contractAmendmentStatusColumnExists();
-    console.info("[contract-amendment][status-preflight]", { route: "admin/contract-amendments[POST]", supportsStatus, isActive });
+    const support = await getContractAmendmentStatusSupport();
+    console.info("[contract-amendment][status-preflight]", { route: "admin/contract-amendments[POST]", ...support, isActive });
     let amendment: any;
-    if (supportsStatus) {
+    if (support.supportsStatus) {
       if (isActive) {
+        console.info("[contract-amendment][write][status-mode]", { op: "updateMany_deactivate_current_active" });
         await (prisma as any).contractAmendment.updateMany({
           where: { status: "ACTIVE" },
           data: { isActive: false, status: "INACTIVE", activatedAt: null },
         });
       }
+      console.info("[contract-amendment][write][status-mode]", { op: "create_amendment", isActive });
       amendment = await (prisma as any).contractAmendment.create({
         data: {
           title,
@@ -172,11 +174,13 @@ export async function POST(req: NextRequest) {
       });
     } else {
       if (isActive) {
+        console.info("[contract-amendment][write][legacy-mode]", { op: "updateMany_deactivate_current_active" });
         await (prisma as any).contractAmendment.updateMany({
           where: { isActive: true },
           data: { isActive: false, activatedAt: null },
         });
       }
+      console.info("[contract-amendment][write][legacy-mode]", { op: "create_amendment", isActive });
       amendment = await (prisma as any).contractAmendment.create({
         data: {
           title,
