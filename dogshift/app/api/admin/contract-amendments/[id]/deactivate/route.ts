@@ -28,18 +28,15 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       return NextResponse.json({ ok: false, error: "DELETED_AMENDMENT" }, { status: 409 });
     }
 
-    await (prisma as any).contractAmendment.updateMany({
-      where: { status: "ACTIVE" },
-      data: { isActive: false, status: "INACTIVE", activatedAt: null },
-    });
     const amendment = await (prisma as any).contractAmendment.update({
       where: { id },
-      data: { isActive: true, status: "ACTIVE", activatedAt: new Date() },
+      data: { isActive: false, status: "INACTIVE", activatedAt: null },
     });
 
     return NextResponse.json({ ok: true, amendment });
   } catch (err) {
-    console.error("[api][admin][contract-amendments][activate][POST] error", err);
+    console.error("[api][admin][contract-amendments][deactivate][POST] error", err);
     return NextResponse.json({ ok: false, error: "INTERNAL_ERROR" }, { status: 500 });
   }
 }
+

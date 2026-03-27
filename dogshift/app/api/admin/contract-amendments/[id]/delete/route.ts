@@ -6,6 +6,11 @@ import { prisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
 
+function pilotModeBypassEnabled() {
+  const raw = (process.env.PILOT_MODE || "").trim().toLowerCase();
+  return raw === "1" || raw === "true" || raw === "yes" || raw === "on";
+}
+
 export async function POST(req: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
     const access = await getRequestAdminAccess(req);
@@ -17,29 +22,30 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     if (!id) {
       return NextResponse.json({ ok: false, error: "INVALID_ID" }, { status: 400 });
     }
-    const current = await (prisma as any).contractAmendment.findUnique({
-      where: { id },
-      select: { id: true, status: true },
+
+    const acceptanceCount = await (prisma as any).sitterContractAmendmentAcceptance.count({
+      where: { amendmentId: id },
     });
-    if (!current?.id) {
-      return NextResponse.json({ ok: false, error: "NOT_FOUND" }, { status: 404 });
-    }
-    if (current.status === "DELETED") {
-      return NextResponse.json({ ok: false, error: "DELETED_AMENDMENT" }, { status: 409 });
+    const bypass = pilotModeBypassEnabled();
+    if (acceptanceCount > 0 && !bypass) {
+      return NextResponse.json({ ok: false, error: "AMENDMENT_HAS_SIGNATURES" }, { status: 409 });
     }
 
-    await (prisma as any).contractAmendment.updateMany({
-      where: { status: "ACTIVE" },
-      data: { isActive: false, status: "INACTIVE", activatedAt: null },
-    });
     const amendment = await (prisma as any).contractAmendment.update({
       where: { id },
-      data: { isActive: true, status: "ACTIVE", activatedAt: new Date() },
+      data: { isActive: false, status: "DELETED", activatedAt: null },
+    });
+
+    console.info("[contract-amendment][delete][soft]", {
+      amendmentId: id,
+      acceptanceCount,
+      pilotModeBypass: bypass,
     });
 
     return NextResponse.json({ ok: true, amendment });
   } catch (err) {
-    console.error("[api][admin][contract-amendments][activate][POST] error", err);
+    console.error("[api][admin][contract-amendments][delete][POST] error", err);
     return NextResponse.json({ ok: false, error: "INTERNAL_ERROR" }, { status: 500 });
   }
 }
+

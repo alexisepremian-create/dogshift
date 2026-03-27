@@ -7,6 +7,7 @@ type Amendment = {
   title: string;
   content: string;
   version: string;
+  status: "ACTIVE" | "INACTIVE" | "DELETED";
   isActive: boolean;
   createdAt: string;
   activatedAt: string | null;
@@ -60,6 +61,7 @@ export default function AdminContractAmendmentsClient() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [rowActionId, setRowActionId] = useState<string | null>(null);
 
   async function load() {
     setLoading(true);
@@ -85,7 +87,10 @@ export default function AdminContractAmendmentsClient() {
     void load();
   }, []);
 
-  const activeAmendment = useMemo(() => amendments.find((item) => item.isActive) ?? null, [amendments]);
+  const activeAmendment = useMemo(
+    () => amendments.find((item) => item.status === "ACTIVE" && item.isActive) ?? null,
+    [amendments],
+  );
 
   async function createAmendment() {
     if (submitting) return;
@@ -118,6 +123,8 @@ export default function AdminContractAmendmentsClient() {
   }
 
   async function activateAmendment(id: string) {
+    if (rowActionId) return;
+    setRowActionId(id);
     setError(null);
     setSuccess(null);
     try {
@@ -131,7 +138,77 @@ export default function AdminContractAmendmentsClient() {
       await load();
     } catch {
       setError("Impossible d’activer l’avenant.");
+    } finally {
+      setRowActionId(null);
     }
+  }
+
+  async function deactivateAmendment(id: string) {
+    if (rowActionId) return;
+    setRowActionId(id);
+    setError(null);
+    setSuccess(null);
+    try {
+      const res = await fetch(`/api/admin/contract-amendments/${id}/deactivate`, { method: "POST" });
+      const payload = (await res.json().catch(() => null)) as { ok?: boolean } | null;
+      if (!res.ok || !payload?.ok) {
+        setError("Impossible de désactiver l’avenant.");
+        return;
+      }
+      setSuccess("Avenant désactivé.");
+      await load();
+    } catch {
+      setError("Impossible de désactiver l’avenant.");
+    } finally {
+      setRowActionId(null);
+    }
+  }
+
+  async function deleteAmendment(id: string) {
+    if (rowActionId) return;
+    setRowActionId(id);
+    setError(null);
+    setSuccess(null);
+    try {
+      const res = await fetch(`/api/admin/contract-amendments/${id}/delete`, { method: "POST" });
+      const payload = (await res.json().catch(() => null)) as { ok?: boolean; error?: string } | null;
+      if (!res.ok || !payload?.ok) {
+        if (payload?.error === "AMENDMENT_HAS_SIGNATURES") {
+          setError("Suppression bloquée: cet avenant a deja des signatures (active PILOT_MODE pour bypass).");
+        } else {
+          setError("Impossible de supprimer l’avenant.");
+        }
+        return;
+      }
+      setSuccess("Avenant supprimé (soft delete).");
+      await load();
+    } catch {
+      setError("Impossible de supprimer l’avenant.");
+    } finally {
+      setRowActionId(null);
+    }
+  }
+
+  function statusBadge(amendment: Amendment) {
+    if (amendment.status === "ACTIVE") {
+      return (
+        <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-900">
+          Actif
+        </span>
+      );
+    }
+    if (amendment.status === "INACTIVE") {
+      return (
+        <span className="inline-flex items-center rounded-full border border-slate-300 bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
+          Inactif
+        </span>
+      );
+    }
+    return (
+      <span className="inline-flex items-center rounded-full border border-rose-200 bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-900">
+        Supprimé
+      </span>
+    );
   }
 
   return (
@@ -197,13 +274,39 @@ export default function AdminContractAmendmentsClient() {
                       <p className="mt-1 text-xs text-slate-500">Version {item.version}</p>
                       <p className="mt-1 text-xs text-slate-500">Créé le {formatDate(item.createdAt)}</p>
                     </div>
-                    {item.isActive ? (
-                      <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-900">Actif</span>
-                    ) : (
-                      <button type="button" onClick={() => void activateAmendment(item.id)} className="inline-flex items-center rounded-2xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50">
+                    {statusBadge(item)}
+                  </div>
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    {item.status !== "DELETED" && item.status !== "ACTIVE" ? (
+                      <button
+                        type="button"
+                        onClick={() => void activateAmendment(item.id)}
+                        disabled={rowActionId != null}
+                        className="inline-flex items-center rounded-2xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50 disabled:opacity-60"
+                      >
                         Activer
                       </button>
-                    )}
+                    ) : null}
+                    {item.status === "ACTIVE" ? (
+                      <button
+                        type="button"
+                        onClick={() => void deactivateAmendment(item.id)}
+                        disabled={rowActionId != null}
+                        className="inline-flex items-center rounded-2xl border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-900 shadow-sm transition hover:bg-amber-100 disabled:opacity-60"
+                      >
+                        Désactiver
+                      </button>
+                    ) : null}
+                    {item.status !== "DELETED" ? (
+                      <button
+                        type="button"
+                        onClick={() => void deleteAmendment(item.id)}
+                        disabled={rowActionId != null}
+                        className="inline-flex items-center rounded-2xl border border-rose-300 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-900 shadow-sm transition hover:bg-rose-100 disabled:opacity-60"
+                      >
+                        Supprimer
+                      </button>
+                    ) : null}
                   </div>
                 </div>
               ))}

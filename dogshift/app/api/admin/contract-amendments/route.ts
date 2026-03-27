@@ -81,7 +81,10 @@ export async function POST(req: NextRequest) {
     }
 
     if (isActive) {
-      await (prisma as any).contractAmendment.updateMany({ where: { isActive: true }, data: { isActive: false, activatedAt: null } });
+      await (prisma as any).contractAmendment.updateMany({
+        where: { status: "ACTIVE" },
+        data: { isActive: false, status: "INACTIVE", activatedAt: null },
+      });
     }
 
     const amendment = await (prisma as any).contractAmendment.create({
@@ -89,6 +92,7 @@ export async function POST(req: NextRequest) {
         title,
         content,
         version,
+        status: isActive ? "ACTIVE" : "INACTIVE",
         isActive,
         activatedAt: isActive ? new Date() : null,
       },

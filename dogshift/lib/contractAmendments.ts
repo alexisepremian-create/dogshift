@@ -7,6 +7,7 @@ export type ActiveContractAmendment = {
   version: string;
   createdAt: string;
   activatedAt: string | null;
+  status: "ACTIVE" | "INACTIVE" | "DELETED";
   isActive: boolean;
 };
 
@@ -37,7 +38,7 @@ export function isContractVersionAtLeast(current: unknown, minimum: unknown) {
 
 export async function getActiveContractAmendment(): Promise<ActiveContractAmendment | null> {
   const amendment = await (prisma as any).contractAmendment.findFirst({
-    where: { isActive: true },
+    where: { status: "ACTIVE", isActive: true },
     orderBy: [{ activatedAt: "desc" }, { createdAt: "desc" }],
     select: {
       id: true,
@@ -46,6 +47,7 @@ export async function getActiveContractAmendment(): Promise<ActiveContractAmendm
       version: true,
       createdAt: true,
       activatedAt: true,
+      status: true,
       isActive: true,
     },
   });
@@ -59,6 +61,7 @@ export async function getActiveContractAmendment(): Promise<ActiveContractAmendm
     version: amendment.version,
     createdAt: amendment.createdAt instanceof Date ? amendment.createdAt.toISOString() : new Date(amendment.createdAt).toISOString(),
     activatedAt: amendment.activatedAt instanceof Date ? amendment.activatedAt.toISOString() : amendment.activatedAt ? new Date(amendment.activatedAt).toISOString() : null,
+    status: amendment.status,
     isActive: Boolean(amendment.isActive),
   };
 }
