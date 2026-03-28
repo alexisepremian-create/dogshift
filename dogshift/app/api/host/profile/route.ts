@@ -171,7 +171,6 @@ export async function GET(req: NextRequest) {
       profile,
       enabledServiceTypes,
       persistedPricing: sitterProfile?.pricing,
-      persistedVerificationStatus: sitterProfile?.verificationStatus,
     });
 
     const computedProfileCompletion = computeSitterProfileCompletion(mergedProfile);

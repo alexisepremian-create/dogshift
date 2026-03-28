@@ -275,12 +275,8 @@ export default function HostDashboardPage() {
   }, [profile.verificationStatus, verificationStatus]);
 
   const completionPercent = useMemo(() => {
-    const effectiveProfile: HostProfileV1 = {
-      ...profile,
-      verificationStatus: verificationStatus === "approved" ? "verified" : profile.verificationStatus,
-    };
-    return getHostCompletion(effectiveProfile).percent;
-  }, [profile, verificationStatus]);
+    return getHostCompletion(profile).percent;
+  }, [profile]);
 
   const completionUiReady = Boolean(sitterId) && verificationLoaded;
 

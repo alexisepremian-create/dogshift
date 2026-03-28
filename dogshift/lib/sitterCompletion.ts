@@ -6,17 +6,7 @@ type HostLikeProfile = {
   services?: unknown;
   pricing?: unknown;
   dogSizes?: unknown;
-  verificationStatus?: unknown;
 };
-
-function normalizeCompletionVerificationStatus(raw: unknown) {
-  if (raw === "verified") return "verified" as const;
-  if (raw === "approved") return "verified" as const;
-  if (raw === "pending") return "pending" as const;
-  if (raw === "unverified") return "unverified" as const;
-  if (raw === "not_verified") return "unverified" as const;
-  return null;
-}
 
 function toStringOrEmpty(v: unknown) {
   return typeof v === "string" ? v.trim() : "";
@@ -57,13 +47,10 @@ export function buildEffectiveSitterCompletionProfile(args: {
   profile: unknown;
   enabledServiceTypes: string[];
   persistedPricing?: unknown;
-  persistedVerificationStatus?: unknown;
 }) {
   const mergedWithServices = mergeCompletionEnabledServices(args.profile, args.enabledServiceTypes);
-  const persistedVerificationStatus = normalizeCompletionVerificationStatus(args.persistedVerificationStatus);
   return {
     ...(mergedWithServices && typeof mergedWithServices === "object" ? mergedWithServices : {}),
-    ...(persistedVerificationStatus ? { verificationStatus: persistedVerificationStatus } : null),
     pricing: {
       ...((mergedWithServices && typeof mergedWithServices === "object" && (mergedWithServices as Record<string, unknown>).pricing && typeof (mergedWithServices as Record<string, unknown>).pricing === "object")
         ? ((mergedWithServices as Record<string, unknown>).pricing as Record<string, unknown>)
@@ -73,32 +60,43 @@ export function buildEffectiveSitterCompletionProfile(args: {
   };
 }
 
-export function computeSitterProfileCompletion(profile: unknown): number {
+export type ProfileCompletionChecks = {
+  avatar: boolean;
+  identity: boolean;
+  bio: boolean;
+  services: boolean;
+  pricing: boolean;
+  dogSizes: boolean;
+};
+
+export function computeSitterProfileCompletionDetails(profile: unknown): {
+  percent: number;
+  checks: ProfileCompletionChecks;
+} {
   const p = (profile && typeof profile === "object" ? (profile as HostLikeProfile) : {}) as HostLikeProfile;
 
-  const avatarOk = Boolean(toStringOrEmpty(p.avatarDataUrl));
-  const firstNameOk = Boolean(toStringOrEmpty(p.firstName));
-  const cityOk = Boolean(toStringOrEmpty(p.city));
-  const identityOk = firstNameOk && cityOk;
+  const avatar = Boolean(toStringOrEmpty(p.avatarDataUrl));
+  const identity = Boolean(toStringOrEmpty(p.firstName)) && Boolean(toStringOrEmpty(p.city));
+  const bio = Boolean(toStringOrEmpty(p.bio));
 
-  const bioOk = Boolean(toStringOrEmpty(p.bio));
+  const svcRecord = toRecord(p.services);
+  const enabledServices = Object.keys(svcRecord).filter((k) => Boolean(svcRecord[k]));
+  const services = enabledServices.length > 0;
 
-  const services = toRecord(p.services);
-  const enabledServices = Object.keys(services).filter((k) => Boolean(services[k]));
-  const servicesOk = enabledServices.length > 0;
-
-  const pricing = toRecord(p.pricing);
-  const pricingOk = servicesOk
-    ? enabledServices.every((svc) => typeof pricing[svc] === "number" && Number.isFinite(pricing[svc] as number))
+  const pricingRecord = toRecord(p.pricing);
+  const pricing = services
+    ? enabledServices.every((svc) => typeof pricingRecord[svc] === "number" && Number.isFinite(pricingRecord[svc] as number))
     : false;
 
-  const dogSizes = toRecord(p.dogSizes);
-  const dogSizesOk = Object.keys(dogSizes).some((k) => Boolean(dogSizes[k]));
+  const dogSizeRecord = toRecord(p.dogSizes);
+  const dogSizes = Object.keys(dogSizeRecord).some((k) => Boolean(dogSizeRecord[k]));
 
-  const verificationOk = p.verificationStatus === "verified";
+  const checks: ProfileCompletionChecks = { avatar, identity, bio, services, pricing, dogSizes };
+  const values = Object.values(checks);
+  const percent = Math.round((values.filter(Boolean).length / values.length) * 100);
+  return { percent, checks };
+}
 
-  const checks = [avatarOk, identityOk, verificationOk, bioOk, servicesOk, pricingOk, dogSizesOk];
-  const total = checks.length;
-  const filled = checks.filter(Boolean).length;
-  return Math.round((filled / total) * 100);
+export function computeSitterProfileCompletion(profile: unknown): number {
+  return computeSitterProfileCompletionDetails(profile).percent;
 }

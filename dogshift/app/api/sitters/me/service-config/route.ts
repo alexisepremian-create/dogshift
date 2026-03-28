@@ -135,7 +135,6 @@ export async function PUT(req: NextRequest) {
     profile: hostProfile,
     enabledServiceTypes,
     persistedPricing: sitterProfile?.pricing,
-    persistedVerificationStatus: sitterProfile?.verificationStatus,
   });
   const completion = computeSitterProfileCompletion(completionProfile);
 

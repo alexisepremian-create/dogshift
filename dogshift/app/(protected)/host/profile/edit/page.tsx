@@ -102,12 +102,8 @@ export default function HostProfileEditPage() {
   }, [sitterId]);
 
   const completionPercent = useMemo(() => {
-    const effectiveProfile: HostProfileV1 = {
-      ...profile,
-      verificationStatus: verificationStatus === "approved" ? "verified" : profile.verificationStatus,
-    };
-    return getHostCompletion(effectiveProfile).percent;
-  }, [profile, verificationStatus]);
+    return getHostCompletion(profile).percent;
+  }, [profile]);
 
   const canPublish = termsOk && completionPercent >= 100 && isActivatedStatus(lifecycleStatus);
 

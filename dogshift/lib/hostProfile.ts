@@ -1,5 +1,6 @@
 import type { DogSize, MockSitter, ServiceType } from "@/lib/mockSitters";
 import { loadReviewsFromStorage } from "@/lib/reviews";
+import { computeSitterProfileCompletionDetails } from "@/lib/sitterCompletion";
 
 export type HostVerificationStatus = "unverified" | "pending" | "verified";
 
@@ -152,22 +153,7 @@ export function saveHostProfileToStorage(profile: HostProfileV1) {
 }
 
 export function getHostCompletion(profile: HostProfileV1) {
-  const checks = {
-    avatar: Boolean(profile.avatarDataUrl && profile.avatarDataUrl.trim()),
-    identity: Boolean(profile.firstName.trim()) && Boolean(profile.city.trim()),
-    verification: profile.verificationStatus === "verified",
-    bio: Boolean(profile.bio.trim()),
-    services: Object.values(profile.services).some(Boolean),
-    pricing: (Object.keys(profile.services) as ServiceType[])
-      .filter((svc) => profile.services[svc])
-      .every((svc) => typeof profile.pricing?.[svc] === "number"),
-    dogSizes: Object.values(profile.dogSizes).some(Boolean),
-  };
-
-  const total = Object.keys(checks).length;
-  const done = Object.values(checks).filter(Boolean).length;
-  const percent = Math.round((done / total) * 100);
-  return { percent, checks };
+  return computeSitterProfileCompletionDetails(profile);
 }
 
 export type HostTodoItem = {
