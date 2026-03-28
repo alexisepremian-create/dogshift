@@ -28,11 +28,33 @@ function errorPayload(err: unknown) {
   };
 }
 
+let _tableExists: boolean | null = null;
+
+async function serviceCostTableExists(): Promise<boolean> {
+  if (_tableExists !== null) return _tableExists;
+  try {
+    const rows = await prisma.$queryRaw<{ exists: boolean }[]>`
+      SELECT EXISTS (
+        SELECT 1 FROM information_schema.tables
+        WHERE table_name = 'ServiceCost'
+      ) AS "exists"`;
+    _tableExists = rows[0]?.exists === true;
+  } catch {
+    _tableExists = false;
+  }
+  return _tableExists;
+}
+
 export async function GET(req: NextRequest) {
   try {
     const access = await getRequestAdminAccess(req);
     if (!access.isAdmin) {
       return NextResponse.json({ ok: false, error: "FORBIDDEN" }, { status: 403 });
+    }
+
+    if (!(await serviceCostTableExists())) {
+      console.warn("[api][admin][service-costs][GET] ServiceCost table does not exist yet — returning empty list");
+      return NextResponse.json({ ok: true, services: [], migrationPending: true }, { status: 200, headers: { "cache-control": "no-store" } });
     }
 
     const services = await (prisma as any).serviceCost.findMany({
@@ -67,6 +89,13 @@ export async function POST(req: NextRequest) {
     const access = await getRequestAdminAccess(req);
     if (!access.isAdmin) {
       return NextResponse.json({ ok: false, error: "FORBIDDEN" }, { status: 403 });
+    }
+
+    if (!(await serviceCostTableExists())) {
+      return NextResponse.json(
+        { ok: false, error: "MIGRATION_PENDING", message: "La table ServiceCost n'existe pas encore. Appliquez la migration d'abord." },
+        { status: 503 },
+      );
     }
 
     const body = (await req.json().catch(() => null)) as

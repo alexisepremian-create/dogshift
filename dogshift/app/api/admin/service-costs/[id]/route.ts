@@ -28,11 +28,34 @@ function errorPayload(err: unknown) {
   };
 }
 
+let _tableExists: boolean | null = null;
+
+async function serviceCostTableExists(): Promise<boolean> {
+  if (_tableExists !== null) return _tableExists;
+  try {
+    const rows = await prisma.$queryRaw<{ exists: boolean }[]>`
+      SELECT EXISTS (
+        SELECT 1 FROM information_schema.tables
+        WHERE table_name = 'ServiceCost'
+      ) AS "exists"`;
+    _tableExists = rows[0]?.exists === true;
+  } catch {
+    _tableExists = false;
+  }
+  return _tableExists;
+}
+
+const MIGRATION_PENDING_RESPONSE = { ok: false, error: "MIGRATION_PENDING", message: "La table ServiceCost n'existe pas encore." } as const;
+
 export async function PATCH(req: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
     const access = await getRequestAdminAccess(req);
     if (!access.isAdmin) {
       return NextResponse.json({ ok: false, error: "FORBIDDEN" }, { status: 403 });
+    }
+
+    if (!(await serviceCostTableExists())) {
+      return NextResponse.json(MIGRATION_PENDING_RESPONSE, { status: 503 });
     }
 
     const { id } = await context.params;
@@ -112,6 +135,10 @@ export async function DELETE(req: NextRequest, context: { params: Promise<{ id: 
     const access = await getRequestAdminAccess(req);
     if (!access.isAdmin) {
       return NextResponse.json({ ok: false, error: "FORBIDDEN" }, { status: 403 });
+    }
+
+    if (!(await serviceCostTableExists())) {
+      return NextResponse.json(MIGRATION_PENDING_RESPONSE, { status: 503 });
     }
 
     const { id } = await context.params;
