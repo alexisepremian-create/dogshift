@@ -174,10 +174,13 @@ function HostAvatar({ src, alt }: { src: string | null; alt: string }) {
 
 export default function HostDashboardPage() {
   const { isLoaded, isSignedIn, user } = useUser();
-  const { sitterId, profile: remoteProfile } = useHostUser();
+  const host = useHostUser();
+  const { sitterId, profile: remoteProfile } = host;
   const [unreadTick, setUnreadTick] = useState(0);
   const [verificationStatus, setVerificationStatus] = useState<"not_verified" | "pending" | "approved" | "rejected">(
-    "not_verified"
+    (host.verificationStatus === "approved" || host.verificationStatus === "pending" || host.verificationStatus === "rejected")
+      ? host.verificationStatus
+      : "not_verified"
   );
   const [verificationLoaded, setVerificationLoaded] = useState(false);
   const [reviewCount, setReviewCount] = useState(0);

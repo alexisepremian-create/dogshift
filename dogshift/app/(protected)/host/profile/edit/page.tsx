@@ -26,7 +26,8 @@ const DOG_SIZE_LABELS: Record<DogSize, string> = {
 };
 
 export default function HostProfileEditPage() {
-  const { sitterId, profile: remoteProfile, published: remotePublished, termsAcceptedAt, termsVersion, lifecycleStatus } = useHostUser();
+  const host = useHostUser();
+  const { sitterId, profile: remoteProfile, published: remotePublished, termsAcceptedAt, termsVersion, lifecycleStatus } = host;
 
   const termsOk = Boolean(termsAcceptedAt) && termsVersion === CURRENT_TERMS_VERSION;
 
@@ -45,7 +46,11 @@ export default function HostProfileEditPage() {
   const [verificationIdFileName, setVerificationIdFileName] = useState<string | null>(null);
   const [verificationSelfieFileName, setVerificationSelfieFileName] = useState<string | null>(null);
   const [verificationError, setVerificationError] = useState<string | null>(null);
-  const [verificationStatus, setVerificationStatus] = useState<"not_verified" | "pending" | "approved" | "rejected">("not_verified");
+  const [verificationStatus, setVerificationStatus] = useState<"not_verified" | "pending" | "approved" | "rejected">(
+    (host.verificationStatus === "approved" || host.verificationStatus === "pending" || host.verificationStatus === "rejected")
+      ? host.verificationStatus
+      : "not_verified"
+  );
   const [verificationNotes, setVerificationNotes] = useState<string | null>(null);
   const [verificationIdFile, setVerificationIdFile] = useState<File | null>(null);
   const [verificationSelfieFile, setVerificationSelfieFile] = useState<File | null>(null);

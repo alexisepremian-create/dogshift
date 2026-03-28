@@ -32,6 +32,7 @@ export type HostUserData = {
   termsVersion: string | null;
   profileCompletion: number;
   lifecycleStatus: SitterLifecycleStatus;
+  verificationStatus: string;
   contractSignedAt: string | null;
   activatedAt: string | null;
   activationCodeIssuedAt: string | null;
@@ -51,6 +52,7 @@ export function makeHostUserValuePreview(args: {
     termsVersion: null,
     profileCompletion: 0,
     lifecycleStatus: "application_received",
+    verificationStatus: "not_verified",
     contractSignedAt: null,
     activatedAt: null,
     activationCodeIssuedAt: null,
@@ -73,6 +75,7 @@ export async function getHostUserData(): Promise<HostUserData> {
       termsVersion: null,
       profileCompletion: 0,
       lifecycleStatus: "application_received",
+      verificationStatus: "not_verified",
       contractSignedAt: null,
       activatedAt: null,
       activationCodeIssuedAt: null,
@@ -122,6 +125,7 @@ export async function getHostUserData(): Promise<HostUserData> {
       termsVersion: null,
       profileCompletion: 0,
       lifecycleStatus: "application_received",
+      verificationStatus: "not_verified",
       contractSignedAt: null,
       activatedAt: null,
       activationCodeIssuedAt: null,
@@ -141,6 +145,7 @@ export async function getHostUserData(): Promise<HostUserData> {
       termsVersion: true,
       profileCompletion: true,
       lifecycleStatus: true,
+      verificationStatus: true,
       contractVersion: true,
       contractSignedAt: true,
       activatedAt: true,
@@ -170,6 +175,7 @@ export async function getHostUserData(): Promise<HostUserData> {
       termsVersion: null,
       profileCompletion: 0,
       lifecycleStatus: "application_received",
+      verificationStatus: "not_verified",
       contractSignedAt: null,
       activatedAt: null,
       activationCodeIssuedAt: null,
@@ -190,6 +196,7 @@ export async function getHostUserData(): Promise<HostUserData> {
       termsVersion: null,
       profileCompletion: 0,
       lifecycleStatus: "application_received",
+      verificationStatus: "not_verified",
       contractSignedAt: null,
       activatedAt: null,
       activationCodeIssuedAt: null,
@@ -254,6 +261,7 @@ export async function getHostUserData(): Promise<HostUserData> {
     termsVersion,
     profileCompletion: typeof sitterProfile?.profileCompletion === "number" ? sitterProfile.profileCompletion : 0,
     lifecycleStatus,
+    verificationStatus: typeof sitterProfile?.verificationStatus === "string" ? sitterProfile.verificationStatus : "not_verified",
     contractSignedAt,
     activatedAt,
     activationCodeIssuedAt,
