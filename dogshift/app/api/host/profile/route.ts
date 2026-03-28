@@ -340,6 +340,7 @@ export async function POST(req: NextRequest) {
         lifecycleStatus: true,
         contractSignedAt: true,
         contractVersion: true,
+        stripeAccountStatus: true,
       },
     });
 
@@ -355,6 +356,7 @@ export async function POST(req: NextRequest) {
                   : existingProfile.verificationStatus,
           }
         : null),
+      stripeAccountStatus: existingProfile?.stripeAccountStatus ?? null,
     });
 
     if (pricingObj && typeof pricingObj === "object" && Object.keys(pricingObj).length > 0) {

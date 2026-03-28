@@ -107,8 +107,8 @@ export default function HostProfileEditPage() {
   }, [sitterId]);
 
   const completionPercent = useMemo(() => {
-    return getHostCompletion(profile).percent;
-  }, [profile]);
+    return getHostCompletion({ ...profile, stripeAccountStatus: host.stripeAccountStatus }).percent;
+  }, [profile, host.stripeAccountStatus]);
 
   const canPublish = termsOk && completionPercent >= 100 && isActivatedStatus(lifecycleStatus);
   const canTogglePublish = published || canPublish;

@@ -15,6 +15,7 @@ export type HostUser = {
   profileCompletion: number;
   lifecycleStatus: SitterLifecycleStatus;
   verificationStatus: string;
+  stripeAccountStatus: string | null;
   contractSignedAt: string | null;
   activatedAt: string | null;
   activationCodeIssuedAt: string | null;
@@ -32,6 +33,7 @@ export function makeHostUserValuePreview(args: { sitterId: string | null; profil
     profileCompletion: 0,
     lifecycleStatus: "application_received",
     verificationStatus: "not_verified",
+    stripeAccountStatus: null,
     contractSignedAt: null,
     activatedAt: null,
     activationCodeIssuedAt: null,

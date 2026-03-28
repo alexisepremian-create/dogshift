@@ -6,6 +6,7 @@ type HostLikeProfile = {
   services?: unknown;
   pricing?: unknown;
   dogSizes?: unknown;
+  stripeAccountStatus?: unknown;
 };
 
 function toStringOrEmpty(v: unknown) {
@@ -67,6 +68,7 @@ export type ProfileCompletionChecks = {
   services: boolean;
   pricing: boolean;
   dogSizes: boolean;
+  stripeConnected: boolean;
 };
 
 export function computeSitterProfileCompletionDetails(profile: unknown): {
@@ -91,7 +93,9 @@ export function computeSitterProfileCompletionDetails(profile: unknown): {
   const dogSizeRecord = toRecord(p.dogSizes);
   const dogSizes = Object.keys(dogSizeRecord).some((k) => Boolean(dogSizeRecord[k]));
 
-  const checks: ProfileCompletionChecks = { avatar, identity, bio, services, pricing, dogSizes };
+  const stripeConnected = typeof p.stripeAccountStatus === "string" && p.stripeAccountStatus === "ENABLED";
+
+  const checks: ProfileCompletionChecks = { avatar, identity, bio, services, pricing, dogSizes, stripeConnected };
   const values = Object.values(checks);
   const percent = Math.round((values.filter(Boolean).length / values.length) * 100);
   return { percent, checks };

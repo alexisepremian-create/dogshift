@@ -278,8 +278,8 @@ export default function HostDashboardPage() {
   }, [profile.verificationStatus, verificationStatus]);
 
   const completionPercent = useMemo(() => {
-    return getHostCompletion(profile).percent;
-  }, [profile]);
+    return getHostCompletion({ ...profile, stripeAccountStatus: host.stripeAccountStatus }).percent;
+  }, [profile, host.stripeAccountStatus]);
 
   const completionUiReady = Boolean(sitterId) && verificationLoaded;
 
