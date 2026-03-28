@@ -27,6 +27,7 @@ export type HostProfileV1 = {
   cancellationFlexible: boolean;
   boardingDetails?: HostBoardingDetails;
   verificationStatus: HostVerificationStatus;
+  stripeAccountStatus?: string | null;
   listingStatus: HostListingStatus;
   publishedAt?: string;
   updatedAt: string;
