@@ -71,9 +71,18 @@ export async function requireAdminPageAccess(nextPath = "/admin/dashboard") {
 export async function getRequestAdminAccess(req: NextRequest) {
   const { userId } = await auth();
   const headerCode = req.headers.get("x-admin-code")?.trim() ?? "";
-  const cookieSession = req.cookies.get(ADMIN_SESSION_COOKIE)?.value?.trim() ?? "";
 
-  const expectedAdminCode = getExpectedAdminCode();
+  // Read cookie from both sources for resilience — Next.js App Router can
+  // behave differently between req.cookies and the cookies() helper.
+  const fromReq = req.cookies.get(ADMIN_SESSION_COOKIE)?.value?.trim() ?? "";
+  let fromHeaders = "";
+  try {
+    fromHeaders = (await getAdminSessionFromCookies()) ?? "";
+  } catch {
+    // cookies() can throw outside of request scope; ignore
+  }
+  const cookieSession = fromReq || fromHeaders;
+
   const byCookie = Boolean(userId) && isValidAdminSessionValue(cookieSession);
   const byHeader = isValidAdminCode(headerCode);
   const isAdmin = byCookie || byHeader;
@@ -82,10 +91,9 @@ export async function getRequestAdminAccess(req: NextRequest) {
     console.warn("[adminAuth][getRequestAdminAccess] denied", {
       userId: userId ?? null,
       hasClerkSession: Boolean(userId),
-      hasCookie: Boolean(cookieSession),
-      cookieLength: cookieSession.length,
-      hasExpectedAdminCode: Boolean(expectedAdminCode),
-      expectedAdminCodeLength: expectedAdminCode.length,
+      cookieFromReq: Boolean(fromReq),
+      cookieFromHeaders: Boolean(fromHeaders),
+      hasExpectedAdminCode: Boolean(getExpectedAdminCode()),
       byCookie,
       byHeader,
       pathname: req.nextUrl?.pathname ?? null,
