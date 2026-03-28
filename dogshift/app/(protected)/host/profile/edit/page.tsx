@@ -195,7 +195,7 @@ export default function HostProfileEditPage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ ...nextProfile, published }),
         });
-        const payload = (await res.json()) as { ok?: boolean; error?: string; details?: string; profile?: unknown; published?: boolean; publishBlocked?: { error: string } | null };
+        const payload = (await res.json()) as { ok?: boolean; error?: string; details?: string; profile?: unknown; published?: boolean; profileCompletion?: number; publishBlocked?: { error: string } | null };
         if (!res.ok || !payload.ok || !payload.profile) {
           if (typeof payload?.details === "string" && payload.details.trim()) {
             setError(payload.details.trim());
@@ -219,6 +219,13 @@ export default function HostProfileEditPage() {
         } else {
           if (typeof payload.published === "boolean" && payload.published !== published) {
             setPublished(payload.published);
+          }
+          if (payload.profile && typeof payload.profile === "object") {
+            const serverProfile = payload.profile as Partial<HostProfileV1>;
+            if (serverProfile.profileVersion === 1 && serverProfile.sitterId) {
+              setProfile(serverProfile as HostProfileV1);
+              saveHostProfileToStorage(serverProfile as HostProfileV1);
+            }
           }
           setSaved(true);
         }
