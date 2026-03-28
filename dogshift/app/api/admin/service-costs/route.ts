@@ -49,14 +49,14 @@ export async function GET(req: NextRequest) {
   try {
     const access = await getRequestAdminAccess(req);
     if (!access.isAdmin) {
-      console.warn("[api][admin][service-costs][GET] 403 FORBIDDEN", {
-        userId: access.userId ?? null,
-        isAuthenticated: access.isAuthenticated,
-        isAdmin: access.isAdmin,
-        hasCookie: Boolean(req.cookies.get("ds_admin_session")?.value),
-        hasAdminCode: Boolean(process.env.HOST_ADMIN_CODE),
-      });
-      return NextResponse.json({ ok: false, error: "FORBIDDEN" }, { status: 403 });
+      const diag = {
+        hasClerkSession: access.isAuthenticated,
+        hasCookieReq: Boolean(req.cookies.get("ds_admin_session")?.value),
+        cookieReqLen: (req.cookies.get("ds_admin_session")?.value ?? "").length,
+        hasEnvCode: Boolean((process.env.HOST_ADMIN_CODE ?? "").trim()),
+      };
+      console.warn("[api][admin][service-costs][GET] 403", diag);
+      return NextResponse.json({ ok: false, error: "FORBIDDEN", _diag: diag }, { status: 403 });
     }
 
     if (!(await serviceCostTableExists())) {
