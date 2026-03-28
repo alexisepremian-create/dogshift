@@ -48,10 +48,8 @@ export async function ensureDbUserByClerkUserId(params: {
     select: { id: true, role: true, sitterId: true, email: true, name: true },
   });
   if (byClerk?.id) {
-    // Avoid destructive overwrites: only fill missing pieces.
     const updates: Record<string, unknown> = {};
     if (!byClerk.email || byClerk.email !== email) {
-      // Keep email in sync when it changes.
       updates.email = email;
     }
     if (!byClerk.name && name) {
@@ -65,9 +63,12 @@ export async function ensureDbUserByClerkUserId(params: {
       }
     }
     const result = { id: byClerk.id, role: byClerk.role, sitterId: byClerk.sitterId ?? null, created: false };
-    if (process.env.NODE_ENV !== "production") {
-      console.log("[auth][ensureDbUserByClerkUserId]", { clerkUserId, dbUserId: result.id, created: result.created });
-    }
+    console.info("[role-resolution][ensureDbUser] found by clerkUserId", {
+      clerkUserId,
+      dbUserId: result.id,
+      role: result.role,
+      sitterId: result.sitterId,
+    });
     return result;
   }
 
@@ -81,21 +82,47 @@ export async function ensureDbUserByClerkUserId(params: {
         select: { id: true, role: true, sitterId: true },
       });
       const result = { id: updated.id, role: updated.role, sitterId: updated.sitterId ?? null, created: false };
-      if (process.env.NODE_ENV !== "production") {
-        console.log("[auth][ensureDbUserByClerkUserId]", { clerkUserId, dbUserId: result.id, created: result.created, migratedFromEmail: true });
-      }
+      console.info("[role-resolution][ensureDbUser] migrated email→clerk link", {
+        clerkUserId,
+        dbUserId: result.id,
+        role: result.role,
+        sitterId: result.sitterId,
+        email,
+      });
       return result;
     } catch {
-      // If race/unique constraint occurs, fall back to re-fetch.
       const again = await (prisma as any).user.findUnique({ where: { clerkUserId }, select: { id: true, role: true, sitterId: true } });
       if (again?.id) {
         const result = { id: again.id, role: again.role, sitterId: again.sitterId ?? null, created: false };
-        if (process.env.NODE_ENV !== "production") {
-          console.log("[auth][ensureDbUserByClerkUserId]", { clerkUserId, dbUserId: result.id, created: result.created, refetchAfterRace: true });
-        }
+        console.info("[role-resolution][ensureDbUser] race recovery", {
+          clerkUserId,
+          dbUserId: result.id,
+          role: result.role,
+        });
         return result;
       }
     }
+  }
+
+  // Guard: before creating a new OWNER user, double-check no existing user
+  // has a SitterProfile for this email. This prevents accidental duplication.
+  const existingByEmailFinal = await prisma.user.findUnique({ where: { email }, select: { id: true, role: true, sitterId: true } });
+  if (existingByEmailFinal?.id) {
+    console.warn("[role-resolution][ensureDbUser] DUPLICATE_PREVENTION: user already exists for email, linking clerkUserId", {
+      clerkUserId,
+      email,
+      existingUserId: existingByEmailFinal.id,
+      existingRole: existingByEmailFinal.role,
+    });
+    try {
+      await (prisma as any).user.update({
+        where: { id: existingByEmailFinal.id },
+        data: { clerkUserId },
+      });
+    } catch {
+      // unique constraint on clerkUserId — another user already linked
+    }
+    return { id: existingByEmailFinal.id, role: existingByEmailFinal.role, sitterId: existingByEmailFinal.sitterId ?? null, created: false };
   }
 
   const role = "OWNER";
@@ -105,9 +132,12 @@ export async function ensureDbUserByClerkUserId(params: {
     select: { id: true, role: true, sitterId: true },
   });
   const result = { id: created.id, role: created.role, sitterId: created.sitterId ?? null, created: true };
-  if (process.env.NODE_ENV !== "production") {
-    console.log("[auth][ensureDbUserByClerkUserId]", { clerkUserId, dbUserId: result.id, created: result.created });
-  }
+  console.info("[role-resolution][ensureDbUser] new user created", {
+    clerkUserId,
+    dbUserId: result.id,
+    role: result.role,
+    email,
+  });
   return result;
 }
 

@@ -35,7 +35,7 @@ export async function getUserContexts(): Promise<UserContexts> {
     throw new Error("DB_USER_UNAVAILABLE");
   }
 
-  const dbUser = await prisma.user.findUnique({ where: { id: ensured.id } });
+  const dbUser = await prisma.user.findUnique({ where: { id: ensured.id }, select: { id: true, role: true, email: true, sitterId: true } });
   if (!dbUser) {
     throw new Error("DB_USER_UNAVAILABLE");
   }
@@ -46,12 +46,28 @@ export async function getUserContexts(): Promise<UserContexts> {
     prisma.conversation.findFirst({ where: { ownerId: dbUser.id }, select: { id: true } }),
   ]);
 
+  const normalizedStatus = sitterProfile
+    ? normalizeSitterLifecycleStatus(sitterProfile.lifecycleStatus, sitterProfile.published)
+    : null;
+
+  console.info("[role-resolution][getUserContexts]", {
+    clerkUserId: userId,
+    dbUserId: dbUser.id,
+    email: primaryEmail,
+    dbRole: (dbUser as any).role ?? null,
+    hasSitterProfile: Boolean(sitterProfile),
+    rawLifecycleStatus: sitterProfile?.lifecycleStatus ?? null,
+    published: sitterProfile?.published ?? null,
+    normalizedLifecycleStatus: normalizedStatus,
+    hasOwnerContext: Boolean(ownerBooking || ownerConversation),
+  });
+
   return {
     userId,
     primaryEmail,
     dbUserId: dbUser.id,
     hasSitterProfile: Boolean(sitterProfile),
-    sitterLifecycleStatus: sitterProfile ? normalizeSitterLifecycleStatus(sitterProfile.lifecycleStatus, sitterProfile.published) : null,
+    sitterLifecycleStatus: normalizedStatus,
     hasOwnerContext: Boolean(ownerBooking || ownerConversation),
   };
 }
