@@ -11,6 +11,7 @@ const isPublicRoute = createRouteMatcher([
   "/api/clerk(.*)",
   "/api/become-sitter/apply",
   "/api/invites/verify",
+  "/api/platform/status",
 ]);
 
 const removedExactPaths = new Set([
