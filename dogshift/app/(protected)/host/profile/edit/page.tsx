@@ -194,7 +194,7 @@ export default function HostProfileEditPage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ ...nextProfile, published }),
         });
-        const payload = (await res.json()) as { ok?: boolean; error?: string; details?: string; profile?: unknown };
+        const payload = (await res.json()) as { ok?: boolean; error?: string; details?: string; profile?: unknown; published?: boolean; publishBlocked?: { error: string } | null };
         if (!res.ok || !payload.ok || !payload.profile) {
           if (typeof payload?.details === "string" && payload.details.trim()) {
             setError(payload.details.trim());
@@ -205,7 +205,22 @@ export default function HostProfileEditPage() {
           return;
         }
 
-        setSaved(true);
+        if (payload.publishBlocked) {
+          const msgs: Record<string, string> = {
+            TERMS_NOT_ACCEPTED: "Accepte le règlement avant de publier ton annonce.",
+            PROFILE_INCOMPLETE: "Complète ton profil à 100 % avant de publier.",
+            CONTRACT_NOT_SIGNED: "Signe le contrat avant de publier ton annonce.",
+            ACCOUNT_NOT_ACTIVATED: "Ton compte doit être activé pour publier.",
+            CONTRACT_AMENDMENT_REQUIRED: "Un avenant au contrat doit être accepté avant de publier.",
+          };
+          setError(msgs[payload.publishBlocked.error] ?? "La publication a été bloquée.");
+          setPublished(false);
+        } else {
+          if (typeof payload.published === "boolean" && payload.published !== published) {
+            setPublished(payload.published);
+          }
+          setSaved(true);
+        }
       } catch {
         setError("Impossible d’enregistrer le profil.");
         setSaved(false);

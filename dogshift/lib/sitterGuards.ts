@@ -15,6 +15,7 @@ export function checkSitterSensitiveActionGate(args: {
   profileCompletion: number;
   lifecycleStatus: SitterLifecycleStatus;
   isContractAmendmentUpToDate?: boolean;
+  skipContractChecks?: boolean;
 }): SitterGateState {
   const termsOk = Boolean(args.termsAcceptedAt) && args.termsVersion === CURRENT_TERMS_VERSION;
   if (!termsOk) {
@@ -25,15 +26,17 @@ export function checkSitterSensitiveActionGate(args: {
     return { ok: false, status: 403, error: "PROFILE_INCOMPLETE", profileCompletion: args.profileCompletion };
   }
 
-  if (!isContractSignedStatus(args.lifecycleStatus)) {
-    return { ok: false, status: 403, error: "CONTRACT_NOT_SIGNED" };
+  if (!args.skipContractChecks) {
+    if (!isContractSignedStatus(args.lifecycleStatus)) {
+      return { ok: false, status: 403, error: "CONTRACT_NOT_SIGNED" };
+    }
   }
 
   if (!isActivatedStatus(args.lifecycleStatus)) {
     return { ok: false, status: 403, error: "ACCOUNT_NOT_ACTIVATED" };
   }
 
-  if (args.isContractAmendmentUpToDate === false) {
+  if (!args.skipContractChecks && args.isContractAmendmentUpToDate === false) {
     return { ok: false, status: 403, error: "CONTRACT_AMENDMENT_REQUIRED" };
   }
 

@@ -8,7 +8,7 @@ import { ensureDbUserByClerkUserId } from "@/lib/auth/resolveDbUserId";
 import { buildEffectiveSitterCompletionProfile, computeSitterProfileCompletion } from "@/lib/sitterCompletion";
 import { checkSitterSensitiveActionGate } from "@/lib/sitterGuards";
 import { getHostContractAmendmentState } from "@/lib/contractAmendments";
-import { normalizeSitterLifecycleStatus } from "@/lib/sitterContract";
+import { isActivatedStatus, normalizeSitterLifecycleStatus } from "@/lib/sitterContract";
 import { CURRENT_TERMS_VERSION } from "@/lib/terms";
 
 export const runtime = "nodejs";
@@ -330,6 +330,7 @@ export async function POST(req: NextRequest) {
     const existingProfile = await (prisma as any).sitterProfile.findUnique({
       where: { userId: uid },
       select: {
+        id: true,
         published: true,
         publishedAt: true,
         termsAcceptedAt: true,
@@ -337,6 +338,8 @@ export async function POST(req: NextRequest) {
         profileCompletion: true,
         verificationStatus: true,
         lifecycleStatus: true,
+        contractSignedAt: true,
+        contractVersion: true,
       },
     });
 
@@ -376,6 +379,7 @@ export async function POST(req: NextRequest) {
     const lifecycleStatus = normalizeSitterLifecycleStatus(existingProfile?.lifecycleStatus, Boolean(existingProfile?.published));
 
     if (attemptingFirstPublish) {
+      const inviteActivated = isActivatedStatus(lifecycleStatus) && !existingProfile?.contractSignedAt;
       const contractAmendmentState = await getHostContractAmendmentState({
         sitterProfileId: existingProfile?.id ?? null,
         contractVersion: typeof existingProfile?.contractVersion === "string" ? existingProfile.contractVersion : null,
@@ -386,6 +390,7 @@ export async function POST(req: NextRequest) {
         profileCompletion: completion,
         lifecycleStatus,
         isContractAmendmentUpToDate: contractAmendmentState.isUpToDate,
+        skipContractChecks: inviteActivated,
       });
 
       if (!gate.ok) {
