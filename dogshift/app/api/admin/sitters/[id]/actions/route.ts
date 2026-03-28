@@ -183,11 +183,16 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       generatedContractExpiresAt = expiresAt;
       const issuedContractVersion = `${CURRENT_SITTER_CONTRACT_VERSION}-${generatedContractFingerprint}`;
 
-      // Always re-issue a fresh signature session regardless of previous state ("already sent"/signed).
-      data.lifecycleStatus = "contract_to_sign";
+      // Re-issue a fresh signature session, but NEVER regress an already-activated sitter.
       if (!isAlreadyActivated) {
+        data.lifecycleStatus = "contract_to_sign";
         data.published = false;
         data.publishedAt = null;
+      } else {
+        console.info("[admin][actions][generate_contract_link] preserving activated status", {
+          userId: sitter.id,
+          lifecycleStatus,
+        });
       }
       data.contractAccessTokenHash = hashContractAccessToken(rawToken, secret);
       data.contractAccessTokenVersion = issuedContractVersion;

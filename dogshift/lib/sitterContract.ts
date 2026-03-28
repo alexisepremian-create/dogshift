@@ -80,6 +80,24 @@ export function isActivatedStatus(status: SitterLifecycleStatus) {
   return status === "activated";
 }
 
+/**
+ * Returns the proposed status, but NEVER allows regression from "activated".
+ * Use this wherever lifecycleStatus is about to be written to the DB.
+ */
+export function safeLifecycleTransition(
+  current: SitterLifecycleStatus,
+  proposed: SitterLifecycleStatus,
+): SitterLifecycleStatus {
+  if (current === "activated" && proposed !== "activated") {
+    console.warn("[lifecycle-guard] BLOCKED regression from activated", {
+      current,
+      proposed,
+    });
+    return "activated";
+  }
+  return proposed;
+}
+
 export function normalizeActivationCode(raw: string) {
   return raw.trim().toUpperCase().replace(/\s+/g, "");
 }

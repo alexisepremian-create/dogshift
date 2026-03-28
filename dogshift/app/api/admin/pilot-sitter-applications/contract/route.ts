@@ -132,14 +132,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, error: "CONTRACT_LINK_INVALID_STATE" }, { status: 409 });
     }
     const willResetSignatureProof = Boolean(existingProfile?.contractVersion && existingProfile.contractVersion !== issuedContractVersion);
-    // Critical invariant: a profile must never remain "contract_signed" if we reset signature proof fields.
-    // If we issue a new contract version that requires a fresh signature, we downgrade to "contract_to_sign".
-    const nextLifecycleStatus = willResetSignatureProof
-      ? "contract_to_sign"
-      : currentLifecycleStatus
-        ? maxSitterLifecycleStatus(currentLifecycleStatus, "contract_to_sign")
-        : "contract_to_sign";
-    const keepPublicationState = currentLifecycleStatus ? hasReachedSitterLifecycleStatus(currentLifecycleStatus, "activated") : false;
+    const alreadyActivated = currentLifecycleStatus ? hasReachedSitterLifecycleStatus(currentLifecycleStatus, "activated") : false;
+    // Never regress an activated sitter. For non-activated sitters, downgrade to contract_to_sign when signature proof is reset.
+    const nextLifecycleStatus = alreadyActivated
+      ? "activated"
+      : willResetSignatureProof
+        ? "contract_to_sign"
+        : currentLifecycleStatus
+          ? maxSitterLifecycleStatus(currentLifecycleStatus, "contract_to_sign")
+          : "contract_to_sign";
+    const keepPublicationState = alreadyActivated;
 
     const persisted = await (prisma as any).sitterProfile.upsert({
       where: { userId: ensured.id },
