@@ -138,16 +138,15 @@ export async function GET(_req: NextRequest) {
 
     const rows: SitterListItem[] = rowsRaw.filter((row): row is SitterListItem => Boolean(row?.sitterId));
 
-    if (process.env.NODE_ENV !== "production") {
-      const anyDb = prisma as unknown as { sitterProfile?: { count?: (args: unknown) => Promise<number> } };
-      const total = typeof anyDb.sitterProfile?.count === "function" ? await anyDb.sitterProfile.count({}) : null;
-      const publishedCount =
-        typeof anyDb.sitterProfile?.count === "function" ? await anyDb.sitterProfile.count({ where: { published: true } }) : null;
+    const anyDb = prisma as unknown as { sitterProfile?: { count?: (args: unknown) => Promise<number> } };
+    const totalCount = typeof anyDb.sitterProfile?.count === "function" ? await anyDb.sitterProfile.count({}) : null;
+    const publishedCount =
+      typeof anyDb.sitterProfile?.count === "function" ? await anyDb.sitterProfile.count({ where: { published: true } }) : null;
 
-      return NextResponse.json({ ok: true, sitters: rows, debug: { total, published: publishedCount } }, { status: 200 });
-    }
-
-    return NextResponse.json({ ok: true, sitters: rows }, { status: 200 });
+    return NextResponse.json(
+      { ok: true, sitters: rows, _counts: { total: totalCount, published: publishedCount, returned: rows.length } },
+      { status: 200 },
+    );
   } catch (err) {
     console.error("[api][sitters] error", err);
     return NextResponse.json({ ok: false, error: "INTERNAL_ERROR" }, { status: 500 });
