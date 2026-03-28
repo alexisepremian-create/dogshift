@@ -157,8 +157,8 @@ export async function POST(req: NextRequest) {
         create: {
           userId: ensured.id,
           sitterId,
-          published: true,
-          publishedAt: now,
+          published: false,
+          publishedAt: null,
           lifecycleStatus,
           activatedAt: now,
           termsAcceptedAt: now,
@@ -174,8 +174,8 @@ export async function POST(req: NextRequest) {
         },
         update: {
           sitterId,
-          published: true,
-          publishedAt: now,
+          published: false,
+          publishedAt: null,
           lifecycleStatus: nextLifecycleStatus,
           activatedAt: now,
           termsAcceptedAt: now,
