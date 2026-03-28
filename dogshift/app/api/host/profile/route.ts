@@ -374,13 +374,6 @@ export async function POST(req: NextRequest) {
     const wantsPublish = Boolean(publishedFlag);
     const isCurrentlyPublished = Boolean(existingProfile?.published);
     const attemptingFirstPublish = wantsPublish && !isCurrentlyPublished;
-    console.info("[host-profile][publish-trace]", {
-      publishedFlagRaw,
-      publishedFlag,
-      wantsPublish,
-      isCurrentlyPublished,
-      attemptingFirstPublish,
-    });
     let publishBlocked: null | { error: string; status: number; profileCompletion?: number; termsVersion: string } = null;
 
     const lifecycleStatus = normalizeSitterLifecycleStatus(existingProfile?.lifecycleStatus, Boolean(existingProfile?.published));
@@ -414,11 +407,6 @@ export async function POST(req: NextRequest) {
     const publishedAt = willPublish
       ? (existingProfile?.publishedAt ?? new Date())
       : null;
-    console.info("[host-profile][publish-result]", {
-      willPublish,
-      publishBlocked: publishBlocked?.error ?? null,
-      publishedAt: publishedAt?.toISOString?.() ?? null,
-    });
 
     let finalLat: number | null = latProvided;
     let finalLng: number | null = lngProvided;
