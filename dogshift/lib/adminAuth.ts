@@ -73,12 +73,28 @@ export async function getRequestAdminAccess(req: NextRequest) {
   const headerCode = req.headers.get("x-admin-code")?.trim() ?? "";
   const cookieSession = req.cookies.get(ADMIN_SESSION_COOKIE)?.value?.trim() ?? "";
 
+  const expectedAdminCode = getExpectedAdminCode();
   const byCookie = Boolean(userId) && isValidAdminSessionValue(cookieSession);
   const byHeader = isValidAdminCode(headerCode);
+  const isAdmin = byCookie || byHeader;
+
+  if (!isAdmin) {
+    console.warn("[adminAuth][getRequestAdminAccess] denied", {
+      userId: userId ?? null,
+      hasClerkSession: Boolean(userId),
+      hasCookie: Boolean(cookieSession),
+      cookieLength: cookieSession.length,
+      hasExpectedAdminCode: Boolean(expectedAdminCode),
+      expectedAdminCodeLength: expectedAdminCode.length,
+      byCookie,
+      byHeader,
+      pathname: req.nextUrl?.pathname ?? null,
+    });
+  }
 
   return {
     userId,
     isAuthenticated: Boolean(userId),
-    isAdmin: byCookie || byHeader,
+    isAdmin,
   };
 }
