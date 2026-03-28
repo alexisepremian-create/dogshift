@@ -6,7 +6,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { ensureDbUserByClerkUserId } from "@/lib/auth/resolveDbUserId";
 import { computeSitterProfileCompletion } from "@/lib/sitterCompletion";
-import { hasReachedSitterLifecycleStatus, maxSitterLifecycleStatus, normalizeSitterLifecycleStatus } from "@/lib/sitterContract";
+import { maxSitterLifecycleStatus, normalizeSitterLifecycleStatus } from "@/lib/sitterContract";
 import { CURRENT_TERMS_VERSION } from "@/lib/terms";
 
 export const runtime = "nodejs";
@@ -110,7 +110,16 @@ export async function POST(req: NextRequest) {
 
     const completion = computeSitterProfileCompletion(hostProfile);
     const hostProfileJson = JSON.stringify(hostProfile);
-    const lifecycleStatus = normalizeSitterLifecycleStatus("application_received", false);
+    const lifecycleStatus = normalizeSitterLifecycleStatus("activated", true);
+
+    console.info("[become-sitter][apply] auto-activating sitter via invite code", {
+      clerkUserId: userId,
+      dbUserId: ensured.id,
+      email: primaryEmail,
+      inviteId: invite.id,
+      inviteType: invite.type,
+      lifecycleStatus,
+    });
 
     await prisma.$transaction(async (tx) => {
       if (invite.type === "single_use") {
@@ -142,16 +151,16 @@ export async function POST(req: NextRequest) {
       const nextLifecycleStatus = currentLifecycleStatus
         ? maxSitterLifecycleStatus(currentLifecycleStatus, lifecycleStatus)
         : lifecycleStatus;
-      const keepPublicationState = currentLifecycleStatus ? hasReachedSitterLifecycleStatus(currentLifecycleStatus, "activated") : false;
 
       await (tx as any).sitterProfile.upsert({
         where: { userId: ensured.id },
         create: {
           userId: ensured.id,
           sitterId,
-          published: false,
-          publishedAt: null,
+          published: true,
+          publishedAt: now,
           lifecycleStatus,
+          activatedAt: now,
           termsAcceptedAt: now,
           termsVersion: CURRENT_TERMS_VERSION,
           profileCompletion: completion,
@@ -165,8 +174,10 @@ export async function POST(req: NextRequest) {
         },
         update: {
           sitterId,
-          ...(keepPublicationState ? {} : { published: false, publishedAt: null }),
+          published: true,
+          publishedAt: now,
           lifecycleStatus: nextLifecycleStatus,
+          activatedAt: now,
           termsAcceptedAt: now,
           termsVersion: CURRENT_TERMS_VERSION,
           profileCompletion: completion,
@@ -182,7 +193,7 @@ export async function POST(req: NextRequest) {
       });
     });
 
-    return NextResponse.json({ ok: true, sitterId }, { status: 200 });
+    return NextResponse.json({ ok: true, sitterId, activated: true }, { status: 200 });
   } catch (err) {
     if (err instanceof Error && err.message === "INVITE_ALREADY_USED") {
       return NextResponse.json({ ok: false, error: "INVITE_ALREADY_USED" }, { status: 403 });
