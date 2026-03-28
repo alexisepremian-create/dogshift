@@ -111,6 +111,7 @@ export default function HostProfileEditPage() {
   }, [profile]);
 
   const canPublish = termsOk && completionPercent >= 100 && isActivatedStatus(lifecycleStatus);
+  const canTogglePublish = published || canPublish;
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -540,7 +541,7 @@ export default function HostProfileEditPage() {
                     <p className="mt-1 text-sm text-slate-600">
                       {published ? "Votre annonce est visible dans la recherche." : "Votre annonce est cachée (brouillon)."}
                     </p>
-                    {!canPublish ? (
+                    {!canPublish && !published ? (
                       <p className="mt-2 text-sm font-semibold text-slate-700">
                         Complète ton profil et accepte le règlement pour publier.
                       </p>
@@ -549,10 +550,10 @@ export default function HostProfileEditPage() {
                   <button
                     type="button"
                     onClick={() => {
-                      if (!canPublish) return;
+                      if (!canTogglePublish) return;
                       setPublished((v) => !v);
                     }}
-                    disabled={!canPublish}
+                    disabled={!canTogglePublish}
                     className={
                       published
                         ? "inline-flex h-9 w-14 items-center rounded-full bg-[var(--dogshift-blue)] p-1 transition"
