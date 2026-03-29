@@ -1,3 +1,5 @@
+import PageLoader from "@/components/ui/PageLoader";
+
 export default function Loading() {
-  return null;
+  return <PageLoader static minDuration={400} persist />;
 }

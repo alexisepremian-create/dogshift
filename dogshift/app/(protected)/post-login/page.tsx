@@ -1,14 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import PageLoader from "@/components/ui/PageLoader";
 
 export default function PostLoginPage() {
   const router = useRouter();
   const startedRef = useRef(false);
-
-  const [target, setTarget] = useState<string | null>(null);
 
   useEffect(() => {
     if (startedRef.current) return;
@@ -23,33 +20,18 @@ export default function PostLoginPage() {
       try {
         const res = await fetch("/api/auth/resolve-redirect", { cache: "no-store" });
         if (res.status === 401) {
-          window.location.assign("/login");
+          router.replace("/login");
           return;
         }
         const data = await res.json().catch(() => null);
         const redirect = data?.redirect ?? "/host";
         const t = redirect === "/host" && next ? next : redirect;
-        setTarget(t.startsWith("/host") ? t : "/host");
+        router.replace(t.startsWith("/host") ? t : "/host");
       } catch {
-        window.location.assign("/login?force=1");
+        router.replace("/login?force=1");
       }
     })();
-  }, []);
+  }, [router]);
 
-  function handleDone() {
-    if (target) {
-      router.replace(target);
-    }
-  }
-
-  return (
-    <PageLoader
-      label="Connexion en cours…"
-      ready={target !== null}
-      onDone={handleDone}
-      minDuration={2800}
-      cloneOnUnmount={true}
-      persist
-    />
-  );
+  return null;
 }

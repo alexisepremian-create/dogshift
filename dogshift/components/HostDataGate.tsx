@@ -8,16 +8,6 @@ import { useHostUser } from "@/components/HostUserProvider";
 
 const HOST_READY_LATCH_BY_USER_ID = new Map<string, true>();
 
-export function dismissPersistentLoader() {
-  if (typeof window === "undefined") return;
-  const el = document.getElementById("ds-persistent-loader");
-  if (el) {
-    el.style.transition = "opacity 0.45s ease";
-    el.style.opacity = "0";
-    setTimeout(() => el.remove(), 500);
-  }
-}
-
 export default function HostDataGate({ children }: { children: React.ReactNode }) {
   const host = useHostUser();
   const router = useRouter();
@@ -110,11 +100,6 @@ export default function HostDataGate({ children }: { children: React.ReactNode }
   }, [readyToRender]);
 
   const waiting = !hostReady || !readyToRender;
-
-  useEffect(() => {
-    if (waiting) return;
-    dismissPersistentLoader();
-  }, [waiting]);
 
   useEffect(() => {
     if (!waiting) return;

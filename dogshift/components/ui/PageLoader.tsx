@@ -63,36 +63,14 @@ export default function PageLoader({
   minDuration = DEFAULT_MIN,
   persist = false,
   static: isStatic = false,
-  cloneOnUnmount = false,
-}: Props & { cloneOnUnmount?: boolean }) {
+}: Props) {
   const mountRef = useRef(Date.now());
   const onDoneRef = useRef(onDone);
   onDoneRef.current = onDone;
-  const containerRef = useRef<HTMLDivElement>(null);
 
   const [phase, setPhase] = useState<"animate" | "fadeOut" | "done">("animate");
 
   const [displayLabel] = useState(label);
-
-  // When unmounting (e.g. Next.js router.replace destroys the page), if cloneOnUnmount is true,
-  // we take a snapshot of the current DOM and append it directly to document.body.
-  // This allows the animation to continue seamlessly while the new page loads in the background.
-  useEffect(() => {
-    return () => {
-      if (!cloneOnUnmount || phase === "done" || phase === "fadeOut") return;
-      if (!containerRef.current || typeof window === "undefined" || !document.body) return;
-      
-      // Don't clone if one already exists
-      if (document.getElementById("ds-persistent-loader")) return;
-
-      const clone = containerRef.current.cloneNode(true) as HTMLElement;
-      clone.id = "ds-persistent-loader";
-      // Ensure it stays on top
-      clone.style.zIndex = "999999";
-      
-      document.body.appendChild(clone);
-    };
-  }, [cloneOnUnmount, phase]);
 
   useEffect(() => {
     if (ready !== true) return;
@@ -123,7 +101,6 @@ export default function PageLoader({
 
   return (
     <div
-      ref={containerRef}
       className="ds-viewport fixed inset-0 z-50 flex w-full items-center justify-center bg-white font-sans"
       style={{
         transition: phase === "fadeOut" ? `opacity ${FADE_MS}ms ease` : undefined,

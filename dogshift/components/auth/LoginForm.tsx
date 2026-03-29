@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { useSignIn, useUser } from "@clerk/nextjs";
 import Link from "next/link";
 import PageLoader from "@/components/ui/PageLoader";
@@ -14,6 +14,7 @@ export default function LoginForm() {
   const { isLoaded, signIn, setActive } = useSignIn();
   const { isLoaded: userLoaded, isSignedIn } = useUser();
   const searchParams = useSearchParams();
+  const router = useRouter();
 
   const next = (searchParams?.get("next") ?? "").trim();
   const force = (searchParams?.get("force") ?? "").trim();
@@ -171,10 +172,9 @@ export default function LoginForm() {
         ready={redirectTarget !== null}
         onDone={() => {
           try { sessionStorage.setItem("ds_login_transit", String(Date.now())); } catch {}
-          window.location.replace(redirectTarget!);
+          router.replace(redirectTarget!);
         }}
         minDuration={2800}
-        cloneOnUnmount={true}
         persist
       />
     );
