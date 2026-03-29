@@ -185,6 +185,7 @@ export default function HostDashboardPage() {
   const [verificationLoaded, setVerificationLoaded] = useState(false);
   const [reviewCount, setReviewCount] = useState(0);
   const [averageRating, setAverageRating] = useState<number | null>(null);
+  const [loaderDone, setLoaderDone] = useState(false);
 
   const completionCardDismissed = useSyncExternalStore(
     (onStoreChange) => {
@@ -284,10 +285,6 @@ export default function HostDashboardPage() {
   const completionUiReady = Boolean(sitterId) && verificationLoaded;
 
   useEffect(() => {
-    try { sessionStorage.removeItem("ds_login_transit"); } catch {}
-  }, []);
-
-  useEffect(() => {
     if (!sitterId) {
       setReviewCount(0);
       setAverageRating(null);
@@ -362,8 +359,16 @@ export default function HostDashboardPage() {
     (profile.avatarDataUrl && profile.avatarDataUrl.trim() ? profile.avatarDataUrl.trim() : null) ??
     (typeof user?.imageUrl === "string" && user.imageUrl.trim() ? user.imageUrl.trim() : null);
 
-  if (!isLoaded || !isSignedIn) {
-    return <PageLoader label="Chargement…" />;
+  const authReady = Boolean(isLoaded && isSignedIn);
+
+  if (!loaderDone) {
+    return (
+      <PageLoader
+        label="Chargement…"
+        ready={authReady}
+        onDone={() => setLoaderDone(true)}
+      />
+    );
   }
 
   if (!sitterId) {

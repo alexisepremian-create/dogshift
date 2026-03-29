@@ -1,10 +1,12 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import PageLoader from "@/components/ui/PageLoader";
 
 export default function PostLoginPage() {
   const startedRef = useRef(false);
+  const targetRef = useRef<string | null>(null);
+  const [targetReady, setTargetReady] = useState(false);
 
   useEffect(() => {
     if (startedRef.current) return;
@@ -22,15 +24,28 @@ export default function PostLoginPage() {
         }
         const data = await res.json().catch(() => null);
         const target = data?.redirect ?? "/account";
-        const finalTarget = target === "/host" && next ? next : target;
-
-        try { sessionStorage.setItem("ds_login_transit", String(Date.now())); } catch {}
-        window.location.replace(finalTarget);
+        targetRef.current = target === "/host" && next ? next : target;
+        setTargetReady(true);
       } catch {
         window.location.assign("/login?force=1");
       }
     })();
   }, []);
 
-  return <PageLoader label="Connexion en cours…" />;
+  function handleDone() {
+    const t = targetRef.current;
+    if (!t) return;
+    try { sessionStorage.setItem("ds_login_transit", String(Date.now())); } catch {}
+    window.location.replace(t);
+  }
+
+  return (
+    <PageLoader
+      label="Connexion en cours…"
+      ready={targetReady}
+      minDuration={2800}
+      persist
+      onDone={handleDone}
+    />
+  );
 }

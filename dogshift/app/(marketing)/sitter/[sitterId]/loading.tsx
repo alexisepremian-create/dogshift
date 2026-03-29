@@ -1,5 +1,5 @@
 import PageLoader from "@/components/ui/PageLoader";
 
 export default function Loading() {
-  return <PageLoader label="Chargement…" />;
+  return <PageLoader label="Chargement…" static />;
 }
