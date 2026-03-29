@@ -112,12 +112,6 @@ export default function PageLoader({
     };
   }, [ready, minDuration, persist]);
 
-  useEffect(() => {
-    return () => {
-      try { sessionStorage.removeItem(LOGIN_KEY); } catch {}
-    };
-  }, []);
-
   if (phase === "done") return null;
 
   return (

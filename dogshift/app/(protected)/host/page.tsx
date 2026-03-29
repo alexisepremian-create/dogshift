@@ -185,6 +185,13 @@ export default function HostDashboardPage() {
   const [verificationLoaded, setVerificationLoaded] = useState(false);
   const [reviewCount, setReviewCount] = useState(0);
   const [averageRating, setAverageRating] = useState<number | null>(null);
+  const [fromLogin] = useState(() => {
+    if (typeof window === "undefined") return false;
+    try {
+      const ts = sessionStorage.getItem("ds_login_transit");
+      return ts ? Date.now() - Number(ts) < 30_000 : false;
+    } catch { return false; }
+  });
   const [loaderDone, setLoaderDone] = useState(false);
 
   const completionCardDismissed = useSyncExternalStore(
@@ -366,7 +373,12 @@ export default function HostDashboardPage() {
       <PageLoader
         label="Chargement…"
         ready={authReady}
-        onDone={() => setLoaderDone(true)}
+        onDone={() => {
+          setLoaderDone(true);
+          try { sessionStorage.removeItem("ds_login_transit"); } catch {}
+        }}
+        static={fromLogin}
+        minDuration={fromLogin ? 0 : undefined}
       />
     );
   }
