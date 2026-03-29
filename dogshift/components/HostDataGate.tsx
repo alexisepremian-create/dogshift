@@ -5,7 +5,7 @@ import { useUser } from "@clerk/nextjs";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useHostUser } from "@/components/HostUserProvider";
-import { useTransit } from "@/components/TransitOverlay";
+import { dismissNativeTransit } from "@/components/NativeTransitOverlay";
 
 const HOST_READY_LATCH_BY_USER_ID = new Map<string, true>();
 
@@ -13,7 +13,6 @@ export default function HostDataGate({ children }: { children: React.ReactNode }
   const host = useHostUser();
   const router = useRouter();
   const { isLoaded, isSignedIn, user } = useUser();
-  const { dismissTransit } = useTransit();
   const [readyToRender, setReadyToRender] = useState(false);
   const [timedOut, setTimedOut] = useState(false);
   const warnedTimeoutRef = useRef(false);
@@ -105,8 +104,8 @@ export default function HostDataGate({ children }: { children: React.ReactNode }
 
   useEffect(() => {
     if (waiting) return;
-    dismissTransit();
-  }, [waiting, dismissTransit]);
+    dismissNativeTransit();
+  }, [waiting]);
 
   useEffect(() => {
     if (!waiting) return;
