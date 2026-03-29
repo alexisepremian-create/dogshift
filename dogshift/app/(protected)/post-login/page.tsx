@@ -1,11 +1,13 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import PageLoader from "@/components/ui/PageLoader";
 
 export default function PostLoginPage() {
   const router = useRouter();
   const startedRef = useRef(false);
+  const [target, setTarget] = useState<string | null>(null);
 
   useEffect(() => {
     if (startedRef.current) return;
@@ -25,17 +27,25 @@ export default function PostLoginPage() {
         }
         const data = await res.json().catch(() => null);
         const redirect = data?.redirect ?? "/host";
-        const target = redirect === "/host" && next ? next : redirect;
-
-        // Always use client-side navigation to stay within (protected)/ layout
-        // so the TransitOverlay animation persists across the navigation.
-        // HostDataGate will redirect non-sitter users to /account if needed.
-        router.replace(target.startsWith("/host") ? target : "/host");
+        const t = redirect === "/host" && next ? next : redirect;
+        setTarget(t.startsWith("/host") ? t : "/host");
       } catch {
         window.location.assign("/login?force=1");
       }
     })();
   }, [router]);
 
-  return null;
+  function handleDone() {
+    if (target) router.replace(target);
+  }
+
+  return (
+    <PageLoader
+      label="Connexion en cours…"
+      ready={target !== null}
+      onDone={handleDone}
+      minDuration={2800}
+      persist
+    />
+  );
 }
