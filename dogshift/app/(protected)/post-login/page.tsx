@@ -1,11 +1,13 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
+
+const SPLASH_DONE_KEY = "ds_splash_done";
+const MIN_ANIMATION = 2800;
 
 export default function PostLoginPage() {
-  const router = useRouter();
   const startedRef = useRef(false);
+  const mountTime = useRef(Date.now());
 
   useEffect(() => {
     if (startedRef.current) return;
@@ -25,16 +27,20 @@ export default function PostLoginPage() {
         const target = data?.redirect ?? "/account";
         const finalTarget = target === "/host" && next ? next : target;
 
-        if (finalTarget.startsWith("/host")) {
-          router.replace(finalTarget);
-        } else {
+        const elapsed = Date.now() - mountTime.current;
+        const wait = Math.max(0, MIN_ANIMATION - elapsed);
+
+        setTimeout(() => {
+          if (finalTarget.startsWith("/host")) {
+            try { sessionStorage.setItem(SPLASH_DONE_KEY, "1"); } catch {}
+          }
           window.location.replace(finalTarget);
-        }
+        }, wait);
       } catch {
         window.location.assign("/login?force=1");
       }
     })();
-  }, [router]);
+  }, []);
 
   return null;
 }

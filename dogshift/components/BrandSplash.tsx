@@ -6,6 +6,7 @@ import { useSplash } from "@/components/SplashContext";
 /* ── Config ────────────────────────────────────────────────────── */
 
 const LOGIN_KEY = "ds_login_transit";
+const SPLASH_DONE_KEY = "ds_splash_done";
 const FADE_MS = 450;
 const EASE = "cubic-bezier(0.16, 1, 0.3, 1)";
 const MIN_DEFAULT = 1800;
@@ -49,6 +50,16 @@ const LETTERS: { d: string; delay: number }[] = [
   { delay: 1.35, d: "M8090 3860 l0 -120 150 0 150 0 0 -515 0 -515 125 0 125 0 0 515 0 515 155 0 155 0 0 120 0 120 -430 0 -430 0 0 -120z" },
 ];
 
+const ALL_PATHS = [DOG_BODY, DOG_EYE, ...LETTERS.map((l) => l.d)];
+
+/* ── Splash modes ──────────────────────────────────────────────── */
+// "login"  → first mount after login, full stagger animation, 2800ms min
+// "static" → second mount after login (animation already played on post-login),
+//            logo shown instantly, fade out as soon as page signals ready
+// "normal" → page refresh / direct nav, full stagger animation, 1800ms min
+
+type SplashMode = "login" | "static" | "normal";
+
 /* ── Component ─────────────────────────────────────────────────── */
 
 export default function BrandSplash() {
@@ -56,15 +67,26 @@ export default function BrandSplash() {
   const mountRef = useRef(Date.now());
   const [phase, setPhase] = useState<"animate" | "fadeOut" | "done">("animate");
 
-  const [isLogin] = useState(
-    () => typeof window !== "undefined" && isLoginTransit(),
-  );
-  const minDuration = isLogin ? MIN_LOGIN : MIN_DEFAULT;
+  const [mode] = useState<SplashMode>(() => {
+    if (typeof window === "undefined") return "normal";
 
-  const [label] = useState(() => {
-    if (typeof window === "undefined") return "Chargement…";
-    return isLoginTransit() ? "Connexion en cours…" : "Chargement…";
+    const splashDone = sessionStorage.getItem(SPLASH_DONE_KEY);
+    if (splashDone) {
+      sessionStorage.removeItem(SPLASH_DONE_KEY);
+      return "static";
+    }
+
+    if (isLoginTransit()) return "login";
+
+    return "normal";
   });
+
+  const isStatic = mode === "static";
+  const minDuration = mode === "login" ? MIN_LOGIN : mode === "static" ? 0 : MIN_DEFAULT;
+
+  const [label] = useState(() =>
+    mode === "normal" ? "Chargement…" : "Connexion en cours…",
+  );
 
   useEffect(() => {
     if (!ready) return;
@@ -98,7 +120,11 @@ export default function BrandSplash() {
     >
       <div
         className="flex flex-col items-center"
-        style={{ animation: "brandPulse 2.8s ease-in-out 2.2s infinite" }}
+        style={{
+          animation: isStatic
+            ? "brandPulse 2.5s ease-in-out infinite"
+            : "brandPulse 2.8s ease-in-out 2.2s infinite",
+        }}
       >
         <svg
           viewBox="70 190 870 610"
@@ -110,17 +136,23 @@ export default function BrandSplash() {
             fill="currentColor"
             stroke="none"
           >
-            <path d={DOG_BODY} style={reveal(0, 0.8)} />
-            <path d={DOG_EYE} style={reveal(0.4, 0.3)} />
-            {LETTERS.map((l, i) => (
-              <path key={i} d={l.d} style={reveal(l.delay, 0.35)} />
-            ))}
+            {isStatic ? (
+              ALL_PATHS.map((d, i) => <path key={i} d={d} />)
+            ) : (
+              <>
+                <path d={DOG_BODY} style={reveal(0, 0.8)} />
+                <path d={DOG_EYE} style={reveal(0.4, 0.3)} />
+                {LETTERS.map((l, i) => (
+                  <path key={i} d={l.d} style={reveal(l.delay, 0.35)} />
+                ))}
+              </>
+            )}
           </g>
         </svg>
 
         <p
           className="mt-5 text-[13px] font-medium tracking-[0.18em] text-slate-400"
-          style={reveal(1.6, 0.6)}
+          style={isStatic ? undefined : reveal(1.6, 0.6)}
         >
           {label}
         </p>
