@@ -414,12 +414,12 @@ function HeroPetsittingStyle() {
           />
         </div>
 
-        <div className="pointer-events-none absolute inset-0 z-20 hidden lg:block">
+        <div className="pointer-events-none absolute inset-0 z-20 hidden xl:block">
           <TypewriterBubbles variant="overlay" active={bubblesActive} />
         </div>
 
         <div
-          className="absolute inset-y-0 right-0 z-30 hidden w-1/2 lg:block"
+          className="absolute inset-y-0 right-0 z-30 hidden w-1/2 xl:block"
           onMouseEnter={() => setBubblesActive(true)}
           onMouseLeave={() => setBubblesActive(false)}
           aria-hidden="true"
