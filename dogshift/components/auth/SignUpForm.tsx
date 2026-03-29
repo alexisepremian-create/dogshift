@@ -1,38 +1,31 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { useSignIn, useUser } from "@clerk/nextjs";
+import { useSignUp } from "@clerk/nextjs";
 import Link from "next/link";
 
 function normalizeEmail(input: string) {
   return input.replace(/\s+/g, "").trim().toLowerCase();
 }
 
-export default function LoginForm() {
-  const { isLoaded, signIn, setActive } = useSignIn();
-  const { isLoaded: userLoaded, isSignedIn } = useUser();
+export default function SignUpForm() {
+  const { isLoaded, signUp, setActive } = useSignUp();
   const searchParams = useSearchParams();
   const router = useRouter();
 
   const next = (searchParams?.get("next") ?? "").trim();
-  const force = (searchParams?.get("force") ?? "").trim();
-  const forceMode = force === "1" || force.toLowerCase() === "true";
-  const startGoogle = (searchParams?.get("startGoogle") ?? "").trim();
-  const startGoogleMode = startGoogle === "1" || startGoogle.toLowerCase() === "true";
   const redirectAfterAuth = next ? `/post-login?next=${encodeURIComponent(next)}` : "/post-login";
 
   const [email, setEmail] = useState("");
   const [emailCode, setEmailCode] = useState("");
-  const [emailAddressId, setEmailAddressId] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [autoGoogleStarted, setAutoGoogleStarted] = useState(false);
 
-  async function handleEmailLogin(e: React.FormEvent) {
+  async function handleEmailSignUp(e: React.FormEvent) {
     e.preventDefault();
-    if (!isLoaded || !signIn) return;
+    if (!isLoaded || !signUp) return;
 
     const normalized = normalizeEmail(email);
     if (!normalized) {
@@ -43,31 +36,21 @@ export default function LoginForm() {
     setError(null);
     setLoading(true);
     try {
-      // Clerk headless email code:
-      // - Creates a sign-in attempt for the identifier
-      // - Sends a one-time code to the user's email
-      const res = await (signIn as any).create({ identifier: normalized });
-      const factors: any[] = Array.isArray(res?.supportedFirstFactors) ? res.supportedFirstFactors : [];
-      const emailFactor = factors.find((f) => String(f?.strategy || "") === "email_code");
-      const resolvedEmailAddressId =
-        (typeof emailFactor?.emailAddressId === "string" && emailFactor.emailAddressId.trim()) ||
-        (typeof emailFactor?.email_address_id === "string" && emailFactor.email_address_id.trim()) ||
-        "";
-
-      if (!resolvedEmailAddressId) {
-        throw new Error("EMAIL_ADDRESS_ID_MISSING");
-      }
-
-      setEmailAddressId(resolvedEmailAddressId);
-      await (signIn as any).prepareFirstFactor({
-        strategy: "email_code",
-        emailAddressId: resolvedEmailAddressId,
+      await signUp.create({
+        emailAddress: normalized,
       });
+
+      await signUp.prepareEmailAddressVerification({
+        strategy: "email_code",
+      });
+      
       setSent(true);
     } catch (err) {
       const message = err instanceof Error ? err.message : "";
-      if (message === "EMAIL_ADDRESS_ID_MISSING") {
-        setError("Impossible de démarrer la connexion email. Réessaie ou utilise Google.");
+      const isAlreadyExists = message.toLowerCase().includes("identifier already exists");
+      
+      if (isAlreadyExists) {
+        setError("Un compte existe déjà avec cet email. Connecte-toi.");
       } else {
         setError(message || "Impossible d’envoyer le lien. Réessaie.");
       }
@@ -78,7 +61,7 @@ export default function LoginForm() {
 
   async function handleEmailCodeVerify(e: React.FormEvent) {
     e.preventDefault();
-    if (!isLoaded || !signIn) return;
+    if (!isLoaded || !signUp) return;
     if (loading) return;
 
     const code = emailCode.replace(/\s+/g, "").trim();
@@ -90,8 +73,7 @@ export default function LoginForm() {
     setError(null);
     setLoading(true);
     try {
-      const res = await (signIn as any).attemptFirstFactor({
-        strategy: "email_code",
+      const res = await signUp.attemptEmailAddressVerification({
         code,
       });
 
@@ -101,7 +83,7 @@ export default function LoginForm() {
         return;
       }
 
-      setError("Connexion incomplète. Réessaie.");
+      setError("Inscription incomplète. Réessaie.");
       setLoading(false);
     } catch (err) {
       const message = err instanceof Error ? err.message : "";
@@ -111,51 +93,30 @@ export default function LoginForm() {
   }
 
   async function handleGoogle() {
-    if (!isLoaded || !signIn) return;
+    if (!isLoaded || !signUp) return;
     if (loading) return;
 
     setError(null);
     setLoading(true);
     try {
-      // Clerk headless OAuth:
-      // - Redirects to Google, then back to the app.
-      // - Completion lands on /post-login (which routes to next or /account).
-      await signIn.authenticateWithRedirect({
+      await signUp.authenticateWithRedirect({
         strategy: "oauth_google",
         redirectUrl: "/auth/google",
         redirectUrlComplete: redirectAfterAuth,
-        ...(forceMode
-          ? {
-              oauthOptions: {
-                prompt: "consent select_account",
-              },
-            }
-          : null),
       });
     } catch (err) {
       const message = err instanceof Error ? err.message : "";
-      setError(message || "Connexion Google impossible. Réessaie.");
+      setError(message || "Inscription Google impossible. Réessaie.");
       setLoading(false);
     }
   }
 
   const disabled = !isLoaded || loading;
 
-  useEffect(() => {
-    if (!startGoogleMode) return;
-    if (autoGoogleStarted) return;
-    if (!isLoaded || !signIn) return;
-    if (!userLoaded) return;
-    if (isSignedIn) return;
-    setAutoGoogleStarted(true);
-    void handleGoogle();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoGoogleStarted, isLoaded, signIn, startGoogleMode, userLoaded, isSignedIn]);
-
   return (
     <div className="flex flex-col">
-      <h1 className="text-center text-2xl font-semibold tracking-tight text-slate-900">S’identifier</h1>
-      <p className="mt-2 text-center text-sm text-slate-600">Accède à ton espace DogShift.</p>
+      <h1 className="text-center text-2xl font-semibold tracking-tight text-slate-900">Créer un compte</h1>
+      <p className="mt-2 text-center text-sm text-slate-600">Rejoins DogShift dès maintenant.</p>
 
       <div className="mt-6 flex flex-col gap-6">
         <button
@@ -164,7 +125,7 @@ export default function LoginForm() {
           disabled={disabled}
           className="inline-flex w-full items-center justify-center rounded-full border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          Continuer avec Google
+          S'inscrire avec Google
         </button>
 
         <div className="flex items-center gap-3">
@@ -174,7 +135,7 @@ export default function LoginForm() {
         </div>
 
         {!sent ? (
-          <form onSubmit={handleEmailLogin} className="space-y-5">
+          <form onSubmit={handleEmailSignUp} className="space-y-5">
             <div>
               <label className="block text-sm font-medium text-slate-700" htmlFor="email">
                 E-mail
@@ -197,7 +158,7 @@ export default function LoginForm() {
               disabled={disabled}
               className="inline-flex w-full items-center justify-center rounded-full bg-slate-900 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {loading ? "Envoi…" : "Se connecter par e-mail"}
+              {loading ? "Envoi…" : "S'inscrire par e-mail"}
             </button>
 
             {error ? <p className="text-sm text-rose-600">{error}</p> : null}
@@ -236,7 +197,6 @@ export default function LoginForm() {
                 if (loading) return;
                 setSent(false);
                 setEmailCode("");
-                setEmailAddressId("");
                 setError(null);
               }}
               className="inline-flex w-full items-center justify-center rounded-full border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
@@ -250,9 +210,9 @@ export default function LoginForm() {
       </div>
 
       <p className="mt-8 text-center text-sm text-slate-600">
-        Pas encore de compte ?{" "}
-        <Link href="/signup" className="font-semibold text-slate-900 hover:underline underline-offset-2">
-          Créer un compte
+        Déjà un compte ?{" "}
+        <Link href="/login" className="font-semibold text-slate-900 hover:underline underline-offset-2">
+          Se connecter
         </Link>
       </p>
 

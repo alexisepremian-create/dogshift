@@ -4,8 +4,8 @@ import BrandLogo from "@/components/BrandLogo";
 
 export default function AuthLayout({ children }: { children: ReactNode }) {
   return (
-    <div className="min-h-screen bg-white text-slate-900">
-      <div className="mx-auto w-full max-w-[480px] px-6 pt-4 pb-10">
+    <div className="flex min-h-[100dvh] flex-col justify-center bg-white text-slate-900">
+      <div className="mx-auto w-full max-w-[480px] px-6 py-10">
         <div className="flex flex-col items-center">
           <BrandLogo href="/" priority />
 
