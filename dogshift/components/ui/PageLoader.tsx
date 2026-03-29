@@ -4,23 +4,11 @@ import { useState, useEffect, useRef } from "react";
 
 /* ── Config ────────────────────────────────────────────────────── */
 
-const LOGIN_KEY = "ds_login_transit";
-const TTL = 30_000;
 const EASE = "cubic-bezier(0.16, 1, 0.3, 1)";
 const DEFAULT_MIN = 1800;
 const FADE_MS = 450;
 
 /* ── Helpers ───────────────────────────────────────────────────── */
-
-function isLoginTransit() {
-  try {
-    const ts = sessionStorage.getItem(LOGIN_KEY);
-    if (!ts) return false;
-    return Date.now() - Number(ts) < TTL;
-  } catch {
-    return false;
-  }
-}
 
 function reveal(delay: number, dur = 0.5): React.CSSProperties {
   return {
@@ -82,10 +70,7 @@ export default function PageLoader({
 
   const [phase, setPhase] = useState<"animate" | "fadeOut" | "done">("animate");
 
-  const [displayLabel] = useState(() => {
-    if (typeof window === "undefined") return label;
-    return isLoginTransit() ? "Connexion en cours…" : label;
-  });
+  const [displayLabel] = useState(label);
 
   useEffect(() => {
     if (ready !== true) return;

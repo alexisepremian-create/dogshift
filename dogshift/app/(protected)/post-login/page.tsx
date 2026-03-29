@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
+import PageLoader from "@/components/ui/PageLoader";
 
 export default function PostLoginPage() {
-  const router = useRouter();
   const startedRef = useRef(false);
+  const [target, setTarget] = useState<string | null>(null);
 
   useEffect(() => {
     if (startedRef.current) return;
@@ -22,19 +22,25 @@ export default function PostLoginPage() {
           return;
         }
         const data = await res.json().catch(() => null);
-        const target = data?.redirect ?? "/account";
-        const finalTarget = target === "/host" && next ? next : target;
-
-        if (finalTarget.startsWith("/host")) {
-          router.replace(finalTarget);
-        } else {
-          window.location.replace(finalTarget);
-        }
+        const redirect = data?.redirect ?? "/account";
+        setTarget(redirect === "/host" && next ? next : redirect);
       } catch {
         window.location.assign("/login?force=1");
       }
     })();
-  }, [router]);
+  }, []);
 
-  return null;
+  function handleDone() {
+    if (target) window.location.replace(target);
+  }
+
+  return (
+    <PageLoader
+      label="Connexion en cours…"
+      ready={target !== null}
+      onDone={handleDone}
+      minDuration={2800}
+      persist
+    />
+  );
 }

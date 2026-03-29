@@ -10,7 +10,6 @@ import { X } from "lucide-react";
 import SunCornerGlow from "@/components/SunCornerGlow";
 import { useHostUser } from "@/components/HostUserProvider";
 import HowItWorksSchema, { SITTER_HOW_IT_WORKS_CONTENT } from "@/components/HowItWorksSchema";
-import { useSplash } from "@/components/SplashContext";
 
 import { getSitterById } from "@/lib/mockSitters";
 import { getUnreadHostMessageCount } from "@/lib/hostMessages";
@@ -185,8 +184,6 @@ export default function HostDashboardPage() {
   const [verificationLoaded, setVerificationLoaded] = useState(false);
   const [reviewCount, setReviewCount] = useState(0);
   const [averageRating, setAverageRating] = useState<number | null>(null);
-  const { signalReady } = useSplash();
-
   const completionCardDismissed = useSyncExternalStore(
     (onStoreChange) => {
       if (typeof window === "undefined") return () => {};
@@ -358,10 +355,6 @@ export default function HostDashboardPage() {
   const avatarSrc =
     (profile.avatarDataUrl && profile.avatarDataUrl.trim() ? profile.avatarDataUrl.trim() : null) ??
     (typeof user?.imageUrl === "string" && user.imageUrl.trim() ? user.imageUrl.trim() : null);
-
-  useEffect(() => {
-    if (isLoaded && isSignedIn) signalReady();
-  }, [isLoaded, isSignedIn, signalReady]);
 
   if (!isLoaded || !isSignedIn) return null;
 

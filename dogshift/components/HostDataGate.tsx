@@ -5,15 +5,12 @@ import { useUser } from "@clerk/nextjs";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useHostUser } from "@/components/HostUserProvider";
-import { useSplash } from "@/components/SplashContext";
-
 const HOST_READY_LATCH_BY_USER_ID = new Map<string, true>();
 
 export default function HostDataGate({ children }: { children: React.ReactNode }) {
   const host = useHostUser();
   const router = useRouter();
   const { isLoaded, isSignedIn, user } = useUser();
-  const { signalReady } = useSplash();
   const [readyToRender, setReadyToRender] = useState(false);
   const [timedOut, setTimedOut] = useState(false);
   const warnedTimeoutRef = useRef(false);
@@ -117,7 +114,6 @@ export default function HostDataGate({ children }: { children: React.ReactNode }
   }, [host, hostReady, isLoaded, isSignedIn, latched, userId, waiting]);
 
   if (waiting && timedOut) {
-    signalReady();
     if (!warnedTimeoutRef.current) {
       warnedTimeoutRef.current = true;
       console.warn("[HostDataGate] timeout", {

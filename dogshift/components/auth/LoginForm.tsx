@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useSignIn, useUser } from "@clerk/nextjs";
 import Link from "next/link";
+import PageLoader from "@/components/ui/PageLoader";
 
 function normalizeEmail(input: string) {
   return input.replace(/\s+/g, "").trim().toLowerCase();
@@ -28,6 +29,10 @@ export default function LoginForm() {
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [autoGoogleStarted, setAutoGoogleStarted] = useState(false);
+
+  const [showSplash, setShowSplash] = useState(false);
+  const [redirectTarget, setRedirectTarget] = useState<string | null>(null);
+  const splashStartedRef = useRef(false);
 
   async function handleEmailLogin(e: React.FormEvent) {
     e.preventDefault();
@@ -96,8 +101,15 @@ export default function LoginForm() {
 
       if (res?.status === "complete" && res?.createdSessionId) {
         await setActive?.({ session: res.createdSessionId });
-        try { sessionStorage.setItem("ds_login_transit", String(Date.now())); } catch {}
-        window.location.assign(redirectAfterAuth);
+        setShowSplash(true);
+
+        fetch("/api/auth/resolve-redirect", { cache: "no-store" })
+          .then((r) => (r.ok ? r.json() : null))
+          .then((data) => {
+            const target = data?.redirect ?? "/account";
+            setRedirectTarget(next ? (target === "/host" ? next : target) : target);
+          })
+          .catch(() => setRedirectTarget("/account"));
         return;
       }
 
@@ -151,6 +163,18 @@ export default function LoginForm() {
     void handleGoogle();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoGoogleStarted, isLoaded, signIn, startGoogleMode, userLoaded, isSignedIn]);
+
+  if (showSplash) {
+    return (
+      <PageLoader
+        label="Connexion en cours…"
+        ready={redirectTarget !== null}
+        onDone={() => window.location.replace(redirectTarget!)}
+        minDuration={2800}
+        persist
+      />
+    );
+  }
 
   return (
     <div className="flex flex-col">
