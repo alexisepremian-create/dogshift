@@ -38,14 +38,14 @@ export default function HostRequestsPage() {
           setRows([]);
           return;
         }
-        setError("Impossible de charger tes demandes.");
+        setError("Impossible de charger tes réservations.");
         setRows([]);
         return;
       }
 
       setRows(Array.isArray(payload.bookings) ? payload.bookings : []);
     } catch {
-      setError("Impossible de charger tes demandes.");
+      setError("Impossible de charger tes réservations.");
       setRows([]);
     } finally {
       setLoading(false);

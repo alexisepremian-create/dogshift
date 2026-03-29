@@ -156,7 +156,7 @@ export function RequestsSplitView({
         return;
       }
       setLocalRows((prev) => prev.filter((r) => r.id !== bookingId));
-      setToast({ message: "Demande supprimée", undoId: null });
+      setToast({ message: "Réservation supprimée", undoId: null });
       setConfirmDeleteId(null);
     } catch {
       setToast({ message: "Impossible de supprimer.", undoId: null });
@@ -172,7 +172,7 @@ export function RequestsSplitView({
   async function archive(bookingId: string) {
     const nowIso = new Date().toISOString();
     setLocalRows((prev) => prev.map((r) => (r.id === bookingId ? { ...r, archivedAt: nowIso } : r)));
-    setToast({ message: "Demande archivée", undoId: bookingId });
+    setToast({ message: "Réservation archivée", undoId: bookingId });
 
     try {
       const res = await fetch(`/api/host/requests/${encodeURIComponent(bookingId)}/archive`, { method: "POST" });
@@ -263,7 +263,7 @@ export function RequestsSplitView({
                 <p className="text-sm font-semibold text-slate-600">Tableau de bord</p>
                 <h1 className="mt-2 flex items-center gap-2 text-2xl font-semibold tracking-tight text-slate-900">
                   <ClipboardList className="h-6 w-6 text-slate-700" aria-hidden="true" />
-                  <span>Demandes</span>
+                  <span>Réservations</span>
                 </h1>
                 <p className="mt-2 text-sm text-slate-600">
                   <span className="font-semibold text-slate-900">{pendingCount}</span> en attente
@@ -280,7 +280,7 @@ export function RequestsSplitView({
                     isArchivedView ? "text-slate-600 hover:text-slate-900" : "bg-white text-slate-900 shadow-sm"
                   }`}
                 >
-                  Demandes
+                  Réservations
                 </button>
                 <button
                   type="button"
@@ -373,13 +373,13 @@ export function RequestsSplitView({
             </div>
           ) : filtered.length === 0 ? (
             <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-              <p className="text-sm font-semibold text-slate-900">Aucune demande</p>
-              <p className="mt-2 text-sm text-slate-600">Aucune demande ne correspond à ce filtre.</p>
+              <p className="text-sm font-semibold text-slate-900">Aucune réservation</p>
+              <p className="mt-2 text-sm text-slate-600">Aucune réservation ne correspond à ce filtre.</p>
             </div>
           ) : (
             <div className="mt-6">
               <div className="max-h-[calc(100vh-220px)] space-y-2 overflow-auto px-1 pt-3 sm:pr-1 sm:pl-3">
-                <div role="listbox" aria-label="Liste des demandes" className="space-y-2">
+                <div role="listbox" aria-label="Liste des réservations" className="space-y-2">
                   {filtered.map((r) => (
                     <DraggableRequestRow
                       key={r.id}

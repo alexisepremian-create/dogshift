@@ -484,7 +484,7 @@ export default function HostDashboardPage() {
           </div>
 
           <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)]">
-            <p className="text-xs font-semibold text-slate-600">Demandes en attente</p>
+            <p className="text-xs font-semibold text-slate-600">Réservations en attente</p>
             <p className="mt-2 text-2xl font-semibold text-slate-900">{pendingRequests}</p>
           </div>
 
@@ -546,7 +546,7 @@ export default function HostDashboardPage() {
                 href="/host/requests"
                 className="flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4 text-sm font-semibold text-slate-900 transition hover:bg-slate-100"
               >
-                <span>Demandes & réservations</span>
+                <span>Réservations</span>
                 <span className="ml-auto inline-flex items-center gap-2">
                   {pendingRequests > 0 ? (
                     <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-rose-600 px-1.5 text-[11px] font-semibold text-white">
