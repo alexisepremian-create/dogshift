@@ -57,10 +57,10 @@ export default function MarketingLayout({ children }: { children: React.ReactNod
                 <div className="flex flex-col gap-3">
                   <p className="text-xs font-medium text-slate-400">Moyens de paiement acceptés :</p>
                   <div className="flex flex-wrap items-center gap-7 text-slate-400">
-                    <VisaLogo className="h-11 w-auto transition-all duration-300 hover:text-[#1434CB]" />
-                    <MastercardLogo className="h-11 w-auto grayscale transition-all duration-300 hover:grayscale-0" />
-                    <ApplePayLogo className="h-10 w-auto transition-all duration-300 hover:text-slate-900" />
-                    <TwintLogo className="h-9 w-auto transition-all duration-300 hover:text-[#000000]" />
+                    <VisaLogo className="h-12 w-auto transition-all duration-300 hover:text-[#1434CB]" />
+                    <MastercardLogo className="h-12 w-auto grayscale transition-all duration-300 hover:grayscale-0" />
+                    <ApplePayLogo className="h-11 w-auto transition-all duration-300 hover:text-slate-900" />
+                    <TwintLogo className="h-10 w-auto transition-all duration-300 hover:text-[#000000]" />
                   </div>
                 </div>
               </div>
