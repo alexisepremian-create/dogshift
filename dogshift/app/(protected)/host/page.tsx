@@ -377,8 +377,8 @@ export default function HostDashboardPage() {
           setLoaderDone(true);
           try { sessionStorage.removeItem("ds_login_transit"); } catch {}
         }}
-        static={fromLogin}
-        minDuration={fromLogin ? 0 : undefined}
+        static
+        minDuration={fromLogin ? 0 : 400}
       />
     );
   }
