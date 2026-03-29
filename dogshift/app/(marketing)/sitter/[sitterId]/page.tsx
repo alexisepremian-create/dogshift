@@ -2251,7 +2251,7 @@ function SitterPublicProfileContent({
               >
                 {finalizeLoading ? (
                   <span className="inline-flex items-center gap-2">
-                    <Spinner className="h-4 w-4 animate-spin" />
+                    <Spinner className="h-4 w-4" />
                     Chargement…
                   </span>
                 ) : (

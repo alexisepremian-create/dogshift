@@ -15,6 +15,7 @@ import {
   Settings,
 } from "lucide-react";
 
+import ClearLoginTransit from "@/components/ClearLoginTransit";
 import ContractAmendmentBlockingModal from "@/components/ContractAmendmentBlockingModal";
 import SunCornerGlow from "@/components/SunCornerGlow";
 import HowItWorksSchema, { OWNER_HOW_IT_WORKS_CONTENT } from "@/components/HowItWorksSchema";
@@ -158,6 +159,7 @@ export default async function AccountDashboardPage({
 
   return (
     <div className="relative grid gap-6 overflow-hidden" data-testid="account-dashboard">
+      <ClearLoginTransit />
       {hostUser?.sitterId ? <ContractAmendmentBlockingModal sitterId={hostUser.sitterId} state={hostUser.contractAmendment} /> : null}
       <SunCornerGlow variant="ownerDashboard" />
 

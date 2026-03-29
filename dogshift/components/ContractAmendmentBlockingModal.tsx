@@ -74,7 +74,7 @@ export default function ContractAmendmentBlockingModal({ sitterId, state }: Prop
         >
           {submitting ? (
             <span className="inline-flex items-center justify-center">
-              <Spinner className="h-4 w-4 animate-spin" />
+              <Spinner className="h-4 w-4" />
             </span>
           ) : (
             "J’accepte"

@@ -52,6 +52,10 @@ body {
   }
 }
 
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
 .ds-viewport {
   min-height: 100vh;
   min-height: 100dvh;

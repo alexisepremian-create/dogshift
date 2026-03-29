@@ -284,6 +284,10 @@ export default function HostDashboardPage() {
   const completionUiReady = Boolean(sitterId) && verificationLoaded;
 
   useEffect(() => {
+    try { sessionStorage.removeItem("ds_login_transit"); } catch {}
+  }, []);
+
+  useEffect(() => {
     if (!sitterId) {
       setReviewCount(0);
       setAverageRating(null);
