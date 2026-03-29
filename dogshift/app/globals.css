@@ -66,6 +66,15 @@ body {
   50%      { opacity: 0.45; }
 }
 
+[data-splash-mode="static"] [data-splash-svg] path {
+  opacity: 1 !important;
+  animation: none !important;
+}
+[data-splash-mode="static"] [data-splash-label] {
+  opacity: 1 !important;
+  animation: none !important;
+}
+
 .ds-viewport {
   min-height: 100vh;
   min-height: 100dvh;

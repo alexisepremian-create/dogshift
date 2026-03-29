@@ -6,7 +6,6 @@ import { useSplash } from "@/components/SplashContext";
 /* ── Config ────────────────────────────────────────────────────── */
 
 const LOGIN_KEY = "ds_login_transit";
-const SPLASH_DONE_KEY = "ds_splash_done";
 const FADE_MS = 450;
 const EASE = "cubic-bezier(0.16, 1, 0.3, 1)";
 const MIN_DEFAULT = 1800;
@@ -14,14 +13,12 @@ const MIN_LOGIN = 2800;
 
 /* ── Helpers ───────────────────────────────────────────────────── */
 
-function isLoginTransit() {
-  try {
-    const ts = sessionStorage.getItem(LOGIN_KEY);
-    if (!ts) return false;
-    return Date.now() - Number(ts) < 30_000;
-  } catch {
-    return false;
-  }
+function readSplashMode(): SplashMode {
+  if (typeof window === "undefined") return "normal";
+  const attr = document.documentElement.dataset.splashMode;
+  if (attr === "static") return "static";
+  if (attr === "login") return "login";
+  return "normal";
 }
 
 function reveal(delay: number, dur = 0.5): React.CSSProperties {
@@ -53,10 +50,10 @@ const LETTERS: { d: string; delay: number }[] = [
 const ALL_PATHS = [DOG_BODY, DOG_EYE, ...LETTERS.map((l) => l.d)];
 
 /* ── Splash modes ──────────────────────────────────────────────── */
-// "login"  → first mount after login, full stagger animation, 2800ms min
-// "static" → second mount after login (animation already played on post-login),
-//            logo shown instantly, fade out as soon as page signals ready
-// "normal" → page refresh / direct nav, full stagger animation, 1800ms min
+// "login"  → first page after login: full stagger animation, 2800ms min
+// "static" → arriving on /host after animation already played on post-login:
+//            logo fully visible (CSS override prevents stagger), fade out when ready
+// "normal" → page refresh / direct nav: full stagger animation, 1800ms min
 
 type SplashMode = "login" | "static" | "normal";
 
@@ -67,26 +64,12 @@ export default function BrandSplash() {
   const mountRef = useRef(Date.now());
   const [phase, setPhase] = useState<"animate" | "fadeOut" | "done">("animate");
 
-  const [mode] = useState<SplashMode>(() => {
-    if (typeof window === "undefined") return "normal";
-
-    const splashDone = sessionStorage.getItem(SPLASH_DONE_KEY);
-    if (splashDone) {
-      sessionStorage.removeItem(SPLASH_DONE_KEY);
-      return "static";
-    }
-
-    if (isLoginTransit()) return "login";
-
-    return "normal";
-  });
+  const [mode] = useState<SplashMode>(readSplashMode);
 
   const isStatic = mode === "static";
   const minDuration = mode === "login" ? MIN_LOGIN : mode === "static" ? 0 : MIN_DEFAULT;
 
-  const [label] = useState(() =>
-    mode === "normal" ? "Chargement…" : "Connexion en cours…",
-  );
+  const label = mode === "normal" ? "Chargement…" : "Connexion en cours…";
 
   useEffect(() => {
     if (!ready) return;
@@ -130,6 +113,7 @@ export default function BrandSplash() {
           viewBox="70 190 870 610"
           className="w-52 text-slate-800"
           aria-hidden="true"
+          data-splash-svg=""
         >
           <g
             transform="translate(0,1024) scale(0.1,-0.1)"
@@ -153,6 +137,7 @@ export default function BrandSplash() {
         <p
           className="mt-5 text-[13px] font-medium tracking-[0.18em] text-slate-400"
           style={isStatic ? undefined : reveal(1.6, 0.6)}
+          data-splash-label=""
         >
           {label}
         </p>
