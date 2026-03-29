@@ -18,8 +18,8 @@ export default function MarketingLayout({ children }: { children: React.ReactNod
             {/* Colonne Marque (Prend 2 colonnes sur grand écran) */}
             <div className="flex flex-col gap-4 lg:col-span-2">
               <Link href="/" aria-label="DogShift" className="inline-flex items-center gap-3">
-                <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-[var(--dogshift-blue)] text-white shadow-sm">
-                  <Image src="/dogshift-logo-white.png" alt="DogShift" width={72} height={72} className="h-7 w-auto" />
+                <span className="flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200 bg-white shadow-sm">
+                  <Image src="/dogshift-logo.png" alt="DogShift" width={72} height={72} className="h-8 w-auto" />
                 </span>
                 <span className="text-xl font-bold tracking-tight text-slate-900">DogShift</span>
               </Link>
@@ -96,7 +96,8 @@ export default function MarketingLayout({ children }: { children: React.ReactNod
             </div>
           </div>
 
-          <div className="mt-12 flex flex-col items-center justify-between gap-4 border-t border-slate-200/70 pt-8 sm:flex-row">
+          <div className="mt-12 flex flex-col items-center justify-start gap-4 border-t border-slate-200/70 pt-8 sm:flex-row sm:gap-6">
+            <p className="text-xs text-slate-500">© 2026 DogShift. Tous droits réservés.</p>
             <div className="flex items-center gap-4 text-xs text-slate-500">
               <Link href="/confidentialite" className="hover:text-slate-900">
                 Politique de confidentialité
@@ -105,7 +106,6 @@ export default function MarketingLayout({ children }: { children: React.ReactNod
                 Conditions d'utilisation
               </Link>
             </div>
-            <p className="text-xs text-slate-500">© 2026 DogShift. Tous droits réservés.</p>
           </div>
         </div>
       </footer>
