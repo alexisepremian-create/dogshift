@@ -5,6 +5,7 @@ import { Instagram, Facebook } from "lucide-react";
 import DogShiftBot from "@/components/DogShiftBot";
 import PageTopOffset from "@/components/PageTopOffset";
 import SiteHeader from "@/components/SiteHeader";
+import { VisaLogo, MastercardLogo, ApplePayLogo, TwintLogo } from "@/components/ui/PaymentIcons";
 
 export default function MarketingLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -28,28 +29,40 @@ export default function MarketingLayout({ children }: { children: React.ReactNod
               </p>
               
               {/* Réseaux sociaux */}
-              <div className="mt-4 flex flex-col gap-4">
-                <div className="flex items-center gap-3">
-                  <a
-                    href="https://www.instagram.com/dogshift_ch/"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-slate-500 transition-colors hover:bg-slate-200 hover:text-slate-900"
-                    aria-label="Instagram DogShift"
-                  >
-                    <Instagram className="h-4 w-4" />
-                  </a>
-                  <a
-                    href="https://www.facebook.com/profile.php?id=61578479756521"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-slate-500 transition-colors hover:bg-slate-200 hover:text-slate-900"
-                    aria-label="Facebook DogShift"
-                  >
-                    <Facebook className="h-4 w-4" />
-                  </a>
+              <div className="mt-4 flex flex-col gap-5">
+                <div className="flex flex-col gap-4">
+                  <div className="flex items-center gap-3">
+                    <a
+                      href="https://www.instagram.com/dogshift_ch/"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-slate-500 transition-colors hover:bg-slate-200 hover:text-slate-900"
+                      aria-label="Instagram DogShift"
+                    >
+                      <Instagram className="h-4 w-4" />
+                    </a>
+                    <a
+                      href="https://www.facebook.com/profile.php?id=61578479756521"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-slate-500 transition-colors hover:bg-slate-200 hover:text-slate-900"
+                      aria-label="Facebook DogShift"
+                    >
+                      <Facebook className="h-4 w-4" />
+                    </a>
+                  </div>
+                  <p className="text-xs text-slate-500">© 2026 DogShift. Tous droits réservés.</p>
                 </div>
-                <p className="text-xs text-slate-500">© 2026 DogShift. Tous droits réservés.</p>
+
+                <div className="flex flex-col gap-3">
+                  <p className="text-xs font-medium text-slate-400">Moyens de paiement acceptés :</p>
+                  <div className="flex flex-wrap items-center gap-7 text-slate-400">
+                    <VisaLogo className="h-8 w-auto transition-all duration-300 hover:text-[#1434CB]" />
+                    <MastercardLogo className="h-10 w-auto grayscale transition-all duration-300 hover:grayscale-0" />
+                    <ApplePayLogo className="h-9 w-auto transition-all duration-300 hover:text-slate-900" />
+                    <TwintLogo className="h-8 w-auto transition-all duration-300 hover:text-[#000000]" />
+                  </div>
+                </div>
               </div>
             </div>
 
