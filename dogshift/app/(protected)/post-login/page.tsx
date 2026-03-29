@@ -1,11 +1,14 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import PageLoader from "@/components/ui/PageLoader";
 
 export default function PostLoginPage() {
   const router = useRouter();
   const startedRef = useRef(false);
+
+  const [target, setTarget] = useState<string | null>(null);
 
   useEffect(() => {
     if (startedRef.current) return;
@@ -26,16 +29,27 @@ export default function PostLoginPage() {
         const data = await res.json().catch(() => null);
         const redirect = data?.redirect ?? "/host";
         const t = redirect === "/host" && next ? next : redirect;
-        
-        // Wait briefly for native loader to inject, then full navigation
-        setTimeout(() => {
-          window.location.replace(t.startsWith("/host") ? t : "/host");
-        }, 100);
+        setTarget(t.startsWith("/host") ? t : "/host");
       } catch {
         window.location.assign("/login?force=1");
       }
     })();
   }, []);
 
-  return null;
+  function handleDone() {
+    if (target) {
+      router.replace(target);
+    }
+  }
+
+  return (
+    <PageLoader
+      label="Connexion en cours…"
+      ready={target !== null}
+      onDone={handleDone}
+      minDuration={2800}
+      cloneOnUnmount={true}
+      persist
+    />
+  );
 }

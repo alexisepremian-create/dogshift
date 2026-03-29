@@ -174,6 +174,7 @@ export default function LoginForm() {
           window.location.replace(redirectTarget!);
         }}
         minDuration={2800}
+        cloneOnUnmount={true}
         persist
       />
     );

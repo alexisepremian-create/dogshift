@@ -4,7 +4,6 @@ import { Suspense } from "react";
 import { ClerkProvider } from "@clerk/nextjs";
 import { frFR } from "@clerk/localizations";
 import SessionAuthProvider from "@/components/SessionAuthProvider";
-import NativeTransitOverlay from "@/components/NativeTransitOverlay";
 import "maplibre-gl/dist/maplibre-gl.css";
 import "./globals.css";
 
@@ -77,7 +76,6 @@ export default async function RootLayout({
           afterSignOutUrl="/login?force=1"
           localization={frFR}
         >
-          <NativeTransitOverlay />
           <Suspense fallback={null}>
             <SessionAuthProvider>{children}</SessionAuthProvider>
           </Suspense>
