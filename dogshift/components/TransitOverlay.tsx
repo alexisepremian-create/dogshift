@@ -42,8 +42,6 @@ export default function TransitOverlay({ children }: { children: React.ReactNode
       setActive(true);
       isStaggerRef.current = window.location.pathname.includes("/post-login");
     }
-
-    document.getElementById("__ds_transit")?.remove();
   }, []);
 
   useEffect(() => {
