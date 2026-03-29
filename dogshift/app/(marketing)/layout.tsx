@@ -28,25 +28,28 @@ export default function MarketingLayout({ children }: { children: React.ReactNod
               </p>
               
               {/* Réseaux sociaux */}
-              <div className="mt-4 flex items-center gap-3">
-                <a
-                  href="https://www.instagram.com/dogshift_ch/"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-slate-500 transition-colors hover:bg-slate-200 hover:text-slate-900"
-                  aria-label="Instagram DogShift"
-                >
-                  <Instagram className="h-4 w-4" />
-                </a>
-                <a
-                  href="https://www.facebook.com/profile.php?id=61578479756521"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-slate-500 transition-colors hover:bg-slate-200 hover:text-slate-900"
-                  aria-label="Facebook DogShift"
-                >
-                  <Facebook className="h-4 w-4" />
-                </a>
+              <div className="mt-4 flex flex-col gap-4">
+                <div className="flex items-center gap-3">
+                  <a
+                    href="https://www.instagram.com/dogshift_ch/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-slate-500 transition-colors hover:bg-slate-200 hover:text-slate-900"
+                    aria-label="Instagram DogShift"
+                  >
+                    <Instagram className="h-4 w-4" />
+                  </a>
+                  <a
+                    href="https://www.facebook.com/profile.php?id=61578479756521"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-slate-500 transition-colors hover:bg-slate-200 hover:text-slate-900"
+                    aria-label="Facebook DogShift"
+                  >
+                    <Facebook className="h-4 w-4" />
+                  </a>
+                </div>
+                <p className="text-xs text-slate-500">© 2026 DogShift. Tous droits réservés.</p>
               </div>
             </div>
 
@@ -96,8 +99,7 @@ export default function MarketingLayout({ children }: { children: React.ReactNod
             </div>
           </div>
 
-          <div className="mt-12 flex flex-col items-center justify-start gap-4 border-t border-slate-200/70 pt-8 sm:flex-row sm:gap-6">
-            <p className="text-xs text-slate-500">© 2026 DogShift. Tous droits réservés.</p>
+          <div className="mt-12 flex flex-col items-start justify-start gap-4 border-t border-slate-200/70 pt-8 sm:flex-row sm:gap-6">
             <div className="flex items-center gap-4 text-xs text-slate-500">
               <Link href="/confidentialite" className="hover:text-slate-900">
                 Politique de confidentialité
