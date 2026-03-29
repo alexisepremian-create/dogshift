@@ -46,6 +46,7 @@ export default function TransitOverlay({ children }: { children: React.ReactNode
 
   useEffect(() => {
     if (!active) return;
+    delete document.documentElement.dataset.dsTransit;
     const t = setTimeout(() => {
       setReady(true);
       try { sessionStorage.removeItem(LOGIN_KEY); } catch {}
