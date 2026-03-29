@@ -24,14 +24,13 @@ export default function PostLoginPage() {
           return;
         }
         const data = await res.json().catch(() => null);
-        const redirect = data?.redirect ?? "/account";
+        const redirect = data?.redirect ?? "/host";
         const target = redirect === "/host" && next ? next : redirect;
 
-        if (target.startsWith("/host")) {
-          router.replace(target);
-        } else {
-          window.location.replace(target);
-        }
+        // Always use client-side navigation to stay within (protected)/ layout
+        // so the TransitOverlay animation persists across the navigation.
+        // HostDataGate will redirect non-sitter users to /account if needed.
+        router.replace(target.startsWith("/host") ? target : "/host");
       } catch {
         window.location.assign("/login?force=1");
       }
