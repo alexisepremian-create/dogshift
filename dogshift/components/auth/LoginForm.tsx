@@ -169,7 +169,10 @@ export default function LoginForm() {
       <PageLoader
         label="Connexion en cours…"
         ready={redirectTarget !== null}
-        onDone={() => window.location.replace(redirectTarget!)}
+        onDone={() => {
+          try { sessionStorage.setItem("ds_login_transit", String(Date.now())); } catch {}
+          window.location.replace(redirectTarget!);
+        }}
         minDuration={2800}
         persist
       />
