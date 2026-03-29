@@ -171,7 +171,6 @@ export default function LoginForm() {
         label="Connexion en cours…"
         ready={redirectTarget !== null}
         onDone={() => {
-          try { sessionStorage.setItem("ds_login_transit", String(Date.now())); } catch {}
           router.replace(redirectTarget!);
         }}
         minDuration={2800}

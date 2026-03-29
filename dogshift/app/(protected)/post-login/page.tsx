@@ -11,8 +11,6 @@ export default function PostLoginPage() {
     if (startedRef.current) return;
     startedRef.current = true;
 
-    try { sessionStorage.setItem("ds_login_transit", String(Date.now())); } catch {}
-
     const params = new URLSearchParams(window.location.search);
     const next = (params.get("next") ?? "").trim();
 
