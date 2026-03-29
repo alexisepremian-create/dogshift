@@ -309,7 +309,7 @@ function TypewriterBubbles({
         <div
           className={
             variant === "overlay"
-              ? "absolute right-[14%] top-[15%] w-[min(320px,calc(100%-5rem))]"
+              ? "absolute right-[14%] top-[8%] w-[min(320px,calc(100%-5rem))]"
               : "w-full"
           }
           style={bubbleMotionStyle}
@@ -329,7 +329,7 @@ function TypewriterBubbles({
         <div
           className={
             variant === "overlay"
-              ? "absolute right-[3%] top-[45%] w-[min(320px,calc(100%-6rem))]"
+              ? "absolute right-[3%] top-[40%] w-[min(320px,calc(100%-6rem))]"
               : "mt-3 w-full"
           }
           style={bubbleMotionStyle}
