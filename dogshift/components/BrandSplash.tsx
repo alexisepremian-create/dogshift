@@ -13,9 +13,30 @@ const MIN_LOGIN = 2800;
 
 /* ── Helpers ───────────────────────────────────────────────────── */
 
-function readSplashMode(): "login" | "normal" {
-  if (typeof window === "undefined") return "normal";
-  return document.documentElement.dataset.splashMode === "login" ? "login" : "normal";
+const PROTECTED_PREFIXES = ["/host", "/post-login"];
+
+function isProtectedRoute() {
+  if (typeof window === "undefined") return false;
+  return PROTECTED_PREFIXES.some((p) => window.location.pathname.startsWith(p));
+}
+
+function isLoginTransit() {
+  try {
+    const ts = sessionStorage.getItem(LOGIN_KEY);
+    if (!ts) return false;
+    return Date.now() - Number(ts) < 30_000;
+  } catch {
+    return false;
+  }
+}
+
+type SplashMode = "login" | "normal" | "off";
+
+function readSplashMode(): SplashMode {
+  if (typeof window === "undefined") return "off";
+  if (isLoginTransit()) return "login";
+  if (isProtectedRoute()) return "normal";
+  return "off";
 }
 
 function reveal(delay: number, dur = 0.5): React.CSSProperties {
@@ -55,6 +76,8 @@ export default function BrandSplash() {
 
   const minDuration = mode === "login" ? MIN_LOGIN : MIN_DEFAULT;
   const label = mode === "login" ? "Connexion en cours…" : "Chargement…";
+
+  if (mode === "off") return null;
 
   useEffect(() => {
     if (!ready) return;

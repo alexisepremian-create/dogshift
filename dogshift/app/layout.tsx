@@ -4,6 +4,8 @@ import { Suspense } from "react";
 import { ClerkProvider } from "@clerk/nextjs";
 import { frFR } from "@clerk/localizations";
 import SessionAuthProvider from "@/components/SessionAuthProvider";
+import { SplashProvider } from "@/components/SplashContext";
+import BrandSplash from "@/components/BrandSplash";
 import "maplibre-gl/dist/maplibre-gl.css";
 import "./globals.css";
 
@@ -71,11 +73,15 @@ export default async function RootLayout({
           signUpUrl="/login"
           afterSignInUrl="/post-login"
           afterSignUpUrl="/post-login"
+          afterSignOutUrl="/login?force=1"
           localization={frFR}
         >
-          <Suspense fallback={null}>
-            <SessionAuthProvider>{children}</SessionAuthProvider>
-          </Suspense>
+          <SplashProvider>
+            <BrandSplash />
+            <Suspense fallback={null}>
+              <SessionAuthProvider>{children}</SessionAuthProvider>
+            </Suspense>
+          </SplashProvider>
         </ClerkProvider>
       </body>
     </html>
