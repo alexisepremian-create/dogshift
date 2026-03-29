@@ -183,7 +183,7 @@ export function getHostTodos(profile: HostProfileV1): HostTodoItem[] {
     items.push({ id: "bio", label: "Ajouter une description", href: "/host/profile/edit#description" });
   }
   if (!checks.stripeConnected) {
-    items.push({ id: "stripe", label: "Configurer le compte de paiement", href: "/host/stripe" });
+    items.push({ id: "stripe", label: "Configurer le compte de paiement", href: "/host/wallet" });
   }
   if (profile.verificationStatus === "unverified") {
     items.push({ id: "verify", label: "Demander la vérification", href: "/host/profile/edit#verification" });
