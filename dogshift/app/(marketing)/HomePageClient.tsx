@@ -406,23 +406,24 @@ function HeroPetsittingStyle() {
           />
 
           <div
-            className="pointer-events-none absolute inset-0 z-10"
+            className="pointer-events-none absolute inset-0"
             style={{
               background:
                 "linear-gradient(90deg, rgba(248,250,252,0.98) 0%, rgba(248,250,252,0.96) 22%, rgba(248,250,252,0.82) 42%, rgba(248,250,252,0.25) 66%, rgba(248,250,252,0) 82%)",
             }}
           />
-
-          <div className="pointer-events-none absolute inset-0 z-20 hidden lg:block">
-            <TypewriterBubbles variant="overlay" active={bubblesActive} />
-          </div>
-
-          <div
-            className="absolute inset-y-0 right-0 z-30 hidden w-1/2 lg:block"
-            onMouseEnter={() => setBubblesActive(true)}
-            onMouseLeave={() => setBubblesActive(false)}
-          />
         </div>
+
+        <div className="pointer-events-none absolute inset-0 z-20 hidden lg:block">
+          <TypewriterBubbles variant="overlay" active={bubblesActive} />
+        </div>
+
+        <div
+          className="absolute inset-y-0 right-0 z-30 hidden w-1/2 lg:block"
+          onMouseEnter={() => setBubblesActive(true)}
+          onMouseLeave={() => setBubblesActive(false)}
+          aria-hidden="true"
+        />
 
         <div className="relative z-20 mx-auto hidden max-w-[1200px] px-4 pb-10 sm:block sm:px-6 sm:pb-12">
           <div className="pt-6 sm:pt-24 lg:pt-28">
