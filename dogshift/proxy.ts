@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 const isPublicRoute = createRouteMatcher([
   "/",
   "/login(.*)",
+  "/signup(.*)",
   "/sign-out(.*)",
   "/become-sitter",
   "/become-sitter/form",
@@ -15,7 +16,6 @@ const isPublicRoute = createRouteMatcher([
 ]);
 
 const removedExactPaths = new Set([
-  "/signup",
   "/access",
   "/unlock",
   "/travel-dog-bowl",
@@ -24,7 +24,7 @@ const removedExactPaths = new Set([
   "/abonnements-dogshift",
 ]);
 
-const removedPathPrefixes = ["/signup/", "/etiquette-produit/"];
+const removedPathPrefixes = ["/etiquette-produit/"];
 
 const isBecomeSitterInviteProtectedRoute = createRouteMatcher([
   "/become-sitter/form",
