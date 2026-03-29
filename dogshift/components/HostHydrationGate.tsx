@@ -2,8 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 
-import PageLoader from "@/components/ui/PageLoader";
-
 export default function HostHydrationGate({ children }: { children: React.ReactNode }) {
   const [ready, setReady] = useState(false);
   const latchedRef = useRef(false);
@@ -14,9 +12,7 @@ export default function HostHydrationGate({ children }: { children: React.ReactN
     setReady(true);
   }, []);
 
-  if (!ready) {
-    return <PageLoader label="Chargement…" />;
-  }
+  if (!ready) return null;
 
   return <>{children}</>;
 }

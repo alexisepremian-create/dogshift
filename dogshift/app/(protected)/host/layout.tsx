@@ -2,7 +2,6 @@ import HostDashboardShell from "@/components/HostDashboardShell";
 import HostDataGate from "@/components/HostDataGate";
 import HostHydrationGate from "@/components/HostHydrationGate";
 import { HostUserProvider } from "@/components/HostUserProvider";
-import PageLoader from "@/components/ui/PageLoader";
 import { getHostUserData } from "@/lib/hostUser";
 import { isActivatedStatus } from "@/lib/sitterContract";
 import Link from "next/link";
@@ -87,7 +86,7 @@ export default async function HostLayout({
 
   return (
     <HostUserProvider value={hostUser}>
-      <Suspense fallback={<PageLoader label="Chargement…" />}>
+      <Suspense fallback={null}>
         <HostDataGate>
           <HostHydrationGate>
             <HostDashboardShell>{children}</HostDashboardShell>

@@ -10,7 +10,7 @@ import { X } from "lucide-react";
 import SunCornerGlow from "@/components/SunCornerGlow";
 import { useHostUser } from "@/components/HostUserProvider";
 import HowItWorksSchema, { SITTER_HOW_IT_WORKS_CONTENT } from "@/components/HowItWorksSchema";
-import PageLoader from "@/components/ui/PageLoader";
+import { useSplash } from "@/components/SplashContext";
 
 import { getSitterById } from "@/lib/mockSitters";
 import { getUnreadHostMessageCount } from "@/lib/hostMessages";
@@ -185,14 +185,7 @@ export default function HostDashboardPage() {
   const [verificationLoaded, setVerificationLoaded] = useState(false);
   const [reviewCount, setReviewCount] = useState(0);
   const [averageRating, setAverageRating] = useState<number | null>(null);
-  const [fromLogin] = useState(() => {
-    if (typeof window === "undefined") return false;
-    try {
-      const ts = sessionStorage.getItem("ds_login_transit");
-      return ts ? Date.now() - Number(ts) < 30_000 : false;
-    } catch { return false; }
-  });
-  const [loaderDone, setLoaderDone] = useState(false);
+  const { signalReady } = useSplash();
 
   const completionCardDismissed = useSyncExternalStore(
     (onStoreChange) => {
@@ -366,22 +359,11 @@ export default function HostDashboardPage() {
     (profile.avatarDataUrl && profile.avatarDataUrl.trim() ? profile.avatarDataUrl.trim() : null) ??
     (typeof user?.imageUrl === "string" && user.imageUrl.trim() ? user.imageUrl.trim() : null);
 
-  const authReady = Boolean(isLoaded && isSignedIn);
+  useEffect(() => {
+    if (isLoaded && isSignedIn) signalReady();
+  }, [isLoaded, isSignedIn, signalReady]);
 
-  if (!loaderDone) {
-    return (
-      <PageLoader
-        label="Chargement…"
-        ready={authReady}
-        onDone={() => {
-          setLoaderDone(true);
-          try { sessionStorage.removeItem("ds_login_transit"); } catch {}
-        }}
-        static
-        minDuration={fromLogin ? 0 : 400}
-      />
-    );
-  }
+  if (!isLoaded || !isSignedIn) return null;
 
   if (!sitterId) {
     return (

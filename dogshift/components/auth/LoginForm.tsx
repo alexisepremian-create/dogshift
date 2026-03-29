@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { useSignIn, useUser } from "@clerk/nextjs";
 import Link from "next/link";
 
@@ -13,7 +13,6 @@ export default function LoginForm() {
   const { isLoaded, signIn, setActive } = useSignIn();
   const { isLoaded: userLoaded, isSignedIn } = useUser();
   const searchParams = useSearchParams();
-  const router = useRouter();
 
   const next = (searchParams?.get("next") ?? "").trim();
   const force = (searchParams?.get("force") ?? "").trim();
@@ -97,10 +96,8 @@ export default function LoginForm() {
 
       if (res?.status === "complete" && res?.createdSessionId) {
         await setActive?.({ session: res.createdSessionId });
-        router.replace(redirectAfterAuth);
-        setTimeout(() => {
-          window.location.assign(redirectAfterAuth);
-        }, 800);
+        try { sessionStorage.setItem("ds_login_transit", String(Date.now())); } catch {}
+        window.location.assign(redirectAfterAuth);
         return;
       }
 
@@ -154,14 +151,6 @@ export default function LoginForm() {
     void handleGoogle();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoGoogleStarted, isLoaded, signIn, startGoogleMode, userLoaded, isSignedIn]);
-
-  useEffect(() => {
-    if (!userLoaded) return;
-    if (!isSignedIn) return;
-    if (forceMode) return;
-    router.replace(redirectAfterAuth);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userLoaded, isSignedIn, forceMode]);
 
   return (
     <div className="flex flex-col">
