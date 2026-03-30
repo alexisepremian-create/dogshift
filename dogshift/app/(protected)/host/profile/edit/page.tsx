@@ -470,24 +470,31 @@ export default function HostProfileEditPage() {
                         <label className="block text-sm font-medium text-slate-700" htmlFor="host_housing">
                           Type de logement
                         </label>
-                        <select
-                          id="host_housing"
-                          value={profile.boardingDetails?.housingType ?? ""}
-                          onChange={(e) =>
-                            setProfile((p) => ({
-                              ...p,
-                              boardingDetails: {
-                                ...p.boardingDetails,
-                                housingType: (e.target.value as "Appartement" | "Maison" | "") || undefined,
-                              },
-                            }))
-                          }
-                          className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm font-medium text-slate-900 shadow-sm outline-none transition focus:border-[var(--dogshift-blue)] focus:ring-4 focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_85%)]"
-                        >
-                          <option value="">Sélectionner</option>
-                          <option value="Appartement">Appartement</option>
-                          <option value="Maison">Maison</option>
-                        </select>
+                        <div className="relative">
+                          <select
+                            id="host_housing"
+                            value={profile.boardingDetails?.housingType ?? ""}
+                            onChange={(e) =>
+                              setProfile((p) => ({
+                                ...p,
+                                boardingDetails: {
+                                  ...p.boardingDetails,
+                                  housingType: (e.target.value as "Appartement" | "Maison" | "") || undefined,
+                                },
+                              }))
+                            }
+                            className="mt-2 w-full appearance-none rounded-2xl border border-slate-300 bg-white px-4 py-3 pr-10 text-sm font-medium text-slate-900 shadow-sm outline-none transition focus:border-[var(--dogshift-blue)] focus:ring-4 focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_85%)]"
+                          >
+                            <option value="">Sélectionner</option>
+                            <option value="Appartement">Appartement</option>
+                            <option value="Maison">Maison</option>
+                          </select>
+                          <div className="pointer-events-none absolute right-4 top-[calc(50%+4px)] -translate-y-1/2 text-slate-400">
+                            <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4" aria-hidden="true">
+                              <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
+                            </svg>
+                          </div>
+                        </div>
                       </div>
 
                       <div>
