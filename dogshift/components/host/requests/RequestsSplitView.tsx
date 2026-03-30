@@ -295,16 +295,17 @@ export function RequestsSplitView({
                   : "gap-3 md:grid-cols-[140px_1fr]"
               }`}
             >
-              <div 
-                className={`transition-all duration-[800ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${
-                  isArchivedView 
-                    ? "opacity-0 pointer-events-none h-0 md:h-10 w-full md:w-[140px] -translate-x-4 md:translate-x-0 overflow-hidden" 
-                    : "opacity-100 pointer-events-auto h-10 w-full md:w-[140px] translate-x-0"
-                }`}
-              >
-                <label className="sr-only" htmlFor="host-requests-filter">
-                  Statut
-                </label>
+            <div 
+              className={`transition-all duration-[800ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${
+                isArchivedView 
+                  ? "opacity-0 pointer-events-none h-0 md:h-10 w-full md:w-[140px] -translate-x-4 md:translate-x-0 overflow-hidden" 
+                  : "opacity-100 pointer-events-auto h-10 w-full md:w-[140px] translate-x-0"
+              }`}
+            >
+              <label className="sr-only" htmlFor="host-requests-filter">
+                Statut
+              </label>
+              <div className="relative">
                 <select
                   id="host-requests-filter"
                   value={filter}
@@ -315,7 +316,7 @@ export function RequestsSplitView({
                       setLastActiveFilter(next as Exclude<FilterKey, "ARCHIVED">);
                     }
                   }}
-                  className="h-10 w-full md:w-[140px] rounded-2xl border border-slate-100 bg-white px-3 text-sm font-semibold text-slate-700 shadow-sm outline-none transition-colors focus:border-[var(--dogshift-blue)] focus:ring-2 focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] hover:bg-slate-50 cursor-pointer"
+                  className="h-10 w-full md:w-[140px] appearance-none rounded-2xl border border-slate-100 bg-white pl-3 pr-8 text-sm font-semibold text-slate-700 shadow-sm outline-none transition-colors focus:border-[var(--dogshift-blue)] focus:ring-2 focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] hover:bg-slate-50 cursor-pointer"
                 >
                   {(["ALL", "TO_ACCEPT", "CONFIRMED", "CANCELLED"] as const).map((k) => (
                     <option key={k} value={k}>
@@ -323,7 +324,13 @@ export function RequestsSplitView({
                     </option>
                   ))}
                 </select>
+                <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">
+                  <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4" aria-hidden="true">
+                    <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
+                  </svg>
+                </div>
               </div>
+            </div>
 
               <div className="relative flex-1 group transition-all duration-[800ms] ease-[cubic-bezier(0.16,1,0.3,1)]">
                 <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 transition-colors group-focus-within:text-[var(--dogshift-blue)]">
@@ -339,7 +346,7 @@ export function RequestsSplitView({
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="Rechercher…"
-                  className="h-10 w-full rounded-2xl border border-slate-100 bg-white pl-10 pr-3 text-sm font-medium text-slate-900 shadow-sm outline-none transition-all placeholder:text-slate-400 focus:border-[var(--dogshift-blue)] focus:ring-2 focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] hover:bg-slate-50"
+                  className="h-10 w-full appearance-none rounded-2xl border border-slate-100 bg-white pl-10 pr-3 text-sm font-medium text-slate-900 shadow-sm outline-none transition-all placeholder:text-slate-400 focus:border-[var(--dogshift-blue)] focus:ring-2 focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] hover:bg-slate-50"
                 />
               </div>
             </div>

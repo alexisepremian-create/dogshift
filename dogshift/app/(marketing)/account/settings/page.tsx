@@ -846,21 +846,28 @@ export default function AccountSettingsPage() {
             <label className={labelBase} htmlFor="language">
               Langue
             </label>
-            <select
-              id="language"
-              value={settingsState.preferences.language}
-              onChange={(e) =>
-                setSettingsState((prev) => ({
-                  ...prev,
-                  preferences: { ...prev.preferences, language: e.target.value as any },
-                }))
-              }
-              className={inputBase}
-            >
-              <option value="fr">Français</option>
-              <option value="en">English</option>
-              <option value="it">Italiano</option>
-            </select>
+            <div className="relative">
+              <select
+                id="language"
+                value={settingsState.preferences.language}
+                onChange={(e) =>
+                  setSettingsState((prev) => ({
+                    ...prev,
+                    preferences: { ...prev.preferences, language: e.target.value as any },
+                  }))
+                }
+                className={`${inputBase} appearance-none pr-8`}
+              >
+                <option value="fr">Français</option>
+                <option value="en">English</option>
+                <option value="it">Italiano</option>
+              </select>
+              <div className="pointer-events-none absolute right-3 top-[38px] -translate-y-1/2 text-slate-400">
+                <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4" aria-hidden="true">
+                  <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
+                </svg>
+              </div>
+            </div>
           </div>
 
           <div>
@@ -881,22 +888,29 @@ export default function AccountSettingsPage() {
             <label className={labelBase} htmlFor="dateFormat">
               Format de date
             </label>
-            <select
-              id="dateFormat"
-              value={settingsState.preferences.dateFormat}
-              onChange={(e) =>
-                setSettingsState((prev) => ({
-                  ...prev,
-                  preferences: { ...prev.preferences, dateFormat: e.target.value as any },
-                }))
-              }
-              className={inputBase}
-            >
-              <option value="auto">Auto</option>
-              <option value="dd/mm/yyyy">JJ/MM/AAAA</option>
-              <option value="mm/dd/yyyy">MM/JJ/AAAA</option>
-              <option value="yyyy-mm-dd">AAAA-MM-JJ</option>
-            </select>
+            <div className="relative">
+              <select
+                id="dateFormat"
+                value={settingsState.preferences.dateFormat}
+                onChange={(e) =>
+                  setSettingsState((prev) => ({
+                    ...prev,
+                    preferences: { ...prev.preferences, dateFormat: e.target.value as any },
+                  }))
+                }
+                className={`${inputBase} appearance-none pr-8`}
+              >
+                <option value="auto">Auto</option>
+                <option value="dd/mm/yyyy">JJ/MM/AAAA</option>
+                <option value="mm/dd/yyyy">MM/JJ/AAAA</option>
+                <option value="yyyy-mm-dd">AAAA-MM-JJ</option>
+              </select>
+              <div className="pointer-events-none absolute right-3 top-[38px] -translate-y-1/2 text-slate-400">
+                <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4" aria-hidden="true">
+                  <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
+                </svg>
+              </div>
+            </div>
           </div>
         </div>
 

@@ -632,16 +632,23 @@ export default function HostWalletPage() {
               <h2 className="text-lg font-semibold tracking-tight text-slate-900">Aperçu des statistiques</h2>
               <p className="mt-1 text-sm text-slate-500">Revenus et prestations sur la période sélectionnée.</p>
             </div>
-            <select
-              value={timeframe}
-              onChange={(e) => setTimeframe(e.target.value as any)}
-              className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50 pl-3 pr-8 text-sm font-medium text-slate-700 outline-none transition-colors hover:bg-slate-100 focus:border-[var(--dogshift-blue)] focus:bg-white focus:ring-2 focus:ring-[var(--dogshift-blue)]/20 sm:w-auto"
-            >
-              <option value="TODAY">Aujourd'hui</option>
-              <option value="WEEK">7 derniers jours</option>
-              <option value="MONTH">Mois en cours</option>
-              <option value="ALL">Toujours</option>
-            </select>
+            <div className="relative w-full sm:w-auto">
+              <select
+                value={timeframe}
+                onChange={(e) => setTimeframe(e.target.value as any)}
+                className="h-10 w-full appearance-none rounded-xl border border-slate-200 bg-slate-50 pl-3 pr-8 text-sm font-medium text-slate-700 outline-none transition-colors hover:bg-slate-100 focus:border-[var(--dogshift-blue)] focus:bg-white focus:ring-2 focus:ring-[var(--dogshift-blue)]/20 sm:w-auto"
+              >
+                <option value="TODAY">Aujourd'hui</option>
+                <option value="WEEK">7 derniers jours</option>
+                <option value="MONTH">Mois en cours</option>
+                <option value="ALL">Toujours</option>
+              </select>
+              <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">
+                <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4" aria-hidden="true">
+                  <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
+                </svg>
+              </div>
+            </div>
           </div>
 
           <div className="flex flex-col gap-10 lg:flex-row lg:items-stretch lg:gap-12">
