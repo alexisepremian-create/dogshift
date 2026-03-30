@@ -506,9 +506,28 @@ export default function AvailabilityStudioPage() {
       const input = pricingInputByService[svc] ?? "";
       const parsed = parsePrice(input);
       if (parsed !== null && pricingByService[svc] !== parsed) {
-        await saveServicePricing(svc);
+        const pricingKey = pricingKeyForService(svc);
+        const nextAll: Record<PricingServiceKey, number | null> = {
+          Promenade: pricingByService.PROMENADE ?? null,
+          Garde: pricingByService.DOGSITTING ?? null,
+          Pension: pricingByService.PENSION ?? null,
+        };
+        nextAll[pricingKey] = parsed;
+        try {
+          const res = await fetch("/api/host/profile/pricing", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ pricing: nextAll }),
+          });
+          const payload = (await res.json().catch(() => null)) as { ok?: boolean } | null;
+          if (res.ok && payload?.ok) {
+            setPricingByService((prev) => ({ ...prev, [svc]: parsed ?? undefined }));
+          }
+        } catch { /* proceed anyway */ }
       }
-      if (pricingErrorByService[svc]) {
+      const inputVal = pricingInputByService[svc] ?? "";
+      const parsedNow = parsePrice(inputVal);
+      if (parsedNow === null && pricingByService[svc] === undefined) {
         setTopError(errorMessageFr("PRICING_REQUIRED"));
         return;
       }
