@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { Info, X, Settings, Banknote, CalendarDays, Clock, ShieldCheck, CalendarClock, Home, Rocket } from "lucide-react";
 
 import { useHostUser } from "@/components/HostUserProvider";
 import { normalizeRanges } from "@/lib/availability/rangeValidation";
@@ -1652,62 +1653,125 @@ export default function AvailabilityStudioPage() {
         </div>
       ) : null}
 
-      <div className="mt-4">
-        <div ref={bookingInfoWrapRef} className="relative inline-block">
-          <button
-            type="button"
-            onClick={() => setBookingInfoOpen((v) => !v)}
-            className="inline-flex items-center gap-2 text-sm font-semibold text-slate-800"
-            aria-haspopup="dialog"
-            aria-expanded={bookingInfoOpen}
-          >
-            ⓘ Fonctionnement des réservations
-          </button>
-
-          {bookingInfoOpen ? (
-            <div
-              className="absolute left-0 top-full z-50 mt-2 w-[28rem] max-w-[calc(100vw-2rem)] rounded-3xl border border-slate-200 bg-white p-5 shadow-xl"
-              role="dialog"
-              aria-modal="false"
-              aria-label="Fonctionnement des réservations"
+      <div className="mt-6 mb-8" style={{ perspective: "1500px" }}>
+        <div 
+          className={`relative w-full transition-transform duration-[800ms] ease-[cubic-bezier(0.23,1,0.32,1)] ${bookingInfoOpen ? 'rotate-y-180' : ''}`}
+          style={{ transformStyle: "preserve-3d" }}
+        >
+          {/* We use a grid to make sure the container is as tall as the tallest face */}
+          <div className="grid">
+            
+            {/* FRONT FACE */}
+            <div 
+              className="col-start-1 row-start-1 w-full rounded-3xl border border-slate-100 bg-white p-6 shadow-[0_8px_30px_-12px_rgba(15,23,42,0.06)] flex flex-col sm:flex-row sm:items-center justify-between gap-4 z-10 transition-shadow hover:shadow-md hover:border-slate-200"
+              style={{ backfaceVisibility: "hidden" }}
             >
-              <div className="flex items-center justify-between gap-3">
-                <p className="text-sm font-semibold text-slate-900">Fonctionnement des réservations</p>
-                <button
-                  type="button"
-                  onClick={() => setBookingInfoOpen(false)}
-                  className="inline-flex h-9 items-center justify-center rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700"
-                >
-                  Fermer
-                </button>
-              </div>
-              <div className="mt-4 grid gap-3 text-sm text-slate-700">
-                <div>
-                  <ul className="mt-2 grid list-disc gap-2 pl-5">
-                    <li>Tu configures ici tes services et tes exceptions de disponibilité.</li>
-                    <li>Les tarifs doivent être définis avant de pouvoir activer un service.</li>
-                    <li>Promenade et garde : CHF / heure. Pension : CHF / jour.</li>
-                    <li>Les clients peuvent ensuite t’envoyer des demandes de réservation sur tes créneaux disponibles.</li>
-                    <li>Les horaires pour les promenades et le dogsitting sont proposés toutes les 30 minutes.</li>
-                    <li>30 minutes sont automatiquement bloquées avant et après chaque réservation pour te laisser le temps de t’organiser.</li>
-                    <li>Les réservations doivent être faites au moins 24h à l’avance.</li>
-                  </ul>
+              <div className="flex items-center gap-4">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[var(--dogshift-blue)]/10 text-[var(--dogshift-blue)]">
+                  <CalendarDays className="h-6 w-6" />
                 </div>
-
                 <div>
-                  <p className="text-sm font-semibold text-slate-900">Pension</p>
-                  <p className="mt-2">Pour la pension, les horaires d’arrivée et de départ dépendent des disponibilités que tu as définies.</p>
-                </div>
-
-                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                  <p className="text-sm font-semibold text-slate-900">Phase pilote</p>
-                  <div className="mt-2 grid gap-1 text-sm text-slate-700">
-                    <p>Les tarifs sont encadrés durant la phase pilote.</p>
-                  </div>
+                  <p className="text-base font-bold text-slate-900">Fonctionnement des réservations</p>
+                  <p className="text-sm text-slate-500 font-medium mt-1">Découvre les règles de disponibilité, de tarification et de gestion des créneaux.</p>
                 </div>
               </div>
+              <button
+                type="button"
+                onClick={() => setBookingInfoOpen(true)}
+                className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-50 text-slate-500 transition-all hover:bg-slate-100 hover:text-slate-900 hover:scale-105 active:scale-95"
+                title="Plus d'informations"
+              >
+                <Info className="h-5 w-5" />
+              </button>
             </div>
-          ) : null}
+
+            {/* BACK FACE */}
+            <div 
+              className={`col-start-1 row-start-1 w-full rounded-3xl border border-slate-100 bg-slate-50 p-6 shadow-md flex flex-col justify-between ${!bookingInfoOpen ? 'pointer-events-none' : 'z-20'}`}
+              style={{ backfaceVisibility: "hidden", transform: "rotateY(180deg)" }}
+            >
+               <div className="flex items-center justify-between mb-8 border-b border-slate-200/60 pb-4">
+                 <p className="text-sm font-bold text-slate-900 flex items-center gap-2.5">
+                   <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--dogshift-blue)]/10 text-[var(--dogshift-blue)]">
+                     <Info className="h-4 w-4" />
+                   </span>
+                   Règles et Fonctionnement
+                 </p>
+                 <button
+                   type="button"
+                   onClick={() => setBookingInfoOpen(false)}
+                   className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white border border-slate-200 text-slate-500 transition-all hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 hover:scale-105 active:scale-95 shadow-sm"
+                   title="Fermer"
+                 >
+                   <X className="h-4 w-4" />
+                 </button>
+               </div>
+
+               <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                 <div className="flex gap-3.5 items-start">
+                   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white border border-slate-100 shadow-sm text-slate-500 mt-0.5">
+                     <Settings className="h-5 w-5" />
+                   </div>
+                   <div>
+                     <p className="text-sm font-bold text-slate-900">Configuration</p>
+                     <p className="mt-1.5 text-slate-600 leading-relaxed text-[13px]">Configure tes services et exceptions. Les tarifs doivent être définis avant de pouvoir activer un service.</p>
+                   </div>
+                 </div>
+
+                 <div className="flex gap-3.5 items-start">
+                   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white border border-slate-100 shadow-sm text-slate-500 mt-0.5">
+                     <Banknote className="h-5 w-5" />
+                   </div>
+                   <div>
+                     <p className="text-sm font-bold text-slate-900">Tarification</p>
+                     <p className="mt-1.5 text-slate-600 leading-relaxed text-[13px]">Promenade et garde s'appliquent au tarif horaire (CHF / heure). La pension s'applique au tarif journalier.</p>
+                   </div>
+                 </div>
+
+                 <div className="flex gap-3.5 items-start">
+                   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white border border-slate-100 shadow-sm text-slate-500 mt-0.5">
+                     <Clock className="h-5 w-5" />
+                   </div>
+                   <div>
+                     <p className="text-sm font-bold text-slate-900">Horaires & Délais</p>
+                     <p className="mt-1.5 text-slate-600 leading-relaxed text-[13px]">Les créneaux sont proposés toutes les 30 min. Les réservations doivent être faites au moins 24h à l'avance.</p>
+                   </div>
+                 </div>
+
+                 <div className="flex gap-3.5 items-start">
+                   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white border border-slate-100 shadow-sm text-slate-500 mt-0.5">
+                     <ShieldCheck className="h-5 w-5" />
+                   </div>
+                   <div>
+                     <p className="text-sm font-bold text-slate-900">Marge de sécurité</p>
+                     <p className="mt-1.5 text-slate-600 leading-relaxed text-[13px]">30 minutes sont automatiquement bloquées avant et après chaque réservation pour te laisser le temps de t’organiser.</p>
+                   </div>
+                 </div>
+
+                 <div className="flex gap-3.5 items-start">
+                   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white border border-slate-100 shadow-sm text-slate-500 mt-0.5">
+                     <Home className="h-5 w-5" />
+                   </div>
+                   <div>
+                     <p className="text-sm font-bold text-slate-900">Pension</p>
+                     <p className="mt-1.5 text-slate-600 leading-relaxed text-[13px]">Pour la pension, les horaires d’arrivée et de départ dépendent directement des disponibilités que tu as définies.</p>
+                   </div>
+                 </div>
+
+                 <div className="flex gap-3.5 items-start">
+                   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white border border-slate-100 shadow-sm text-slate-500 mt-0.5">
+                     <Rocket className="h-5 w-5" />
+                   </div>
+                   <div>
+                     <p className="text-sm font-bold text-slate-900">Phase pilote</p>
+                     <p className="mt-1.5 text-slate-600 leading-relaxed text-[13px]">Les tarifs sont encadrés durant la phase pilote pour garantir un lancement qualitatif.</p>
+                   </div>
+                 </div>
+
+               </div>
+            </div>
+
+          </div>
         </div>
       </div>
 
