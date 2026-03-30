@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { Info, X, Settings, Banknote, Clock, ShieldCheck, Home, Rocket } from "lucide-react";
 
 import { useHostUser } from "@/components/HostUserProvider";
 import { normalizeRanges } from "@/lib/availability/rangeValidation";
@@ -1652,71 +1653,31 @@ export default function AvailabilityStudioPage() {
         </div>
       ) : null}
 
-      <div className="mt-4">
-        <div ref={bookingInfoWrapRef} className="relative inline-block">
-          <button
-            type="button"
-            onClick={() => setBookingInfoOpen((v) => !v)}
-            className="inline-flex items-center gap-2 text-sm font-semibold text-slate-800"
-            aria-haspopup="dialog"
-            aria-expanded={bookingInfoOpen}
-          >
-            ⓘ Fonctionnement des réservations
-          </button>
-
-          {bookingInfoOpen ? (
-            <div
-              className="absolute left-0 top-full z-50 mt-2 w-[28rem] max-w-[calc(100vw-2rem)] rounded-3xl border border-slate-200 bg-white p-5 shadow-xl"
-              role="dialog"
-              aria-modal="false"
-              aria-label="Fonctionnement des réservations"
+      <div className="grid gap-6 lg:grid-cols-2">
+        {/* Column 1: Services and Disponibilités */}
+        <div className="flex flex-col gap-6">
+          {/* Services Card (Flippable) */}
+          <div className="relative w-full" style={{ perspective: "1500px" }}>
+            <div 
+              className={`w-full transition-transform duration-[800ms] ease-[cubic-bezier(0.23,1,0.32,1)] ${bookingInfoOpen ? 'rotate-y-180' : ''}`}
+              style={{ transformStyle: "preserve-3d" }}
             >
-              <div className="flex items-center justify-between gap-3">
-                <p className="text-sm font-semibold text-slate-900">Fonctionnement des réservations</p>
+              {/* FRONT FACE */}
+              <div 
+                className="rounded-3xl border border-slate-200 bg-white p-5 relative"
+                style={{ backfaceVisibility: "hidden" }}
+              >
                 <button
                   type="button"
-                  onClick={() => setBookingInfoOpen(false)}
-                  className="inline-flex h-9 items-center justify-center rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700"
+                  onClick={() => setBookingInfoOpen(true)}
+                  className="absolute right-5 top-5 inline-flex h-8 w-8 items-center justify-center rounded-full bg-slate-50 text-slate-500 transition-all hover:bg-slate-100 hover:text-slate-900 hover:scale-105 active:scale-95 z-10"
+                  title="Fonctionnement des réservations"
                 >
-                  Fermer
+                  <Info className="h-4 w-4" />
                 </button>
-              </div>
-              <div className="mt-4 grid gap-3 text-sm text-slate-700">
-                <div>
-                  <ul className="mt-2 grid list-disc gap-2 pl-5">
-                    <li>Tu configures ici tes services et tes exceptions de disponibilité.</li>
-                    <li>Les tarifs doivent être définis avant de pouvoir activer un service.</li>
-                    <li>Promenade et garde : CHF / heure. Pension : CHF / jour.</li>
-                    <li>Les clients peuvent ensuite t’envoyer des demandes de réservation sur tes créneaux disponibles.</li>
-                    <li>Les horaires pour les promenades et le dogsitting sont proposés toutes les 30 minutes.</li>
-                    <li>30 minutes sont automatiquement bloquées avant et après chaque réservation pour te laisser le temps de t’organiser.</li>
-                    <li>Les réservations doivent être faites au moins 24h à l’avance.</li>
-                  </ul>
-                </div>
-
-                <div>
-                  <p className="text-sm font-semibold text-slate-900">Pension</p>
-                  <p className="mt-2">Pour la pension, les horaires d’arrivée et de départ dépendent des disponibilités que tu as définies.</p>
-                </div>
-
-                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                  <p className="text-sm font-semibold text-slate-900">Phase pilote</p>
-                  <div className="mt-2 grid gap-1 text-sm text-slate-700">
-                    <p>Les tarifs sont encadrés durant la phase pilote.</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          ) : null}
-        </div>
-      </div>
-
-      <div className="grid gap-6 lg:grid-cols-2">
-        {/* Column 1: Services */}
-        <div className="rounded-3xl border border-slate-200 bg-white p-5">
-          <div className="flex flex-col items-start gap-3">
-            <p className="text-sm font-semibold text-slate-900">Services</p>
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-[11px] font-semibold text-slate-500">
+                <div className="flex flex-col items-start gap-3">
+                  <p className="text-sm font-semibold text-slate-900">Services</p>
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-[11px] font-semibold text-slate-500 pr-10">
               <div className="flex items-center gap-2">
                 <span className={`h-2 w-2 rounded-full ${serviceDotTone("PROMENADE")}`} aria-hidden="true" />
                 <span>Promenade</span>
@@ -1874,8 +1835,97 @@ export default function AvailabilityStudioPage() {
               })}
             </div>
           </div>
+          </div>
 
-          <div className="mt-6 border-t border-slate-200 pt-5">
+              {/* BACK FACE */}
+              <div 
+                className={`absolute inset-0 w-full h-full rounded-3xl border border-slate-200 bg-slate-50 p-5 shadow-sm flex flex-col overflow-y-auto ${!bookingInfoOpen ? 'pointer-events-none' : 'z-20'}`}
+                style={{ backfaceVisibility: "hidden", transform: "rotateY(180deg)", scrollbarWidth: 'none' }}
+              >
+                 <div className="flex items-center justify-between mb-6 border-b border-slate-200/60 pb-4 shrink-0">
+                   <p className="text-sm font-bold text-slate-900 flex items-center gap-2.5">
+                     <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--dogshift-blue)]/10 text-[var(--dogshift-blue)]">
+                       <Info className="h-3.5 w-3.5" />
+                     </span>
+                     Fonctionnement
+                   </p>
+                   <button
+                     type="button"
+                     onClick={() => setBookingInfoOpen(false)}
+                     className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-white border border-slate-200 text-slate-500 transition-all hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 hover:scale-105 active:scale-95 shadow-sm"
+                     title="Fermer"
+                   >
+                     <X className="h-3.5 w-3.5" />
+                   </button>
+                 </div>
+
+                 <div className="grid gap-5 pb-4">
+                   <div className="flex gap-3 items-start">
+                     <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white border border-slate-100 shadow-sm text-slate-500">
+                       <Settings className="h-4 w-4" />
+                     </div>
+                     <div>
+                       <p className="text-xs font-bold text-slate-900">Configuration</p>
+                       <p className="mt-1 text-slate-600 leading-relaxed text-[12px]">Tarifs requis avant d'activer un service.</p>
+                     </div>
+                   </div>
+
+                   <div className="flex gap-3 items-start">
+                     <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white border border-slate-100 shadow-sm text-slate-500">
+                       <Banknote className="h-4 w-4" />
+                     </div>
+                     <div>
+                       <p className="text-xs font-bold text-slate-900">Tarification</p>
+                       <p className="mt-1 text-slate-600 leading-relaxed text-[12px]">Promenade/garde (CHF/h), Pension (CHF/jour).</p>
+                     </div>
+                   </div>
+
+                   <div className="flex gap-3 items-start">
+                     <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white border border-slate-100 shadow-sm text-slate-500">
+                       <Clock className="h-4 w-4" />
+                     </div>
+                     <div>
+                       <p className="text-xs font-bold text-slate-900">Horaires</p>
+                       <p className="mt-1 text-slate-600 leading-relaxed text-[12px]">Créneaux de 30 min. Réservation 24h à l'avance.</p>
+                     </div>
+                   </div>
+
+                   <div className="flex gap-3 items-start">
+                     <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white border border-slate-100 shadow-sm text-slate-500">
+                       <ShieldCheck className="h-4 w-4" />
+                     </div>
+                     <div>
+                       <p className="text-xs font-bold text-slate-900">Marge de sécurité</p>
+                       <p className="mt-1 text-slate-600 leading-relaxed text-[12px]">30 min bloquées avant/après chaque réservation.</p>
+                     </div>
+                   </div>
+
+                   <div className="flex gap-3 items-start">
+                     <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white border border-slate-100 shadow-sm text-slate-500">
+                       <Home className="h-4 w-4" />
+                     </div>
+                     <div>
+                       <p className="text-xs font-bold text-slate-900">Pension</p>
+                       <p className="mt-1 text-slate-600 leading-relaxed text-[12px]">Arrivée/départ selon tes disponibilités.</p>
+                     </div>
+                   </div>
+
+                   <div className="flex gap-3 items-start">
+                     <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white border border-slate-100 shadow-sm text-slate-500">
+                       <Rocket className="h-4 w-4" />
+                     </div>
+                     <div>
+                       <p className="text-xs font-bold text-slate-900">Phase pilote</p>
+                       <p className="mt-1 text-slate-600 leading-relaxed text-[12px]">Tarifs encadrés pour garantir la qualité.</p>
+                     </div>
+                   </div>
+                 </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Disponibilités Card */}
+          <div className="rounded-3xl border border-slate-200 bg-white p-5">
             <p className="text-sm font-semibold text-slate-900">Disponibilités</p>
 
             <div className="mt-3 grid grid-cols-3 gap-2 rounded-2xl bg-white p-2 ring-1 ring-slate-200">
