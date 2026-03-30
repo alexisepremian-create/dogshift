@@ -11,6 +11,7 @@ type BookingRow = {
   status: string;
   amount: number;
   currency: string;
+  service: string | null;
   stripePaymentIntentId: string | null;
   stripeRefundId: string | null;
   refundedAt: Date | null;
@@ -24,6 +25,7 @@ type WalletPayment = {
   amount: number;
   currency: string;
   status: string;
+  service: string;
   url: string;
 };
 
@@ -34,6 +36,7 @@ type WalletRefund = {
   currency: string;
   status: "succeeded" | "failed";
   stripeRefundId: string;
+  service: string;
   url: string;
 };
 
@@ -45,6 +48,7 @@ type WalletHistoryItem =
       amount: number;
       currency: string;
       status: string;
+      service: string;
       url: string;
     }
   | {
@@ -55,6 +59,7 @@ type WalletHistoryItem =
       currency: string;
       status: "succeeded" | "failed";
       stripeRefundId: string;
+      service: string;
       url: string;
     };
 
@@ -101,6 +106,7 @@ export async function GET(req: NextRequest) {
         status: true,
         amount: true,
         currency: true,
+        service: true,
         stripePaymentIntentId: true,
         stripeRefundId: true,
         refundedAt: true,
@@ -123,6 +129,7 @@ export async function GET(req: NextRequest) {
       const currency = typeof b.currency === "string" && b.currency.trim() ? b.currency.trim() : "chf";
       const paymentIntentId = typeof b.stripePaymentIntentId === "string" && b.stripePaymentIntentId.trim() ? b.stripePaymentIntentId.trim() : null;
       const refundId = typeof b.stripeRefundId === "string" && b.stripeRefundId.trim() ? b.stripeRefundId.trim() : null;
+      const service = typeof b.service === "string" && b.service.trim() ? b.service.trim() : "Service";
 
       if (isPaidLike(status) && paymentIntentId) {
         totalPaid += amount;
@@ -133,6 +140,7 @@ export async function GET(req: NextRequest) {
           amount,
           currency,
           status,
+          service,
           url: bookingUrl(bookingId),
         };
         payments.push(item);
@@ -150,6 +158,7 @@ export async function GET(req: NextRequest) {
           currency,
           status: "succeeded",
           stripeRefundId: refundId,
+          service,
           url: bookingUrl(bookingId),
         };
         refunds.push(r);
@@ -166,6 +175,7 @@ export async function GET(req: NextRequest) {
           currency,
           status: "failed",
           stripeRefundId: refundId,
+          service,
           url: bookingUrl(bookingId),
         };
         refunds.push(r);
