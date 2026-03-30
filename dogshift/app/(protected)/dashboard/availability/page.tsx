@@ -565,57 +565,56 @@ export default function AvailabilityStudioPage() {
     }
   }
 
-  async function saveServicePricing(svc: ServiceTypeApi) {
+  async function saveServicePricing(svc: ServiceTypeApi, rawOverride?: string) {
     if (!sitterId) return;
-    const raw = pricingInputByService[svc] ?? "";
+    const raw = rawOverride !== undefined ? rawOverride : (pricingInputByService[svc] ?? "");
     const parsed = parsePrice(raw);
     const pricingKey = pricingKeyForService(svc);
     const rangeError = parsed !== null ? getTariffRangeError(pricingKey, parsed) : null;
     const isValid = parsed !== null && !rangeError;
 
-    const nextAll: Record<PricingServiceKey, number | null> = {
-      Promenade: pricingByService.PROMENADE ?? null,
-      Garde: pricingByService.DOGSITTING ?? null,
-      Pension: pricingByService.PENSION ?? null,
-    };
-    nextAll[pricingKey] = parsed;
+    const currentlyEnabled = configByService[svc]?.enabled === true;
+    const needsToggle = (isValid && !currentlyEnabled) || (!isValid && currentlyEnabled);
+
+    if (needsToggle) {
+      const nextEnabled = isValid;
+      setConfigByService((prev) => {
+        const n = { ...prev };
+        (n as any)[svc] = { ...(prev[svc] ?? {}), enabled: nextEnabled };
+        return n;
+      });
+      fetch(`/api/sitters/me/service-config?service=${encodeURIComponent(svc)}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ enabled: nextEnabled }),
+      }).catch(() => {});
+    }
+
+    if (isValid) {
+      setPricingByService((prev) => ({ ...prev, [svc]: parsed! }));
+    } else {
+      setPricingByService((prev) => {
+        const n = { ...prev };
+        delete (n as any)[svc];
+        return n;
+      });
+    }
 
     setPricingSavingByService((prev) => ({ ...prev, [svc]: true }));
     try {
-      const res = await fetch("/api/host/profile/pricing", {
+      const nextAll: Record<PricingServiceKey, number | null> = {
+        Promenade: pricingByService.PROMENADE ?? null,
+        Garde: pricingByService.DOGSITTING ?? null,
+        Pension: pricingByService.PENSION ?? null,
+      };
+      nextAll[pricingKey] = parsed;
+      await fetch("/api/host/profile/pricing", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ pricing: nextAll }),
       });
-      const payload = (await res.json().catch(() => null)) as { ok?: boolean; error?: string; details?: string } | null;
-      if (!res.ok || !payload?.ok) {
-        throw new Error((typeof payload?.details === "string" && payload.details) || payload?.error || "SAVE_ERROR");
-      }
-
-      setPricingByService({
-        PROMENADE: typeof nextAll.Promenade === "number" ? nextAll.Promenade : undefined,
-        DOGSITTING: typeof nextAll.Garde === "number" ? nextAll.Garde : undefined,
-        PENSION: typeof nextAll.Pension === "number" ? nextAll.Pension : undefined,
-      });
-
-      const currentlyEnabled = configByService[svc]?.enabled === true;
-      const needsToggle = (isValid && !currentlyEnabled) || (!isValid && currentlyEnabled);
-
-      if (needsToggle) {
-        const nextEnabled = isValid;
-        setConfigByService((prev) => {
-          const n = { ...prev };
-          (n as any)[svc] = { ...(prev[svc] ?? {}), enabled: nextEnabled };
-          return n;
-        });
-        fetch(`/api/sitters/me/service-config?service=${encodeURIComponent(svc)}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ enabled: nextEnabled }),
-        }).catch(() => {});
-      }
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "SAVE_ERROR");
+    } catch {
+      // pricing save is best-effort; toggle already handled above
     } finally {
       setPricingSavingByService((prev) => ({ ...prev, [svc]: false }));
     }
@@ -1837,12 +1836,12 @@ export default function AvailabilityStudioPage() {
                           setPricingInputByService((prev) => ({ ...prev, [svc]: val }));
                           clearTimeout(pricingDebounceRef.current[svc]);
                           pricingDebounceRef.current[svc] = setTimeout(() => {
-                            void saveServicePricing(svc);
+                            void saveServicePricing(svc, val);
                           }, 500);
                         }}
-                        onBlur={() => {
+                        onBlur={(e) => {
                           clearTimeout(pricingDebounceRef.current[svc]);
-                          void saveServicePricing(svc);
+                          void saveServicePricing(svc, e.target.value);
                         }}
                         onClick={(e) => e.stopPropagation()}
                         inputMode="decimal"
