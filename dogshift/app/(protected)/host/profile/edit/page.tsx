@@ -324,7 +324,7 @@ export default function HostProfileEditPage() {
 
                 <div id="photo" className="scroll-mt-24 mt-5">
                   <label className="block text-sm font-medium text-slate-700" htmlFor="host_photo">
-                    Photo (mock)
+                    Photo
                   </label>
                   <div className="mt-2 flex flex-wrap items-center gap-3">
                     <input
