@@ -569,6 +569,10 @@ export default function AvailabilityStudioPage() {
         PENSION: typeof nextAll.Pension === "number" ? nextAll.Pension : undefined,
       });
 
+      if (parsed === null && configByService[svc]?.enabled === true) {
+        await saveServiceEnabled(svc, false);
+      }
+
       await refetchAll();
     } catch (e) {
       setError(e instanceof Error ? e.message : "SAVE_ERROR");
