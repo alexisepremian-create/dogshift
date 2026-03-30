@@ -100,7 +100,7 @@ export async function POST(req: NextRequest) {
       sitterId = generateSitterId();
       await prisma.user.update({
         where: { id: ensured.id },
-        data: { sitterId, role: "SITTER" },
+        data: { sitterId },
         select: { id: true },
       });
     }

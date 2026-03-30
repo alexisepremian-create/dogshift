@@ -3,7 +3,6 @@ import { auth, currentUser } from "@clerk/nextjs/server";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
-import { prisma } from "@/lib/prisma";
 import { ensureDbUserByClerkUserId } from "@/lib/auth/resolveDbUserId";
 
 export default async function BecomeSitterFormPage() {
@@ -25,9 +24,7 @@ export default async function BecomeSitterFormPage() {
         })
       : null;
 
-    const isAlreadySitter = dbUser
-      ? Boolean(await prisma.sitterProfile.findUnique({ where: { userId: dbUser.id }, select: { id: true } }))
-      : false;
+    const isAlreadySitter = dbUser?.role === "SITTER";
 
     if (isAlreadySitter) {
       redirect("/host");
