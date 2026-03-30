@@ -155,6 +155,7 @@ export async function GET(req: NextRequest) {
         contractSignedAt: true,
         activatedAt: true,
         activationCodeIssuedAt: true,
+        stripeAccountStatus: true,
       },
     });
 
@@ -167,11 +168,14 @@ export async function GET(req: NextRequest) {
       ? serviceConfigs.filter((row) => row && row.enabled === true).map((row) => String(row.serviceType ?? ""))
       : [];
 
-    const mergedProfile = buildEffectiveSitterCompletionProfile({
-      profile,
-      enabledServiceTypes,
-      persistedPricing: sitterProfile?.pricing,
-    });
+    const mergedProfile = {
+      ...buildEffectiveSitterCompletionProfile({
+        profile,
+        enabledServiceTypes,
+        persistedPricing: sitterProfile?.pricing,
+      }),
+      stripeAccountStatus: typeof sitterProfile?.stripeAccountStatus === "string" ? sitterProfile.stripeAccountStatus : null,
+    };
 
     const computedProfileCompletion = computeSitterProfileCompletion(mergedProfile);
     const persistedProfileCompletion =
