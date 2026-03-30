@@ -574,19 +574,17 @@ export default function AvailabilityStudioPage() {
     const isValid = parsed !== null && !rangeError;
 
     const currentlyEnabled = configByService[svc]?.enabled === true;
-    const needsToggle = (isValid && !currentlyEnabled) || (!isValid && currentlyEnabled);
 
-    if (needsToggle) {
-      const nextEnabled = isValid;
+    if (!isValid && currentlyEnabled) {
       setConfigByService((prev) => {
         const n = { ...prev };
-        (n as any)[svc] = { ...(prev[svc] ?? {}), enabled: nextEnabled };
+        (n as any)[svc] = { ...(prev[svc] ?? {}), enabled: false };
         return n;
       });
       fetch(`/api/sitters/me/service-config?service=${encodeURIComponent(svc)}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ enabled: nextEnabled }),
+        body: JSON.stringify({ enabled: false }),
       }).catch(() => {});
     }
 
