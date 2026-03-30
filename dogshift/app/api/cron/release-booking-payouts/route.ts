@@ -37,6 +37,19 @@ export async function GET(req: NextRequest) {
   let failed = 0;
 
   try {
+    const balanceResponse = await stripe.balance.retrieve();
+    const chfAvailable = balanceResponse.available.find((b) => b.currency === "chf");
+    let availableBalance = typeof chfAvailable?.amount === "number" ? chfAvailable.amount : 0;
+
+    console.log("[api][cron][release-booking-payouts] balance", { availableBalance });
+
+    if (availableBalance <= 0) {
+      return NextResponse.json(
+        { ok: true, processed: 0, released: 0, skipped: 0, failed: 0, reason: "NO_AVAILABLE_BALANCE", asOf: now.toISOString() },
+        { status: 200 }
+      );
+    }
+
     const bookings = await (prisma as any).booking.findMany({
       where: {
         endDate: { lte: now },
@@ -66,6 +79,12 @@ export async function GET(req: NextRequest) {
     for (const booking of bookings ?? []) {
       const bookingId = String(booking.id);
       processed += 1;
+
+      if (availableBalance <= 0) {
+        skipped += 1;
+        console.log("[api][cron][release-booking-payouts] no balance left, skipping", { bookingId });
+        continue;
+      }
 
       try {
         const sitterProfile = await (prisma as any).sitterProfile.findUnique({
@@ -101,7 +120,13 @@ export async function GET(req: NextRequest) {
         const grossAmount = typeof booking.amount === "number" ? booking.amount : 0;
         const stripeFeeAmount = typeof synced.stripeFeeAmount === "number" ? synced.stripeFeeAmount : 0;
         const platformFeeAmount = typeof booking.platformFeeAmount === "number" ? booking.platformFeeAmount : 0;
-        const netPayoutFallbackAmount = Math.max(0, grossAmount - stripeFeeAmount - platformFeeAmount);
+        const netAmount = Math.max(0, grossAmount - stripeFeeAmount - platformFeeAmount);
+
+        const transferAmount = payoutAmount <= availableBalance
+          ? payoutAmount
+          : netAmount <= availableBalance
+            ? netAmount
+            : 0;
 
         console.log("[api][cron][release-booking-payouts] computed payout", {
           bookingId,
@@ -109,84 +134,53 @@ export async function GET(req: NextRequest) {
           stripeFeeAmount,
           platformFeeAmount,
           payoutAmount,
+          netAmount,
+          availableBalance,
+          transferAmount,
         });
 
-        if (!Number.isFinite(payoutAmount) || payoutAmount <= 0) {
+        if (!Number.isFinite(transferAmount) || transferAmount <= 0) {
           skipped += 1;
+          console.warn("[api][cron][release-booking-payouts] insufficient balance, will retry next run", {
+            bookingId,
+            payoutAmount,
+            netAmount,
+            availableBalance,
+          });
           continue;
         }
 
-        let transferUsedAmount = payoutAmount;
-        let transfer: any = null;
-        try {
-          transfer = await stripe.transfers.create(
-            {
-              amount: payoutAmount,
-              currency: String(booking.currency || "chf").toLowerCase(),
-              destination,
-              transfer_group: `booking:${bookingId}`,
-              metadata: {
-                bookingId,
-                sitterId: String(booking.sitterId),
-                paymentIntentId,
-                grossAmount: String(grossAmount),
-                stripeFeeAmount: String(stripeFeeAmount),
-                platformFeeAmount: String(platformFeeAmount),
-                payoutAmount: String(payoutAmount),
-              },
-            },
-            {
-              idempotencyKey: `transfer:booking:${bookingId}:${paymentIntentId}:${payoutAmount}`,
-            }
-          );
-        } catch (err) {
-          // If Stripe refuses to transfer the full reservation amount (insufficient funds),
-          // fallback to the old net payout calculation to avoid breaking payouts/refunds.
-          console.warn("[api][cron][release-booking-payouts] transfer fallback", {
-            bookingId,
+        const transfer = await stripe.transfers.create(
+          {
+            amount: transferAmount,
+            currency: String(booking.currency || "chf").toLowerCase(),
             destination,
-            attemptedAmount: payoutAmount,
-            fallbackAmount: netPayoutFallbackAmount,
-            stripeFeeAmount,
-            platformFeeAmount,
-            err: err instanceof Error ? { name: err.name, message: err.message } : String(err),
-          });
-
-          if (!Number.isFinite(netPayoutFallbackAmount) || netPayoutFallbackAmount <= 0 || netPayoutFallbackAmount === payoutAmount) {
-            throw err;
-          }
-
-          transferUsedAmount = netPayoutFallbackAmount;
-          transfer = await stripe.transfers.create(
-            {
-              amount: netPayoutFallbackAmount,
-              currency: String(booking.currency || "chf").toLowerCase(),
-              destination,
-              transfer_group: `booking:${bookingId}`,
-              metadata: {
-                bookingId,
-                sitterId: String(booking.sitterId),
-                paymentIntentId,
-                grossAmount: String(grossAmount),
-                stripeFeeAmount: String(stripeFeeAmount),
-                platformFeeAmount: String(platformFeeAmount),
-                payoutAmount: String(netPayoutFallbackAmount),
-              },
+            transfer_group: `booking:${bookingId}`,
+            metadata: {
+              bookingId,
+              sitterId: String(booking.sitterId),
+              paymentIntentId,
+              grossAmount: String(grossAmount),
+              stripeFeeAmount: String(stripeFeeAmount),
+              platformFeeAmount: String(platformFeeAmount),
+              payoutAmount: String(transferAmount),
             },
-            {
-              idempotencyKey: `transfer:booking:${bookingId}:${paymentIntentId}:${netPayoutFallbackAmount}`,
-            }
-          );
-        }
+          },
+          {
+            idempotencyKey: `transfer:booking:${bookingId}:${paymentIntentId}:${transferAmount}`,
+          }
+        );
 
         if (!transfer?.id) throw new Error("[api][cron][release-booking-payouts] missing transfer id after create");
+
+        availableBalance -= transferAmount;
 
         await (prisma as any).booking.update({
           where: { id: bookingId },
           data: {
             stripeTransferId: transfer.id,
             payoutReleasedAt: new Date(),
-            sitterPayoutAmount: transferUsedAmount,
+            sitterPayoutAmount: transferAmount,
           },
           select: { id: true },
         });
@@ -205,6 +199,7 @@ export async function GET(req: NextRequest) {
         released,
         skipped,
         failed,
+        availableBalance,
         asOf: now.toISOString(),
       },
       { status: 200 }
