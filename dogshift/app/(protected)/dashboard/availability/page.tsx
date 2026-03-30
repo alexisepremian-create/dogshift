@@ -129,7 +129,7 @@ function isServiceSelectionDisabled(
   configByService: Partial<Record<ServiceTypeApi, ServiceConfig | null>>,
   pricingErrorByService: Partial<Record<ServiceTypeApi, string | null | undefined>>
 ) {
-  return (configByService[svc]?.enabled ?? true) === false || Boolean(pricingErrorByService[svc]);
+  return configByService[svc]?.enabled !== true || Boolean(pricingErrorByService[svc]);
 }
 
 function pricingKeyForService(svc: ServiceTypeApi): PricingServiceKey {
@@ -362,7 +362,7 @@ export default function AvailabilityStudioPage() {
 
   const enabledServices = useMemo(() => {
     const services: ServiceTypeApi[] = ["PROMENADE", "DOGSITTING", "PENSION"];
-    return services.filter((svc) => configByService[svc]?.enabled !== false);
+    return services.filter((svc) => configByService[svc]?.enabled === true);
   }, [configByService]);
 
   useEffect(() => {
@@ -404,7 +404,7 @@ export default function AvailabilityStudioPage() {
   }, [pricingByService]);
 
   const canEditAvailabilityForTab = useMemo(() => {
-    return (configByService[availabilityTab]?.enabled ?? true) && !pricingErrorByService[availabilityTab];
+    return (configByService[availabilityTab]?.enabled === true) && !pricingErrorByService[availabilityTab];
   }, [availabilityTab, configByService, pricingErrorByService]);
 
   useEffect(() => {
@@ -500,6 +500,10 @@ export default function AvailabilityStudioPage() {
 
   async function saveServiceEnabled(svc: ServiceTypeApi, enabled: boolean) {
     if (!sitterId) return;
+    if (enabled && pricingErrorByService[svc]) {
+      setTopError(errorMessageFr("PRICING_REQUIRED"));
+      return;
+    }
     setLoading(true);
     setError(null);
     setTopError(null);
@@ -1164,9 +1168,9 @@ export default function AvailabilityStudioPage() {
   }
 
   const focusDayTone = (dateIso: string) => {
-    const promenadeEnabled = configByService.PROMENADE?.enabled ?? true;
-    const dogsittingEnabled = configByService.DOGSITTING?.enabled ?? true;
-    const pensionEnabled = configByService.PENSION?.enabled ?? true;
+    const promenadeEnabled = configByService.PROMENADE?.enabled === true;
+    const dogsittingEnabled = configByService.DOGSITTING?.enabled === true;
+    const pensionEnabled = configByService.PENSION?.enabled === true;
 
     const promenadeBookable = promenadeEnabled && bookableDatesByService.PROMENADE.has(dateIso);
     const dogsittingBookable = dogsittingEnabled && bookableDatesByService.DOGSITTING.has(dateIso);
@@ -1713,7 +1717,7 @@ export default function AvailabilityStudioPage() {
             {(["PROMENADE", "DOGSITTING", "PENSION"] as const).map((svc) => {
               const metaSvc = serviceMeta(svc);
               const cfg = configByService[svc];
-              const enabled = cfg?.enabled !== false;
+              const enabled = cfg?.enabled === true;
               const tone = serviceDotTone(svc);
               const activeSwitchTone = tone === "bg-sky-400" ? "bg-sky-500" : tone === "bg-violet-400" ? "bg-violet-500" : "bg-emerald-500";
               const priceInput = pricingInputByService[svc] ?? "";
@@ -1755,7 +1759,7 @@ export default function AvailabilityStudioPage() {
                       type="button"
                       role="switch"
                       aria-checked={enabled}
-                      disabled={!enabled && Boolean(priceError)}
+                      disabled={!enabled ? Boolean(priceError) : false}
                       onClick={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
@@ -1933,7 +1937,7 @@ export default function AvailabilityStudioPage() {
                 const active = availabilityTab === svc;
                 const tone = serviceDotTone(svc);
                 const baseTone = tone === "bg-sky-400" ? "bg-sky-500" : tone === "bg-violet-400" ? "bg-violet-500" : "bg-emerald-500";
-                const disabled = (configByService[svc]?.enabled ?? true) === false || Boolean(pricingErrorByService[svc]);
+                const disabled = configByService[svc]?.enabled !== true || Boolean(pricingErrorByService[svc]);
                 return (
                   <button
                     key={`tab-${svc}`}
@@ -1957,7 +1961,7 @@ export default function AvailabilityStudioPage() {
               {!canEditAvailabilityForTab ? (
                 <div className="mb-3 rounded-2xl border border-amber-200 bg-amber-50 p-3">
                   <p className="text-sm font-semibold text-amber-900">
-                    {(configByService[availabilityTab]?.enabled ?? true) === false
+                    {configByService[availabilityTab]?.enabled !== true
                       ? "Active d’abord ce service pour modifier ses disponibilités."
                       : pricingErrorByService[availabilityTab] ?? "Ajoute un tarif valide pour modifier les disponibilités."}
                   </p>
