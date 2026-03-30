@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ClipboardList, CalendarClock, Banknote, Hash, MessageCircle, MessageSquareShare, Info, X } from "lucide-react";
+import { ClipboardList, CalendarClock, Banknote, Hash, MessageCircle, MessageSquareShare, Info, X, Trash2, CheckCircle2, HandCoins, ShieldCheck, Clock, XCircle } from "lucide-react";
 
 import { statusMeta, type BookingStatus } from "./status";
 import type { HostRequest } from "./RequestListItem";
@@ -166,31 +166,64 @@ export function RequestDetailPanel({
       <div className="flex items-start justify-between gap-4 border-b border-slate-100 pb-5">
         <div className="min-w-0">
           <p className="truncate text-xl font-bold tracking-tight text-slate-900">{request.owner.name}</p>
-          <div className="mt-3 flex flex-wrap items-center gap-2">
-            <span className={`${content.meta.classes} shadow-sm`}>{content.meta.label}</span>
-            <span className="inline-flex items-center rounded-full bg-slate-100/80 px-3 py-1 text-xs font-bold tracking-wide text-slate-700 shadow-sm">
-              {formatChfCents(request.amount)}
-            </span>
+          <div className="mt-4 flex flex-wrap items-center gap-3">
+            <div className={`inline-flex items-center gap-2 rounded-xl border px-3.5 py-2 shadow-sm ${
+              effectiveStatus === "CONFIRMED" ? "border-emerald-200 bg-emerald-50/50 text-emerald-800" :
+              (effectiveStatus === "PENDING_ACCEPTANCE" || effectiveStatus === "PAID" || effectiveStatus === "PENDING_PAYMENT") ? "border-amber-200 bg-amber-50/50 text-amber-800" :
+              (effectiveStatus === "CANCELLED" || effectiveStatus === "REFUNDED" || effectiveStatus === "REFUND_FAILED") ? "border-slate-200 bg-slate-50 text-slate-700" :
+              effectiveStatus === "PAYMENT_FAILED" ? "border-rose-200 bg-rose-50/50 text-rose-800" :
+              "border-slate-200 bg-white text-slate-700"
+            }`}>
+              <div className={`${
+                effectiveStatus === "CONFIRMED" ? "text-emerald-600" :
+                (effectiveStatus === "PENDING_ACCEPTANCE" || effectiveStatus === "PAID" || effectiveStatus === "PENDING_PAYMENT") ? "text-amber-600" :
+                (effectiveStatus === "CANCELLED" || effectiveStatus === "REFUNDED" || effectiveStatus === "REFUND_FAILED") ? "text-slate-500" :
+                effectiveStatus === "PAYMENT_FAILED" ? "text-rose-600" :
+                "text-slate-500"
+              }`}>
+                {effectiveStatus === "CONFIRMED" ? <CheckCircle2 className="h-5 w-5" /> : 
+                 (effectiveStatus === "PENDING_ACCEPTANCE" || effectiveStatus === "PAID" || effectiveStatus === "PENDING_PAYMENT") ? <Clock className="h-5 w-5" /> :
+                 (effectiveStatus === "CANCELLED" || effectiveStatus === "REFUNDED" || effectiveStatus === "REFUND_FAILED") ? <XCircle className="h-5 w-5" /> :
+                 <Info className="h-5 w-5" />}
+              </div>
+              <span className="text-[14px] font-bold tracking-wide">{content.meta.label}</span>
+            </div>
+
+            <div className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-2 shadow-sm">
+              <Banknote className="h-5 w-5 text-slate-500" />
+              <span className="text-[15px] font-bold tracking-wide text-slate-900">{formatChfCents(request.amount)}</span>
+            </div>
           </div>
           {refundNote ? <p className="mt-2 text-xs font-medium text-slate-500">{refundNote}</p> : null}
         </div>
 
-        {onCloseMobile ? (
-          <button
-            type="button"
-            onClick={onCloseMobile}
-            className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-50 text-slate-500 transition-all hover:bg-slate-100 hover:text-slate-900 hover:scale-105 active:scale-95"
-          >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-5 w-5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M18 6L6 18M6 6l12 12" />
-            </svg>
-          </button>
-        ) : null}
+        <div className="flex items-center gap-2">
+          {effectiveStatus !== "CONFIRMED" ? (
+            <button
+              type="button"
+              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white border border-slate-200 text-slate-400 transition-all hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 hover:scale-105 active:scale-95 shadow-sm"
+              title="Supprimer la réservation"
+            >
+              <Trash2 className="h-4 w-4" />
+            </button>
+          ) : null}
+          {onCloseMobile ? (
+            <button
+              type="button"
+              onClick={onCloseMobile}
+              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-50 text-slate-500 transition-all hover:bg-slate-100 hover:text-slate-900 hover:scale-105 active:scale-95"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-5 w-5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M18 6L6 18M6 6l12 12" />
+              </svg>
+            </button>
+          ) : null}
+        </div>
       </div>
 
-      <div className="mt-6 space-y-4">
+      <div className="mt-6 flex flex-col overflow-hidden rounded-3xl border border-slate-100 bg-white shadow-sm transition-all duration-300 hover:shadow-md hover:border-slate-200">
         <section 
-          className="group relative rounded-3xl border border-slate-100 bg-white shadow-sm transition-all duration-[800ms] ease-[cubic-bezier(0.23,1,0.32,1)] hover:shadow-md hover:border-slate-200"
+          className="group relative bg-white z-10"
           style={{ perspective: "1500px" }}
         >
           <div 
@@ -202,12 +235,12 @@ export function RequestDetailPanel({
           >
             {/* FRONT FACE */}
             <div 
-              className="w-full p-5"
+              className="w-full p-5 sm:p-6"
               style={{ backfaceVisibility: "hidden" }}
             >
-              <div className="flex items-center justify-between mb-4">
-                <p className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                  <span className="flex h-7 w-7 items-center justify-center rounded-full bg-sky-50 text-sky-600">
+              <div className="flex items-center justify-between mb-5">
+                <p className="text-sm font-bold text-slate-900 flex items-center gap-2.5">
+                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-sky-50 text-sky-600">
                     <ClipboardList className="h-4 w-4" />
                   </span>
                   Détails de la réservation
@@ -223,21 +256,21 @@ export function RequestDetailPanel({
               </div>
               
               <div className="grid gap-3 sm:grid-cols-2">
-                <div className="rounded-2xl bg-slate-50/50 p-3.5 border border-slate-100/50">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5 flex items-center gap-1.5">
+                <div className="rounded-2xl bg-slate-50/50 p-4 border border-slate-100/50">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2 flex items-center gap-1.5">
                     <CalendarClock className="h-3.5 w-3.5" />
                     Service & Date
                   </p>
-                  <p className="text-sm font-bold text-slate-900">{content.service}</p>
+                  <p className="text-[15px] font-bold text-slate-900">{content.service}</p>
                   <p className="text-xs font-medium text-slate-600 mt-1 leading-relaxed">{content.dateRange}</p>
                 </div>
                 
-                <div className="rounded-2xl bg-slate-50/50 p-3.5 border border-slate-100/50">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5 flex items-center gap-1.5">
+                <div className="rounded-2xl bg-slate-50/50 p-4 border border-slate-100/50">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2 flex items-center gap-1.5">
                     <Banknote className="h-3.5 w-3.5" />
                     Paiement
                   </p>
-                  <p className="text-sm font-bold text-slate-900">{formatChfCents(request.amount)} <span className="text-xs text-slate-400 font-medium ml-1">(0.00 CHF de frais)</span></p>
+                  <p className="text-[15px] font-bold text-slate-900">{formatChfCents(request.amount)} <span className="text-xs text-slate-400 font-medium ml-1">(0.00 CHF de frais)</span></p>
                   <p className="text-xs font-medium text-slate-600 mt-1">Sécurisé via Stripe</p>
                 </div>
               </div>
@@ -245,7 +278,7 @@ export function RequestDetailPanel({
 
             {/* BACK FACE */}
             <div 
-              className={`absolute inset-0 w-full h-full p-5 bg-slate-50/80 rounded-3xl flex flex-col justify-center ${!isFlipped ? 'pointer-events-none' : ''}`}
+              className={`absolute inset-0 w-full h-full p-5 sm:p-6 bg-slate-50 flex flex-col justify-center ${!isFlipped ? 'pointer-events-none' : ''}`}
               style={{ backfaceVisibility: "hidden", transform: "rotateY(180deg)" }}
             >
               <div className="flex items-center justify-between mb-2">
@@ -291,7 +324,7 @@ export function RequestDetailPanel({
         </section>
 
         {request.message?.trim() ? (
-          <section className="group rounded-2xl border border-slate-100 bg-white p-4 shadow-sm transition-all duration-300 hover:shadow-md hover:border-slate-200">
+          <section className="group border-t border-slate-100 bg-white p-5 transition-colors hover:bg-slate-50/50">
             <p className="text-sm font-bold text-slate-900 flex items-center gap-2">
               <span className="flex h-6 w-6 items-center justify-center rounded-full bg-amber-50 text-amber-600">
                 <MessageSquareShare className="h-3.5 w-3.5" />
@@ -304,15 +337,8 @@ export function RequestDetailPanel({
           </section>
         ) : null}
 
-        <section className="group rounded-2xl border border-slate-100 bg-white p-4 shadow-sm transition-all duration-300 hover:shadow-md hover:border-slate-200">
-          <p className="text-sm font-bold text-slate-900 flex items-center gap-2">
-            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[var(--dogshift-blue)]/10 text-[var(--dogshift-blue)]">
-              <MessageCircle className="h-3.5 w-3.5" />
-            </span>
-            Messages
-          </p>
-          <p className="mt-3 text-sm text-slate-600">Ouvre la conversation avec ce client.</p>
-          <div className="mt-4">
+        <section className="border-t border-slate-100 bg-slate-50/30 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-colors hover:bg-slate-50/80">
+          <div className="w-full sm:w-auto flex-shrink-0">
             <button
               type="button"
               disabled={opening}
@@ -341,64 +367,28 @@ export function RequestDetailPanel({
                   setOpening(false);
                 }
               }}
-              className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[var(--dogshift-blue)] px-4 py-3 text-sm font-bold text-white shadow-sm transition-all hover:-translate-y-0.5 hover:bg-[var(--dogshift-blue-hover)] hover:shadow-[0_8px_20px_-8px_rgba(58,124,245,0.5)] disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex w-full sm:w-auto items-center justify-center gap-2 rounded-xl bg-white border border-slate-200 px-4 py-2.5 text-sm font-bold text-slate-700 shadow-sm transition-all hover:bg-slate-50 hover:text-slate-900 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
             >
+              <MessageCircle className="h-4 w-4" />
               {opening ? "Ouverture…" : request.conversationId ? "Voir la conversation" : "Entamer une discussion"}
-              {!opening && <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>}
             </button>
           </div>
-        </section>
 
-        {hasActions ? (
-          <section className="rounded-2xl border border-slate-200 bg-white p-3 sm:p-4">
-            <p className="text-sm font-semibold text-slate-900">Actions</p>
-            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          {hasActions ? (
+            <div className="w-full sm:w-auto flex flex-col sm:flex-row items-center gap-2 justify-end">
               {isConfirmedBooking ? (
-                <div className="sm:col-span-2">
-                  <p className="mb-3 text-sm text-slate-600">
-                    Si tu ne peux pas assurer la prestation, le propriétaire est remboursé intégralement via Stripe.
-                  </p>
-                  <button
-                    type="button"
-                    disabled={decisionLoading !== null}
-                    onClick={() => setConfirmCancelOpen(true)}
-                    className="inline-flex w-full items-center justify-center rounded-2xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-sm font-semibold text-rose-900 shadow-sm transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
-                  >
-                    Annuler la réservation et rembourser le propriétaire
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  disabled={decisionLoading !== null}
+                  onClick={() => setConfirmCancelOpen(true)}
+                  className="inline-flex w-full sm:w-auto items-center justify-center rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-sm font-semibold text-rose-900 shadow-sm transition hover:bg-rose-100 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  Annuler & Rembourser
+                </button>
               ) : null}
 
               {isToAccept ? (
-                <>
-                  <button
-                    type="button"
-                    disabled={decisionLoading !== null}
-                    onClick={async () => {
-                      if (decisionLoading) return;
-                      setDecisionLoading("ACCEPT");
-                      setLocalStatus("CONFIRMED");
-                      try {
-                        const res = await fetch(`/api/host/requests/${encodeURIComponent(request.id)}/accept`, { method: "POST" });
-                        const payload = (await res.json()) as { ok?: boolean; status?: string };
-                        if (!res.ok || !payload.ok) {
-                          setLocalStatus(null);
-                          return;
-                        }
-                        const nextStatus = typeof payload.status === "string" && payload.status.trim() ? payload.status.trim() : "CONFIRMED";
-                        onStatusChange?.(request.id, nextStatus);
-                        setLocalStatus(nextStatus);
-                        onRefresh?.();
-                      } catch {
-                        setLocalStatus(null);
-                      } finally {
-                        setDecisionLoading(null);
-                      }
-                    }}
-                    className="inline-flex items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-4 py-2.5 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition hover:bg-[var(--dogshift-blue-hover)] disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    {decisionLoading === "ACCEPT" ? "Acceptation…" : "Accepter"}
-                  </button>
+                <div className="flex w-full sm:w-auto items-center gap-2">
                   <button
                     type="button"
                     disabled={decisionLoading !== null}
@@ -423,11 +413,39 @@ export function RequestDetailPanel({
                         setDecisionLoading(null);
                       }
                     }}
-                    className="inline-flex items-center justify-center rounded-2xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                    className="inline-flex flex-1 sm:flex-auto items-center justify-center rounded-xl border border-rose-200 bg-white px-4 py-2.5 text-sm font-semibold text-rose-600 shadow-sm transition hover:bg-rose-50 hover:text-rose-700 hover:border-rose-300 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     {decisionLoading === "DECLINE" ? "Refus…" : "Refuser"}
                   </button>
-                </>
+                  <button
+                    type="button"
+                    disabled={decisionLoading !== null}
+                    onClick={async () => {
+                      if (decisionLoading) return;
+                      setDecisionLoading("ACCEPT");
+                      setLocalStatus("CONFIRMED");
+                      try {
+                        const res = await fetch(`/api/host/requests/${encodeURIComponent(request.id)}/accept`, { method: "POST" });
+                        const payload = (await res.json()) as { ok?: boolean; status?: string };
+                        if (!res.ok || !payload.ok) {
+                          setLocalStatus(null);
+                          return;
+                        }
+                        const nextStatus = typeof payload.status === "string" && payload.status.trim() ? payload.status.trim() : "CONFIRMED";
+                        onStatusChange?.(request.id, nextStatus);
+                        setLocalStatus(nextStatus);
+                        onRefresh?.();
+                      } catch {
+                        setLocalStatus(null);
+                      } finally {
+                        setDecisionLoading(null);
+                      }
+                    }}
+                    className="inline-flex flex-1 sm:flex-auto items-center justify-center rounded-xl bg-emerald-500 px-4 py-2.5 text-sm font-semibold text-white shadow-sm shadow-emerald-500/30 transition hover:bg-emerald-600 hover:shadow-emerald-600/40 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {decisionLoading === "ACCEPT" ? "Acceptation…" : "Accepter"}
+                  </button>
+                </div>
               ) : null}
 
               {isPendingPayment ? (
@@ -435,23 +453,15 @@ export function RequestDetailPanel({
                   type="button"
                   disabled
                   title="En attente du webhook Stripe"
-                  className="inline-flex items-center justify-center rounded-2xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-900 shadow-sm opacity-60"
+                  className="inline-flex w-full sm:w-auto items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-500 shadow-sm opacity-60"
                 >
                   Rappeler le paiement
                 </button>
               ) : null}
 
-              {isDone ? (
-                <button
-                  type="button"
-                  className="inline-flex items-center justify-center rounded-2xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50"
-                >
-                  Archiver
-                </button>
-              ) : null}
             </div>
-          </section>
-        ) : null}
+          ) : null}
+        </section>
       </div>
 
       <div className={`fixed inset-0 z-50 ${confirmCancelOpen ? "" : "hidden"}`}>
@@ -515,6 +525,47 @@ export function RequestDetailPanel({
             >
               {decisionLoading === "CANCEL_CONFIRMED" ? "Annulation…" : "Confirmer l’annulation"}
             </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-6 rounded-3xl border border-slate-100 bg-white/60 p-6 shadow-[0_8px_30px_-12px_rgba(15,23,42,0.06)] backdrop-blur-xl transition-all duration-300 hover:shadow-md hover:border-slate-200">
+        <p className="text-base font-bold text-slate-900 mb-6 flex items-center gap-2">
+          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-50 text-indigo-600">
+            <Info className="h-4 w-4" />
+          </span>
+          Comment ça marche ?
+        </p>
+        
+        <div className="space-y-6">
+          <div className="flex gap-4 items-start">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-50 text-slate-500 border border-slate-100 shadow-sm mt-0.5">
+              <CheckCircle2 className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-sm font-bold text-slate-900">1. Acceptation</p>
+              <p className="mt-1.5 text-sm text-slate-600 leading-relaxed">Une fois la demande acceptée, le créneau est bloqué et la réservation est confirmée.</p>
+            </div>
+          </div>
+          
+          <div className="flex gap-4 items-start">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-50 text-slate-500 border border-slate-100 shadow-sm mt-0.5">
+              <ShieldCheck className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-sm font-bold text-slate-900">2. Prestation & Sécurité</p>
+              <p className="mt-1.5 text-sm text-slate-600 leading-relaxed">Le paiement du client est déjà sécurisé sur un compte de cantonnement Stripe.</p>
+            </div>
+          </div>
+          
+          <div className="flex gap-4 items-start">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-50 text-slate-500 border border-slate-100 shadow-sm mt-0.5">
+              <HandCoins className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-sm font-bold text-slate-900">3. Versement</p>
+              <p className="mt-1.5 text-sm text-slate-600 leading-relaxed">L'argent est versé automatiquement sur ton compte bancaire 48h après la fin du service.</p>
+            </div>
           </div>
         </div>
       </div>

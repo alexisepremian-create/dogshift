@@ -18,9 +18,9 @@ export type StatusMeta = {
 export function statusMeta(status: BookingStatus): StatusMeta {
   if (status === "PENDING_ACCEPTANCE" || status === "PAID") {
     return {
-      label: "En attente d’acceptation",
+      label: "En attente",
       classes:
-        "inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-semibold leading-5 text-amber-800",
+        "inline-flex items-center rounded-lg border border-amber-200/60 bg-gradient-to-r from-amber-50 to-amber-100/50 px-2.5 py-1 text-[11px] font-bold tracking-wide text-amber-700 shadow-sm",
     };
   }
 
@@ -28,7 +28,7 @@ export function statusMeta(status: BookingStatus): StatusMeta {
     return {
       label: "En attente paiement",
       classes:
-        "inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-semibold leading-5 text-amber-800",
+        "inline-flex items-center rounded-lg border border-amber-200/60 bg-gradient-to-r from-amber-50 to-amber-100/50 px-2.5 py-1 text-[11px] font-bold tracking-wide text-amber-700 shadow-sm",
     };
   }
 
@@ -36,7 +36,7 @@ export function statusMeta(status: BookingStatus): StatusMeta {
     return {
       label: "Confirmée",
       classes:
-        "inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold leading-5 text-emerald-800",
+        "inline-flex items-center rounded-lg border border-emerald-200/60 bg-gradient-to-r from-emerald-50 to-emerald-100/50 px-2.5 py-1 text-[11px] font-bold tracking-wide text-emerald-700 shadow-sm",
     };
   }
 
@@ -44,7 +44,7 @@ export function statusMeta(status: BookingStatus): StatusMeta {
     return {
       label: "Paiement refusé",
       classes:
-        "inline-flex items-center rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-[11px] font-semibold leading-5 text-rose-800",
+        "inline-flex items-center rounded-lg border border-rose-200/60 bg-gradient-to-r from-rose-50 to-rose-100/50 px-2.5 py-1 text-[11px] font-bold tracking-wide text-rose-700 shadow-sm",
     };
   }
 
@@ -52,7 +52,7 @@ export function statusMeta(status: BookingStatus): StatusMeta {
     return {
       label: "Annulée",
       classes:
-        "inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-semibold leading-5 text-slate-700",
+        "inline-flex items-center rounded-lg border border-slate-200/60 bg-gradient-to-r from-slate-50 to-slate-100/50 px-2.5 py-1 text-[11px] font-bold tracking-wide text-slate-600 shadow-sm",
     };
   }
 
@@ -60,7 +60,7 @@ export function statusMeta(status: BookingStatus): StatusMeta {
     return {
       label: "Remboursée",
       classes:
-        "inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-semibold leading-5 text-slate-700",
+        "inline-flex items-center rounded-lg border border-slate-200/60 bg-gradient-to-r from-slate-50 to-slate-100/50 px-2.5 py-1 text-[11px] font-bold tracking-wide text-slate-600 shadow-sm",
     };
   }
 
@@ -68,7 +68,7 @@ export function statusMeta(status: BookingStatus): StatusMeta {
     return {
       label: "Annulée",
       classes:
-        "inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-semibold leading-5 text-slate-700",
+        "inline-flex items-center rounded-lg border border-slate-200/60 bg-gradient-to-r from-slate-50 to-slate-100/50 px-2.5 py-1 text-[11px] font-bold tracking-wide text-slate-600 shadow-sm",
     };
   }
 
@@ -76,13 +76,13 @@ export function statusMeta(status: BookingStatus): StatusMeta {
     return {
       label: "Brouillon",
       classes:
-        "inline-flex items-center rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[11px] font-semibold leading-5 text-slate-700",
+        "inline-flex items-center rounded-lg border border-slate-200/60 bg-white px-2.5 py-1 text-[11px] font-bold tracking-wide text-slate-500 shadow-sm",
     };
   }
 
   return {
     label: String(status || "—"),
     classes:
-      "inline-flex items-center rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[11px] font-semibold leading-5 text-slate-700",
+      "inline-flex items-center rounded-lg border border-slate-200/60 bg-white px-2.5 py-1 text-[11px] font-bold tracking-wide text-slate-500 shadow-sm",
   };
 }
