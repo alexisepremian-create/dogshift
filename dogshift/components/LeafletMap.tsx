@@ -21,6 +21,8 @@ type SitterListItem = {
   services: unknown;
   pricing: unknown;
   dogSizes: unknown;
+  averageRating?: number | null;
+  countReviews?: number | null;
   updatedAt: string;
 };
 
@@ -94,17 +96,40 @@ function toUiSitter(row: SitterListItem): UiSitter | null {
   const priceCandidates = Object.values(pricing).filter((n): n is number => typeof n === "number" && Number.isFinite(n) && n > 0);
   const pricePerDay = priceCandidates.length ? Math.min(...priceCandidates) : 0;
 
+  const rating = typeof row.averageRating === "number" && Number.isFinite(row.averageRating) ? row.averageRating : null;
+
   return {
     id: sitterId,
     name: row.name,
     city: row.city,
-    rating: null,
+    rating,
     pricePerDay,
     services,
     pricing,
     lat,
     lng,
   };
+}
+
+function spreadOverlappingMarkers(sitters: UiSitter[]): UiSitter[] {
+  const buckets = new Map<string, number[]>();
+  for (let i = 0; i < sitters.length; i++) {
+    const key = `${sitters[i].lat.toFixed(3)},${sitters[i].lng.toFixed(3)}`;
+    const list = buckets.get(key);
+    if (list) list.push(i);
+    else buckets.set(key, [i]);
+  }
+  const result = sitters.map((s) => ({ ...s }));
+  for (const indices of buckets.values()) {
+    if (indices.length < 2) continue;
+    const radius = 0.003 + indices.length * 0.001;
+    for (let i = 0; i < indices.length; i++) {
+      const angle = (2 * Math.PI * i) / indices.length;
+      result[indices[i]].lat += radius * Math.cos(angle);
+      result[indices[i]].lng += radius * Math.sin(angle);
+    }
+  }
+  return result;
 }
 
 function formatRatingMaybe(rating: number | null) {
@@ -150,7 +175,8 @@ export default function LeafletMap({
           return;
         }
         setPublishedCount(payload.sitters.length);
-        const next = payload.sitters.map(toUiSitter).filter(Boolean) as UiSitter[];
+        const mapped = payload.sitters.map(toUiSitter).filter(Boolean) as UiSitter[];
+        const next = spreadOverlappingMarkers(mapped);
         setSitters(next);
         setSittersLoaded(true);
       } catch {

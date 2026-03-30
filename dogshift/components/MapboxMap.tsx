@@ -22,6 +22,9 @@ type SitterListItem = {
   services: unknown;
   pricing: unknown;
   dogSizes: unknown;
+  averageRating?: number | null;
+  countReviews?: number | null;
+  verified?: boolean;
   updatedAt: string;
 };
 
@@ -109,24 +112,48 @@ function toUiSitter(row: SitterListItem): UiSitter | null {
   const priceCandidates = Object.values(pricing).filter((n): n is number => typeof n === "number" && Number.isFinite(n) && n > 0);
   const pricePerDay = priceCandidates.length ? Math.min(...priceCandidates) : 0;
 
+  const rating = typeof row.averageRating === "number" && Number.isFinite(row.averageRating) ? row.averageRating : null;
+  const reviewCount = typeof row.countReviews === "number" && Number.isFinite(row.countReviews) ? row.countReviews : 0;
+
   return {
     id: sitterId,
     name: row.name,
     city: row.city,
     postalCode: row.postalCode,
-    rating: null,
-    reviewCount: 0,
+    rating,
+    reviewCount,
     pricePerDay,
     services,
     dogSizes,
     pricing,
     bio: row.bio,
     responseTime: "~1h",
-    verified: false,
+    verified: row.verified === true,
     lat,
     lng,
     avatarUrl: row.avatarUrl ?? "https://i.pravatar.cc/160?img=7",
   };
+}
+
+function spreadOverlappingMarkers(sitters: UiSitter[]): UiSitter[] {
+  const buckets: Record<string, number[]> = {};
+  for (let i = 0; i < sitters.length; i++) {
+    const key = `${sitters[i].lat.toFixed(3)},${sitters[i].lng.toFixed(3)}`;
+    if (buckets[key]) buckets[key].push(i);
+    else buckets[key] = [i];
+  }
+
+  const result = sitters.map((s) => ({ ...s }));
+  for (const indices of Object.values(buckets)) {
+    if (indices.length < 2) continue;
+    const radius = 0.003 + indices.length * 0.001;
+    for (let i = 0; i < indices.length; i++) {
+      const angle = (2 * Math.PI * i) / indices.length;
+      result[indices[i]].lat += radius * Math.cos(angle);
+      result[indices[i]].lng += radius * Math.sin(angle);
+    }
+  }
+  return result;
 }
 
 function formatRating(rating: number) {
@@ -291,7 +318,8 @@ export default function MapboxMap({
         }
 
         setPublishedCount(payload.sitters.length);
-        const next = payload.sitters.map(toUiSitter).filter(Boolean) as UiSitter[];
+        const mapped = payload.sitters.map(toUiSitter).filter(Boolean) as UiSitter[];
+        const next = spreadOverlappingMarkers(mapped);
         setAllSitters(next);
         setSittersLoaded(true);
       } catch {
