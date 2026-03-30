@@ -72,8 +72,8 @@ function RevenueRing({ data, total, trigger }: { data: { label: string; value: n
   let currentAngle = -90;
 
   return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="drop-shadow-lg">
-      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#f1f5f9" strokeWidth={stroke} />
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="drop-shadow-lg transition-all duration-500">
+      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#f1f5f9" strokeWidth={stroke} className="transition-colors duration-300" />
       {validData.length === 0 ? (
         <circle
           cx={size / 2}
@@ -196,7 +196,7 @@ function VerticalBarChart({
                   {/* Bar */}
                   <div
                     ref={(el) => { barRefs.current[i] = el; }}
-                    className="w-8 cursor-pointer rounded-t-lg sm:w-10 md:w-12"
+                    className="relative w-8 cursor-pointer rounded-t-lg sm:w-10 md:w-12 flex justify-center"
                     style={{
                       height: 0,
                       background: d.count > 0 ? shade : "#e2e8f0",
@@ -207,7 +207,18 @@ function VerticalBarChart({
                       filter: hoveredIdx !== null && !isHovered ? "opacity(0.45)" : "opacity(1)",
                       transition: "transform 0.3s, box-shadow 0.3s, filter 0.3s",
                     }}
-                  />
+                  >
+                    {/* Tooltip (Nombre exact) */}
+                    <div 
+                      className={`absolute -top-8 flex flex-col items-center transition-all duration-300 ${isHovered && d.count > 0 ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2 pointer-events-none'}`}
+                      style={{ transform: isHovered ? 'scaleY(0.94)' : 'scaleY(1)', transformOrigin: 'bottom' }}
+                    >
+                      <span className="rounded-md bg-slate-800 px-2 py-1 text-[11px] font-bold text-white shadow-md">
+                        {d.count}
+                      </span>
+                      <div className="h-1 w-2 border-l-[4px] border-r-[4px] border-t-[4px] border-l-transparent border-r-transparent border-t-slate-800" />
+                    </div>
+                  </div>
                 </div>
               );
             })}
@@ -293,22 +304,22 @@ function PaymentCard({
   const s3Active = showS3 && isPayoutReady;
 
   return (
-    <div className="group rounded-2xl border border-slate-100 bg-white p-4 transition-all duration-500 hover:border-slate-200 hover:shadow-[0_8px_30px_-16px_rgba(2,6,23,0.10)]">
+    <div className="group rounded-2xl border border-slate-100 bg-white p-4 transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] hover:scale-[1.03] hover:border-[var(--dogshift-blue)] hover:shadow-[0_20px_50px_-12px_rgba(58,124,245,0.15)] cursor-pointer">
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2.5">
           {b.owner?.avatarUrl ? (
-            <img src={b.owner.avatarUrl} alt={b.owner.name} className="h-9 w-9 rounded-full object-cover ring-2 ring-white shadow-sm" />
+            <img src={b.owner.avatarUrl} alt={b.owner.name} className="h-9 w-9 rounded-full object-cover ring-2 ring-white shadow-sm transition-transform duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] group-hover:scale-110 group-hover:shadow-md" />
           ) : (
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-400 text-xs font-bold text-white shadow-sm">
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-400 text-xs font-bold text-white shadow-sm transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] group-hover:scale-110 group-hover:bg-[var(--dogshift-blue)] group-hover:shadow-md">
               {b.owner?.name?.charAt(0) ?? "?"}
             </div>
           )}
-          <div>
-            <p className="text-sm font-semibold text-slate-900">{b.owner?.name ?? "Client"}</p>
+          <div className="transition-transform duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] group-hover:translate-x-1">
+            <p className="text-sm font-semibold text-slate-900 transition-colors duration-700 group-hover:text-[var(--dogshift-blue)]">{b.owner?.name ?? "Client"}</p>
             <p className="text-[11px] text-slate-500">{b.service ?? "Service"} • {endDate.toLocaleDateString("fr-CH")}</p>
           </div>
         </div>
-        <p className="text-base font-bold tracking-tight text-slate-900">{formatCents(b.amount)}</p>
+        <p className="text-base font-bold tracking-tight text-slate-900 transition-transform duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] group-hover:-translate-x-1 group-hover:scale-105">{formatCents(b.amount)}</p>
       </div>
 
       {/* Compact timeline */}
@@ -636,9 +647,12 @@ export default function HostWalletPage() {
           <div className="flex flex-col gap-10 lg:flex-row lg:items-stretch lg:gap-12">
             {/* Left: Ring + total */}
             <div className="flex flex-col items-center justify-center gap-5 lg:w-[240px] lg:shrink-0">
-              <div className="relative">
-                <RevenueRing data={revenueByService} total={totalRevenueCents} trigger={topTrigger} />
-                <div className="absolute inset-0 flex flex-col items-center justify-center">
+              <div className="relative group cursor-pointer flex items-center justify-center">
+                <div className="relative z-10 transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] group-hover:scale-[1.04] group-hover:drop-shadow-[0_16px_32px_rgba(15,23,42,0.15)]">
+                  <RevenueRing data={revenueByService} total={totalRevenueCents} trigger={topTrigger} />
+                </div>
+                
+                <div className="absolute inset-0 z-20 flex flex-col items-center justify-center pointer-events-none transition-transform duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] group-hover:scale-[1.08]">
                   <p className="text-[11px] font-semibold uppercase tracking-widest text-slate-400">Revenus</p>
                   <p className="mt-1 text-2xl font-extrabold tracking-tight text-slate-900">
                     {!bookingsLoading && topTrigger > 0 ? <AnimatedCounter value={totalRevenueCents} /> : "—"}
@@ -659,7 +673,7 @@ export default function HostWalletPage() {
                   const colors = SERVICE_COLORS[label];
                   
                   return (
-                    <span key={label} className={`inline-flex w-full items-center justify-between gap-3 rounded-full ${colors.bg} px-3 py-1.5 ${colors.text} ring-1 ${colors.ring}`}>
+                    <span key={label} className={`inline-flex w-full cursor-pointer items-center justify-between gap-3 rounded-full ${colors.bg} px-3 py-1.5 ${colors.text} ring-1 ${colors.ring} transition-all duration-500 ease-[cubic-bezier(0.23,1,0.32,1)] hover:scale-[1.03] hover:shadow-sm hover:ring-2`}>
                       <span className="flex items-center gap-1.5">
                         <span className={`h-1.5 w-1.5 rounded-full ${colors.dot}`} />
                         {label}
