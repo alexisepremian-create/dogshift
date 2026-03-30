@@ -387,21 +387,21 @@ export default function AvailabilityStudioPage() {
   }, [remoteProfile]);
 
   const pricingErrorByService = useMemo(() => {
+    const check = (svc: ServiceTypeApi, key: PricingServiceKey) => {
+      const input = pricingInputByService[svc];
+      if (input !== undefined && input !== "") {
+        const parsed = parsePrice(input);
+        if (parsed !== null) return getTariffRangeError(key, parsed) ?? null;
+      }
+      if (pricingByService[svc] === undefined) return "Ajoute un prix pour activer ce service.";
+      return getTariffRangeError(key, pricingByService[svc]!) ?? null;
+    };
     return {
-      PROMENADE:
-        pricingByService.PROMENADE === undefined
-          ? "Ajoute un prix pour activer ce service."
-          : getTariffRangeError("Promenade", pricingByService.PROMENADE) ?? null,
-      DOGSITTING:
-        pricingByService.DOGSITTING === undefined
-          ? "Ajoute un prix pour activer ce service."
-          : getTariffRangeError("Garde", pricingByService.DOGSITTING) ?? null,
-      PENSION:
-        pricingByService.PENSION === undefined
-          ? "Ajoute un prix pour activer ce service."
-          : getTariffRangeError("Pension", pricingByService.PENSION) ?? null,
+      PROMENADE: check("PROMENADE", "Promenade"),
+      DOGSITTING: check("DOGSITTING", "Garde"),
+      PENSION: check("PENSION", "Pension"),
     } satisfies Record<ServiceTypeApi, string | null>;
-  }, [pricingByService]);
+  }, [pricingByService, pricingInputByService]);
 
   const canEditAvailabilityForTab = useMemo(() => {
     return (configByService[availabilityTab]?.enabled === true) && !pricingErrorByService[availabilityTab];
@@ -497,12 +497,21 @@ export default function AvailabilityStudioPage() {
   }, [enabledServices, exceptionDrawerOpen, exceptionService]);
 
   const refreshTokenRef = useRef(0);
+  const pricingDebounceRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
   async function saveServiceEnabled(svc: ServiceTypeApi, enabled: boolean) {
     if (!sitterId) return;
-    if (enabled && pricingErrorByService[svc]) {
-      setTopError(errorMessageFr("PRICING_REQUIRED"));
-      return;
+    if (enabled) {
+      clearTimeout(pricingDebounceRef.current[svc]);
+      const input = pricingInputByService[svc] ?? "";
+      const parsed = parsePrice(input);
+      if (parsed !== null && pricingByService[svc] !== parsed) {
+        await saveServicePricing(svc);
+      }
+      if (pricingErrorByService[svc]) {
+        setTopError(errorMessageFr("PRICING_REQUIRED"));
+        return;
+      }
     }
     setLoading(true);
     setError(null);
@@ -1794,7 +1803,16 @@ export default function AvailabilityStudioPage() {
                         value={priceInput}
                         onChange={(e) => {
                           e.stopPropagation();
-                          setPricingInputByService((prev) => ({ ...prev, [svc]: e.target.value }));
+                          const val = e.target.value;
+                          setPricingInputByService((prev) => ({ ...prev, [svc]: val }));
+                          clearTimeout(pricingDebounceRef.current[svc]);
+                          pricingDebounceRef.current[svc] = setTimeout(() => {
+                            void saveServicePricing(svc);
+                          }, 800);
+                        }}
+                        onBlur={() => {
+                          clearTimeout(pricingDebounceRef.current[svc]);
+                          void saveServicePricing(svc);
                         }}
                         onClick={(e) => e.stopPropagation()}
                         inputMode="decimal"
@@ -1802,17 +1820,7 @@ export default function AvailabilityStudioPage() {
                         className="h-10 min-w-0 flex-1 rounded-xl border border-slate-200 bg-white px-3 text-sm font-medium text-slate-900"
                       />
                       <span className="text-xs font-semibold text-slate-500">{pricingUnitLabel(svc)}</span>
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          void saveServicePricing(svc);
-                        }}
-                        disabled={priceSaving}
-                        className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 disabled:opacity-60"
-                      >
-                        {priceSaving ? "..." : "OK"}
-                      </button>
+                      {priceSaving ? <span className="text-xs font-semibold text-slate-400">...</span> : null}
                     </div>
                     <p className="text-[11px] font-semibold text-slate-500">Fourchette pilote : {pricingRangeLabel(svc)}</p>
                     {priceError ? <p className="text-xs font-medium text-rose-600">{priceError}</p> : null}
