@@ -288,34 +288,44 @@ export function RequestsSplitView({
               </div>
             </div>
 
-            <div className={`mt-6 grid gap-3 ${isArchivedView ? "md:grid-cols-1" : "md:grid-cols-[140px_1fr]"} md:items-center`}>
-              {isArchivedView ? null : (
-                <div>
-                  <label className="sr-only" htmlFor="host-requests-filter">
-                    Statut
-                  </label>
-                  <select
-                    id="host-requests-filter"
-                    value={filter}
-                    onChange={(e) => {
-                      const next = e.target.value as FilterKey;
-                      setFilter(next);
-                      if (next !== "ARCHIVED") {
-                        setLastActiveFilter(next as Exclude<FilterKey, "ARCHIVED">);
-                      }
-                    }}
-                    className="h-10 w-full rounded-2xl border border-slate-100 bg-white px-3 text-sm font-semibold text-slate-700 shadow-sm outline-none transition-colors focus:border-[var(--dogshift-blue)] focus:ring-2 focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] hover:bg-slate-50 cursor-pointer"
-                  >
-                    {(["ALL", "TO_ACCEPT", "CONFIRMED", "CANCELLED"] as const).map((k) => (
-                      <option key={k} value={k}>
-                        {filterLabel(k)}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
+            <div 
+              className={`mt-6 grid md:items-center transition-all duration-[800ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${
+                isArchivedView 
+                  ? "gap-0 md:grid-cols-[0px_1fr]" 
+                  : "gap-3 md:grid-cols-[140px_1fr]"
+              }`}
+            >
+              <div 
+                className={`transition-all duration-[800ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${
+                  isArchivedView 
+                    ? "opacity-0 pointer-events-none h-0 md:h-10 w-full md:w-[140px] -translate-x-4 md:translate-x-0 overflow-hidden" 
+                    : "opacity-100 pointer-events-auto h-10 w-full md:w-[140px] translate-x-0"
+                }`}
+              >
+                <label className="sr-only" htmlFor="host-requests-filter">
+                  Statut
+                </label>
+                <select
+                  id="host-requests-filter"
+                  value={filter}
+                  onChange={(e) => {
+                    const next = e.target.value as FilterKey;
+                    setFilter(next);
+                    if (next !== "ARCHIVED") {
+                      setLastActiveFilter(next as Exclude<FilterKey, "ARCHIVED">);
+                    }
+                  }}
+                  className="h-10 w-full md:w-[140px] rounded-2xl border border-slate-100 bg-white px-3 text-sm font-semibold text-slate-700 shadow-sm outline-none transition-colors focus:border-[var(--dogshift-blue)] focus:ring-2 focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] hover:bg-slate-50 cursor-pointer"
+                >
+                  {(["ALL", "TO_ACCEPT", "CONFIRMED", "CANCELLED"] as const).map((k) => (
+                    <option key={k} value={k}>
+                      {filterLabel(k)}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-              <div className="relative group">
+              <div className="relative flex-1 group transition-all duration-[800ms] ease-[cubic-bezier(0.16,1,0.3,1)]">
                 <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 transition-colors group-focus-within:text-[var(--dogshift-blue)]">
                   <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4" aria-hidden="true">
                     <path
