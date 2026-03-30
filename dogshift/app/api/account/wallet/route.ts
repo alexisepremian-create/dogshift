@@ -96,7 +96,7 @@ export async function GET(req: NextRequest) {
     if (!userId) return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
 
     const baseUrl = baseUrlFromRequest(req);
-    const bookingUrl = (bookingId: string) => (baseUrl ? `${baseUrl}/account/bookings/${encodeURIComponent(bookingId)}` : "");
+    const bookingUrl = (bookingId: string) => `/account/bookings?id=${encodeURIComponent(bookingId)}`;
 
     const rows = (await (prisma as any).booking.findMany({
       where: { userId },
