@@ -113,11 +113,6 @@ export function RequestsSplitView({
       });
   }, [localRows, filter, search]);
 
-  const initialSelectedFromQuery = useMemo(() => {
-    const q = searchParams?.get("id");
-    return typeof q === "string" && q.trim() ? q.trim() : "";
-  }, [searchParams]);
-
   useEffect(() => {
     if (loading) return;
     if (filtered.length === 0) {
@@ -126,16 +121,15 @@ export function RequestsSplitView({
       return;
     }
 
-    const desired = initialSelectedFromQuery;
-    if (desired && filtered.some((r) => r.id === desired)) {
-      setSelectedId(desired);
-      return;
-    }
-
     if (!selectedId || !filtered.some((r) => r.id === selectedId)) {
-      setSelectedId(filtered[0]!.id);
+      const desired = searchParams?.get("id")?.trim();
+      if (desired && filtered.some((r) => r.id === desired)) {
+        setSelectedId(desired);
+      } else {
+        setSelectedId(filtered[0]!.id);
+      }
     }
-  }, [filtered, initialSelectedFromQuery, loading, selectedId]);
+  }, [filtered, loading, searchParams, selectedId]);
 
   useEffect(() => {
     if (!selectedId) return;
