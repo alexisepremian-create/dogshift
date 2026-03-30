@@ -1,12 +1,9 @@
 import { notFound } from "next/navigation";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { cookies } from "next/headers";
-
 import ReservationClient from "./reservation-client";
 import { prisma } from "@/lib/prisma";
 import { ensureDbUserByClerkUserId } from "@/lib/auth/resolveDbUserId";
-import { BOOKING_ACCESS_COOKIE, isBookingAccessCodeProtectionEnabled } from "@/lib/bookingAccess";
-
 export const runtime = "nodejs";
 
 export default async function ReservationPage({
@@ -47,11 +44,6 @@ export default async function ReservationPage({
         }
       }
     }
-  }
-
-  const bookingAccessGranted = cookieStore.get(BOOKING_ACCESS_COOKIE)?.value === "true";
-  if (!allowPreviewAccess && isBookingAccessCodeProtectionEnabled() && !bookingAccessGranted) {
-    notFound();
   }
 
   const sitterProfile = await prisma.sitterProfile.findFirst({
