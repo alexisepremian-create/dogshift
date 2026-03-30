@@ -50,6 +50,8 @@ export default function BecomeSitterForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [passwordConfirm, setPasswordConfirm] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showPasswordConfirm, setShowPasswordConfirm] = useState(false);
   const [services, setServices] = useState<string[]>([]);
   const [hourlyRate, setHourlyRate] = useState<number | null>(35);
   const [pricePerDay, setPricePerDay] = useState<number | null>(70);
@@ -119,9 +121,20 @@ export default function BecomeSitterForm() {
       await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
       setAuthInlineStatus("needs_code");
       return false;
-    } catch {
+    } catch (err) {
       setAuthInlineStatus("idle");
-      setAuthError("Impossible de créer le compte. Vérifie l’email et le mot de passe.");
+      const clerkErr = err as { errors?: { code?: string; longMessage?: string; message?: string }[] };
+      const firstError = clerkErr?.errors?.[0];
+      const clerkErrorMessages: Record<string, string> = {
+        form_password_pwned: "Ce mot de passe a été trouvé dans une fuite de données. Choisis-en un autre plus unique.",
+        form_identifier_exists: "Cet email est déjà utilisé. Connecte-toi ou utilise une autre adresse.",
+        form_password_length_too_short: "Le mot de passe est trop court (minimum 8 caractères).",
+        form_password_not_strong_enough: "Le mot de passe n’est pas assez fort. Ajoute des chiffres, majuscules ou symboles.",
+        form_param_format_invalid: "Format invalide. Vérifie ton adresse email.",
+        form_param_nil: "Email et mot de passe requis.",
+      };
+      const frMsg = firstError?.code ? clerkErrorMessages[firstError.code] : undefined;
+      setAuthError(frMsg ?? firstError?.longMessage ?? firstError?.message ?? "Impossible de créer le compte. Vérifie l’email et le mot de passe.");
       return false;
     }
   }
@@ -388,55 +401,101 @@ export default function BecomeSitterForm() {
                   <label htmlFor="password" className="block text-sm font-medium text-slate-700">
                     Mot de passe
                   </label>
-                  <input
-                    id="password"
-                    value={password}
-                    onChange={(e) => {
-                      setAuthError(null);
-                      setPassword(e.target.value);
-                    }}
-                    disabled={formStatus === "submitting" || isAuthBusy}
-                    className={
-                      step1Attempted && step1Errors.password
-                        ? "mt-2 w-full rounded-2xl border border-rose-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition focus:border-rose-400 focus:ring-4 focus:ring-rose-100"
-                        : "mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition focus:border-[var(--dogshift-blue)] focus:ring-4 focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_85%)]"
-                    }
-                    placeholder="••••••••"
-                    type="password"
-                    autoComplete="new-password"
-                  />
-                  {step1Attempted && step1Errors.password ? <p className="mt-2 text-xs font-medium text-rose-600">{step1Errors.password}</p> : null}
+                  <div className="relative mt-2">
+                    <input
+                      id="password"
+                      value={password}
+                      onChange={(e) => {
+                        setAuthError(null);
+                        setPassword(e.target.value);
+                      }}
+                      disabled={formStatus === "submitting" || isAuthBusy}
+                      className={
+                        (step1Attempted || password.length > 0) && step1Errors.password
+                          ? "w-full rounded-2xl border border-rose-300 bg-white py-3 pl-4 pr-11 text-sm text-slate-900 shadow-sm outline-none transition focus:border-rose-400 focus:ring-4 focus:ring-rose-100"
+                          : "w-full rounded-2xl border border-slate-300 bg-white py-3 pl-4 pr-11 text-sm text-slate-900 shadow-sm outline-none transition focus:border-[var(--dogshift-blue)] focus:ring-4 focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_85%)]"
+                      }
+                      placeholder="••••••••"
+                      type={showPassword ? "text" : "password"}
+                      autoComplete="new-password"
+                    />
+                    <button
+                      type="button"
+                      tabIndex={-1}
+                      onClick={() => setShowPassword((v) => !v)}
+                      className="absolute inset-y-0 right-3 flex items-center text-slate-400 hover:text-slate-600"
+                      aria-label={showPassword ? "Masquer le mot de passe" : "Afficher le mot de passe"}
+                    >
+                      {showPassword ? (
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+                          <path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94" />
+                          <path d="M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19" />
+                          <line x1="1" y1="1" x2="23" y2="23" />
+                        </svg>
+                      ) : (
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+                          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                          <circle cx="12" cy="12" r="3" />
+                        </svg>
+                      )}
+                    </button>
+                  </div>
+                  {(step1Attempted || password.length > 0) && step1Errors.password ? <p className="mt-2 text-xs font-medium text-rose-600">{step1Errors.password}</p> : null}
                 </div>
 
                 <div className="sm:col-span-2">
                   <label htmlFor="passwordConfirm" className="block text-sm font-medium text-slate-700">
                     Confirmer mot de passe
                   </label>
-                  <input
-                    id="passwordConfirm"
-                    value={passwordConfirm}
-                    onChange={(e) => {
-                      setAuthError(null);
-                      setPasswordConfirm(e.target.value);
-                    }}
-                    disabled={formStatus === "submitting" || isAuthBusy}
-                    className={
-                      showPasswordMismatch || (step1Attempted && step1Errors.passwordConfirm)
-                        ? "mt-2 w-full rounded-2xl border border-rose-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition focus:border-rose-400 focus:ring-4 focus:ring-rose-100"
-                        : "mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition focus:border-[var(--dogshift-blue)] focus:ring-4 focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_85%)]"
-                    }
-                    placeholder="••••••••"
-                    type="password"
-                    autoComplete="new-password"
-                  />
+                  <div className="relative mt-2">
+                    <input
+                      id="passwordConfirm"
+                      value={passwordConfirm}
+                      onChange={(e) => {
+                        setAuthError(null);
+                        setPasswordConfirm(e.target.value);
+                      }}
+                      disabled={formStatus === "submitting" || isAuthBusy}
+                      className={
+                        showPasswordMismatch || ((step1Attempted || passwordConfirm.length > 0) && step1Errors.passwordConfirm)
+                          ? "w-full rounded-2xl border border-rose-300 bg-white py-3 pl-4 pr-11 text-sm text-slate-900 shadow-sm outline-none transition focus:border-rose-400 focus:ring-4 focus:ring-rose-100"
+                          : "w-full rounded-2xl border border-slate-300 bg-white py-3 pl-4 pr-11 text-sm text-slate-900 shadow-sm outline-none transition focus:border-[var(--dogshift-blue)] focus:ring-4 focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_85%)]"
+                      }
+                      placeholder="••••••••"
+                      type={showPasswordConfirm ? "text" : "password"}
+                      autoComplete="new-password"
+                    />
+                    <button
+                      type="button"
+                      tabIndex={-1}
+                      onClick={() => setShowPasswordConfirm((v) => !v)}
+                      className="absolute inset-y-0 right-3 flex items-center text-slate-400 hover:text-slate-600"
+                      aria-label={showPasswordConfirm ? "Masquer le mot de passe" : "Afficher le mot de passe"}
+                    >
+                      {showPasswordConfirm ? (
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+                          <path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94" />
+                          <path d="M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19" />
+                          <line x1="1" y1="1" x2="23" y2="23" />
+                        </svg>
+                      ) : (
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+                          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                          <circle cx="12" cy="12" r="3" />
+                        </svg>
+                      )}
+                    </button>
+                  </div>
                   {showPasswordMismatch ? (
                     <p className="mt-2 text-xs font-medium text-rose-600">Les mots de passe ne correspondent pas.</p>
-                  ) : step1Attempted && step1Errors.passwordConfirm ? (
+                  ) : (step1Attempted || passwordConfirm.length > 0) && step1Errors.passwordConfirm ? (
                     <p className="mt-2 text-xs font-medium text-rose-600">{step1Errors.passwordConfirm}</p>
                   ) : null}
                 </div>
               </div>
             ) : null}
+
+            <div id="clerk-captcha" />
 
             {authError ? <p className="text-sm font-medium text-rose-600">{authError}</p> : null}
 
