@@ -570,6 +570,9 @@ export default function AvailabilityStudioPage() {
     const raw = pricingInputByService[svc] ?? "";
     const parsed = parsePrice(raw);
     const pricingKey = pricingKeyForService(svc);
+    const rangeError = parsed !== null ? getTariffRangeError(pricingKey, parsed) : null;
+    const isValid = parsed !== null && !rangeError;
+
     const nextAll: Record<PricingServiceKey, number | null> = {
       Promenade: pricingByService.PROMENADE ?? null,
       Garde: pricingByService.DOGSITTING ?? null,
@@ -578,8 +581,6 @@ export default function AvailabilityStudioPage() {
     nextAll[pricingKey] = parsed;
 
     setPricingSavingByService((prev) => ({ ...prev, [svc]: true }));
-    setError(null);
-    setTopError(null);
     try {
       const res = await fetch("/api/host/profile/pricing", {
         method: "PUT",
@@ -597,14 +598,24 @@ export default function AvailabilityStudioPage() {
         PENSION: typeof nextAll.Pension === "number" ? nextAll.Pension : undefined,
       });
 
-      if (parsed === null && configByService[svc]?.enabled === true) {
-        await saveServiceEnabled(svc, false);
-      }
+      const currentlyEnabled = configByService[svc]?.enabled === true;
+      const needsToggle = (isValid && !currentlyEnabled) || (!isValid && currentlyEnabled);
 
-      await refetchAll();
+      if (needsToggle) {
+        const nextEnabled = isValid;
+        setConfigByService((prev) => {
+          const n = { ...prev };
+          (n as any)[svc] = { ...(prev[svc] ?? {}), enabled: nextEnabled };
+          return n;
+        });
+        fetch(`/api/sitters/me/service-config?service=${encodeURIComponent(svc)}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ enabled: nextEnabled }),
+        }).catch(() => {});
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "SAVE_ERROR");
-      await refetchAll();
     } finally {
       setPricingSavingByService((prev) => ({ ...prev, [svc]: false }));
     }
@@ -1827,7 +1838,7 @@ export default function AvailabilityStudioPage() {
                           clearTimeout(pricingDebounceRef.current[svc]);
                           pricingDebounceRef.current[svc] = setTimeout(() => {
                             void saveServicePricing(svc);
-                          }, 800);
+                          }, 500);
                         }}
                         onBlur={() => {
                           clearTimeout(pricingDebounceRef.current[svc]);
