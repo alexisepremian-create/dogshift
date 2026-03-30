@@ -112,6 +112,22 @@ export async function GET(req: NextRequest) {
         });
 
         if (!synced.ok) {
+          if (synced.error === "RESOURCE_MISSING") {
+            console.warn("[api][cron][release-booking-payouts] permanent failure, marking booking as skipped", {
+              bookingId,
+              paymentIntentId,
+              reason: "payment intent does not exist (likely test-mode data)",
+            });
+            await (prisma as any).booking.update({
+              where: { id: bookingId },
+              data: {
+                stripeTransferId: `SKIPPED:RESOURCE_MISSING:${paymentIntentId}`,
+                payoutReleasedAt: new Date(),
+                sitterPayoutAmount: 0,
+              },
+              select: { id: true },
+            });
+          }
           failed += 1;
           continue;
         }

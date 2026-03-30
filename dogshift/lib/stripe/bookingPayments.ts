@@ -94,12 +94,20 @@ export async function syncBookingPaymentDetails(params: {
       payoutAmount,
     };
   } catch (err) {
+    const isResourceMissing =
+      err instanceof Stripe.errors.StripeInvalidRequestError && err.code === "resource_missing";
+
     console.error("[stripe][bookingPayments] syncBookingPaymentDetails failed", {
       bookingId,
       paymentIntentId: paymentIntentId || null,
       chargeId: chargeId || null,
+      permanent: isResourceMissing,
       err,
     });
+
+    if (isResourceMissing) {
+      return { ok: false as const, error: "RESOURCE_MISSING" as const };
+    }
     return { ok: false as const, error: "SYNC_FAILED" as const };
   }
 }
