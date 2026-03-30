@@ -5,7 +5,7 @@ import { HostUserProvider } from "@/components/HostUserProvider";
 import { getHostUserData } from "@/lib/hostUser";
 import { isActivatedStatus } from "@/lib/sitterContract";
 import Link from "next/link";
-import { redirect } from "next/navigation";
+import { redirect, notFound } from "next/navigation";
 import { auth } from "@clerk/nextjs/server";
 import { Suspense } from "react";
 
@@ -39,12 +39,13 @@ export default async function HostLayout({
       contractSignedAt: hostUser.contractSignedAt,
       activatedAt: hostUser.activatedAt,
     });
-  } catch (error) {
-    console.error("[host-layout][diagnostic] dashboard unavailable fallback", {
-      userId,
-      reason: "GET_HOST_USER_DATA_THROW",
-      error: error instanceof Error ? { name: error.name, message: error.message, stack: error.stack } : error,
-    });
+  } catch (error: any) {
+    if (error && typeof error === "object" && "digest" in error) {
+      if (typeof error.digest === "string" && error.digest.startsWith("NEXT_")) {
+        throw error;
+      }
+    }
+    console.error("[host-layout][diagnostic] dashboard unavailable fallback", error);
     return (
       <div className="fixed inset-0 z-50 flex w-full items-center justify-center bg-white font-sans">
         <div className="w-full max-w-lg rounded-3xl border border-slate-200 bg-white p-6 text-center shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)]">
