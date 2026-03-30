@@ -2,10 +2,10 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
-import { CalendarDays, MapPin, Trash2 } from "lucide-react";
+import { CalendarDays, MapPin, Trash2, Clock, CheckCircle2, CreditCard, Banknote, Info, ShieldCheck, HandCoins, Footprints, Home, Moon, MessageCircle, Hash, X } from "lucide-react";
 
 import SunCornerGlow from "@/components/SunCornerGlow";
 
@@ -87,6 +87,8 @@ function formatTimeOnly(iso: string) {
 function summaryDateRange(startDate: string | null, endDate: string | null) {
   if (!startDate) return "—";
   if (!endDate || endDate === startDate) return formatDateOnly(startDate);
+  const sameDay = formatDateOnly(startDate) === formatDateOnly(endDate);
+  if (sameDay) return formatDateOnly(startDate);
   return `${formatDateOnly(startDate)} → ${formatDateOnly(endDate)}`;
 }
 
@@ -133,13 +135,13 @@ function statusLabel(status: string) {
   }
 }
 
-function StatusPill({ status }: { status: string }) {
+function statusClasses(status: string) {
   const s = statusLabel(status);
-  const base = "inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold shadow-sm";
-  if (s.tone === "emerald") return <span className={`${base} border-emerald-200 bg-emerald-50 text-emerald-800`}>{s.label}</span>;
-  if (s.tone === "amber") return <span className={`${base} border-amber-200 bg-amber-50 text-amber-800`}>{s.label}</span>;
-  if (s.tone === "rose") return <span className={`${base} border-rose-200 bg-rose-50 text-rose-800`}>{s.label}</span>;
-  return <span className={`${base} border-slate-200 bg-slate-50 text-slate-700`}>{s.label}</span>;
+  const base = "inline-flex items-center rounded-lg border px-2.5 py-1 text-[11px] font-bold tracking-wide shadow-sm";
+  if (s.tone === "emerald") return { label: s.label, classes: `${base} border-emerald-200/60 bg-gradient-to-r from-emerald-50 to-emerald-100/50 text-emerald-700` };
+  if (s.tone === "amber") return { label: s.label, classes: `${base} border-amber-200/60 bg-gradient-to-r from-amber-50 to-amber-100/50 text-amber-700` };
+  if (s.tone === "rose") return { label: s.label, classes: `${base} border-rose-200/60 bg-gradient-to-r from-rose-50 to-rose-100/50 text-rose-700` };
+  return { label: s.label, classes: `${base} border-slate-200/60 bg-gradient-to-r from-slate-50 to-slate-100/50 text-slate-600` };
 }
 
 type TabKey = "ALL" | "PENDING" | "CONFIRMED" | "CANCELLED" | "ARCHIVED";
@@ -220,7 +222,16 @@ function canLeaveReview(booking: BookingListItem) {
   return Number.isFinite(endTs) && Date.now() > endTs;
 }
 
-export default function AccountBookingsPage() {
+async function copyToClipboard(value: string) {
+  try {
+    await navigator.clipboard.writeText(value);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function AccountBookingsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { isLoaded, isSignedIn } = useUser();
@@ -235,12 +246,16 @@ export default function AccountBookingsPage() {
   const [detailLoading, setDetailLoading] = useState(false);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [moreOpen, setMoreOpen] = useState(false);
   const [currentTab, setCurrentTab] = useState<TabKey>("ALL");
-  const [moreMenuPosition, setMoreMenuPosition] = useState<{ top: number; left: number } | null>(null);
-  const filtersBarRef = useRef<HTMLDivElement | null>(null);
-  const moreMenuRef = useRef<HTMLDivElement | null>(null);
-  const moreButtonRef = useRef<HTMLButtonElement | null>(null);
+  const [search, setSearch] = useState("");
+  const [isFlipped, setIsFlipped] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    if (!copied) return;
+    const t = window.setTimeout(() => setCopied(false), 1000);
+    return () => window.clearTimeout(t);
+  }, [copied]);
 
   async function loadBookings() {
     setLoading(true);
@@ -309,54 +324,6 @@ export default function AccountBookingsPage() {
     setCurrentTab(activeTabFromQuery);
   }, [activeTabFromQuery]);
 
-  useEffect(() => {
-    setMoreOpen(false);
-  }, [currentTab]);
-
-  useEffect(() => {
-    if (!moreOpen) return;
-
-    function onPointerDown(event: MouseEvent) {
-      const target = event.target;
-      if (!(target instanceof Node)) return;
-      if (moreButtonRef.current?.contains(target)) return;
-      if (moreMenuRef.current?.contains(target)) return;
-      setMoreOpen(false);
-    }
-
-    document.addEventListener("mousedown", onPointerDown);
-    return () => {
-      document.removeEventListener("mousedown", onPointerDown);
-    };
-  }, [moreOpen]);
-
-  useEffect(() => {
-    if (!moreOpen) {
-      setMoreMenuPosition(null);
-      return;
-    }
-
-    function updateMenuPosition() {
-      const container = filtersBarRef.current;
-      const button = moreButtonRef.current;
-      if (!container || !button) return;
-
-      const containerRect = container.getBoundingClientRect();
-      const buttonRect = button.getBoundingClientRect();
-      const menuWidth = 220;
-      const left = Math.max(0, buttonRect.right - containerRect.left - menuWidth);
-      const top = buttonRect.bottom - containerRect.top + 8;
-      setMoreMenuPosition({ top, left });
-    }
-
-    updateMenuPosition();
-    window.addEventListener("resize", updateMenuPosition);
-    window.addEventListener("scroll", updateMenuPosition, true);
-    return () => {
-      window.removeEventListener("resize", updateMenuPosition);
-      window.removeEventListener("scroll", updateMenuPosition, true);
-    };
-  }, [moreOpen]);
 
   const initialSelectedFromQuery = useMemo(() => {
     const q = searchParams?.get("id");
@@ -389,8 +356,6 @@ export default function AccountBookingsPage() {
     return base;
   }, [bookings]);
 
-  const primaryTabs = ["ALL", "PENDING", "CONFIRMED"] as const satisfies readonly TabKey[];
-
   function selectTab(key: TabKey) {
     setCurrentTab(key);
     const params = new URLSearchParams(searchParams?.toString() ?? "");
@@ -399,41 +364,43 @@ export default function AccountBookingsPage() {
     params.set("tab", key.toLowerCase());
     params.delete("id");
     router.replace(`/account/bookings?${params.toString()}`);
-    setMoreOpen(false);
   }
 
   const rows = useMemo(() => {
+    const q = search.trim().toLowerCase();
     const filtered = bookings
       .filter((b) => matchesTab(b, currentTab))
-      .filter((b) => (currentTab === "PENDING" ? matchesPendingSubfilter(b.status, pendingSubfilter) : true));
+      .filter((b) => (currentTab === "PENDING" ? matchesPendingSubfilter(b.status, pendingSubfilter) : true))
+      .filter((b) => !q || b.sitter.name.toLowerCase().includes(q) || (b.service ?? "").toLowerCase().includes(q));
     return filtered.slice().sort((a, b) => {
       const ta = new Date(a.createdAt).getTime();
       const tb = new Date(b.createdAt).getTime();
       return (Number.isNaN(tb) ? 0 : tb) - (Number.isNaN(ta) ? 0 : ta);
     });
-  }, [bookings, currentTab, pendingSubfilter]);
+  }, [bookings, currentTab, pendingSubfilter, search]);
 
   useEffect(() => {
     if (loading) return;
     if (rows.length === 0) {
-      setSelectedId(null);
+      if (selectedId) setSelectedId(null);
       setMobileDetailOpen(false);
       setDetail(null);
       return;
     }
 
-    const desired = initialSelectedFromQuery;
-    if (desired && rows.some((r) => r.id === desired)) {
-      setSelectedId(desired);
-      return;
-    }
-
     if (!selectedId || !rows.some((r) => r.id === selectedId)) {
-      setSelectedId(rows[0]!.id);
+      const q = searchParams?.get("id");
+      const desired = typeof q === "string" && q.trim() ? q.trim() : null;
+      if (desired && rows.some((r) => r.id === desired)) {
+        setSelectedId(desired);
+      } else {
+        setSelectedId(rows[0]!.id);
+      }
     }
-  }, [initialSelectedFromQuery, loading, rows, selectedId]);
+  }, [loading, rows]); // Intentionally omitting selectedId and searchParams to prevent loops
 
   useEffect(() => {
+    setIsFlipped(false);
     if (!selectedId) {
       setDetail(null);
       return;
@@ -444,9 +411,12 @@ export default function AccountBookingsPage() {
     params.delete("status");
     params.set("tab", nextTab);
     params.set("id", selectedId);
-    router.replace(`/account/bookings?${params.toString()}`);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentTab, selectedId]);
+    
+    const newUrl = `/account/bookings?${params.toString()}`;
+    if (window.location.pathname + window.location.search !== newUrl) {
+      window.history.replaceState(null, "", newUrl);
+    }
+  }, [currentTab, selectedId, searchParams]);
 
   const selected = useMemo(() => {
     if (!selectedId) return null;
@@ -506,385 +476,488 @@ export default function AccountBookingsPage() {
   }
 
   if (!isLoaded || !isSignedIn) return null;
-  if (error) {
-    return (
-      <div className="rounded-3xl border border-rose-200 bg-rose-50 p-6 text-sm font-medium text-rose-900 sm:p-8">
-        <p>{error}</p>
-        {error.includes("401") ? (
-          <Link
-            href="/login"
-            className="mt-4 inline-flex items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-6 py-3 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition hover:bg-[var(--dogshift-blue-hover)]"
-          >
-            Se connecter
-          </Link>
-        ) : null}
-      </div>
-    );
-  }
 
   return (
-    <div className="relative grid gap-6" data-testid="account-bookings-page">
+    <div className="relative" data-testid="account-bookings-page">
       <SunCornerGlow variant="ownerBookings" />
 
-      <div className="relative z-10">
-        <div>
-          <p className="text-sm font-semibold text-slate-600">Mon compte</p>
-          <h1 className="mt-2 flex items-center gap-2 text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">
-            <CalendarDays className="h-6 w-6 text-slate-700" aria-hidden="true" />
-            <span>Réservations</span>
-          </h1>
-          <div className="mt-3 flex min-h-[32px] items-center">
-            <p className="text-sm text-slate-600">Retrouve ici tes demandes et leur statut.</p>
-          </div>
-        </div>
+      <div className="grid items-start gap-6 lg:grid-cols-[380px_1fr]">
+        <section className={mobileDetailOpen ? "hidden min-w-0 lg:block" : "min-w-0 block"}>
+          <div className="rounded-3xl border border-slate-100 bg-white/60 p-5 shadow-[0_8px_30px_-12px_rgba(15,23,42,0.06)] backdrop-blur-xl sm:p-7">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-sm font-semibold text-slate-600">Mon compte</p>
+                <h1 className="mt-2 flex items-center gap-2 text-2xl font-bold tracking-tight text-slate-900">
+                  <CalendarDays className="h-6 w-6 text-[var(--dogshift-blue)]" aria-hidden="true" />
+                  <span>Réservations</span>
+                </h1>
+                <p className="mt-2 text-sm text-slate-600">
+                  <span className="font-semibold text-slate-900">{counts.PENDING}</span> en attente
+                </p>
+              </div>
+            </div>
 
-      <div className="sticky top-0 z-10 -mx-4 px-4 py-3 sm:-mx-6 sm:px-6 lg:mx-0 lg:px-0">
-        <div ref={filtersBarRef} className="relative overflow-visible">
-          <div className="overflow-x-auto overflow-y-visible">
-            <div className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white p-2 shadow-sm">
-            {primaryTabs.map((key) => {
-              const active = key === currentTab;
-              const count = counts[key] ?? 0;
-              return (
+            <div className="mt-6">
+              <div className="inline-flex rounded-2xl border border-slate-100 bg-slate-50/50 p-1 shadow-inner">
                 <button
-                  key={key}
                   type="button"
-                  onClick={() => selectTab(key)}
-                  className={
-                    "inline-flex items-center gap-2 rounded-2xl border px-4 py-2 text-sm font-semibold transition" +
-                    (active
-                      ? " border-slate-200 bg-slate-50 text-slate-900"
-                      : " border-transparent bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-900")
-                  }
+                  onClick={() => { if (currentTab === "ARCHIVED") selectTab("ALL"); }}
+                  className={`h-9 rounded-xl px-4 text-sm font-bold transition-all duration-300 ${
+                    currentTab !== "ARCHIVED" ? "bg-white text-[var(--dogshift-blue)] shadow-sm ring-1 ring-slate-200/50" : "text-slate-500 hover:text-slate-800 hover:bg-slate-100/50"
+                  }`}
                 >
-                  {tabLabel(key)}
-                  {count > 0 ? (
-                    <span className="inline-flex h-6 min-w-[24px] items-center justify-center rounded-full border border-slate-200 bg-white px-2 text-xs font-semibold text-slate-700">
-                      {count}
-                    </span>
-                  ) : null}
+                  Réservations
                 </button>
-              );
-            })}
-
-              <div className="relative shrink-0">
                 <button
-                  ref={moreButtonRef}
                   type="button"
-                  onClick={() => setMoreOpen((current) => !current)}
-                  className={
-                    "inline-flex items-center gap-2 rounded-2xl border px-4 py-2 text-sm font-semibold transition" +
-                    ((currentTab === "CANCELLED" || currentTab === "ARCHIVED")
-                      ? " border-slate-200 bg-slate-50 text-slate-900"
-                      : " border-transparent bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-900")
-                  }
-                  aria-expanded={moreOpen}
-                  aria-haspopup="menu"
+                  onClick={() => selectTab("ARCHIVED")}
+                  className={`h-9 rounded-xl px-4 text-sm font-bold transition-all duration-300 ${
+                    currentTab === "ARCHIVED" ? "bg-white text-[var(--dogshift-blue)] shadow-sm ring-1 ring-slate-200/50" : "text-slate-500 hover:text-slate-800 hover:bg-slate-100/50"
+                  }`}
                 >
-                  <span className="inline-flex items-center">Plus</span>
-                  <span className="inline-flex items-center text-base leading-none text-slate-400" aria-hidden="true">
-                    {moreOpen ? "⌃" : "⌄"}
-                  </span>
+                  Archivées
                 </button>
               </div>
             </div>
-          </div>
 
-          {moreOpen && moreMenuPosition ? (
-            <div
-              ref={moreMenuRef}
-              className="absolute z-[80] w-[220px] rounded-2xl border border-slate-200 bg-white p-2 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.35)]"
-              role="menu"
-              style={{ top: moreMenuPosition.top, left: moreMenuPosition.left }}
-            >
-              <button
-                type="button"
-                onMouseDown={(event) => event.preventDefault()}
-                onClick={() => selectTab("CANCELLED")}
-                role="menuitem"
-                className={
-                  "flex w-full items-center rounded-xl px-3 py-2 text-left text-sm font-semibold transition" +
-                  (currentTab === "CANCELLED" ? " bg-slate-50 text-slate-900" : " text-slate-600 hover:bg-slate-50 hover:text-slate-900")
-                }
-              >
-                Annulées / refusées
-              </button>
-              <button
-                type="button"
-                onMouseDown={(event) => event.preventDefault()}
-                onClick={() => selectTab("ARCHIVED")}
-                role="menuitem"
-                className={
-                  "mt-1 flex w-full items-center rounded-xl px-3 py-2 text-left text-sm font-semibold transition" +
-                  (currentTab === "ARCHIVED" ? " bg-slate-50 text-slate-900" : " text-slate-600 hover:bg-slate-50 hover:text-slate-900")
-                }
-              >
-                Archivées
-              </button>
-            </div>
-          ) : null}
-        </div>
-      </div>
-
-      {error ? (
-        <div className="rounded-3xl border border-rose-200 bg-rose-50 p-6 text-sm font-medium text-rose-900 sm:p-8">
-          <p>{error}</p>
-          {error.includes("401") ? (
-            <Link
-              href="/login"
-              className="mt-4 inline-flex items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-6 py-3 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition hover:bg-[var(--dogshift-blue-hover)]"
-            >
-              Se connecter
-            </Link>
-          ) : (
-            <button
-              type="button"
-              onClick={() => void loadBookings()}
-              className="mt-4 inline-flex items-center justify-center rounded-2xl border border-rose-200 bg-white px-5 py-3 text-sm font-semibold text-rose-900 shadow-sm transition hover:bg-rose-50"
-            >
-              Réessayer
-            </button>
-          )}
-        </div>
-      ) : null}
-
-      {loading ? (
-        <div className="rounded-3xl border border-slate-200 bg-white p-6 sm:p-8">
-          <p className="text-sm font-semibold text-slate-900">Chargement…</p>
-          <p className="mt-2 text-sm text-slate-600">Nous récupérons tes réservations.</p>
-        </div>
-      ) : rows.length === 0 ? (
-        <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)] sm:p-8">
-          <p className="text-sm font-semibold text-slate-900">{emptyCopy(currentTab)}</p>
-          <p className="mt-2 text-sm text-slate-600">
-            {currentTab === "ALL"
-              ? "Quand tu réserves un dogsitter, la demande apparaîtra ici automatiquement."
-              : "Change d’onglet pour voir d’autres réservations ou démarre une nouvelle demande."}
-          </p>
-          {currentTab === "ALL" ? (
-            <div className="mt-5">
-              <Link
-                href="/search"
-                className="inline-flex items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-6 py-3 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition hover:bg-[var(--dogshift-blue-hover)]"
-              >
-                Trouver un sitter
-              </Link>
-            </div>
-          ) : null}
-        </div>
-      ) : (
-        <div className="grid gap-4 lg:grid-cols-[38%_1fr]">
-          <div className={mobileDetailOpen ? "hidden lg:block" : "block"}>
-            <div className="rounded-3xl border border-slate-200 bg-white shadow-sm">
-              <div className="border-b border-slate-200 px-5 py-4">
-                <p className="text-sm font-semibold text-slate-900">Liste</p>
-                <p className="mt-1 text-sm text-slate-600">Sélectionne une réservation pour voir le détail.</p>
+            <div className={`mt-6 grid md:items-center transition-all duration-[800ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${
+              currentTab === "ARCHIVED"
+                ? "gap-0 md:grid-cols-[0px_1fr]"
+                : "gap-3 md:grid-cols-[140px_1fr]"
+            }`}>
+              <div className={`transition-all duration-[800ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${
+                currentTab === "ARCHIVED"
+                  ? "opacity-0 pointer-events-none h-0 md:h-10 w-full md:w-[140px] -translate-x-4 md:translate-x-0 overflow-hidden"
+                  : "opacity-100 pointer-events-auto h-10 w-full md:w-[140px] translate-x-0"
+              }`}>
+                <select
+                  value={currentTab}
+                  onChange={(e) => selectTab(e.target.value as TabKey)}
+                  className="h-10 w-full md:w-[140px] rounded-2xl border border-slate-100 bg-white px-3 text-sm font-semibold text-slate-700 shadow-sm outline-none transition-colors focus:border-[var(--dogshift-blue)] focus:ring-2 focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] hover:bg-slate-50 cursor-pointer"
+                >
+                  <option value="ALL">Tous</option>
+                  <option value="PENDING">En attente</option>
+                  <option value="CONFIRMED">Confirmées</option>
+                  <option value="CANCELLED">Annulées / refusées</option>
+                </select>
               </div>
-              <div className="max-h-[calc(100vh-300px)] overflow-auto p-3">
-                <div className="space-y-3">
-                  {rows.map((b) => {
-                    const isHourly = !isMidnightUtc(b.startDate) || !isMidnightUtc(b.endDate);
-                    const service = b.service?.trim() ? b.service.trim() : "Service";
-                    const isCancelled = b.status === "CANCELLED" || b.status === "PAYMENT_FAILED";
-                    const canDelete = b.status === "PENDING_PAYMENT" || b.status === "DRAFT";
-                    const isSelected = b.id === selectedId;
-                    const blocking = pendingBlockingReason(b.status);
-                    const location = sitterLocation(b.sitter);
-                    const reviewEligible = canLeaveReview(b);
 
-                    const when = (() => {
-                      if (!b.startDate) return "—";
-                      if (isHourly) {
-                        const day = formatDateOnly(b.startDate);
-                        const start = formatTimeOnly(b.startDate);
-                        const end = b.endDate ? formatTimeOnly(b.endDate) : "";
-                        return `${day}${start ? ` • ${start}` : ""}${end ? ` → ${end}` : ""}`;
-                      }
-
-                      if (!b.endDate || b.endDate === b.startDate) return formatDateOnly(b.startDate);
-                      return `${formatDateOnly(b.startDate)} → ${formatDateOnly(b.endDate)}`;
-                    })();
-
-                    return (
-                      <div
-                        key={b.id}
-                        className={
-                          "group relative rounded-3xl border shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)] transition" +
-                          (isSelected
-                            ? " border-[color-mix(in_srgb,var(--dogshift-blue),black_10%)] bg-[color-mix(in_srgb,var(--dogshift-blue),white_96%)]"
-                            : " border-slate-200 bg-white hover:bg-slate-50") +
-                          (isCancelled ? " opacity-90" : "")
-                        }
-                      >
-                        {canDelete ? (
-                          <button
-                            type="button"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              setConfirmDeleteId(b.id);
-                            }}
-                            className="absolute right-3 top-3 z-10 inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-white/95 text-slate-500 opacity-0 shadow-sm transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600 group-hover:opacity-100 focus:opacity-100"
-                            aria-label="Supprimer la réservation"
-                          >
-                            <Trash2 className="h-4 w-4" aria-hidden="true" />
-                          </button>
-                        ) : null}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setSelectedId(b.id);
-                            setMobileDetailOpen(true);
-                          }}
-                          className="w-full rounded-3xl p-4 text-left"
-                        >
-                          <div className="flex items-start justify-between gap-3 pr-10">
-                            <div className="flex min-w-0 items-start gap-3">
-                              <div className="relative mt-0.5 h-10 w-10 shrink-0 overflow-hidden rounded-2xl bg-slate-100">
-                                {b.sitter.avatarUrl && avatarIsSafe(b.sitter.avatarUrl) ? (
-                                  <Image src={b.sitter.avatarUrl} alt={b.sitter.name} fill className="object-cover" sizes="40px" />
-                                ) : (
-                                  <div className="flex h-full w-full items-center justify-center text-sm font-semibold text-slate-600">
-                                    {initialForName(b.sitter.name)}
-                                  </div>
-                                )}
-                              </div>
-                              <div className="min-w-0">
-                                <p className="truncate text-sm font-semibold text-slate-900">{b.sitter.name}</p>
-                                <p className="mt-1 truncate text-xs text-slate-600">
-                                  {service} • {when}{location !== "—" ? ` • ${location}` : ""}
-                                </p>
-                                {blocking ? <p className="mt-2 truncate text-xs font-medium text-slate-500">{blocking}</p> : null}
-                                {b.hasReview ? (
-                                  <p className="mt-2 inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-800">
-                                    Avis laissé
-                                  </p>
-                                ) : reviewEligible ? (
-                                  <p className="mt-2 inline-flex items-center rounded-full border border-[color-mix(in_srgb,var(--dogshift-blue),white_65%)] bg-[color-mix(in_srgb,var(--dogshift-blue),white_92%)] px-2.5 py-1 text-[11px] font-semibold text-[color-mix(in_srgb,var(--dogshift-blue),black_20%)]">
-                                    Laisser un avis
-                                  </p>
-                                ) : null}
-                              </div>
-                            </div>
-
-                            <div className="shrink-0 text-right">
-                              <StatusPill status={uiStatusForBadge(b.status)} />
-                              <p className={isCancelled ? "mt-2 text-sm font-semibold text-slate-600" : "mt-2 text-sm font-semibold text-slate-900"}>
-                                {formatChfCents(b.amount)}
-                              </p>
-                            </div>
-                          </div>
-                        </button>
-
-                        {b.hasReview || reviewEligible ? (
-                          <div className="border-t border-slate-200 px-4 pb-4 pt-3">
-                            {b.hasReview ? (
-                              <Link
-                                href={`/account/bookings/${encodeURIComponent(b.id)}/review`}
-                                className="inline-flex items-center justify-center rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-800 transition hover:bg-emerald-100"
-                              >
-                                Avis laissé
-                              </Link>
-                            ) : (
-                              <Link
-                                href={`/account/bookings/${encodeURIComponent(b.id)}/review`}
-                                className="inline-flex items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition hover:bg-[var(--dogshift-blue-hover)]"
-                              >
-                                Laisser un avis
-                              </Link>
-                            )}
-                          </div>
-                        ) : null}
-                      </div>
-                    );
-                  })}
-                </div>
+              <div className="relative flex-1 group transition-all duration-[800ms] ease-[cubic-bezier(0.16,1,0.3,1)]">
+                <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 transition-colors group-focus-within:text-[var(--dogshift-blue)]">
+                  <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4" aria-hidden="true">
+                    <path fillRule="evenodd" d="M8.5 3a5.5 5.5 0 104.384 8.824l2.146 2.146a.75.75 0 101.06-1.06l-2.146-2.146A5.5 5.5 0 008.5 3zm-4 5.5a4 4 0 117.999.001A4 4 0 014.5 8.5z" clipRule="evenodd" />
+                  </svg>
+                </span>
+                <input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Rechercher…"
+                  className="h-10 w-full rounded-2xl border border-slate-100 bg-white pl-10 pr-3 text-sm font-medium text-slate-900 shadow-sm outline-none transition-all placeholder:text-slate-400 focus:border-[var(--dogshift-blue)] focus:ring-2 focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] hover:bg-slate-50"
+                />
               </div>
             </div>
           </div>
 
-          <div className={mobileDetailOpen ? "block" : "hidden lg:block"}>
-            <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
-              <div className="flex items-start justify-between gap-4">
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold text-slate-600">Aperçu</p>
-                  <h2 className="mt-2 truncate text-xl font-semibold tracking-tight text-slate-900">{selected?.sitter.name ?? "Réservation"}</h2>
-                  <div className="mt-3 flex flex-wrap items-center gap-2">
-                    {detail?.status ? <StatusPill status={uiStatusForBadge(detail.status)} /> : selected?.status ? <StatusPill status={uiStatusForBadge(selected.status)} /> : null}
-                    <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-semibold leading-5 text-slate-700">
-                      {formatChfCents(detail?.amount ?? selected?.amount ?? 0)}
-                    </span>
+          {error ? (
+            <div className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 p-5 text-sm font-medium text-rose-900">
+              <p>{error}</p>
+              {error.includes("401") ? (
+                <Link
+                  href="/login"
+                  className="mt-3 inline-flex items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[var(--dogshift-blue-hover)]"
+                >
+                  Se connecter
+                </Link>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => void loadBookings()}
+                  className="mt-3 inline-flex items-center justify-center rounded-2xl border border-rose-200 bg-white px-4 py-2.5 text-sm font-semibold text-rose-900 shadow-sm transition hover:bg-rose-50"
+                >
+                  Réessayer
+                </button>
+              )}
+            </div>
+          ) : null}
+
+          {loading ? (
+            <div className="mt-4 space-y-3">
+              {Array.from({ length: 6 }).map((_, idx) => (
+                <div key={idx} className="h-[96px] rounded-2xl border border-slate-100 bg-white/60 p-4 shadow-sm backdrop-blur-xl">
+                  <div className="flex items-start gap-3">
+                    <div className="h-10 w-10 rounded-full bg-slate-100/80 animate-pulse" />
+                    <div className="flex-1">
+                      <div className="h-4 w-2/3 rounded-lg bg-slate-100/80 animate-pulse" />
+                      <div className="mt-2 h-3 w-1/2 rounded-lg bg-slate-100/80 animate-pulse" />
+                      <div className="mt-3 h-5 w-24 rounded-full bg-slate-100/80 animate-pulse" />
+                    </div>
                   </div>
                 </div>
-
-                <div className="flex shrink-0 flex-col items-end gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setMobileDetailOpen(false)}
-                    className="inline-flex items-center justify-center rounded-2xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50 lg:hidden"
+              ))}
+            </div>
+          ) : rows.length === 0 ? (
+            <div className="mt-4 rounded-3xl border border-slate-100 bg-white/60 p-8 shadow-[0_8px_30px_-12px_rgba(15,23,42,0.06)] backdrop-blur-xl text-center">
+              <p className="text-sm font-semibold text-slate-900">{emptyCopy(currentTab)}</p>
+              <p className="mt-2 text-sm text-slate-600">
+                {currentTab === "ALL"
+                  ? "Quand tu réserves un dogsitter, la demande apparaîtra ici automatiquement."
+                  : "Change d’onglet pour voir d’autres réservations ou démarre une nouvelle demande."}
+              </p>
+              {currentTab === "ALL" ? (
+                <div className="mt-5">
+                  <Link
+                    href="/search"
+                    className="inline-flex items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-6 py-3 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition hover:bg-[var(--dogshift-blue-hover)]"
                   >
-                    Retour
-                  </button>
-
-                  {selectedId ? (
-                    <Link
-                      href={`/account/bookings/${encodeURIComponent(selectedId)}`}
-                      className="text-sm font-semibold text-[var(--dogshift-blue)] hover:text-[var(--dogshift-blue-hover)]"
-                    >
-                      Voir détails
-                    </Link>
-                  ) : null}
-                </div>
-              </div>
-
-              <div className="mt-6 grid gap-4 sm:grid-cols-2">
-                <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5 sm:p-6 sm:col-span-2">
-                  <p className="text-sm font-semibold text-slate-900">Résumé</p>
-                  <div className="mt-5 grid gap-4 text-sm">
-                    <div className="border-b border-slate-200/80 pb-3">
-                      <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Service</p>
-                      <p className="mt-1 font-semibold text-slate-900">{detail?.service ?? selected?.service ?? "—"}</p>
-                    </div>
-                    <div className="border-b border-slate-200/80 pb-3">
-                      <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Statut</p>
-                      <p className="mt-1 font-semibold text-slate-900">
-                        {(() => {
-                          const raw = detail?.status ?? selected?.status ?? "";
-                          const blocking = pendingBlockingReason(raw);
-                          if (blocking === "Paiement requis") return "Paiement requis";
-                          if (blocking === "En attente d’acceptation") return "En attente d’acceptation";
-                          return statusLabel(raw).label;
-                        })()}
-                      </p>
-                    </div>
-                    <div className="border-b border-slate-200/80 pb-3">
-                      <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Dates</p>
-                      <p className="mt-1 font-semibold text-slate-900">{summaryDateRange(selected?.startDate ?? null, selected?.endDate ?? null)}</p>
-                    </div>
-                    <div className="border-b border-slate-200/80 pb-3">
-                      <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Horaire</p>
-                      <p className="mt-1 font-semibold text-slate-900">{summaryTimeRange(selected?.startDate ?? null, selected?.endDate ?? null)}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Lieu</p>
-                      <p className="mt-1 inline-flex items-center gap-2 font-semibold text-slate-900">
-                        <MapPin className="h-4 w-4 shrink-0 text-slate-400" aria-hidden="true" />
-                        <span>{sitterLocation(detail?.sitter ?? selected?.sitter)}</span>
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {detail?.message?.trim() ? (
-                <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-4">
-                  <p className="text-sm font-semibold text-slate-900">Message</p>
-                  <p className="mt-3 whitespace-pre-line text-sm text-slate-600">{detail.message}</p>
+                    Trouver un sitter
+                  </Link>
                 </div>
               ) : null}
             </div>
+          ) : (
+            <div className="mt-6">
+              <div className="max-h-[calc(100vh-520px)] space-y-3 overflow-auto px-1 pt-3 pb-8 sm:pr-1 sm:pl-3" style={{ scrollbarWidth: 'thin' }}>
+                <div role="listbox" aria-label="Liste des réservations" className="space-y-2">
+                  {rows.map((b) => {
+                  const service = b.service?.trim() ? b.service.trim() : "Service";
+                  const isCancelled = b.status === "CANCELLED" || b.status === "PAYMENT_FAILED";
+                  const canDelete = b.status === "PENDING_PAYMENT" || b.status === "DRAFT";
+                  const isSelected = b.id === selectedId;
+
+                  return (
+                    <div
+                      key={b.id}
+                      role="option"
+                      aria-selected={isSelected}
+                      tabIndex={0}
+                      onClick={() => {
+                        setSelectedId(b.id);
+                        setMobileDetailOpen(true);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          setSelectedId(b.id);
+                          setMobileDetailOpen(true);
+                        }
+                      }}
+                      className={
+                        "group relative w-full rounded-2xl border p-4 text-left transition-all duration-300 ease-out cursor-pointer" +
+                        (isSelected
+                          ? " border-[var(--dogshift-blue)] ring-1 ring-[var(--dogshift-blue)] shadow-md bg-[color-mix(in_srgb,var(--dogshift-blue),white_97%)]"
+                          : " border-slate-100 bg-white shadow-sm hover:border-slate-200 hover:bg-slate-50/80 hover:shadow-md") +
+                        (isCancelled ? " opacity-75" : "") +
+                        " focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--dogshift-blue)]"
+                      }
+                    >
+                      {canDelete ? (
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            setConfirmDeleteId(b.id);
+                          }}
+                          className="pointer-events-none absolute -left-2 -top-2 inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 opacity-0 shadow-sm transition group-hover:pointer-events-auto group-hover:opacity-100 hover:bg-slate-50"
+                        >
+                          <Trash2 className="h-4 w-4" aria-hidden="true" />
+                        </button>
+                      ) : null}
+                      <div className="flex items-start gap-3">
+                        {b.sitter.avatarUrl && avatarIsSafe(b.sitter.avatarUrl) ? (
+                          <div className="relative mt-0.5 h-9 w-9 shrink-0 overflow-hidden rounded-full border border-slate-200 shadow-sm">
+                            <Image src={b.sitter.avatarUrl} alt={b.sitter.name} fill className="object-cover" sizes="36px" referrerPolicy="no-referrer" />
+                          </div>
+                        ) : (
+                          <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-sm font-semibold text-slate-500">
+                            {initialForName(b.sitter.name)}
+                          </div>
+                        )}
+
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className="truncate text-base font-semibold text-slate-900 group-hover:text-[var(--dogshift-blue)] transition-colors duration-300">{b.sitter.name}</p>
+                              <div className="mt-1 flex items-center gap-1.5 text-xs font-semibold text-slate-500">
+                                {service === "Promenade" && <Footprints className="h-3.5 w-3.5 text-slate-400" />}
+                                {service === "Garde" && <Home className="h-3.5 w-3.5 text-slate-400" />}
+                                {service === "Pension" && <Moon className="h-3.5 w-3.5 text-slate-400" />}
+                                <span className="truncate">{service}</span>
+                              </div>
+                            </div>
+
+                            <div className="shrink-0 text-right transition-all duration-300">
+                              <p className="text-sm font-semibold text-slate-900">{formatChfCents(b.amount)}</p>
+                              <div className="mt-2 flex justify-end">
+                                {(() => { const m = statusClasses(uiStatusForBadge(b.status)); return <span className={m.classes}>{m.label}</span>; })()}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+            </div>
+          )}
+        </section>
+
+        <aside className={mobileDetailOpen ? "block min-w-0" : "hidden min-w-0 lg:block"}>
+          <div className="sticky top-0">
+            <div key={selectedId || "none"} className="animate-in fade-in slide-in-from-bottom-2 duration-500 rounded-3xl border border-slate-100 bg-white/60 p-4 shadow-[0_8px_30px_-12px_rgba(15,23,42,0.06)] backdrop-blur-xl sm:p-6 transition-all">
+              <div className="flex items-start justify-between gap-4 border-b border-slate-100 pb-5">
+              <div className="min-w-0">
+                <p className="truncate text-xl font-bold tracking-tight text-slate-900">{selected?.sitter.name ?? "Réservation"}</p>
+                <div className="mt-4 flex flex-wrap items-center gap-3">
+                  {(() => {
+                    const st = detail?.status ?? selected?.status ?? "";
+                    const effectiveStatus = uiStatusForBadge(st);
+                    const s = statusLabel(effectiveStatus);
+                    const colors = s.tone === "emerald" ? "border-emerald-200 bg-emerald-50/50 text-emerald-800"
+                      : s.tone === "amber" ? "border-amber-200 bg-amber-50/50 text-amber-800"
+                      : s.tone === "rose" ? "border-rose-200 bg-rose-50/50 text-rose-800"
+                      : "border-slate-200 bg-slate-50 text-slate-700";
+                    const iconColor = s.tone === "emerald" ? "text-emerald-600" : s.tone === "amber" ? "text-amber-600" : s.tone === "rose" ? "text-rose-600" : "text-slate-500";
+                    const Icon = s.tone === "emerald" ? CheckCircle2 : s.tone === "amber" ? Clock : s.tone === "rose" ? CreditCard : CalendarDays;
+                    return (
+                      <div className={`inline-flex items-center gap-2 rounded-xl border px-3.5 py-2 shadow-sm ${colors}`}>
+                        <Icon className={`h-5 w-5 ${iconColor}`} />
+                        <span className="text-[14px] font-bold tracking-wide">{s.label}</span>
+                      </div>
+                    );
+                  })()}
+                  <div className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-2 shadow-sm">
+                    <Banknote className="h-5 w-5 text-slate-500" />
+                    <span className="text-[15px] font-bold tracking-wide text-slate-900">{formatChfCents(detail?.amount ?? selected?.amount ?? 0)}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setMobileDetailOpen(false)}
+                  className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-50 text-slate-500 transition-all hover:bg-slate-100 hover:text-slate-900 hover:scale-105 active:scale-95 lg:hidden"
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-5 w-5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6L6 18M6 6l12 12" /></svg>
+                </button>
+              </div>
+            </div>
+
+            <div className="mt-6 flex flex-col overflow-hidden rounded-3xl border border-slate-100 bg-white shadow-sm transition-all duration-300 hover:shadow-md hover:border-slate-200">
+              <section className="group relative bg-white z-10" style={{ perspective: "1500px" }}>
+                <div 
+                  className="relative w-full transition-transform duration-[800ms] ease-[cubic-bezier(0.23,1,0.32,1)]"
+                  style={{ 
+                    transformStyle: "preserve-3d",
+                    transform: isFlipped ? "rotateY(180deg)" : "rotateY(0deg)"
+                  }}
+                >
+                  {/* FRONT FACE */}
+                  <div 
+                    className="w-full p-5 sm:p-6"
+                    style={{ backfaceVisibility: "hidden" }}
+                  >
+                    <div className="flex items-center justify-between mb-5">
+                      <p className="text-sm font-bold text-slate-900 flex items-center gap-2.5">
+                        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-sky-50 text-sky-600">
+                          <CalendarDays className="h-4 w-4" />
+                        </span>
+                        Détails de la réservation
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => setIsFlipped(true)}
+                        className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-50 text-slate-400 transition-all hover:bg-slate-100 hover:text-[var(--dogshift-blue)] hover:scale-110 active:scale-95"
+                        title="Voir la référence"
+                      >
+                        <Info className="h-4 w-4" />
+                      </button>
+                    </div>
+
+                  <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                    <div className="rounded-2xl bg-slate-50/50 p-4 border border-slate-100/50">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2 flex items-center gap-1.5">
+                        <CalendarDays className="h-3.5 w-3.5" />
+                        Service & Date
+                      </p>
+                      <p className="text-[15px] font-bold text-slate-900">{detail?.service ?? selected?.service ?? "—"}</p>
+                      <p className="text-xs font-medium text-slate-600 mt-1 leading-relaxed">{summaryDateRange(selected?.startDate ?? null, selected?.endDate ?? null)}</p>
+                      {summaryTimeRange(selected?.startDate ?? null, selected?.endDate ?? null) !== "—" ? (
+                        <p className="text-xs font-medium text-slate-500 mt-0.5">{summaryTimeRange(selected?.startDate ?? null, selected?.endDate ?? null)}</p>
+                      ) : null}
+                    </div>
+
+                    <div className="rounded-2xl bg-slate-50/50 p-4 border border-slate-100/50">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2 flex items-center gap-1.5">
+                        <Banknote className="h-3.5 w-3.5" />
+                        Paiement
+                      </p>
+                      <p className="text-[15px] font-bold text-slate-900">
+                        {formatChfCents(detail?.amount ?? selected?.amount ?? 0)}
+                        <span className="text-xs text-slate-400 font-medium ml-1">({formatChfCents(detail?.platformFeeAmount ?? selected?.platformFeeAmount ?? 0)} de frais)</span>
+                      </p>
+                      <p className="text-xs font-medium text-slate-600 mt-1">Sécurisé via Stripe</p>
+                    </div>
+                  </div>
+
+                  {sitterLocation(detail?.sitter ?? selected?.sitter) !== "—" ? (
+                    <div className="mt-3 flex items-center gap-2 rounded-2xl bg-slate-50/50 px-4 py-3 border border-slate-100/50">
+                      <MapPin className="h-4 w-4 shrink-0 text-[var(--dogshift-blue)]" aria-hidden="true" />
+                      <p className="text-sm font-semibold text-slate-900">{sitterLocation(detail?.sitter ?? selected?.sitter)}</p>
+                    </div>
+                  ) : null}
+                  </div>
+
+                  {/* BACK FACE */}
+                  <div 
+                    className={`absolute inset-0 w-full h-full p-5 sm:p-6 bg-slate-50 flex flex-col ${!isFlipped ? 'pointer-events-none' : ''}`}
+                    style={{ backfaceVisibility: "hidden", transform: "rotateY(180deg)" }}
+                  >
+                    <div className="flex items-center justify-between mb-5">
+                      <p className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-violet-50 text-violet-600">
+                          <Hash className="h-4 w-4" />
+                        </span>
+                        Référence de transaction
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => setIsFlipped(false)}
+                        className="flex h-8 w-8 items-center justify-center rounded-full bg-white border border-slate-200 text-slate-400 transition-all hover:bg-slate-100 hover:text-slate-900 hover:scale-110 active:scale-95 shadow-sm"
+                        title="Retour"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+
+                    <div className="flex flex-col gap-4 mt-2">
+                      <p className="text-xs font-medium text-slate-500">Identifiant unique à communiquer au support en cas de besoin.</p>
+                      
+                      <div className="flex items-center justify-between gap-3 bg-white p-2 pl-4 rounded-xl border border-slate-200 shadow-sm">
+                        <p className="font-mono text-xs font-medium text-slate-700 break-all">{selected?.id}</p>
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            if (selected?.id) {
+                              const ok = await copyToClipboard(selected.id);
+                              setCopied(ok);
+                            }
+                          }}
+                          className="shrink-0 inline-flex h-9 w-9 items-center justify-center rounded-lg bg-slate-50 text-slate-600 transition-all hover:bg-slate-100 hover:text-slate-900 active:scale-95 border border-slate-100"
+                        >
+                          {copied ? (
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="h-4 w-4 text-emerald-600" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+                          ) : (
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-4 w-4" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              {detail?.message?.trim() ? (
+                <section className="group border-t border-slate-100 bg-white p-5 transition-colors hover:bg-slate-50/50">
+                  <p className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-amber-50 text-amber-600">
+                      <MessageCircle className="h-3.5 w-3.5" />
+                    </span>
+                    Message
+                  </p>
+                  <div className="mt-4 rounded-xl bg-slate-50 p-3">
+                    <p className="whitespace-pre-line text-sm text-slate-700 italic">&ldquo;{detail.message}&rdquo;</p>
+                  </div>
+                </section>
+              ) : null}
+
+              <section className="border-t border-slate-100 bg-slate-50/30 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-colors hover:bg-slate-50/80">
+                <div className="w-full sm:w-auto flex-shrink-0">
+                  <Link
+                    href={selectedId ? `/account/bookings/${encodeURIComponent(selectedId)}` : "#"}
+                    className="inline-flex w-full sm:w-auto items-center justify-center gap-2 rounded-xl bg-white border border-slate-200 px-4 py-2.5 text-sm font-bold text-slate-700 shadow-sm transition-all hover:bg-slate-50 hover:text-slate-900 active:scale-95"
+                  >
+                    <MessageCircle className="h-4 w-4" />
+                    Voir la conversation
+                  </Link>
+                </div>
+
+                {(() => {
+                  const b = selected;
+                  if (!b) return null;
+                  const reviewEligible = canLeaveReview(b);
+                  if (!reviewEligible && !b.hasReview) return null;
+                  return (
+                    <div className="w-full sm:w-auto flex justify-end">
+                      {b.hasReview ? (
+                        <Link
+                          href={`/account/bookings/${encodeURIComponent(b.id)}/review`}
+                          className="inline-flex items-center justify-center rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-800 shadow-sm transition hover:bg-emerald-100 active:scale-95"
+                        >
+                          Avis laissé
+                        </Link>
+                      ) : (
+                        <Link
+                          href={`/account/bookings/${encodeURIComponent(b.id)}/review`}
+                          className="inline-flex items-center justify-center rounded-xl bg-[var(--dogshift-blue)] px-4 py-2.5 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition hover:bg-[var(--dogshift-blue-hover)] active:scale-95"
+                        >
+                          Laisser un avis
+                        </Link>
+                      )}
+                    </div>
+                  );
+                })()}
+              </section>
+            </div>
+
+            <div className="mt-6 rounded-3xl border border-slate-100 bg-white/60 p-6 shadow-[0_8px_30px_-12px_rgba(15,23,42,0.06)] backdrop-blur-xl transition-all duration-300 hover:shadow-md hover:border-slate-200">
+              <p className="text-base font-bold text-slate-900 mb-6 flex items-center gap-2">
+                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-50 text-indigo-600">
+                  <Info className="h-4 w-4" />
+                </span>
+                Comment ça marche ?
+              </p>
+
+              <div className="space-y-6">
+                <div className="flex gap-4 items-start">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-50 text-slate-500 border border-slate-100 shadow-sm mt-0.5">
+                    <CheckCircle2 className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-slate-900">1. Réservation</p>
+                    <p className="mt-1.5 text-sm text-slate-600 leading-relaxed">Choisis un dogsitter et réserve. Le paiement est sécurisé par Stripe.</p>
+                  </div>
+                </div>
+
+                <div className="flex gap-4 items-start">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-50 text-slate-500 border border-slate-100 shadow-sm mt-0.5">
+                    <ShieldCheck className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-slate-900">2. Acceptation</p>
+                    <p className="mt-1.5 text-sm text-slate-600 leading-relaxed">Le sitter confirme ta demande. Le créneau est bloqué et la réservation est confirmée.</p>
+                  </div>
+                </div>
+
+                <div className="flex gap-4 items-start">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-50 text-slate-500 border border-slate-100 shadow-sm mt-0.5">
+                    <HandCoins className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-slate-900">3. Prestation</p>
+                    <p className="mt-1.5 text-sm text-slate-600 leading-relaxed">Le sitter s&apos;occupe de ton chien. Tu peux laisser un avis après le service.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
-      )}
+      </aside>
+      </div>
+
       {confirmDeleteId ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/35 px-4">
           <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_30px_90px_-55px_rgba(2,6,23,0.45)] sm:p-7">
@@ -912,7 +985,14 @@ export default function AccountBookingsPage() {
           </div>
         </div>
       ) : null}
-      </div>
     </div>
+  );
+}
+
+export default function AccountBookingsPage() {
+  return (
+    <Suspense fallback={<div className="flex h-screen items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-4 border-slate-200 border-t-[var(--dogshift-blue)]"></div></div>}>
+      <AccountBookingsContent />
+    </Suspense>
   );
 }

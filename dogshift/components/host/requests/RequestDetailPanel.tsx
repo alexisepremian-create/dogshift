@@ -278,10 +278,10 @@ export function RequestDetailPanel({
 
             {/* BACK FACE */}
             <div 
-              className={`absolute inset-0 w-full h-full p-5 sm:p-6 bg-slate-50 flex flex-col justify-center ${!isFlipped ? 'pointer-events-none' : ''}`}
+              className={`absolute inset-0 w-full h-full p-5 sm:p-6 bg-slate-50 flex flex-col ${!isFlipped ? 'pointer-events-none' : ''}`}
               style={{ backfaceVisibility: "hidden", transform: "rotateY(180deg)" }}
             >
-              <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center justify-between mb-5">
                 <p className="text-sm font-bold text-slate-900 flex items-center gap-2">
                   <span className="flex h-7 w-7 items-center justify-center rounded-full bg-violet-50 text-violet-600">
                     <Hash className="h-4 w-4" />
