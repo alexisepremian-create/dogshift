@@ -257,12 +257,12 @@ export function RequestsSplitView({
 
         <div className="grid items-start gap-6 lg:grid-cols-[380px_1fr]">
           <section className="min-w-0">
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="rounded-3xl border border-slate-100 bg-white/60 p-5 shadow-[0_8px_30px_-12px_rgba(15,23,42,0.06)] backdrop-blur-xl sm:p-7">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-sm font-semibold text-slate-600">Tableau de bord</p>
-                <h1 className="mt-2 flex items-center gap-2 text-2xl font-semibold tracking-tight text-slate-900">
-                  <ClipboardList className="h-6 w-6 text-slate-700" aria-hidden="true" />
+                <h1 className="mt-2 flex items-center gap-2 text-2xl font-bold tracking-tight text-slate-900">
+                  <ClipboardList className="h-6 w-6 text-[var(--dogshift-blue)]" aria-hidden="true" />
                   <span>Réservations</span>
                 </h1>
                 <p className="mt-2 text-sm text-slate-600">
@@ -271,13 +271,13 @@ export function RequestsSplitView({
               </div>
             </div>
 
-            <div className="mt-5">
-              <div className="inline-flex rounded-full border border-slate-200 bg-slate-50 p-1 shadow-sm">
+            <div className="mt-6">
+              <div className="inline-flex rounded-2xl border border-slate-100 bg-slate-50/50 p-1 shadow-inner">
                 <button
                   type="button"
                   onClick={() => setFilter(lastActiveFilter)}
-                  className={`h-9 rounded-full px-4 text-sm font-semibold transition ${
-                    isArchivedView ? "text-slate-600 hover:text-slate-900" : "bg-white text-slate-900 shadow-sm"
+                  className={`h-9 rounded-xl px-4 text-sm font-bold transition-all duration-300 ${
+                    isArchivedView ? "text-slate-500 hover:text-slate-800 hover:bg-slate-100/50" : "bg-white text-[var(--dogshift-blue)] shadow-sm ring-1 ring-slate-200/50"
                   }`}
                 >
                   Réservations
@@ -285,8 +285,8 @@ export function RequestsSplitView({
                 <button
                   type="button"
                   onClick={() => setFilter("ARCHIVED")}
-                  className={`h-9 rounded-full px-4 text-sm font-semibold transition ${
-                    isArchivedView ? "bg-white text-slate-900 shadow-sm" : "text-slate-600 hover:text-slate-900"
+                  className={`h-9 rounded-xl px-4 text-sm font-bold transition-all duration-300 ${
+                    isArchivedView ? "bg-white text-[var(--dogshift-blue)] shadow-sm ring-1 ring-slate-200/50" : "text-slate-500 hover:text-slate-800 hover:bg-slate-100/50"
                   }`}
                 >
                   Archivées
@@ -294,7 +294,7 @@ export function RequestsSplitView({
               </div>
             </div>
 
-            <div className={`mt-5 grid gap-2 ${isArchivedView ? "md:grid-cols-1" : "md:grid-cols-[140px_1fr]"} md:items-center`}>
+            <div className={`mt-6 grid gap-3 ${isArchivedView ? "md:grid-cols-1" : "md:grid-cols-[140px_1fr]"} md:items-center`}>
               {isArchivedView ? null : (
                 <div>
                   <label className="sr-only" htmlFor="host-requests-filter">
@@ -310,7 +310,7 @@ export function RequestsSplitView({
                         setLastActiveFilter(next as Exclude<FilterKey, "ARCHIVED">);
                       }
                     }}
-                    className="h-10 w-full rounded-2xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-900 shadow-sm outline-none focus:border-[var(--dogshift-blue)] focus:ring-2 focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)]"
+                    className="h-10 w-full rounded-2xl border border-slate-100 bg-white px-3 text-sm font-semibold text-slate-700 shadow-sm outline-none transition-colors focus:border-[var(--dogshift-blue)] focus:ring-2 focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] hover:bg-slate-50 cursor-pointer"
                   >
                     {(["ALL", "TO_ACCEPT", "CONFIRMED", "CANCELLED"] as const).map((k) => (
                       <option key={k} value={k}>
@@ -321,8 +321,8 @@ export function RequestsSplitView({
                 </div>
               )}
 
-              <div className="relative">
-                <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
+              <div className="relative group">
+                <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 transition-colors group-focus-within:text-[var(--dogshift-blue)]">
                   <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4" aria-hidden="true">
                     <path
                       fillRule="evenodd"
@@ -335,7 +335,7 @@ export function RequestsSplitView({
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="Rechercher…"
-                  className="h-10 w-full rounded-2xl border border-slate-200 bg-white pl-10 pr-3 text-sm text-slate-900 shadow-sm outline-none placeholder:text-slate-400 focus:border-[var(--dogshift-blue)] focus:ring-2 focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)]"
+                  className="h-10 w-full rounded-2xl border border-slate-100 bg-white pl-10 pr-3 text-sm font-medium text-slate-900 shadow-sm outline-none transition-all placeholder:text-slate-400 focus:border-[var(--dogshift-blue)] focus:ring-2 focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] hover:bg-slate-50"
                 />
               </div>
             </div>
@@ -357,28 +357,31 @@ export function RequestsSplitView({
           ) : null}
 
           {loading ? (
-            <div className="mt-4 space-y-2">
+            <div className="mt-4 space-y-3">
               {Array.from({ length: 6 }).map((_, idx) => (
-                <div key={idx} className="h-[84px] rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                <div key={idx} className="h-[96px] rounded-2xl border border-slate-100 bg-white/60 p-4 shadow-sm backdrop-blur-xl">
                   <div className="flex items-start gap-3">
-                    <div className="h-10 w-10 rounded-full bg-slate-100" />
+                    <div className="h-10 w-10 rounded-full bg-slate-100/80 animate-pulse" />
                     <div className="flex-1">
-                      <div className="h-4 w-2/3 rounded bg-slate-100" />
-                      <div className="mt-2 h-3 w-1/2 rounded bg-slate-100" />
-                      <div className="mt-3 h-4 w-24 rounded-full bg-slate-100" />
+                      <div className="h-4 w-2/3 rounded-lg bg-slate-100/80 animate-pulse" />
+                      <div className="mt-2 h-3 w-1/2 rounded-lg bg-slate-100/80 animate-pulse" />
+                      <div className="mt-3 h-5 w-24 rounded-full bg-slate-100/80 animate-pulse" />
                     </div>
                   </div>
                 </div>
               ))}
             </div>
           ) : filtered.length === 0 ? (
-            <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-              <p className="text-sm font-semibold text-slate-900">Aucune réservation</p>
-              <p className="mt-2 text-sm text-slate-600">Aucune réservation ne correspond à ce filtre.</p>
+            <div className="mt-4 rounded-3xl border border-slate-100 bg-white/60 p-8 shadow-[0_8px_30px_-12px_rgba(15,23,42,0.06)] backdrop-blur-xl text-center">
+              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-slate-50 text-slate-400">
+                <ClipboardList className="h-6 w-6" />
+              </div>
+              <p className="mt-4 text-base font-bold text-slate-900">Aucune réservation</p>
+              <p className="mt-1 text-sm text-slate-500">Aucune réservation ne correspond à ce filtre.</p>
             </div>
           ) : (
             <div className="mt-6">
-              <div className="max-h-[calc(100vh-220px)] space-y-2 overflow-auto px-1 pt-3 sm:pr-1 sm:pl-3">
+              <div className="max-h-[calc(100vh-220px)] space-y-3 overflow-auto px-1 pt-3 pb-8 sm:pr-1 sm:pl-3" style={{ scrollbarWidth: 'thin' }}>
                 <div role="listbox" aria-label="Liste des réservations" className="space-y-2">
                   {filtered.map((r) => (
                     <DraggableRequestRow
