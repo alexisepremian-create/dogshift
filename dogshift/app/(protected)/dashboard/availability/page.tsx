@@ -1810,7 +1810,7 @@ export default function AvailabilityStudioPage() {
                                 }}
                                 className={
                                   isActiveCard
-                                    ? "m-1 cursor-pointer rounded-2xl border border-slate-200 bg-white p-3 text-left shadow-[0_10px_28px_-22px_rgba(15,23,42,0.25)] ring-2 ring-[color-mix(in_srgb,var(--dogshift-blue),white_65%)] sm:m-2 sm:rounded-3xl sm:p-4"
+                                    ? "m-1 cursor-pointer rounded-2xl border border-[var(--dogshift-blue)]/30 bg-white p-3 text-left shadow-md sm:m-2 sm:rounded-3xl sm:p-4"
                                     : "m-1 cursor-pointer rounded-2xl border border-slate-200 bg-white p-3 text-left sm:m-2 sm:rounded-3xl sm:p-4"
                                 }
                                 aria-pressed={isActiveCard}
