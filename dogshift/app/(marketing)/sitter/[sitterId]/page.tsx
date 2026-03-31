@@ -2251,8 +2251,9 @@ function SitterPublicProfileContent({
         ) : null}
 
         {showFullListing ? (
-          <div className="rounded-3xl border border-slate-200 bg-white shadow-[0_18px_60px_-40px_rgba(2,6,23,0.35)]">
-            <div className="grid gap-0 lg:grid-cols-[1fr_360px]">
+          <>
+            <div className="rounded-3xl border border-slate-200 bg-white shadow-[0_18px_60px_-40px_rgba(2,6,23,0.35)]">
+              <div className="grid gap-0 lg:grid-cols-[1fr_360px]">
               <section className="p-6 sm:p-8">
                   <div className="flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
                     <div className="flex items-start gap-5">
@@ -2760,7 +2761,8 @@ function SitterPublicProfileContent({
                 <p className="mt-2 text-xs font-medium text-rose-600">{bookingCtaError}</p>
               ) : null}
             </div>
-          ) : (
+          </>
+        ) : (
             <div className="mx-auto max-w-5xl rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-40px_rgba(2,6,23,0.35)] sm:p-8">
               <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
                 <div className="flex items-start gap-5">
