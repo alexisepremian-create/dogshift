@@ -1958,9 +1958,9 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
       <div className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white p-4 pb-safe shadow-[0_-8px_30px_-15px_rgba(0,0,0,0.1)] lg:hidden">
         <div className="mx-auto flex max-w-5xl items-center justify-between gap-4">
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold text-slate-900">Total : CHF {recapTotal ?? "—"}</p>
+            <p className="truncate text-sm font-semibold text-slate-900">Total : CHF {summary ? summary.subtotal.toFixed(0) : "—"}</p>
             <p className="truncate text-xs text-slate-600">
-              {recapDurationLabel || "Service à définir"}
+              {summary?.quantityLabel || "Service à définir"}
             </p>
           </div>
           <button
