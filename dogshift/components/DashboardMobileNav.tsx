@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { House } from "lucide-react";
+import { useEffect, useState } from "react";
+import { House, Menu, X, LogOut } from "lucide-react";
+import BrandLogo from "@/components/BrandLogo";
 
 type NavItem = {
   key: string;
@@ -25,20 +26,12 @@ type DashboardMobileNavProps = {
 export default function DashboardMobileNav({
   primaryItems,
   moreItems,
-  moreLabel,
-  moreIcon,
-  onCloseMore,
   onSignOut,
   signOutLabel,
 }: DashboardMobileNavProps) {
   const [open, setOpen] = useState(false);
-  const [mounted, setMounted] = useState(false);
-  const [bottomHidden, setBottomHidden] = useState(false);
-  const panelRef = useRef<HTMLDivElement | null>(null);
-  const lastScrollYRef = useRef(0);
-  const rafRef = useRef<number | null>(null);
 
-  const bottomItems = useMemo(() => primaryItems.slice(0, 3), [primaryItems]);
+  const allItems = [...primaryItems, ...moreItems];
 
   useEffect(() => {
     if (!open) return;
@@ -54,174 +47,76 @@ export default function DashboardMobileNav({
     };
   }, [open]);
 
-  useEffect(() => {
-    if (open) {
-      setMounted(true);
-      return;
-    }
-    if (!mounted) return;
-    if (typeof onCloseMore === "function") onCloseMore();
-    const t = window.setTimeout(() => setMounted(false), 180);
-    return () => window.clearTimeout(t);
-  }, [mounted, open, onCloseMore]);
-
-  useEffect(() => {
-    lastScrollYRef.current = window.scrollY || 0;
-
-    const onScroll = () => {
-      if (rafRef.current != null) return;
-      rafRef.current = window.requestAnimationFrame(() => {
-        rafRef.current = null;
-        const y = window.scrollY || 0;
-        const prev = lastScrollYRef.current;
-
-        if (y <= 8) {
-          setBottomHidden(false);
-          lastScrollYRef.current = y;
-          return;
-        }
-
-        const delta = y - prev;
-        if (Math.abs(delta) < 6) {
-          lastScrollYRef.current = y;
-          return;
-        }
-
-        if (delta > 0) setBottomHidden(true);
-        else setBottomHidden(false);
-
-        lastScrollYRef.current = y;
-      });
-    };
-
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => {
-      window.removeEventListener("scroll", onScroll);
-      if (rafRef.current != null) window.cancelAnimationFrame(rafRef.current);
-      rafRef.current = null;
-    };
-  }, []);
-
   return (
     <>
-      <div
-        className={
-          "fixed inset-x-0 bottom-0 z-[70] border-t border-slate-200 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden transition-transform duration-300 ease-out" +
-          (bottomHidden ? " translate-y-full" : " translate-y-0")
-        }
-      >
-        <div className="mx-auto flex w-full max-w-[520px] items-center justify-between px-4 pt-2">
-          {bottomItems.map((item) => (
-            <Link
-              key={item.key}
-              href={item.href}
-              className={
-                "flex min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2 text-center text-xs font-semibold transition " +
-                (item.active ? "text-slate-900" : "text-slate-700")
-              }
-              prefetch={false}
-            >
-              {item.icon}
-              <span className="w-full truncate">{item.label}</span>
-            </Link>
-          ))}
-
-          <button
-            type="button"
-            onClick={() => setOpen(true)}
-            aria-haspopup="dialog"
-            aria-expanded={open}
-            className="flex min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2 text-center text-xs font-semibold text-slate-700"
-          >
-            {moreIcon}
-            <span className="w-full truncate">{moreLabel}</span>
-          </button>
-        </div>
+      <div className="fixed inset-x-0 top-0 z-[70] flex items-center justify-between border-b border-slate-200 bg-white/95 px-4 py-3 backdrop-blur lg:hidden">
+        <BrandLogo href="/" priority />
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className="inline-flex items-center justify-center gap-2 rounded-full border border-slate-200 bg-white px-5 py-2 text-sm font-semibold text-slate-900 transition-all duration-200 ease-out hover:bg-slate-50 active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)]"
+        >
+          <Menu className="h-5 w-5" aria-hidden="true" />
+          Menu
+        </button>
       </div>
 
-      {mounted ? (
-        <div
-          className={
-            "fixed inset-0 z-[80] lg:hidden transition-opacity duration-200 ease-out" +
-            (open ? " opacity-100" : " pointer-events-none opacity-0")
-          }
-          role="dialog"
-          aria-modal="true"
-          aria-label={moreLabel}
-        >
-          <button
-            type="button"
-            className={
-              "absolute inset-0 bg-slate-950/35 transition-opacity duration-200 ease-out" +
-              (open ? " opacity-100" : " opacity-0")
-            }
-            aria-label="Fermer"
-            onClick={() => setOpen(false)}
-          />
+      {open ? (
+        <div className="fixed inset-0 z-[80] flex flex-col bg-white lg:hidden">
+          <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
+            <BrandLogo href="/" priority />
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              className="inline-flex items-center justify-center rounded-full p-2 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)]"
+            >
+              <X className="h-6 w-6" aria-hidden="true" />
+            </button>
+          </div>
 
-          <div
-            ref={panelRef}
-            className={
-              "absolute inset-x-0 bottom-0 max-h-[85vh] overflow-auto rounded-t-3xl border border-slate-200 bg-white shadow-[0_-18px_60px_-44px_rgba(2,6,23,0.45)] transition-transform duration-200 ease-out" +
-              (open ? " translate-y-0" : " translate-y-6")
-            }
-            style={{ paddingBottom: "max(1rem, env(safe-area-inset-bottom))" }}
-          >
-            <div className="flex items-center justify-between gap-3 px-5 pb-3 pt-4">
-              <p className="text-sm font-semibold text-slate-900">{moreLabel}</p>
-              <button
-                type="button"
+          <div className="flex-1 overflow-y-auto px-4 py-6">
+            <nav className="grid gap-2">
+              <Link
+                href="/"
                 onClick={() => setOpen(false)}
-                className="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-900"
+                className="flex items-center gap-3 rounded-2xl px-4 py-3 text-base font-semibold text-slate-900 transition hover:bg-slate-50"
               >
-                Fermer
-              </button>
-            </div>
+                <House className="h-5 w-5 text-slate-500" aria-hidden="true" />
+                <span>Accueil</span>
+              </Link>
 
-            <nav aria-label={moreLabel} className="px-5 pb-4">
-              <div className="grid gap-2">
+              {allItems.map((item) => (
                 <Link
-                  href="/"
+                  key={item.key}
+                  href={item.href}
                   onClick={() => setOpen(false)}
-                  className="flex items-center gap-3 rounded-2xl px-4 py-3 text-base font-semibold text-slate-900 ring-1 ring-slate-200 transition hover:bg-slate-50"
-                  prefetch={false}
+                  className={`flex items-center gap-3 rounded-2xl px-4 py-3 text-base font-semibold transition ${
+                    item.active ? "bg-slate-50 text-slate-900" : "text-slate-900 hover:bg-slate-50"
+                  }`}
                 >
-                  <House className="h-5 w-5 text-slate-500" aria-hidden="true" />
-                  <span className="min-w-0 flex-1 truncate">Accueil</span>
+                  <span className={item.active ? "text-[var(--dogshift-blue)]" : "text-slate-500"}>
+                    {item.icon}
+                  </span>
+                  <span>{item.label}</span>
                 </Link>
+              ))}
 
-                {moreItems.map((item) => (
-                  <Link
-                    key={item.key}
-                    href={item.href}
-                    onClick={() => setOpen(false)}
-                    className={
-                      "flex items-center gap-3 rounded-2xl px-4 py-3 text-base font-semibold ring-1 ring-slate-200 transition " +
-                      (item.active ? "bg-slate-50 text-slate-900" : "bg-white text-slate-900 hover:bg-slate-50")
-                    }
-                    prefetch={false}
-                  >
-                    <span className="text-slate-500">{item.icon}</span>
-                    <span className="min-w-0 flex-1 truncate">{item.label}</span>
-                  </Link>
-                ))}
-              </div>
-
-              {onSignOut ? (
+              {onSignOut && (
                 <>
-                  <div className="mt-4 h-px w-full bg-slate-200" />
+                  <div className="my-4 h-px w-full bg-slate-200" />
                   <button
                     type="button"
                     onClick={() => {
                       setOpen(false);
                       onSignOut();
                     }}
-                    className="mt-4 w-full rounded-2xl px-4 py-3 text-left text-sm font-semibold text-slate-900 ring-1 ring-slate-200"
+                    className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left text-base font-semibold text-slate-900 transition hover:bg-slate-50"
                   >
-                    {signOutLabel ?? "Déconnexion"}
+                    <LogOut className="h-5 w-5 text-slate-500" aria-hidden="true" />
+                    <span>{signOutLabel ?? "Déconnexion"}</span>
                   </button>
                 </>
-              ) : null}
+              )}
             </nav>
           </div>
         </div>

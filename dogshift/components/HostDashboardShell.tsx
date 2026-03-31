@@ -31,7 +31,7 @@ export default function HostDashboardShell({ children }: { children: React.React
         </div>
 
         <div className="relative z-0 flex min-w-0 flex-1 flex-col">
-          <main className="flex-1 px-4 pb-28 pt-8 sm:px-6 lg:px-10 lg:pb-8">
+          <main className="flex-1 px-4 pb-8 pt-20 sm:px-6 lg:px-10 lg:pt-8">
             <div className="mx-auto w-full max-w-6xl">
               {children}
             </div>
