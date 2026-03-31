@@ -369,11 +369,11 @@ function HeroPetsittingStyle() {
             <div className="pointer-events-none absolute inset-x-0 top-0 z-0 h-64 bg-gradient-to-b from-white/78 via-white/34 to-transparent" />
             <div className="pointer-events-none absolute inset-x-0 bottom-0 z-0 h-24 bg-gradient-to-t from-white via-white/72 to-transparent" />
 
-            <div className="relative z-10 mx-auto max-w-[560px] px-6 pb-10 pt-8">
+            <div className="relative z-10 mx-auto max-w-[560px] px-6 pb-10 pt-24 sm:pt-32">
               <div className="max-w-[330px]">
                 {/* Logo and text removed here because it's already in the SiteHeader on mobile */}
 
-                <h1 className="mt-8 max-w-[16ch] text-balance text-[1.72rem] font-semibold leading-[1.06] tracking-tight text-slate-900">
+                <h1 className="max-w-[16ch] text-balance text-[1.72rem] font-semibold leading-[1.06] tracking-tight text-slate-900">
                   L&apos;expérience Premium pour votre Chien.
                 </h1>
 
