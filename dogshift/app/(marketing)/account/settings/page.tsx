@@ -583,7 +583,7 @@ export default function AccountSettingsPage() {
         </div>
 
         <div className="mt-6 grid gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-          <div className="flex items-center justify-between gap-4">
+          <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
             <p className="text-sm font-semibold text-slate-900">Mode de connexion</p>
             <p className="text-sm font-medium text-slate-600">
               {security?.googleConnected ? "Connecté via Google" : "Compte email"}

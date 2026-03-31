@@ -763,7 +763,7 @@ export default function HostWalletPage() {
           </div>
 
           {/* Right side: Stripe & Pilot (FLIP CARD) */}
-          <div className="flex-1" style={{ perspective: "1500px" }}>
+          <div className="flex-1 min-h-[480px] lg:min-h-0" style={{ perspective: "1500px" }}>
             <div
               className="relative h-full w-full transition-transform duration-700 ease-[cubic-bezier(0.23,1,0.32,1)]"
               style={{
