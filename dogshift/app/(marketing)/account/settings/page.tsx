@@ -256,7 +256,7 @@ export default function AccountSettingsPage() {
     return <div className="grid gap-6" />;
   }
 
-  const cardBase = "rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8";
+  const cardBase = "rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-8 min-w-0";
   const sectionTitle = "flex items-start justify-between gap-4";
   const labelBase = "block text-sm font-medium text-slate-700";
   const inputBase =
@@ -304,10 +304,10 @@ export default function AccountSettingsPage() {
   }
 
   return (
-    <div className="relative grid gap-6 w-full max-w-full overflow-hidden" data-testid="account-settings-page">
+    <div className="relative grid gap-6" data-testid="account-settings-page">
       <SunCornerGlow variant={glowVariant} />
 
-      <div className="relative z-10 grid gap-6 w-full max-w-full">
+      <div className="relative z-10 grid gap-6 min-w-0">
       <div>
         <p className="text-sm font-semibold text-slate-600">Mon compte</p>
         <h1 className="mt-2 flex items-center gap-2 text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">

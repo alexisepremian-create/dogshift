@@ -611,7 +611,7 @@ export default function HostWalletPage() {
   }
 
   return (
-    <div className="relative grid gap-6 overflow-x-hidden" data-testid="host-wallet-page">
+    <div className="relative grid gap-6" data-testid="host-wallet-page">
       <SunCornerGlow variant="sitterDashboard" />
 
       <div className="relative z-10 grid gap-6">
@@ -763,7 +763,98 @@ export default function HostWalletPage() {
           </div>
 
           {/* Right side: Stripe & Pilot (FLIP CARD) */}
-          <div className="flex-1 min-h-[460px] lg:min-h-0 relative z-0 mt-8 lg:mt-0" style={{ perspective: "1500px" }}>
+
+          {/* Mobile: no 3D flip (iOS Safari breaks backface-visibility with overflow ancestors) */}
+          <div className="flex-1 lg:hidden">
+            {!stripeInfoOpen ? (
+              <div className="flex flex-col justify-between rounded-3xl border border-slate-200 bg-white shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)]">
+                <div className="relative overflow-hidden p-6 sm:p-8">
+                  <div className="relative z-10 flex flex-col items-center text-center">
+                    <button
+                      type="button"
+                      onClick={() => setStripeInfoOpen(true)}
+                      className="group mb-4 inline-flex h-16 w-16 items-center justify-center rounded-[20px] bg-slate-50 shadow-sm ring-1 ring-slate-100 transition-all duration-300 hover:scale-110 hover:shadow-md hover:ring-slate-200"
+                      aria-label="Comment fonctionnent les paiements Stripe"
+                    >
+                      <svg className="h-8 w-20 text-[#635BFF] transition-transform duration-500 group-hover:rotate-12" viewBox="54 36 360.02 149.84" fill="currentColor">
+                        <path fillRule="evenodd" clipRule="evenodd" d="M414,113.4c0-25.6-12.4-45.8-36.1-45.8c-23.8,0-38.2,20.2-38.2,45.6c0,30.1,17,45.3,41.4,45.3 c11.9,0,20.9-2.7,27.7-6.5v-20c-6.8,3.4-14.6,5.5-24.5,5.5c-9.7,0-18.3-3.4-19.4-15.2h48.9C413.8,121,414,115.8,414,113.4z M364.6,103.9c0-11.3,6.9-16,13.2-16c6.1,0,12.6,4.7,12.6,16H364.6z" />
+                        <path fillRule="evenodd" clipRule="evenodd" d="M301.1,67.6c-9.8,0-16.1,4.6-19.6,7.8l-1.3-6.2h-22v116.6l25-5.3l0.1-28.3c3.6,2.6,8.9,6.3,17.7,6.3 c17.9,0,34.2-14.4,34.2-46.1C335.1,83.4,318.6,67.6,301.1,67.6z M295.1,136.5c-5.9,0-9.4-2.1-11.8-4.7l-0.1-37.1 c2.6-2.9,6.2-4.9,11.9-4.9c9.1,0,15.4,10.2,15.4,23.3C310.5,126.5,304.3,136.5,295.1,136.5z" />
+                        <polygon fillRule="evenodd" clipRule="evenodd" points="223.8,61.7 248.9,56.3 248.9,36 223.8,41.3" />
+                        <rect fillRule="evenodd" clipRule="evenodd" x="223.8" y="69.3" width="25.1" height="87.5" />
+                        <path fillRule="evenodd" clipRule="evenodd" d="M196.9,76.7l-1.6-7.4h-21.6v87.5h25V97.5c5.9-7.7,15.9-6.3,19-5.2v-23C214.5,68.1,202.8,65.9,196.9,76.7z" />
+                        <path fillRule="evenodd" clipRule="evenodd" d="M146.9,47.6l-24.4,5.2l-0.1,80.1c0,14.8,11.1,25.7,25.9,25.7c8.2,0,14.2-1.5,17.5-3.3V135 c-3.2,1.3-19,5.9-19-8.9V90.6h19V69.3h-19L146.9,47.6z" />
+                        <path fillRule="evenodd" clipRule="evenodd" d="M79.3,94.7c0-3.9,3.2-5.4,8.5-5.4c7.6,0,17.2,2.3,24.8,6.4V72.2c-8.3-3.3-16.5-4.6-24.8-4.6 C67.5,67.6,54,78.2,54,95.9c0,27.6,38,23.2,38,35.1c0,4.6-4,6.1-9.6,6.1c-8.3,0-18.9-3.4-27.3-8v23.8c9.3,4,18.7,5.7,27.3,5.7 c20.8,0,35.1-10.3,35.1-28.2C117.4,100.6,79.3,105.9,79.3,94.7z" />
+                      </svg>
+                    </button>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-xl font-bold tracking-tight text-slate-900">Paiements Stripe</h3>
+                      <button type="button" onClick={() => setStripeInfoOpen(true)} className="inline-flex h-6 w-6 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-600" aria-label="Informations sur les paiements Stripe">
+                        <Info className="h-4 w-4" aria-hidden="true" />
+                      </button>
+                    </div>
+                    <p className="mt-2 max-w-[280px] text-sm text-slate-500">Connecte ton compte pour recevoir automatiquement les paiements sur ton compte bancaire.</p>
+                    <div className="mt-6 flex flex-wrap justify-center gap-3">
+                      {stripeConnect.status === "ENABLED" ? (
+                        <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3.5 py-1 text-[13px] font-semibold text-emerald-700"><span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />Activé</span>
+                      ) : stripeConnect.status === "RESTRICTED" ? (
+                        <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-3.5 py-1 text-[13px] font-semibold text-amber-700"><span className="h-1.5 w-1.5 rounded-full bg-amber-500" />Action requise</span>
+                      ) : stripeConnect.status === "PENDING" ? (
+                        <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3.5 py-1 text-[13px] font-semibold text-slate-600"><span className="h-1.5 w-1.5 rounded-full bg-slate-400" />En attente</span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3.5 py-1 text-[13px] font-semibold text-slate-600"><span className="h-1.5 w-1.5 rounded-full bg-slate-400" />Non activé</span>
+                      )}
+                    </div>
+                    {stripeConnect.status === "ENABLED" && stripeConnect.balance && stripeConnect.balance.pendingCents > 0 ? (
+                      <div className="mt-5 rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3 text-left">
+                        <p className="text-xs leading-relaxed text-slate-600"><Info className="mr-1.5 inline h-3.5 w-3.5 align-text-bottom text-slate-400" />Les virements peuvent prendre quelques jours ouvrables avant d&apos;arriver sur ton compte bancaire.</p>
+                      </div>
+                    ) : null}
+                    <div className="mt-8 flex w-full flex-col gap-3 sm:flex-row sm:justify-center">
+                      {!stripeConnect.stripeAccountId ? (
+                        <button type="button" disabled={stripeConnect.loading} onClick={() => void startStripeOnboarding()} className="inline-flex items-center justify-center rounded-2xl bg-[#635BFF] px-6 py-3 text-sm font-semibold text-white shadow-[0_8px_20px_-8px_rgba(99,91,255,0.4)] transition-all hover:-translate-y-0.5 hover:bg-[#524BDE] hover:shadow-[0_12px_24px_-8px_rgba(99,91,255,0.5)] disabled:pointer-events-none disabled:opacity-60">Activer les paiements</button>
+                      ) : stripeConnect.status === "ENABLED" ? (
+                        <button type="button" disabled={stripeConnect.loading} onClick={() => void openStripeDashboard()} className="inline-flex items-center justify-center rounded-2xl bg-[#635BFF] px-6 py-3 text-sm font-semibold text-white shadow-[0_8px_20px_-8px_rgba(99,91,255,0.4)] transition-all hover:-translate-y-0.5 hover:bg-[#524BDE] hover:shadow-[0_12px_24px_-8px_rgba(99,91,255,0.5)] disabled:pointer-events-none disabled:opacity-60">Ouvrir le Dashboard</button>
+                      ) : (
+                        <button type="button" disabled={stripeConnect.loading} onClick={() => void continueStripeOnboarding()} className="inline-flex items-center justify-center rounded-2xl bg-[#635BFF] px-6 py-3 text-sm font-semibold text-white shadow-[0_8px_20px_-8px_rgba(99,91,255,0.4)] transition-all hover:-translate-y-0.5 hover:bg-[#524BDE] hover:shadow-[0_12px_24px_-8px_rgba(99,91,255,0.5)] disabled:pointer-events-none disabled:opacity-60">Continuer l&apos;activation</button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                <div className="border-t border-slate-100 bg-slate-50/50 p-6 sm:px-8 rounded-b-3xl">
+                  <div className="flex gap-4">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white shadow-sm ring-1 ring-slate-100"><span className="text-lg">🎉</span></div>
+                    <div>
+                      <p className="font-semibold text-slate-900">Phase pilote : 0% de commission</p>
+                      <p className="mt-1 text-sm leading-relaxed text-slate-500">Vous conservez 100% du montant des réservations, frais Stripe inclus.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-col rounded-3xl border border-slate-200 bg-white shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)]">
+                <div className="flex items-start justify-between gap-4 border-b border-slate-100 bg-slate-50/50 p-6 sm:px-8 rounded-t-3xl">
+                  <div>
+                    <p className="font-semibold text-slate-900">Comment ça marche ?</p>
+                    <p className="mt-1 text-[13px] text-slate-500">Paiements et virements via Stripe</p>
+                  </div>
+                  <button type="button" onClick={() => setStripeInfoOpen(false)} className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-white text-slate-500 shadow-sm ring-1 ring-slate-200 transition hover:bg-slate-50 hover:text-slate-700">
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                  </button>
+                </div>
+                <div className="p-6 sm:px-8 text-[13px] leading-relaxed text-slate-600">
+                  <div className="space-y-6">
+                    <section className="flex gap-3"><ShieldCheck className="h-5 w-5 shrink-0 text-[#635BFF]" /><div><p className="font-semibold text-slate-900">Pourquoi Stripe ?</p><p className="mt-1.5">Stripe sécurise les transactions et automatise les virements vers votre compte bancaire. C&apos;est le standard mondial.</p></div></section>
+                    <section className="flex gap-3"><PlayCircle className="h-5 w-5 shrink-0 text-[#635BFF]" /><div><p className="font-semibold text-slate-900">Comment l&apos;activer ?</p><p className="mt-1.5">Cliquez sur &quot;Activer les paiements&quot;, ajoutez votre IBAN et vérifiez votre identité. Une fois activé, tout est automatique.</p></div></section>
+                    <section className="flex gap-3"><ArrowRightLeft className="h-5 w-5 shrink-0 text-[#635BFF]" /><div><p className="font-semibold text-slate-900">En attente vs Disponible</p><ul className="mt-1.5 list-disc pl-4 space-y-1"><li><span className="font-medium text-slate-700">En attente :</span> le paiement est sécurisé mais pas encore viré.</li><li><span className="font-medium text-slate-700">Disponible :</span> l&apos;argent va être envoyé sur votre compte.</li></ul></div></section>
+                    <section className="flex gap-3"><CalendarClock className="h-5 w-5 shrink-0 text-[#635BFF]" /><div><p className="font-semibold text-slate-900">Quand suis-je payé ?</p><p className="mt-1.5">Les fonds deviennent disponibles après la fin de la réservation. Stripe effectue ensuite le virement (1 à 3 jours ouvrables).</p></div></section>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Desktop: 3D flip card */}
+          <div className="hidden lg:flex flex-1" style={{ perspective: "1500px" }}>
             <div
               className="relative h-full w-full transition-transform duration-700 ease-[cubic-bezier(0.23,1,0.32,1)]"
               style={{
