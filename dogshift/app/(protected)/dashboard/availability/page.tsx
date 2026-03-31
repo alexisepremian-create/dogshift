@@ -1416,7 +1416,7 @@ export default function AvailabilityStudioPage() {
                       const v = e.target.value;
                       if (v === "AVAILABLE" || v === "ON_REQUEST") setExceptionStatus(v);
                     }}
-                    className="mt-1 w-full rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm"
+                    className="mt-1 w-full rounded-2xl border border-slate-200 bg-white px-4 py-2 text-base"
                     aria-label="Statut réservation"
                   >
                     <option value="AVAILABLE">Disponible</option>
@@ -1468,8 +1468,8 @@ export default function AvailabilityStudioPage() {
                               key={`exr-${idx}`}
                               className={
                                 justAddedRangeIdx === idx
-                                  ? "flex items-center justify-between rounded-2xl border border-slate-200 bg-sky-50 px-3 py-2 transition-colors"
-                                  : "flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-3 py-2 transition-colors"
+                                  ? "flex flex-wrap items-center gap-2 rounded-2xl border border-slate-200 bg-sky-50 px-3 py-2 transition-colors"
+                                  : "flex flex-wrap items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-2 transition-colors"
                               }
                             >
                               <div className="flex items-center gap-2">
@@ -1699,273 +1699,215 @@ export default function AvailabilityStudioPage() {
 
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Column 1: Services and Disponibilités */}
-        <div className="flex flex-col gap-6">
-          {/* Services Card (Flippable) */}
-          <div className="relative w-full" style={{ perspective: "1500px" }}>
-            <div 
-              className={`w-full transition-transform duration-[800ms] ease-[cubic-bezier(0.23,1,0.32,1)] ${bookingInfoOpen ? 'rotate-y-180' : ''}`}
-              style={{ transformStyle: "preserve-3d" }}
-            >
-              {/* FRONT FACE */}
-              <div 
-                className="rounded-2xl border border-slate-200 bg-white p-3 relative sm:rounded-3xl sm:p-5"
-                style={{ backfaceVisibility: "hidden" }}
-              >
+        <div className="flex min-w-0 flex-col gap-6">
+          {/* Services Card — NO 3D transforms (causes Safari viewport expansion) */}
+          {bookingInfoOpen ? (
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3 shadow-sm sm:rounded-3xl sm:p-5">
+              <div className="flex items-center justify-between mb-5 border-b border-slate-200/60 pb-3 shrink-0">
+                <p className="text-sm font-bold text-slate-900 flex items-center gap-2.5">
+                  <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--dogshift-blue)]/10 text-[var(--dogshift-blue)]">
+                    <Info className="h-3.5 w-3.5" />
+                  </span>
+                  Fonctionnement
+                </p>
                 <button
                   type="button"
-                  onClick={() => setBookingInfoOpen(true)}
-                  className="absolute right-3 top-3 inline-flex h-8 w-8 items-center justify-center rounded-full bg-slate-50 text-slate-500 transition-all hover:bg-slate-100 hover:text-slate-900 hover:scale-105 active:scale-95 z-10 sm:right-5 sm:top-5"
-                  title="Fonctionnement des réservations"
+                  onClick={() => setBookingInfoOpen(false)}
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-white border border-slate-200 text-slate-500 transition-all hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 active:scale-95 shadow-sm"
+                  title="Fermer"
                 >
-                  <Info className="h-4 w-4" />
+                  <X className="h-3.5 w-3.5" />
                 </button>
-                <div className="flex flex-col items-start gap-3">
-                  <p className="text-sm font-semibold text-slate-900">Services</p>
-                  <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-[11px] font-semibold text-slate-500 pr-10">
-              <div className="flex items-center gap-2">
-                <span className={`h-2 w-2 rounded-full ${serviceDotTone("PROMENADE")}`} aria-hidden="true" />
-                <span>Promenade</span>
               </div>
-              <div className="flex items-center gap-2">
-                <span className={`h-2 w-2 rounded-full ${serviceDotTone("DOGSITTING")}`} aria-hidden="true" />
-                <span>Dogsitting</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className={`h-2 w-2 rounded-full ${serviceDotTone("PENSION")}`} aria-hidden="true" />
-                <span>Pension</span>
+
+              <div className="grid gap-4 pb-2">
+                {[
+                  { icon: <Settings className="h-4 w-4" />, title: "Configuration", desc: "Tarifs requis avant d'activer un service." },
+                  { icon: <Banknote className="h-4 w-4" />, title: "Tarification", desc: "Promenade/garde (CHF/h), Pension (CHF/jour)." },
+                  { icon: <Clock className="h-4 w-4" />, title: "Horaires", desc: "Créneaux de 30 min. Réservation 24h à l'avance." },
+                  { icon: <ShieldCheck className="h-4 w-4" />, title: "Marge de sécurité", desc: "30 min bloquées avant/après chaque réservation." },
+                  { icon: <Home className="h-4 w-4" />, title: "Pension", desc: "Arrivée/départ selon tes disponibilités." },
+                  { icon: <Rocket className="h-4 w-4" />, title: "Phase pilote", desc: "Tarifs encadrés pour garantir la qualité." },
+                ].map((item, i) => (
+                  <div key={`info-${i}`} className="flex gap-3 items-start">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white border border-slate-100 shadow-sm text-slate-500">
+                      {item.icon}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold text-slate-900">{item.title}</p>
+                      <p className="mt-1 text-slate-600 leading-relaxed text-[12px]">{item.desc}</p>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
-          </div>
-          <div className="mt-4">
-            <div className="flex items-center justify-between gap-1.5 sm:gap-3">
+          ) : (
+            <div className="rounded-2xl border border-slate-200 bg-white p-3 relative sm:rounded-3xl sm:p-5">
               <button
                 type="button"
-                onClick={() => setServicesCarouselIndex((prev) => Math.max(0, prev - 1))}
-                disabled={servicesCarouselIndex === 0}
-                className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-base font-semibold text-slate-700 disabled:cursor-default disabled:opacity-35 sm:h-10 sm:w-10 sm:rounded-2xl sm:text-lg"
-                aria-label="Service précédent"
+                onClick={() => setBookingInfoOpen(true)}
+                className="absolute right-3 top-3 inline-flex h-8 w-8 items-center justify-center rounded-full bg-slate-50 text-slate-500 transition-all hover:bg-slate-100 hover:text-slate-900 active:scale-95 z-10 sm:right-5 sm:top-5"
+                title="Fonctionnement des réservations"
               >
-                ←
+                <Info className="h-4 w-4" />
               </button>
-
-              <div className="min-w-0 flex-1 pt-2">
-                <div className="w-full overflow-hidden rounded-[2rem]">
-                  <div
-                    className="flex w-full transition-transform duration-300 ease-out"
-                    style={{ transform: `translateX(-${servicesCarouselIndex * 100}%)` }}
-                  >
-            {(["PROMENADE", "DOGSITTING", "PENSION"] as const).map((svc) => {
-              const metaSvc = serviceMeta(svc);
-              const cfg = configByService[svc];
-              const enabled = cfg?.enabled === true;
-              const tone = serviceDotTone(svc);
-              const activeSwitchTone = tone === "bg-sky-400" ? "bg-sky-500" : tone === "bg-violet-400" ? "bg-violet-500" : "bg-emerald-500";
-              const priceInput = pricingInputByService[svc] ?? "";
-              const priceError = pricingErrorByService[svc];
-              const priceSaving = pricingSavingByService[svc];
-              const isActiveCard = availabilityTab === svc;
-              return (
-                <div
-                  key={svc}
-                  className="w-full min-w-full flex-none"
-                >
-                  <div
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => setAvailabilityTab(svc)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
-                        setAvailabilityTab(svc);
-                      }
-                    }}
-                    className={
-                      isActiveCard
-                        ? "m-1 cursor-pointer rounded-2xl border border-slate-200 bg-white p-3 text-left shadow-[0_10px_28px_-22px_rgba(15,23,42,0.25)] ring-2 ring-[color-mix(in_srgb,var(--dogshift-blue),white_65%)] sm:m-2 sm:rounded-3xl sm:p-4"
-                        : "m-1 cursor-pointer rounded-2xl border border-slate-200 bg-white p-3 text-left sm:m-2 sm:rounded-3xl sm:p-4"
-                    }
-                    aria-pressed={isActiveCard}
-                  >
-                  <div className="flex items-center justify-between">
-                    <div className="text-left">
-                      <p className="text-sm font-semibold text-slate-900">
-                        {metaSvc.icon} {metaSvc.label}
-                      </p>
-                      <p className="mt-1 text-xs font-semibold text-slate-500">
-                        {isActiveCard ? "Service en cours de configuration" : "Configurer ce service"}
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      role="switch"
-                      aria-checked={enabled}
-                      disabled={!enabled ? Boolean(priceError) : false}
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        void saveServiceEnabled(svc, !enabled);
-                      }}
-                      className={
-                        enabled
-                          ? `relative inline-flex h-6 w-11 items-center rounded-full ${activeSwitchTone} transition`
-                          : "relative inline-flex h-6 w-11 items-center rounded-full bg-slate-300 transition disabled:opacity-50"
-                      }
-                      aria-label={enabled ? `Désactiver ${metaSvc.label}` : `Activer ${metaSvc.label}`}
-                    >
-                      <span
-                        className={
-                          enabled
-                            ? "inline-block h-5 w-5 translate-x-5 rounded-full bg-white shadow transition"
-                            : "inline-block h-5 w-5 translate-x-1 rounded-full bg-white shadow transition"
-                        }
-                      />
-                    </button>
+              <div className="flex flex-col items-start gap-3">
+                <p className="text-sm font-semibold text-slate-900">Services</p>
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-[11px] font-semibold text-slate-500 pr-10">
+                  <div className="flex items-center gap-2">
+                    <span className={`h-2 w-2 rounded-full ${serviceDotTone("PROMENADE")}`} aria-hidden="true" />
+                    <span>Promenade</span>
                   </div>
-                  {cfg ? null : <div className="mt-3 h-4 w-full max-w-[10rem] animate-pulse rounded bg-slate-100" />}
-
-                  <div className="mt-3 grid gap-2">
-                    <label className="text-xs font-semibold text-slate-500">Tarif</label>
-                    <div className="flex items-center gap-2">
-                      <input
-                        value={priceInput}
-                        onChange={(e) => {
-                          e.stopPropagation();
-                          const val = e.target.value;
-                          setPricingInputByService((prev) => ({ ...prev, [svc]: val }));
-                          clearTimeout(pricingDebounceRef.current[svc]);
-                          pricingDebounceRef.current[svc] = setTimeout(() => {
-                            void saveServicePricing(svc, val);
-                          }, 500);
-                        }}
-                        onBlur={(e) => {
-                          clearTimeout(pricingDebounceRef.current[svc]);
-                          void saveServicePricing(svc, e.target.value);
-                        }}
-                        onClick={(e) => e.stopPropagation()}
-                        inputMode="decimal"
-                        placeholder={pricingPlaceholderLabel(svc)}
-                        className="h-10 min-w-0 flex-1 rounded-xl border border-slate-200 bg-white px-3 text-sm font-medium text-slate-900"
-                      />
-                      <span className="text-xs font-semibold text-slate-500">{pricingUnitLabel(svc)}</span>
-                      {priceSaving ? <span className="text-xs font-semibold text-slate-400">...</span> : null}
-                    </div>
-                    <p className="text-[11px] font-semibold text-slate-500">Fourchette pilote : {pricingRangeLabel(svc)}</p>
-                    {priceError ? <p className="text-xs font-medium text-rose-600">{priceError}</p> : null}
+                  <div className="flex items-center gap-2">
+                    <span className={`h-2 w-2 rounded-full ${serviceDotTone("DOGSITTING")}`} aria-hidden="true" />
+                    <span>Dogsitting</span>
                   </div>
-
-                </div>
-                </div>
-              );
-            })}
+                  <div className="flex items-center gap-2">
+                    <span className={`h-2 w-2 rounded-full ${serviceDotTone("PENSION")}`} aria-hidden="true" />
+                    <span>Pension</span>
                   </div>
                 </div>
               </div>
+              <div className="mt-4">
+                <div className="flex items-center justify-between gap-1.5 sm:gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setServicesCarouselIndex((prev) => Math.max(0, prev - 1))}
+                    disabled={servicesCarouselIndex === 0}
+                    className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-base font-semibold text-slate-700 disabled:cursor-default disabled:opacity-35 sm:h-10 sm:w-10 sm:rounded-2xl sm:text-lg"
+                    aria-label="Service précédent"
+                  >
+                    ←
+                  </button>
 
-              <button
-                type="button"
-                onClick={() => setServicesCarouselIndex((prev) => Math.min(2, prev + 1))}
-                disabled={servicesCarouselIndex === 2}
-                className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-base font-semibold text-slate-700 disabled:cursor-default disabled:opacity-35 sm:h-10 sm:w-10 sm:rounded-2xl sm:text-lg"
-                aria-label="Service suivant"
-              >
-                →
-              </button>
-            </div>
-            <div className="mt-3 flex items-center justify-center gap-2">
-              {(["PROMENADE", "DOGSITTING", "PENSION"] as const).map((svc, idx) => {
-                const active = servicesCarouselIndex === idx;
-                return <span key={`service-dot-${svc}`} className={active ? "h-2 w-2 rounded-full bg-slate-900" : "h-2 w-2 rounded-full bg-slate-300"} aria-hidden="true" />;
-              })}
-            </div>
-          </div>
-          </div>
+                  <div className="min-w-0 flex-1 pt-2">
+                    <div className="w-full overflow-hidden rounded-[2rem]">
+                      <div
+                        className="flex w-full transition-transform duration-300 ease-out"
+                        style={{ transform: `translateX(-${servicesCarouselIndex * 100}%)` }}
+                      >
+                        {(["PROMENADE", "DOGSITTING", "PENSION"] as const).map((svc) => {
+                          const metaSvc = serviceMeta(svc);
+                          const cfg = configByService[svc];
+                          const enabled = cfg?.enabled === true;
+                          const tone = serviceDotTone(svc);
+                          const activeSwitchTone = tone === "bg-sky-400" ? "bg-sky-500" : tone === "bg-violet-400" ? "bg-violet-500" : "bg-emerald-500";
+                          const priceInput = pricingInputByService[svc] ?? "";
+                          const priceError = pricingErrorByService[svc];
+                          const priceSaving = pricingSavingByService[svc];
+                          const isActiveCard = availabilityTab === svc;
+                          return (
+                            <div key={svc} className="w-full min-w-full flex-none">
+                              <div
+                                role="button"
+                                tabIndex={0}
+                                onClick={() => setAvailabilityTab(svc)}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter" || e.key === " ") {
+                                    e.preventDefault();
+                                    setAvailabilityTab(svc);
+                                  }
+                                }}
+                                className={
+                                  isActiveCard
+                                    ? "m-1 cursor-pointer rounded-2xl border border-slate-200 bg-white p-3 text-left shadow-[0_10px_28px_-22px_rgba(15,23,42,0.25)] ring-2 ring-[color-mix(in_srgb,var(--dogshift-blue),white_65%)] sm:m-2 sm:rounded-3xl sm:p-4"
+                                    : "m-1 cursor-pointer rounded-2xl border border-slate-200 bg-white p-3 text-left sm:m-2 sm:rounded-3xl sm:p-4"
+                                }
+                                aria-pressed={isActiveCard}
+                              >
+                                <div className="flex items-center justify-between">
+                                  <div className="text-left min-w-0">
+                                    <p className="text-sm font-semibold text-slate-900">
+                                      {metaSvc.icon} {metaSvc.label}
+                                    </p>
+                                    <p className="mt-1 text-xs font-semibold text-slate-500">
+                                      {isActiveCard ? "En configuration" : "Configurer"}
+                                    </p>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    role="switch"
+                                    aria-checked={enabled}
+                                    disabled={!enabled ? Boolean(priceError) : false}
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      void saveServiceEnabled(svc, !enabled);
+                                    }}
+                                    className={
+                                      enabled
+                                        ? `relative inline-flex h-6 w-11 shrink-0 items-center rounded-full ${activeSwitchTone} transition`
+                                        : "relative inline-flex h-6 w-11 shrink-0 items-center rounded-full bg-slate-300 transition disabled:opacity-50"
+                                    }
+                                    aria-label={enabled ? `Désactiver ${metaSvc.label}` : `Activer ${metaSvc.label}`}
+                                  >
+                                    <span
+                                      className={
+                                        enabled
+                                          ? "inline-block h-5 w-5 translate-x-5 rounded-full bg-white shadow transition"
+                                          : "inline-block h-5 w-5 translate-x-1 rounded-full bg-white shadow transition"
+                                      }
+                                    />
+                                  </button>
+                                </div>
+                                {cfg ? null : <div className="mt-3 h-4 w-full max-w-[10rem] animate-pulse rounded bg-slate-100" />}
 
-              {/* BACK FACE */}
-              <div 
-                className={`absolute inset-0 w-full h-full rounded-2xl border border-slate-200 bg-slate-50 p-3 shadow-sm flex flex-col overflow-y-auto sm:rounded-3xl sm:p-5 ${!bookingInfoOpen ? 'pointer-events-none' : 'z-20'}`}
-                style={{ backfaceVisibility: "hidden", transform: "rotateY(180deg)", scrollbarWidth: 'none' }}
-              >
-                 <div className="flex items-center justify-between mb-6 border-b border-slate-200/60 pb-4 shrink-0">
-                   <p className="text-sm font-bold text-slate-900 flex items-center gap-2.5">
-                     <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--dogshift-blue)]/10 text-[var(--dogshift-blue)]">
-                       <Info className="h-3.5 w-3.5" />
-                     </span>
-                     Fonctionnement
-                   </p>
-                   <button
-                     type="button"
-                     onClick={() => setBookingInfoOpen(false)}
-                     className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-white border border-slate-200 text-slate-500 transition-all hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 hover:scale-105 active:scale-95 shadow-sm"
-                     title="Fermer"
-                   >
-                     <X className="h-3.5 w-3.5" />
-                   </button>
-                 </div>
+                                <div className="mt-3 grid gap-2">
+                                  <label className="text-xs font-semibold text-slate-500">Tarif</label>
+                                  <div className="flex items-center gap-2">
+                                    <input
+                                      value={priceInput}
+                                      onChange={(e) => {
+                                        e.stopPropagation();
+                                        const val = e.target.value;
+                                        setPricingInputByService((prev) => ({ ...prev, [svc]: val }));
+                                        clearTimeout(pricingDebounceRef.current[svc]);
+                                        pricingDebounceRef.current[svc] = setTimeout(() => {
+                                          void saveServicePricing(svc, val);
+                                        }, 500);
+                                      }}
+                                      onBlur={(e) => {
+                                        clearTimeout(pricingDebounceRef.current[svc]);
+                                        void saveServicePricing(svc, e.target.value);
+                                      }}
+                                      onClick={(e) => e.stopPropagation()}
+                                      inputMode="decimal"
+                                      placeholder={pricingPlaceholderLabel(svc)}
+                                      className="h-10 min-w-0 flex-1 rounded-xl border border-slate-200 bg-white px-3 text-base font-medium text-slate-900"
+                                    />
+                                    <span className="text-xs font-semibold text-slate-500 shrink-0">{pricingUnitLabel(svc)}</span>
+                                    {priceSaving ? <span className="text-xs font-semibold text-slate-400">...</span> : null}
+                                  </div>
+                                  <p className="text-[11px] font-semibold text-slate-500">Fourchette : {pricingRangeLabel(svc)}</p>
+                                  {priceError ? <p className="text-xs font-medium text-rose-600">{priceError}</p> : null}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
 
-                 <div className="grid gap-5 pb-4">
-                   <div className="flex gap-3 items-start">
-                     <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white border border-slate-100 shadow-sm text-slate-500">
-                       <Settings className="h-4 w-4" />
-                     </div>
-                     <div>
-                       <p className="text-xs font-bold text-slate-900">Configuration</p>
-                       <p className="mt-1 text-slate-600 leading-relaxed text-[12px]">Tarifs requis avant d'activer un service.</p>
-                     </div>
-                   </div>
-
-                   <div className="flex gap-3 items-start">
-                     <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white border border-slate-100 shadow-sm text-slate-500">
-                       <Banknote className="h-4 w-4" />
-                     </div>
-                     <div>
-                       <p className="text-xs font-bold text-slate-900">Tarification</p>
-                       <p className="mt-1 text-slate-600 leading-relaxed text-[12px]">Promenade/garde (CHF/h), Pension (CHF/jour).</p>
-                     </div>
-                   </div>
-
-                   <div className="flex gap-3 items-start">
-                     <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white border border-slate-100 shadow-sm text-slate-500">
-                       <Clock className="h-4 w-4" />
-                     </div>
-                     <div>
-                       <p className="text-xs font-bold text-slate-900">Horaires</p>
-                       <p className="mt-1 text-slate-600 leading-relaxed text-[12px]">Créneaux de 30 min. Réservation 24h à l'avance.</p>
-                     </div>
-                   </div>
-
-                   <div className="flex gap-3 items-start">
-                     <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white border border-slate-100 shadow-sm text-slate-500">
-                       <ShieldCheck className="h-4 w-4" />
-                     </div>
-                     <div>
-                       <p className="text-xs font-bold text-slate-900">Marge de sécurité</p>
-                       <p className="mt-1 text-slate-600 leading-relaxed text-[12px]">30 min bloquées avant/après chaque réservation.</p>
-                     </div>
-                   </div>
-
-                   <div className="flex gap-3 items-start">
-                     <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white border border-slate-100 shadow-sm text-slate-500">
-                       <Home className="h-4 w-4" />
-                     </div>
-                     <div>
-                       <p className="text-xs font-bold text-slate-900">Pension</p>
-                       <p className="mt-1 text-slate-600 leading-relaxed text-[12px]">Arrivée/départ selon tes disponibilités.</p>
-                     </div>
-                   </div>
-
-                   <div className="flex gap-3 items-start">
-                     <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white border border-slate-100 shadow-sm text-slate-500">
-                       <Rocket className="h-4 w-4" />
-                     </div>
-                     <div>
-                       <p className="text-xs font-bold text-slate-900">Phase pilote</p>
-                       <p className="mt-1 text-slate-600 leading-relaxed text-[12px]">Tarifs encadrés pour garantir la qualité.</p>
-                     </div>
-                   </div>
-                 </div>
+                  <button
+                    type="button"
+                    onClick={() => setServicesCarouselIndex((prev) => Math.min(2, prev + 1))}
+                    disabled={servicesCarouselIndex === 2}
+                    className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-base font-semibold text-slate-700 disabled:cursor-default disabled:opacity-35 sm:h-10 sm:w-10 sm:rounded-2xl sm:text-lg"
+                    aria-label="Service suivant"
+                  >
+                    →
+                  </button>
+                </div>
+                <div className="mt-3 flex items-center justify-center gap-2">
+                  {(["PROMENADE", "DOGSITTING", "PENSION"] as const).map((svc, idx) => {
+                    const active = servicesCarouselIndex === idx;
+                    return <span key={`service-dot-${svc}`} className={active ? "h-2 w-2 rounded-full bg-slate-900" : "h-2 w-2 rounded-full bg-slate-300"} aria-hidden="true" />;
+                  })}
+                </div>
               </div>
             </div>
-          </div>
+          )}
 
           {/* Disponibilités Card */}
           <div className="rounded-2xl border border-slate-200 bg-white p-3 sm:rounded-3xl sm:p-5">
@@ -2029,7 +1971,7 @@ export default function AvailabilityStudioPage() {
                   </button>
 
                   {quickActionsOpen ? (
-                    <div id="availability-quick-actions" className="absolute right-0 top-full z-40 mt-2 w-[min(288px,calc(100vw-3rem))] rounded-2xl border border-slate-200 bg-slate-50 p-3 shadow-xl">
+                    <div id="availability-quick-actions" className="absolute right-0 top-full z-40 mt-2 w-64 max-w-[80vw] rounded-2xl border border-slate-200 bg-slate-50 p-3 shadow-xl">
                       <div className="min-w-0">
                         <div className="grid gap-2">
                           <button
@@ -2104,7 +2046,7 @@ export default function AvailabilityStudioPage() {
                                   const nextStatus = e.currentTarget.value === "ON_REQUEST" ? "ON_REQUEST" : "AVAILABLE";
                                   void saveWeeklyRule(availabilityTab, day.dayOfWeek, true, nextStatus);
                                 }}
-                                className="h-7 max-w-[110px] rounded-lg border border-slate-200 bg-white px-1.5 text-[11px] font-medium text-slate-700 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400 sm:h-8 sm:max-w-none sm:px-2.5 sm:text-xs"
+                                className="h-8 max-w-[110px] rounded-lg border border-slate-200 bg-white px-1.5 text-base font-medium text-slate-700 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400 sm:max-w-none sm:px-2.5"
                               >
                                 <option value="AVAILABLE">Disponible</option>
                                 <option value="ON_REQUEST">Sur demande</option>
@@ -2125,7 +2067,7 @@ export default function AvailabilityStudioPage() {
         </div>
 
         {/* Column 2: Exceptions + preview calendar */}
-        <div className="rounded-2xl border border-slate-200 bg-white p-3 sm:rounded-3xl sm:p-5">
+        <div className="min-w-0 rounded-2xl border border-slate-200 bg-white p-3 sm:rounded-3xl sm:p-5">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-sm font-semibold text-slate-900">Agenda des disponibilités</p>
@@ -2288,7 +2230,7 @@ export default function AvailabilityStudioPage() {
                     const svc = e.target.value as ServiceTypeApi;
                     if (svc === "PROMENADE" || svc === "DOGSITTING" || svc === "PENSION") selectInlineExceptionService(svc);
                   }}
-                  className="mt-1 w-full rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-900"
+                  className="mt-1 w-full rounded-2xl border border-slate-200 bg-white px-4 py-2 text-base text-slate-900"
                 >
                   {(["PROMENADE", "DOGSITTING", "PENSION"] as const).map((svc) => {
                     const disabled = isServiceSelectionDisabled(svc, configByService, pricingErrorByService);
