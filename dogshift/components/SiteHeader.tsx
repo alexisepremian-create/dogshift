@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Menu, LogOut, HelpCircle, LayoutDashboard, User, Search, ShoppingBag, UserPlus, MoreHorizontal, House } from "lucide-react";
+import { Menu, LogOut, HelpCircle, LayoutDashboard, User, Search, ShoppingBag, UserPlus, MoreHorizontal, House, LogIn } from "lucide-react";
 import { useClerk, useUser } from "@clerk/nextjs";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -424,11 +424,11 @@ export default function SiteHeader() {
                   <span className="min-w-0 flex-1 truncate">Candidater</span>
                 </Link>
                 <Link
-                  href="/devenir-dogsitter"
+                  href="/become-sitter/access"
                   onClick={() => setMobileNavOpen(false)}
                   className="flex items-center gap-3 rounded-2xl px-4 py-3 text-base font-semibold text-slate-900 ring-1 ring-slate-200"
                 >
-                  <UserPlus className="h-5 w-5 text-slate-500" aria-hidden="true" />
+                  <LogIn className="h-5 w-5 text-slate-500" aria-hidden="true" />
                   <span className="min-w-0 flex-1 truncate">Accès sitter</span>
                 </Link>
                 <Link

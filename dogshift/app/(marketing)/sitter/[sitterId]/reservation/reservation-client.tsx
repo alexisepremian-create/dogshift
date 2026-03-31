@@ -1678,7 +1678,7 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
   return (
     <div className="min-h-screen bg-white text-slate-900">
       <main className="mx-auto max-w-5xl px-4 py-10 sm:px-6">
-        <div className="flex items-center justify-between gap-4">
+        <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">Demande de réservation</h1>
             <p className="mt-2 text-sm text-slate-600">Sélectionne un service, des dates, puis continue vers le paiement.</p>
@@ -1953,6 +1953,33 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
           </aside>
         </div>
       </main>
+
+      {/* Mobile Sticky CTA */}
+      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white p-4 pb-safe shadow-[0_-8px_30px_-15px_rgba(0,0,0,0.1)] lg:hidden">
+        <div className="mx-auto flex max-w-5xl items-center justify-between gap-4">
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-semibold text-slate-900">Total : CHF {recapTotal ?? "—"}</p>
+            <p className="truncate text-xs text-slate-600">
+              {recapDurationLabel || "Service à définir"}
+            </p>
+          </div>
+          <button
+            type="button"
+            disabled={!canSubmit || submitting}
+            onClick={() => {
+              if (!canSubmit) {
+                // Scroll to top so user sees what is missing
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+                return;
+              }
+              void onContinue();
+            }}
+            className={`shrink-0 ${PRIMARY_BTN}`}
+          >
+            {submitting ? "Redirection…" : "Continuer"}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

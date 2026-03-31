@@ -295,7 +295,7 @@ function CheckoutForm({
   );
 
   return (
-    <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)] sm:p-8">
+    <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)] sm:p-5 sm:p-8">
       <div className="flex items-start justify-between gap-6">
         <div>
           <h2 className="text-lg font-semibold tracking-tight text-slate-900">Paiement sécurisé</h2>
@@ -647,18 +647,18 @@ const stripeReact = await import("@stripe/react-stripe-js");
 
           {loading ? (
             <div className="mt-6 grid gap-6 lg:grid-cols-2">
-              <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)] sm:p-8">
+              <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)] sm:p-5 sm:p-8">
                 <div className="h-5 w-40 rounded bg-slate-100" />
                 <div className="mt-4 h-20 w-full rounded-2xl bg-slate-50" />
                 <div className="mt-3 h-20 w-full rounded-2xl bg-slate-50" />
               </div>
-              <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)] sm:p-8">
+              <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)] sm:p-5 sm:p-8">
                 <div className="h-5 w-40 rounded bg-slate-100" />
                 <div className="mt-4 h-40 w-full rounded-2xl bg-slate-50" />
               </div>
             </div>
           ) : error ? (
-            <div className="mt-6 rounded-3xl border border-slate-200 bg-white p-8 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)]">
+            <div className="mt-6 rounded-3xl border border-slate-200 bg-white p-5 sm:p-8 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)]">
               <p className="text-sm font-semibold text-slate-900">Impossible d’afficher le checkout</p>
               <p className="mt-2 text-sm text-rose-600">{error}</p>
               <div className="mt-6 flex flex-wrap gap-3">
@@ -672,8 +672,8 @@ const stripeReact = await import("@stripe/react-stripe-js");
             </div>
           ) : booking && clientSecret ? (
             <div className="mt-7 grid gap-6 lg:grid-cols-2">
-              <div className="lg:sticky lg:top-8 lg:self-start">
-                <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)] sm:p-8">
+              <div className="lg:sticky lg:top-5 sm:p-8 lg:self-start">
+                <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)] sm:p-5 sm:p-8">
                   <h2 className="text-lg font-semibold tracking-tight text-slate-900">Récapitulatif</h2>
                   <p className="mt-1 text-sm text-slate-600">Vérifie les détails avant de payer.</p>
 
@@ -734,7 +734,7 @@ const stripeReact = await import("@stripe/react-stripe-js");
                   />
                 </ElementsComp>
               ) : (
-                <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)]">
+                <div className="rounded-3xl border border-slate-200 bg-white p-5 sm:p-8 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)]">
                   <p className="text-sm font-semibold text-slate-900">Stripe</p>
                   <p className="mt-2 text-sm text-rose-600">{stripeUiError ?? "Impossible de charger Stripe."}</p>
                 </div>

@@ -20,7 +20,7 @@ export default function OwnerTopNav({ className }: OwnerTopNavProps) {
   }, [pathname]);
 
   const baseBtn =
-    "inline-flex items-center justify-center rounded-2xl px-5 py-3 text-sm font-semibold shadow-sm transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)] border w-[200px] flex-none";
+    "inline-flex items-center justify-center rounded-2xl px-5 py-3 text-sm font-semibold shadow-sm transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)] border w-full sm:w-[200px] flex-none";
 
   const activeBtn =
     baseBtn +

@@ -95,7 +95,7 @@ function Tooltip({
         <span
           id={id}
           role="tooltip"
-          className="absolute left-1/2 top-full z-20 mt-2 w-72 -translate-x-1/2 rounded-2xl border border-slate-200 bg-white p-3 text-xs font-semibold text-slate-700 shadow-lg"
+          className="absolute left-1/2 top-full z-20 mt-2 w-72 max-w-[calc(100vw-2rem)] -translate-x-1/2 rounded-2xl border border-slate-200 bg-white p-3 text-xs font-semibold text-slate-700 shadow-lg"
         >
           {label}
         </span>
@@ -2715,6 +2715,51 @@ function SitterPublicProfileContent({
                 </aside>
               </div>
             </div>
+
+            {/* Mobile Sticky Booking Bar */}
+            <div className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white p-4 pb-safe shadow-[0_-8px_30px_-15px_rgba(0,0,0,0.1)] lg:hidden">
+              <div className="mx-auto flex max-w-5xl items-center justify-between gap-4">
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-semibold text-slate-900">{serviceUi.current.label || "Sélectionnez un service"}</p>
+                  <p className="truncate text-xs text-slate-600">{bookingSelectionSummary || "Dates à définir"}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (maintenanceMode) {
+                      setBookingCtaError(maintenanceBookingUserMessage(adminNote));
+                      return;
+                    }
+                    if (!isLoaded) {
+                      setBookingCtaError("Chargement de la session… Réessaie dans une seconde.");
+                      return;
+                    }
+                    if (!isSignedIn) {
+                      setBookingCtaError("Veuillez vous connecter pour demander une réservation.");
+                      return;
+                    }
+                    if (!canRequestBooking) {
+                      setBookingCtaError(
+                        slotsServiceType === "PENSION"
+                          ? "Sélectionnez une arrivée et une date de départ valides pour continuer."
+                          : "Sélectionnez un service et une date dans l'agenda pour continuer."
+                      );
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
+                      return;
+                    }
+                    setBookingCtaError(null);
+                    void continueToReservation();
+                  }}
+                  disabled={maintenanceMode}
+                  className="inline-flex h-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-5 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition hover:bg-[var(--dogshift-blue-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)] disabled:cursor-not-allowed disabled:opacity-55"
+                >
+                  Réserver
+                </button>
+              </div>
+              {bookingCtaError ? (
+                <p className="mt-2 text-xs font-medium text-rose-600">{bookingCtaError}</p>
+              ) : null}
+            </div>
           ) : (
             <div className="mx-auto max-w-5xl rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-40px_rgba(2,6,23,0.35)] sm:p-8">
               <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
@@ -2778,7 +2823,7 @@ function SitterPublicProfileContent({
   );
 
   return (
-    <div className="min-h-screen bg-white text-slate-900">
+    <div className="min-h-screen bg-white pb-24 text-slate-900 lg:pb-0">
       {showHostChrome ? (
         <HostUserProvider value={hostUserValue}>
           <HostDashboardShell>{content}</HostDashboardShell>
