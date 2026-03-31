@@ -1237,11 +1237,11 @@ export default function AvailabilityStudioPage() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-6xl px-4 py-10" style={{ scrollbarGutter: "stable" }}>
-      <div className="flex items-center justify-between">
+    <div className="w-full py-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p className="text-2xl font-bold text-slate-900">Disponibilités</p>
-          <p className="mt-2 text-sm text-slate-600">Configure tes services et tes exceptions.</p>
+          <p className="text-xl font-bold text-slate-900 sm:text-2xl">Disponibilités</p>
+          <p className="mt-1 text-sm text-slate-600 sm:mt-2">Configure tes services et tes exceptions.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {savedPing ? (
@@ -1971,7 +1971,7 @@ export default function AvailabilityStudioPage() {
           <div className="rounded-3xl border border-slate-200 bg-white p-5">
             <p className="text-sm font-semibold text-slate-900">Disponibilités</p>
 
-            <div className="mt-3 grid grid-cols-3 gap-2 rounded-2xl bg-white p-2 ring-1 ring-slate-200">
+            <div className="mt-3 grid grid-cols-3 gap-1 rounded-2xl bg-white p-1.5 ring-1 ring-slate-200 sm:gap-2 sm:p-2">
               {(["PROMENADE", "DOGSITTING", "PENSION"] as const).map((svc) => {
                 const active = availabilityTab === svc;
                 const tone = serviceDotTone(svc);
@@ -1985,8 +1985,8 @@ export default function AvailabilityStudioPage() {
                     onClick={() => setAvailabilityTab(svc)}
                     className={
                       active
-                        ? `rounded-2xl ${baseTone} px-3 py-2 text-xs font-semibold text-white`
-                        : "rounded-2xl bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-45"
+                        ? `rounded-2xl ${baseTone} px-2 py-1.5 text-[11px] font-semibold text-white sm:px-3 sm:py-2 sm:text-xs`
+                        : "rounded-2xl bg-white px-2 py-1.5 text-[11px] font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-45 sm:px-3 sm:py-2 sm:text-xs"
                     }
                     aria-pressed={active}
                   >
@@ -2007,7 +2007,7 @@ export default function AvailabilityStudioPage() {
                 </div>
               ) : null}
 
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-2">
                   <p className="text-sm font-semibold text-slate-900">
                     {serviceMeta(availabilityTab).icon} {serviceMeta(availabilityTab).label}
@@ -2029,7 +2029,7 @@ export default function AvailabilityStudioPage() {
                   </button>
 
                   {quickActionsOpen ? (
-                    <div id="availability-quick-actions" className="absolute right-0 top-full z-40 mt-2 w-72 rounded-2xl border border-slate-200 bg-slate-50 p-3 shadow-xl">
+                    <div id="availability-quick-actions" className="absolute right-0 top-full z-40 mt-2 w-[min(288px,calc(100vw-3rem))] rounded-2xl border border-slate-200 bg-slate-50 p-3 shadow-xl">
                       <div className="min-w-0">
                         <div className="grid gap-2">
                           <button
@@ -2126,7 +2126,7 @@ export default function AvailabilityStudioPage() {
 
         {/* Column 2: Exceptions + preview calendar */}
         <div className="rounded-3xl border border-slate-200 bg-white p-5">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-sm font-semibold text-slate-900">Agenda des disponibilités</p>
             </div>
@@ -2138,7 +2138,7 @@ export default function AvailabilityStudioPage() {
                 }}
                 className="inline-flex h-9 items-center justify-center rounded-xl border border-rose-200 bg-white px-3 text-xs font-semibold text-rose-700"
               >
-                Réinitialiser ce mois
+                Réinitialiser
               </button>
               <button
                 type="button"
@@ -2161,8 +2161,8 @@ export default function AvailabilityStudioPage() {
 
           <p className="mt-3 text-sm font-semibold text-slate-900">{meta.monthLabel}</p>
 
-          <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-            <div className="grid grid-cols-7 gap-2 text-center text-[11px] font-semibold text-slate-500">
+            <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 p-2 sm:p-4">
+            <div className="grid grid-cols-7 gap-1 text-center text-[11px] font-semibold text-slate-500 sm:gap-2">
               <div>L</div>
               <div>M</div>
               <div>M</div>
@@ -2171,7 +2171,7 @@ export default function AvailabilityStudioPage() {
               <div>S</div>
               <div>D</div>
             </div>
-            <div className="mt-2 grid grid-cols-7 gap-2">
+            <div className="mt-2 grid grid-cols-7 gap-1 sm:gap-2">
               {Array.from({ length: meta.mondayIndex }).map((_, i) => (
                 <div key={`pad-${i}`} />
               ))}
@@ -2197,8 +2197,8 @@ export default function AvailabilityStudioPage() {
                     }}
                     className={
                       isPast
-                        ? `flex h-12 w-full flex-col justify-between rounded-2xl ring-1 ${tone} cursor-not-allowed px-2 py-1 opacity-40`
-                        : `flex h-12 w-full flex-col justify-between rounded-2xl ring-1 ${tone} px-2 py-1 hover:ring-2`
+                        ? `flex h-10 w-full flex-col justify-between rounded-xl ring-1 ${tone} cursor-not-allowed px-1 py-0.5 opacity-40 sm:h-12 sm:rounded-2xl sm:px-2 sm:py-1`
+                        : `flex h-10 w-full flex-col justify-between rounded-xl ring-1 ${tone} px-1 py-0.5 hover:ring-2 sm:h-12 sm:rounded-2xl sm:px-2 sm:py-1`
                     }
                     aria-label={`Disponibilité ${formatDateFrCh(dateIso)}`}
                   >
@@ -2367,8 +2367,8 @@ export default function AvailabilityStudioPage() {
                               key={`inline-range-${idx}`}
                               className={
                                 justAddedRangeIdx === idx
-                                  ? "flex items-center justify-between rounded-2xl border border-slate-200 bg-sky-50 px-3 py-2"
-                                  : "flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2"
+                                  ? "flex flex-wrap items-center gap-2 rounded-2xl border border-slate-200 bg-sky-50 px-3 py-2"
+                                  : "flex flex-wrap items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2"
                               }
                             >
                               <div className="flex items-center gap-2">
@@ -2382,8 +2382,8 @@ export default function AvailabilityStudioPage() {
                                     }
                                     className={
                                       activeTimePicker?.idx === idx && activeTimePicker.field === "startMin"
-                                        ? "inline-flex h-10 w-[104px] items-center justify-between rounded-2xl border border-[var(--dogshift-blue)] bg-white px-3 text-sm font-semibold text-slate-900 ring-2 ring-[color:rgba(58,124,245,0.15)]"
-                                        : "inline-flex h-10 w-[104px] items-center justify-between rounded-2xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-900"
+                                        ? "inline-flex h-10 w-[88px] items-center justify-between rounded-2xl border border-[var(--dogshift-blue)] bg-white px-2 text-sm font-semibold text-slate-900 ring-2 ring-[color:rgba(58,124,245,0.15)] sm:w-[104px] sm:px-3"
+                                        : "inline-flex h-10 w-[88px] items-center justify-between rounded-2xl border border-slate-200 bg-white px-2 text-sm font-semibold text-slate-900 sm:w-[104px] sm:px-3"
                                     }
                                     aria-haspopup="listbox"
                                     aria-expanded={activeTimePicker?.idx === idx && activeTimePicker.field === "startMin"}
@@ -2435,8 +2435,8 @@ export default function AvailabilityStudioPage() {
                                     }
                                     className={
                                       activeTimePicker?.idx === idx && activeTimePicker.field === "endMin"
-                                        ? "inline-flex h-10 w-[104px] items-center justify-between rounded-2xl border border-[var(--dogshift-blue)] bg-white px-3 text-sm font-semibold text-slate-900 ring-2 ring-[color:rgba(58,124,245,0.15)]"
-                                        : "inline-flex h-10 w-[104px] items-center justify-between rounded-2xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-900"
+                                        ? "inline-flex h-10 w-[88px] items-center justify-between rounded-2xl border border-[var(--dogshift-blue)] bg-white px-2 text-sm font-semibold text-slate-900 ring-2 ring-[color:rgba(58,124,245,0.15)] sm:w-[104px] sm:px-3"
+                                        : "inline-flex h-10 w-[88px] items-center justify-between rounded-2xl border border-slate-200 bg-white px-2 text-sm font-semibold text-slate-900 sm:w-[104px] sm:px-3"
                                     }
                                     aria-haspopup="listbox"
                                     aria-expanded={activeTimePicker?.idx === idx && activeTimePicker.field === "endMin"}
