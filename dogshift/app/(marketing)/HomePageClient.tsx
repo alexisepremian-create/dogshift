@@ -371,12 +371,7 @@ function HeroPetsittingStyle() {
 
             <div className="relative z-10 mx-auto max-w-[560px] px-6 pb-10 pt-8">
               <div className="max-w-[330px]">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-full border border-white/70 bg-white/88 shadow-sm backdrop-blur-sm">
-                    <Image src="/dogshift-logo.png" alt="DogShift" width={72} height={72} priority className="h-8 w-auto" />
-                  </div>
-                  <p className="text-[13px] font-semibold tracking-[0.22em] text-slate-600">DOGSHIFT</p>
-                </div>
+                {/* Logo and text removed here because it's already in the SiteHeader on mobile */}
 
                 <h1 className="mt-8 max-w-[16ch] text-balance text-[1.72rem] font-semibold leading-[1.06] tracking-tight text-slate-900">
                   L&apos;expérience Premium pour votre Chien.
