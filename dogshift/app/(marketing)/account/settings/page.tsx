@@ -304,10 +304,10 @@ export default function AccountSettingsPage() {
   }
 
   return (
-    <div className="relative grid gap-6 overflow-hidden" data-testid="account-settings-page">
+    <div className="relative grid gap-6 overflow-x-hidden w-full" data-testid="account-settings-page">
       <SunCornerGlow variant={glowVariant} />
 
-      <div className="relative z-10 grid gap-6">
+      <div className="relative z-10 grid gap-6 max-w-full">
       <div>
         <p className="text-sm font-semibold text-slate-600">Mon compte</p>
         <h1 className="mt-2 flex items-center gap-2 text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">

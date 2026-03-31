@@ -172,7 +172,7 @@ export default function SiteHeader() {
   return (
     <>
       <div
-        className={(isHome ? "hidden md:block " : "") + "pointer-events-none absolute inset-x-0 top-0 z-40"}
+        className={"pointer-events-none absolute inset-x-0 top-0 z-40"}
       >
         <div
           className={
@@ -501,51 +501,7 @@ export default function SiteHeader() {
         </div>
       ) : null}
 
-      {isHome ? (
-        <div
-          className={
-            "fixed inset-x-0 bottom-0 z-[70] border-t border-slate-200 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur transition-transform duration-200 ease-out md:hidden" +
-            (mobileBottomHidden ? " translate-y-full" : " translate-y-0")
-          }
-        >
-          <div className="mx-auto flex max-w-[520px] items-center justify-between px-4 pt-2">
-            <Link
-              href="/search"
-              className="flex flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2 text-xs font-semibold text-slate-700"
-            >
-              <Search className="h-5 w-5" aria-hidden="true" />
-              Explorer
-            </Link>
 
-            <Link
-              href="/devenir-dogsitter"
-              className="flex flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2 text-xs font-semibold text-slate-700"
-            >
-              <UserPlus className="h-5 w-5" aria-hidden="true" />
-              Sitter
-            </Link>
-
-            <Link
-              href="/shop"
-              className="flex flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2 text-xs font-semibold text-slate-700"
-            >
-              <ShoppingBag className="h-5 w-5" aria-hidden="true" />
-              Shop
-            </Link>
-
-            <button
-              type="button"
-              onClick={() => setMobileNavOpen(true)}
-              aria-haspopup="dialog"
-              aria-expanded={mobileNavOpen}
-              className="flex flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2 text-xs font-semibold text-slate-700"
-            >
-              <MoreHorizontal className="h-5 w-5" aria-hidden="true" />
-              Plus
-            </button>
-          </div>
-        </div>
-      ) : null}
     </>
   );
 }

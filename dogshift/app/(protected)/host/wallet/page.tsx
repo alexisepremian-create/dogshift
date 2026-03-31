@@ -498,9 +498,13 @@ export default function HostWalletPage() {
 
   useEffect(() => {
     if (bookingsLoading) return;
-    if (!hasTopTriggered.current) return;
-    fireTop();
-  }, [timeframe, bookingsLoading, fireTop]);
+    // Auto-trigger for mobile/touch
+    const t = setTimeout(() => {
+      onTopEnter();
+      onBottomEnter();
+    }, 500);
+    return () => clearTimeout(t);
+  }, [bookingsLoading, onTopEnter, onBottomEnter]);
 
   async function refreshStripeStatus() {
     try {
@@ -717,7 +721,7 @@ export default function HostWalletPage() {
 
 
         {/* ━━━ PAYMENT TRACKING & STRIPE ━━━ */}
-        <div className="flex flex-col lg:flex-row gap-6" onMouseMove={onBottomEnter}>
+        <div className="flex flex-col lg:flex-row gap-6" onMouseMove={onBottomEnter} onTouchStart={onBottomEnter}>
           <div className="flex-1 rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)] sm:p-8">
             <h2 className="text-lg font-semibold tracking-tight text-slate-900">Suivi des paiements</h2>
             <p className="mt-1 text-sm text-slate-500">
@@ -769,7 +773,7 @@ export default function HostWalletPage() {
             >
               {/* FRONT FACE */}
               <div
-                className={`flex h-full flex-col justify-between rounded-3xl border border-slate-200 bg-white shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)] ${stripeInfoOpen ? 'pointer-events-none' : ''}`}
+                className={`absolute inset-0 flex flex-col justify-between rounded-3xl border border-slate-200 bg-white shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)] ${stripeInfoOpen ? 'pointer-events-none' : ''}`}
                 style={{ backfaceVisibility: "hidden" }}
               >
                 {/* Stripe Content */}
