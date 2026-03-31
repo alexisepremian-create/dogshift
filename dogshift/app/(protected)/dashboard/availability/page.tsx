@@ -1237,7 +1237,7 @@ export default function AvailabilityStudioPage() {
   }
 
   return (
-    <div className="w-full overflow-x-hidden py-6">
+    <div className="w-full py-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="text-xl font-bold text-slate-900 sm:text-2xl">Disponibilités</p>

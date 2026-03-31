@@ -23,7 +23,7 @@ export default function HostDashboardShell({ children }: { children: React.React
   const isPublicPreview = pathname?.startsWith("/sitter/") && mode === "preview";
 
   return (
-    <div className="min-h-screen bg-white text-slate-900">
+    <div className="min-h-screen w-full max-w-[100vw] overflow-x-hidden bg-white text-slate-900">
       {isPublicPreview || !host.sitterId ? null : <HostContractAmendmentModal />}
       <div className="flex min-h-screen">
         <div className="relative z-40 hidden shrink-0 lg:block">
