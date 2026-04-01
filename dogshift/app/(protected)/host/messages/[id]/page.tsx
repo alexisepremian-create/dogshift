@@ -1,11 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-
-import { useConversationExpand } from "@/components/messages/ConversationExpandContext";
-import ConversationExpandToggle from "@/components/messages/ConversationExpandToggle";
 
 type ConversationHeader = {
   id: string;
@@ -35,7 +32,6 @@ function formatDateTime(value: string) {
 export default function HostMessageThreadPage() {
   const params = useParams<{ id: string }>();
   const conversationId = typeof params?.id === "string" ? params.id : "";
-  const { isExpanded, setIsExpanded } = useConversationExpand();
 
   const [header, setHeader] = useState<ConversationHeader | null>(null);
   const [messages, setMessages] = useState<MessageItem[]>([]);
@@ -103,8 +99,6 @@ export default function HostMessageThreadPage() {
 
   const canSend = text.trim().length > 0 && !sending;
 
-  const threadTitle = useMemo(() => header?.owner?.name ?? "Conversation", [header]);
-
   async function send() {
     if (!conversationId) return;
     const body = text.trim();
@@ -155,12 +149,7 @@ export default function HostMessageThreadPage() {
   }
 
   return (
-    <div className="flex h-full flex-col gap-4">
-      <div>
-        <p className="text-sm font-semibold text-slate-600">Messages</p>
-        <h1 className="mt-2 text-2xl font-semibold tracking-tight text-slate-900">{threadTitle}</h1>
-      </div>
-
+    <div className="flex h-full flex-col">
       {error ? (
         <div className="rounded-3xl border border-rose-200 bg-rose-50 p-6 text-sm font-medium text-rose-900 sm:p-8">
           <p>{error}</p>
@@ -187,7 +176,6 @@ export default function HostMessageThreadPage() {
         <div className="rounded-3xl border border-slate-200 bg-white p-6 sm:p-8">
           <p className="text-sm font-semibold text-slate-900">Chargement…</p>
           <p className="mt-2 text-sm text-slate-600">Nous récupérons la conversation.</p>
-          <ConversationExpandToggle isExpanded={isExpanded} onToggle={() => setIsExpanded((current) => !current)} />
         </div>
       ) : (
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)]">
@@ -207,7 +195,6 @@ export default function HostMessageThreadPage() {
                 {header.bookingId ? <p className="mt-0.5 truncate text-xs text-slate-500">Réservation: {header.bookingId}</p> : null}
               </div>
             </div>
-            <ConversationExpandToggle isExpanded={isExpanded} onToggle={() => setIsExpanded((current) => !current)} />
           </div>
 
           <div className="flex min-h-0 flex-1 flex-col p-6">

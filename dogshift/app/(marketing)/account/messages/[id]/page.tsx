@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
 
@@ -121,8 +121,6 @@ export default function AccountMessageThreadPage() {
 
   const canSend = text.trim().length > 0 && !sending;
 
-  const threadTitle = useMemo(() => header?.sitter?.name ?? "Conversation", [header]);
-
   async function send() {
     if (!conversationId) return;
     const body = text.trim();
@@ -185,15 +183,21 @@ export default function AccountMessageThreadPage() {
   if (!isLoaded || !isSignedIn) return null;
 
   return (
-    <div ref={threadRef} className="grid gap-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-sm font-semibold text-slate-600">Messages</p>
-          <h1 className="mt-2 text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">{threadTitle}</h1>
-        </div>
-        <Link href="/account/messages" className="text-sm font-semibold text-[var(--dogshift-blue)] hover:text-[var(--dogshift-blue-hover)]">
-          ← Retour
+    <div ref={threadRef} className="flex h-full flex-col">
+      <div className="flex items-center gap-3 border-b border-slate-200 pb-4 mb-4">
+        <Link
+          href="/account/messages"
+          className="lg:hidden p-2 text-[var(--dogshift-blue)] transition hover:text-[var(--dogshift-blue-hover)] -ml-2"
+          aria-label="Retour aux conversations"
+        >
+          <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+          </svg>
         </Link>
+        <div className="min-w-0">
+          <p className="truncate text-sm font-semibold text-slate-900">{header?.sitter?.name ?? "Conversation"}</p>
+          {header?.bookingId ? <p className="mt-0.5 truncate text-xs text-slate-500">Réservation: {header.bookingId}</p> : null}
+        </div>
       </div>
 
       {error ? (

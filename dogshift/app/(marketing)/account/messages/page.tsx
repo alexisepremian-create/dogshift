@@ -8,7 +8,6 @@ import { useUser } from "@clerk/nextjs";
 import { MessageCircle, RefreshCw } from "lucide-react";
 
 import SunCornerGlow from "@/components/SunCornerGlow";
-import ConversationExpandToggle from "@/components/messages/ConversationExpandToggle";
 
 type ConversationListItem = {
   id: string;
@@ -87,7 +86,6 @@ export default function AccountMessagesPage() {
   const [threadError, setThreadError] = useState<string | null>(null);
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
-  const [isExpanded, setIsExpanded] = useState(false);
 
   useEffect(() => {
     if (!isLoaded) return;
@@ -293,32 +291,10 @@ export default function AccountMessagesPage() {
   }
 
   return (
-    <div className="relative grid gap-6 overflow-hidden" data-testid="account-messages-page">
+    <div className="relative grid overflow-hidden" data-testid="account-messages-page">
       <SunCornerGlow variant="ownerMessages" />
 
-      <div className="relative z-10 grid gap-6">
-        <div className="grid gap-4 sm:grid-cols-[1fr_auto] sm:items-end">
-          <div>
-            <p className="text-sm font-semibold text-slate-600">Mon compte</p>
-            <h1 className="mt-2 flex items-center gap-2 text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">
-              <MessageCircle className="h-6 w-6 text-slate-700" aria-hidden="true" />
-              <span>Messages</span>
-            </h1>
-            <div className="mt-3 flex min-h-[32px] items-center">
-              <p className="text-sm text-slate-600">{rows.length} conversation(s)</p>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={() => void refreshAll()}
-            aria-label="Rafraîchir les messages"
-            title="Rafraîchir les messages"
-            className="group inline-flex items-center justify-center rounded-2xl border border-slate-300 bg-white p-3 text-slate-700 shadow-sm transition hover:bg-slate-50 hover:text-slate-900"
-          >
-            <RefreshCw className="h-5 w-5 transition-transform group-hover:rotate-180" aria-hidden="true" />
-          </button>
-        </div>
-
+      <div className="relative z-10 grid">
       {error ? (
         <div className="rounded-3xl border border-rose-200 bg-rose-50 p-6 text-sm font-medium text-rose-900 sm:p-8">
           <p>{error}</p>
@@ -360,16 +336,15 @@ export default function AccountMessagesPage() {
           </div>
         </div>
       ) : (
-        <div className="h-[calc(100vh-140px)] overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)]">
-          <div className={"grid h-full gap-0 transition-all duration-300 ease-out " + (isExpanded ? "lg:grid-cols-[0px_1fr]" : "lg:grid-cols-[360px_1fr]")}>
+        <div className="relative h-[calc(100vh-110px)] lg:h-[calc(100vh-140px)] overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)]">
+          <div className="grid h-full gap-0 lg:grid-cols-[360px_1fr]">
             <section
               className={
-                "h-full flex-col p-4 transition-all duration-300 ease-out sm:p-6 " +
+                "h-full flex-col p-4 sm:p-6 " +
                 (selectedId ? "hidden lg:flex " : "flex ") +
-                (isExpanded ? "lg:w-0 lg:overflow-hidden lg:border-r-0 lg:p-0 lg:opacity-0" : "lg:border-r lg:border-slate-200 lg:opacity-100")
+                "lg:border-r lg:border-slate-200"
               }
             >
-              <p className="px-2 pb-3 text-xs font-semibold text-slate-600">Boîte de réception</p>
               <div className="min-h-0 flex-1 space-y-2 overflow-y-auto">
                 {rows.map((c) => {
                   const subtitle = c.booking?.service
@@ -478,7 +453,6 @@ export default function AccountMessagesPage() {
                         ) : null}
                       </div>
                     </div>
-                    <ConversationExpandToggle isExpanded={isExpanded} onToggle={() => setIsExpanded((current) => !current)} />
                   </div>
 
                   <div className="flex min-h-0 flex-1 flex-col p-5">

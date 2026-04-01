@@ -7,7 +7,6 @@ import { useEffect, useMemo, useState } from "react";
 import { MessageCircle } from "lucide-react";
 
 import SunCornerGlow from "@/components/SunCornerGlow";
-import { ConversationExpandProvider } from "@/components/messages/ConversationExpandContext";
 
 type ConversationListItem = {
   id: string;
@@ -61,7 +60,6 @@ export default function HostMessagesLayout({ children }: { children: React.React
   const [conversations, setConversations] = useState<ConversationListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isExpanded, setIsExpanded] = useState(false);
 
   async function loadConversations() {
     setLoading(true);
@@ -111,9 +109,6 @@ export default function HostMessagesLayout({ children }: { children: React.React
   const activeId = m && m[1] ? decodeURIComponent(m[1]) : null;
 
   useEffect(() => {
-    if (!activeId) {
-      setIsExpanded(false);
-    }
     if (!activeId) return;
     setConversations((prev) => prev.map((c) => (c.id === activeId ? { ...c, unreadCount: 0 } : c)));
   }, [pathname, activeId]);
@@ -127,49 +122,19 @@ export default function HostMessagesLayout({ children }: { children: React.React
   }, [conversations]);
 
   return (
-    <div className="relative grid gap-6 overflow-hidden" data-testid="host-messages-layout">
+    <div className="relative grid overflow-hidden" data-testid="host-messages-layout">
       <SunCornerGlow variant="sitterMessages" />
 
-      <div className="relative z-10 grid gap-6">
-        <div className="flex items-end justify-between gap-4">
-          <div>
-            <p className="text-sm font-semibold text-slate-600">Tableau de bord</p>
-            <h1 className="mt-2 flex items-center gap-2 text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">
-              <MessageCircle className="h-6 w-6 text-slate-700" aria-hidden="true" />
-              <span>Messages</span>
-            </h1>
-            <div className="mt-3 flex min-h-[32px] items-center">
-              <p className="text-sm text-slate-600">{rows.length} conversation(s)</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="relative h-[calc(100vh-140px)] overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)]">
-          <button
-            type="button"
-            aria-label="Rafraîchir"
-            title="Rafraîchir"
-            onClick={() => void loadConversations()}
-            className="absolute right-4 top-4 z-10 inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 shadow-sm transition hover:bg-slate-50"
-          >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4" aria-hidden="true">
-              <path d="M21 12a9 9 0 1 1-3.1-6.8" />
-              <path d="M21 3v6h-6" />
-            </svg>
-          </button>
-          <ConversationExpandProvider value={{ isExpanded, setIsExpanded }}>
-            <div className={"grid h-full gap-0 transition-all duration-300 ease-out " + (isExpanded ? "lg:grid-cols-[0px_1fr]" : "lg:grid-cols-[360px_1fr]")}>
+      <div className="relative z-10 grid">
+        <div className="relative h-[calc(100vh-110px)] lg:h-[calc(100vh-140px)] overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)]">
+            <div className="grid h-full gap-0 lg:grid-cols-[360px_1fr]">
             <aside
               className={
-                "h-full flex-col border-b border-slate-200 p-4 transition-all duration-300 ease-out sm:p-6 lg:border-b-0 " +
+                "h-full flex-col border-slate-200 p-4 sm:p-6 " +
                 (activeId ? "hidden lg:flex " : "flex ") +
-                (isExpanded ? "lg:w-0 lg:overflow-hidden lg:border-r-0 lg:p-0 lg:opacity-0" : "lg:border-r lg:opacity-100")
+                "lg:border-r"
               }
             >
-              <div className="flex items-center justify-between">
-                <p className="px-2 pb-3 text-xs font-semibold text-slate-600">Boîte de réception</p>
-              </div>
-
               {error ? (
                 <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm font-medium text-rose-900">
                   <p>{error}</p>
@@ -249,7 +214,6 @@ export default function HostMessagesLayout({ children }: { children: React.React
 
             <section className={"h-full min-h-0 p-0 sm:p-6 " + (activeId ? "block" : "hidden lg:block")}>{children}</section>
             </div>
-          </ConversationExpandProvider>
         </div>
       </div>
     </div>
