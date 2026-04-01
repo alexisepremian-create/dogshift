@@ -514,7 +514,6 @@ export default function AccountMessagesPage() {
           </div>
         </div>
       )}
-      </div>
     </div>
   );
 }
