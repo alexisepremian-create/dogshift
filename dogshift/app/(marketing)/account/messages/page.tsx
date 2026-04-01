@@ -291,10 +291,7 @@ export default function AccountMessagesPage() {
   }
 
   return (
-    <div className="relative grid overflow-hidden" data-testid="account-messages-page">
-      <SunCornerGlow variant="ownerMessages" />
-
-      <div className="relative z-10 grid">
+    <div className="flex h-[calc(100vh-80px)] flex-col bg-white -mx-4 -mt-4 sm:mx-0 sm:mt-0 sm:rounded-3xl sm:border sm:border-slate-200 sm:shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)]" data-testid="account-messages-page">
       {error ? (
         <div className="rounded-3xl border border-rose-200 bg-rose-50 p-6 text-sm font-medium text-rose-900 sm:p-8">
           <p>{error}</p>
@@ -336,7 +333,7 @@ export default function AccountMessagesPage() {
           </div>
         </div>
       ) : (
-        <div className="relative h-[calc(100vh-110px)] lg:h-[calc(100vh-140px)] overflow-hidden bg-white sm:rounded-3xl sm:border sm:border-slate-200 sm:shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)] -mx-4 sm:mx-0">
+        <div className="flex-1 min-h-0 relative">
           <div className="grid h-full gap-0 lg:grid-cols-[360px_1fr]">
             <section
               className={

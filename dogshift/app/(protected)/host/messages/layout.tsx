@@ -122,11 +122,8 @@ export default function HostMessagesLayout({ children }: { children: React.React
   }, [conversations]);
 
   return (
-    <div className="relative grid overflow-hidden" data-testid="host-messages-layout">
-      <SunCornerGlow variant="sitterMessages" />
-
-      <div className="relative z-10 grid">
-        <div className="relative h-[calc(100vh-110px)] lg:h-[calc(100vh-140px)] overflow-hidden bg-white sm:rounded-3xl sm:border sm:border-slate-200 sm:shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)] -mx-4 sm:mx-0">
+    <div className="flex h-[calc(100vh-80px)] flex-col bg-white -mx-4 -mt-4 sm:mx-0 sm:mt-0 sm:rounded-3xl sm:border sm:border-slate-200 sm:shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)]" data-testid="host-messages-layout">
+        <div className="flex-1 min-h-0 relative">
             <div className="grid h-full gap-0 lg:grid-cols-[360px_1fr]">
             <aside
               className={
@@ -181,7 +178,7 @@ export default function HostMessagesLayout({ children }: { children: React.React
                       >
                         <div className="flex items-start justify-between gap-3">
                           <div className="flex min-w-0 items-start gap-3">
-                            <div className="relative mt-0.5 h-10 w-10 shrink-0 overflow-hidden rounded-2xl bg-slate-100">
+                              <div className="relative mt-0.5 h-10 w-10 shrink-0 overflow-hidden rounded-full bg-slate-100">
                               {c.owner.avatarUrl && avatarIsSafe(c.owner.avatarUrl) ? (
                                 <Image src={c.owner.avatarUrl} alt={c.owner.name} fill className="object-cover" sizes="40px" />
                               ) : (
@@ -215,7 +212,6 @@ export default function HostMessagesLayout({ children }: { children: React.React
             <section className={"h-full min-h-0 p-0 sm:p-6 " + (activeId ? "block" : "hidden lg:block")}>{children}</section>
             </div>
         </div>
-      </div>
     </div>
   );
 }
