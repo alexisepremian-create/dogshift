@@ -53,8 +53,8 @@ export default function BecomeSitterForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [showPasswordConfirm, setShowPasswordConfirm] = useState(false);
   const [services, setServices] = useState<string[]>([]);
-  const [hourlyRate, setHourlyRate] = useState<number | null>(35);
-  const [pricePerDay, setPricePerDay] = useState<number | null>(70);
+  const [hourlyRate, setHourlyRate] = useState<number | null>(null);
+  const [pricePerDay, setPricePerDay] = useState<number | null>(null);
   const [availability, setAvailability] = useState("");
   const [bio, setBio] = useState("");
   const [avatarDataUrl, setAvatarDataUrl] = useState<string | null>(null);
@@ -79,10 +79,12 @@ export default function BecomeSitterForm() {
   const [step2Attempted, setStep2Attempted] = useState(false);
   const [step1Attempted, setStep1Attempted] = useState(false);
 
-  const HOURLY_MIN = 20;
-  const HOURLY_MAX = 40;
-  const DAILY_MIN = 70;
-  const DAILY_MAX = 140;
+  const WALK_MIN = 15;
+  const WALK_MAX = 25;
+  const SITTING_MIN = 18;
+  const SITTING_MAX = 30;
+  const DAILY_MIN = 35;
+  const DAILY_MAX = 60;
 
   const sessionEmail = useMemo(() => {
     if (!isLoaded || !isSignedIn) return "";
@@ -213,6 +215,13 @@ export default function BecomeSitterForm() {
     };
   }, [serviceFlags]);
 
+  const hourlyMin = serviceFlags.walk && serviceFlags.sitting
+    ? Math.min(WALK_MIN, SITTING_MIN)
+    : serviceFlags.walk ? WALK_MIN : SITTING_MIN;
+  const hourlyMax = serviceFlags.walk && serviceFlags.sitting
+    ? Math.max(WALK_MAX, SITTING_MAX)
+    : serviceFlags.walk ? WALK_MAX : SITTING_MAX;
+
   const step2Errors = useMemo(() => {
     const errors: { hourlyRate?: string; pricePerDay?: string; services?: string } = {};
     const hasAnyService = serviceFlags.walk || serviceFlags.sitting || serviceFlags.boarding;
@@ -225,21 +234,25 @@ export default function BecomeSitterForm() {
     if (serviceFlags.walk || serviceFlags.sitting) {
       if (hourlyRate === null || !Number.isFinite(hourlyRate)) {
         errors.hourlyRate = "Le tarif horaire est requis.";
-      } else if (hourlyRate < HOURLY_MIN || hourlyRate > HOURLY_MAX) {
-        errors.hourlyRate = `Tarif autorisé entre ${HOURLY_MIN} et ${HOURLY_MAX} CHF`;
+      } else if (hourlyRate < hourlyMin) {
+        errors.hourlyRate = `Tarif trop bas — minimum ${hourlyMin} CHF/h pour la phase pilote.`;
+      } else if (hourlyRate > hourlyMax) {
+        errors.hourlyRate = `Tarif trop élevé — maximum ${hourlyMax} CHF/h pour la phase pilote.`;
       }
     }
 
     if (serviceFlags.boarding) {
       if (pricePerDay === null || !Number.isFinite(pricePerDay)) {
         errors.pricePerDay = "Le prix par jour est requis.";
-      } else if (pricePerDay < DAILY_MIN || pricePerDay > DAILY_MAX) {
-        errors.pricePerDay = `Tarif autorisé entre ${DAILY_MIN} et ${DAILY_MAX} CHF`;
+      } else if (pricePerDay < DAILY_MIN) {
+        errors.pricePerDay = `Tarif trop bas — minimum ${DAILY_MIN} CHF/jour pour la phase pilote.`;
+      } else if (pricePerDay > DAILY_MAX) {
+        errors.pricePerDay = `Tarif trop élevé — maximum ${DAILY_MAX} CHF/jour pour la phase pilote.`;
       }
     }
 
     return errors;
-  }, [serviceFlags, hourlyRate, pricePerDay, HOURLY_MIN, HOURLY_MAX, DAILY_MIN, DAILY_MAX]);
+  }, [serviceFlags, hourlyRate, pricePerDay, hourlyMin, hourlyMax, DAILY_MIN, DAILY_MAX]);
 
   const canNext2 = useMemo(() => {
     const hasErrors = Boolean(step2Errors.hourlyRate || step2Errors.pricePerDay || step2Errors.services);
@@ -607,22 +620,24 @@ export default function BecomeSitterForm() {
                         <label htmlFor="hourlyRate" className="block text-sm font-medium text-slate-700">
                           Tarif horaire (CHF)
                         </label>
+                        <p className="mt-0.5 text-xs text-slate-500">Phase pilote : {hourlyMin}–{hourlyMax} CHF/h</p>
                         <input
                           id="hourlyRate"
                           type="number"
                           inputMode="numeric"
                           pattern="[0-9]*"
-                          min={HOURLY_MIN}
-                          max={HOURLY_MAX}
+                          min={hourlyMin}
+                          max={hourlyMax}
                           step={1}
                           value={hourlyRate ?? ""}
+                          placeholder={`${hourlyMin}–${hourlyMax}`}
                           onChange={(e) => {
-                            const next = sanitizeRateInput(e.target.value, HOURLY_MAX);
+                            const next = sanitizeRateInput(e.target.value, 999);
                             setHourlyRate(next.value);
                           }}
-                          className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition focus:border-[var(--dogshift-blue)] focus:ring-4 focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_85%)]"
+                          className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-base text-slate-900 shadow-sm outline-none transition focus:border-[var(--dogshift-blue)] focus:ring-4 focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_85%)]"
                         />
-                        {step2Attempted && step2Errors.hourlyRate ? (
+                        {step2Errors.hourlyRate ? (
                           <p className="mt-2 text-xs font-medium text-rose-600">{step2Errors.hourlyRate}</p>
                         ) : null}
                       </div>
@@ -635,6 +650,7 @@ export default function BecomeSitterForm() {
                             ? "Prix par jour (CHF) — Pension"
                             : "Prix par jour (CHF)"}
                         </label>
+                        <p className="mt-0.5 text-xs text-slate-500">Phase pilote : {DAILY_MIN}–{DAILY_MAX} CHF/jour</p>
                         <input
                           id="pricePerDay"
                           type="number"
@@ -644,19 +660,20 @@ export default function BecomeSitterForm() {
                           max={DAILY_MAX}
                           step={1}
                           value={pricePerDay ?? ""}
+                          placeholder={`${DAILY_MIN}–${DAILY_MAX}`}
                           onChange={(e) => {
-                            const next = sanitizeRateInput(e.target.value, DAILY_MAX);
+                            const next = sanitizeRateInput(e.target.value, 999);
                             setPricePerDay(next.value);
                           }}
-                          className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition focus:border-[var(--dogshift-blue)] focus:ring-4 focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_85%)]"
+                          className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-base text-slate-900 shadow-sm outline-none transition focus:border-[var(--dogshift-blue)] focus:ring-4 focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_85%)]"
                         />
-                        {step2Attempted && step2Errors.pricePerDay ? (
+                        {step2Errors.pricePerDay ? (
                           <p className="mt-2 text-xs font-medium text-rose-600">{step2Errors.pricePerDay}</p>
                         ) : null}
                       </div>
                     ) : null}
 
-                    {step2Attempted && step2Errors.services ? (
+                    {step2Errors.services ? (
                       <div className="sm:col-span-2">
                         <p className="text-xs font-medium text-rose-600">{step2Errors.services}</p>
                       </div>
@@ -799,7 +816,7 @@ export default function BecomeSitterForm() {
                 if (step === 2 && !canNext2) return;
                 setStep((s) => (s === 3 ? 3 : ((s + 1) as 1 | 2 | 3)));
               }}
-              disabled={(step === 1 && !canNext1) || (step === 2 && !canNext2) || formStatus === "submitting" || isAuthBusy}
+              disabled={(step === 1 && !canNext1) || formStatus === "submitting" || isAuthBusy}
               className="inline-flex items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-6 py-3 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition hover:bg-[var(--dogshift-blue-hover)] disabled:cursor-not-allowed disabled:opacity-60"
             >
               {isContinueLoading ? (
