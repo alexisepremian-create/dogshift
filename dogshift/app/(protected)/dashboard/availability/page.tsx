@@ -1810,8 +1810,8 @@ export default function AvailabilityStudioPage() {
                                 }}
                                 className={
                                   isActiveCard
-                                    ? "m-1 cursor-pointer rounded-2xl border border-[var(--dogshift-blue)]/30 bg-white p-3 text-left shadow-md sm:m-2 sm:rounded-3xl sm:p-4"
-                                    : "m-1 cursor-pointer rounded-2xl border border-slate-200 bg-white p-3 text-left sm:m-2 sm:rounded-3xl sm:p-4"
+                                    ? "m-1 cursor-pointer rounded-2xl border-2 border-[var(--dogshift-blue)] bg-white p-3 text-left shadow-sm sm:m-2 sm:rounded-3xl sm:p-4"
+                                    : "m-1 cursor-pointer rounded-2xl border-2 border-transparent ring-1 ring-inset ring-slate-200 bg-white p-3 text-left sm:m-2 sm:rounded-3xl sm:p-4"
                                 }
                                 aria-pressed={isActiveCard}
                               >
@@ -1854,7 +1854,7 @@ export default function AvailabilityStudioPage() {
 
                                 <div className="mt-3 grid gap-2">
                                   <label className="text-xs font-semibold text-slate-500">Tarif</label>
-                                  <div className="flex items-center gap-2">
+                                  <div className="flex items-center gap-2 pr-1">
                                     <input
                                       value={priceInput}
                                       onChange={(e) => {
@@ -1873,10 +1873,10 @@ export default function AvailabilityStudioPage() {
                                       onClick={(e) => e.stopPropagation()}
                                       inputMode="decimal"
                                       placeholder={pricingPlaceholderLabel(svc)}
-                                      className="h-10 min-w-0 flex-1 rounded-xl border border-slate-200 bg-white px-3 text-base font-medium text-slate-900"
+                                      className="h-10 w-24 rounded-xl border border-slate-200 bg-white px-3 text-base font-medium text-slate-900"
                                     />
-                                    <span className="text-xs font-semibold text-slate-500 shrink-0">{pricingUnitLabel(svc)}</span>
-                                    {priceSaving ? <span className="text-xs font-semibold text-slate-400">...</span> : null}
+                                    <span className="text-xs font-semibold text-slate-500 whitespace-nowrap shrink-0">{pricingUnitLabel(svc)}</span>
+                                    {priceSaving ? <span className="text-xs font-semibold text-slate-400 shrink-0">...</span> : null}
                                   </div>
                                   <p className="text-[11px] font-semibold text-slate-500">Fourchette : {pricingRangeLabel(svc)}</p>
                                   {priceError ? <p className="text-xs font-medium text-rose-600">{priceError}</p> : null}

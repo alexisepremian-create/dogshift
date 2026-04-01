@@ -239,12 +239,12 @@ export default function AccountMessageThreadPage() {
                       <div
                         className={
                           mine
-                            ? "max-w-[85%] rounded-2xl border border-slate-200 bg-slate-100 px-4 py-3"
-                            : "max-w-[85%] rounded-2xl border border-slate-200 bg-white px-4 py-3"
+                            ? "max-w-[85%] rounded-2xl rounded-br-sm bg-[var(--dogshift-blue)] px-4 py-2.5 text-white shadow-sm"
+                            : "max-w-[85%] rounded-2xl rounded-bl-sm bg-slate-100 px-4 py-2.5 text-slate-900 shadow-sm"
                         }
                       >
-                        <p className="whitespace-pre-line text-sm text-slate-800">{m.body}</p>
-                        <p className="mt-2 text-xs text-slate-500">{formatDateTime(m.createdAt)}</p>
+                        <p className={`whitespace-pre-wrap text-[15px] ${mine ? "text-white" : "text-slate-900"}`}>{m.body}</p>
+                        <p className={`mt-1 text-[11px] ${mine ? "text-white/70" : "text-slate-500"}`}>{formatDateTime(m.createdAt)}</p>
                       </div>
                     </div>
                   );
@@ -252,18 +252,16 @@ export default function AccountMessageThreadPage() {
               )}
             </div>
 
-            <div className="mt-6 border-t border-slate-200 pt-5">
-              <label htmlFor="reply" className="block text-sm font-medium text-slate-700">
-                Message
-              </label>
-              <textarea
-                id="reply"
-                value={text}
-                onChange={(e) => setText(e.target.value)}
-                className="mt-2 w-full min-h-[110px] rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition focus:border-[var(--dogshift-blue)] focus:ring-4 focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_85%)]"
-                placeholder="Écrire un message…"
-              />
-              <div className="mt-3 flex justify-end">
+            <div className="mt-4 border-t border-slate-100 pt-4">
+              <div className="flex items-end gap-3">
+                <textarea
+                  id="reply"
+                  value={text}
+                  onChange={(e) => setText(e.target.value)}
+                  className="block w-full min-h-[44px] max-h-32 resize-none overflow-y-auto rounded-3xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-[15px] text-slate-900 outline-none transition focus:border-[var(--dogshift-blue)] focus:bg-white focus:ring-4 focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_85%)] sm:text-sm"
+                  placeholder="Message"
+                  rows={1}
+                />
                 <button
                   type="button"
                   disabled={!canSend}
@@ -272,9 +270,16 @@ export default function AccountMessageThreadPage() {
                     e.stopPropagation();
                     void send();
                   }}
-                  className="inline-flex items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-5 py-3 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition hover:bg-[var(--dogshift-blue-hover)] disabled:cursor-not-allowed disabled:opacity-60"
+                  className="mb-[2px] flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--dogshift-blue)] text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition hover:bg-[var(--dogshift-blue-hover)] disabled:cursor-not-allowed disabled:opacity-50"
+                  aria-label="Envoyer"
                 >
-                  {sending ? "Envoi…" : "Envoyer"}
+                  {sending ? (
+                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                  ) : (
+                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 10.5L12 3m0 0l7.5 7.5M12 3v18" />
+                    </svg>
+                  )}
                 </button>
               </div>
             </div>

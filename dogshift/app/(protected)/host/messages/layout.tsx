@@ -107,15 +107,16 @@ export default function HostMessagesLayout({ children }: { children: React.React
     void loadConversations();
   }, []);
 
+  const m = pathname.match(/^\/host\/messages\/([^/?#]+)/);
+  const activeId = m && m[1] ? decodeURIComponent(m[1]) : null;
+
   useEffect(() => {
-    const m = pathname.match(/^\/host\/messages\/([^/?#]+)/);
-    const activeId = m && m[1] ? decodeURIComponent(m[1]) : null;
     if (!activeId) {
       setIsExpanded(false);
     }
     if (!activeId) return;
     setConversations((prev) => prev.map((c) => (c.id === activeId ? { ...c, unreadCount: 0 } : c)));
-  }, [pathname]);
+  }, [pathname, activeId]);
 
   const rows = useMemo(() => {
     return conversations.slice().sort((a, b) => {
@@ -160,8 +161,9 @@ export default function HostMessagesLayout({ children }: { children: React.React
             <div className={"grid h-full gap-0 transition-all duration-300 ease-out " + (isExpanded ? "lg:grid-cols-[0px_1fr]" : "lg:grid-cols-[360px_1fr]")}>
             <aside
               className={
-                "flex h-full flex-col border-b border-slate-200 p-4 transition-all duration-300 ease-out sm:p-6 lg:border-b-0 " +
-                (isExpanded ? "hidden lg:flex lg:w-0 lg:overflow-hidden lg:border-r-0 lg:p-0 lg:opacity-0" : "lg:border-r lg:opacity-100")
+                "h-full flex-col border-b border-slate-200 p-4 transition-all duration-300 ease-out sm:p-6 lg:border-b-0 " +
+                (activeId ? "hidden lg:flex " : "flex ") +
+                (isExpanded ? "lg:w-0 lg:overflow-hidden lg:border-r-0 lg:p-0 lg:opacity-0" : "lg:border-r lg:opacity-100")
               }
             >
               <div className="flex items-center justify-between">
@@ -245,7 +247,7 @@ export default function HostMessagesLayout({ children }: { children: React.React
               )}
             </aside>
 
-            <section className="h-full min-h-0 p-4 sm:p-6">{children}</section>
+            <section className={"h-full min-h-0 p-0 sm:p-6 " + (activeId ? "block" : "hidden lg:block")}>{children}</section>
             </div>
           </ConversationExpandProvider>
         </div>
