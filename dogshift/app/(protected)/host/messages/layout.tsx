@@ -126,7 +126,7 @@ export default function HostMessagesLayout({ children }: { children: React.React
       <SunCornerGlow variant="sitterMessages" />
 
       <div className="relative z-10 grid">
-        <div className="relative h-[calc(100vh-110px)] lg:h-[calc(100vh-140px)] overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)]">
+        <div className="relative h-[calc(100vh-110px)] lg:h-[calc(100vh-140px)] overflow-hidden bg-white sm:rounded-3xl sm:border sm:border-slate-200 sm:shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)] -mx-4 sm:mx-0">
             <div className="grid h-full gap-0 lg:grid-cols-[360px_1fr]">
             <aside
               className={
@@ -175,8 +175,8 @@ export default function HostMessagesLayout({ children }: { children: React.React
                         }}
                         className={
                           active
-                            ? "block w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-left"
-                            : "block w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left hover:bg-slate-50"
+                            ? "block w-full border-b border-slate-100 bg-[color-mix(in_srgb,var(--dogshift-blue),white_96%)] px-4 py-3 text-left"
+                            : "block w-full border-b border-slate-100 bg-white px-4 py-3 text-left hover:bg-slate-50"
                         }
                       >
                         <div className="flex items-start justify-between gap-3">

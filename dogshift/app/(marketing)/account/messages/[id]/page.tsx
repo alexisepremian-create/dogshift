@@ -196,7 +196,6 @@ export default function AccountMessageThreadPage() {
         </Link>
         <div className="min-w-0">
           <p className="truncate text-sm font-semibold text-slate-900">{header?.sitter?.name ?? "Conversation"}</p>
-          {header?.bookingId ? <p className="mt-0.5 truncate text-xs text-slate-500">Réservation: {header.bookingId}</p> : null}
         </div>
       </div>
 

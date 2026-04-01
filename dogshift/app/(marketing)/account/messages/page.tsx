@@ -336,7 +336,7 @@ export default function AccountMessagesPage() {
           </div>
         </div>
       ) : (
-        <div className="relative h-[calc(100vh-110px)] lg:h-[calc(100vh-140px)] overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)]">
+        <div className="relative h-[calc(100vh-110px)] lg:h-[calc(100vh-140px)] overflow-hidden bg-white sm:rounded-3xl sm:border sm:border-slate-200 sm:shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)] -mx-4 sm:mx-0">
           <div className="grid h-full gap-0 lg:grid-cols-[360px_1fr]">
             <section
               className={
@@ -364,10 +364,10 @@ export default function AccountMessagesPage() {
                         void loadThread(c.id);
                       }}
                       className={
-                        "block w-full rounded-2xl border px-4 py-3 text-left transition" +
+                        "block w-full border-b border-slate-100 px-4 py-3 text-left transition " +
                         (active
-                          ? " border-[color-mix(in_srgb,var(--dogshift-blue),black_10%)] bg-[color-mix(in_srgb,var(--dogshift-blue),white_96%)]"
-                          : " border-slate-200 bg-white hover:bg-slate-50")
+                          ? "bg-[color-mix(in_srgb,var(--dogshift-blue),white_96%)]"
+                          : "bg-white hover:bg-slate-50")
                       }
                     >
                       <div className="flex items-start justify-between gap-3">
@@ -418,7 +418,7 @@ export default function AccountMessagesPage() {
                   <p className="mt-1 text-sm text-slate-600">Nous récupérons la conversation.</p>
                 </div>
               ) : (
-                <div className="flex h-full min-h-0 flex-col rounded-2xl border border-slate-200 bg-white">
+                <div className="flex h-full min-h-0 flex-col bg-white">
                   <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-5 py-4">
                     <div className="flex items-center gap-3 min-w-0">
                       <button
@@ -448,9 +448,6 @@ export default function AccountMessagesPage() {
                       </div>
                       <div className="min-w-0">
                         <p className="truncate text-sm font-semibold text-slate-900">{threadHeader.sitter.name}</p>
-                        {threadHeader.bookingId ? (
-                          <p className="mt-0.5 truncate text-xs text-slate-500">Réservation: {threadHeader.bookingId}</p>
-                        ) : null}
                       </div>
                     </div>
                   </div>

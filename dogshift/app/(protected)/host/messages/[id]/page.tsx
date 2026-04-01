@@ -178,7 +178,7 @@ export default function HostMessageThreadPage() {
           <p className="mt-2 text-sm text-slate-600">Nous récupérons la conversation.</p>
         </div>
       ) : (
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)]">
+        <div className="flex min-h-0 flex-1 flex-col bg-white">
           <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-5 py-4">
             <div className="flex items-center gap-3 min-w-0">
               <Link
@@ -192,7 +192,6 @@ export default function HostMessageThreadPage() {
               </Link>
               <div className="min-w-0">
                 <p className="truncate text-sm font-semibold text-slate-900">{header.owner.name}</p>
-                {header.bookingId ? <p className="mt-0.5 truncate text-xs text-slate-500">Réservation: {header.bookingId}</p> : null}
               </div>
             </div>
           </div>
