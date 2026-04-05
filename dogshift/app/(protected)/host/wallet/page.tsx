@@ -854,7 +854,7 @@ export default function HostWalletPage() {
           </div>
 
           {/* Desktop: 3D flip card */}
-          <div className="hidden lg:flex flex-1" style={{ perspective: "1500px" }}>
+          <div className="hidden lg:flex flex-1 min-h-[480px]" style={{ perspective: "1500px" }}>
             <div
               className="relative h-full w-full transition-transform duration-700 ease-[cubic-bezier(0.23,1,0.32,1)]"
               style={{
@@ -868,7 +868,7 @@ export default function HostWalletPage() {
                 style={{ backfaceVisibility: "hidden" }}
               >
                 {/* Stripe Content */}
-                <div className="relative overflow-hidden p-6 sm:p-8">
+                <div className="relative p-6 sm:p-8">
                   <div className="relative z-10 flex flex-col items-center text-center">
                     <button
                       type="button"
