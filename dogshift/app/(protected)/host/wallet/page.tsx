@@ -765,11 +765,11 @@ export default function HostWalletPage() {
           {/* Right side: Stripe & Pilot (FLIP CARD) */}
 
           {/* Mobile: no 3D flip (iOS Safari breaks backface-visibility with overflow ancestors) */}
-          <div className="flex-1 lg:hidden">
+          <div className="lg:hidden">
             {!stripeInfoOpen ? (
-              <div className="flex flex-col justify-between rounded-3xl border border-slate-200 bg-white shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)]">
-                <div className="relative p-6 sm:p-8">
-                  <div className="relative z-10 flex flex-col items-center text-center">
+              <div className="rounded-3xl border border-slate-200 bg-white shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)]">
+                <div className="p-6 sm:p-8">
+                  <div className="flex flex-col items-center text-center">
                     <button
                       type="button"
                       onClick={() => setStripeInfoOpen(true)}
