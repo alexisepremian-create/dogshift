@@ -768,7 +768,7 @@ export default function HostWalletPage() {
           <div className="flex-1 lg:hidden">
             {!stripeInfoOpen ? (
               <div className="flex flex-col justify-between rounded-3xl border border-slate-200 bg-white shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)]">
-                <div className="relative overflow-hidden p-6 sm:p-8">
+                <div className="relative p-6 sm:p-8">
                   <div className="relative z-10 flex flex-col items-center text-center">
                     <button
                       type="button"
