@@ -32,13 +32,14 @@ function ensureServiceConfig(sitterId: string, serviceType: ServiceType, row: an
   };
 }
 
-function ensureServiceConfigForPublicCalendar(sitterId: string, serviceType: ServiceType, row: any) {
-  // For the public calendar, never assume a service is enabled unless there is an explicit DB row.
+function ensureServiceConfigForPublicCalendar(sitterId: string, serviceType: ServiceType, row: any, hasRules = false) {
+  // If no explicit config row exists, enable the service only when the sitter already has
+  // rules configured for it — those rules are an explicit opt-in signal.
   if (!row) {
     return {
       ...SERVICE_DEFAULTS[serviceType],
       sitterId,
-      enabled: false,
+      enabled: hasRules,
       serviceType,
     };
   }
@@ -137,11 +138,14 @@ function summarizeConfiguredStatus(rows: Array<{ status?: "AVAILABLE" | "ON_REQU
 export function computeMultiDayStatusNaive(input: DayStatusMultiInput): MultiServiceDayStatus[] {
   const { sitterId, dates, now, allRules, allExceptions, allBookings, allConfigs } = input;
 
+  const hasRulesForService = (serviceType: ServiceType) =>
+    (allRules ?? []).some((r: any) => r?.serviceType === serviceType);
+
   const configByService = new Map<ServiceType, any>();
   for (const row of allConfigs ?? []) {
     const st = row?.serviceType as ServiceType;
     if (st === "PROMENADE" || st === "DOGSITTING" || st === "PENSION") {
-      configByService.set(st, ensureServiceConfigForPublicCalendar(sitterId, st, row));
+      configByService.set(st, ensureServiceConfigForPublicCalendar(sitterId, st, row, hasRulesForService(st)));
     }
   }
 
@@ -151,7 +155,7 @@ export function computeMultiDayStatusNaive(input: DayStatusMultiInput): MultiSer
     const computeStatus = (serviceType: ServiceType) => {
       const rules = (allRules ?? []).filter((r: any) => r && r.serviceType === serviceType && r.dayOfWeek === dow);
       const exceptions = (allExceptions ?? []).filter((e: any) => e && e.serviceType === serviceType && exceptionDateKey(e) === date);
-      const config = configByService.get(serviceType) ?? ensureServiceConfigForPublicCalendar(sitterId, serviceType, null);
+      const config = configByService.get(serviceType) ?? ensureServiceConfigForPublicCalendar(sitterId, serviceType, null, hasRulesForService(serviceType));
       const slots = computeDaySlots({
         serviceType,
         date,
@@ -222,16 +226,22 @@ export function computeMultiDayStatusIndexed(input: DayStatusMultiInput): {
     exceptionsByServiceByDate[st].set(key, bucket);
   }
 
+  const hasRulesByService: Record<ServiceType, boolean> = {
+    PROMENADE: (allRules ?? []).some((r: any) => r?.serviceType === "PROMENADE"),
+    DOGSITTING: (allRules ?? []).some((r: any) => r?.serviceType === "DOGSITTING"),
+    PENSION: (allRules ?? []).some((r: any) => r?.serviceType === "PENSION"),
+  };
+
   const configByService: Record<ServiceType, any> = {
-    PROMENADE: ensureServiceConfigForPublicCalendar(sitterId, "PROMENADE", null),
-    DOGSITTING: ensureServiceConfigForPublicCalendar(sitterId, "DOGSITTING", null),
-    PENSION: ensureServiceConfigForPublicCalendar(sitterId, "PENSION", null),
+    PROMENADE: ensureServiceConfigForPublicCalendar(sitterId, "PROMENADE", null, hasRulesByService.PROMENADE),
+    DOGSITTING: ensureServiceConfigForPublicCalendar(sitterId, "DOGSITTING", null, hasRulesByService.DOGSITTING),
+    PENSION: ensureServiceConfigForPublicCalendar(sitterId, "PENSION", null, hasRulesByService.PENSION),
   };
 
   for (const row of allConfigs ?? []) {
     const st = row?.serviceType as ServiceType;
     if (st === "PROMENADE" || st === "DOGSITTING" || st === "PENSION") {
-      configByService[st] = ensureServiceConfigForPublicCalendar(sitterId, st, row);
+      configByService[st] = ensureServiceConfigForPublicCalendar(sitterId, st, row, hasRulesByService[st]);
     }
   }
 

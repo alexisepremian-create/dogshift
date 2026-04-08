@@ -3,7 +3,7 @@ import type { NextRequest } from "next/server";
 
 import { prisma } from "@/lib/prisma";
 import { requireSitterOwner } from "@/lib/auth/requireSitterOwner";
-import type { ServiceType } from "@/lib/availability/slotEngine";
+import { SERVICE_DEFAULTS, type ServiceType } from "@/lib/availability/slotEngine";
 import { clampMinute, normalizeRanges } from "@/lib/availability/rangeValidation";
 import { writeAvailabilityAuditLog } from "@/lib/availability/auditLog";
 
@@ -143,6 +143,23 @@ export async function PUT(req: NextRequest) {
         status: r.status,
       })),
     });
+
+    // Ensure a serviceConfig row exists so the public calendar reflects this service as active.
+    // The pricing was already validated above (assertPricingConfiguredOrThrow).
+    const existingConfig = await (prisma as any).serviceConfig.findUnique({
+      where: { sitterId_serviceType: { sitterId: auth.sitterId, serviceType } },
+      select: { id: true },
+    });
+    if (!existingConfig) {
+      await (prisma as any).serviceConfig.create({
+        data: {
+          sitterId: auth.sitterId,
+          ...SERVICE_DEFAULTS[serviceType],
+          serviceType,
+          enabled: true,
+        },
+      });
+    }
   }
 
   try {
