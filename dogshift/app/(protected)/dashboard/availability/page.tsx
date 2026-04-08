@@ -277,6 +277,7 @@ export default function AvailabilityStudioPage() {
     Array<{ date: string; promenadeStatus: "AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE"; dogsittingStatus: "AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE"; pensionStatus: "AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE" }>
   >([]);
 
+  const [initialLoaded, setInitialLoaded] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [savedPing, setSavedPing] = useState<string | null>(null);
@@ -325,6 +326,38 @@ export default function AvailabilityStudioPage() {
       setLastMinuteEnabledGlobal(null);
       setLastMinutePhonePresent(null);
     }
+  }
+
+  // Applies a full availability-init payload to all state at once (single render).
+  function applyInitPayload(payload: any) {
+    const services: ServiceTypeApi[] = ["PROMENADE", "DOGSITTING", "PENSION"];
+
+    const nextConfig: Record<ServiceTypeApi, ServiceConfig | null> = { PROMENADE: null, DOGSITTING: null, PENSION: null };
+    for (const svc of services) {
+      const cfg = payload?.configs?.[svc];
+      if (cfg && typeof cfg.enabled === "boolean") nextConfig[svc] = { enabled: cfg.enabled };
+    }
+
+    const nextExceptions: Record<ServiceTypeApi, ExceptionRow[]> = { PROMENADE: [], DOGSITTING: [], PENSION: [] };
+    for (const svc of services) {
+      const excs = payload?.exceptions?.[svc];
+      if (Array.isArray(excs)) nextExceptions[svc] = excs as ExceptionRow[];
+    }
+
+    const nextRules: Record<ServiceTypeApi, AvailabilityRuleRow[]> = { PROMENADE: [], DOGSITTING: [], PENSION: [] };
+    for (const svc of services) {
+      const rules = payload?.rules?.[svc];
+      if (Array.isArray(rules)) nextRules[svc] = rules as AvailabilityRuleRow[];
+    }
+
+    // Apply all state updates — React 18 batches them automatically into one render
+    setConfigByService(nextConfig);
+    setExceptionsByService(nextExceptions);
+    setRulesByService(nextRules);
+    if (Array.isArray(payload?.days)) setMonthDays(payload.days);
+    if (typeof payload?.lastMinuteEnabled === "boolean") setLastMinuteEnabledGlobal(payload.lastMinuteEnabled);
+    if (typeof payload?.phonePresent === "boolean") setLastMinutePhonePresent(payload.phonePresent);
+    setInitialLoaded(true);
   }
 
   async function saveLastMinuteGlobal(next: boolean) {
@@ -625,78 +658,18 @@ export default function AvailabilityStudioPage() {
     setError(null);
 
     try {
-      const services: ServiceTypeApi[] = ["PROMENADE", "DOGSITTING", "PENSION"];
-
-      await refetchLastMinuteGlobal();
-
-      const cfgPairs = await Promise.all(
-        services.map(async (svc) => {
-          const res = await fetch(`/api/sitters/me/service-config?service=${encodeURIComponent(svc)}`, { method: "GET", cache: "no-store" });
-          const payload = (await res.json().catch(() => null)) as any;
-          if (!res.ok || !payload?.ok || typeof payload?.enabled !== "boolean") throw new Error("CONFIG_ERROR");
-          return [
-            svc,
-            {
-              enabled: payload.enabled,
-            } satisfies ServiceConfig,
-          ] as const;
-        })
-      );
-      if (token !== refreshTokenRef.current) return;
-      setConfigByService((prev) => {
-        const next = { ...prev };
-        for (const [svc, cfg] of cfgPairs) (next as any)[svc] = cfg;
-        return next;
-      });
-
-      const excPairs = await Promise.all(
-        services.map(async (svc) => {
-          const res = await fetch(
-            `/api/sitters/me/availability-exceptions?service=${encodeURIComponent(svc)}&from=${encodeURIComponent(meta.fromIso)}&to=${encodeURIComponent(meta.toIso)}`,
-            { method: "GET", cache: "no-store" }
-          );
-          const payload = (await res.json().catch(() => null)) as any;
-          if (!res.ok || !payload?.ok || !Array.isArray(payload?.exceptions)) throw new Error("EXC_ERROR");
-          return [svc, payload.exceptions as ExceptionRow[]] as const;
-        })
-      );
-      if (token !== refreshTokenRef.current) return;
-      setExceptionsByService((prev) => {
-        const next = { ...prev };
-        for (const [svc, exceptions] of excPairs) (next as any)[svc] = exceptions;
-        return next;
-      });
-
-      const rulePairs = await Promise.all(
-        services.map(async (svc) => {
-          const res = await fetch(`/api/sitters/me/availability-rules?service=${encodeURIComponent(svc)}`, { method: "GET", cache: "no-store" });
-          const payload = (await res.json().catch(() => null)) as any;
-          if (!res.ok) {
-            if (payload?.error === "PRICING_REQUIRED") return [svc, [] as AvailabilityRuleRow[]] as const;
-            throw new Error("RULES_ERROR");
-          }
-          if (!payload?.ok || !Array.isArray(payload?.rules)) throw new Error("RULES_ERROR");
-          return [svc, payload.rules as AvailabilityRuleRow[]] as const;
-        })
-      );
-      if (token !== refreshTokenRef.current) return;
-      setRulesByService((prev) => {
-        const next = { ...prev };
-        for (const [svc, rules] of rulePairs) (next as any)[svc] = rules;
-        return next;
-      });
-
-      // Public preview month calendar (truth = slotEngine summaries)
-      const qp = new URLSearchParams();
-      qp.set("from", meta.fromIso);
-      qp.set("to", meta.toIso);
-      const res = await fetch(`/api/sitters/${encodeURIComponent(sitterId)}/day-status/multi?${qp.toString()}`, { method: "GET", cache: "no-store" });
+      // Single request: the server fetches all DB data in parallel and computes the calendar.
+      // Previously this was 11 HTTP requests in 5 sequential waves; now it is 1 request.
+      const qp = new URLSearchParams({ from: meta.fromIso, to: meta.toIso });
+      const res = await fetch(`/api/sitters/me/availability-init?${qp.toString()}`, { method: "GET", cache: "no-store" });
       const payload = (await res.json().catch(() => null)) as any;
-      if (!res.ok || !payload?.ok || !Array.isArray(payload?.days)) throw new Error("DAY_STATUS_ERROR");
+      if (!res.ok || !payload?.ok) throw new Error(payload?.error ?? "INIT_ERROR");
       if (token !== refreshTokenRef.current) return;
-      setMonthDays(payload.days);
 
-      setSavedPing("Synchronisé avec l’agenda public");
+      // Apply all state updates at once — React 18 batches them into a single re-render.
+      applyInitPayload(payload);
+
+      setSavedPing("Synchronisé avec l'agenda public");
       setTimeout(() => setSavedPing(null), 1800);
     } catch (e) {
       if (token !== refreshTokenRef.current) return;
@@ -705,8 +678,6 @@ export default function AvailabilityStudioPage() {
       if (token !== refreshTokenRef.current) return;
       setLoading(false);
     }
-
-    return;
   }
 
   async function saveWeeklyRule(svc: ServiceTypeApi, dayOfWeek: number, enabled: boolean, status: "AVAILABLE" | "ON_REQUEST") {
@@ -1231,6 +1202,50 @@ export default function AvailabilityStudioPage() {
           <Link href="/devenir-dogsitter" className="text-sm font-semibold text-[var(--dogshift-blue)]">
             Devenir sitter
           </Link>
+        </div>
+      </div>
+    );
+  }
+
+  // Skeleton shown only on the very first load before any data arrives
+  if (!initialLoaded) {
+    return (
+      <div className="w-full py-6 animate-pulse" aria-busy="true" aria-label="Chargement des disponibilités…">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <div className="h-7 w-40 rounded-xl bg-slate-200" />
+            <div className="mt-2 h-4 w-64 rounded-lg bg-slate-100" />
+          </div>
+        </div>
+        {/* Services skeleton */}
+        <div className="mt-6 grid gap-4 sm:grid-cols-3">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="rounded-3xl border border-slate-200 bg-white p-4">
+              <div className="flex items-center justify-between">
+                <div className="h-4 w-24 rounded-lg bg-slate-200" />
+                <div className="h-6 w-10 rounded-full bg-slate-200" />
+              </div>
+              <div className="mt-3 h-8 w-20 rounded-xl bg-slate-100" />
+            </div>
+          ))}
+        </div>
+        {/* Calendar skeleton */}
+        <div className="mt-6 rounded-3xl border border-slate-200 bg-white p-4">
+          <div className="h-5 w-32 rounded-lg bg-slate-200" />
+          <div className="mt-4 grid grid-cols-7 gap-2">
+            {Array.from({ length: 35 }).map((_, i) => (
+              <div key={i} className="h-12 rounded-2xl bg-slate-100" />
+            ))}
+          </div>
+        </div>
+        {/* Weekly rules skeleton */}
+        <div className="mt-6 rounded-3xl border border-slate-200 bg-white p-4">
+          <div className="h-5 w-48 rounded-lg bg-slate-200" />
+          <div className="mt-4 grid gap-2">
+            {[0, 1, 2, 3, 4, 5, 6].map((i) => (
+              <div key={i} className="h-11 rounded-2xl bg-slate-100" />
+            ))}
+          </div>
         </div>
       </div>
     );
