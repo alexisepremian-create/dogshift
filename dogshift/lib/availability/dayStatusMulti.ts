@@ -156,6 +156,10 @@ export function computeMultiDayStatusNaive(input: DayStatusMultiInput): MultiSer
       const rules = (allRules ?? []).filter((r: any) => r && r.serviceType === serviceType && r.dayOfWeek === dow);
       const exceptions = (allExceptions ?? []).filter((e: any) => e && e.serviceType === serviceType && exceptionDateKey(e) === date);
       const config = configByService.get(serviceType) ?? ensureServiceConfigForPublicCalendar(sitterId, serviceType, null, hasRulesForService(serviceType));
+      // Same logic as the indexed version: exceptions override a disabled service for this date.
+      const effectiveConfig = config?.enabled === false && exceptions.length > 0
+        ? { ...config, enabled: true }
+        : config;
       const slots = computeDaySlots({
         serviceType,
         date,
@@ -163,7 +167,7 @@ export function computeMultiDayStatusNaive(input: DayStatusMultiInput): MultiSer
         rules,
         exceptions,
         bookings: allBookings ?? [],
-        config,
+        config: effectiveConfig,
       });
       return summarizeDayStatusFromSlots(slots);
     };
@@ -295,10 +299,20 @@ export function computeMultiDayStatusIndexed(input: DayStatusMultiInput): {
       const exceptions = exceptionsByServiceByDate[serviceType].get(date) ?? [];
       const config = configByService[serviceType];
 
-      if (config?.enabled === false) return { status: "UNAVAILABLE" as const, partial: false };
+      // Only short-circuit disabled services when there is no explicit exception for this date.
+      // An exception is an intentional per-day override and must take precedence even if the
+      // service has no weekly rules (and therefore no serviceConfig row yet).
+      if (config?.enabled === false && exceptions.length === 0) return { status: "UNAVAILABLE" as const, partial: false };
+
       if (serviceType === "PENSION" && bookings.length > 0) {
         return { status: "UNAVAILABLE" as const, partial: false };
       }
+
+      // When the service is "disabled" at the config level but an explicit exception exists for
+      // this date, treat the service as enabled so computeDaySlots processes the exception.
+      const effectiveConfig = config?.enabled === false && exceptions.length > 0
+        ? { ...config, enabled: true }
+        : config;
 
       const slots = computeDaySlots({
         serviceType,
@@ -307,7 +321,7 @@ export function computeMultiDayStatusIndexed(input: DayStatusMultiInput): {
         rules,
         exceptions,
         bookings,
-        config,
+        config: effectiveConfig,
       });
       const status = summarizeDayStatusFromSlots(slots);
       const hasBookableSlots = slots.some((slot) => slot.status === "AVAILABLE" || slot.status === "ON_REQUEST");
