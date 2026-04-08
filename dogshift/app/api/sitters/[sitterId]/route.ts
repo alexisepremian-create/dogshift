@@ -93,7 +93,7 @@ export async function GET(
         services: true,
         pricing: true,
         dogSizes: true,
-        user: { select: { image: true } },
+        user: { select: { image: true, hostProfileJson: true } },
       },
     });
 
@@ -115,6 +115,21 @@ export async function GET(
 
     const name = String(sitterProfile.displayName ?? "").trim();
     const pricing = normalizePersistedPublicPricing(sitterProfile.pricing);
+
+    // Fallback: if sitterProfile.bio is empty, try to read from hostProfileJson
+    let resolvedBio = sitterProfile.bio ?? "";
+    if (!resolvedBio) {
+      try {
+        const raw = typeof sitterProfile.user?.hostProfileJson === "string" ? sitterProfile.user.hostProfileJson : null;
+        if (raw) {
+          const parsed = JSON.parse(raw) as Record<string, unknown>;
+          const jsonBio = typeof parsed?.bio === "string" ? parsed.bio.trim() : "";
+          if (jsonBio) resolvedBio = jsonBio;
+        }
+      } catch {
+        // ignore malformed JSON
+      }
+    }
 
     const serviceConfigs = await (prisma as any).serviceConfig.findMany({
       where: { sitterId },
@@ -139,7 +154,7 @@ export async function GET(
       name,
       city: sitterProfile.city ?? "",
       postalCode: sitterProfile.postalCode ?? "",
-      bio: sitterProfile.bio ?? "",
+      bio: resolvedBio,
       avatarUrl: sitterProfile.avatarUrl ?? sitterProfile.user?.image ?? null,
       services: enabledServices,
       pricing,
