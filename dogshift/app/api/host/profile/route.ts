@@ -156,6 +156,7 @@ export async function GET(req: NextRequest) {
         activatedAt: true,
         activationCodeIssuedAt: true,
         stripeAccountStatus: true,
+        avatarUrl: true,
       },
     });
 
@@ -168,13 +169,17 @@ export async function GET(req: NextRequest) {
       ? serviceConfigs.filter((row) => row && row.enabled === true).map((row) => String(row.serviceType ?? ""))
       : [];
 
+    const builtCompletionProfile = buildEffectiveSitterCompletionProfile({
+      profile,
+      enabledServiceTypes,
+      persistedPricing: sitterProfile?.pricing,
+    });
+    const persistedAvatarUrl = typeof (sitterProfile as any)?.avatarUrl === "string" ? (sitterProfile as any).avatarUrl : null;
     const mergedProfile = {
-      ...buildEffectiveSitterCompletionProfile({
-        profile,
-        enabledServiceTypes,
-        persistedPricing: sitterProfile?.pricing,
-      }),
+      ...(builtCompletionProfile && typeof builtCompletionProfile === "object" ? builtCompletionProfile : {}),
       stripeAccountStatus: typeof sitterProfile?.stripeAccountStatus === "string" ? sitterProfile.stripeAccountStatus : null,
+      // Use persisted avatarUrl as fallback if hostProfileJson doesn't have avatarDataUrl
+      ...((persistedAvatarUrl && !(builtCompletionProfile as Record<string, unknown>)?.avatarDataUrl) ? { avatarUrl: persistedAvatarUrl } : {}),
     };
 
     const computedProfileCompletion = computeSitterProfileCompletion(mergedProfile);

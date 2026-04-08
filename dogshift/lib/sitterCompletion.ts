@@ -1,5 +1,6 @@
 type HostLikeProfile = {
   avatarDataUrl?: unknown;
+  avatarUrl?: unknown;
   firstName?: unknown;
   city?: unknown;
   bio?: unknown;
@@ -32,6 +33,15 @@ export function mergeCompletionEnabledServices(profile: unknown, enabledServiceT
   const baseProfile = profile && typeof profile === "object" ? (profile as Record<string, unknown>) : {};
   const currentServices =
     baseProfile.services && typeof baseProfile.services === "object" ? (baseProfile.services as Record<string, unknown>) : {};
+
+  // If no serviceConfig entries exist yet, keep the profile JSON's services as-is
+  // so completion stays consistent with what the profile edit page shows.
+  if (enabledServiceTypes.length === 0) {
+    return {
+      ...baseProfile,
+      services: currentServices,
+    };
+  }
 
   return {
     ...baseProfile,
@@ -77,7 +87,7 @@ export function computeSitterProfileCompletionDetails(profile: unknown): {
 } {
   const p = (profile && typeof profile === "object" ? (profile as HostLikeProfile) : {}) as HostLikeProfile;
 
-  const avatar = Boolean(toStringOrEmpty(p.avatarDataUrl));
+  const avatar = Boolean(toStringOrEmpty(p.avatarDataUrl)) || Boolean(toStringOrEmpty(p.avatarUrl as string));
   const identity = Boolean(toStringOrEmpty(p.firstName)) && Boolean(toStringOrEmpty(p.city));
   const bio = Boolean(toStringOrEmpty(p.bio));
 
