@@ -2474,7 +2474,7 @@ function SitterPublicProfileContent({
 
                   <div className="mt-7">
                     <h2 className="text-sm font-semibold text-slate-900">À propos</h2>
-                    <p className="mt-3 text-sm leading-relaxed text-slate-600">{sitter.bio}</p>
+                    <p className="mt-3 text-sm leading-relaxed text-slate-600 whitespace-pre-line">{sitter.bio}</p>
                   </div>
 
                   <div className="mt-7 rounded-2xl border border-slate-200 bg-slate-50 p-4">
@@ -2837,7 +2837,7 @@ function SitterPublicProfileContent({
 
               <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-5">
                 <p className="text-sm font-semibold text-slate-900">Extrait</p>
-                <p className="mt-2 text-sm leading-relaxed text-slate-600 line-clamp-4">{sitter.bio}</p>
+                <p className="mt-2 text-sm leading-relaxed text-slate-600 line-clamp-4 whitespace-pre-line">{sitter.bio}</p>
               </div>
             </div>
           )}
