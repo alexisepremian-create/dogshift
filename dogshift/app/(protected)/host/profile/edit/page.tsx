@@ -428,11 +428,11 @@ export default function HostProfileEditPage() {
                       ) : null}
                     </div>
                   </div>
-                  <p className="shrink-0 text-xs font-semibold text-slate-500">{profile.bio.length}/320</p>
+                  <p className="shrink-0 text-xs font-semibold text-slate-500">{profile.bio.length} caractères</p>
                 </div>
                 <textarea
                   value={profile.bio}
-                  onChange={(e) => setProfile((p) => ({ ...p, bio: e.target.value.slice(0, 320) }))}
+                  onChange={(e) => setProfile((p) => ({ ...p, bio: e.target.value }))}
                   className="mt-4 w-full min-h-[140px] rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition focus:border-[var(--dogshift-blue)] focus:ring-4 focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_85%)]"
                   placeholder="Décrivez votre expérience, votre approche et comment vous prenez soin des chiens."
                 />
