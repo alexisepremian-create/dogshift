@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { type CSSProperties, useEffect, useMemo, useRef, useState } from "react";
 import { Bell } from "lucide-react";
 
 type NotificationItem = {
@@ -41,6 +41,7 @@ export default function NotificationBell({ className }: { className?: string }) 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const rootRef = useRef<HTMLDivElement | null>(null);
+  const [dropdownStyle, setDropdownStyle] = useState<CSSProperties>({ right: 0 });
 
   const badge = useMemo(() => formatBadge(unread), [unread]);
 
@@ -129,6 +130,21 @@ export default function NotificationBell({ className }: { className?: string }) 
   }, [open]);
 
   useEffect(() => {
+    if (!open || !rootRef.current) return;
+    const rect = rootRef.current.getBoundingClientRect();
+    const viewportWidth = window.innerWidth;
+    const panelWidth = Math.min(320, viewportWidth - 24);
+    // With right:0, the dropdown's left edge would be at rect.right - panelWidth
+    const leftEdge = rect.right - panelWidth;
+    if (leftEdge < 12) {
+      // Shift the dropdown rightward so its left edge is at least 12px from viewport
+      setDropdownStyle({ right: -(12 - leftEdge) });
+    } else {
+      setDropdownStyle({ right: 0 });
+    }
+  }, [open]);
+
+  useEffect(() => {
     if (!open) return;
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") setOpen(false);
@@ -174,7 +190,8 @@ export default function NotificationBell({ className }: { className?: string }) 
         <div
           role="menu"
           aria-label="Notifications"
-          className="absolute right-0 mt-2 w-[320px] max-w-[calc(100vw-24px)] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_18px_60px_-40px_rgba(2,6,23,0.25)] sm:w-[340px]"
+          style={dropdownStyle}
+          className="absolute mt-2 w-[320px] max-w-[calc(100vw-24px)] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_18px_60px_-40px_rgba(2,6,23,0.25)] sm:w-[340px]"
         >
           <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-4 py-3">
             <p className="text-sm font-semibold text-slate-900">Notifications</p>
