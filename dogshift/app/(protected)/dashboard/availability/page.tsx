@@ -2182,17 +2182,12 @@ export default function AvailabilityStudioPage() {
                 const day = i + 1;
                 const dateIso = `${String(meta.year).padStart(4, "0")}-${String(meta.month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
                 const row = monthStatusByDate.get(dateIso);
-                // Show only the active service's status so the calendar reflects
-                // exactly what the current tab shows — prevents confusion where
-                // dots from other services (Promenade, Pension) appear after the
-                // user unchecks all rules for the currently selected service.
-                const tabStatus =
-                  availabilityTab === "PROMENADE" ? (row?.promenadeStatus ?? "UNAVAILABLE")
-                  : availabilityTab === "DOGSITTING" ? (row?.dogsittingStatus ?? "UNAVAILABLE")
-                  : (row?.pensionStatus ?? "UNAVAILABLE");
-                const tone = statusCellTone(tabStatus);
+                const status = globalDayStatus(row);
+                const tone = statusCellTone(status);
                 const isPast = dateIso < todayKeyZurich;
-                const showDot = tabStatus === "AVAILABLE" || tabStatus === "ON_REQUEST";
+                const showPromenade = row ? row.promenadeStatus === "AVAILABLE" || row.promenadeStatus === "ON_REQUEST" : false;
+                const showDogsitting = row ? row.dogsittingStatus === "AVAILABLE" || row.dogsittingStatus === "ON_REQUEST" : false;
+                const showPension = row ? row.pensionStatus === "AVAILABLE" || row.pensionStatus === "ON_REQUEST" : false;
 
                 return (
                   <button
@@ -2215,8 +2210,12 @@ export default function AvailabilityStudioPage() {
                     </div>
 
                     <div className="flex items-center justify-center gap-1">
-                      {showDot ? <span className={`h-2 w-2 rounded-full ${serviceDotTone(availabilityTab)}`} aria-hidden="true" /> : null}
-                      {!showDot ? <span className="text-[10px] font-semibold leading-none text-slate-400">—</span> : null}
+                      {showPromenade ? <span className={`h-2 w-2 rounded-full ${serviceDotTone("PROMENADE")}`} aria-hidden="true" /> : null}
+                      {showDogsitting ? <span className={`h-2 w-2 rounded-full ${serviceDotTone("DOGSITTING")}`} aria-hidden="true" /> : null}
+                      {showPension ? <span className={`h-2 w-2 rounded-full ${serviceDotTone("PENSION")}`} aria-hidden="true" /> : null}
+                      {!showPromenade && !showDogsitting && !showPension ? (
+                        <span className="text-[10px] font-semibold leading-none text-slate-400">—</span>
+                      ) : null}
                     </div>
                   </button>
                 );
