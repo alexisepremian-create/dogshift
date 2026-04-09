@@ -303,6 +303,10 @@ export default function AvailabilityStudioPage() {
   const [exceptionSaving, setExceptionSaving] = useState(false);
   const [exceptionError, setExceptionError] = useState<string | null>(null);
   const [weeklySavingKey, setWeeklySavingKey] = useState<string | null>(null);
+  // Tracks how many weekly-rule saves are currently in-flight (for any service).
+  // Prevents concurrent saves that could cause race conditions in the calendar.
+  const ruleSaveCountRef = useRef(0);
+  const [anyRuleSaving, setAnyRuleSaving] = useState(false);
   const [quickActionSaving, setQuickActionSaving] = useState<string | null>(null);
   const [inlineExceptionOpen, setInlineExceptionOpen] = useState(false);
   const [quickActionsOpen, setQuickActionsOpen] = useState(false);
@@ -682,12 +686,18 @@ export default function AvailabilityStudioPage() {
 
   async function saveWeeklyRule(svc: ServiceTypeApi, dayOfWeek: number, enabled: boolean, status: "AVAILABLE" | "ON_REQUEST") {
     if (!sitterId) return;
+
+    // Increment the in-flight counter before any async work so the UI can
+    // immediately disable other checkboxes (prevents concurrent saves that
+    // could race against each other and produce stale calendar state).
+    ruleSaveCountRef.current += 1;
+    setAnyRuleSaving(true);
     setLoading(true);
     setError(null);
     setTopError(null);
     setWeeklySavingKey(`${svc}-${dayOfWeek}`);
 
-    // Optimistic update for the weekly-rules toggle (already existed)
+    // Optimistic update for the weekly-rules toggle
     setRulesByService((prev) => {
       const current = prev[svc] ?? [];
       const nextRules = current.filter((rule) => rule.dayOfWeek !== dayOfWeek);
@@ -714,10 +724,8 @@ export default function AvailabilityStudioPage() {
     setMonthDays((prev) =>
       prev.map((row) => {
         if (!row?.date) return row;
-        // Only update dates matching the toggled day-of-week
         const rowDow = new Date(`${row.date}T12:00:00Z`).getUTCDay();
         if (rowDow !== dayOfWeek) return row;
-        // Leave dates that have an explicit exception unchanged (exception > rule)
         if (excMapForSvc.has(row.date)) return row;
         const newStatus: "AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE" = enabled
           ? status === "ON_REQUEST" ? "ON_REQUEST" : "AVAILABLE"
@@ -726,6 +734,7 @@ export default function AvailabilityStudioPage() {
       })
     );
 
+    let saveError: string | null = null;
     try {
       const res = await fetch(`/api/sitters/me/availability-rules?service=${encodeURIComponent(svc)}`, {
         method: "PUT",
@@ -737,20 +746,31 @@ export default function AvailabilityStudioPage() {
       });
       const payload = (await res.json().catch(() => null)) as any;
       if (!res.ok || !payload?.ok) throw new Error(payload?.error ?? "SAVE_ERROR");
-      await refetchAll();
     } catch (e) {
       const code = e instanceof Error ? e.message : "SAVE_ERROR";
+      saveError = code;
       if (code === "PRICING_REQUIRED") {
         setTopError(errorMessageFr(code));
         setError(null);
       } else {
         setError(code);
       }
-      await refetchAll();
     } finally {
       setWeeklySavingKey(null);
       setLoading(false);
+
+      // Decrement counter; when it reaches 0 all in-flight saves are done and
+      // we do a single authoritative refetch to reconcile the calendar with the DB.
+      ruleSaveCountRef.current -= 1;
+      if (ruleSaveCountRef.current <= 0) {
+        ruleSaveCountRef.current = 0;
+        setAnyRuleSaving(false);
+        await refetchAll();
+      }
     }
+
+    // Suppress unused variable warning — saveError is used for side effects above.
+    void saveError;
   }
 
   const effectiveStatusForDate = useMemo(() => {
@@ -2070,7 +2090,7 @@ export default function AvailabilityStudioPage() {
                               <input
                                 type="checkbox"
                                 checked={rule.enabled}
-                                disabled={isSaving || !canEditAvailabilityForTab}
+                                disabled={anyRuleSaving || !canEditAvailabilityForTab}
                                 onChange={(e) => {
                                   void saveWeeklyRule(availabilityTab, day.dayOfWeek, e.currentTarget.checked, rule.status);
                                 }}
@@ -2082,7 +2102,7 @@ export default function AvailabilityStudioPage() {
                             <div className="flex items-center gap-2">
                               <select
                                 value={rule.status}
-                                disabled={!rule.enabled || isSaving || !canEditAvailabilityForTab}
+                                disabled={!rule.enabled || anyRuleSaving || !canEditAvailabilityForTab}
                                 onChange={(e) => {
                                   const nextStatus = e.currentTarget.value === "ON_REQUEST" ? "ON_REQUEST" : "AVAILABLE";
                                   void saveWeeklyRule(availabilityTab, day.dayOfWeek, true, nextStatus);
@@ -2162,12 +2182,17 @@ export default function AvailabilityStudioPage() {
                 const day = i + 1;
                 const dateIso = `${String(meta.year).padStart(4, "0")}-${String(meta.month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
                 const row = monthStatusByDate.get(dateIso);
-                const status = globalDayStatus(row);
-                const tone = statusCellTone(status);
+                // Show only the active service's status so the calendar reflects
+                // exactly what the current tab shows — prevents confusion where
+                // dots from other services (Promenade, Pension) appear after the
+                // user unchecks all rules for the currently selected service.
+                const tabStatus =
+                  availabilityTab === "PROMENADE" ? (row?.promenadeStatus ?? "UNAVAILABLE")
+                  : availabilityTab === "DOGSITTING" ? (row?.dogsittingStatus ?? "UNAVAILABLE")
+                  : (row?.pensionStatus ?? "UNAVAILABLE");
+                const tone = statusCellTone(tabStatus);
                 const isPast = dateIso < todayKeyZurich;
-                const showPromenade = row ? row.promenadeStatus === "AVAILABLE" || row.promenadeStatus === "ON_REQUEST" : false;
-                const showDogsitting = row ? row.dogsittingStatus === "AVAILABLE" || row.dogsittingStatus === "ON_REQUEST" : false;
-                const showPension = row ? row.pensionStatus === "AVAILABLE" || row.pensionStatus === "ON_REQUEST" : false;
+                const showDot = tabStatus === "AVAILABLE" || tabStatus === "ON_REQUEST";
 
                 return (
                   <button
@@ -2190,12 +2215,8 @@ export default function AvailabilityStudioPage() {
                     </div>
 
                     <div className="flex items-center justify-center gap-1">
-                      {showPromenade ? <span className={`h-2 w-2 rounded-full ${serviceDotTone("PROMENADE")}`} aria-hidden="true" /> : null}
-                      {showDogsitting ? <span className={`h-2 w-2 rounded-full ${serviceDotTone("DOGSITTING")}`} aria-hidden="true" /> : null}
-                      {showPension ? <span className={`h-2 w-2 rounded-full ${serviceDotTone("PENSION")}`} aria-hidden="true" /> : null}
-                      {!showPromenade && !showDogsitting && !showPension ? (
-                        <span className="text-[10px] font-semibold leading-none text-slate-400">—</span>
-                      ) : null}
+                      {showDot ? <span className={`h-2 w-2 rounded-full ${serviceDotTone(availabilityTab)}`} aria-hidden="true" /> : null}
+                      {!showDot ? <span className="text-[10px] font-semibold leading-none text-slate-400">—</span> : null}
                     </div>
                   </button>
                 );

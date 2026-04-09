@@ -143,24 +143,27 @@ export async function PUT(req: NextRequest) {
         status: r.status,
       })),
     });
-
-    // Ensure a serviceConfig row exists so the public calendar reflects this service as active.
-    // The pricing was already validated above (assertPricingConfiguredOrThrow).
-    const existingConfig = await (prisma as any).serviceConfig.findUnique({
-      where: { sitterId_serviceType: { sitterId: auth.sitterId, serviceType } },
-      select: { id: true },
-    });
-    if (!existingConfig) {
-      await (prisma as any).serviceConfig.create({
-        data: {
-          sitterId: auth.sitterId,
-          ...SERVICE_DEFAULTS[serviceType],
-          serviceType,
-          enabled: true,
-        },
-      });
-    }
   }
+
+  // After the delete/create, check whether any rules remain for this service and
+  // sync serviceConfig.enabled accordingly. This ensures that when the last rule
+  // is removed, the service is marked disabled — preventing stale "enabled" state
+  // from confusing the calendar computation.
+  const remainingCount = await (prisma as any).availabilityRule.count({
+    where: { sitterId: auth.sitterId, serviceType },
+  });
+  const shouldBeEnabled = remainingCount > 0;
+
+  await (prisma as any).serviceConfig.upsert({
+    where: { sitterId_serviceType: { sitterId: auth.sitterId, serviceType } },
+    update: { enabled: shouldBeEnabled },
+    create: {
+      sitterId: auth.sitterId,
+      ...SERVICE_DEFAULTS[serviceType],
+      serviceType,
+      enabled: shouldBeEnabled,
+    },
+  });
 
   try {
     await writeAvailabilityAuditLog({
