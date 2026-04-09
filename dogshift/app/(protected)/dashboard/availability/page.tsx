@@ -283,6 +283,7 @@ export default function AvailabilityStudioPage() {
   const [savedPing, setSavedPing] = useState<string | null>(null);
   const [topError, setTopError] = useState<string | null>(null);
 
+  const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
   const [bookingInfoOpen, setBookingInfoOpen] = useState(false);
   const bookingInfoWrapRef = useRef<HTMLDivElement | null>(null);
   const quickActionsWrapRef = useRef<HTMLDivElement | null>(null);
@@ -1040,35 +1041,33 @@ export default function AvailabilityStudioPage() {
     }
   }
 
-  async function resetCurrentMonth() {
+  async function resetAllAvailability() {
     if (!sitterId) return;
-    const confirmed = window.confirm("Réinitialiser ce mois ? Toutes les exceptions du mois affiché seront supprimées.");
-    if (!confirmed) return;
-
+    setResetConfirmOpen(false);
     setLoading(true);
     setError(null);
     setTopError(null);
     try {
-      const serviceDates = (["PROMENADE", "DOGSITTING", "PENSION"] as const).flatMap((svc) => {
-        const dates = Array.from(new Set((exceptionsByService[svc] ?? []).map((row) => row.date).filter((date) => Boolean(date))));
-        return dates.map((date) => ({ svc, date }));
-      });
+      const res = await fetch("/api/sitters/me/availability-reset", { method: "POST" });
+      const payload = (await res.json().catch(() => null)) as any;
+      if (!res.ok || !payload?.ok) throw new Error(payload?.error ?? "RESET_ERROR");
 
-      await Promise.all(
-        serviceDates.map(async ({ svc, date }) => {
-          const res = await fetch("/api/sitters/me/availability-exceptions", {
-            method: "DELETE",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ serviceType: svc, date }),
-          });
-          const payload = (await res.json().catch(() => null)) as any;
-          if (!res.ok || !payload?.ok) throw new Error(payload?.error ?? "DELETE_ERROR");
-        })
+      // Optimistically clear all local state so the UI responds immediately
+      setRulesByService({ PROMENADE: [], DOGSITTING: [], PENSION: [] });
+      setExceptionsByService({ PROMENADE: [], DOGSITTING: [], PENSION: [] });
+      setMonthDays((prev) =>
+        prev.map((row) => ({
+          ...row,
+          promenadeStatus: "UNAVAILABLE" as const,
+          dogsittingStatus: "UNAVAILABLE" as const,
+          pensionStatus: "UNAVAILABLE" as const,
+        }))
       );
 
       await refetchAll();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "DELETE_ERROR");
+      setError(e instanceof Error ? e.message : "RESET_ERROR");
+      await refetchAll();
     } finally {
       setLoading(false);
     }
@@ -2134,15 +2133,33 @@ export default function AvailabilityStudioPage() {
               <p className="text-sm font-semibold text-slate-900">Agenda des disponibilités</p>
             </div>
             <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  void resetCurrentMonth();
-                }}
-                className="inline-flex h-9 items-center justify-center rounded-xl border border-rose-200 bg-white px-3 text-xs font-semibold text-rose-700"
-              >
-                Réinitialiser
-              </button>
+              {resetConfirmOpen ? (
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs font-medium text-slate-700">Tout effacer ?</span>
+                  <button
+                    type="button"
+                    onClick={() => void resetAllAvailability()}
+                    className="inline-flex h-8 items-center justify-center rounded-lg bg-rose-600 px-3 text-xs font-semibold text-white"
+                  >
+                    Confirmer
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setResetConfirmOpen(false)}
+                    className="inline-flex h-8 items-center justify-center rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700"
+                  >
+                    Annuler
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setResetConfirmOpen(true)}
+                  className="inline-flex h-9 items-center justify-center rounded-xl border border-rose-200 bg-white px-3 text-xs font-semibold text-rose-700"
+                >
+                  Réinitialiser
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => setMonthCursor((d) => new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() - 1, 1, 12, 0, 0, 0)))}

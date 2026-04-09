@@ -4,7 +4,8 @@ export type AvailabilityAuditAction =
   | "UPSERT_CONFIG"
   | "REPLACE_RULES"
   | "UPSERT_EXCEPTION"
-  | "DELETE_EXCEPTION";
+  | "DELETE_EXCEPTION"
+  | "RESET_ALL";
 
 export async function writeAvailabilityAuditLog(input: {
   sitterId: string;
