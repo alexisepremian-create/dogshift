@@ -686,6 +686,8 @@ export default function AvailabilityStudioPage() {
     setError(null);
     setTopError(null);
     setWeeklySavingKey(`${svc}-${dayOfWeek}`);
+
+    // Optimistic update for the weekly-rules toggle (already existed)
     setRulesByService((prev) => {
       const current = prev[svc] ?? [];
       const nextRules = current.filter((rule) => rule.dayOfWeek !== dayOfWeek);
@@ -700,6 +702,30 @@ export default function AvailabilityStudioPage() {
       }
       return { ...prev, [svc]: nextRules };
     });
+
+    // Optimistic update for the calendar grid so it reflects the change immediately
+    // without waiting for refetchAll. refetchAll will overwrite with authoritative data.
+    const svcStatusKey =
+      svc === "PROMENADE" ? "promenadeStatus" : svc === "DOGSITTING" ? "dogsittingStatus" : "pensionStatus";
+    const excMapForSvc = new Map<string, "AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE">();
+    for (const exc of exceptionsByService[svc] ?? []) {
+      if (exc.date) excMapForSvc.set(exc.date, exc.status);
+    }
+    setMonthDays((prev) =>
+      prev.map((row) => {
+        if (!row?.date) return row;
+        // Only update dates matching the toggled day-of-week
+        const rowDow = new Date(`${row.date}T12:00:00Z`).getUTCDay();
+        if (rowDow !== dayOfWeek) return row;
+        // Leave dates that have an explicit exception unchanged (exception > rule)
+        if (excMapForSvc.has(row.date)) return row;
+        const newStatus: "AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE" = enabled
+          ? status === "ON_REQUEST" ? "ON_REQUEST" : "AVAILABLE"
+          : "UNAVAILABLE";
+        return { ...row, [svcStatusKey]: newStatus };
+      })
+    );
+
     try {
       const res = await fetch(`/api/sitters/me/availability-rules?service=${encodeURIComponent(svc)}`, {
         method: "PUT",
