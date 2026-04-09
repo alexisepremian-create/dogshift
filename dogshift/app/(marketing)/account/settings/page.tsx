@@ -732,10 +732,22 @@ export default function AccountSettingsPage() {
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ password, passwordConfirm }),
                   });
-                  const payload = (await res.json()) as { ok?: boolean; error?: string };
+                  const payload = (await res.json()) as { ok?: boolean; error?: string; detail?: string };
                   if (!res.ok || !payload.ok) {
                     if (payload.error === "UNAUTHORIZED") {
                       setPasswordError("Tu dois être connecté pour faire ça.");
+                      return;
+                    }
+                    if (payload.error === "PASSWORD_TOO_SHORT") {
+                      setPasswordError("Le mot de passe doit contenir au moins 8 caractères.");
+                      return;
+                    }
+                    if (payload.error === "PASSWORDS_DO_NOT_MATCH") {
+                      setPasswordError("Les mots de passe ne correspondent pas.");
+                      return;
+                    }
+                    if (payload.error === "PASSWORD_REJECTED") {
+                      setPasswordError("Ce mot de passe n'est pas accepté (trop simple ou compromis). Essaie-en un autre.");
                       return;
                     }
                     setPasswordError("Impossible de définir le mot de passe. Réessaie.");
