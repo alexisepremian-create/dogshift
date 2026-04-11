@@ -264,7 +264,7 @@ function HeroPetsittingStyle() {
             {" "}en quelques clics.
           </h1>
 
-          <p className="mt-4 text-[1.0rem] leading-relaxed text-slate-700 sm:text-lg">
+          <p className="mt-3 text-[0.85rem] leading-relaxed text-slate-700 sm:mt-4 sm:text-lg">
             Promenade, garde, pension.<br className="sm:hidden" />
             {" "}Des profils vérifiés, proches de chez vous.
           </p>
@@ -288,7 +288,7 @@ function HeroPetsittingStyle() {
           <div className="mt-6 flex flex-col items-start gap-2.5 sm:mt-8 sm:flex-row sm:items-center sm:gap-3">
             <Link
               href="/search"
-              className="inline-flex items-center justify-center rounded-2xl px-6 py-3 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition-all duration-200 ease-out active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)] [background:var(--dogshift-blue)] hover:[background:var(--dogshift-blue-hover)] sm:px-6 sm:py-3 sm:text-sm"
+              className="inline-flex items-center justify-center rounded-xl px-5 py-2 text-[0.8rem] font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition-all duration-200 ease-out active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)] [background:var(--dogshift-blue)] hover:[background:var(--dogshift-blue-hover)] sm:rounded-2xl sm:px-6 sm:py-3 sm:text-sm"
             >
               Trouver un dog sitter
             </Link>
@@ -304,7 +304,7 @@ function HeroPetsittingStyle() {
             {/* Secondary CTA — mobile: ghost button (compact) */}
             <Link
               href="/devenir-dogsitter"
-              className="inline-flex items-center justify-center rounded-2xl border border-slate-400/50 bg-white/55 px-6 py-3 text-sm font-medium text-slate-800 backdrop-blur-sm transition-all duration-200 ease-out hover:bg-white/75 active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)] sm:hidden"
+              className="inline-flex items-center justify-center rounded-xl border border-slate-400/50 bg-white/55 px-5 py-2 text-[0.8rem] font-medium text-slate-800 backdrop-blur-sm transition-all duration-200 ease-out hover:bg-white/75 active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)] sm:hidden"
             >
               Devenir dogsitter
             </Link>

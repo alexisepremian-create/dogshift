@@ -164,7 +164,7 @@ export default function NotificationBell({ className }: { className?: string }) 
   }, [open]);
 
   const btn =
-    "relative inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-900 transition hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)] sm:h-10 sm:w-10 sm:rounded-xl";
+    "relative inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-900 transition hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)] sm:h-10 sm:w-10 sm:rounded-full";
 
   const unreadItems = useMemo(() => items.filter((n) => !n.readAt), [items]);
 
