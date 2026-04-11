@@ -21,6 +21,22 @@ export default function sitemap(): MetadataRoute.Sitemap {
       lastModified,
     },
     {
+      url: "https://www.dogshift.ch/dog-sitter-montreux",
+      lastModified,
+    },
+    {
+      url: "https://www.dogshift.ch/dog-sitter-vevey",
+      lastModified,
+    },
+    {
+      url: "https://www.dogshift.ch/dog-sitter-nyon",
+      lastModified,
+    },
+    {
+      url: "https://www.dogshift.ch/dog-sitter-morges",
+      lastModified,
+    },
+    {
       url: "https://www.dogshift.ch/reserver",
       lastModified,
     },
