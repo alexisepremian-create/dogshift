@@ -257,38 +257,37 @@ function HeroPetsittingStyle() {
       />
 
       {/* Content */}
-      <div className="relative z-20 mx-auto flex min-h-[78svh] max-w-[1200px] items-start px-6 pt-20 pb-10 sm:items-center sm:min-h-[100svh] sm:px-8 sm:py-28">
+      <div className="relative z-20 mx-auto flex min-h-[100dvh] max-w-[1200px] items-start px-6 pt-20 pb-10 sm:items-center sm:min-h-[100svh] sm:px-8 sm:py-28">
         <div className="w-full max-w-[580px]">
-          <h1 className="text-balance text-[1.45rem] font-semibold leading-[1.12] tracking-tight text-slate-900 sm:text-[1.85rem] sm:leading-[1.06] md:text-5xl lg:text-6xl">
+          <h1 className="text-balance text-[1.85rem] font-semibold leading-[1.12] tracking-tight text-slate-900 sm:text-[1.85rem] sm:leading-[1.06] md:text-5xl lg:text-6xl">
             Des dog-sitters de confiance, en quelques clics.
           </h1>
 
-          <p className="mt-4 text-base leading-relaxed text-slate-700 sm:text-lg">
+          <p className="mt-4 text-[1.0rem] leading-relaxed text-slate-700 sm:text-lg">
             Promenade, garde, pension.<br className="sm:hidden" />
-            {" "}Des profils vérifiés,<br className="sm:hidden" />
-            {" "}proches de chez vous.
+            {" "}Des profils vérifiés, proches de chez vous.
           </p>
 
           {/* Trust points — all screens */}
           <ul className="mt-4 flex flex-col gap-1.5 sm:mt-5 sm:gap-2.5">
             <li className="group flex items-center gap-2 transition-transform duration-200 ease-out hover:-translate-y-px sm:gap-2.5">
               <BadgeCheck className="h-3.5 w-3.5 shrink-0 text-[var(--dogshift-blue)] transition-colors duration-200 ease-out group-hover:text-[var(--dogshift-blue-hover)] sm:h-[1.1rem] sm:w-[1.1rem]" aria-hidden="true" />
-              <span className="text-xs font-medium text-slate-700 transition-colors duration-200 ease-out group-hover:text-slate-900 sm:text-sm sm:text-slate-800">Profils vérifiés manuellement</span>
+              <span className="text-[13px] font-medium text-slate-700 transition-colors duration-200 ease-out group-hover:text-slate-900 sm:text-sm sm:text-slate-800">Profils vérifiés manuellement</span>
             </li>
             <li className="group flex items-center gap-2 transition-transform duration-200 ease-out hover:-translate-y-px sm:gap-2.5">
               <FileCheck className="h-3.5 w-3.5 shrink-0 text-[var(--dogshift-blue)] transition-colors duration-200 ease-out group-hover:text-[var(--dogshift-blue-hover)] sm:h-[1.1rem] sm:w-[1.1rem]" aria-hidden="true" />
-              <span className="text-xs font-medium text-slate-700 transition-colors duration-200 ease-out group-hover:text-slate-900 sm:text-sm sm:text-slate-800">Casier judiciaire vérifié</span>
+              <span className="text-[13px] font-medium text-slate-700 transition-colors duration-200 ease-out group-hover:text-slate-900 sm:text-sm sm:text-slate-800">Casier judiciaire vérifié</span>
             </li>
             <li className="group flex items-center gap-2 transition-transform duration-200 ease-out hover:-translate-y-px sm:gap-2.5">
               <Shield className="h-3.5 w-3.5 shrink-0 text-[var(--dogshift-blue)] transition-colors duration-200 ease-out group-hover:text-[var(--dogshift-blue-hover)] sm:h-[1.1rem] sm:w-[1.1rem]" aria-hidden="true" />
-              <span className="text-xs font-medium text-slate-700 transition-colors duration-200 ease-out group-hover:text-slate-900 sm:text-sm sm:text-slate-800">Assurance RC incluse</span>
+              <span className="text-[13px] font-medium text-slate-700 transition-colors duration-200 ease-out group-hover:text-slate-900 sm:text-sm sm:text-slate-800">Assurance RC incluse</span>
             </li>
           </ul>
 
           <div className="mt-6 flex flex-col items-start gap-2.5 sm:mt-8 sm:flex-row sm:items-center sm:gap-3">
             <Link
               href="/search"
-              className="inline-flex items-center justify-center rounded-xl px-5 py-2 text-xs font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition-all duration-200 ease-out active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)] [background:var(--dogshift-blue)] hover:[background:var(--dogshift-blue-hover)] sm:rounded-2xl sm:px-6 sm:py-3 sm:text-sm"
+              className="inline-flex items-center justify-center rounded-2xl px-6 py-3 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition-all duration-200 ease-out active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)] [background:var(--dogshift-blue)] hover:[background:var(--dogshift-blue-hover)] sm:px-6 sm:py-3 sm:text-sm"
             >
               Trouver un dog sitter
             </Link>
@@ -304,7 +303,7 @@ function HeroPetsittingStyle() {
             {/* Secondary CTA — mobile: ghost button (compact) */}
             <Link
               href="/devenir-dogsitter"
-              className="inline-flex items-center justify-center rounded-xl border border-slate-400/50 bg-white/55 px-5 py-2 text-xs font-medium text-slate-800 backdrop-blur-sm transition-all duration-200 ease-out hover:bg-white/75 active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)] sm:hidden"
+              className="inline-flex items-center justify-center rounded-2xl border border-slate-400/50 bg-white/55 px-6 py-3 text-sm font-medium text-slate-800 backdrop-blur-sm transition-all duration-200 ease-out hover:bg-white/75 active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)] sm:hidden"
             >
               Devenir dogsitter
             </Link>

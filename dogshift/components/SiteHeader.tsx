@@ -195,9 +195,9 @@ export default function SiteHeader() {
               onClick={() => setMobileNavOpen(true)}
               aria-haspopup="dialog"
               aria-expanded={mobileNavOpen}
-              className={"inline-flex " + ctaClassName + " md:hidden"}
+              className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-900 transition-all duration-200 ease-out hover:bg-slate-50 active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)] md:hidden"
             >
-              <Menu className={ctaIconClassName} aria-hidden="true" />
+              <Menu className="h-3.5 w-3.5" aria-hidden="true" />
               Menu
             </button>
 
