@@ -259,8 +259,10 @@ function HeroPetsittingStyle() {
       {/* Content */}
       <div className="relative z-20 mx-auto flex min-h-[100dvh] max-w-[1200px] items-start px-6 pt-20 pb-10 sm:items-center sm:min-h-[100svh] sm:px-8 sm:py-28">
         <div className="w-full max-w-[580px]">
-          <h1 className="text-balance text-[1.85rem] font-semibold leading-[1.12] tracking-tight text-slate-900 sm:text-[1.85rem] sm:leading-[1.06] md:text-5xl lg:text-6xl">
-            Des dog-sitters de confiance, en quelques clics.
+          <h1 className="max-w-[15ch] text-[1.85rem] font-semibold leading-[1.1] tracking-tight text-slate-900 sm:max-w-none sm:text-balance sm:text-[1.85rem] sm:leading-[1.06] md:text-5xl lg:text-6xl">
+            Des dog-sitters de confiance,{" "}
+            <br className="sm:hidden" />
+            en quelques clics.
           </h1>
 
           <p className="mt-4 text-[1.0rem] leading-relaxed text-slate-700 sm:text-lg">
