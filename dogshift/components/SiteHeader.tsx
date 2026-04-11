@@ -6,6 +6,7 @@ import { useClerk, useUser } from "@clerk/nextjs";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import BrandLogo from "@/components/BrandLogo";
+import MobileSearchOverlay from "@/components/MobileSearchOverlay";
 import NotificationBell from "@/components/NotificationBell";
 
 type AccountContextPayload = {
@@ -18,6 +19,7 @@ export default function SiteHeader() {
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [becomeMenuOpen, setBecomeMenuOpen] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
   const [mobileNavMounted, setMobileNavMounted] = useState(false);
   const [mobileBottomHidden, setMobileBottomHidden] = useState(false);
   const [accountHref, setAccountHref] = useState("/account");
@@ -189,6 +191,16 @@ export default function SiteHeader() {
             className={mobileMenuOffset + " relative flex items-center gap-2 transition-all duration-200 ease-out md:" + authMenuOffset}
           >
             {isLoaded && isSignedIn ? <NotificationBell /> : null}
+
+            {/* Search button — mobile only */}
+            <button
+              type="button"
+              onClick={() => setSearchOpen(true)}
+              aria-label="Recherche"
+              className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 transition-all duration-200 ease-out hover:bg-slate-50 active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)] md:hidden"
+            >
+              <Search className="h-3.5 w-3.5" aria-hidden="true" />
+            </button>
 
             <button
               type="button"
@@ -501,7 +513,7 @@ export default function SiteHeader() {
         </div>
       ) : null}
 
-
+      <MobileSearchOverlay open={searchOpen} onClose={() => setSearchOpen(false)} />
     </>
   );
 }
