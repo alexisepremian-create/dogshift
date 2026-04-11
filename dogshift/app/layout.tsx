@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { Suspense } from "react";
 import { ClerkProvider } from "@clerk/nextjs";
 import { frFR } from "@clerk/localizations";
+import Script from "next/script";
 import SessionAuthProvider from "@/components/SessionAuthProvider";
 import "maplibre-gl/dist/maplibre-gl.css";
 import "./globals.css";
@@ -80,6 +81,20 @@ export default async function RootLayout({
             <SessionAuthProvider>{children}</SessionAuthProvider>
           </Suspense>
         </ClerkProvider>
+
+        {/* Google Ads — AW-18081650051 */}
+        <Script
+          src="https://www.googletagmanager.com/gtag/js?id=AW-18081650051"
+          strategy="afterInteractive"
+        />
+        <Script id="google-ads-init" strategy="afterInteractive">
+          {`
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', 'AW-18081650051');
+          `}
+        </Script>
       </body>
     </html>
   );
