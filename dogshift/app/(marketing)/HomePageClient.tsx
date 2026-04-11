@@ -536,16 +536,16 @@ function CareersSection() {
             ref={blocksReveal.ref as React.RefObject<HTMLDivElement>}
             className="mt-10 grid gap-10 sm:grid-cols-3 sm:gap-12"
           >
-            <div style={blocksReveal.itemStyle(0)} className="text-center">
-              <div className="relative z-10 mx-auto flex h-16 w-16 items-center justify-center">
+            <div style={blocksReveal.itemStyle(0)} className="group text-center">
+              <div className="relative z-10 mx-auto flex h-16 w-16 items-center justify-center transition-transform duration-[250ms] ease-out group-hover:-translate-y-0.5">
                 <Briefcase className="h-12 w-12 text-[var(--dogshift-blue)]" aria-hidden="true" />
               </div>
               <p className="mt-4 text-base font-semibold text-slate-900">Construire avec exigence</p>
               <p className="mt-2 text-sm leading-relaxed text-slate-600">DogShift se construit progressivement, avec exigence et passion.</p>
             </div>
 
-            <div style={blocksReveal.itemStyle(1)} className="text-center">
-              <div className="relative z-10 mx-auto flex h-16 w-16 items-center justify-center">
+            <div style={blocksReveal.itemStyle(1)} className="group text-center">
+              <div className="relative z-10 mx-auto flex h-16 w-16 items-center justify-center transition-transform duration-[250ms] ease-out group-hover:-translate-y-0.5">
                 <UserCheck className="h-12 w-12 text-[var(--dogshift-blue)]" aria-hidden="true" />
               </div>
               <p className="mt-4 text-base font-semibold text-slate-900">Travailler avec des valeurs</p>
@@ -554,8 +554,8 @@ function CareersSection() {
               </p>
             </div>
 
-            <div style={blocksReveal.itemStyle(2)} className="text-center">
-              <div className="relative z-10 mx-auto flex h-16 w-16 items-center justify-center">
+            <div style={blocksReveal.itemStyle(2)} className="group text-center">
+              <div className="relative z-10 mx-auto flex h-16 w-16 items-center justify-center transition-transform duration-[250ms] ease-out group-hover:-translate-y-0.5">
                 <Handshake className="h-12 w-12 text-[var(--dogshift-blue)]" aria-hidden="true" />
               </div>
               <p className="mt-4 text-base font-semibold text-slate-900">Échanger simplement</p>
@@ -566,13 +566,13 @@ function CareersSection() {
           </div>
 
           <div className="mt-10 flex flex-wrap items-center justify-center gap-x-3 gap-y-2 text-sm font-semibold">
-            <Link href="/help" className="text-[var(--dogshift-blue)] hover:text-[var(--dogshift-blue-hover)]">
+            <Link href="/help" className="text-[var(--dogshift-blue)] transition-all duration-[250ms] ease-out hover:-translate-y-px hover:text-[var(--dogshift-blue-hover)]">
               Nous contacter
             </Link>
             <span className="text-slate-300" aria-hidden="true">
               /
             </span>
-            <Link href="/help" className="text-[var(--dogshift-blue)] hover:text-[var(--dogshift-blue-hover)]">
+            <Link href="/help" className="text-[var(--dogshift-blue)] transition-all duration-[250ms] ease-out hover:-translate-y-px hover:text-[var(--dogshift-blue-hover)]">
               Découvrir les opportunités
             </Link>
           </div>
@@ -601,7 +601,7 @@ function WhyDogShiftSection() {
               ref={cardsReveal.ref as React.RefObject<HTMLDivElement>}
               className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4"
             >
-              <div style={cardsReveal.itemStyle(0)} className="rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_18px_60px_-50px_rgba(2,6,23,0.16)] transition-transform duration-200 ease-out md:hover:-translate-y-1 md:hover:scale-[1.03]">
+              <div style={cardsReveal.itemStyle(0)} className="rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_18px_60px_-50px_rgba(2,6,23,0.16)] transition-[transform,box-shadow] duration-[400ms] ease-in-out hover:-translate-y-px hover:shadow-[0_26px_60px_-42px_rgba(2,6,23,0.21)]">
                 <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-50 text-slate-700 ring-1 ring-slate-200">
                   <BadgeCheck className="h-5 w-5" aria-hidden="true" />
                 </span>
@@ -611,7 +611,7 @@ function WhyDogShiftSection() {
                 </p>
               </div>
 
-              <div style={cardsReveal.itemStyle(1)} className="rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_18px_60px_-50px_rgba(2,6,23,0.16)] transition-transform duration-200 ease-out md:hover:-translate-y-1 md:hover:scale-[1.03]">
+              <div style={cardsReveal.itemStyle(1)} className="rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_18px_60px_-50px_rgba(2,6,23,0.16)] transition-[transform,box-shadow] duration-[400ms] ease-in-out hover:-translate-y-px hover:shadow-[0_26px_60px_-42px_rgba(2,6,23,0.21)]">
                 <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-50 text-slate-700 ring-1 ring-slate-200">
                   <UserCheck className="h-5 w-5" aria-hidden="true" />
                 </span>
@@ -621,7 +621,7 @@ function WhyDogShiftSection() {
                 </p>
               </div>
 
-              <div style={cardsReveal.itemStyle(2)} className="rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_18px_60px_-50px_rgba(2,6,23,0.16)] transition-transform duration-200 ease-out md:hover:-translate-y-1 md:hover:scale-[1.03]">
+              <div style={cardsReveal.itemStyle(2)} className="rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_18px_60px_-50px_rgba(2,6,23,0.16)] transition-[transform,box-shadow] duration-[400ms] ease-in-out hover:-translate-y-px hover:shadow-[0_26px_60px_-42px_rgba(2,6,23,0.21)]">
                 <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-50 text-slate-700 ring-1 ring-slate-200">
                   <Wallet className="h-5 w-5" aria-hidden="true" />
                 </span>
@@ -631,7 +631,7 @@ function WhyDogShiftSection() {
                 </p>
               </div>
 
-              <div style={cardsReveal.itemStyle(3)} className="rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_18px_60px_-50px_rgba(2,6,23,0.16)] transition-transform duration-200 ease-out md:hover:-translate-y-1 md:hover:scale-[1.03]">
+              <div style={cardsReveal.itemStyle(3)} className="rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_18px_60px_-50px_rgba(2,6,23,0.16)] transition-[transform,box-shadow] duration-[400ms] ease-in-out hover:-translate-y-px hover:shadow-[0_26px_60px_-42px_rgba(2,6,23,0.21)]">
                 <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-50 text-slate-700 ring-1 ring-slate-200">
                   <MapPin className="h-5 w-5" aria-hidden="true" />
                 </span>
