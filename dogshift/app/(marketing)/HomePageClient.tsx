@@ -846,6 +846,49 @@ function FinalCTASection() {
   );
 }
 
+const CITIES = [
+  { label: "Dog sitter Lausanne", href: "/dog-sitter-lausanne" },
+  { label: "Dog sitter Montreux", href: "/dog-sitter-montreux" },
+  { label: "Dog sitter Vevey", href: "/dog-sitter-vevey" },
+  { label: "Dog sitter Nyon", href: "/dog-sitter-nyon" },
+  { label: "Dog sitter Morges", href: "/dog-sitter-morges" },
+  { label: "Dog sitter Genève", href: "/dog-sitter-geneve" },
+] as const;
+
+function CitiesSection() {
+  const blockReveal = useRevealOnce({ repeat: true });
+
+  return (
+    <section className="bg-slate-50">
+      <div className="mx-auto max-w-6xl px-4 pb-16 pt-0 sm:px-6 sm:pb-20">
+        <div ref={blockReveal.ref} style={blockReveal.style} className="mx-auto max-w-5xl">
+          <p className="text-xs font-semibold text-slate-600">Couverture géographique</p>
+          <h2 className="mt-2 text-balance text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">
+            Trouver un dog sitter près de chez vous
+          </h2>
+          <p className="mt-3 max-w-2xl text-sm leading-relaxed text-slate-600 sm:text-base">
+            DogShift se développe progressivement en Suisse romande.
+            Découvrez nos services disponibles près de chez vous.
+          </p>
+
+          <ul className="mt-6 grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-3 lg:grid-cols-6">
+            {CITIES.map((city) => (
+              <li key={city.href}>
+                <Link
+                  href={city.href}
+                  className="block py-2 text-sm font-medium text-slate-700 underline-offset-4 transition-colors duration-150 hover:text-[var(--dogshift-blue)] hover:underline"
+                >
+                  {city.label}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export default function HomePageClient() {
   const mapReveal = useRevealOnce({ repeat: true });
 
@@ -864,6 +907,7 @@ export default function HomePageClient() {
         <WhyDogShiftSection />
         <FAQSection />
         <CommunitySection />
+        <CitiesSection />
         <FinalCTASection />
       </main>
     </div>
