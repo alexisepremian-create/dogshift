@@ -243,7 +243,7 @@ function HeroPetsittingStyle() {
         alt=""
         fill
         priority
-        className="object-cover object-center max-sm:object-[35%_center]"
+        className="object-cover object-center max-sm:object-[35%_65%]"
       />
 
       {/* Light overlay — left-weighted gradient keeps text legible while photo stays vivid on the right */}
@@ -265,7 +265,8 @@ function HeroPetsittingStyle() {
 
           <p className="mt-4 text-base leading-relaxed text-slate-700 sm:text-lg">
             Promenade, garde, pension.<br className="sm:hidden" />
-            {" "}Des profils vérifiés, proches de chez vous.
+            {" "}Des profils vérifiés,<br className="sm:hidden" />
+            {" "}proches de chez vous.
           </p>
 
           {/* Trust points — all screens */}
@@ -284,10 +285,10 @@ function HeroPetsittingStyle() {
             </li>
           </ul>
 
-          <div className="mt-7 flex flex-col items-start gap-3 sm:mt-8 sm:flex-row sm:items-center">
+          <div className="mt-6 flex flex-col items-start gap-2.5 sm:mt-8 sm:flex-row sm:items-center sm:gap-3">
             <Link
               href="/search"
-              className="inline-flex items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-6 py-3 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition-all duration-200 ease-out hover:-translate-y-0.5 hover:bg-[var(--dogshift-blue-hover)] hover:shadow-[0_14px_40px_-26px_rgba(2,6,23,0.35)] active:translate-y-0 active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)]"
+              className="inline-flex items-center justify-center rounded-xl px-5 py-2 text-xs font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition-all duration-200 ease-out active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)] [background:var(--dogshift-blue)] hover:[background:var(--dogshift-blue-hover)] sm:rounded-2xl sm:px-6 sm:py-3 sm:text-sm"
             >
               Trouver un dog sitter
             </Link>
@@ -300,10 +301,10 @@ function HeroPetsittingStyle() {
               Devenir dogsitter
             </Link>
 
-            {/* Secondary CTA — mobile: ghost button */}
+            {/* Secondary CTA — mobile: ghost button (compact) */}
             <Link
               href="/devenir-dogsitter"
-              className="inline-flex items-center justify-center rounded-2xl border border-slate-400/50 bg-white/55 px-5 py-2.5 text-sm font-medium text-slate-800 backdrop-blur-sm transition-all duration-200 ease-out hover:bg-white/75 active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)] sm:hidden"
+              className="inline-flex items-center justify-center rounded-xl border border-slate-400/50 bg-white/55 px-5 py-2 text-xs font-medium text-slate-800 backdrop-blur-sm transition-all duration-200 ease-out hover:bg-white/75 active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)] sm:hidden"
             >
               Devenir dogsitter
             </Link>
