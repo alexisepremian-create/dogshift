@@ -5,7 +5,7 @@ import CitySeoLandingPage from "@/app/(marketing)/_components/CitySeoLandingPage
 const title = "Dog sitter Montreux | Promenade, garde et pension chien | DogShift";
 const description =
   "Trouvez un dog sitter à Montreux avec DogShift. Profils vérifiés, assurance incluse. Promenade, garde et pension pour votre chien sur la Riviera.";
-const canonical = "https://dogshift.ch/dog-sitter-montreux";
+const canonical = "https://www.dogshift.ch/dog-sitter-montreux";
 
 export const metadata: Metadata = {
   title,

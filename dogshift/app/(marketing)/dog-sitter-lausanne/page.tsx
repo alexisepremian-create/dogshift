@@ -4,7 +4,7 @@ import CitySeoLandingPage from "@/app/(marketing)/_components/CitySeoLandingPage
 
 const title = "Dog sitter Lausanne | Promenade, garde et pension chien | DogShift";
 const description = "Trouvez un dog sitter à Lausanne fiable et vérifié. Promenade, garde et pension pour votre chien avec DogShift.";
-const canonical = "https://dogshift.ch/dog-sitter-lausanne";
+const canonical = "https://www.dogshift.ch/dog-sitter-lausanne";
 
 export const metadata: Metadata = {
   title,

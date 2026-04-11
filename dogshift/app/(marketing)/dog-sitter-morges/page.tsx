@@ -5,7 +5,7 @@ import CitySeoLandingPage from "@/app/(marketing)/_components/CitySeoLandingPage
 const title = "Dog sitter Morges | Dogsitting premium bientôt disponible | DogShift";
 const description =
   "DogShift arrive bientôt à Morges. Profils vérifiés pour promenade, garde et pension de chien. Inscrivez-vous pour être informé du lancement dans votre région.";
-const canonical = "https://dogshift.ch/dog-sitter-morges";
+const canonical = "https://www.dogshift.ch/dog-sitter-morges";
 
 export const metadata: Metadata = {
   title,

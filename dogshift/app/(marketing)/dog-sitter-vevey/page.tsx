@@ -5,7 +5,7 @@ import CitySeoLandingPage from "@/app/(marketing)/_components/CitySeoLandingPage
 const title = "Dog sitter Vevey | Promenade, garde, pension chien | DogShift";
 const description =
   "Trouvez un dog sitter à Vevey avec DogShift. Profils vérifiés pour promenade, garde et pension de chien. Service en cours de déploiement sur Vevey et la Riviera.";
-const canonical = "https://dogshift.ch/dog-sitter-vevey";
+const canonical = "https://www.dogshift.ch/dog-sitter-vevey";
 
 export const metadata: Metadata = {
   title,

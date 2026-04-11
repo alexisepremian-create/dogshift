@@ -4,7 +4,7 @@ import CitySeoLandingPage from "@/app/(marketing)/_components/CitySeoLandingPage
 
 const title = "Dog sitter Genève | Dogsitting premium en Suisse | DogShift";
 const description = "Trouvez bientôt un dog sitter à Genève avec DogShift. Plateforme premium de dogsitting en Suisse.";
-const canonical = "https://dogshift.ch/dog-sitter-geneve";
+const canonical = "https://www.dogshift.ch/dog-sitter-geneve";
 
 export const metadata: Metadata = {
   title,

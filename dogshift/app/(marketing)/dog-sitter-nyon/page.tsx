@@ -5,7 +5,7 @@ import CitySeoLandingPage from "@/app/(marketing)/_components/CitySeoLandingPage
 const title = "Dog sitter Nyon | Dogsitting premium bientôt disponible | DogShift";
 const description =
   "DogShift arrive bientôt à Nyon. Profils vérifiés pour promenade, garde et pension de chien. Inscrivez-vous pour être informé du lancement.";
-const canonical = "https://dogshift.ch/dog-sitter-nyon";
+const canonical = "https://www.dogshift.ch/dog-sitter-nyon";
 
 export const metadata: Metadata = {
   title,
