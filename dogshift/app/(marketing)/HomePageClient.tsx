@@ -257,38 +257,38 @@ function HeroPetsittingStyle() {
       />
 
       {/* Content */}
-      <div className="relative z-20 mx-auto flex min-h-[100dvh] max-w-[1200px] items-start px-6 pt-20 pb-10 sm:items-center sm:min-h-[100svh] sm:px-8 sm:py-28 2xl:mx-0 2xl:max-w-none 2xl:px-24">
-        <div className="w-full max-w-[580px] 2xl:max-w-[660px]">
+      <div className="relative z-20 mx-auto flex min-h-[100dvh] max-w-[1200px] items-start px-6 pt-20 pb-10 sm:items-center sm:min-h-[100svh] sm:px-8 sm:py-28 2xl:mx-0 2xl:max-w-none 2xl:items-start 2xl:pl-[8vw] 2xl:pr-12 2xl:pt-[20vh]">
+        <div className="w-full max-w-[580px] 2xl:max-w-[740px]">
           <h1 className="text-[1.5rem] font-semibold leading-[1.1] tracking-tight text-slate-900 sm:text-balance sm:text-[1.85rem] sm:leading-[1.06] md:text-5xl lg:text-6xl 2xl:text-[4.5rem] 2xl:leading-[1.04]">
-            Des dog-sitters de confiance,<br className="sm:hidden" />
+            Des dog-sitters de confiance,<br className="sm:hidden" /><br className="hidden 2xl:block" />
             {" "}en quelques clics.
           </h1>
 
-          <p className="mt-3 text-[0.85rem] leading-relaxed text-slate-700 sm:mt-4 sm:text-lg">
+          <p className="mt-3 text-[0.85rem] leading-relaxed text-slate-700 sm:mt-4 sm:text-lg 2xl:mt-6 2xl:text-xl">
             Promenade, garde, pension.<br className="sm:hidden" />
             {" "}Des profils vérifiés, proches de chez vous.
           </p>
 
           {/* Trust points — all screens */}
-          <ul className="mt-4 flex flex-col gap-1.5 sm:mt-5 sm:gap-2.5">
-            <li className="group flex items-center gap-2 transition-transform duration-200 ease-out hover:-translate-y-px sm:gap-2.5">
-              <BadgeCheck className="h-3.5 w-3.5 shrink-0 text-[var(--dogshift-blue)] transition-colors duration-200 ease-out group-hover:text-[var(--dogshift-blue-hover)] sm:h-[1.1rem] sm:w-[1.1rem]" aria-hidden="true" />
-              <span className="text-[13px] font-medium text-slate-700 transition-colors duration-200 ease-out group-hover:text-slate-900 sm:text-sm sm:text-slate-800">Profils vérifiés manuellement</span>
+          <ul className="mt-4 flex flex-col gap-1.5 sm:mt-5 sm:gap-2.5 2xl:mt-6 2xl:gap-3">
+            <li className="group flex items-center gap-2 transition-transform duration-200 ease-out hover:-translate-y-px sm:gap-2.5 2xl:gap-3">
+              <BadgeCheck className="h-3.5 w-3.5 shrink-0 text-[var(--dogshift-blue)] transition-colors duration-200 ease-out group-hover:text-[var(--dogshift-blue-hover)] sm:h-[1.1rem] sm:w-[1.1rem] 2xl:h-5 2xl:w-5" aria-hidden="true" />
+              <span className="text-[13px] font-medium text-slate-700 transition-colors duration-200 ease-out group-hover:text-slate-900 sm:text-sm sm:text-slate-800 2xl:text-base">Profils vérifiés manuellement</span>
             </li>
-            <li className="group flex items-center gap-2 transition-transform duration-200 ease-out hover:-translate-y-px sm:gap-2.5">
-              <FileCheck className="h-3.5 w-3.5 shrink-0 text-[var(--dogshift-blue)] transition-colors duration-200 ease-out group-hover:text-[var(--dogshift-blue-hover)] sm:h-[1.1rem] sm:w-[1.1rem]" aria-hidden="true" />
-              <span className="text-[13px] font-medium text-slate-700 transition-colors duration-200 ease-out group-hover:text-slate-900 sm:text-sm sm:text-slate-800">Casier judiciaire vérifié</span>
+            <li className="group flex items-center gap-2 transition-transform duration-200 ease-out hover:-translate-y-px sm:gap-2.5 2xl:gap-3">
+              <FileCheck className="h-3.5 w-3.5 shrink-0 text-[var(--dogshift-blue)] transition-colors duration-200 ease-out group-hover:text-[var(--dogshift-blue-hover)] sm:h-[1.1rem] sm:w-[1.1rem] 2xl:h-5 2xl:w-5" aria-hidden="true" />
+              <span className="text-[13px] font-medium text-slate-700 transition-colors duration-200 ease-out group-hover:text-slate-900 sm:text-sm sm:text-slate-800 2xl:text-base">Casier judiciaire vérifié</span>
             </li>
-            <li className="group flex items-center gap-2 transition-transform duration-200 ease-out hover:-translate-y-px sm:gap-2.5">
-              <Shield className="h-3.5 w-3.5 shrink-0 text-[var(--dogshift-blue)] transition-colors duration-200 ease-out group-hover:text-[var(--dogshift-blue-hover)] sm:h-[1.1rem] sm:w-[1.1rem]" aria-hidden="true" />
-              <span className="text-[13px] font-medium text-slate-700 transition-colors duration-200 ease-out group-hover:text-slate-900 sm:text-sm sm:text-slate-800">Assurance RC incluse</span>
+            <li className="group flex items-center gap-2 transition-transform duration-200 ease-out hover:-translate-y-px sm:gap-2.5 2xl:gap-3">
+              <Shield className="h-3.5 w-3.5 shrink-0 text-[var(--dogshift-blue)] transition-colors duration-200 ease-out group-hover:text-[var(--dogshift-blue-hover)] sm:h-[1.1rem] sm:w-[1.1rem] 2xl:h-5 2xl:w-5" aria-hidden="true" />
+              <span className="text-[13px] font-medium text-slate-700 transition-colors duration-200 ease-out group-hover:text-slate-900 sm:text-sm sm:text-slate-800 2xl:text-base">Assurance RC incluse</span>
             </li>
           </ul>
 
-          <div className="mt-6 flex flex-col items-start gap-2.5 sm:mt-8 sm:flex-row sm:items-center sm:gap-3">
+          <div className="mt-6 flex flex-col items-start gap-2.5 sm:mt-8 sm:flex-row sm:items-center sm:gap-3 2xl:mt-10 2xl:gap-4">
             <Link
               href="/search"
-              className="inline-flex items-center justify-center rounded-xl px-5 py-2 text-[0.8rem] font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition-all duration-200 ease-out active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)] [background:var(--dogshift-blue)] hover:[background:var(--dogshift-blue-hover)] sm:rounded-2xl sm:px-6 sm:py-3 sm:text-sm"
+              className="inline-flex items-center justify-center rounded-xl px-5 py-2 text-[0.8rem] font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition-all duration-200 ease-out active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)] [background:var(--dogshift-blue)] hover:[background:var(--dogshift-blue-hover)] sm:rounded-2xl sm:px-6 sm:py-3 sm:text-sm 2xl:px-7 2xl:py-3.5 2xl:text-base"
             >
               Trouver un dog sitter
             </Link>
@@ -296,7 +296,7 @@ function HeroPetsittingStyle() {
             {/* Secondary CTA — desktop: ghost button */}
             <Link
               href="/devenir-dogsitter"
-              className="hidden items-center justify-center rounded-2xl border border-slate-300 bg-white/70 px-6 py-3 text-sm font-semibold text-slate-900 shadow-sm backdrop-blur-sm transition-all duration-200 ease-out hover:-translate-y-0.5 hover:bg-white hover:shadow-[0_14px_40px_-26px_rgba(2,6,23,0.18)] active:translate-y-0 active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)] sm:inline-flex"
+              className="hidden items-center justify-center rounded-2xl border border-slate-300 bg-white/70 px-6 py-3 text-sm font-semibold text-slate-900 shadow-sm backdrop-blur-sm transition-all duration-200 ease-out hover:-translate-y-0.5 hover:bg-white hover:shadow-[0_14px_40px_-26px_rgba(2,6,23,0.18)] active:translate-y-0 active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)] sm:inline-flex 2xl:px-7 2xl:py-3.5 2xl:text-base"
             >
               Devenir dogsitter
             </Link>
