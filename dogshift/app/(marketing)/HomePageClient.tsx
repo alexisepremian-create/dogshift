@@ -2,9 +2,9 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { BadgeCheck, Briefcase, CheckCircle2, ChevronDown, FileText, Handshake, Lock, MapPin, ShieldCheck, Umbrella, UserCheck, UserPlus, Wallet } from "lucide-react";
+import { BadgeCheck, Briefcase, CheckCircle2, ChevronDown, FileCheck, FileText, Handshake, Lock, MapPin, Shield, ShieldCheck, Umbrella, UserCheck, UserPlus, Wallet } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import MapPreview from "@/components/MapPreview";
 
 const HERO_SELECT_CLASS =
@@ -143,9 +143,7 @@ function usePrefersReducedMotion() {
   return reduced;
 }
 
-type DialogueLine = { speaker: "owner" | "dog"; text: string };
-
-function useRevealOnce() {
+function useRevealOnce({ repeat = false } = {}) {
   const prefersReducedMotion = usePrefersReducedMotion();
   const ref = useRef<HTMLDivElement | null>(null);
   const [revealed, setRevealed] = useState(false);
@@ -156,314 +154,151 @@ function useRevealOnce() {
       return;
     }
     const el = ref.current;
-    if (!el || revealed) return;
+    if (!el) return;
 
     const obs = new IntersectionObserver(
       (entries) => {
         const entry = entries[0];
-        if (entry?.isIntersecting) {
+        if (!entry) return;
+        if (entry.isIntersecting) {
           setRevealed(true);
-          obs.disconnect();
+          if (!repeat) obs.disconnect();
+        } else if (repeat) {
+          setRevealed(false);
         }
       },
-      { threshold: 0.18 }
+      { threshold: 0.14 }
     );
 
     obs.observe(el);
     return () => obs.disconnect();
-  }, [prefersReducedMotion, revealed]);
+  // repeat is static config — intentionally excluded from deps
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prefersReducedMotion]);
 
   const style = prefersReducedMotion
     ? undefined
     : {
         opacity: revealed ? 1 : 0,
-        transform: revealed ? "translateY(0)" : "translateY(10px)",
-        transition: "opacity 220ms cubic-bezier(0.22,1,0.36,1), transform 220ms cubic-bezier(0.22,1,0.36,1)",
+        transform: revealed ? "translateY(0)" : "translateY(8px)",
+        transition: "opacity 600ms cubic-bezier(0.16,1,0.3,1), transform 600ms cubic-bezier(0.16,1,0.3,1)",
       };
 
   return { ref, style };
 }
 
-function TypewriterBubbles({
-  variant = "overlay",
-  active = true,
-}: {
-  variant?: "overlay" | "stacked";
-  active?: boolean;
-}) {
+function useStaggerReveal(count: number, { baseDelay = 0, step = 80, repeat = false } = {}) {
   const prefersReducedMotion = usePrefersReducedMotion();
-  const dialogue = useMemo<DialogueLine[]>(
-    () =>
-      [
-        { speaker: "owner", text: "Je dois partir ce week-end" },
-        { speaker: "dog", text: "Wouaf… tu reviens vite ?" },
-        { speaker: "owner", text: "Bien sûr. Mais il faut que je te fasse garder." },
-        { speaker: "dog", text: "Pas le chenil… j’aime pas ça 🥺" },
-        { speaker: "owner", text: "Alors je vais trouver quelqu’un près de chez nous." },
-        { speaker: "dog", text: "Avec des câlins ?" },
-        { speaker: "owner", text: "Avec des câlins." },
-        { speaker: "dog", text: "Wouaf ! Alors ça va…" },
-      ],
-    []
-  );
-
-  const [index, setIndex] = useState(0);
-  const [charIndex, setCharIndex] = useState(0);
-  const [ownerText, setOwnerText] = useState("");
-  const [dogText, setDogText] = useState("");
-  const [entered, setEntered] = useState(false);
+  const ref = useRef<HTMLElement | null>(null);
+  const [revealed, setRevealed] = useState(false);
 
   useEffect(() => {
-    if (active) return;
-    setIndex(0);
-    setCharIndex(0);
-    setOwnerText("");
-    setDogText("");
-    setEntered(false);
-  }, [active]);
-
-  useEffect(() => {
-    if (!active) return;
     if (prefersReducedMotion) {
-      setEntered(true);
+      setRevealed(true);
       return;
     }
-    setEntered(false);
-    const raf = window.requestAnimationFrame(() => setEntered(true));
-    return () => window.cancelAnimationFrame(raf);
-  }, [active, index, prefersReducedMotion]);
+    const el = ref.current;
+    if (!el) return;
 
-  useEffect(() => {
-    if (!active) return;
-    if (prefersReducedMotion) {
-      setIndex(0);
-      setCharIndex(0);
-      setOwnerText(dialogue.filter((d) => d.speaker === "owner").slice(-1)[0]?.text ?? "");
-      setDogText(dialogue.filter((d) => d.speaker === "dog").slice(-1)[0]?.text ?? "");
-      return;
-    }
+    const obs = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0];
+        if (!entry) return;
+        if (entry.isIntersecting) {
+          setRevealed(true);
+          if (!repeat) obs.disconnect();
+        } else if (repeat) {
+          setRevealed(false);
+        }
+      },
+      { threshold: 0.1 }
+    );
 
-    const current = dialogue[index];
-    if (!current) return;
-    const full = current.text;
+    obs.observe(el);
+    return () => obs.disconnect();
+  // repeat is a static config value — no need to re-run when it changes
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prefersReducedMotion]);
 
-    const typing = window.setInterval(() => {
-      setCharIndex((c) => {
-        if (c >= full.length) return c;
-        return c + 1;
-      });
-    }, 22);
+  function itemStyle(index: number): React.CSSProperties {
+    if (prefersReducedMotion) return {};
+    const delay = baseDelay + index * step;
+    return {
+      opacity: revealed ? 1 : 0,
+      transform: revealed ? "translateY(0)" : "translateY(8px)",
+      transition: `opacity 600ms cubic-bezier(0.16,1,0.3,1) ${delay}ms, transform 600ms cubic-bezier(0.16,1,0.3,1) ${delay}ms`,
+    };
+  }
 
-    return () => window.clearInterval(typing);
-  }, [active, index, prefersReducedMotion, dialogue]);
-
-  useEffect(() => {
-    if (!active) return;
-    if (prefersReducedMotion) return;
-    const current = dialogue[index];
-    if (!current) return;
-    const full = current.text;
-
-    const partial = full.slice(0, Math.min(charIndex, full.length));
-    if (current.speaker === "owner") setOwnerText(partial);
-    else setDogText(partial);
-
-    if (charIndex < full.length) return;
-
-    const nextTimer = window.setTimeout(() => {
-      const nextIndex = index + 1;
-      if (nextIndex < dialogue.length) {
-        setIndex(nextIndex);
-        setCharIndex(0);
-        return;
-      }
-
-      const loopTimer = window.setTimeout(() => {
-        setIndex(0);
-        setCharIndex(0);
-        setOwnerText("");
-        setDogText("");
-      }, 2000);
-
-      return () => window.clearTimeout(loopTimer);
-    }, 900);
-
-    return () => window.clearTimeout(nextTimer);
-  }, [active, charIndex, index, prefersReducedMotion, dialogue]);
-
-  if (!active) return null;
-
-  const bubbleMotionStyle = prefersReducedMotion
-    ? undefined
-    : {
-        opacity: entered ? 1 : 0,
-        transform: entered ? "translateY(0)" : "translateY(10px)",
-        transition: "opacity 220ms cubic-bezier(0.22,1,0.36,1), transform 220ms cubic-bezier(0.22,1,0.36,1)",
-      };
-
-  return (
-    <>
-      {(
-        prefersReducedMotion ? dialogue[dialogue.length - 1]?.speaker === "owner" : dialogue[index]?.speaker === "owner"
-      ) ? (
-        <div
-          className={
-            variant === "overlay"
-              ? "absolute right-[12.5%] top-[28%] w-[min(320px,calc(100%-5rem))]"
-              : "w-full"
-          }
-          style={bubbleMotionStyle}
-        >
-          <div
-            className={
-              variant === "overlay"
-                ? "inline-flex w-fit max-w-full whitespace-normal break-words rounded-2xl bg-white/60 px-4 py-3 text-sm font-medium text-slate-800 shadow-[0_18px_60px_-44px_rgba(2,6,23,0.28)] ring-1 ring-slate-200/60 backdrop-blur"
-                : "inline-flex w-fit max-w-[min(320px,100%)] whitespace-normal break-words rounded-2xl bg-white/60 px-4 py-3 text-sm font-medium text-slate-800 shadow-[0_18px_60px_-44px_rgba(2,6,23,0.18)] ring-1 ring-slate-200/60"
-            }
-            aria-label="Dialogue propriétaire"
-          >
-            {ownerText}
-          </div>
-        </div>
-      ) : (
-        <div
-          className={
-            variant === "overlay"
-              ? "absolute right-[5%] top-[39%] w-[min(320px,calc(100%-6rem))]"
-              : "mt-3 w-full"
-          }
-          style={bubbleMotionStyle}
-        >
-          <div
-            className={
-              variant === "overlay"
-                ? "inline-flex w-fit max-w-full whitespace-normal break-words rounded-2xl bg-white/60 px-4 py-3 text-sm font-medium text-slate-800 shadow-[0_18px_60px_-44px_rgba(2,6,23,0.28)] ring-1 ring-slate-200/60 backdrop-blur"
-                : "inline-flex w-fit max-w-[min(320px,100%)] whitespace-normal break-words rounded-2xl bg-white/60 px-4 py-3 text-sm font-medium text-slate-800 shadow-[0_18px_60px_-44px_rgba(2,6,23,0.18)] ring-1 ring-slate-200/60"
-            }
-            aria-label="Dialogue chien"
-          >
-            {dogText}
-          </div>
-        </div>
-      )}
-    </>
-  );
+  void count;
+  return { ref, itemStyle };
 }
 
 function HeroPetsittingStyle() {
-  const [bubblesActive, setBubblesActive] = useState(false);
-
   return (
-    <section className="relative w-full overflow-hidden pt-0">
-      <div className="relative min-h-[100vh] w-full bg-white sm:bg-transparent">
-        <div className="relative z-20 block sm:hidden">
-          <div
-            className="relative h-[100svh] w-full overflow-hidden bg-white"
-            style={{
-              backgroundImage: "url('/image%20dogshift%20premium.png')",
-              backgroundRepeat: "no-repeat",
-              backgroundPosition: "74% 40%",
-              backgroundSize: "cover",
-            }}
-          >
-            <div className="pointer-events-none absolute inset-x-0 top-0 z-0 h-64 bg-gradient-to-b from-white/78 via-white/34 to-transparent" />
-            <div className="pointer-events-none absolute inset-x-0 bottom-0 z-0 h-24 bg-gradient-to-t from-white via-white/72 to-transparent" />
+    <section className="relative w-full overflow-hidden">
+      {/* Full-bleed background image */}
+      <Image
+        src="/HERO DOGSHIFT.jpg"
+        alt=""
+        fill
+        priority
+        className="object-cover object-center max-sm:object-[65%_center]"
+      />
 
-            <div className="relative z-10 mx-auto max-w-[560px] px-6 pb-10 pt-24 sm:pt-32">
-              <div className="max-w-[330px]">
-                {/* Logo and text removed here because it's already in the SiteHeader on mobile */}
+      {/* Light overlay — left-weighted gradient keeps text legible while photo stays vivid on the right */}
+      <div
+        className="pointer-events-none absolute inset-0 z-10"
+        style={{
+          background:
+            "linear-gradient(100deg, rgba(248,250,252,0.90) 0%, rgba(248,250,252,0.78) 38%, rgba(248,250,252,0.26) 65%, rgba(248,250,252,0.06) 100%)",
+        }}
+        aria-hidden="true"
+      />
 
-                <h1 className="max-w-[16ch] text-balance text-[1.72rem] font-semibold leading-[1.06] tracking-tight text-slate-900">
-                  L&apos;expérience Premium pour votre Chien.
-                </h1>
+      {/* Content */}
+      <div className="relative z-20 mx-auto flex min-h-[100svh] max-w-[1200px] items-center px-6 py-28 sm:px-8">
+        <div className="w-full max-w-[580px]">
+          <h1 className="text-balance text-[1.85rem] font-semibold leading-[1.06] tracking-tight text-slate-900 sm:text-5xl md:text-6xl">
+            Des dog-sitters de confiance, en quelques clics.
+          </h1>
 
-                <div className="mt-5">
-                  <Link
-                    href="/search"
-                    className="inline-flex min-h-11 items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-5 py-2.5 text-[0.92rem] font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition-all duration-200 ease-out hover:bg-[var(--dogshift-blue-hover)] active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)]"
-                  >
-                    Trouver un dog sitter
-                  </Link>
-                </div>
-              </div>
-            </div>
+          <p className="mt-4 text-pretty text-base leading-relaxed text-slate-700 sm:text-lg">
+            Promenade, garde, pension. Des profils vérifiés, proches de chez vous.
+          </p>
+
+          <ul className="mt-5 flex flex-col gap-2.5">
+            <li className="group flex items-center gap-2.5 transition-transform duration-200 ease-out hover:-translate-y-px">
+              <BadgeCheck className="h-[1.1rem] w-[1.1rem] shrink-0 text-[var(--dogshift-blue)] transition-colors duration-200 ease-out group-hover:text-[var(--dogshift-blue-hover)]" aria-hidden="true" />
+              <span className="text-sm font-medium text-slate-800 transition-colors duration-200 ease-out group-hover:text-slate-900">Profils vérifiés manuellement</span>
+            </li>
+            <li className="group flex items-center gap-2.5 transition-transform duration-200 ease-out hover:-translate-y-px">
+              <FileCheck className="h-[1.1rem] w-[1.1rem] shrink-0 text-[var(--dogshift-blue)] transition-colors duration-200 ease-out group-hover:text-[var(--dogshift-blue-hover)]" aria-hidden="true" />
+              <span className="text-sm font-medium text-slate-800 transition-colors duration-200 ease-out group-hover:text-slate-900">Casier judiciaire vérifié</span>
+            </li>
+            <li className="group flex items-center gap-2.5 transition-transform duration-200 ease-out hover:-translate-y-px">
+              <Shield className="h-[1.1rem] w-[1.1rem] shrink-0 text-[var(--dogshift-blue)] transition-colors duration-200 ease-out group-hover:text-[var(--dogshift-blue-hover)]" aria-hidden="true" />
+              <span className="text-sm font-medium text-slate-800 transition-colors duration-200 ease-out group-hover:text-slate-900">Assurance RC incluse</span>
+            </li>
+          </ul>
+
+          <div className="mt-8 flex flex-col items-start gap-3 sm:flex-row sm:items-center">
+            <Link
+              href="/search"
+              className="inline-flex items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-6 py-3 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition-all duration-200 ease-out hover:-translate-y-0.5 hover:bg-[var(--dogshift-blue-hover)] hover:shadow-[0_14px_40px_-26px_rgba(2,6,23,0.35)] active:translate-y-0 active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)]"
+            >
+              Trouver un dog sitter
+            </Link>
+            <Link
+              href="/devenir-dogsitter"
+              className="inline-flex items-center justify-center rounded-2xl border border-slate-300 bg-white/70 px-6 py-3 text-sm font-semibold text-slate-900 shadow-sm backdrop-blur-sm transition-all duration-200 ease-out hover:-translate-y-0.5 hover:bg-white hover:shadow-[0_14px_40px_-26px_rgba(2,6,23,0.18)] active:translate-y-0 active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)]"
+            >
+              Devenir dogsitter
+            </Link>
           </div>
-        </div>
 
-        <div className="absolute inset-0 z-0 hidden sm:block" aria-hidden="true">
-          <Image
-            src="/image dogshift premium.png"
-            alt=""
-            fill
-            priority
-            className="object-cover"
-            style={{ objectPosition: "90% 88%" }}
-          />
-
-          <div
-            className="pointer-events-none absolute inset-0"
-            style={{
-              background:
-                "linear-gradient(90deg, rgba(248,250,252,0.98) 0%, rgba(248,250,252,0.96) 22%, rgba(248,250,252,0.82) 42%, rgba(248,250,252,0.25) 66%, rgba(248,250,252,0) 82%)",
-            }}
-          />
-        </div>
-
-        <div className="pointer-events-none absolute inset-0 z-20 hidden xl:block">
-          <TypewriterBubbles variant="overlay" active={bubblesActive} />
-        </div>
-
-        <div
-          className="absolute inset-y-0 right-0 z-30 hidden w-1/2 xl:block"
-          onMouseEnter={() => setBubblesActive(true)}
-          onMouseLeave={() => setBubblesActive(false)}
-          aria-hidden="true"
-        />
-
-        <div className="relative z-20 mx-auto hidden max-w-[1200px] px-4 pb-10 sm:block sm:px-6 sm:pb-12">
-          <div className="pt-6 sm:pt-24 lg:pt-28">
-            <div className="max-w-[640px]">
-              <div className="flex justify-center md:hidden">
-                <div className="flex h-14 w-14 items-center justify-center rounded-full border border-slate-200 bg-slate-50 sm:h-24 sm:w-24">
-                  <Image
-                    src="/dogshift-logo.png"
-                    alt="DogShift"
-                    width={96}
-                    height={96}
-                    priority
-                    className="h-10 w-auto max-h-full sm:h-20"
-                  />
-                </div>
-              </div>
-              <h1 className="mt-4 text-balance text-4xl font-semibold tracking-tight text-slate-900 sm:mt-6 sm:text-5xl md:text-6xl">
-                L&apos;expérience Premium pour votre Chien.
-              </h1>
-
-              <p className="mt-5 text-pretty text-base leading-relaxed text-slate-600 sm:text-lg">
-                Promenade, Garde, Pension. Trouvez un dog-sitter de confiance en 2 clics.
-              </p>
-
-              <div className="mt-8 flex flex-col items-stretch gap-3 sm:flex-row sm:items-center">
-                <Link
-                  href="/search"
-                  className="inline-flex items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-6 py-3 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition-all duration-200 ease-out hover:-translate-y-0.5 hover:bg-[var(--dogshift-blue-hover)] hover:shadow-[0_14px_40px_-26px_rgba(2,6,23,0.35)] active:translate-y-0 active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)]"
-                >
-                  Trouver un dog sitter
-                </Link>
-                <Link
-                  href="/devenir-dogsitter"
-                  className="inline-flex items-center justify-center rounded-2xl border border-slate-300 bg-white px-6 py-3 text-sm font-semibold text-slate-900 shadow-sm transition-all duration-200 ease-out hover:-translate-y-0.5 hover:bg-slate-50 hover:shadow-[0_14px_40px_-26px_rgba(2,6,23,0.18)] active:translate-y-0 active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)]"
-                >
-                  Devenir dogsitter
-                </Link>
-              </div>
-
-              <div className="mt-8 grid gap-5">
-                <SearchBar embedded />
-              </div>
-
-              <div className="mt-6 lg:hidden" />
-            </div>
+          <div className="mt-8 grid gap-5">
+            <SearchBar embedded />
           </div>
         </div>
       </div>
@@ -516,11 +351,14 @@ function MapSection() {
 }
 
 function HowItWorks() {
+  const headerReveal = useRevealOnce({ repeat: true });
+  const stepsReveal = useStaggerReveal(3, { baseDelay: 0, step: 140, repeat: true });
+
   return (
     <section className="pb-16 pt-14 sm:pb-20 sm:pt-16">
       <div className="mx-auto max-w-6xl px-4 sm:px-6">
         <div className="mx-auto max-w-5xl">
-          <div className="text-center">
+          <div ref={headerReveal.ref} style={headerReveal.style} className="text-center">
             <h2 className="mt-5 text-balance text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">
               Voilà comment cela fonctionne
             </h2>
@@ -554,12 +392,16 @@ function HowItWorks() {
               />
             </svg>
 
-            <div className="grid gap-10 sm:grid-cols-3 sm:gap-12">
+            <div
+              ref={stepsReveal.ref as React.RefObject<HTMLDivElement>}
+              className="grid gap-10 sm:grid-cols-3 sm:gap-12"
+            >
               <Link
                 href="/search"
+                style={stepsReveal.itemStyle(0)}
                 className="group text-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--dogshift-blue)]"
               >
-                <div className="relative z-10 mx-auto flex h-16 w-16 items-center justify-center">
+                <div className="relative z-10 mx-auto flex h-16 w-16 items-center justify-center transition-transform duration-250 ease-out group-hover:-translate-y-0.5">
                   <MapPin className="h-12 w-12 text-[var(--dogshift-blue)]" aria-hidden="true" />
                 </div>
                 <p className="mt-4 text-base font-semibold text-slate-900">Trouvez près de chez vous</p>
@@ -571,8 +413,8 @@ function HowItWorks() {
                 </p>
               </Link>
 
-              <div className="text-center">
-                <div className="relative z-10 mx-auto flex h-16 w-16 items-center justify-center">
+              <div style={stepsReveal.itemStyle(1)} className="group text-center">
+                <div className="relative z-10 mx-auto flex h-16 w-16 items-center justify-center transition-transform duration-250 ease-out group-hover:-translate-y-0.5">
                   <BadgeCheck className="h-12 w-12 text-[var(--dogshift-blue)]" aria-hidden="true" />
                 </div>
                 <p className="mt-4 text-base font-semibold text-slate-900">Choisissez en confiance</p>
@@ -583,9 +425,10 @@ function HowItWorks() {
 
               <Link
                 href="/devenir-dogsitter"
+                style={stepsReveal.itemStyle(2)}
                 className="group text-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--dogshift-blue)]"
               >
-                <div className="relative z-10 mx-auto flex h-16 w-16 items-center justify-center">
+                <div className="relative z-10 mx-auto flex h-16 w-16 items-center justify-center transition-transform duration-250 ease-out group-hover:-translate-y-0.5">
                   <UserPlus className="h-12 w-12 text-[var(--dogshift-blue)]" aria-hidden="true" />
                 </div>
                 <p className="mt-4 text-base font-semibold text-slate-900">Devenez dogsitter</p>
@@ -611,341 +454,404 @@ function HowItWorks() {
   );
 }
 
+function SecuritySection() {
+  const blockReveal = useRevealOnce({ repeat: true });
+
+  return (
+    <section className="bg-slate-50">
+      <div className="mx-auto max-w-6xl px-4 pb-16 pt-14 sm:px-6 sm:pb-20 sm:pt-16">
+        <div ref={blockReveal.ref} style={blockReveal.style} className="mx-auto max-w-5xl">
+          <p className="text-xs font-semibold text-slate-600">Sécurité & confiance</p>
+          <h2 className="mt-3 flex items-center gap-2 text-balance text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">
+            <Lock className="h-6 w-6 text-slate-700" aria-hidden="true" />
+            <span>Une plateforme sécurisée, dès le premier jour</span>
+          </h2>
+          <p className="mt-4 text-pretty text-sm leading-relaxed text-slate-600 sm:text-base">
+            DogShift est actuellement en phase pilote, avec un nombre <span className="font-semibold text-slate-800">volontairement limité</span> de dogsitters admis sur la plateforme après un processus de <span className="font-semibold text-slate-800">sélection exigeant</span>. Cette phase nous permet de construire une plateforme fiable, responsable et orientée confiance, dès les premières réservations.
+          </p>
+
+          <ul className="mt-6 grid gap-4">
+            <li className="flex items-center gap-3">
+              <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-slate-50 text-slate-700 ring-1 ring-slate-200">
+                <ShieldCheck className="h-5 w-5" aria-hidden="true" />
+              </span>
+              <p className="text-sm leading-relaxed text-slate-700 sm:text-base">
+                DogShift agit comme plateforme de mise en relation sécurisée, avec paiement et support intégrés.
+              </p>
+            </li>
+            <li className="flex items-center gap-3">
+              <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-slate-50 text-slate-700 ring-1 ring-slate-200">
+                <Umbrella className="h-5 w-5" aria-hidden="true" />
+              </span>
+              <p className="text-sm leading-relaxed text-slate-700 sm:text-base">
+                Les dogsitters présents sur DogShift doivent disposer d'une assurance responsabilité civile valable, couvrant la garde d'animaux.
+              </p>
+            </li>
+            <li className="flex items-center gap-3">
+              <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-slate-50 text-slate-700 ring-1 ring-slate-200">
+                <ShieldCheck className="h-5 w-5" aria-hidden="true" />
+              </span>
+              <p className="text-sm leading-relaxed text-slate-700 sm:text-base">
+                DogShift est assuré en tant que plateforme, afin de garantir un cadre fiable et professionnel.
+              </p>
+            </li>
+            <li className="flex items-center gap-3">
+              <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-slate-50 text-slate-700 ring-1 ring-slate-200">
+                <FileText className="h-5 w-5" aria-hidden="true" />
+              </span>
+              <p className="text-sm leading-relaxed text-slate-700 sm:text-base">
+                Chaque réservation effectuée via DogShift bénéficie d'un cadre contractuel clair entre l'owner et le dogsitter.
+              </p>
+            </li>
+          </ul>
+
+          <p className="mt-6 text-pretty text-sm leading-relaxed text-slate-600 sm:text-base">
+            Nous travaillons activement à la mise en place d'une couverture d'assurance dédiée DogShift, qui accompagnera le lancement officiel de la plateforme.
+          </p>
+          <p className="mt-4 text-sm font-medium text-slate-500">
+            DogShift se construit avec exigence, transparence et responsabilité — pour une expérience de garde sereine et durable.
+          </p>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function CareersSection() {
+  const headerReveal = useRevealOnce({ repeat: true });
+  const blocksReveal = useStaggerReveal(3, { step: 140, repeat: true });
+
+  return (
+    <section className="bg-slate-50">
+      <div className="mx-auto max-w-6xl px-4 pb-16 pt-14 sm:px-6 sm:pb-20 sm:pt-16">
+        <div className="mx-auto w-full max-w-5xl">
+          <div ref={headerReveal.ref} style={headerReveal.style} className="text-center">
+            <p className="inline-flex items-center rounded-full border border-slate-200 bg-white px-4 py-1 text-xs font-medium text-slate-600 shadow-sm">
+              Carrières
+            </p>
+            <h2 className="mt-5 text-balance text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">Travailler chez DogShift</h2>
+          </div>
+
+          <div
+            ref={blocksReveal.ref as React.RefObject<HTMLDivElement>}
+            className="mt-10 grid gap-10 sm:grid-cols-3 sm:gap-12"
+          >
+            <div style={blocksReveal.itemStyle(0)} className="text-center">
+              <div className="relative z-10 mx-auto flex h-16 w-16 items-center justify-center">
+                <Briefcase className="h-12 w-12 text-[var(--dogshift-blue)]" aria-hidden="true" />
+              </div>
+              <p className="mt-4 text-base font-semibold text-slate-900">Construire avec exigence</p>
+              <p className="mt-2 text-sm leading-relaxed text-slate-600">DogShift se construit progressivement, avec exigence et passion.</p>
+            </div>
+
+            <div style={blocksReveal.itemStyle(1)} className="text-center">
+              <div className="relative z-10 mx-auto flex h-16 w-16 items-center justify-center">
+                <UserCheck className="h-12 w-12 text-[var(--dogshift-blue)]" aria-hidden="true" />
+              </div>
+              <p className="mt-4 text-base font-semibold text-slate-900">Travailler avec des valeurs</p>
+              <p className="mt-2 text-sm leading-relaxed text-slate-600">
+                Nous collaborons avec des profils partageant nos valeurs de confiance, de responsabilité et de qualité de service.
+              </p>
+            </div>
+
+            <div style={blocksReveal.itemStyle(2)} className="text-center">
+              <div className="relative z-10 mx-auto flex h-16 w-16 items-center justify-center">
+                <Handshake className="h-12 w-12 text-[var(--dogshift-blue)]" aria-hidden="true" />
+              </div>
+              <p className="mt-4 text-base font-semibold text-slate-900">Échanger simplement</p>
+              <p className="mt-2 text-sm leading-relaxed text-slate-600">
+                Si vous souhaitez contribuer au développement d'une plateforme suisse, humaine et orientée bien-être animal, nous serions ravis d'échanger avec vous.
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-10 flex flex-wrap items-center justify-center gap-x-3 gap-y-2 text-sm font-semibold">
+            <Link href="/help" className="text-[var(--dogshift-blue)] hover:text-[var(--dogshift-blue-hover)]">
+              Nous contacter
+            </Link>
+            <span className="text-slate-300" aria-hidden="true">
+              /
+            </span>
+            <Link href="/help" className="text-[var(--dogshift-blue)] hover:text-[var(--dogshift-blue-hover)]">
+              Découvrir les opportunités
+            </Link>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function WhyDogShiftSection() {
+  const whyHeaderReveal = useRevealOnce({ repeat: true });
+  const cardsReveal = useStaggerReveal(4, { step: 80, repeat: true });
+  const forYouReveal = useRevealOnce({ repeat: true });
+
+  return (
+    <section className="bg-slate-50">
+      <div className="mx-auto max-w-6xl px-4 pb-16 pt-14 sm:px-6 sm:pb-20 sm:pt-16">
+        <div className="grid gap-20 sm:gap-24">
+          <div>
+            <div ref={whyHeaderReveal.ref} style={whyHeaderReveal.style} className="flex flex-col gap-2">
+              <p className="text-xs font-semibold text-slate-600">Pourquoi DogShift est différent</p>
+              <h2 className="text-balance text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">Pourquoi choisir DogShift ?</h2>
+            </div>
+
+            <div
+              ref={cardsReveal.ref as React.RefObject<HTMLDivElement>}
+              className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4"
+            >
+              <div style={cardsReveal.itemStyle(0)} className="rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_18px_60px_-50px_rgba(2,6,23,0.16)] transition-transform duration-200 ease-out md:hover:-translate-y-1 md:hover:scale-[1.03]">
+                <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-50 text-slate-700 ring-1 ring-slate-200">
+                  <BadgeCheck className="h-5 w-5" aria-hidden="true" />
+                </span>
+                <p className="mt-4 text-sm font-semibold text-slate-900">Sélection rigoureuse</p>
+                <p className="mt-2 text-sm leading-relaxed text-slate-600">
+                  Sélection rigoureuse des dogsitters, avec un nombre volontairement limité de profils en phase pilote.
+                </p>
+              </div>
+
+              <div style={cardsReveal.itemStyle(1)} className="rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_18px_60px_-50px_rgba(2,6,23,0.16)] transition-transform duration-200 ease-out md:hover:-translate-y-1 md:hover:scale-[1.03]">
+                <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-50 text-slate-700 ring-1 ring-slate-200">
+                  <UserCheck className="h-5 w-5" aria-hidden="true" />
+                </span>
+                <p className="mt-4 text-sm font-semibold text-slate-900">Profils vérifiés</p>
+                <p className="mt-2 text-sm leading-relaxed text-slate-600">
+                  Profils détaillés et informations vérifiées pour choisir en toute confiance.
+                </p>
+              </div>
+
+              <div style={cardsReveal.itemStyle(2)} className="rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_18px_60px_-50px_rgba(2,6,23,0.16)] transition-transform duration-200 ease-out md:hover:-translate-y-1 md:hover:scale-[1.03]">
+                <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-50 text-slate-700 ring-1 ring-slate-200">
+                  <Wallet className="h-5 w-5" aria-hidden="true" />
+                </span>
+                <p className="mt-4 text-sm font-semibold text-slate-900">Paiement sécurisé</p>
+                <p className="mt-2 text-sm leading-relaxed text-slate-600">
+                  Paiement sécurisé et cadre contractuel clair dès la première réservation.
+                </p>
+              </div>
+
+              <div style={cardsReveal.itemStyle(3)} className="rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_18px_60px_-50px_rgba(2,6,23,0.16)] transition-transform duration-200 ease-out md:hover:-translate-y-1 md:hover:scale-[1.03]">
+                <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-50 text-slate-700 ring-1 ring-slate-200">
+                  <MapPin className="h-5 w-5" aria-hidden="true" />
+                </span>
+                <p className="mt-4 text-sm font-semibold text-slate-900">Plateforme suisse</p>
+                <p className="mt-2 text-sm leading-relaxed text-slate-600">
+                  Plateforme suisse, locale et responsable, centrée sur la relation humaine.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Plateforme construite avec exigence — statique intentionnellement */}
+          <section>
+            <div className="mx-auto max-w-4xl">
+              <p className="text-xs font-semibold text-slate-600">Phase pilote & confiance</p>
+              <h2 className="mt-2 text-balance text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">
+                Une plateforme construite avec exigence
+              </h2>
+              <div className="mt-4 space-y-3 text-sm leading-relaxed text-slate-600 sm:text-base">
+                <p>
+                  DogShift est actuellement en phase pilote. Nous avons volontairement limité le nombre de dogsitters admis afin de construire
+                  une plateforme fiable, responsable et orientée confiance.
+                </p>
+                <p>
+                  Les profils présents sur DogShift ont été sélectionnés avec soin pour garantir une expérience de garde sereine, dès les
+                  premières réservations.
+                </p>
+              </div>
+            </div>
+          </section>
+
+          {/* DogShift est fait pour vous si */}
+          <div ref={forYouReveal.ref} style={forYouReveal.style}>
+            <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-50px_rgba(2,6,23,0.16)] sm:p-8">
+              <h2 className="text-balance text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">DogShift est fait pour vous si\u2026</h2>
+              <ul className="mt-6 grid gap-4 sm:grid-cols-2">
+                <li className="flex items-start gap-3">
+                  <CheckCircle2 className="mt-0.5 h-5 w-5 text-emerald-600" aria-hidden="true" />
+                  <p className="text-sm leading-relaxed text-slate-700 sm:text-base">
+                    Vous cherchez un dogsitter de confiance, pas simplement disponible
+                  </p>
+                </li>
+                <li className="flex items-start gap-3">
+                  <CheckCircle2 className="mt-0.5 h-5 w-5 text-emerald-600" aria-hidden="true" />
+                  <p className="text-sm leading-relaxed text-slate-700 sm:text-base">
+                    Vous privilégiez une relation locale, humaine et transparente
+                  </p>
+                </li>
+                <li className="flex items-start gap-3">
+                  <CheckCircle2 className="mt-0.5 h-5 w-5 text-emerald-600" aria-hidden="true" />
+                  <p className="text-sm leading-relaxed text-slate-700 sm:text-base">
+                    Vous voulez une plateforme sécurisée, claire et responsable
+                  </p>
+                </li>
+                <li className="flex items-start gap-3">
+                  <CheckCircle2 className="mt-0.5 h-5 w-5 text-emerald-600" aria-hidden="true" />
+                  <p className="text-sm leading-relaxed text-slate-700 sm:text-base">
+                    Vous souhaitez éviter les profils flous et les mauvaises surprises
+                  </p>
+                </li>
+              </ul>
+            </section>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function FAQSection() {
+  const faqReveal = useStaggerReveal(3, { step: 80, repeat: true });
+
+  return (
+    <section className="bg-slate-50">
+      <div className="mx-auto max-w-6xl px-4 pb-16 pt-0 sm:px-6 sm:pb-20">
+        <div className="mx-auto w-full max-w-4xl">
+          <h2 className="text-balance text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">Questions fréquentes</h2>
+          <div
+            ref={faqReveal.ref as React.RefObject<HTMLDivElement>}
+            className="mt-6 grid gap-3"
+          >
+            <details style={faqReveal.itemStyle(0)} className="group rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-50px_rgba(2,6,23,0.14)]">
+              <summary className="cursor-pointer list-none text-sm font-semibold text-slate-900 outline-none">
+                <span className="flex items-center justify-between gap-4">
+                  <span>DogShift est-il une pension pour chiens ?</span>
+                  <span className="text-slate-400 transition group-open:rotate-45">+</span>
+                </span>
+              </summary>
+              <p className="mt-3 text-sm leading-relaxed text-slate-600 sm:text-base">
+                Non. DogShift est une plateforme de mise en relation entre propriétaires et dogsitters indépendants, pour une garde
+                personnalisée et adaptée à chaque chien.
+              </p>
+            </details>
+
+            <details style={faqReveal.itemStyle(1)} className="group rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-50px_rgba(2,6,23,0.14)]">
+              <summary className="cursor-pointer list-none text-sm font-semibold text-slate-900 outline-none">
+                <span className="flex items-center justify-between gap-4">
+                  <span>Comment sont sélectionnés les dogsitters ?</span>
+                  <span className="text-slate-400 transition group-open:rotate-45">+</span>
+                </span>
+              </summary>
+              <p className="mt-3 text-sm leading-relaxed text-slate-600 sm:text-base">
+                Chaque dogsitter passe par un processus de sélection et doit fournir des informations claires avant d'être accepté sur la
+                plateforme.
+              </p>
+            </details>
+
+            <details style={faqReveal.itemStyle(2)} className="group rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-50px_rgba(2,6,23,0.14)]">
+              <summary className="cursor-pointer list-none text-sm font-semibold text-slate-900 outline-none">
+                <span className="flex items-center justify-between gap-4">
+                  <span>Que se passe-t-il en cas de problème ?</span>
+                  <span className="text-slate-400 transition group-open:rotate-45">+</span>
+                </span>
+              </summary>
+              <p className="mt-3 text-sm leading-relaxed text-slate-600 sm:text-base">
+                DogShift agit comme intermédiaire sécurisé, avec un cadre contractuel et un support intégré pour accompagner les utilisateurs.
+              </p>
+            </details>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function CommunitySection() {
+  const blockReveal = useRevealOnce({ repeat: true });
+
+  return (
+    <section className="bg-slate-50">
+      <div className="mx-auto max-w-6xl px-4 pb-16 pt-0 sm:px-6 sm:pb-20">
+        <div id="contribution" className="mx-auto w-full max-w-5xl">
+          <div ref={blockReveal.ref} style={blockReveal.style} className="flex flex-col gap-4">
+            <div className="min-w-0">
+              <p className="text-xs font-semibold text-slate-600">Communauté</p>
+              <h2 className="mt-2 text-balance text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">
+                Soutenir le lancement de DogShift
+              </h2>
+              <p className="mt-3 text-sm leading-relaxed text-slate-600 sm:text-base">
+                DogShift est actuellement en phase pilote, construite de manière indépendante et responsable. Certaines personnes souhaitent
+                contribuer volontairement au lancement de la plateforme.
+              </p>
+              <p className="mt-3 text-sm leading-relaxed text-slate-600 sm:text-base">
+                Ce soutien permet d'accompagner le développement, l'infrastructure et les outils nécessaires à une expérience fiable dès le
+                lancement officiel.
+              </p>
+              <p className="mt-3 text-sm leading-relaxed text-slate-500 sm:text-base">
+                Toute contribution est facultative et n'influence en aucun cas l'accès ou l'utilisation de la plateforme.
+              </p>
+            </div>
+
+            <div className="mt-2">
+              <Link
+                href="/contribuer"
+                className="inline-flex w-full items-center justify-center rounded-2xl border border-slate-200 bg-white px-6 py-3 text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)] sm:w-auto"
+              >
+                Contribuer au lancement
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function FinalCTASection() {
+  const blockReveal = useRevealOnce({ repeat: true });
+
+  return (
+    <section className="bg-slate-50">
+      <div className="mx-auto max-w-6xl px-4 pb-16 pt-0 sm:px-6 sm:pb-20">
+        <div ref={blockReveal.ref} style={blockReveal.style} className="text-center">
+          <p className="text-xs font-semibold text-slate-600">Prochaine étape</p>
+          <h2 className="mt-3 text-balance text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">
+            Prêt à trouver un dogsitter de confiance près de chez vous ?
+          </h2>
+          <p className="mt-4 text-sm leading-relaxed text-slate-600 sm:text-base">
+            Découvrez des profils locaux, sélectionnés avec soin, et réservez en toute sérénité.
+          </p>
+          <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
+            <Link
+              href="/search"
+              className="inline-flex items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-6 py-3 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition hover:bg-[var(--dogshift-blue-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)]"
+            >
+              Trouver un dogsitter
+            </Link>
+            <Link
+              href="/devenir-dogsitter"
+              className="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white px-6 py-3 text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)]"
+            >
+              Devenir dogsitter
+            </Link>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export default function HomePageClient() {
-  const mapReveal = useRevealOnce();
-  const howReveal = useRevealOnce();
+  const mapReveal = useRevealOnce({ repeat: true });
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
       <main className="pb-24 md:pb-0">
         <HeroPetsittingStyle />
         <MobileSearchIntroSection />
-
-        <div ref={howReveal.ref} style={howReveal.style}>
-          <HowItWorks />
-        </div>
-
-        <section className="bg-slate-50">
-          <div className="mx-auto max-w-6xl px-4 pb-16 pt-14 sm:px-6 sm:pb-20 sm:pt-16">
-            <div className="mx-auto max-w-5xl">
-              <p className="text-xs font-semibold text-slate-600">Sécurité & confiance</p>
-              <h2 className="mt-3 flex items-center gap-2 text-balance text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">
-                <Lock className="h-6 w-6 text-slate-700" aria-hidden="true" />
-                <span>Une plateforme sécurisée, dès le premier jour</span>
-              </h2>
-              <p className="mt-4 text-pretty text-sm leading-relaxed text-slate-600 sm:text-base">
-                DogShift est actuellement en phase pilote, avec un nombre <span className="font-semibold text-slate-800">volontairement limité</span> de dogsitters admis sur la plateforme après un processus de <span className="font-semibold text-slate-800">sélection exigeant</span>. Cette phase nous permet de construire une plateforme fiable, responsable et orientée confiance, dès les premières réservations.
-              </p>
-
-              <ul className="mt-6 grid gap-4">
-                <li className="flex items-center gap-3">
-                  <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-slate-50 text-slate-700 ring-1 ring-slate-200">
-                    <ShieldCheck className="h-5 w-5" aria-hidden="true" />
-                  </span>
-                  <p className="text-sm leading-relaxed text-slate-700 sm:text-base">
-                    DogShift agit comme plateforme de mise en relation sécurisée, avec paiement et support intégrés.
-                  </p>
-                </li>
-                <li className="flex items-center gap-3">
-                  <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-slate-50 text-slate-700 ring-1 ring-slate-200">
-                    <Umbrella className="h-5 w-5" aria-hidden="true" />
-                  </span>
-                  <p className="text-sm leading-relaxed text-slate-700 sm:text-base">
-                    Les dogsitters présents sur DogShift doivent disposer d’une assurance responsabilité civile valable, couvrant la garde d’animaux.
-                  </p>
-                </li>
-                <li className="flex items-center gap-3">
-                  <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-slate-50 text-slate-700 ring-1 ring-slate-200">
-                    <ShieldCheck className="h-5 w-5" aria-hidden="true" />
-                  </span>
-                  <p className="text-sm leading-relaxed text-slate-700 sm:text-base">
-                    DogShift est assuré en tant que plateforme, afin de garantir un cadre fiable et professionnel.
-                  </p>
-                </li>
-                <li className="flex items-center gap-3">
-                  <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-slate-50 text-slate-700 ring-1 ring-slate-200">
-                    <FileText className="h-5 w-5" aria-hidden="true" />
-                  </span>
-                  <p className="text-sm leading-relaxed text-slate-700 sm:text-base">
-                    Chaque réservation effectuée via DogShift bénéficie d’un cadre contractuel clair entre l’owner et le dogsitter.
-                  </p>
-                </li>
-              </ul>
-
-              <p className="mt-6 text-pretty text-sm leading-relaxed text-slate-600 sm:text-base">
-                Nous travaillons activement à la mise en place d’une couverture d’assurance dédiée DogShift, qui accompagnera le lancement officiel de la plateforme.
-              </p>
-              <p className="mt-4 text-sm font-medium text-slate-500">
-                DogShift se construit avec exigence, transparence et responsabilité — pour une expérience de garde sereine et durable.
-              </p>
-            </div>
-          </div>
-        </section>
-
-        <section className="bg-slate-50">
-          <div className="mx-auto max-w-6xl px-4 pb-16 pt-14 sm:px-6 sm:pb-20 sm:pt-16">
-            <div className="mx-auto w-full max-w-5xl">
-              <section>
-                <div className="text-center">
-                  <p className="inline-flex items-center rounded-full border border-slate-200 bg-white px-4 py-1 text-xs font-medium text-slate-600 shadow-sm">
-                    Carrières
-                  </p>
-                  <h2 className="mt-5 text-balance text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">Travailler chez DogShift</h2>
-                </div>
-
-                <div className="mt-10 grid gap-10 sm:grid-cols-3 sm:gap-12">
-                  <div className="text-center">
-                    <div className="relative z-10 mx-auto flex h-16 w-16 items-center justify-center">
-                      <Briefcase className="h-12 w-12 text-[var(--dogshift-blue)]" aria-hidden="true" />
-                    </div>
-                    <p className="mt-4 text-base font-semibold text-slate-900">Construire avec exigence</p>
-                    <p className="mt-2 text-sm leading-relaxed text-slate-600">DogShift se construit progressivement, avec exigence et passion.</p>
-                  </div>
-
-                  <div className="text-center">
-                    <div className="relative z-10 mx-auto flex h-16 w-16 items-center justify-center">
-                      <UserCheck className="h-12 w-12 text-[var(--dogshift-blue)]" aria-hidden="true" />
-                    </div>
-                    <p className="mt-4 text-base font-semibold text-slate-900">Travailler avec des valeurs</p>
-                    <p className="mt-2 text-sm leading-relaxed text-slate-600">
-                      Nous collaborons avec des profils partageant nos valeurs de confiance, de responsabilité et de qualité de service.
-                    </p>
-                  </div>
-
-                  <div className="text-center">
-                    <div className="relative z-10 mx-auto flex h-16 w-16 items-center justify-center">
-                      <Handshake className="h-12 w-12 text-[var(--dogshift-blue)]" aria-hidden="true" />
-                    </div>
-                    <p className="mt-4 text-base font-semibold text-slate-900">Échanger simplement</p>
-                    <p className="mt-2 text-sm leading-relaxed text-slate-600">
-                      Si vous souhaitez contribuer au développement d’une plateforme suisse, humaine et orientée bien-être animal, nous serions ravis d’échanger avec vous.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="mt-10 flex flex-wrap items-center justify-center gap-x-3 gap-y-2 text-sm font-semibold">
-                  <Link href="/help" className="text-[var(--dogshift-blue)] hover:text-[var(--dogshift-blue-hover)]">
-                    Nous contacter
-                  </Link>
-                  <span className="text-slate-300" aria-hidden="true">
-                    /
-                  </span>
-                  <Link href="/help" className="text-[var(--dogshift-blue)] hover:text-[var(--dogshift-blue-hover)]">
-                    Découvrir les opportunités
-                  </Link>
-                </div>
-              </section>
-            </div>
-          </div>
-        </section>
+        <HowItWorks />
+        <SecuritySection />
+        <CareersSection />
 
         <div ref={mapReveal.ref} style={mapReveal.style}>
           <MapSection />
         </div>
 
-        <section className="bg-slate-50">
-          <div className="mx-auto max-w-6xl px-4 pb-16 pt-14 sm:px-6 sm:pb-20 sm:pt-16">
-            <div className="grid gap-20 sm:gap-24">
-              <section>
-                <div className="flex flex-col gap-2">
-                  <p className="text-xs font-semibold text-slate-600">Pourquoi DogShift est différent</p>
-                  <h2 className="text-balance text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">Pourquoi choisir DogShift ?</h2>
-                </div>
-
-                <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                  <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_18px_60px_-50px_rgba(2,6,23,0.16)] transition-transform duration-200 ease-out md:hover:-translate-y-1 md:hover:scale-[1.03]">
-                    <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-50 text-slate-700 ring-1 ring-slate-200">
-                      <BadgeCheck className="h-5 w-5" aria-hidden="true" />
-                    </span>
-                    <p className="mt-4 text-sm font-semibold text-slate-900">Sélection rigoureuse</p>
-                    <p className="mt-2 text-sm leading-relaxed text-slate-600">
-                      Sélection rigoureuse des dogsitters, avec un nombre volontairement limité de profils en phase pilote.
-                    </p>
-                  </div>
-
-                  <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_18px_60px_-50px_rgba(2,6,23,0.16)] transition-transform duration-200 ease-out md:hover:-translate-y-1 md:hover:scale-[1.03]">
-                    <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-50 text-slate-700 ring-1 ring-slate-200">
-                      <UserCheck className="h-5 w-5" aria-hidden="true" />
-                    </span>
-                    <p className="mt-4 text-sm font-semibold text-slate-900">Profils vérifiés</p>
-                    <p className="mt-2 text-sm leading-relaxed text-slate-600">
-                      Profils détaillés et informations vérifiées pour choisir en toute confiance.
-                    </p>
-                  </div>
-
-                  <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_18px_60px_-50px_rgba(2,6,23,0.16)] transition-transform duration-200 ease-out md:hover:-translate-y-1 md:hover:scale-[1.03]">
-                    <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-50 text-slate-700 ring-1 ring-slate-200">
-                      <Wallet className="h-5 w-5" aria-hidden="true" />
-                    </span>
-                    <p className="mt-4 text-sm font-semibold text-slate-900">Paiement sécurisé</p>
-                    <p className="mt-2 text-sm leading-relaxed text-slate-600">
-                      Paiement sécurisé et cadre contractuel clair dès la première réservation.
-                    </p>
-                  </div>
-
-                  <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_18px_60px_-50px_rgba(2,6,23,0.16)] transition-transform duration-200 ease-out md:hover:-translate-y-1 md:hover:scale-[1.03]">
-                    <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-50 text-slate-700 ring-1 ring-slate-200">
-                      <MapPin className="h-5 w-5" aria-hidden="true" />
-                    </span>
-                    <p className="mt-4 text-sm font-semibold text-slate-900">Plateforme suisse</p>
-                    <p className="mt-2 text-sm leading-relaxed text-slate-600">
-                      Plateforme suisse, locale et responsable, centrée sur la relation humaine.
-                    </p>
-                  </div>
-                </div>
-              </section>
-
-              <section>
-                <div className="mx-auto max-w-4xl">
-                  <p className="text-xs font-semibold text-slate-600">Phase pilote & confiance</p>
-                  <h2 className="mt-2 text-balance text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">
-                    Une plateforme construite avec exigence
-                  </h2>
-                  <div className="mt-4 space-y-3 text-sm leading-relaxed text-slate-600 sm:text-base">
-                    <p>
-                      DogShift est actuellement en phase pilote. Nous avons volontairement limité le nombre de dogsitters admis afin de construire
-                      une plateforme fiable, responsable et orientée confiance.
-                    </p>
-                    <p>
-                      Les profils présents sur DogShift ont été sélectionnés avec soin pour garantir une expérience de garde sereine, dès les
-                      premières réservations.
-                    </p>
-                  </div>
-                </div>
-              </section>
-
-              <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-50px_rgba(2,6,23,0.16)] sm:p-8">
-                <h2 className="text-balance text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">DogShift est fait pour vous si…</h2>
-                <ul className="mt-6 grid gap-4 sm:grid-cols-2">
-                  <li className="flex items-start gap-3">
-                    <CheckCircle2 className="mt-0.5 h-5 w-5 text-emerald-600" aria-hidden="true" />
-                    <p className="text-sm leading-relaxed text-slate-700 sm:text-base">
-                      Vous cherchez un dogsitter de confiance, pas simplement disponible
-                    </p>
-                  </li>
-                  <li className="flex items-start gap-3">
-                    <CheckCircle2 className="mt-0.5 h-5 w-5 text-emerald-600" aria-hidden="true" />
-                    <p className="text-sm leading-relaxed text-slate-700 sm:text-base">
-                      Vous privilégiez une relation locale, humaine et transparente
-                    </p>
-                  </li>
-                  <li className="flex items-start gap-3">
-                    <CheckCircle2 className="mt-0.5 h-5 w-5 text-emerald-600" aria-hidden="true" />
-                    <p className="text-sm leading-relaxed text-slate-700 sm:text-base">
-                      Vous voulez une plateforme sécurisée, claire et responsable
-                    </p>
-                  </li>
-                  <li className="flex items-start gap-3">
-                    <CheckCircle2 className="mt-0.5 h-5 w-5 text-emerald-600" aria-hidden="true" />
-                    <p className="text-sm leading-relaxed text-slate-700 sm:text-base">
-                      Vous souhaitez éviter les profils flous et les mauvaises surprises
-                    </p>
-                  </li>
-                </ul>
-              </section>
-
-              <section className="mx-auto w-full max-w-4xl">
-                <h2 className="text-balance text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">Questions fréquentes</h2>
-                <div className="mt-6 grid gap-3">
-                  <details className="group rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-50px_rgba(2,6,23,0.14)]">
-                    <summary className="cursor-pointer list-none text-sm font-semibold text-slate-900 outline-none">
-                      <span className="flex items-center justify-between gap-4">
-                        <span>DogShift est-il une pension pour chiens ?</span>
-                        <span className="text-slate-400 transition group-open:rotate-45">+</span>
-                      </span>
-                    </summary>
-                    <p className="mt-3 text-sm leading-relaxed text-slate-600 sm:text-base">
-                      Non. DogShift est une plateforme de mise en relation entre propriétaires et dogsitters indépendants, pour une garde
-                      personnalisée et adaptée à chaque chien.
-                    </p>
-                  </details>
-
-                  <details className="group rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-50px_rgba(2,6,23,0.14)]">
-                    <summary className="cursor-pointer list-none text-sm font-semibold text-slate-900 outline-none">
-                      <span className="flex items-center justify-between gap-4">
-                        <span>Comment sont sélectionnés les dogsitters ?</span>
-                        <span className="text-slate-400 transition group-open:rotate-45">+</span>
-                      </span>
-                    </summary>
-                    <p className="mt-3 text-sm leading-relaxed text-slate-600 sm:text-base">
-                      Chaque dogsitter passe par un processus de sélection et doit fournir des informations claires avant d’être accepté sur la
-                      plateforme.
-                    </p>
-                  </details>
-
-                  <details className="group rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-50px_rgba(2,6,23,0.14)]">
-                    <summary className="cursor-pointer list-none text-sm font-semibold text-slate-900 outline-none">
-                      <span className="flex items-center justify-between gap-4">
-                        <span>Que se passe-t-il en cas de problème ?</span>
-                        <span className="text-slate-400 transition group-open:rotate-45">+</span>
-                      </span>
-                    </summary>
-                    <p className="mt-3 text-sm leading-relaxed text-slate-600 sm:text-base">
-                      DogShift agit comme intermédiaire sécurisé, avec un cadre contractuel et un support intégré pour accompagner les utilisateurs.
-                    </p>
-                  </details>
-                </div>
-              </section>
-
-              <div id="contribution" className="mx-auto w-full max-w-5xl">
-                <section>
-                  <div className="flex flex-col gap-4">
-                    <div className="min-w-0">
-                      <p className="text-xs font-semibold text-slate-600">Communauté</p>
-                      <h2 className="mt-2 text-balance text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">
-                        Soutenir le lancement de DogShift
-                      </h2>
-                      <p className="mt-3 text-sm leading-relaxed text-slate-600 sm:text-base">
-                        DogShift est actuellement en phase pilote, construite de manière indépendante et responsable. Certaines personnes souhaitent
-                        contribuer volontairement au lancement de la plateforme.
-                      </p>
-                      <p className="mt-3 text-sm leading-relaxed text-slate-600 sm:text-base">
-                        Ce soutien permet d’accompagner le développement, l’infrastructure et les outils nécessaires à une expérience fiable dès le
-                        lancement officiel.
-                      </p>
-                      <p className="mt-3 text-sm leading-relaxed text-slate-500 sm:text-base">
-                        Toute contribution est facultative et n’influence en aucun cas l’accès ou l’utilisation de la plateforme.
-                      </p>
-                    </div>
-
-                    <div className="mt-2">
-                      <Link
-                        href="/contribuer"
-                        className="inline-flex w-full items-center justify-center rounded-2xl border border-slate-200 bg-white px-6 py-3 text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)] sm:w-auto"
-                      >
-                        Contribuer au lancement
-                      </Link>
-                    </div>
-                  </div>
-                </section>
-              </div>
-
-              <section className="text-center">
-                <p className="text-xs font-semibold text-slate-600">Prochaine étape</p>
-                <h2 className="mt-3 text-balance text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">
-                  Prêt à trouver un dogsitter de confiance près de chez vous ?
-                </h2>
-                <p className="mt-4 text-sm leading-relaxed text-slate-600 sm:text-base">
-                  Découvrez des profils locaux, sélectionnés avec soin, et réservez en toute sérénité.
-                </p>
-                <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
-                  <Link
-                    href="/search"
-                    className="inline-flex items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-6 py-3 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition hover:bg-[var(--dogshift-blue-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)]"
-                  >
-                    Trouver un dogsitter
-                  </Link>
-                  <Link
-                    href="/devenir-dogsitter"
-                    className="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white px-6 py-3 text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)]"
-                  >
-                    Devenir dogsitter
-                  </Link>
-                </div>
-              </section>
-            </div>
-          </div>
-        </section>
+        <WhyDogShiftSection />
+        <FAQSection />
+        <CommunitySection />
+        <FinalCTASection />
       </main>
     </div>
   );
