@@ -243,7 +243,7 @@ function HeroPetsittingStyle() {
         alt=""
         fill
         priority
-        className="object-cover object-center max-sm:object-[35%_65%]"
+        className="object-cover object-center max-sm:object-[35%_65%] 2xl:object-[68%_center]"
       />
 
       {/* Light overlay — left-weighted gradient keeps text legible while photo stays vivid on the right */}
@@ -257,9 +257,9 @@ function HeroPetsittingStyle() {
       />
 
       {/* Content */}
-      <div className="relative z-20 mx-auto flex min-h-[100dvh] max-w-[1200px] items-start px-6 pt-20 pb-10 sm:items-center sm:min-h-[100svh] sm:px-8 sm:py-28">
-        <div className="w-full max-w-[580px]">
-          <h1 className="text-[1.5rem] font-semibold leading-[1.1] tracking-tight text-slate-900 sm:text-balance sm:text-[1.85rem] sm:leading-[1.06] md:text-5xl lg:text-6xl">
+      <div className="relative z-20 mx-auto flex min-h-[100dvh] max-w-[1200px] items-start px-6 pt-20 pb-10 sm:items-center sm:min-h-[100svh] sm:px-8 sm:py-28 2xl:mx-0 2xl:max-w-none 2xl:px-24">
+        <div className="w-full max-w-[580px] 2xl:max-w-[660px]">
+          <h1 className="text-[1.5rem] font-semibold leading-[1.1] tracking-tight text-slate-900 sm:text-balance sm:text-[1.85rem] sm:leading-[1.06] md:text-5xl lg:text-6xl 2xl:text-[4.5rem] 2xl:leading-[1.04]">
             Des dog-sitters de confiance,<br className="sm:hidden" />
             {" "}en quelques clics.
           </h1>
