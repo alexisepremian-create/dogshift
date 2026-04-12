@@ -1,10 +1,22 @@
 "use client";
 
 import Link from "next/link";
-import { Menu, LogOut, HelpCircle, LayoutDashboard, User, Search, ShoppingBag, UserPlus, MoreHorizontal, House, LogIn } from "lucide-react";
-import { useClerk, useUser } from "@clerk/nextjs";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import {
+  HelpCircle,
+  House,
+  LayoutDashboard,
+  LogIn,
+  LogOut,
+  Menu,
+  Search,
+  ShoppingBag,
+  User,
+  UserPlus,
+  X,
+} from "lucide-react";
+import { useUser } from "@clerk/nextjs";
+import { useEffect, useRef, useState } from "react";
+import { usePathname, useSearchParams } from "next/navigation";
 import BrandLogo from "@/components/BrandLogo";
 import MobileSearchOverlay from "@/components/MobileSearchOverlay";
 import NotificationBell from "@/components/NotificationBell";
@@ -16,139 +28,70 @@ type AccountContextPayload = {
 
 export default function SiteHeader() {
   const [scrolled, setScrolled] = useState(false);
-  const [userMenuOpen, setUserMenuOpen] = useState(false);
-  const [becomeMenuOpen, setBecomeMenuOpen] = useState(false);
-  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [headerHidden, setHeaderHidden] = useState(false);
+  const [hasMounted, setHasMounted] = useState(false);
+  const [navOpen, setNavOpen] = useState(false);
+  const [navMounted, setNavMounted] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
-  const [mobileNavMounted, setMobileNavMounted] = useState(false);
-  const [mobileBottomHidden, setMobileBottomHidden] = useState(false);
   const [accountHref, setAccountHref] = useState("/account");
-  const { isLoaded, isSignedIn } = useUser();
-  const clerk = useClerk();
-  const router = useRouter();
+  const { isLoaded, isSignedIn, user } = useUser();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const isHome = pathname === "/";
+  const isHomepage = pathname === "/";
   const isHostArea = Boolean(pathname && pathname.startsWith("/host"));
   const isAccountArea = Boolean(pathname && pathname.startsWith("/account"));
-  const isHostPreview = Boolean(pathname && pathname.startsWith("/sitter/") && (searchParams?.get("mode") ?? "") === "preview" && isLoaded && isSignedIn);
+  const isHostPreview = Boolean(
+    pathname &&
+      pathname.startsWith("/sitter/") &&
+      (searchParams?.get("mode") ?? "") === "preview" &&
+      isLoaded &&
+      isSignedIn,
+  );
 
   const signOutRedirectUrl = "/login?force=1";
-
   async function handleSignOut() {
     window.location.assign(`/sign-out?redirect=${encodeURIComponent(signOutRedirectUrl)}`);
   }
 
-  const menuRef = useRef<HTMLDivElement | null>(null);
-
-  const navLinkClassName = useMemo(() => {
-    const size = scrolled ? "text-sm" : "text-base";
-    return `${size} font-medium text-slate-600 transition-all duration-200 ease-out hover:text-slate-900 hover:opacity-90 hover:underline hover:underline-offset-4`;
-  }, [scrolled]);
-
-  const ctaClassName = useMemo(() => {
-    const size = scrolled ? "text-sm" : "text-base";
-    const pad = scrolled ? "px-4 py-2" : "px-5 py-3";
-    return `items-center gap-2 rounded-full border border-slate-200 bg-white ${pad} ${size} font-semibold text-slate-900 transition-all duration-200 ease-out hover:bg-slate-50 active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)]`;
-  }, [scrolled]);
-
-  const ctaIconClassName = useMemo(() => (scrolled ? "h-4 w-4" : "h-5 w-5"), [scrolled]);
+  useEffect(() => { setHasMounted(true); }, []);
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 8);
+    const onScroll = () => {
+      setScrolled(window.scrollY > 8);
+      setHeaderHidden(isHomepage && window.scrollY > 70);
+    };
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
-  }, []);
+  }, [isHomepage]);
 
   useEffect(() => {
-    if (!isHome) {
-      setMobileBottomHidden(false);
+    if (navOpen) {
+      setNavMounted(true);
+      document.body.style.overflow = "hidden";
       return;
     }
-
-    let lastY = window.scrollY;
-
-    const onScroll = () => {
-      const y = window.scrollY;
-      const delta = y - lastY;
-      lastY = y;
-
-      if (y < 20) {
-        setMobileBottomHidden(false);
-        return;
-      }
-
-      if (delta > 6) setMobileBottomHidden(true);
-      if (delta < -6) setMobileBottomHidden(false);
-    };
-
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, [isHome]);
-
-  useEffect(() => {
-    if (!userMenuOpen) return;
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setUserMenuOpen(false);
-    };
-    const onPointerDown = (e: PointerEvent) => {
-      const el = menuRef.current;
-      if (!el) return;
-      if (e.target instanceof Node && el.contains(e.target)) return;
-      setUserMenuOpen(false);
-    };
-    window.addEventListener("keydown", onKeyDown);
-    window.addEventListener("pointerdown", onPointerDown);
-    return () => {
-      window.removeEventListener("keydown", onKeyDown);
-      window.removeEventListener("pointerdown", onPointerDown);
-    };
-  }, [userMenuOpen]);
-
-  useEffect(() => {
-    if (!mobileNavOpen) return;
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setMobileNavOpen(false);
-    };
-    window.addEventListener("keydown", onKeyDown);
-    const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      window.removeEventListener("keydown", onKeyDown);
-      document.body.style.overflow = prevOverflow;
-    };
-  }, [mobileNavOpen]);
-
-  useEffect(() => {
-    if (mobileNavOpen) {
-      setMobileNavMounted(true);
-      return;
-    }
-    if (!mobileNavMounted) return;
-    const t = window.setTimeout(() => setMobileNavMounted(false), 180);
+    document.body.style.overflow = "";
+    if (!navMounted) return;
+    const t = window.setTimeout(() => setNavMounted(false), 260);
     return () => window.clearTimeout(t);
-  }, [mobileNavMounted, mobileNavOpen]);
+  }, [navMounted, navOpen]);
 
   useEffect(() => {
-    setBecomeMenuOpen(false);
+    if (!navOpen) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setNavOpen(false); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [navOpen]);
+
+  useEffect(() => {
+    setNavOpen(false);
   }, [pathname, searchParams]);
 
   useEffect(() => {
-    if (!isLoaded || isSignedIn) return;
-    setUserMenuOpen(false);
-    setMobileNavOpen(false);
-  }, [isLoaded, isSignedIn]);
-
-  useEffect(() => {
     if (!isLoaded) return;
-    if (!isSignedIn) {
-      setAccountHref("/account");
-      return;
-    }
-
+    if (!isSignedIn) { setAccountHref("/account"); return; }
     let cancelled = false;
-
     void (async () => {
       try {
         const res = await fetch("/api/account/context", { method: "GET", cache: "no-store" });
@@ -160,353 +103,205 @@ export default function SiteHeader() {
         setAccountHref("/account");
       }
     })();
-
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [isLoaded, isSignedIn]);
 
   if (isHostArea || isAccountArea || isHostPreview) return null;
 
-  const authMenuOffset = scrolled ? "-mt-[35px]" : "-mt-[56px]";
-  const mobileMenuOffset = "mt-0";
+  const userInitials = user?.firstName?.[0] ?? user?.username?.[0] ?? "";
 
   return (
     <>
-      <div
-        className={"pointer-events-none absolute inset-x-0 top-0 z-40"}
+      {/* ── Header bar ──────────────────────────────────────────────────────── */}
+      <header
+        className={[
+          "fixed inset-x-0 top-0 z-50 h-16 transition-all duration-300 ease-out",
+          headerHidden ? "pointer-events-none -translate-y-full opacity-0" : "",
+          scrolled
+            ? "bg-white/95 shadow-[0_1px_0_0_rgba(2,6,23,0.07)] backdrop-blur-md"
+            : "bg-transparent",
+        ].join(" ")}
+        style={{ top: "var(--ds-maintenance-banner-height, 0px)" }}
       >
-        <div
-          className={
-            "pointer-events-auto flex items-center justify-between px-4 transition-all duration-200 ease-out sm:px-6" +
-            (scrolled ? " py-2" : " py-5")
-          }
-        >
-          <div className="origin-left transition-transform duration-200 ease-out">
-            <BrandLogo href="/" priority />
-          </div>
+        <div className="flex h-full items-center justify-between px-4 pt-3 sm:px-6 lg:px-8">
+          {/* Logo */}
+          <BrandLogo href="/" priority />
 
-          <div
-            ref={menuRef}
-            className={mobileMenuOffset + " relative flex items-center gap-2 transition-all duration-200 ease-out md:" + authMenuOffset}
-          >
-            {isLoaded && isSignedIn ? <NotificationBell /> : null}
+          {/* Right controls */}
+          <div className="flex items-center gap-2 sm:gap-3">
+            {/* Notifications */}
+            {hasMounted && isLoaded && isSignedIn ? <NotificationBell /> : null}
 
-            {/* Search button — mobile only */}
+            {/* Mobile search */}
             <button
               type="button"
               onClick={() => setSearchOpen(true)}
-              aria-label="Recherche"
-              className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 transition-all duration-200 ease-out hover:bg-slate-50 active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)] md:hidden"
+              aria-label="Recherche rapide"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 shadow-sm transition-all hover:bg-slate-50 active:scale-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)] md:hidden"
             >
-              <Search className="h-3.5 w-3.5" aria-hidden="true" />
+              <Search className="h-4 w-4" aria-hidden="true" />
             </button>
 
-            <button
-              type="button"
-              onClick={() => setMobileNavOpen(true)}
-              aria-haspopup="dialog"
-              aria-expanded={mobileNavOpen}
-              className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-900 transition-all duration-200 ease-out hover:bg-slate-50 active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)] md:hidden"
-            >
-              <Menu className="h-3.5 w-3.5" aria-hidden="true" />
-              Menu
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setUserMenuOpen((v) => !v)}
-              aria-haspopup="menu"
-              aria-expanded={userMenuOpen}
-              className={"hidden md:inline-flex " + ctaClassName}
-            >
-              <Menu className={ctaIconClassName} aria-hidden="true" />
-              Menu
-            </button>
-
-            {userMenuOpen ? (
-              <div
-                role="menu"
-                aria-label="Menu utilisateur"
-                className="absolute right-0 top-0 z-10 w-56 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_18px_60px_-40px_rgba(2,6,23,0.25)]"
-              >
-                {isLoaded && isSignedIn ? (
-                  <>
-                    <Link
-                      role="menuitem"
-                      href={accountHref}
-                      prefetch={false}
-                      onClick={() => setUserMenuOpen(false)}
-                      className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50"
-                    >
-                      <LayoutDashboard className="h-4 w-4 text-slate-500" aria-hidden="true" />
-                      Mon espace
-                    </Link>
-                    <Link
-                      role="menuitem"
-                      href="/help"
-                      onClick={() => setUserMenuOpen(false)}
-                      className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50"
-                    >
-                      <HelpCircle className="h-4 w-4 text-slate-500" aria-hidden="true" />
-                      Centre d’aide
-                    </Link>
-                    <div className="h-px w-full bg-slate-200" />
-                    <button
-                      role="menuitem"
-                      type="button"
-                      onClick={() => {
-                        setUserMenuOpen(false);
-                        void handleSignOut();
-                      }}
-                      className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-medium text-slate-700 hover:bg-slate-50"
-                    >
-                      <LogOut className="h-4 w-4 text-slate-500" aria-hidden="true" />
-                      Se déconnecter
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <Link
-                      role="menuitem"
-                      href="/login"
-                      onClick={() => setUserMenuOpen(false)}
-                      className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50"
-                    >
-                      <User className="h-4 w-4 text-slate-500" aria-hidden="true" />
-                      Connexion
-                    </Link>
-                    <Link
-                      role="menuitem"
-                      href="/help"
-                      onClick={() => setUserMenuOpen(false)}
-                      className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50"
-                    >
-                      <HelpCircle className="h-4 w-4 text-slate-500" aria-hidden="true" />
-                      Centre d’aide
-                    </Link>
-                  </>
-                )}
-              </div>
-            ) : null}
-          </div>
-        </div>
-      </div>
-
-      <div
-        className={
-          scrolled
-            ? `fixed left-1/2 z-50 hidden -translate-x-1/2 items-center rounded-full border border-slate-200/70 bg-white/80 px-6 ${
-                isHome ? "shadow-[0_18px_60px_-44px_rgba(2,6,23,0.25)]" : "shadow-none"
-              } backdrop-blur md:flex`
-            : `fixed left-1/2 z-50 hidden -translate-x-1/2 items-center rounded-full border border-slate-200/70 bg-white px-8 ${
-                isHome ? "shadow-[0_18px_60px_-44px_rgba(2,6,23,0.18)]" : "shadow-none"
-              } md:flex`
-        }
-        style={{ top: "calc(1rem + var(--ds-maintenance-banner-height, 0px))" }}
-      >
-        <nav
-          aria-label="Navigation principale"
-          className={
-            "flex items-center transition-all duration-200 ease-out" +
-            (scrolled ? " gap-8 py-3" : " gap-10 py-5")
-          }
-        >
-          <Link href="/" className={navLinkClassName}>
-            Accueil
-          </Link>
-          <Link href="/search" className={navLinkClassName}>
-            Trouver un sitter
-          </Link>
-          <div
-            className="relative"
-            onMouseEnter={() => setBecomeMenuOpen(true)}
-            onMouseLeave={() => setBecomeMenuOpen(false)}
-          >
+            {/* Devenir dogsitter — desktop text link */}
             <Link
               href="/devenir-dogsitter"
-              onClick={() => setBecomeMenuOpen(false)}
-              onFocus={() => setBecomeMenuOpen(true)}
-              className={navLinkClassName.replace(" hover:underline hover:underline-offset-4", "") + " inline-flex items-center gap-2"}
-              aria-haspopup="menu"
-              aria-expanded={becomeMenuOpen}
+              className="hidden text-sm font-medium text-slate-600 transition-colors hover:text-slate-900 md:inline-block"
             >
-              <span className="hover:underline hover:underline-offset-4">Devenir dogsitter</span>
-              <span aria-hidden="true" className={"text-slate-400 no-underline transition" + (becomeMenuOpen ? " text-slate-700" : "")}>
-                ▾
-              </span>
+              Devenir dogsitter
             </Link>
-            <div
-              role="menu"
-              aria-label="Devenir dogsitter"
-              className={
-                "absolute left-1/2 top-full z-50 w-52 -translate-x-1/2 pt-3 transition " +
-                (becomeMenuOpen ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0")
-              }
-            >
-              <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_18px_60px_-40px_rgba(2,6,23,0.18)]">
-                <Link
-                  role="menuitem"
-                  href="/devenir-dogsitter"
-                  onClick={() => setBecomeMenuOpen(false)}
-                  className="flex items-center px-4 py-3 text-sm font-semibold text-slate-900 hover:bg-slate-50"
-                >
-                  Candidater
-                </Link>
-                <div className="h-px w-full bg-slate-200" />
-                <Link
-                  role="menuitem"
-                  href="/become-sitter/access"
-                  onClick={() => setBecomeMenuOpen(false)}
-                  className="flex items-center px-4 py-3 text-sm font-semibold text-slate-900 hover:bg-slate-50"
-                >
-                  Accès sitter
-                </Link>
-              </div>
-            </div>
-          </div>
-          <Link href="/shop" className={navLinkClassName}>
-            Boutique
-          </Link>
-        </nav>
-      </div>
 
-      {mobileNavMounted ? (
+            {/* Auth links — desktop only */}
+            {hasMounted && isLoaded ? (
+              isSignedIn ? (
+                <Link
+                  href={accountHref}
+                  prefetch={false}
+                  className="hidden text-sm font-semibold text-slate-700 transition-colors hover:text-slate-900 md:inline-block"
+                >
+                  Mon espace
+                </Link>
+              ) : (
+                <Link
+                  href="/login"
+                  className="hidden text-sm font-semibold text-slate-700 transition-colors hover:text-slate-900 md:inline-block"
+                >
+                  Se connecter
+                </Link>
+              )
+            ) : null}
+
+            {/* Hamburger pill */}
+            <button
+              type="button"
+              onClick={() => setNavOpen(true)}
+              aria-haspopup="dialog"
+              aria-expanded={navOpen}
+              aria-label="Menu de navigation"
+              className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-2.5 py-1.5 shadow-sm transition-all hover:shadow-md active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)]"
+            >
+              <Menu className="h-4 w-4 text-slate-700" aria-hidden="true" />
+              <span
+                className="flex h-6 w-6 items-center justify-center overflow-hidden rounded-full bg-slate-100 text-[10px] font-bold text-slate-600"
+                aria-hidden="true"
+              >
+                {hasMounted && isLoaded && isSignedIn && userInitials ? (
+                  userInitials.toUpperCase()
+                ) : (
+                  <User className="h-3.5 w-3.5 text-slate-500" />
+                )}
+              </span>
+            </button>
+          </div>
+        </div>
+      </header>
+
+      {/* ── Right-side nav panel ────────────────────────────────────────────── */}
+      {navMounted ? (
         <div
-          className={
-            "fixed inset-0 z-[80] md:hidden transition-opacity duration-200 ease-out" +
-            (mobileNavOpen ? " opacity-100" : " pointer-events-none opacity-0")
-          }
           role="dialog"
           aria-modal="true"
-          aria-label="Menu"
+          aria-label="Menu de navigation"
+          className={[
+            "fixed inset-0 z-[80] transition-opacity duration-300 ease-out",
+            navOpen ? "opacity-100" : "pointer-events-none opacity-0",
+          ].join(" ")}
         >
+          {/* Backdrop */}
           <button
             type="button"
-            className={
-              "absolute inset-0 bg-slate-950/35 transition-opacity duration-200 ease-out" +
-              (mobileNavOpen ? " opacity-100" : " opacity-0")
-            }
             aria-label="Fermer le menu"
-            onClick={() => setMobileNavOpen(false)}
+            onClick={() => setNavOpen(false)}
+            className={[
+              "absolute inset-0 cursor-default bg-slate-950/30 backdrop-blur-[2px] transition-opacity duration-300",
+              navOpen ? "opacity-100" : "opacity-0",
+            ].join(" ")}
           />
 
+          {/* Panel — slides from right */}
           <div
-            className={
-              "absolute inset-x-0 bottom-0 max-h-[85vh] overflow-auto rounded-t-3xl border border-slate-200 bg-white shadow-[0_-18px_60px_-44px_rgba(2,6,23,0.45)] transition-transform duration-200 ease-out" +
-              (mobileNavOpen ? " translate-y-0" : " translate-y-6")
-            }
-            style={{ paddingBottom: "max(1rem, env(safe-area-inset-bottom))" }}
+            className={[
+              "absolute inset-y-0 right-0 flex w-[320px] max-w-[calc(100vw-2.5rem)] flex-col bg-white shadow-[−20px_0_60px_-20px_rgba(2,6,23,0.20)] transition-transform duration-300 ease-out",
+              navOpen ? "translate-x-0" : "translate-x-full",
+            ].join(" ")}
+            style={{
+              paddingTop: "max(1.25rem, env(safe-area-inset-top))",
+              paddingBottom: "max(1.5rem, env(safe-area-inset-bottom))",
+            }}
           >
-            <div className="flex items-center justify-between gap-3 px-5 pb-3 pt-4">
-              <p className="text-sm font-semibold text-slate-900">Menu</p>
+            {/* Panel header */}
+            <div className="flex items-center justify-between px-5 pb-4">
+              <BrandLogo href="/" />
               <button
                 type="button"
-                onClick={() => setMobileNavOpen(false)}
-                className="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-900"
+                onClick={() => setNavOpen(false)}
+                aria-label="Fermer"
+                className="flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--dogshift-blue)]"
               >
-                Fermer
+                <X className="h-4 w-4" aria-hidden="true" />
               </button>
             </div>
 
-            <nav aria-label="Navigation principale" className="px-5 pb-4">
-              <div className="grid gap-2">
-                <Link
-                  href="/"
-                  onClick={() => setMobileNavOpen(false)}
-                  className="flex items-center gap-3 rounded-2xl px-4 py-3 text-base font-semibold text-slate-900 ring-1 ring-slate-200"
-                >
-                  <House className="h-5 w-5 text-slate-500" aria-hidden="true" />
-                  <span className="min-w-0 flex-1 truncate">Accueil</span>
-                </Link>
-                <Link
-                  href="/search"
-                  onClick={() => setMobileNavOpen(false)}
-                  className="flex items-center gap-3 rounded-2xl px-4 py-3 text-base font-semibold text-slate-900 ring-1 ring-slate-200"
-                >
-                  <Search className="h-5 w-5 text-slate-500" aria-hidden="true" />
-                  <span className="min-w-0 flex-1 truncate">Trouver un sitter</span>
-                </Link>
-                <Link
-                  href="/devenir-dogsitter"
-                  onClick={() => setMobileNavOpen(false)}
-                  className="flex items-center gap-3 rounded-2xl px-4 py-3 text-base font-semibold text-slate-900 ring-1 ring-slate-200"
-                >
-                  <UserPlus className="h-5 w-5 text-slate-500" aria-hidden="true" />
-                  <span className="min-w-0 flex-1 truncate">Candidater</span>
-                </Link>
-                <Link
-                  href="/become-sitter/access"
-                  onClick={() => setMobileNavOpen(false)}
-                  className="flex items-center gap-3 rounded-2xl px-4 py-3 text-base font-semibold text-slate-900 ring-1 ring-slate-200"
-                >
-                  <LogIn className="h-5 w-5 text-slate-500" aria-hidden="true" />
-                  <span className="min-w-0 flex-1 truncate">Accès sitter</span>
-                </Link>
-                <Link
-                  href="/shop"
-                  onClick={() => setMobileNavOpen(false)}
-                  className="flex items-center gap-3 rounded-2xl px-4 py-3 text-base font-semibold text-slate-900 ring-1 ring-slate-200"
-                >
-                  <ShoppingBag className="h-5 w-5 text-slate-500" aria-hidden="true" />
-                  <span className="min-w-0 flex-1 truncate">Boutique</span>
-                </Link>
+            {/* Nav links */}
+            <nav aria-label="Navigation principale" className="flex-1 overflow-y-auto px-5">
+              <div className="grid gap-0.5">
+                {(
+                  [
+                    { href: "/", icon: House, label: "Accueil" },
+                    { href: "/search", icon: Search, label: "Trouver un sitter" },
+                    { href: "/devenir-dogsitter", icon: UserPlus, label: "Devenir dogsitter" },
+                    { href: "/become-sitter/access", icon: LogIn, label: "Accès sitter" },
+                    { href: "/shop", icon: ShoppingBag, label: "Boutique" },
+                    { href: "/help", icon: HelpCircle, label: "Centre d'aide" },
+                  ] as { href: string; icon: React.ElementType; label: string }[]
+                ).map(({ href, icon: Icon, label }) => (
+                  <Link
+                    key={href}
+                    href={href}
+                    onClick={() => setNavOpen(false)}
+                    className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 hover:text-slate-900"
+                  >
+                    <Icon className="h-4 w-4 shrink-0 text-slate-400" aria-hidden="true" />
+                    {label}
+                  </Link>
+                ))}
               </div>
 
-              <div className="mt-4 h-px w-full bg-slate-200" />
+              <div className="my-4 h-px bg-slate-100" />
 
-              <div className="mt-4 grid gap-2">
-                {isLoaded && isSignedIn ? (
-                  <>
-                    <Link
-                      href={accountHref}
-                      prefetch={false}
-                      onClick={() => setMobileNavOpen(false)}
-                      className="flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold text-slate-900 ring-1 ring-slate-200"
-                    >
-                      <LayoutDashboard className="h-5 w-5 text-slate-500" aria-hidden="true" />
-                      <span className="min-w-0 flex-1 truncate">Mon espace</span>
-                    </Link>
-                    <Link
-                      href="/help"
-                      onClick={() => setMobileNavOpen(false)}
-                      className="flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold text-slate-900 ring-1 ring-slate-200"
-                    >
-                      <HelpCircle className="h-5 w-5 text-slate-500" aria-hidden="true" />
-                      <span className="min-w-0 flex-1 truncate">Centre d’aide</span>
-                    </Link>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setMobileNavOpen(false);
-                        void handleSignOut();
-                      }}
-                      className="flex items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm font-semibold text-slate-900 ring-1 ring-slate-200"
-                    >
-                      <LogOut className="h-5 w-5 text-slate-500" aria-hidden="true" />
-                      <span className="min-w-0 flex-1 truncate">Se déconnecter</span>
-                    </button>
-                  </>
-                ) : (
-                  <>
+              {/* Auth zone */}
+              <div className="grid gap-2">
+                {hasMounted && isLoaded ? (
+                  isSignedIn ? (
+                    <>
+                      <Link
+                        href={accountHref}
+                        prefetch={false}
+                        onClick={() => setNavOpen(false)}
+                        className="flex items-center gap-3 rounded-xl bg-[var(--dogshift-blue)] px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-[var(--dogshift-blue-hover)]"
+                      >
+                        <LayoutDashboard className="h-4 w-4 text-blue-300" aria-hidden="true" />
+                        Mon espace
+                      </Link>
+                      <button
+                        type="button"
+                        onClick={() => { setNavOpen(false); void handleSignOut(); }}
+                        className="flex items-center gap-3 rounded-xl border border-slate-200 px-4 py-3 text-left text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
+                      >
+                        <LogOut className="h-4 w-4 text-slate-400" aria-hidden="true" />
+                        Se déconnecter
+                      </button>
+                    </>
+                  ) : (
                     <Link
                       href="/login"
-                      onClick={() => setMobileNavOpen(false)}
-                      className="flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold text-slate-900 ring-1 ring-slate-200"
+                      onClick={() => setNavOpen(false)}
+                      className="flex items-center gap-3 rounded-xl bg-[var(--dogshift-blue)] px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-[var(--dogshift-blue-hover)]"
                     >
-                      <User className="h-5 w-5 text-slate-500" aria-hidden="true" />
-                      <span className="min-w-0 flex-1 truncate">Connexion</span>
+                      <User className="h-4 w-4 text-blue-300" aria-hidden="true" />
+                      Se connecter / Créer un compte
                     </Link>
-                    <Link
-                      href="/help"
-                      onClick={() => setMobileNavOpen(false)}
-                      className="flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold text-slate-900 ring-1 ring-slate-200"
-                    >
-                      <HelpCircle className="h-5 w-5 text-slate-500" aria-hidden="true" />
-                      <span className="min-w-0 flex-1 truncate">Centre d’aide</span>
-                    </Link>
-                  </>
-                )}
+                  )
+                ) : null}
               </div>
             </nav>
           </div>
@@ -517,3 +312,6 @@ export default function SiteHeader() {
     </>
   );
 }
+
+// react import needed for JSX element type in inline cast
+import React from "react";
