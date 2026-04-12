@@ -680,7 +680,7 @@ function WhyDogShiftSection() {
           {/* DogShift est fait pour vous si */}
           <div ref={forYouReveal.ref} style={forYouReveal.style}>
             <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-50px_rgba(2,6,23,0.16)] sm:p-8">
-              <h2 className="text-balance text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">DogShift est fait pour vous si\u2026</h2>
+              <h2 className="text-balance text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">DogShift est fait pour vous si…</h2>
               <ul className="mt-6 grid gap-4 sm:grid-cols-2">
                 <li className="flex items-start gap-3">
                   <CheckCircle2 className="mt-0.5 h-5 w-5 text-emerald-600" aria-hidden="true" />
