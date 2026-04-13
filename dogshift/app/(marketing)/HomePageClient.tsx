@@ -1492,7 +1492,7 @@ function StickySearchBar({ visible = true, hero = false }: { visible?: boolean; 
                     activeSection === "lieu"
                       ? "bg-white shadow-[0_2px_12px_-3px_rgba(2,6,23,0.10)]"
                       : locationError
-                        ? "bg-red-50/70"
+                        ? "bg-red-100/80 ring-1 ring-inset ring-red-300/60"
                         : "hover:bg-white/50",
                   ].join(" ")}
                 >
