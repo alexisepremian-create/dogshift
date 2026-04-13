@@ -530,6 +530,58 @@ export default function DogShiftBot() {
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([initialBotMessage]);
+  const [dismissed, setDismissed] = useState(false);
+
+  // ── Drag to corner ─────────────────────────────────────────────────────────
+  type Corner = "tl" | "tr" | "bl" | "br";
+  const [corner, setCorner] = useState<Corner>("br");
+  const [livePos, setLivePos] = useState<{ x: number; y: number } | null>(null);
+  const wrapRef = useRef<HTMLDivElement | null>(null);
+  const drag = useRef({ active: false, moved: false, startCX: 0, startCY: 0, startEX: 0, startEY: 0 });
+  const justDragged = useRef(false);
+
+  function cornerStyle(c: Corner): React.CSSProperties {
+    const M = 20;
+    if (c === "tl") return { top: M, left: M, bottom: "auto", right: "auto" };
+    if (c === "tr") return { top: M, right: M, bottom: "auto", left: "auto" };
+    if (c === "bl") return { bottom: M, left: M, top: "auto", right: "auto" };
+    return { bottom: M, right: M, top: "auto", left: "auto" };
+  }
+
+  function snapCorner(x: number, y: number) {
+    const mX = window.innerWidth / 2;
+    const mY = window.innerHeight / 2;
+    setCorner(`${y < mY ? "t" : "b"}${x < mX ? "l" : "r"}` as Corner);
+  }
+
+  function onPointerDown(e: React.PointerEvent<HTMLButtonElement>) {
+    if (open) return;
+    const rect = wrapRef.current!.getBoundingClientRect();
+    drag.current = { active: true, moved: false, startCX: e.clientX, startCY: e.clientY, startEX: rect.left, startEY: rect.top };
+    (e.currentTarget as HTMLButtonElement).setPointerCapture(e.pointerId);
+  }
+
+  function onPointerMove(e: React.PointerEvent<HTMLButtonElement>) {
+    if (!drag.current.active) return;
+    const dx = e.clientX - drag.current.startCX;
+    const dy = e.clientY - drag.current.startCY;
+    if (!drag.current.moved && Math.hypot(dx, dy) < 6) return;
+    drag.current.moved = true;
+    setLivePos({ x: drag.current.startEX + dx, y: drag.current.startEY + dy });
+  }
+
+  function onPointerUp(e: React.PointerEvent<HTMLButtonElement>) {
+    if (!drag.current.active) return;
+    drag.current.active = false;
+    if (drag.current.moved) {
+      justDragged.current = true; // empêche le onClick suivant
+      if (livePos) {
+        snapCorner(livePos.x + 28, livePos.y + 28);
+        setLivePos(null);
+      }
+    }
+    drag.current.moved = false;
+  }
 
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
@@ -594,8 +646,16 @@ export default function DogShiftBot() {
     setInput("");
   }
 
+  if (dismissed) return null;
+
+  const wrapStyle: React.CSSProperties = livePos
+    ? { position: "fixed", top: livePos.y, left: livePos.x, right: "auto", bottom: "auto", zIndex: 50 }
+    : { position: "fixed", zIndex: 50, ...cornerStyle(corner) };
+
+  const panelSide = corner.endsWith("r") ? "items-end" : "items-start";
+
   return (
-    <div className="fixed bottom-5 right-5 z-50 flex flex-col items-end gap-3">
+    <div ref={wrapRef} style={wrapStyle} className={`flex flex-col gap-3 ${panelSide}`}>
       {open ? (
         <div className="w-[360px] max-w-[calc(100vw-2.5rem)] overflow-hidden rounded-3xl border border-white/70 bg-white/80 shadow-[0_24px_80px_-50px_rgba(2,6,23,0.65)] backdrop-blur-xl">
           <div className="flex items-center justify-between border-b border-slate-200/70 px-4 py-3">
@@ -672,19 +732,39 @@ export default function DogShiftBot() {
         </div>
       ) : null}
 
-      {/* Bouton flottant — icône ronde sur mobile, pill avec texte sur desktop */}
+      {/* Bouton flottant */}
       {!open ? (
-        <button
-          type="button"
-          onClick={() => setOpen(true)}
-          className="group grid h-14 w-14 place-items-center rounded-full bg-[var(--dogshift-blue)] text-white shadow-[0_18px_60px_-40px_rgba(2,6,23,0.75)] ring-1 ring-white/15 transition hover:bg-[var(--dogshift-blue-hover)] md:inline-flex md:h-14 md:w-auto md:items-center md:gap-3 md:rounded-3xl md:pl-4 md:pr-5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)]"
-          aria-label="Ouvrir DogShift Bot"
-        >
-          <DogRobotIcon className="h-7 w-7 text-white transition group-hover:scale-[1.03]" />
-          <span className="hidden select-none text-xs font-semibold text-white md:inline">
-            Posez-moi une question
-          </span>
-        </button>
+        <div className="relative">
+          {/* Croix dismiss (petit badge) */}
+          <button
+            type="button"
+            onClick={() => setDismissed(true)}
+            className="absolute -top-1.5 -left-1.5 z-10 grid h-5 w-5 place-items-center rounded-full bg-slate-700 text-white shadow ring-2 ring-white transition hover:bg-slate-900"
+            aria-label="Masquer DogShift Bot"
+          >
+            <X className="h-2.5 w-2.5" />
+          </button>
+
+          {/* Bouton principal — draggable */}
+          <button
+            type="button"
+            onPointerDown={onPointerDown}
+            onPointerMove={onPointerMove}
+            onPointerUp={onPointerUp}
+            onClick={() => {
+              if (justDragged.current) { justDragged.current = false; return; }
+              setOpen(true);
+            }}
+            style={{ touchAction: "none", userSelect: "none", cursor: livePos ? "grabbing" : "grab" }}
+            className="group grid h-14 w-14 place-items-center rounded-full bg-[var(--dogshift-blue)] text-white shadow-[0_18px_60px_-40px_rgba(2,6,23,0.75)] ring-1 ring-white/15 transition hover:bg-[var(--dogshift-blue-hover)] md:inline-flex md:h-14 md:w-auto md:items-center md:gap-3 md:rounded-3xl md:pl-4 md:pr-5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)]"
+            aria-label="Ouvrir DogShift Bot"
+          >
+            <DogRobotIcon className="h-7 w-7 text-white transition group-hover:scale-[1.03]" />
+            <span className="hidden select-none text-xs font-semibold text-white md:inline">
+              Posez-moi une question
+            </span>
+          </button>
+        </div>
       ) : null}
     </div>
   );
