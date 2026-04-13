@@ -10,7 +10,7 @@ function normalizeEmail(input: string) {
 }
 
 export default function SignUpForm() {
-  const { isLoaded, signUp, setActive } = useSignUp();
+  const { signUp, fetchStatus } = useSignUp();
   const searchParams = useSearchParams();
   const router = useRouter();
 
@@ -23,36 +23,39 @@ export default function SignUpForm() {
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const fetching = fetchStatus === "fetching";
+  const disabled = fetching || loading || !signUp;
+
   async function handleEmailSignUp(e: React.FormEvent) {
     e.preventDefault();
-    if (!isLoaded || !signUp) return;
+    if (!signUp) return;
 
     const normalized = normalizeEmail(email);
     if (!normalized) {
-      setError("Merci d’entrer une adresse email valide.");
+      setError("Merci d'entrer une adresse email valide.");
       return;
     }
 
     setError(null);
     setLoading(true);
     try {
-      await signUp.create({
-        emailAddress: normalized,
-      });
+      // Clerk v7: create then send verification email code
+      const createResult = await (signUp as any).create({ emailAddress: normalized });
+      if (createResult?.error) {
+        const msg: string = createResult.error.message ?? "";
+        const isAlreadyExists = msg.toLowerCase().includes("identifier already exists");
+        throw new Error(isAlreadyExists ? "Un compte existe déjà avec cet email. Connecte-toi." : (msg || "Impossible de créer le compte."));
+      }
 
-      await signUp.prepareEmailAddressVerification({
-        strategy: "email_code",
-      });
-      
+      await (signUp as any).verifications.sendEmailCode();
       setSent(true);
     } catch (err) {
       const message = err instanceof Error ? err.message : "";
       const isAlreadyExists = message.toLowerCase().includes("identifier already exists");
-      
       if (isAlreadyExists) {
         setError("Un compte existe déjà avec cet email. Connecte-toi.");
       } else {
-        setError(message || "Impossible d’envoyer le lien. Réessaie.");
+        setError(message || "Impossible d'envoyer le lien. Réessaie.");
       }
     } finally {
       setLoading(false);
@@ -61,57 +64,60 @@ export default function SignUpForm() {
 
   async function handleEmailCodeVerify(e: React.FormEvent) {
     e.preventDefault();
-    if (!isLoaded || !signUp) return;
-    if (loading) return;
+    if (!signUp || loading) return;
 
     const code = emailCode.replace(/\s+/g, "").trim();
     if (!code) {
-      setError("Merci d’entrer le code reçu par email.");
+      setError("Merci d'entrer le code reçu par email.");
       return;
     }
 
     setError(null);
     setLoading(true);
     try {
-      const res = await signUp.attemptEmailAddressVerification({
-        code,
-      });
+      const verifyResult = await (signUp as any).verifications.verifyEmailCode({ code });
+      if (verifyResult?.error) throw new Error(verifyResult.error.message ?? "Code invalide.");
 
-      if (res?.status === "complete" && res?.createdSessionId) {
-        await setActive?.({ session: res.createdSessionId });
-        router.replace(redirectAfterAuth);
+      if ((signUp as any).status === "complete") {
+        await (signUp as any).finalize({
+          navigate: ({ decorateUrl }: { decorateUrl: (url: string) => string }) => {
+            const url = decorateUrl(redirectAfterAuth);
+            if (url.startsWith("http")) {
+              window.location.href = url;
+            } else {
+              router.replace(url);
+            }
+          },
+        });
         return;
       }
 
       setError("Inscription incomplète. Réessaie.");
       setLoading(false);
     } catch (err) {
-      const message = err instanceof Error ? err.message : "";
-      setError(message || "Code invalide.");
+      setError(err instanceof Error ? err.message : "Code invalide.");
       setLoading(false);
     }
   }
 
   async function handleGoogle() {
-    if (!isLoaded || !signUp) return;
-    if (loading) return;
+    if (!signUp || loading) return;
 
     setError(null);
     setLoading(true);
     try {
-      await signUp.authenticateWithRedirect({
+      // Clerk v7: signUp.sso() replaces authenticateWithRedirect()
+      const ssoResult = await (signUp as any).sso({
         strategy: "oauth_google",
-        redirectUrl: "/auth/google",
-        redirectUrlComplete: redirectAfterAuth,
+        redirectCallbackUrl: "/auth/google",
+        redirectUrl: redirectAfterAuth,
       });
+      if (ssoResult?.error) throw new Error(ssoResult.error.message ?? "Inscription Google impossible.");
     } catch (err) {
-      const message = err instanceof Error ? err.message : "";
-      setError(message || "Inscription Google impossible. Réessaie.");
+      setError(err instanceof Error ? err.message : "Inscription Google impossible. Réessaie.");
       setLoading(false);
     }
   }
-
-  const disabled = !isLoaded || loading;
 
   return (
     <div className="flex flex-col">
@@ -153,6 +159,9 @@ export default function SignUpForm() {
               />
             </div>
 
+            {/* Required by Clerk v7 for bot protection */}
+            <div id="clerk-captcha" />
+
             <button
               type="submit"
               disabled={disabled}
@@ -179,7 +188,7 @@ export default function SignUpForm() {
                 className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:ring-4 focus:ring-slate-200 disabled:cursor-not-allowed disabled:opacity-60"
                 placeholder="123456"
               />
-              <p className="mt-2 text-sm text-slate-600">Un code vient d’être envoyé. Vérifie ta boîte mail (et les spams).</p>
+              <p className="mt-2 text-sm text-slate-600">Un code vient d'être envoyé. Vérifie ta boîte mail (et les spams).</p>
             </div>
 
             <button
@@ -201,7 +210,7 @@ export default function SignUpForm() {
               }}
               className="inline-flex w-full items-center justify-center rounded-full border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              Changer d’email
+              Changer d'email
             </button>
 
             {error ? <p className="text-sm text-rose-600">{error}</p> : null}
@@ -219,7 +228,7 @@ export default function SignUpForm() {
       <p className="mt-6 text-center text-xs text-slate-500">
         En continuant, tu acceptes nos{" "}
         <Link href="/cgu" className="underline underline-offset-2 hover:text-slate-700">
-          conditions d’utilisation
+          conditions d'utilisation
         </Link>
         .
       </p>

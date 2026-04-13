@@ -1,6 +1,4 @@
-import type { Theme } from "@clerk/types";
-
-export const clerkAppearance: Theme = {
+export const clerkAppearance = {
   layout: {
     logoPlacement: "inside",
     logoImageUrl: "/dogshift-logo.png",

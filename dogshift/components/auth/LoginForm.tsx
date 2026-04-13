@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useSignIn, useUser } from "@clerk/nextjs";
 import Link from "next/link";
@@ -10,7 +10,7 @@ function normalizeEmail(input: string) {
 }
 
 export default function LoginForm() {
-  const { isLoaded, signIn, setActive } = useSignIn();
+  const { signIn, fetchStatus } = useSignIn();
   const { isLoaded: userLoaded, isSignedIn } = useUser();
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -24,53 +24,37 @@ export default function LoginForm() {
 
   const [email, setEmail] = useState("");
   const [emailCode, setEmailCode] = useState("");
-  const [emailAddressId, setEmailAddressId] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [autoGoogleStarted, setAutoGoogleStarted] = useState(false);
 
+  const fetching = fetchStatus === "fetching";
+  const disabled = fetching || loading || !signIn;
+
   async function handleEmailLogin(e: React.FormEvent) {
     e.preventDefault();
-    if (!isLoaded || !signIn) return;
+    if (!signIn) return;
 
     const normalized = normalizeEmail(email);
     if (!normalized) {
-      setError("Merci d’entrer une adresse email valide.");
+      setError("Merci d'entrer une adresse email valide.");
       return;
     }
 
     setError(null);
     setLoading(true);
     try {
-      // Clerk headless email code:
-      // - Creates a sign-in attempt for the identifier
-      // - Sends a one-time code to the user's email
-      const res = await (signIn as any).create({ identifier: normalized });
-      const factors: any[] = Array.isArray(res?.supportedFirstFactors) ? res.supportedFirstFactors : [];
-      const emailFactor = factors.find((f) => String(f?.strategy || "") === "email_code");
-      const resolvedEmailAddressId =
-        (typeof emailFactor?.emailAddressId === "string" && emailFactor.emailAddressId.trim()) ||
-        (typeof emailFactor?.email_address_id === "string" && emailFactor.email_address_id.trim()) ||
-        "";
+      // Clerk v7: create the sign-in attempt, then send the email code
+      const createResult = await (signIn as any).create({ identifier: normalized });
+      if (createResult?.error) throw new Error(createResult.error.message ?? "Erreur de connexion.");
 
-      if (!resolvedEmailAddressId) {
-        throw new Error("EMAIL_ADDRESS_ID_MISSING");
-      }
+      const sendResult = await (signIn as any).emailCode.sendCode({ emailAddress: normalized });
+      if (sendResult?.error) throw new Error(sendResult.error.message ?? "Impossible d'envoyer le code.");
 
-      setEmailAddressId(resolvedEmailAddressId);
-      await (signIn as any).prepareFirstFactor({
-        strategy: "email_code",
-        emailAddressId: resolvedEmailAddressId,
-      });
       setSent(true);
     } catch (err) {
-      const message = err instanceof Error ? err.message : "";
-      if (message === "EMAIL_ADDRESS_ID_MISSING") {
-        setError("Impossible de démarrer la connexion email. Réessaie ou utilise Google.");
-      } else {
-        setError(message || "Impossible d’envoyer le lien. Réessaie.");
-      }
+      setError(err instanceof Error ? err.message : "Impossible d'envoyer le lien. Réessaie.");
     } finally {
       setLoading(false);
     }
@@ -78,83 +62,78 @@ export default function LoginForm() {
 
   async function handleEmailCodeVerify(e: React.FormEvent) {
     e.preventDefault();
-    if (!isLoaded || !signIn) return;
-    if (loading) return;
+    if (!signIn || loading) return;
 
     const code = emailCode.replace(/\s+/g, "").trim();
     if (!code) {
-      setError("Merci d’entrer le code reçu par email.");
+      setError("Merci d'entrer le code reçu par email.");
       return;
     }
 
     setError(null);
     setLoading(true);
     try {
-      const res = await (signIn as any).attemptFirstFactor({
-        strategy: "email_code",
-        code,
-      });
+      const verifyResult = await (signIn as any).emailCode.verifyCode({ code });
+      if (verifyResult?.error) throw new Error(verifyResult.error.message ?? "Code invalide.");
 
-      if (res?.status === "complete" && res?.createdSessionId) {
-        await setActive?.({ session: res.createdSessionId });
-        router.replace(redirectAfterAuth);
+      if ((signIn as any).status === "complete") {
+        await (signIn as any).finalize({
+          navigate: ({ decorateUrl }: { decorateUrl: (url: string) => string }) => {
+            const url = decorateUrl(redirectAfterAuth);
+            if (url.startsWith("http")) {
+              window.location.href = url;
+            } else {
+              router.replace(url);
+            }
+          },
+        });
         return;
       }
 
       setError("Connexion incomplète. Réessaie.");
       setLoading(false);
     } catch (err) {
-      const message = err instanceof Error ? err.message : "";
-      setError(message || "Code invalide.");
+      setError(err instanceof Error ? err.message : "Code invalide.");
       setLoading(false);
     }
   }
 
   async function handleGoogle() {
-    if (!isLoaded || !signIn) return;
-    if (loading) return;
+    if (!signIn || loading) return;
 
     setError(null);
     setLoading(true);
     try {
-      // Clerk headless OAuth:
-      // - Redirects to Google, then back to the app.
-      // - Completion lands on /post-login (which routes to next or /account).
-      await signIn.authenticateWithRedirect({
+      // Clerk v7: signIn.sso() replaces authenticateWithRedirect()
+      const ssoResult = await (signIn as any).sso({
         strategy: "oauth_google",
-        redirectUrl: "/auth/google",
-        redirectUrlComplete: redirectAfterAuth,
+        redirectCallbackUrl: "/auth/google",
+        redirectUrl: redirectAfterAuth,
         ...(forceMode
-          ? {
-              oauthOptions: {
-                prompt: "consent select_account",
-              },
-            }
+          ? { oauthOptions: { prompt: "consent select_account" } }
           : null),
       });
+      if (ssoResult?.error) throw new Error(ssoResult.error.message ?? "Connexion Google impossible.");
     } catch (err) {
-      const message = err instanceof Error ? err.message : "";
-      setError(message || "Connexion Google impossible. Réessaie.");
+      setError(err instanceof Error ? err.message : "Connexion Google impossible. Réessaie.");
       setLoading(false);
     }
   }
 
-  const disabled = !isLoaded || loading;
-
   useEffect(() => {
     if (!startGoogleMode) return;
     if (autoGoogleStarted) return;
-    if (!isLoaded || !signIn) return;
+    if (!signIn) return;
     if (!userLoaded) return;
     if (isSignedIn) return;
     setAutoGoogleStarted(true);
     void handleGoogle();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoGoogleStarted, isLoaded, signIn, startGoogleMode, userLoaded, isSignedIn]);
+  }, [autoGoogleStarted, signIn, startGoogleMode, userLoaded, isSignedIn]);
 
   return (
     <div className="flex flex-col">
-      <h1 className="text-center text-2xl font-semibold tracking-tight text-slate-900">S’identifier</h1>
+      <h1 className="text-center text-2xl font-semibold tracking-tight text-slate-900">S'identifier</h1>
       <p className="mt-2 text-center text-sm text-slate-600">Accède à ton espace DogShift.</p>
 
       <div className="mt-6 flex flex-col gap-6">
@@ -218,7 +197,7 @@ export default function LoginForm() {
                 className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:ring-4 focus:ring-slate-200 disabled:cursor-not-allowed disabled:opacity-60"
                 placeholder="123456"
               />
-              <p className="mt-2 text-sm text-slate-600">Un code vient d’être envoyé. Vérifie ta boîte mail (et les spams).</p>
+              <p className="mt-2 text-sm text-slate-600">Un code vient d'être envoyé. Vérifie ta boîte mail (et les spams).</p>
             </div>
 
             <button
@@ -236,12 +215,11 @@ export default function LoginForm() {
                 if (loading) return;
                 setSent(false);
                 setEmailCode("");
-                setEmailAddressId("");
                 setError(null);
               }}
               className="inline-flex w-full items-center justify-center rounded-full border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              Changer d’email
+              Changer d'email
             </button>
 
             {error ? <p className="text-sm text-rose-600">{error}</p> : null}
@@ -259,7 +237,7 @@ export default function LoginForm() {
       <p className="mt-6 text-center text-xs text-slate-500">
         En continuant, tu acceptes nos{" "}
         <Link href="/cgu" className="underline underline-offset-2 hover:text-slate-700">
-          conditions d’utilisation
+          conditions d'utilisation
         </Link>
         .
       </p>

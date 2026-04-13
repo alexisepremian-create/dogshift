@@ -34,7 +34,8 @@ function Spinner({ className }: { className?: string }) {
 export default function BecomeSitterForm() {
   const router = useRouter();
   const { isLoaded, isSignedIn, user } = useUser();
-  const { isLoaded: isSignUpLoaded, signUp, setActive } = useSignUp();
+  const { signUp, fetchStatus: signUpFetchStatus } = useSignUp();
+  const isSignUpLoaded = !!signUp;
   const sessionStatus = !isLoaded ? "loading" : isSignedIn ? "authenticated" : "unauthenticated";
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [formStatus, setFormStatus] = useState<"idle" | "submitting" | "done" | "error">("idle");
@@ -95,7 +96,7 @@ export default function BecomeSitterForm() {
 
   async function ensureInlineSignUp(): Promise<boolean> {
     if (sessionStatus === "authenticated") return true;
-    if (!isSignUpLoaded || !signUp || !setActive) {
+    if (!isSignUpLoaded || !signUp) {
       setAuthError("Chargement… Réessaie dans un instant.");
       return false;
     }
@@ -113,14 +114,20 @@ export default function BecomeSitterForm() {
     setAuthError(null);
     setAuthInlineStatus("creating");
     try {
-      await signUp.create({ emailAddress: emailTrimmed, password });
-      if (signUp.createdSessionId) {
-        await setActive({ session: signUp.createdSessionId });
+      await (signUp as any).create({ emailAddress: emailTrimmed, password });
+      if ((signUp as any).status === "complete") {
+        await (signUp as any).finalize({
+          navigate: ({ decorateUrl }: { decorateUrl: (url: string) => string }) => {
+            const url = decorateUrl("/post-login");
+            if (url.startsWith("http")) window.location.href = url;
+            else router.replace(url);
+          },
+        });
         setAuthInlineStatus("idle");
         return true;
       }
 
-      await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
+      await (signUp as any).verifications.sendEmailCode();
       setAuthInlineStatus("needs_code");
       return false;
     } catch (err) {
@@ -143,7 +150,7 @@ export default function BecomeSitterForm() {
 
   async function verifyInlineEmailCode(): Promise<boolean> {
     if (sessionStatus === "authenticated") return true;
-    if (!isSignUpLoaded || !signUp || !setActive) return false;
+    if (!isSignUpLoaded || !signUp) return false;
     const codeTrimmed = emailCode.trim();
     if (!codeTrimmed) {
       setAuthError("Entre le code reçu par email.");
@@ -153,9 +160,15 @@ export default function BecomeSitterForm() {
     setAuthError(null);
     setAuthInlineStatus("verifying");
     try {
-      const result = await signUp.attemptEmailAddressVerification({ code: codeTrimmed });
-      if (result.createdSessionId) {
-        await setActive({ session: result.createdSessionId });
+      await (signUp as any).verifications.verifyEmailCode({ code: codeTrimmed });
+      if ((signUp as any).status === "complete") {
+        await (signUp as any).finalize({
+          navigate: ({ decorateUrl }: { decorateUrl: (url: string) => string }) => {
+            const url = decorateUrl("/post-login");
+            if (url.startsWith("http")) window.location.href = url;
+            else router.replace(url);
+          },
+        });
         setAuthInlineStatus("idle");
         setStep(2);
         return true;
