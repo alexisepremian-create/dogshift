@@ -1172,6 +1172,17 @@ function StickySearchBar({ visible = true, hero = false }: { visible?: boolean; 
       if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
         setActiveSection(null);
         setLocationError("");
+        // The overlay disappears (via React re-render) before the click event fires,
+        // so the click would land on the content behind it (e.g. a sitter card link).
+        // Block the very next click in capture phase to prevent any navigation.
+        const cancelClick = (ce: MouseEvent) => {
+          ce.stopPropagation();
+          ce.preventDefault();
+          document.removeEventListener("click", cancelClick, true);
+        };
+        document.addEventListener("click", cancelClick, true);
+        // Safety timeout: remove listener if no click fires within 300 ms
+        setTimeout(() => document.removeEventListener("click", cancelClick, true), 300);
       }
     };
     // capture phase catches the event before bubbling; avoids missing events in portals
