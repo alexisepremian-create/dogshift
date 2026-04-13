@@ -126,6 +126,36 @@ export default function DogShiftBot() {
   const faq = useMemo(
     () =>
       [
+        // ── Salutations / Politesse ──────────────────────────────────────────
+        {
+          keywords: [
+            "salut", "bonjour", "bonsoir", "hello", "hey", "coucou", "hi",
+            "yo", "wesh", "slt", "bjr", "bsr", "allo", "allô", "cc",
+            "bonne journee", "bonne soiree", "bonne nuit", "bonne matin",
+          ],
+          answer:
+            "Bonjour ! 👋 Ravi de vous accueillir sur DogShift. Je suis là pour répondre à toutes vos questions : nos services (Promenade, Garde, Pension), la réservation, les tarifs, devenir sitter… Qu'est-ce que je peux faire pour vous ?",
+        },
+        // ── Remerciements ────────────────────────────────────────────────────
+        {
+          keywords: [
+            "merci", "merci beaucoup", "thanks", "thank you", "super merci",
+            "parfait merci", "nickel", "top", "excellent", "genial", "génial",
+            "c'est bon", "ca marche", "ok merci", "cool merci",
+          ],
+          answer:
+            "Avec plaisir ! 😊 N'hésitez pas si vous avez d'autres questions. Bonne expérience sur DogShift !",
+        },
+        // ── Questions sur le bot lui-même ────────────────────────────────────
+        {
+          keywords: [
+            "qui es tu", "qui etes vous", "t'es qui", "tu es qui", "c'est quoi toi",
+            "tu fais quoi", "tu peux faire quoi", "tes capacites", "aide moi",
+            "tu sais faire quoi", "tu connais quoi", "tu reponds a quoi",
+          ],
+          answer:
+            "Je suis DogShift Bot 🐾, l'assistant virtuel de DogShift ! Je peux vous aider sur : les services (Promenade, Garde, Pension), la réservation, les tarifs, la sécurité, votre compte, devenir dogsitter, les villes disponibles, et plus encore. Posez-moi n'importe quelle question !",
+        },
         // ── Qu'est-ce que DogShift ───────────────────────────────────────────
         {
           keywords: [
