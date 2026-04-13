@@ -1622,6 +1622,7 @@ function StickySearchBar({ visible = true, hero = false }: { visible?: boolean; 
                             onChange={(e) => { setLocation(e.target.value); setLocationError(""); }}
                           placeholder="Lausanne, Genève, Montreux…"
                           className="min-w-0 flex-1 bg-transparent text-sm font-medium text-slate-900 placeholder:text-slate-400 outline-none"
+                          style={{ fontSize: "16px" }}
                           autoComplete="off"
                           // eslint-disable-next-line jsx-a11y/no-autofocus
                           autoFocus
@@ -1819,6 +1820,7 @@ function StickySearchBar({ visible = true, hero = false }: { visible?: boolean; 
                               value={duration}
                               onChange={(e) => setDuration(e.target.value)}
                               className="block w-full appearance-none bg-transparent pr-6 text-sm font-medium text-slate-900 outline-none"
+                              style={{ fontSize: "16px" }}
                             >
                               {panelDurationOptions.map((opt) => (
                                 <option key={opt.value} value={opt.value}>{opt.label}</option>
