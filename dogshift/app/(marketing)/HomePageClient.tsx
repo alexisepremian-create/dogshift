@@ -2504,6 +2504,45 @@ function MapSection() {
 
 // ── BECOME A SITTER ───────────────────────────────────────────────────────────
 
+function SitterCard({ label, icon }: { label: string; icon: string }) {
+  const [hovered, setHovered] = useState(false);
+  return (
+    <li
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      className="flex flex-row items-center justify-start gap-3 rounded-2xl border border-white/10 bg-white/5 px-6 py-3.5 text-left text-blue-100 sm:flex-col sm:items-center sm:justify-start sm:gap-0 sm:px-4 sm:pt-6 sm:pb-5 cursor-default"
+      style={{
+        transition: "transform 300ms cubic-bezier(0.34,1.56,0.64,1), background-color 300ms ease, border-color 300ms ease, box-shadow 300ms ease",
+        transform: hovered ? "translateY(-4px)" : "translateY(0px)",
+        backgroundColor: hovered ? "rgba(255,255,255,0.10)" : "rgba(255,255,255,0.05)",
+        borderColor: hovered ? "rgba(255,255,255,0.22)" : "rgba(255,255,255,0.10)",
+        boxShadow: hovered ? "0 12px 40px -10px rgba(0,0,0,0.40)" : "none",
+      }}
+    >
+      {/* Mobile only: checkmark left of text */}
+      <CheckCircle2
+        className="mt-0.5 h-[18px] w-[18px] shrink-0 text-emerald-400 sm:hidden"
+        aria-hidden="true"
+      />
+      {/* Desktop: icon in fixed-height zone so all icons stay at same Y */}
+      <div className="hidden sm:flex h-10 w-10 items-center justify-center">
+        <img
+          src={icon}
+          alt=""
+          aria-hidden="true"
+          style={{
+            width: "36px",
+            height: "36px",
+            transition: "transform 300ms cubic-bezier(0.34,1.56,0.64,1)",
+            transform: hovered ? "scale(1.18)" : "scale(1)",
+          }}
+        />
+      </div>
+      <span className="text-[13px] font-medium leading-snug sm:mt-3 sm:text-sm sm:text-center">{label}</span>
+    </li>
+  );
+}
+
 function BecomeSitterSection() {
   const reveal = useRevealOnce({ repeat: true });
 
@@ -2528,21 +2567,7 @@ function BecomeSitterSection() {
               { label: "Fixez vos propres tarifs et horaires", icon: "/compose.svg" },
               { label: "Support et accompagnement DogShift", icon: "/badge-help.svg" },
             ].map(({ label, icon }) => (
-              <li
-                key={label}
-                className="flex flex-row items-center justify-start gap-3 rounded-2xl border border-white/10 bg-white/5 px-6 py-3.5 text-left text-blue-100 sm:flex-col sm:items-center sm:justify-start sm:gap-0 sm:px-4 sm:pt-6 sm:pb-5"
-              >
-                {/* Mobile only: checkmark left of text */}
-                <CheckCircle2
-                  className="mt-0.5 h-[18px] w-[18px] shrink-0 text-emerald-400 sm:hidden"
-                  aria-hidden="true"
-                />
-                {/* Desktop: icon in fixed-height zone so all icons stay at same Y */}
-                <div className="hidden sm:flex h-10 w-10 items-center justify-center">
-                  <img src={icon} alt="" aria-hidden="true" className="h-9 w-9" />
-                </div>
-                <span className="text-[13px] font-medium leading-snug sm:mt-3 sm:text-sm sm:text-center">{label}</span>
-              </li>
+              <SitterCard key={label} label={label} icon={icon} />
             ))}
           </ul>
 
