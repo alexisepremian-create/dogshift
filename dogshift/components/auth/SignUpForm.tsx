@@ -39,10 +39,9 @@ export default function SignUpForm() {
     setError(null);
     setLoading(true);
     try {
-      // Clerk v7: create then send verification email code
-      const createResult = await (signUp as any).create({ emailAddress: normalized });
-      if (createResult?.error) {
-        const msg: string = createResult.error.message ?? "";
+      const { error: createError } = await (signUp as any).create({ emailAddress: normalized });
+      if (createError) {
+        const msg: string = createError.message ?? "";
         const isAlreadyExists = msg.toLowerCase().includes("identifier already exists");
         throw new Error(isAlreadyExists ? "Un compte existe déjà avec cet email. Connecte-toi." : (msg || "Impossible de créer le compte."));
       }
@@ -75,12 +74,15 @@ export default function SignUpForm() {
     setError(null);
     setLoading(true);
     try {
-      const verifyResult = await (signUp as any).verifications.verifyEmailCode({ code });
-      if (verifyResult?.error) throw new Error(verifyResult.error.message ?? "Code invalide.");
+      await (signUp as any).verifications.verifyEmailCode({ code });
 
       if ((signUp as any).status === "complete") {
         await (signUp as any).finalize({
-          navigate: ({ decorateUrl }: { decorateUrl: (url: string) => string }) => {
+          navigate: ({ session, decorateUrl }: { session?: any; decorateUrl: (url: string) => string }) => {
+            if (session?.currentTask) {
+              console.log("[SignUpForm] session task:", session.currentTask);
+              return;
+            }
             const url = decorateUrl(redirectAfterAuth);
             if (url.startsWith("http")) {
               window.location.href = url;
@@ -95,6 +97,7 @@ export default function SignUpForm() {
       setError("Inscription incomplète. Réessaie.");
       setLoading(false);
     } catch (err) {
+      console.error("[SignUpForm] handleEmailCodeVerify error:", err);
       setError(err instanceof Error ? err.message : "Code invalide.");
       setLoading(false);
     }
@@ -106,14 +109,14 @@ export default function SignUpForm() {
     setError(null);
     setLoading(true);
     try {
-      // Clerk v7: signUp.sso() replaces authenticateWithRedirect()
-      const ssoResult = await (signUp as any).sso({
+      const { error: ssoError } = await (signUp as any).sso({
         strategy: "oauth_google",
         redirectCallbackUrl: "/auth/google",
         redirectUrl: redirectAfterAuth,
       });
-      if (ssoResult?.error) throw new Error(ssoResult.error.message ?? "Inscription Google impossible.");
+      if (ssoError) throw new Error(ssoError.message ?? "Inscription Google impossible.");
     } catch (err) {
+      console.error("[SignUpForm] handleGoogle error:", err);
       setError(err instanceof Error ? err.message : "Inscription Google impossible. Réessaie.");
       setLoading(false);
     }

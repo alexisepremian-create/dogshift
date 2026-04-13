@@ -45,15 +45,14 @@ export default function LoginForm() {
     setError(null);
     setLoading(true);
     try {
-      // Clerk v7: create the sign-in attempt, then send the email code
-      const createResult = await (signIn as any).create({ identifier: normalized });
-      if (createResult?.error) throw new Error(createResult.error.message ?? "Erreur de connexion.");
+      const { error: createError } = await (signIn as any).create({ identifier: normalized });
+      if (createError) throw new Error(createError.message ?? "Erreur de connexion.");
 
-      const sendResult = await (signIn as any).emailCode.sendCode({ emailAddress: normalized });
-      if (sendResult?.error) throw new Error(sendResult.error.message ?? "Impossible d'envoyer le code.");
+      await (signIn as any).emailCode.sendCode();
 
       setSent(true);
     } catch (err) {
+      console.error("[LoginForm] handleEmailLogin error:", err);
       setError(err instanceof Error ? err.message : "Impossible d'envoyer le lien. Réessaie.");
     } finally {
       setLoading(false);
@@ -73,12 +72,15 @@ export default function LoginForm() {
     setError(null);
     setLoading(true);
     try {
-      const verifyResult = await (signIn as any).emailCode.verifyCode({ code });
-      if (verifyResult?.error) throw new Error(verifyResult.error.message ?? "Code invalide.");
+      await (signIn as any).emailCode.verifyCode({ code });
 
       if ((signIn as any).status === "complete") {
         await (signIn as any).finalize({
-          navigate: ({ decorateUrl }: { decorateUrl: (url: string) => string }) => {
+          navigate: ({ session, decorateUrl }: { session?: any; decorateUrl: (url: string) => string }) => {
+            if (session?.currentTask) {
+              console.log("[LoginForm] session task:", session.currentTask);
+              return;
+            }
             const url = decorateUrl(redirectAfterAuth);
             if (url.startsWith("http")) {
               window.location.href = url;
@@ -93,6 +95,7 @@ export default function LoginForm() {
       setError("Connexion incomplète. Réessaie.");
       setLoading(false);
     } catch (err) {
+      console.error("[LoginForm] handleEmailCodeVerify error:", err);
       setError(err instanceof Error ? err.message : "Code invalide.");
       setLoading(false);
     }
@@ -104,17 +107,14 @@ export default function LoginForm() {
     setError(null);
     setLoading(true);
     try {
-      // Clerk v7: signIn.sso() replaces authenticateWithRedirect()
-      const ssoResult = await (signIn as any).sso({
+      const { error: ssoError } = await (signIn as any).sso({
         strategy: "oauth_google",
         redirectCallbackUrl: "/auth/google",
         redirectUrl: redirectAfterAuth,
-        ...(forceMode
-          ? { oauthOptions: { prompt: "consent select_account" } }
-          : null),
       });
-      if (ssoResult?.error) throw new Error(ssoResult.error.message ?? "Connexion Google impossible.");
+      if (ssoError) throw new Error(ssoError.message ?? "Connexion Google impossible.");
     } catch (err) {
+      console.error("[LoginForm] handleGoogle error:", err);
       setError(err instanceof Error ? err.message : "Connexion Google impossible. Réessaie.");
       setLoading(false);
     }
