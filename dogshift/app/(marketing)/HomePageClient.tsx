@@ -2532,7 +2532,6 @@ function BecomeSitterSection() {
                 key={label}
                 className="flex flex-row items-center justify-start gap-3 rounded-2xl border border-white/10 bg-white/5 px-6 py-3.5 text-left text-blue-100 sm:flex-col sm:items-center sm:justify-center sm:gap-2.5 sm:px-4 sm:py-5"
               >
-                {/* Mobile: existing CheckCircle; Desktop: custom SVG above text */}
                 <CheckCircle2
                   className="mt-0.5 h-[18px] w-[18px] shrink-0 text-emerald-400 sm:hidden"
                   aria-hidden="true"
@@ -2543,7 +2542,7 @@ function BecomeSitterSection() {
                   aria-hidden="true"
                   className="hidden sm:block h-9 w-9 shrink-0"
                 />
-                <span className="text-[13px] font-medium leading-none sm:text-sm sm:whitespace-nowrap sm:text-center">{label}</span>
+                <span className="text-[13px] font-medium leading-snug sm:text-sm sm:text-center">{label}</span>
               </li>
             ))}
           </ul>
