@@ -1431,19 +1431,20 @@ function StickySearchBar({ visible = true, hero = false }: { visible?: boolean; 
           )
         : null}
 
-      {/* ── Container: fixed sticky OR normal-flow hero ── */}
-      <div
-        ref={wrapperRef}
-        aria-hidden={hero ? undefined : !visible}
-        className={hero
-          ? "relative z-[45]"
-          : [
-              "fixed left-0 right-0 z-40 transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]",
-              visible ? "opacity-100 scale-100" : "pointer-events-none opacity-0 scale-[0.98]",
-            ].join(" ")
-        }
-        style={hero ? undefined : { top: "calc(env(safe-area-inset-top) + 12px)" }}
-      >
+      {/* ── Container: sticky wrapper OR normal-flow hero ── */}
+      <div className={hero ? "" : "sticky left-0 right-0 top-0 z-40 h-0 w-full overflow-visible"}>
+        <div
+          ref={wrapperRef}
+          aria-hidden={hero ? undefined : !visible}
+          className={hero
+            ? "relative z-[45]"
+            : [
+                "absolute left-0 right-0 w-full transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]",
+                visible ? "opacity-100 scale-100" : "pointer-events-none opacity-0 scale-[0.98]",
+              ].join(" ")
+          }
+          style={hero ? undefined : { top: "max(12px, calc(env(safe-area-inset-top) + 10px))" }}
+        >
         <div className={sz.wrapPad}>
           <div className={`mx-auto flex ${sz.maxW} items-center ${sz.gap} ${sz.px}`}>
             <div
@@ -1853,6 +1854,7 @@ function StickySearchBar({ visible = true, hero = false }: { visible?: boolean; 
             </div>
           )}
 
+        </div>
       </div>
     </>
   );
