@@ -118,7 +118,9 @@ function scoreMatch(input: string, keywords: string[]) {
   for (const kRaw of keywords) {
     const k = normalize(kRaw);
     if (hay.includes(k)) {
-      score += 2;
+      // Les phrases longues scorent proportionnellement plus
+      const wordCount = k.split(/\s+/).length;
+      score += wordCount * 2;
       continue;
     }
     if (k.includes(" ")) continue;
