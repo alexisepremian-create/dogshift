@@ -113,6 +113,14 @@ export default function LoginForm() {
         redirectUrl: redirectAfterAuth,
       });
       if (ssoError) throw new Error(ssoError.message ?? "Connexion Google impossible.");
+
+      const status = (signIn as any).status;
+      if (status === "needs_client_trust") {
+        // Clerk's invisible CAPTCHA will resolve via the clerk-captcha div.
+        // Unlock the UI so the user isn't stuck with disabled buttons.
+        setLoading(false);
+        return;
+      }
     } catch (err) {
       console.error("[LoginForm] handleGoogle error:", err);
       setError(err instanceof Error ? err.message : "Connexion Google impossible. Réessaie.");
@@ -241,6 +249,9 @@ export default function LoginForm() {
         </Link>
         .
       </p>
+
+      {/* Required by Clerk v7 for bot / client-trust verification (invisible CAPTCHA) */}
+      <div id="clerk-captcha" />
     </div>
   );
 }
