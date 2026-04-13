@@ -532,45 +532,47 @@ export default function DogShiftBot() {
   const [messages, setMessages] = useState<ChatMessage[]>([initialBotMessage]);
   const [dismissed, setDismissed] = useState(false);
 
-  // ── Drag libre sur mobile (touch uniquement) ───────────────────────────────
-  const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
+  // ── Snap aux 4 coins (mobile : drag touch) ────────────────────────────────
+  type Corner = "br" | "bl" | "tr" | "tl";
+  const [corner, setCorner] = useState<Corner>("br");
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const dragBtnRef = useRef<HTMLButtonElement | null>(null);
-  const dragState = useRef({ active: false, moved: false, startTX: 0, startTY: 0, startEX: 0, startEY: 0 });
+  const dragState = useRef({ active: false, moved: false, startTX: 0, startTY: 0 });
   const justDragged = useRef(false);
 
-  // Listener non-passif pour pouvoir preventDefault pendant le drag
+  // touchmove non-passif pour bloquer le scroll pendant le drag
   useEffect(() => {
     const btn = dragBtnRef.current;
     if (!btn) return;
-    const onTouchMove = (e: TouchEvent) => {
+    const onMove = (e: TouchEvent) => {
       if (!dragState.current.active) return;
       const t = e.touches[0];
-      const dx = t.clientX - dragState.current.startTX;
-      const dy = t.clientY - dragState.current.startTY;
-      if (!dragState.current.moved && Math.hypot(dx, dy) < 8) return;
+      if (!dragState.current.moved &&
+        Math.hypot(t.clientX - dragState.current.startTX, t.clientY - dragState.current.startTY) < 8) return;
       dragState.current.moved = true;
-      e.preventDefault(); // empêche le scroll pendant le drag
-      const S = 56;
-      const newX = Math.max(8, Math.min(window.innerWidth - S - 8, dragState.current.startEX + dx));
-      const newY = Math.max(8, Math.min(window.innerHeight - S - 8, dragState.current.startEY + dy));
-      setPos({ x: newX, y: newY });
+      e.preventDefault();
     };
-    btn.addEventListener("touchmove", onTouchMove, { passive: false });
-    return () => btn.removeEventListener("touchmove", onTouchMove);
+    btn.addEventListener("touchmove", onMove, { passive: false });
+    return () => btn.removeEventListener("touchmove", onMove);
   }, []);
 
   function onTouchStart(e: React.TouchEvent<HTMLButtonElement>) {
     if (open) return;
     const t = e.touches[0];
-    const rect = wrapRef.current!.getBoundingClientRect();
-    dragState.current = { active: true, moved: false, startTX: t.clientX, startTY: t.clientY, startEX: rect.left, startEY: rect.top };
+    dragState.current = { active: true, moved: false, startTX: t.clientX, startTY: t.clientY };
   }
 
-  function onTouchEnd() {
+  function onTouchEnd(e: React.TouchEvent<HTMLButtonElement>) {
     if (!dragState.current.active) return;
-    if (dragState.current.moved) justDragged.current = true;
     dragState.current.active = false;
+    if (dragState.current.moved) {
+      justDragged.current = true;
+      // Snap au coin le plus proche selon le point de relâche
+      const t = e.changedTouches[0];
+      const mX = window.innerWidth / 2;
+      const mY = window.innerHeight / 2;
+      setCorner(`${t.clientY < mY ? "t" : "b"}${t.clientX < mX ? "l" : "r"}` as Corner);
+    }
     dragState.current.moved = false;
   }
 
@@ -639,13 +641,22 @@ export default function DogShiftBot() {
 
   if (dismissed) return null;
 
-  // Sur mobile avec drag actif : position libre. Sinon : bas-droite via Tailwind.
-  const wrapStyle: React.CSSProperties | undefined = pos
-    ? { position: "fixed", top: pos.y, left: pos.x, right: "auto", bottom: "auto", zIndex: 50 }
-    : undefined;
+  // Position selon le coin actif
+  const isRight = corner.endsWith("r");
+  const isBottom = corner.startsWith("b");
+  const cornerStyle: React.CSSProperties = {
+    position: "fixed",
+    zIndex: 50,
+    ...(isRight ? { right: 16 } : { left: 16 }),
+    ...(isBottom ? { bottom: 20 } : { top: 72 }),
+  };
+
+  // Panneau : s'ouvre vers le haut si coin bas, vers le bas si coin haut
+  const colDir = isBottom ? "flex-col" : "flex-col-reverse";
+  const alignItems = isRight ? "items-end" : "items-start";
 
   return (
-    <div ref={wrapRef} style={wrapStyle} className={`flex flex-col items-end gap-3 z-50 ${pos ? "" : "fixed bottom-5 right-5"}`}>
+    <div ref={wrapRef} style={cornerStyle} className={`flex gap-3 ${colDir} ${alignItems}`}>
       {open ? (
         <div className="w-[360px] max-w-[calc(100vw-2.5rem)] overflow-hidden rounded-3xl border border-white/70 bg-white/80 shadow-[0_24px_80px_-50px_rgba(2,6,23,0.65)] backdrop-blur-xl">
           <div className="flex items-center justify-between border-b border-slate-200/70 px-4 py-3">
