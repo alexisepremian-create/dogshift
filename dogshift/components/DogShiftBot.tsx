@@ -208,17 +208,20 @@ export default function DogShiftBot() {
           answer:
             "Très bien merci, je suis prêt à vous aider ! 😊 Posez-moi vos questions sur DogShift : services, réservation, tarifs, devenir sitter… Je suis là pour vous.",
         },
-        // ── Tu fais quoi / Qui es-tu ─────────────────────────────────────────
+        // ── Tu fais quoi / Qui es-tu (bot) ──────────────────────────────────
         {
           keywords: [
-            "tu fais quoi", "tfq", "t fais quoi", "tu fous quoi", "tu fous",
-            "qui es tu", "t'es qui", "tu es qui", "c'est quoi toi",
+            "t'es qui", "tu es qui", "tes qui", "t ki", "t qui",
+            "tu fais quoi", "tfq", "t fais quoi", "tu fous quoi",
+            "c'est quoi toi", "t'es koi", "t es koi",
             "tu peux faire quoi", "tu sais faire quoi", "tes capacites",
             "tu connais quoi", "tu reponds a quoi", "t'es capable de quoi",
-            "t ki", "t qui", "c koi toi", "t'es koi", "tes qui",
+            "tu es un bot", "t'es un bot", "t'es un robot", "t'es humain",
+            "tu es humain", "t'es une ia", "intelligence artificielle",
+            "tu es reel", "t'es reel", "tu existes",
           ],
           answer:
-            "Je suis DogShift Bot 🐾, votre assistant virtuel ! Je suis là pour vous aider sur tout ce qui concerne DogShift : choisir un service, réserver un sitter, comprendre les tarifs, la sécurité, créer votre compte ou devenir dogsitter. Je réponds à vos questions 24h/24 !",
+            "Je suis DogShift Bot 🐾 — l'assistant virtuel de DogShift ! Je suis là pour répondre à toutes vos questions 24h/24 : services (Promenade, Garde, Pension), réservation, tarifs, phase pilote, sécurité, devenir dogsitter… Posez-moi n'importe quelle question !",
         },
         // ── Rires / Humour ───────────────────────────────────────────────────
         {
@@ -233,13 +236,12 @@ export default function DogShiftBot() {
         {
           keywords: [
             "fondateur", "createur", "créateur", "qui a cree", "qui a créé",
-            "qui a fait", "qui a lance", "qui a lancé", "qui est derriere",
-            "derriere dogshift", "derrière dogshift", "equipe", "équipe",
-            "qui dirige", "ceo", "patron", "boss", "chef", "team",
-            "qui gere", "qui gère", "qui a monte", "qui a monté",
+            "qui a fait le site", "qui a lance", "qui a lancé", "qui est derriere",
+            "derriere dogshift", "derrière dogshift", "equipe dogshift", "équipe dogshift",
+            "qui dirige", "ceo", "patron", "boss", "chef du site", "team dogshift",
+            "qui gere le site", "qui a monte dogshift", "qui a monté dogshift",
             "c'est qui le fondateur", "c'est qui le createur",
             "c qui le fondateur", "c qui fondateur", "c qui le createur",
-            "c qui a fait", "c qui gere", "c qui dirige",
           ],
           answer:
             "Bonne question… mais qui cherche trouve 🐾😏 Ce que je peux dire, c'est que DogShift est un projet indépendant, construit avec passion et exigence pour offrir la meilleure expérience de dogsitting en Suisse. La suite ? Elle se mérite !",
