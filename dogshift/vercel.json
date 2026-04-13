@@ -16,5 +16,7 @@
       "path": "/api/cron/release-booking-payouts",
       "schedule": "15 * * * *"
     }
-  ]
+  ],
+  "buildCommand": "npm run build",
+  "installCommand": "npm install"
 }
