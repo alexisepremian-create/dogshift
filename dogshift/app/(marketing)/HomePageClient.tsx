@@ -1855,15 +1855,11 @@ function StickySearchBar({ visible = true, hero = false }: { visible?: boolean; 
                       </div>
                     </div>
                   )}
-
                 </div>
               </div>
             </div>
           )}
-
         </div>
-      </div>
-    </div>
     </>
   );
 }
