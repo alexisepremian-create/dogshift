@@ -2524,19 +2524,26 @@ function BecomeSitterSection() {
 
           <ul className="mt-8 grid gap-3 text-sm sm:grid-cols-3 sm:gap-4">
             {[
-              "Profil gratuit, activation rapide",
-              "Fixez vos propres tarifs et horaires",
-              "Support et accompagnement DogShift",
-            ].map((item) => (
+              { label: "Profil gratuit, activation rapide", icon: "/caret-forward-circle-outline.svg" },
+              { label: "Fixez vos propres tarifs et horaires", icon: "/compose.svg" },
+              { label: "Support et accompagnement DogShift", icon: "/badge-help.svg" },
+            ].map(({ label, icon }) => (
               <li
-                key={item}
-                className="flex flex-row items-center justify-start gap-3 rounded-2xl border border-white/10 bg-white/5 px-6 py-3.5 text-left text-blue-100 sm:justify-center sm:px-6 sm:py-4"
+                key={label}
+                className="flex flex-row items-center justify-start gap-3 rounded-2xl border border-white/10 bg-white/5 px-6 py-3.5 text-left text-blue-100 sm:flex-col sm:items-center sm:justify-center sm:gap-2.5 sm:px-4 sm:py-5"
               >
+                {/* Mobile: existing CheckCircle; Desktop: custom SVG above text */}
                 <CheckCircle2
-                  className="mt-0.5 h-[18px] w-[18px] shrink-0 text-emerald-400"
+                  className="mt-0.5 h-[18px] w-[18px] shrink-0 text-emerald-400 sm:hidden"
                   aria-hidden="true"
                 />
-                <span className="text-[13px] font-medium leading-none sm:text-sm">{item}</span>
+                <img
+                  src={icon}
+                  alt=""
+                  aria-hidden="true"
+                  className="hidden sm:block h-9 w-9 shrink-0"
+                />
+                <span className="text-[13px] font-medium leading-none sm:text-sm sm:whitespace-nowrap sm:text-center">{label}</span>
               </li>
             ))}
           </ul>
