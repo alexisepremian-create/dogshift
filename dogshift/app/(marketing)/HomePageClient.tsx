@@ -2504,7 +2504,7 @@ function MapSection() {
 
 // ── BECOME A SITTER ───────────────────────────────────────────────────────────
 
-function SitterCard({ label, icon }: { label: string; icon: string }) {
+function BenefitCard({ label, icon }: { label: string; icon: string }) {
   const [hovered, setHovered] = useState(false);
   return (
     <li
@@ -2567,7 +2567,7 @@ function BecomeSitterSection() {
               { label: "Fixez vos propres tarifs et horaires", icon: "/compose.svg" },
               { label: "Support et accompagnement DogShift", icon: "/badge-help.svg" },
             ].map(({ label, icon }) => (
-              <SitterCard key={label} label={label} icon={icon} />
+              <BenefitCard key={label} label={label} icon={icon} />
             ))}
           </ul>
 
