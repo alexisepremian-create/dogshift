@@ -1496,11 +1496,11 @@ function StickySearchBar({ visible = true, hero = false }: { visible?: boolean; 
                         : "hover:bg-white/50",
                   ].join(" ")}
                 >
-                  <span className={`${sz.labelCls} leading-none ${locationError ? "text-red-500" : "text-slate-400"}`}>
+                  <span className={`${sz.labelCls} leading-none text-slate-400`}>
                     <span className="hidden sm:inline">Lieu de prise en charge</span>
                     <span className="sm:hidden">Lieu</span>
                   </span>
-                  <span className={`mt-1 truncate ${sz.valueCls} ${location ? "text-slate-900" : locationError ? "text-red-400" : "text-slate-500"}`}>
+                  <span className={`mt-1 truncate ${sz.valueCls} ${location ? "text-slate-900" : "text-slate-500"}`}>
                     {location || (
                       <>
                         <span className="hidden sm:inline">Lausanne, Genève…</span>
