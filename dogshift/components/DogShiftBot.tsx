@@ -363,8 +363,10 @@ export default function DogShiftBot() {
           keywords: [
             "prix", "tarif", "tarifs", "combien", "cout", "coute", "coût",
             "cher", "payer", "paiement", "budget", "facturation", "facture",
-            "gratuit", "abordable", "remboursement", "rembouser", "remboursé",
-            "fourchette", "grille", "plage de prix", "fourchete",
+            "gratuit", "abordable", "fourchette", "grille", "plage de prix",
+            "combien ca coute", "combien ca coûte", "combien coute",
+            "comment payer", "comment je paie", "comment regler",
+            "quel est le tarif", "c'est combien",
           ],
           answer:
             "Les tarifs varient selon le service, la durée et le sitter. Sur DogShift, chaque profil affiche clairement ses prix : vous pouvez comparer et choisir selon votre budget avant de réserver. Aucun frais caché.",
@@ -372,10 +374,13 @@ export default function DogShiftBot() {
         // ── Réservation ─────────────────────────────────────────────────────
         {
           keywords: [
-            "reserver", "reservation", "comment reserver", "etapes", "demarche",
-            "disponible", "disponibilite", "creneaux", "créneau", "calendrier",
-            "choisir", "selectionner", "trouver un sitter", "chercher sitter",
-            "book", "booker", "reserevation", "comment ca marche pour reserver",
+            "reserver", "reservation", "reserevation",
+            "comment reserver", "comment on reserve", "comment je reserve",
+            "comment faire une reservation", "comment booker",
+            "etapes reservation", "demarche reservation",
+            "disponibilite", "creneaux", "créneau", "calendrier reservation",
+            "trouver un sitter", "chercher sitter", "selectionner sitter",
+            "book", "booker",
           ],
           answer:
             "Pour réserver sur DogShift : 1) Choisissez votre service (Promenade, Garde ou Pension) + votre ville. 2) Parcourez les profils disponibles et comparez les avis. 3) Contactez le sitter et confirmez les détails. 4) Réservez en ligne en toute sécurité.",
@@ -383,9 +388,11 @@ export default function DogShiftBot() {
         // ── Compte / Inscription ─────────────────────────────────────────────
         {
           keywords: [
-            "creer compte", "créer compte", "inscription", "inscrire",
-            "connexion", "connecter", "login", "mot de passe", "email",
-            "profil", "mon compte", "compte", "register", "enregistrer",
+            "creer compte", "créer compte", "mon compte",
+            "comment creer mon compte", "comment s'inscrire", "comment s inscrire",
+            "comment se connecter", "comment je m'inscris",
+            "inscription", "inscrire", "connexion", "connecter",
+            "login", "mot de passe", "email", "register", "enregistrer",
             "s'inscrire", "sincrire", "m'inscrire",
           ],
           answer:
@@ -394,9 +401,12 @@ export default function DogShiftBot() {
         // ── Annulation / Modification ────────────────────────────────────────
         {
           keywords: [
-            "annulation", "annuler", "annule", "modifier", "changer", "report",
-            "reporter", "repousser", "decaler", "décaler", "changement",
-            "remboursement annulation", "politique annulation", "annulaion",
+            "annulation", "annuler", "annule", "annulaion",
+            "comment annuler", "comment modifier ma reservation",
+            "comment changer ma reservation", "comment reporter",
+            "modifier reservation", "changer reservation",
+            "report", "reporter", "repousser", "decaler",
+            "remboursement annulation", "politique annulation",
           ],
           answer:
             "Annulation ou modification : les conditions dépendent du sitter et du service choisi. Consultez la politique d'annulation sur la fiche du sitter. En cas de besoin urgent, contactez le sitter directement via la messagerie DogShift.",
@@ -472,15 +482,19 @@ export default function DogShiftBot() {
         // ── Devenir dogsitter ────────────────────────────────────────────────
         {
           keywords: [
-            "devenir dogsitter", "devenir sitter", "on devient dogsitter",
-            "comment on devient", "comment devenir", "comment je deviens",
-            "je veux devenir", "je voudrais devenir", "je souhaite devenir",
-            "dogsitter", "dog sitter", "garde chien",
+            "devenir dogsitter", "devenir sitter",
+            "comment on devient dogsitter", "comment devenir dogsitter",
+            "comment devenir sitter", "comment je deviens dogsitter",
+            "comment m'inscrire comme sitter", "comment proposer mes services",
+            "comment candidater", "comment rejoindre dogshift",
+            "je veux devenir dogsitter", "je voudrais devenir dogsitter",
+            "je souhaite devenir dogsitter", "je veux etre sitter",
+            "dogsitter", "dog sitter",
             "proposer mes services", "rejoindre", "m'inscrire comme sitter",
-            "sitter moi meme", "travailler", "gagner argent", "revenu",
+            "sitter moi meme", "travailler", "gagner argent",
             "revenus complementaires", "side job", "candidater",
             "commencer a garder", "inscription sitter", "profil sitter",
-            "creer profil sitter", "devenir", "candidature",
+            "creer profil sitter", "candidature sitter",
           ],
           answer:
             "Devenir dogsitter DogShift : c'est gratuit et rapide ! Cliquez sur « Candidater maintenant », créez votre profil sitter, définissez vos services, tarifs et disponibilités. Vous recevrez ensuite des demandes de propriétaires près de chez vous.",
