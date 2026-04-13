@@ -1382,27 +1382,27 @@ function StickySearchBar({ visible = true, hero = false }: { visible?: boolean; 
   const sz = hero ? {
     wrapPad:   "py-0",
     maxW:      "max-w-4xl",
-    gap:       "gap-2",
-    px:        "px-4 sm:px-0",
-    btnPad:    "px-7 py-[22px]",
-    labelCls:  "text-xs font-bold uppercase tracking-wider",
-    valueCls:  "text-[15px] font-semibold leading-snug",
+    gap:       "gap-1 sm:gap-2",
+    px:        "px-2 sm:px-0",
+    btnPad:    "px-3.5 py-3 sm:px-7 sm:py-[22px]",
+    labelCls:  "text-[10px] sm:text-xs font-bold uppercase tracking-wider",
+    valueCls:  "text-[13px] sm:text-[15px] font-semibold leading-snug",
     pillShadow: "shadow-[0_16px_48px_-12px_rgba(2,6,23,0.20),0_4px_16px_-4px_rgba(2,6,23,0.08)]",
-    divMy:     "my-3",
-    searchPad: "px-5 py-[18px]",
-    searchTxt: "text-[15px] font-semibold",
+    divMy:     "my-2 sm:my-3",
+    searchPad: "px-3.5 py-2.5 sm:px-5 sm:py-[18px]",
+    searchTxt: "text-sm sm:text-[15px] font-semibold",
   } : {
-    wrapPad:   "py-3 sm:py-4",
+    wrapPad:   "py-2 sm:py-3 md:py-4",
     maxW:      "max-w-3xl",
-    gap:       "gap-1.5",
-    px:        "px-4 sm:px-6",
-    btnPad:    "px-5 py-3.5",
-    labelCls:  "text-[10px] font-bold uppercase tracking-wider",
-    valueCls:  "text-sm font-medium leading-tight",
+    gap:       "gap-1 sm:gap-1.5",
+    px:        "px-2 sm:px-4 md:px-6",
+    btnPad:    "px-3 py-2.5 sm:px-5 sm:py-3.5",
+    labelCls:  "text-[9px] sm:text-[10px] font-bold uppercase tracking-wider",
+    valueCls:  "text-xs sm:text-sm font-medium leading-tight",
     pillShadow: "shadow-[0_6px_28px_-8px_rgba(2,6,23,0.16),0_1px_4px_-1px_rgba(2,6,23,0.06)]",
-    divMy:     "my-2.5",
-    searchPad: "px-4 py-3.5",
-    searchTxt: "text-sm font-semibold",
+    divMy:     "my-1.5 sm:my-2.5",
+    searchPad: "px-3 py-2 sm:px-4 sm:py-3.5",
+    searchTxt: "text-xs sm:text-sm font-semibold",
   };
 
   // ── Shared style helpers ──
@@ -1473,17 +1473,23 @@ function StickySearchBar({ visible = true, hero = false }: { visible?: boolean; 
                   type="button"
                   onClick={() => setActiveSection(activeSection === "lieu" ? null : "lieu")}
                   className={[
-                    `relative z-10 flex min-w-0 flex-[1.4] flex-col justify-center rounded-[28px] ${sz.btnPad} text-left transition-all duration-200 focus-visible:outline-none`,
+                    `relative z-10 flex min-w-0 flex-1 sm:flex-[1.4] flex-col justify-center rounded-[28px] ${sz.btnPad} text-left transition-all duration-200 focus-visible:outline-none`,
                     activeSection === "lieu"
                       ? "bg-white shadow-[0_2px_12px_-3px_rgba(2,6,23,0.10)]"
                       : "hover:bg-white/50",
                   ].join(" ")}
                 >
                   <span className={`${sz.labelCls} text-slate-400 leading-none`}>
-                    Lieu de prise en charge
+                    <span className="hidden sm:inline">Lieu de prise en charge</span>
+                    <span className="sm:hidden">Lieu</span>
                   </span>
                   <span className={`mt-1 truncate ${sz.valueCls} ${location ? "text-slate-900" : "text-slate-500"}`}>
-                    {location || "Lausanne, Genève…"}
+                    {location || (
+                      <>
+                        <span className="hidden sm:inline">Lausanne, Genève…</span>
+                        <span className="sm:hidden">Lausanne…</span>
+                      </>
+                    )}
                   </span>
                 </button>
 
@@ -1508,7 +1514,12 @@ function StickySearchBar({ visible = true, hero = false }: { visible?: boolean; 
                 >
                   <span className={`${sz.labelCls} text-slate-400 leading-none`}>Quand</span>
                   <span className={`mt-1 truncate ${sz.valueCls} ${dateDisplay ? "text-slate-900" : "text-slate-500"}`}>
-                    {dateDisplay || "Ajouter des dates"}
+                    {dateDisplay || (
+                      <>
+                        <span className="hidden sm:inline">Ajouter des dates</span>
+                        <span className="sm:hidden">Ajouter</span>
+                      </>
+                    )}
                   </span>
                 </button>
 
@@ -1542,7 +1553,7 @@ function StickySearchBar({ visible = true, hero = false }: { visible?: boolean; 
                 onClick={handleSearch}
                 className={`flex shrink-0 items-center gap-1.5 rounded-full bg-[var(--dogshift-blue)] ${sz.searchPad} ${sz.searchTxt} text-white shadow-[0_4px_16px_-4px_rgba(47,77,107,0.45)] transition-all duration-200 hover:scale-[1.03] hover:shadow-[0_8px_24px_-6px_rgba(47,77,107,0.55)] active:scale-95`}
               >
-                <Search className={hero ? "h-5 w-5" : "h-4 w-4"} aria-hidden="true" />
+                <Search className={hero ? "h-4 w-4 sm:h-5 sm:w-5" : "h-3.5 w-3.5 sm:h-4 sm:w-4"} aria-hidden="true" />
                 <span className="hidden sm:block">Rechercher</span>
               </button>
             </div>
