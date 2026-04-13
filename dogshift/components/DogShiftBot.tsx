@@ -132,6 +132,9 @@ export default function DogShiftBot() {
             "salut", "bonjour", "bonsoir", "hello", "hey", "coucou", "hi",
             "yo", "wesh", "slt", "bjr", "bsr", "allo", "allô", "cc",
             "bonne journee", "bonne soiree", "bonne nuit", "bonne matin",
+            "ca va", "ça va", "comment ca va", "comment vas tu", "comment allez vous",
+            "ca roule", "ca baigne", "nickel ca", "bien merci", "bien et toi",
+            "quoi de neuf", "quoi de 9", "la forme", "la forme ?", "cv",
           ],
           answer:
             "Bonjour ! 👋 Ravi de vous accueillir sur DogShift. Je suis là pour répondre à toutes vos questions : nos services (Promenade, Garde, Pension), la réservation, les tarifs, devenir sitter… Qu'est-ce que je peux faire pour vous ?",
