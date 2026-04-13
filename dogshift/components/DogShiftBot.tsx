@@ -532,25 +532,30 @@ export default function DogShiftBot() {
   const [messages, setMessages] = useState<ChatMessage[]>([initialBotMessage]);
   const [dismissed, setDismissed] = useState(false);
 
-  // ── Snap aux 4 coins (mobile : drag touch) ────────────────────────────────
+  // ── Snap aux 4 coins (mobile : drag touch avec suivi visuel) ──────────────
   type Corner = "br" | "bl" | "tr" | "tl";
   const [corner, setCorner] = useState<Corner>("br");
+  const [livePos, setLivePos] = useState<{ x: number; y: number } | null>(null);
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const dragBtnRef = useRef<HTMLButtonElement | null>(null);
   const dragState = useRef({ active: false, moved: false, startTX: 0, startTY: 0 });
   const justDragged = useRef(false);
+  const BTN = 56; // taille du bouton en px
 
-  // touchmove non-passif pour bloquer le scroll pendant le drag
+  // touchmove non-passif : suit le doigt en temps réel
   useEffect(() => {
     const btn = dragBtnRef.current;
     if (!btn) return;
     const onMove = (e: TouchEvent) => {
       if (!dragState.current.active) return;
       const t = e.touches[0];
-      if (!dragState.current.moved &&
-        Math.hypot(t.clientX - dragState.current.startTX, t.clientY - dragState.current.startTY) < 8) return;
+      if (Math.hypot(t.clientX - dragState.current.startTX, t.clientY - dragState.current.startTY) < 8) return;
       dragState.current.moved = true;
       e.preventDefault();
+      // Clamp pour garder le bouton dans l'écran
+      const x = Math.max(0, Math.min(window.innerWidth - BTN, t.clientX - BTN / 2));
+      const y = Math.max(0, Math.min(window.innerHeight - BTN, t.clientY - BTN / 2));
+      setLivePos({ x, y });
     };
     btn.addEventListener("touchmove", onMove, { passive: false });
     return () => btn.removeEventListener("touchmove", onMove);
@@ -565,9 +570,10 @@ export default function DogShiftBot() {
   function onTouchEnd(e: React.TouchEvent<HTMLButtonElement>) {
     if (!dragState.current.active) return;
     dragState.current.active = false;
+    setLivePos(null); // retire la position live → le corner prend le relais
     if (dragState.current.moved) {
       justDragged.current = true;
-      // Snap au coin le plus proche selon le point de relâche
+      // Snap au coin le plus proche de l'endroit où le doigt est relâché
       const t = e.changedTouches[0];
       const mX = window.innerWidth / 2;
       const mY = window.innerHeight / 2;
@@ -641,7 +647,7 @@ export default function DogShiftBot() {
 
   if (dismissed) return null;
 
-  // Position selon le coin actif
+  // Position selon le coin actif (ou position live pendant le drag)
   const isRight = corner.endsWith("r");
   const isBottom = corner.startsWith("b");
   const cornerStyle: React.CSSProperties = {
@@ -650,13 +656,16 @@ export default function DogShiftBot() {
     ...(isRight ? { right: 16 } : { left: 16 }),
     ...(isBottom ? { bottom: 20 } : { top: 72 }),
   };
+  const wrapStyle: React.CSSProperties = livePos
+    ? { position: "fixed", top: livePos.y, left: livePos.x, right: "auto", bottom: "auto", zIndex: 50, opacity: 0.85 }
+    : cornerStyle;
 
   // Panneau : s'ouvre vers le haut si coin bas, vers le bas si coin haut
   const colDir = isBottom ? "flex-col" : "flex-col-reverse";
   const alignItems = isRight ? "items-end" : "items-start";
 
   return (
-    <div ref={wrapRef} style={cornerStyle} className={`flex gap-3 ${colDir} ${alignItems}`}>
+    <div ref={wrapRef} style={wrapStyle} className={`flex gap-3 ${colDir} ${alignItems}`}>
       {open ? (
         <div className="w-[360px] max-w-[calc(100vw-2.5rem)] overflow-hidden rounded-3xl border border-white/70 bg-white/80 shadow-[0_24px_80px_-50px_rgba(2,6,23,0.65)] backdrop-blur-xl">
           <div className="flex items-center justify-between border-b border-slate-200/70 px-4 py-3">
