@@ -193,7 +193,7 @@ export default function DogShiftBot() {
             "appli", "service", "principe", "kesako", "kesakeuf",
           ],
           answer:
-            "DogShift est une plateforme premium de dogsitting en France. Elle met en relation les propriétaires de chiens avec des dogsitters vérifiés pour 3 services : Promenade, Garde à domicile et Pension chez le sitter. Vous comparez les profils, les avis et réservez en ligne.",
+            "DogShift est une plateforme premium de dogsitting en Suisse. Elle met en relation les propriétaires de chiens avec des dogsitters vérifiés pour 3 services : Promenade, Garde à domicile et Pension chez le sitter. Vous comparez les profils, les avis et réservez en ligne.",
         },
         // ── Promenade ───────────────────────────────────────────────────────
         {
@@ -321,10 +321,10 @@ export default function DogShiftBot() {
             "ville", "villes", "region", "région", "disponible ou", "disponible dans",
             "disponible a", "disponible en", "paris", "lyon", "marseille",
             "bordeaux", "toulouse", "nantes", "zone", "zones", "partout",
-            "dans ma ville", "disponible chez moi", "couverture", "france",
+            "dans ma ville", "disponible chez moi", "couverture", "suisse",
           ],
           answer:
-            "DogShift couvre les principales villes françaises. Entrez votre ville dans la recherche pour voir les sitters disponibles près de chez vous. Le nombre de profils varie selon les zones — de nouvelles villes sont ajoutées régulièrement.",
+            "DogShift couvre les principales villes suisses (Lausanne, Genève, Zurich, Berne, Bâle…). Entrez votre ville dans la recherche pour voir les sitters disponibles près de chez vous. De nouvelles villes sont ajoutées régulièrement.",
         },
         // ── Urgence / Dernière minute ────────────────────────────────────────
         {
