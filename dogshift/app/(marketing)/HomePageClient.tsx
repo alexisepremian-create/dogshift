@@ -1325,10 +1325,10 @@ function StickySearchBar({ visible = true, hero = false }: { visible?: boolean; 
     const days = calendarDays(year, month);
     return (
       <div>
-        <p className="mb-4 text-center text-sm font-semibold text-slate-900">
+        <p className="mb-2 text-center text-[13px] font-semibold text-slate-900 sm:mb-4 sm:text-sm">
           {MONTHS_FR[month]} {year}
         </p>
-        <div className="mb-1.5 grid grid-cols-7">
+        <div className="mb-1 grid grid-cols-7 sm:mb-1.5">
           {WEEK_FR.map((d, i) => (
             <span key={i} className="block text-center text-[10px] font-bold uppercase tracking-wider text-slate-300">{d}</span>
           ))}
@@ -1348,7 +1348,7 @@ function StickySearchBar({ visible = true, hero = false }: { visible?: boolean; 
               <div
                 key={i}
                 className={[
-                  "relative flex h-10 items-center justify-center",
+                  "relative flex h-8 items-center justify-center sm:h-10",
                   rIn ? "bg-slate-100" : "",
                   rStart ? "rounded-l-full bg-gradient-to-r from-white via-slate-100 to-slate-100" : "",
                   rEnd ? "rounded-r-full bg-gradient-to-l from-white via-slate-100 to-slate-100" : "",
@@ -1361,7 +1361,7 @@ function StickySearchBar({ visible = true, hero = false }: { visible?: boolean; 
                   onMouseEnter={() => { if (startDate && !endDate) setHoverDate(iso); }}
                   onMouseLeave={() => setHoverDate(null)}
                   className={[
-                    "relative z-10 flex h-9 w-9 items-center justify-center rounded-full text-sm transition-all duration-100",
+                    "relative z-10 flex h-7 w-7 items-center justify-center rounded-full text-xs transition-all duration-100 sm:h-9 sm:w-9 sm:text-sm",
                     past ? "cursor-not-allowed text-slate-200" : "cursor-pointer",
                     edge ? "bg-slate-900 font-semibold text-white" : "",
                     !edge && !past ? "hover:bg-slate-200" : "",
@@ -1407,7 +1407,7 @@ function StickySearchBar({ visible = true, hero = false }: { visible?: boolean; 
 
   // ── Shared style helpers ──
   const sectionLabel = "mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-400";
-  const pillBase = "rounded-full border px-3.5 py-1.5 text-xs font-medium transition-all duration-150";
+  const pillBase = "rounded-full border px-3 py-1 sm:px-3.5 sm:py-1.5 text-[11px] sm:text-xs font-medium transition-all duration-150";
   const pillActive = `${pillBase} border-slate-900 bg-white ring-1 ring-slate-900/10 font-semibold text-slate-900`;
   const pillIdle = `${pillBase} border-slate-200 bg-white text-slate-500 hover:border-slate-300 hover:text-slate-700`;
 
@@ -1629,15 +1629,15 @@ function StickySearchBar({ visible = true, hero = false }: { visible?: boolean; 
 
                   {/* ──────────────── SECTION QUAND ──────────────── */}
                   {activeSection === "quand" && (
-                    <div className="p-5">
+                    <div className="p-4 sm:p-5">
                       {/* Date / Flexible tabs */}
-                      <div className="mb-4 flex justify-center">
+                      <div className="mb-3 flex justify-center sm:mb-4">
                         <div className="inline-flex rounded-full border border-slate-200 bg-slate-50 p-0.5 shadow-[inset_0_1px_3px_rgba(0,0,0,0.04)]">
                           {(["dates", "flexible"] as const).map((t) => (
                             <button key={t} type="button" onClick={() => setCalTab(t)}
                               className={calTab === t
-                                ? "rounded-full bg-white px-5 py-1.5 text-xs font-semibold text-slate-900 shadow-sm transition-all duration-200"
-                                : "rounded-full px-5 py-1.5 text-xs font-medium text-slate-500 transition-all duration-200 hover:text-slate-700"
+                                ? "rounded-full bg-white px-4 py-1 text-[11px] font-semibold text-slate-900 shadow-sm transition-all duration-200 sm:px-5 sm:py-1.5 sm:text-xs"
+                                : "rounded-full px-4 py-1 text-[11px] font-medium text-slate-500 transition-all duration-200 hover:text-slate-700 sm:px-5 sm:py-1.5 sm:text-xs"
                               }>
                               {t === "dates" ? (isHourlyPanel ? "Date précise" : "Dates précises") : "Flexible"}
                             </button>
@@ -1648,14 +1648,14 @@ function StickySearchBar({ visible = true, hero = false }: { visible?: boolean; 
                       {calTab === "dates" ? (
                         <div key="dates" className="panel-tab-enter">
                           {/* Calendar nav */}
-                          <div className="mb-3 flex items-center justify-between px-0.5">
+                          <div className="mb-2 flex items-center justify-between px-0.5 sm:mb-3">
                             <button type="button" onClick={prevMonth} disabled={!canGoPrev}
-                              className="flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-20">
-                              <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+                              className="flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-20 sm:h-8 sm:w-8">
+                              <ChevronLeft className="h-3.5 w-3.5 sm:h-4 sm:w-4" aria-hidden="true" />
                             </button>
                             <button type="button" onClick={nextMonth}
-                              className="flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition-colors hover:bg-slate-50">
-                              <ChevronRight className="h-4 w-4" aria-hidden="true" />
+                              className="flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition-colors hover:bg-slate-50 sm:h-8 sm:w-8">
+                              <ChevronRight className="h-3.5 w-3.5 sm:h-4 sm:w-4" aria-hidden="true" />
                             </button>
                           </div>
                           {/* Double calendar */}
@@ -1667,10 +1667,10 @@ function StickySearchBar({ visible = true, hero = false }: { visible?: boolean; 
                           </div>
                           {/* Flexibility pills — Pension only */}
                           {!isHourlyPanel && (
-                            <div className="mt-4 border-t border-slate-100 pt-3">
-                              <div className="mb-2 flex items-center justify-between">
+                            <div className="mt-3 border-t border-slate-100 pt-2.5 sm:mt-4 sm:pt-3">
+                              <div className="mb-1.5 flex items-center justify-between sm:mb-2">
                                 <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Flexibilité</p>
-                                <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-[10px] font-medium text-slate-500">
+                                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[9px] font-medium text-slate-500 sm:px-2.5 sm:text-[10px]">
                                   Nuit obligatoire · 08h–19h
                                 </span>
                               </div>
@@ -1685,7 +1685,7 @@ function StickySearchBar({ visible = true, hero = false }: { visible?: boolean; 
                             </div>
                           )}
                           {/* Next → Besoin */}
-                          <div className="mt-4 flex justify-between items-center">
+                          <div className="mt-3 flex items-center justify-between sm:mt-4">
                             {isHourlyPanel && (
                               <p className="text-[11px] text-slate-400">
                                 Durée dans{" "}
@@ -1695,29 +1695,29 @@ function StickySearchBar({ visible = true, hero = false }: { visible?: boolean; 
                               </p>
                             )}
                             <button onClick={() => setActiveSection("besoin")}
-                              className="ml-auto flex items-center gap-1.5 rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white transition-all hover:bg-slate-700">
-                              Suivant <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+                              className="ml-auto flex items-center gap-1.5 rounded-full bg-slate-900 px-3 py-1.5 text-[11px] font-semibold text-white transition-all hover:bg-slate-700 sm:px-4 sm:py-2 sm:text-xs">
+                              Suivant <ArrowRight className="h-3 w-3 sm:h-3.5 sm:w-3.5" aria-hidden="true" />
                             </button>
                           </div>
                         </div>
                       ) : (
                         <div key="flexible" className="panel-tab-enter">
                           {/* Duration cards */}
-                          <div className="mb-4">
+                          <div className="mb-3 sm:mb-4">
                             <p className={sectionLabel}>{isHourlyPanel ? "Durée souhaitée" : "Durée du séjour"}</p>
-                            <div className="grid grid-cols-3 gap-2">
+                            <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
                               {FLEX_DURATION_OPTIONS.map((opt) => (
                                 <button key={opt.key} type="button" onClick={() => setFlexDuration(opt.key)}
                                   className={[
-                                    "group flex flex-col items-center gap-1.5 rounded-xl border py-3 transition-all duration-200",
+                                    "group flex flex-col items-center gap-1.5 rounded-xl border py-2 transition-all duration-200 sm:py-3",
                                     flexDuration === opt.key
                                       ? "border-slate-900 bg-white shadow-md ring-2 ring-slate-900/10"
                                       : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50 hover:shadow-sm",
                                   ].join(" ")}>
-                                  <span className={`text-xl leading-none transition-transform duration-200 ${flexDuration !== opt.key ? "group-hover:scale-110" : ""}`}>
+                                  <span className={`text-lg leading-none transition-transform duration-200 sm:text-xl ${flexDuration !== opt.key ? "group-hover:scale-110" : ""}`}>
                                     {opt.emoji}
                                   </span>
-                                  <span className="text-xs font-semibold text-slate-800">{opt.label}</span>
+                                  <span className="text-[11px] font-semibold text-slate-800 sm:text-xs">{opt.label}</span>
                                 </button>
                               ))}
                             </div>
@@ -1731,25 +1731,25 @@ function StickySearchBar({ visible = true, hero = false }: { visible?: boolean; 
                                 return (
                                   <button key={key} type="button" onClick={() => toggleFlexMonth(key)}
                                     className={[
-                                      "group flex items-center gap-1.5 rounded-xl border px-2.5 py-1.5 transition-all duration-150",
+                                      "group flex items-center gap-1.5 rounded-xl border px-2 py-1 transition-all duration-150 sm:px-2.5 sm:py-1.5",
                                       sel
                                         ? "border-slate-900 bg-white shadow-sm ring-1 ring-slate-900/10"
                                         : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50 hover:shadow-sm",
                                     ].join(" ")}>
                                     <Calendar className={`h-3 w-3 shrink-0 transition-colors duration-150 ${sel ? "text-slate-900" : "text-slate-400 group-hover:text-slate-600"}`} aria-hidden="true" />
-                                    <span className={`text-xs font-medium transition-colors duration-150 ${sel ? "font-semibold text-slate-900" : "text-slate-600"}`}>
+                                    <span className={`text-[11px] font-medium transition-colors duration-150 sm:text-xs ${sel ? "font-semibold text-slate-900" : "text-slate-600"}`}>
                                       {MONTHS_FR[month].slice(0, 4)}
-                                      {year !== today.getFullYear() && <span className="ml-1 text-[10px] text-slate-400">{year}</span>}
+                                      {year !== today.getFullYear() && <span className="ml-1 text-[9px] text-slate-400 sm:text-[10px]">{year}</span>}
                                     </span>
                                   </button>
                                 );
                               })}
                             </div>
                           </div>
-                          <div className="mt-4 flex justify-end">
+                          <div className="mt-3 flex justify-end sm:mt-4">
                             <button onClick={() => setActiveSection("besoin")}
-                              className="flex items-center gap-1.5 rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white transition-all hover:bg-slate-700">
-                              Suivant <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+                              className="flex items-center gap-1.5 rounded-full bg-slate-900 px-3 py-1.5 text-[11px] font-semibold text-white transition-all hover:bg-slate-700 sm:px-4 sm:py-2 sm:text-xs">
+                              Suivant <ArrowRight className="h-3 w-3 sm:h-3.5 sm:w-3.5" aria-hidden="true" />
                             </button>
                           </div>
                         </div>
