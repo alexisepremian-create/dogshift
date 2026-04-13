@@ -42,10 +42,10 @@ const ABBREVS: [RegExp, string][] = [
   // ── Lettres / syllabes seules ────────────────────────────────────────────
   [/\bki\b/g, "qui"],
   [/\bkoi\b/g, "quoi"],
-  // lookahead négatif: ne pas toucher "c" déjà suivi d'une apostrophe (c'est, c'était…)
-  [/\bc(?!')/g, "c'est"],
-  // lookahead négatif: ne pas toucher "t" déjà suivi d'une apostrophe (t'es, t'avais…)
-  [/\bt(?!')/g, "t'es"],
+  // "c" seul uniquement (ni suivi d'une lettre, ni d'une apostrophe)
+  [/\bc(?!['\w])/g, "c'est"],
+  // "t" seul uniquement (ni suivi d'une lettre, ni d'une apostrophe)
+  [/\bt(?!['\w])/g, "t'es"],
   [/\bpk\b/g, "pourquoi"],
   [/\bpq\b/g, "pourquoi"],
   [/\bpr\b/g, "pour"],
