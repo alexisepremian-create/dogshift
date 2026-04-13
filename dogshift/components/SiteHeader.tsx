@@ -207,8 +207,8 @@ export default function SiteHeader() {
           aria-modal="true"
           aria-label="Menu de navigation"
           className={[
-            "fixed inset-0 z-[80] transition-opacity duration-[400ms] ease-[cubic-bezier(0.16,1,0.3,1)]",
-            navAnimating ? "opacity-100" : "pointer-events-none opacity-0",
+            "fixed inset-0 z-[80]",
+            navAnimating ? "" : "pointer-events-none",
           ].join(" ")}
         >
           {/* Backdrop */}
@@ -225,8 +225,8 @@ export default function SiteHeader() {
           {/* Panel — slides from right */}
           <div
             className={[
-              "absolute inset-y-0 right-0 flex w-[320px] max-w-[calc(100vw-2.5rem)] flex-col bg-white shadow-[-20px_0_60px_-20px_rgba(2,6,23,0.20)] transition-transform duration-[400ms] ease-[cubic-bezier(0.16,1,0.3,1)]",
-              navAnimating ? "translate-x-0" : "translate-x-full",
+              "absolute inset-y-0 right-0 flex w-[320px] max-w-[calc(100vw-2.5rem)] flex-col bg-white shadow-[-20px_0_60px_-20px_rgba(2,6,23,0.20)] transition-all duration-[400ms] ease-[cubic-bezier(0.16,1,0.3,1)]",
+              navAnimating ? "translate-x-0 opacity-100" : "translate-x-full opacity-0",
             ].join(" ")}
             style={{
               paddingTop: "max(1.25rem, env(safe-area-inset-top))",
