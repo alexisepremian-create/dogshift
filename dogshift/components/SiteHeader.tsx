@@ -137,9 +137,9 @@ export default function SiteHeader() {
               type="button"
               onClick={() => setSearchOpen(true)}
               aria-label="Recherche rapide"
-              className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 shadow-sm transition-all hover:bg-slate-50 active:scale-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)] md:hidden"
+              className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 shadow-sm transition-all hover:bg-slate-50 active:scale-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)] md:hidden"
             >
-              <Search className="h-4 w-4" aria-hidden="true" />
+              <Search className="h-4 w-4 text-slate-700" strokeWidth={2.25} aria-hidden="true" />
             </button>
 
             {/* Devenir dogsitter — desktop text link */}
@@ -177,17 +177,17 @@ export default function SiteHeader() {
               aria-haspopup="dialog"
               aria-expanded={navOpen}
               aria-label="Menu de navigation"
-              className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-2.5 py-1.5 shadow-sm transition-all hover:shadow-md active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)]"
+              className="inline-flex h-10 items-center gap-2 rounded-full border border-slate-200 bg-white px-3 shadow-sm transition-all hover:bg-slate-50 active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)]"
             >
-              <Menu className="h-4 w-4 text-slate-700" aria-hidden="true" />
+              <Menu className="h-4 w-4 text-slate-700" strokeWidth={2.25} aria-hidden="true" />
               <span
-                className="flex h-6 w-6 items-center justify-center overflow-hidden rounded-full bg-slate-100 text-[10px] font-bold text-slate-600"
+                className="flex h-7 w-7 items-center justify-center overflow-hidden rounded-full bg-slate-100 text-[10px] font-bold text-slate-600"
                 aria-hidden="true"
               >
                 {hasMounted && isLoaded && isSignedIn && userInitials ? (
                   userInitials.toUpperCase()
                 ) : (
-                  <User className="h-3.5 w-3.5 text-slate-500" />
+                  <User className="h-4 w-4 text-slate-500" strokeWidth={2.25} />
                 )}
               </span>
             </button>

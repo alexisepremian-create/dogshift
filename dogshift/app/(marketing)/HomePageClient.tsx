@@ -1512,7 +1512,7 @@ function StickySearchBar({ visible = true, hero = false }: { visible?: boolean; 
                       : "hover:bg-white/50",
                   ].join(" ")}
                 >
-                  <span className={`${sz.labelCls} text-slate-400 leading-none`}>Quand</span>
+                  <span className={`${sz.labelCls} text-slate-400 leading-none`}>Quand ?</span>
                   <span className={`mt-1 truncate ${sz.valueCls} ${dateDisplay ? "text-slate-900" : "text-slate-500"}`}>
                     {dateDisplay || (
                       <>
@@ -1870,7 +1870,7 @@ const HERO_TRUST_ITEMS = [
 
 function HeroSection() {
   return (
-    <section className="relative bg-gradient-to-b from-slate-50 to-white pt-14 pb-6 sm:pb-8">
+    <section className="relative bg-gradient-to-b from-slate-50 to-white pt-20 pb-6 sm:pt-14 sm:pb-8">
       {/* Ambient glow — clipped to its own container so it doesn't leak */}
       <div className="pointer-events-none absolute inset-x-0 top-0 h-64 overflow-hidden" aria-hidden="true">
         <div className="absolute left-1/2 top-0 h-[500px] w-[800px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[var(--dogshift-blue)] opacity-[0.05] blur-[90px]" />
