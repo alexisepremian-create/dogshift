@@ -32,6 +32,7 @@ export default function SiteHeader() {
   const [hasMounted, setHasMounted] = useState(false);
   const [navOpen, setNavOpen] = useState(false);
   const [navMounted, setNavMounted] = useState(false);
+  const [navAnimating, setNavAnimating] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [accountHref, setAccountHref] = useState("/account");
   const { isLoaded, isSignedIn, user } = useUser();
@@ -69,13 +70,17 @@ export default function SiteHeader() {
     if (navOpen) {
       setNavMounted(true);
       document.body.style.overflow = "hidden";
-      return;
+      const frame = requestAnimationFrame(() => {
+        requestAnimationFrame(() => setNavAnimating(true));
+      });
+      return () => cancelAnimationFrame(frame);
     }
+    setNavAnimating(false);
     document.body.style.overflow = "";
     if (!navMounted) return;
-    const t = window.setTimeout(() => setNavMounted(false), 260);
+    const t = window.setTimeout(() => setNavMounted(false), 400); // 400ms duration for fade/slide
     return () => window.clearTimeout(t);
-  }, [navMounted, navOpen]);
+  }, [navOpen, navMounted]);
 
   useEffect(() => {
     if (!navOpen) return;
@@ -202,8 +207,8 @@ export default function SiteHeader() {
           aria-modal="true"
           aria-label="Menu de navigation"
           className={[
-            "fixed inset-0 z-[80] transition-opacity duration-300 ease-out",
-            navOpen ? "opacity-100" : "pointer-events-none opacity-0",
+            "fixed inset-0 z-[80] transition-opacity duration-[400ms] ease-[cubic-bezier(0.16,1,0.3,1)]",
+            navAnimating ? "opacity-100" : "pointer-events-none opacity-0",
           ].join(" ")}
         >
           {/* Backdrop */}
@@ -212,16 +217,16 @@ export default function SiteHeader() {
             aria-label="Fermer le menu"
             onClick={() => setNavOpen(false)}
             className={[
-              "absolute inset-0 cursor-default bg-slate-950/30 backdrop-blur-[2px] transition-opacity duration-300",
-              navOpen ? "opacity-100" : "opacity-0",
+              "absolute inset-0 cursor-default bg-slate-950/30 backdrop-blur-[2px] transition-opacity duration-[400ms] ease-[cubic-bezier(0.16,1,0.3,1)]",
+              navAnimating ? "opacity-100" : "opacity-0",
             ].join(" ")}
           />
 
           {/* Panel — slides from right */}
           <div
             className={[
-              "absolute inset-y-0 right-0 flex w-[320px] max-w-[calc(100vw-2.5rem)] flex-col bg-white shadow-[−20px_0_60px_-20px_rgba(2,6,23,0.20)] transition-transform duration-300 ease-out",
-              navOpen ? "translate-x-0" : "translate-x-full",
+              "absolute inset-y-0 right-0 flex w-[320px] max-w-[calc(100vw-2.5rem)] flex-col bg-white shadow-[-20px_0_60px_-20px_rgba(2,6,23,0.20)] transition-transform duration-[400ms] ease-[cubic-bezier(0.16,1,0.3,1)]",
+              navAnimating ? "translate-x-0" : "translate-x-full",
             ].join(" ")}
             style={{
               paddingTop: "max(1.25rem, env(safe-area-inset-top))",

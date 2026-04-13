@@ -24,8 +24,8 @@ export default function MarketingLayout({ children }: { children: React.ReactNod
                 </span>
                 <span className="text-xl font-bold tracking-tight text-slate-900">DogShift</span>
               </Link>
-              <p className="mt-2 text-sm leading-relaxed text-slate-500">
-                L'application intelligente qui connecte les propriétaires de chiens aux meilleurs dogsitters de confiance.
+              <p className="mt-2 max-w-sm text-sm leading-relaxed text-slate-500">
+                La plateforme de confiance pour confier votre chien en toute sérénité.
               </p>
               
               {/* Réseaux sociaux */}

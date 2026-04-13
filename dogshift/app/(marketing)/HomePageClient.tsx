@@ -2640,19 +2640,19 @@ function WhyDogShiftSection() {
 
 const FAQ_ITEMS = [
   {
-    q: "DogShift est-il une pension pour chiens ?",
+    q: "DogShift est-il une pension pour chiens\u00A0?",
     a: "Non. DogShift est une plateforme de mise en relation entre propriétaires et dogsitters indépendants, pour une garde personnalisée et adaptée à chaque chien.",
   },
   {
-    q: "Comment sont sélectionnés les dogsitters ?",
+    q: "Comment sont sélectionnés les dogsitters\u00A0?",
     a: "Chaque dogsitter passe par un processus de sélection et doit fournir des informations claires — dont la vérification du casier judiciaire — avant d'être accepté sur la plateforme.",
   },
   {
-    q: "Que se passe-t-il en cas de problème ?",
+    q: "Que se passe-t-il en cas de problème\u00A0?",
     a: "DogShift agit comme intermédiaire sécurisé, avec un cadre contractuel et un support intégré pour accompagner les utilisateurs en cas de difficulté.",
   },
   {
-    q: "DogShift est-il disponible dans ma ville ?",
+    q: "DogShift est-il disponible dans ma ville\u00A0?",
     a: "DogShift se développe progressivement en Suisse romande — Lausanne, Genève, Montreux, Vevey, Nyon et Morges. D'autres villes seront ajoutées prochainement.",
   },
 ] as const;
