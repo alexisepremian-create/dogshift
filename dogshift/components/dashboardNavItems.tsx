@@ -38,7 +38,7 @@ export function useHostDashboardNavItems() {
 
   const activeKey = useMemo(() => {
     if (pathname === "/host") return "dashboard";
-    if (pathname?.startsWith("/dashboard/availability")) return "availability";
+    if (pathname?.startsWith("/host/availability")) return "availability";
     if (pathname?.startsWith("/host/messages")) return "messages";
     if (pathname?.startsWith("/host/requests")) return "requests";
     if (pathname?.startsWith("/host/profile")) return "profile";
@@ -63,7 +63,7 @@ export function useHostDashboardNavItems() {
         key: "availability",
         label: "Disponibilités",
         description: "Configurer ton agenda et tes règles.",
-        href: "/dashboard/availability",
+        href: "/host/availability",
         icon: <SlidersHorizontal className="h-5 w-5" aria-hidden="true" />,
         active: activeKey === "availability",
       },

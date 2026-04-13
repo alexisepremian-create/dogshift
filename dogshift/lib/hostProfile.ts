@@ -171,10 +171,10 @@ export function getHostTodos(profile: HostProfileV1): HostTodoItem[] {
     items.push({ id: "avatar", label: "Ajouter une photo", href: "/host/profile/edit#photo" });
   }
   if (!checks.services) {
-    items.push({ id: "services", label: "Activer un service", href: "/dashboard/availability" });
+    items.push({ id: "services", label: "Activer un service", href: "/host/availability" });
   }
   if (!checks.pricing) {
-    items.push({ id: "pricing", label: "Ajouter des tarifs", href: "/dashboard/availability" });
+    items.push({ id: "pricing", label: "Ajouter des tarifs", href: "/host/availability" });
   }
   if (!checks.dogSizes) {
     items.push({ id: "dogSizes", label: "Choisir les tailles de chiens", href: "/host/profile/edit#dogSizes" });
