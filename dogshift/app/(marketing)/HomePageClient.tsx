@@ -1432,19 +1432,26 @@ function StickySearchBar({ visible = true, hero = false }: { visible?: boolean; 
         : null}
 
       {/* ── Container: sticky wrapper OR normal-flow hero ── */}
-      <div className={hero ? "" : "sticky left-0 right-0 top-0 z-40 h-0 w-full overflow-visible"}>
-        <div
-          ref={wrapperRef}
-          aria-hidden={hero ? undefined : !visible}
-          className={hero
-            ? "relative z-[45]"
-            : [
-                "absolute left-0 right-0 w-full transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]",
-                visible ? "opacity-100 scale-100" : "pointer-events-none opacity-0 scale-[0.98]",
-              ].join(" ")
-          }
-          style={hero ? undefined : { top: "max(12px, calc(env(safe-area-inset-top) + 10px))" }}
-        >
+      {hero ? null : (
+        // The ghost wrapper that captures pointer events outside the bar when active
+        <div 
+          className="fixed inset-0 z-30 pointer-events-auto" 
+          style={{ display: activeSection ? "block" : "none" }}
+          onClick={() => setActiveSection(null)}
+        />
+      )}
+      <div
+        ref={wrapperRef}
+        aria-hidden={hero ? undefined : !visible}
+        className={hero
+          ? "relative z-[45]"
+          : [
+              "absolute left-0 right-0 z-40 w-full transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]",
+              visible ? "opacity-100 scale-100" : "pointer-events-none opacity-0 scale-[0.98]",
+            ].join(" ")
+        }
+        style={hero ? undefined : { top: "calc(env(safe-area-inset-top, 0px) + 16px)" }}
+      >
         <div className={sz.wrapPad}>
           <div className={`mx-auto flex ${sz.maxW} items-center ${sz.gap} ${sz.px}`}>
             <div
@@ -2926,7 +2933,9 @@ export default function HomePageClient({ sitters = [] }: { sitters?: SitterPrevi
 
   return (
     <div className="min-h-screen bg-white text-slate-900">
-      <StickySearchBar visible={showSticky} />
+      <div className="sticky top-0 z-50 h-0 w-full overflow-visible">
+        <StickySearchBar visible={showSticky} />
+      </div>
       <main className="pb-24 md:pb-0">
         <HeroSection />
         {sitters.length > 0 && <FeaturedSittersSection sitters={sitters} />}
