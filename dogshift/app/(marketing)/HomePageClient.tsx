@@ -1151,7 +1151,7 @@ function StickySearchBar({ visible = true, hero = false }: { visible?: boolean; 
   ].filter(Boolean).join(" · ");
 
   useEffect(() => { setBodyMounted(true); }, []);
-  useEffect(() => { if (!visible) setActiveSection(null); }, [visible]);
+  useEffect(() => { if (!visible) { setActiveSection(null); setLocationError(""); } }, [visible]);
   // (body scroll-lock removed — floating card doesn't need it and it caused layout shifts)
   useEffect(() => {
     if (service === "Garde") setDuration("2h");
@@ -1160,7 +1160,7 @@ function StickySearchBar({ visible = true, hero = false }: { visible?: boolean; 
   // ── Keyboard: Escape closes ──
   useEffect(() => {
     if (!activeSection) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setActiveSection(null); };
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") { setActiveSection(null); setLocationError(""); } };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, [activeSection]);
@@ -1171,6 +1171,7 @@ function StickySearchBar({ visible = true, hero = false }: { visible?: boolean; 
     const onPointerDown = (e: PointerEvent) => {
       if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
         setActiveSection(null);
+        setLocationError("");
       }
     };
     // capture phase catches the event before bubbling; avoids missing events in portals
@@ -1444,7 +1445,7 @@ function StickySearchBar({ visible = true, hero = false }: { visible?: boolean; 
         <div 
           className="fixed inset-0 z-30 pointer-events-auto" 
           style={{ display: activeSection ? "block" : "none" }}
-          onClick={() => setActiveSection(null)}
+          onClick={() => { setActiveSection(null); setLocationError(""); }}
         />
       )}
       <div
@@ -1489,11 +1490,13 @@ function StickySearchBar({ visible = true, hero = false }: { visible?: boolean; 
                   onClick={() => { setActiveSection(activeSection === "lieu" ? null : "lieu"); }}
                   className={[
                     `relative z-10 flex min-w-0 flex-1 sm:flex-[1.4] flex-col justify-center rounded-[28px] ${sz.btnPad} text-left transition-all duration-200 focus-visible:outline-none`,
-                    activeSection === "lieu"
+                    activeSection === "lieu" && !locationError
                       ? "bg-white shadow-[0_2px_12px_-3px_rgba(2,6,23,0.10)]"
-                      : locationError
-                        ? "bg-red-100/80 ring-1 ring-inset ring-red-300/60"
-                        : "hover:bg-white/50",
+                      : activeSection === "lieu" && locationError
+                        ? "bg-red-100/80 ring-1 ring-inset ring-red-300/60 shadow-[0_2px_12px_-3px_rgba(2,6,23,0.10)]"
+                        : locationError
+                          ? "bg-red-100/80 ring-1 ring-inset ring-red-300/60"
+                          : "hover:bg-white/50",
                   ].join(" ")}
                 >
                   <span className={`${sz.labelCls} leading-none text-slate-400`}>
