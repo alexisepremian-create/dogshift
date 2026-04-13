@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { BadgeCheck, Star } from "lucide-react";
+import { BadgeCheck, MapPin, Star } from "lucide-react";
 
 export type SitterPreview = {
   sitterId: string;
@@ -55,9 +55,9 @@ export default function SitterCard({ sitter }: { sitter: SitterPreview }) {
         )}
 
         {sitter.verified && (
-          <div className="absolute bottom-2.5 left-2.5 flex items-center gap-1 rounded-full bg-white/90 px-2 py-0.5 shadow-sm backdrop-blur-sm">
+          <div className="absolute right-2.5 top-2.5 flex items-center gap-1 rounded-full bg-white/90 px-1.5 py-0.5 shadow-sm backdrop-blur-sm">
             <BadgeCheck className="h-3 w-3 shrink-0 text-[var(--dogshift-blue)]" aria-hidden="true" />
-            <span className="text-[10px] font-semibold text-[var(--dogshift-blue)]">Vérifié</span>
+            <span className="pr-0.5 text-[9px] font-bold uppercase tracking-wide text-[var(--dogshift-blue)]">Vérifié</span>
           </div>
         )}
       </div>
@@ -81,7 +81,10 @@ export default function SitterCard({ sitter }: { sitter: SitterPreview }) {
 
         {/* City */}
         {sitter.city ? (
-          <p className="mt-0.5 truncate text-xs text-slate-500">{sitter.city}</p>
+          <div className="mt-1 flex items-center gap-1 text-slate-500">
+            <MapPin className="h-[13px] w-[13px] shrink-0 text-slate-400" strokeWidth={2.25} aria-hidden="true" />
+            <p className="truncate text-xs">{sitter.city}</p>
+          </div>
         ) : null}
 
         {/* Services */}
