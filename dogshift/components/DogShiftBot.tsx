@@ -126,38 +126,64 @@ export default function DogShiftBot() {
   const faq = useMemo(
     () =>
       [
-        // ── Salutations / Politesse ──────────────────────────────────────────
+        // ── Salutations ──────────────────────────────────────────────────────
         {
           keywords: [
             "salut", "bonjour", "bonsoir", "hello", "hey", "coucou", "hi",
             "yo", "wesh", "slt", "bjr", "bsr", "allo", "allô", "cc",
-            "bonne journee", "bonne soiree", "bonne nuit", "bonne matin",
-            "ca va", "ça va", "comment ca va", "comment vas tu", "comment allez vous",
-            "ca roule", "ca baigne", "nickel ca", "bien merci", "bien et toi",
-            "quoi de neuf", "quoi de 9", "la forme", "la forme ?", "cv",
+            "bonne journee", "bonne soiree", "bonne matin",
           ],
           answer:
-            "Bonjour ! 👋 Ravi de vous accueillir sur DogShift. Je suis là pour répondre à toutes vos questions : nos services (Promenade, Garde, Pension), la réservation, les tarifs, devenir sitter… Qu'est-ce que je peux faire pour vous ?",
+            "Bonjour ! 👋 Ravi de vous accueillir sur DogShift. Qu'est-ce que je peux faire pour vous ?",
+        },
+        // ── Comment ça va ────────────────────────────────────────────────────
+        {
+          keywords: [
+            "ca va", "ça va", "comment ca va", "comment vas tu", "comment allez vous",
+            "ca roule", "ca baigne", "la forme", "cv", "t va", "tu vas bien",
+            "quoi de neuf", "quoi de 9", "koi de 9",
+          ],
+          answer:
+            "Très bien merci, je suis prêt à vous aider ! 😊 Posez-moi vos questions sur DogShift : services, réservation, tarifs, devenir sitter… Je suis là pour vous.",
+        },
+        // ── Tu fais quoi / Qui es-tu ─────────────────────────────────────────
+        {
+          keywords: [
+            "tu fais quoi", "tfq", "t fais quoi", "tu fous quoi", "tu fous",
+            "qui es tu", "t'es qui", "tu es qui", "c'est quoi toi",
+            "tu peux faire quoi", "tu sais faire quoi", "tes capacites",
+            "tu connais quoi", "tu reponds a quoi", "t'es capable de quoi",
+          ],
+          answer:
+            "Je suis DogShift Bot 🐾, votre assistant virtuel ! Je suis là pour vous aider sur tout ce qui concerne DogShift : choisir un service, réserver un sitter, comprendre les tarifs, la sécurité, créer votre compte ou devenir dogsitter. Je réponds à vos questions 24h/24 !",
+        },
+        // ── Rires / Humour ───────────────────────────────────────────────────
+        {
+          keywords: [
+            "lol", "mdr", "ptdr", "xd", "haha", "hihi", "hehe", "😂", "🤣",
+            "trop drole", "trop marrant", "c'est drole", "hahaha", "lmao",
+          ],
+          answer:
+            "😄 Haha ! Je suis un bot, mais j'ai de l'humour ! Si vous avez une vraie question sur DogShift, je suis là. Sinon, bonne journée !",
         },
         // ── Remerciements ────────────────────────────────────────────────────
         {
           keywords: [
             "merci", "merci beaucoup", "thanks", "thank you", "super merci",
-            "parfait merci", "nickel", "top", "excellent", "genial", "génial",
-            "c'est bon", "ca marche", "ok merci", "cool merci",
+            "parfait merci", "ok merci", "cool merci", "sympa merci",
           ],
           answer:
             "Avec plaisir ! 😊 N'hésitez pas si vous avez d'autres questions. Bonne expérience sur DogShift !",
         },
-        // ── Questions sur le bot lui-même ────────────────────────────────────
+        // ── Validation / Accord ──────────────────────────────────────────────
         {
           keywords: [
-            "qui es tu", "qui etes vous", "t'es qui", "tu es qui", "c'est quoi toi",
-            "tu fais quoi", "tu peux faire quoi", "tes capacites", "aide moi",
-            "tu sais faire quoi", "tu connais quoi", "tu reponds a quoi",
+            "ok", "okay", "d'accord", "daccord", "oui", "ouais", "ouep",
+            "parfait", "nickel", "top", "super", "genial", "excellent",
+            "c'est bon", "ca marche", "cool", "bien compris", "j'ai compris",
           ],
           answer:
-            "Je suis DogShift Bot 🐾, l'assistant virtuel de DogShift ! Je peux vous aider sur : les services (Promenade, Garde, Pension), la réservation, les tarifs, la sécurité, votre compte, devenir dogsitter, les villes disponibles, et plus encore. Posez-moi n'importe quelle question !",
+            "Super ! 👍 Si vous avez d'autres questions sur DogShift, n'hésitez pas — je suis là !",
         },
         // ── Qu'est-ce que DogShift ───────────────────────────────────────────
         {
