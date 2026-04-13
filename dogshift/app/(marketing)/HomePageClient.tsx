@@ -1105,6 +1105,7 @@ function StickySearchBar({ visible = true, hero = false }: { visible?: boolean; 
   // ── Form state ──
   const [service, setService] = useState<ServiceKey>("Promenade");
   const [location, setLocation] = useState("");
+  const [locationError, setLocationError] = useState("");
   const [calTab, setCalTab] = useState<"dates" | "flexible">("dates");
   const [dogSize, setDogSize] = useState<DogSizeKey | null>(null);
 
@@ -1295,7 +1296,13 @@ function StickySearchBar({ visible = true, hero = false }: { visible?: boolean; 
   }
 
   function handleSearch() {
-    const p = new URLSearchParams({ service, location: location.trim() || "Suisse" });
+    if (!location.trim()) {
+      setLocationError("Indiquez une ville avant de rechercher.");
+      setActiveSection("lieu");
+      return;
+    }
+    setLocationError("");
+    const p = new URLSearchParams({ service, location: location.trim() });
     if (isHourlyPanel) {
       if (calTab === "dates") {
         if (startDate) p.set("date", startDate);
@@ -1479,19 +1486,21 @@ function StickySearchBar({ visible = true, hero = false }: { visible?: boolean; 
                 <button
                   ref={lieuRef}
                   type="button"
-                  onClick={() => setActiveSection(activeSection === "lieu" ? null : "lieu")}
+                  onClick={() => { setActiveSection(activeSection === "lieu" ? null : "lieu"); }}
                   className={[
                     `relative z-10 flex min-w-0 flex-1 sm:flex-[1.4] flex-col justify-center rounded-[28px] ${sz.btnPad} text-left transition-all duration-200 focus-visible:outline-none`,
                     activeSection === "lieu"
                       ? "bg-white shadow-[0_2px_12px_-3px_rgba(2,6,23,0.10)]"
-                      : "hover:bg-white/50",
+                      : locationError
+                        ? "bg-red-50/70"
+                        : "hover:bg-white/50",
                   ].join(" ")}
                 >
-                  <span className={`${sz.labelCls} text-slate-400 leading-none`}>
+                  <span className={`${sz.labelCls} leading-none ${locationError ? "text-red-500" : "text-slate-400"}`}>
                     <span className="hidden sm:inline">Lieu de prise en charge</span>
                     <span className="sm:hidden">Lieu</span>
                   </span>
-                  <span className={`mt-1 truncate ${sz.valueCls} ${location ? "text-slate-900" : "text-slate-500"}`}>
+                  <span className={`mt-1 truncate ${sz.valueCls} ${location ? "text-slate-900" : locationError ? "text-red-400" : "text-slate-500"}`}>
                     {location || (
                       <>
                         <span className="hidden sm:inline">Lausanne, Genève…</span>
@@ -1566,6 +1575,11 @@ function StickySearchBar({ visible = true, hero = false }: { visible?: boolean; 
               </button>
             </div>
           </div>
+          {locationError && (
+            <p role="alert" className="mt-2 text-center text-xs font-medium text-red-500 animate-in fade-in slide-in-from-top-1 duration-200">
+              {locationError}
+            </p>
+          )}
 
           {/* ═══ FLOATING CARD ═══ */}
           {activeSection && (
@@ -1593,7 +1607,7 @@ function StickySearchBar({ visible = true, hero = false }: { visible?: boolean; 
                         <Search className="h-3.5 w-3.5 shrink-0 text-slate-400" aria-hidden="true" />
                         <input
                           value={location}
-                          onChange={(e) => setLocation(e.target.value)}
+                            onChange={(e) => { setLocation(e.target.value); setLocationError(""); }}
                           placeholder="Lausanne, Genève, Montreux…"
                           className="min-w-0 flex-1 bg-transparent text-sm font-medium text-slate-900 placeholder:text-slate-400 outline-none"
                           autoComplete="off"
@@ -1620,7 +1634,7 @@ function StickySearchBar({ visible = true, hero = false }: { visible?: boolean; 
                           <button
                             key={label}
                             type="button"
-                            onClick={() => { setLocation(label); setActiveSection("quand"); }}
+                            onClick={() => { setLocation(label); setLocationError(""); setActiveSection("quand"); }}
                             className="flex w-full items-center gap-2.5 rounded-xl px-2 py-2 text-left transition-colors duration-100 hover:bg-slate-50"
                           >
                             <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-100">
