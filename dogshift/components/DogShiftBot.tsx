@@ -166,6 +166,19 @@ export default function DogShiftBot() {
           answer:
             "😄 Haha ! Je suis un bot, mais j'ai de l'humour ! Si vous avez une vraie question sur DogShift, je suis là. Sinon, bonne journée !",
         },
+        // ── Fondateur / Équipe ───────────────────────────────────────────────
+        {
+          keywords: [
+            "fondateur", "createur", "créateur", "qui a cree", "qui a créé",
+            "qui a fait", "qui a lance", "qui a lancé", "qui est derriere",
+            "derriere dogshift", "derrière dogshift", "equipe", "équipe",
+            "qui dirige", "ceo", "patron", "boss", "chef", "team",
+            "qui gere", "qui gère", "qui a monte", "qui a monté",
+            "c'est qui le fondateur", "c'est qui le createur",
+          ],
+          answer:
+            "Bonne question… mais qui cherche trouve 🐾😏 Ce que je peux dire, c'est que DogShift est un projet indépendant, construit avec passion et exigence pour offrir la meilleure expérience de dogsitting en Suisse. La suite ? Elle se mérite !",
+        },
         // ── Remerciements ────────────────────────────────────────────────────
         {
           keywords: [
