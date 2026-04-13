@@ -2524,7 +2524,7 @@ function BecomeSitterSection() {
             ].map((item) => (
               <li
                 key={item}
-                className="flex flex-row items-center justify-center gap-2.5 rounded-2xl border border-white/10 bg-white/5 px-4 py-3.5 text-left text-blue-100 sm:py-4"
+                className="flex flex-row items-center justify-start gap-3 rounded-2xl border border-white/10 bg-white/5 px-6 py-3.5 text-left text-blue-100 sm:justify-center sm:px-6 sm:py-4"
               >
                 <CheckCircle2
                   className="mt-0.5 h-[18px] w-[18px] shrink-0 text-emerald-400"
