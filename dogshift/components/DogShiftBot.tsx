@@ -23,14 +23,42 @@ function normalize(s: string) {
     .toLowerCase()
     .normalize("NFD")
     .replace(/\p{Diacritic}/gu, "")
+    .replace(/['']/g, "'")
     .trim();
+}
+
+function levenshtein(a: string, b: string): number {
+  const m = a.length, n = b.length;
+  const dp: number[][] = Array.from({ length: m + 1 }, (_, i) =>
+    Array.from({ length: n + 1 }, (_, j) => (i === 0 ? j : j === 0 ? i : 0))
+  );
+  for (let i = 1; i <= m; i++)
+    for (let j = 1; j <= n; j++)
+      dp[i][j] = a[i - 1] === b[j - 1]
+        ? dp[i - 1][j - 1]
+        : 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]);
+  return dp[m][n];
+}
+
+function fuzzyWordMatch(word: string, keyword: string): boolean {
+  if (word.includes(keyword) || keyword.includes(word)) return true;
+  if (keyword.length <= 3) return word === keyword;
+  const maxDist = keyword.length <= 5 ? 1 : keyword.length <= 8 ? 2 : 3;
+  return levenshtein(word, keyword) <= maxDist;
 }
 
 function scoreMatch(input: string, keywords: string[]) {
   const hay = normalize(input);
+  const words = hay.split(/\s+/);
   let score = 0;
-  for (const k of keywords) {
-    if (hay.includes(normalize(k))) score += 1;
+  for (const kRaw of keywords) {
+    const k = normalize(kRaw);
+    if (hay.includes(k)) {
+      score += 2;
+      continue;
+    }
+    if (k.includes(" ")) continue;
+    if (words.some((w) => fuzzyWordMatch(w, k))) score += 1;
   }
   return score;
 }
@@ -98,61 +126,182 @@ export default function DogShiftBot() {
   const faq = useMemo(
     () =>
       [
+        // ── Qu'est-ce que DogShift ───────────────────────────────────────────
         {
           keywords: [
-            "promenade",
-            "balade",
-            "sortie",
-            "promener",
-            "durée",
-            "duree",
-            "heure",
-            "heures",
+            "c'est quoi", "cest quoi", "qu'est ce", "quest ce", "comment ca marche",
+            "comment fonctionne", "dogshift", "plateforme", "site", "application",
+            "appli", "service", "principe", "kesako", "kesakeuf",
           ],
           answer:
-            "Promenade : un sitter vient promener votre chien (durée et fréquence selon l'annonce). Idéal pour les journées chargées.",
+            "DogShift est une plateforme premium de dogsitting en France. Elle met en relation les propriétaires de chiens avec des dogsitters vérifiés pour 3 services : Promenade, Garde à domicile et Pension chez le sitter. Vous comparez les profils, les avis et réservez en ligne.",
         },
+        // ── Promenade ───────────────────────────────────────────────────────
         {
-          keywords: ["garde", "visite", "à domicile", "a domicile", "passage", "check"],
+          keywords: [
+            "promenade", "promener", "balade", "balader", "sortie", "sortir",
+            "marche", "tour", "walk", "durée promenade", "temps promenade",
+            "combien de temps promenade", "promennade", "promenad",
+          ],
           answer:
-            "Garde / visite à domicile : le sitter passe chez vous pour nourrir, sortir et s'occuper de votre chien, sans hébergement.",
+            "La Promenade : un sitter qualifié vient chez vous chercher votre chien et le promène (durée et fréquence définies selon l'annonce). Idéal pour les journées chargées ou les propriétaires peu disponibles.",
         },
+        // ── Garde à domicile ────────────────────────────────────────────────
         {
-          keywords: ["pension", "hebergement", "hébergement", "nuit", "nuits", "chez le sitter"],
+          keywords: [
+            "garde", "visite", "a domicile", "chez moi", "passage", "check in",
+            "check", "surveiller", "surveille", "garder chez moi",
+            "sitter vient", "sitter passe", "sans hebergement", "sans nuit",
+          ],
           answer:
-            "Pension (hébergement) : votre chien est accueilli chez le sitter (souvent avec une routine familiale).",
+            "La Garde / Visite à domicile : le sitter se déplace chez vous pour nourrir, sortir et s'occuper de votre chien, sans hébergement. Parfait pour les courtes absences ou la journée.",
         },
+        // ── Pension ─────────────────────────────────────────────────────────
         {
-          keywords: ["prix", "tarif", "tarifs", "combien", "coût", "cout", "paiement", "payer"],
+          keywords: [
+            "pension", "hebergement", "nuit", "nuits", "chez le sitter",
+            "accueil", "accueilli", "famille", "dormir", "week end",
+            "week-end", "vacances", "voyage", "partir", "absent",
+            "logement", "loger", "pention", "penscion",
+          ],
           answer:
-            "Les tarifs dépendent du service, de la durée et du sitter. Sur DogShift, vous comparez facilement les profils et leurs prix avant de réserver.",
+            "La Pension (hébergement) : votre chien est accueilli directement chez le sitter — souvent dans un cadre familial et chaleureux. Idéal pour les week-ends, vacances ou déplacements prolongés.",
         },
+        // ── Tarifs / Prix ───────────────────────────────────────────────────
         {
-          keywords: ["reservation", "réservation", "reserver", "réserver", "disponible", "disponibilite"],
+          keywords: [
+            "prix", "tarif", "tarifs", "combien", "cout", "coute", "coût",
+            "cher", "payer", "paiement", "budget", "facturation", "facture",
+            "gratuit", "abordable", "remboursement", "rembouser", "remboursé",
+            "fourchette", "grille", "plage de prix", "fourchete",
+          ],
           answer:
-            "Pour réserver : choisissez un service + une ville, comparez les profils, puis contactez/réservez le sitter qui correspond à vos besoins.",
+            "Les tarifs varient selon le service, la durée et le sitter. Sur DogShift, chaque profil affiche clairement ses prix : vous pouvez comparer et choisir selon votre budget avant de réserver. Aucun frais caché.",
         },
+        // ── Réservation ─────────────────────────────────────────────────────
         {
-          keywords: ["annulation", "annuler", "modifier", "changement", "report"],
+          keywords: [
+            "reserver", "reservation", "comment reserver", "etapes", "demarche",
+            "disponible", "disponibilite", "creneaux", "créneau", "calendrier",
+            "choisir", "selectionner", "trouver un sitter", "chercher sitter",
+            "book", "booker", "reserevation", "comment ca marche pour reserver",
+          ],
           answer:
-            "Annulation / modification : cela dépend des conditions du sitter et du service. Si vous me dites votre cas (service + date), je vous guide.",
+            "Pour réserver sur DogShift : 1) Choisissez votre service (Promenade, Garde ou Pension) + votre ville. 2) Parcourez les profils disponibles et comparez les avis. 3) Contactez le sitter et confirmez les détails. 4) Réservez en ligne en toute sécurité.",
         },
+        // ── Compte / Inscription ─────────────────────────────────────────────
         {
-          keywords: ["securite", "sécurité", "assurance", "confiance", "avis", "verification"],
+          keywords: [
+            "creer compte", "créer compte", "inscription", "inscrire",
+            "connexion", "connecter", "login", "mot de passe", "email",
+            "profil", "mon compte", "compte", "register", "enregistrer",
+            "s'inscrire", "sincrire", "m'inscrire",
+          ],
           answer:
-            "Sécurité : consultez les avis, l'expérience, et échangez avec le sitter avant la garde. Choisissez un profil vérifié quand disponible.",
+            "Pour créer votre compte DogShift : cliquez sur « S'inscrire » en haut de la page. L'inscription est rapide et gratuite. Vous pouvez ensuite compléter votre profil et effectuer vos réservations.",
         },
+        // ── Annulation / Modification ────────────────────────────────────────
         {
-          keywords: ["devenir", "dogsitter", "sitter", "inscription", "rejoindre"],
+          keywords: [
+            "annulation", "annuler", "annule", "modifier", "changer", "report",
+            "reporter", "repousser", "decaler", "décaler", "changement",
+            "remboursement annulation", "politique annulation", "annulaion",
+          ],
           answer:
-            "Devenir dogsitter : vous pouvez vous inscrire et créer votre profil. Ensuite, vous proposez vos services et recevez des demandes.",
+            "Annulation ou modification : les conditions dépendent du sitter et du service choisi. Consultez la politique d'annulation sur la fiche du sitter. En cas de besoin urgent, contactez le sitter directement via la messagerie DogShift.",
         },
+        // ── Sécurité / Confiance ─────────────────────────────────────────────
         {
-          keywords: ["contact", "support", "aide", "bug", "probleme", "problème"],
+          keywords: [
+            "securite", "securise", "confiance", "fiable", "fiabilite",
+            "avis", "note", "notation", "verification", "verifier",
+            "verifie", "certifie", "certifié", "references", "reference",
+            "background check", "controle", "vetting", "assurance",
+            "garantie", "protege", "sécurisé", "credible", "credibilite",
+          ],
           answer:
-            "Besoin d'aide ? Dites-moi ce qui bloque (page, action, message d'erreur) et je vous aide à trouver la bonne marche à suivre.",
+            "Sur DogShift, chaque sitter dispose d'un profil avec avis clients vérifiés, expériences et photos. Vous pouvez échanger avec le sitter avant la garde pour évaluer votre compatibilité. Les profils vérifiés sont mis en avant pour votre sérénité.",
         },
-      ] as const,
+        // ── Chien / Races / Tailles ──────────────────────────────────────────
+        {
+          keywords: [
+            "race", "races", "taille", "grand chien", "petit chien",
+            "gros chien", "chiot", "vieux chien", "vieille chien",
+            "senior", "berger", "labrador", "bulldog", "golden",
+            "accepted", "accepté", "accepte", "toutes races",
+            "chien handicapé", "handicape",
+          ],
+          answer:
+            "La plupart des sitters DogShift acceptent toutes les races et tailles. Certains ont des préférences (précisées sur leur profil). En cas de doute, consultez la fiche du sitter ou contactez-le directement avant de réserver.",
+        },
+        // ── Besoins spéciaux / Médicaments ───────────────────────────────────
+        {
+          keywords: [
+            "medicament", "médicament", "traitement", "allergie", "allergique",
+            "regime", "régime", "special", "spécial", "besoin particulier",
+            "malade", "maladie", "vieillissant", "diabete", "diabétique",
+            "soin", "soins", "veterinaire", "vétérinaire",
+          ],
+          answer:
+            "Si votre chien a des besoins particuliers (médicaments, régime, soins), précisez-le dans votre demande et échangez avec le sitter avant la réservation. Certains sitters sont spécialement formés pour les animaux à besoins spécifiques.",
+        },
+        // ── Problème pendant la garde ────────────────────────────────────────
+        {
+          keywords: [
+            "probleme pendant", "accident", "blessure", "blessé", "urgence",
+            "veterinaire urgence", "que faire si", "perdu", "fugue", "fugué",
+            "disparu", "chien disparu", "incident", "que se passe",
+            "que se passe-t-il", "en cas de", "souci", "soucis",
+          ],
+          answer:
+            "En cas d'incident pendant la garde, le sitter doit vous contacter immédiatement via la messagerie DogShift. En cas d'urgence vétérinaire, il se rend chez le vétérinaire le plus proche. Pensez à communiquer au sitter les coordonnées de votre vétérinaire habituel.",
+        },
+        // ── Zone géographique ────────────────────────────────────────────────
+        {
+          keywords: [
+            "ville", "villes", "region", "région", "disponible ou", "disponible dans",
+            "disponible a", "disponible en", "paris", "lyon", "marseille",
+            "bordeaux", "toulouse", "nantes", "zone", "zones", "partout",
+            "dans ma ville", "disponible chez moi", "couverture", "france",
+          ],
+          answer:
+            "DogShift couvre les principales villes françaises. Entrez votre ville dans la recherche pour voir les sitters disponibles près de chez vous. Le nombre de profils varie selon les zones — de nouvelles villes sont ajoutées régulièrement.",
+        },
+        // ── Urgence / Dernière minute ────────────────────────────────────────
+        {
+          keywords: [
+            "urgent", "urgence", "derniere minute", "dernier minute",
+            "aujourd'hui", "aujourd hui", "ce soir", "demain",
+            "tres rapide", "rapide", "immédiat", "immediat", "vite",
+            "dispo maintenant", "maintenant",
+          ],
+          answer:
+            "Besoin d'un sitter en urgence ? Filtrez par disponibilité dans la recherche — certains sitters acceptent les réservations de dernière minute. Contactez-les directement via la messagerie pour une réponse rapide.",
+        },
+        // ── Devenir dogsitter ────────────────────────────────────────────────
+        {
+          keywords: [
+            "devenir dogsitter", "devenir sitter", "proposer mes services",
+            "rejoindre", "m'inscrire comme sitter", "offre", "proposer",
+            "sitter moi meme", "travailler", "gagner argent", "revenu",
+            "revenus complementaires", "side job", "candidater",
+            "comment devenir", "commencer a garder",
+          ],
+          answer:
+            "Devenir dogsitter DogShift : c'est gratuit et rapide ! Cliquez sur « Candidater maintenant », créez votre profil sitter, définissez vos services, tarifs et disponibilités. Vous recevrez ensuite des demandes de propriétaires près de chez vous.",
+        },
+        // ── Support / Bug ────────────────────────────────────────────────────
+        {
+          keywords: [
+            "contact", "contacter", "support", "aide", "bug", "probleme",
+            "erreur", "marche pas", "fonctionne pas", "bloque", "bloqué",
+            "signaler", "rapport", "message d'erreur", "page blanche",
+            "ne charge pas", "chargement", "lent",
+          ],
+          answer:
+            "Besoin d'aide technique ? Décrivez le problème (page concernée, message d'erreur, action effectuée) et je vous aide. Pour contacter l'équipe DogShift directement, utilisez le formulaire de contact disponible en bas du site.",
+        },
+      ],
     []
   );
 
@@ -161,7 +310,7 @@ export default function DogShiftBot() {
       id: nowId(),
       role: "bot",
       text:
-        "Bonjour, je suis DogShift Bot. Posez-moi vos questions sur les services (Promenade, Garde, Pension), la réservation, ou les tarifs.",
+        "Bonjour ! Je suis DogShift Bot 🐾 Je peux répondre à vos questions sur nos services (Promenade, Garde, Pension), la réservation, les tarifs, la sécurité, devenir sitter… Posez-moi n'importe quelle question !",
       ts: Date.now(),
     }),
     []
@@ -214,8 +363,7 @@ export default function DogShiftBot() {
     if (scored[0]?.score > 0) return scored[0].item.answer;
 
     return (
-      "Je peux vous aider sur : Promenade, Garde, Pension, réservation, tarifs, sécurité. " +
-      "Dites-moi ce que vous cherchez (service + ville) et je vous guide."
+      "Je n'ai pas bien compris votre question 🙏 Je peux vous renseigner sur : les services (Promenade, Garde, Pension), la réservation, les tarifs, la sécurité, votre compte, devenir dogsitter, ou les disponibilités. Reformulez et je ferai de mon mieux !"
     );
   }
 
