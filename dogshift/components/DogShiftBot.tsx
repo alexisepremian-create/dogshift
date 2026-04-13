@@ -532,55 +532,46 @@ export default function DogShiftBot() {
   const [messages, setMessages] = useState<ChatMessage[]>([initialBotMessage]);
   const [dismissed, setDismissed] = useState(false);
 
-  // ── Drag to corner ─────────────────────────────────────────────────────────
-  type Corner = "tl" | "tr" | "bl" | "br";
-  const [corner, setCorner] = useState<Corner>("br");
-  const [livePos, setLivePos] = useState<{ x: number; y: number } | null>(null);
+  // ── Drag libre sur mobile (touch uniquement) ───────────────────────────────
+  const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
   const wrapRef = useRef<HTMLDivElement | null>(null);
-  const drag = useRef({ active: false, moved: false, startCX: 0, startCY: 0, startEX: 0, startEY: 0 });
+  const dragBtnRef = useRef<HTMLButtonElement | null>(null);
+  const dragState = useRef({ active: false, moved: false, startTX: 0, startTY: 0, startEX: 0, startEY: 0 });
   const justDragged = useRef(false);
 
-  function cornerStyle(c: Corner): React.CSSProperties {
-    const M = 20;
-    if (c === "tl") return { top: M, left: M, bottom: "auto", right: "auto" };
-    if (c === "tr") return { top: M, right: M, bottom: "auto", left: "auto" };
-    if (c === "bl") return { bottom: M, left: M, top: "auto", right: "auto" };
-    return { bottom: M, right: M, top: "auto", left: "auto" };
-  }
+  // Listener non-passif pour pouvoir preventDefault pendant le drag
+  useEffect(() => {
+    const btn = dragBtnRef.current;
+    if (!btn) return;
+    const onTouchMove = (e: TouchEvent) => {
+      if (!dragState.current.active) return;
+      const t = e.touches[0];
+      const dx = t.clientX - dragState.current.startTX;
+      const dy = t.clientY - dragState.current.startTY;
+      if (!dragState.current.moved && Math.hypot(dx, dy) < 8) return;
+      dragState.current.moved = true;
+      e.preventDefault(); // empêche le scroll pendant le drag
+      const S = 56;
+      const newX = Math.max(8, Math.min(window.innerWidth - S - 8, dragState.current.startEX + dx));
+      const newY = Math.max(8, Math.min(window.innerHeight - S - 8, dragState.current.startEY + dy));
+      setPos({ x: newX, y: newY });
+    };
+    btn.addEventListener("touchmove", onTouchMove, { passive: false });
+    return () => btn.removeEventListener("touchmove", onTouchMove);
+  }, []);
 
-  function snapCorner(x: number, y: number) {
-    const mX = window.innerWidth / 2;
-    const mY = window.innerHeight / 2;
-    setCorner(`${y < mY ? "t" : "b"}${x < mX ? "l" : "r"}` as Corner);
-  }
-
-  function onPointerDown(e: React.PointerEvent<HTMLButtonElement>) {
+  function onTouchStart(e: React.TouchEvent<HTMLButtonElement>) {
     if (open) return;
+    const t = e.touches[0];
     const rect = wrapRef.current!.getBoundingClientRect();
-    drag.current = { active: true, moved: false, startCX: e.clientX, startCY: e.clientY, startEX: rect.left, startEY: rect.top };
-    (e.currentTarget as HTMLButtonElement).setPointerCapture(e.pointerId);
+    dragState.current = { active: true, moved: false, startTX: t.clientX, startTY: t.clientY, startEX: rect.left, startEY: rect.top };
   }
 
-  function onPointerMove(e: React.PointerEvent<HTMLButtonElement>) {
-    if (!drag.current.active) return;
-    const dx = e.clientX - drag.current.startCX;
-    const dy = e.clientY - drag.current.startCY;
-    if (!drag.current.moved && Math.hypot(dx, dy) < 6) return;
-    drag.current.moved = true;
-    setLivePos({ x: drag.current.startEX + dx, y: drag.current.startEY + dy });
-  }
-
-  function onPointerUp(e: React.PointerEvent<HTMLButtonElement>) {
-    if (!drag.current.active) return;
-    drag.current.active = false;
-    if (drag.current.moved) {
-      justDragged.current = true; // empêche le onClick suivant
-      if (livePos) {
-        snapCorner(livePos.x + 28, livePos.y + 28);
-        setLivePos(null);
-      }
-    }
-    drag.current.moved = false;
+  function onTouchEnd() {
+    if (!dragState.current.active) return;
+    if (dragState.current.moved) justDragged.current = true;
+    dragState.current.active = false;
+    dragState.current.moved = false;
   }
 
   const scrollRef = useRef<HTMLDivElement | null>(null);
@@ -648,14 +639,13 @@ export default function DogShiftBot() {
 
   if (dismissed) return null;
 
-  const wrapStyle: React.CSSProperties = livePos
-    ? { position: "fixed", top: livePos.y, left: livePos.x, right: "auto", bottom: "auto", zIndex: 50 }
-    : { position: "fixed", zIndex: 50, ...cornerStyle(corner) };
-
-  const panelSide = corner.endsWith("r") ? "items-end" : "items-start";
+  // Sur mobile avec drag actif : position libre. Sinon : bas-droite via Tailwind.
+  const wrapStyle: React.CSSProperties | undefined = pos
+    ? { position: "fixed", top: pos.y, left: pos.x, right: "auto", bottom: "auto", zIndex: 50 }
+    : undefined;
 
   return (
-    <div ref={wrapRef} style={wrapStyle} className={`flex flex-col gap-3 ${panelSide}`}>
+    <div ref={wrapRef} style={wrapStyle} className={`flex flex-col items-end gap-3 z-50 ${pos ? "" : "fixed bottom-5 right-5"}`}>
       {open ? (
         <div className="w-[360px] max-w-[calc(100vw-2.5rem)] overflow-hidden rounded-3xl border border-white/70 bg-white/80 shadow-[0_24px_80px_-50px_rgba(2,6,23,0.65)] backdrop-blur-xl">
           <div className="flex items-center justify-between border-b border-slate-200/70 px-4 py-3">
@@ -747,15 +737,15 @@ export default function DogShiftBot() {
 
           {/* Bouton principal — draggable */}
           <button
+            ref={dragBtnRef}
             type="button"
-            onPointerDown={onPointerDown}
-            onPointerMove={onPointerMove}
-            onPointerUp={onPointerUp}
+            onTouchStart={onTouchStart}
+            onTouchEnd={onTouchEnd}
             onClick={() => {
               if (justDragged.current) { justDragged.current = false; return; }
               setOpen(true);
             }}
-            style={{ touchAction: "none", userSelect: "none", cursor: livePos ? "grabbing" : "grab" }}
+            style={{ userSelect: "none" }}
             className="group grid h-14 w-14 place-items-center rounded-full bg-[var(--dogshift-blue)] text-white shadow-[0_18px_60px_-40px_rgba(2,6,23,0.75)] ring-1 ring-white/15 transition hover:bg-[var(--dogshift-blue-hover)] md:inline-flex md:h-14 md:w-auto md:items-center md:gap-3 md:rounded-3xl md:pl-4 md:pr-5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)]"
             aria-label="Ouvrir DogShift Bot"
           >
