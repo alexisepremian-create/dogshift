@@ -27,6 +27,61 @@ function normalize(s: string) {
     .trim();
 }
 
+const ABBREVS: [RegExp, string][] = [
+  [/\bc\b/g, "c'est"],
+  [/\bc'est\b/g, "c'est"],
+  [/\bpk\b/g, "pourquoi"],
+  [/\bpq\b/g, "pourquoi"],
+  [/\bpr\b/g, "pour"],
+  [/\bkoi\b/g, "quoi"],
+  [/\bkeskon\b/g, "qu'est ce qu'on"],
+  [/\bkesk\b/g, "qu'est ce que"],
+  [/\bqd\b/g, "quand"],
+  [/\bdc\b/g, "donc"],
+  [/\bsvp\b/g, "s'il vous plait"],
+  [/\bstp\b/g, "s'il te plait"],
+  [/\btjr(s)?\b/g, "toujours"],
+  [/\bptet\b/g, "peut etre"],
+  [/\bptetre\b/g, "peut etre"],
+  [/\bqq\b/g, "quelque"],
+  [/\bqqch\b/g, "quelque chose"],
+  [/\bqn\b/g, "quelqu'un"],
+  [/\bpas?\b/g, "pas"],
+  [/\bms\b/g, "mais"],
+  [/\bav\b/g, "avec"],
+  [/\bss\b/g, "sans"],
+  [/\bvlm\b/g, "vraiment"],
+  [/\bvrmt\b/g, "vraiment"],
+  [/\bpls\b/g, "plusieurs"],
+  [/\bdsl\b/g, "désolé"],
+  [/\bamha\b/g, "a mon avis"],
+  [/\bama\b/g, "a mon avis"],
+  [/\bjsp\b/g, "je ne sais pas"],
+  [/\bjsp\b/g, "je sais pas"],
+  [/\bjtm\b/g, "je t'aime"],
+  [/\bbjr\b/g, "bonjour"],
+  [/\bbsr\b/g, "bonsoir"],
+  [/\bslt\b/g, "salut"],
+  [/\bcc\b/g, "coucou"],
+  [/\bttyl\b/g, "a plus"],
+  [/\ba\+\b/g, "a plus"],
+  [/\ba\+\+\b/g, "a plus"],
+  [/\bap\b/g, "a plus"],
+  [/\bqui\b/g, "qui"],
+];
+
+function expandAbbrevs(s: string): string {
+  let out = s;
+  for (const [pattern, replacement] of ABBREVS) {
+    out = out.replace(pattern, replacement);
+  }
+  return out;
+}
+
+function prepareInput(raw: string): string {
+  return expandAbbrevs(normalize(raw));
+}
+
 function levenshtein(a: string, b: string): number {
   const m = a.length, n = b.length;
   const dp: number[][] = Array.from({ length: m + 1 }, (_, i) =>
@@ -48,7 +103,7 @@ function fuzzyWordMatch(word: string, keyword: string): boolean {
 }
 
 function scoreMatch(input: string, keywords: string[]) {
-  const hay = normalize(input);
+  const hay = prepareInput(input);
   const words = hay.split(/\s+/);
   let score = 0;
   for (const kRaw of keywords) {
@@ -175,6 +230,8 @@ export default function DogShiftBot() {
             "qui dirige", "ceo", "patron", "boss", "chef", "team",
             "qui gere", "qui gère", "qui a monte", "qui a monté",
             "c'est qui le fondateur", "c'est qui le createur",
+            "c qui le fondateur", "c qui fondateur", "c qui le createur",
+            "c qui a fait", "c qui gere", "c qui dirige",
           ],
           answer:
             "Bonne question… mais qui cherche trouve 🐾😏 Ce que je peux dire, c'est que DogShift est un projet indépendant, construit avec passion et exigence pour offrir la meilleure expérience de dogsitting en Suisse. La suite ? Elle se mérite !",
