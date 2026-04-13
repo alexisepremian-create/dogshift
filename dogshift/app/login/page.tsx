@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { SignOutButton, useAuth, useClerk, useUser } from "@clerk/nextjs";
 
@@ -31,10 +31,23 @@ export default function LoginPage() {
   const [switching, setSwitching] = useState(false);
   const [switchError, setSwitchError] = useState<string | null>(null);
 
+  // Track whether the user was ALREADY signed in when the page first loaded.
+  // If they were signed out on load and then signed in via the form → redirect
+  // immediately even in forceMode (don't flash the "already connected" banner).
+  const alreadySignedInOnLoad = useRef<boolean | null>(null);
+  useEffect(() => {
+    if (!isLoaded) return;
+    if (alreadySignedInOnLoad.current === null) {
+      alreadySignedInOnLoad.current = !!isSignedIn;
+    }
+  }, [isLoaded, isSignedIn]);
+
   useEffect(() => {
     if (!isLoaded) return;
     if (!isSignedIn) return;
-    if (forceMode) return;
+    // Only block auto-redirect in forceMode if the user was ALREADY signed in
+    // when the page loaded (i.e. they arrived signed in, not just signed in now).
+    if (forceMode && alreadySignedInOnLoad.current === true) return;
     router.replace("/post-login");
   }, [forceMode, isLoaded, isSignedIn, router]);
 
@@ -177,7 +190,7 @@ export default function LoginPage() {
         </div>
       ) : null}
 
-      {isLoaded && isSignedIn && forceMode ? (
+      {isLoaded && isSignedIn && forceMode && alreadySignedInOnLoad.current === true ? (
         <div className="mb-6 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
           <p className="text-sm font-semibold text-slate-900">Vous êtes déjà connecté.</p>
           <p className="mt-1 text-sm text-slate-600">Pour tester un autre compte, déconnectez-vous puis reconnectez-vous.</p>
