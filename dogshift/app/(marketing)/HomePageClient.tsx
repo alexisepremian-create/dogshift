@@ -1395,7 +1395,7 @@ function StickySearchBar({ visible = true, hero = false }: { visible?: boolean; 
     wrapPad:   "py-2 sm:py-3 md:py-4",
     maxW:      "max-w-3xl",
     gap:       "gap-1 sm:gap-1.5",
-    px:        "px-4 sm:px-6 lg:px-8",
+    px:        "px-6 sm:px-8 lg:px-10",
     btnPad:    "px-3 py-2.5 sm:px-5 sm:py-3.5",
     labelCls:  "text-[9px] sm:text-[10px] font-bold uppercase tracking-wider",
     valueCls:  "text-xs sm:text-sm font-medium leading-tight",
@@ -1567,11 +1567,11 @@ function StickySearchBar({ visible = true, hero = false }: { visible?: boolean; 
               The document pointerdown listener then catches them as "outside" and closes.
               pointer-events-auto is restored on the inner card so it stays interactive.
             */
-            <div className="pointer-events-none absolute left-0 right-0 top-full z-10 flex justify-center px-4 pt-2 sm:px-6 sm:pt-2.5">
+            <div className="pointer-events-none absolute left-0 right-0 top-full z-10 flex justify-center px-6 pt-2 sm:px-8 sm:pt-2.5">
               <div
                 className="pointer-events-auto float-card-enter overflow-hidden rounded-3xl bg-white shadow-[0_32px_72px_-20px_rgba(2,6,23,0.22),0_6px_20px_-8px_rgba(2,6,23,0.10)]"
                 style={{
-                  width: `min(${cardWidth}px, calc(100vw - 32px))`,
+                  width: `min(${cardWidth}px, calc(100vw - 48px))`,
                   transition: "width 420ms cubic-bezier(0.34, 1.1, 0.64, 1)",
                 }}
               >
@@ -1962,7 +1962,7 @@ const QUICK_TILES = [
 function QuickCategoryTiles() {
   return (
     <section className="bg-white py-8 sm:py-10">
-      <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-6xl px-6 sm:px-8 lg:px-10">
         <div className="flex gap-3 overflow-x-auto pb-1 [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:grid sm:grid-cols-3 sm:pb-0 lg:grid-cols-6">
           {QUICK_TILES.map((tile) => {
             const Icon = tile.icon;
@@ -2042,7 +2042,7 @@ function SitterCarousel({
   return (
     <div className={isFirst ? "relative" : "relative mt-6"}>
       {/* Row header */}
-      <div className="mb-3 flex items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
+      <div className="mb-3 flex items-center justify-between gap-4 px-6 sm:px-8 lg:px-10">
         <h3 className="flex items-center gap-1.5 text-sm font-semibold text-slate-800 sm:text-base">
           {!labelOverride && <MapPin className="h-3.5 w-3.5 shrink-0 text-[var(--dogshift-blue)]" aria-hidden="true" />}
           {label}
@@ -2080,7 +2080,7 @@ function SitterCarousel({
       {/* Scrollable track */}
       <div
         ref={scrollRef}
-        className="flex gap-4 overflow-x-auto scroll-smooth px-4 pb-4 sm:gap-5 sm:px-6 lg:px-8 [-webkit-overflow-scrolling:touch] [scroll-snap-type:x_mandatory] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="flex gap-4 overflow-x-auto scroll-smooth px-6 pb-4 scroll-pl-6 sm:gap-5 sm:px-8 sm:scroll-pl-8 lg:px-10 lg:scroll-pl-10 [-webkit-overflow-scrolling:touch] [scroll-snap-type:x_mandatory] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         {sitters.map((sitter) => (
           <div
@@ -2124,7 +2124,7 @@ function FeaturedSittersSection({ sitters }: { sitters: SitterPreview[] }) {
   return (
     <section className="bg-slate-50 py-5 sm:py-7">
       <div className="mx-auto max-w-7xl">
-        <div ref={reveal.ref} style={reveal.style} className="mb-4 px-4 sm:px-6 lg:px-8">
+        <div ref={reveal.ref} style={reveal.style} className="mb-4 px-6 sm:px-8 lg:px-10">
           <h2 className="text-lg font-semibold tracking-tight text-slate-900 sm:text-xl">
             Dogsitters disponibles
           </h2>
@@ -2139,7 +2139,7 @@ function FeaturedSittersSection({ sitters }: { sitters: SitterPreview[] }) {
           />
         )}
 
-        <div className="mt-6 px-4 sm:px-6 lg:px-8">
+        <div className="mt-6 px-6 sm:px-8 lg:px-10">
           <Link
             href="/search"
             className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-900 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:bg-slate-50 hover:shadow-md active:translate-y-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)]"
@@ -2191,7 +2191,7 @@ function ReassuranceSection() {
 
   return (
     <section className="bg-white py-16 sm:py-20">
-      <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-6xl px-6 sm:px-8 lg:px-10">
         <div className="mx-auto max-w-5xl">
           <p className="text-xs font-semibold uppercase tracking-wider text-[var(--dogshift-blue)]">
             Pourquoi nous faire confiance
@@ -2266,7 +2266,7 @@ function ServicesSection() {
 
   return (
     <section className="bg-slate-50 py-16 sm:py-20">
-      <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-6xl px-6 sm:px-8 lg:px-10">
         <div ref={reveal.ref} style={reveal.style} className="mx-auto max-w-5xl">
           <p className="text-xs font-semibold uppercase tracking-wider text-[var(--dogshift-blue)]">
             Nos services
@@ -2351,7 +2351,7 @@ function HowItWorksSection() {
 
   return (
     <section className="bg-white py-16 sm:py-20">
-      <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-6xl px-6 sm:px-8 lg:px-10">
         <div className="mx-auto max-w-5xl">
           <div ref={headerReveal.ref} style={headerReveal.style} className="text-center">
             <p className="text-xs font-semibold uppercase tracking-wider text-[var(--dogshift-blue)]">
@@ -2429,7 +2429,7 @@ function SecuritySection() {
 
   return (
     <section className="bg-slate-50 py-16 sm:py-20">
-      <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-6xl px-6 sm:px-8 lg:px-10">
         <div ref={blockReveal.ref} style={blockReveal.style} className="mx-auto max-w-5xl">
           <p className="text-xs font-semibold uppercase tracking-wider text-[var(--dogshift-blue)]">
             Sécurité & confiance
@@ -2478,7 +2478,7 @@ function SecuritySection() {
 function MapSection() {
   return (
     <section className="bg-white py-16 sm:py-20">
-      <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-6xl px-6 sm:px-8 lg:px-10">
         <div className="mb-6 text-center">
           <p className="text-xs font-semibold uppercase tracking-wider text-[var(--dogshift-blue)]">
             Couverture
@@ -2565,7 +2565,7 @@ function WhyDogShiftSection() {
 
   return (
     <section className="bg-white py-16 sm:py-20">
-      <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-6xl px-6 sm:px-8 lg:px-10">
         <div className="grid gap-16 sm:gap-20">
           {/* Why cards */}
           <div>
@@ -2663,7 +2663,7 @@ function FAQSection() {
 
   return (
     <section className="bg-slate-50 py-16 sm:py-20">
-      <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-6xl px-6 sm:px-8 lg:px-10">
         <div ref={reveal.ref} style={reveal.style} className="mx-auto max-w-3xl">
           <p className="text-xs font-semibold uppercase tracking-wider text-[var(--dogshift-blue)]">
             Questions fréquentes
@@ -2730,7 +2730,7 @@ function CitiesSection() {
 
   return (
     <section className="bg-white py-16 sm:py-20">
-      <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-6xl px-6 sm:px-8 lg:px-10">
         <div ref={blockReveal.ref} style={blockReveal.style} className="mx-auto max-w-5xl">
           <p className="text-xs font-semibold uppercase tracking-wider text-[var(--dogshift-blue)]">
             Couverture géographique
@@ -2768,7 +2768,7 @@ function CommunitySection() {
 
   return (
     <section className="bg-slate-50 py-16 sm:py-20">
-      <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-6xl px-6 sm:px-8 lg:px-10">
         <div id="contribution" className="mx-auto max-w-5xl">
           <div ref={blockReveal.ref} style={blockReveal.style} className="flex flex-col gap-4">
             <div className="min-w-0">
@@ -2817,7 +2817,7 @@ function CareersSection() {
 
   return (
     <section className="bg-white py-16 sm:py-20">
-      <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-6xl px-6 sm:px-8 lg:px-10">
         <div className="mx-auto w-full max-w-5xl">
           <div ref={headerReveal.ref} style={headerReveal.style} className="text-center">
             <p className="inline-flex items-center rounded-full border border-slate-200 bg-white px-4 py-1 text-xs font-medium text-slate-600 shadow-sm">
@@ -2877,7 +2877,7 @@ function FinalCTASection() {
 
   return (
     <section className="bg-slate-50 py-16 sm:py-20">
-      <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-6xl px-6 sm:px-8 lg:px-10">
         <div ref={blockReveal.ref} style={blockReveal.style} className="text-center">
           <p className="text-xs font-semibold uppercase tracking-wider text-[var(--dogshift-blue)]">
             Prochaine étape
