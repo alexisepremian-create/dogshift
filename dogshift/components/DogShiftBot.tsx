@@ -185,6 +185,56 @@ export default function DogShiftBot() {
           answer:
             "Super ! 👍 Si vous avez d'autres questions sur DogShift, n'hésitez pas — je suis là !",
         },
+        // ── Phase pilote ─────────────────────────────────────────────────────
+        {
+          keywords: [
+            "phase pilote", "pilote", "pilot", "beta", "lancement", "en cours de lancement",
+            "pas encore disponible", "bientot disponible", "bientôt", "quand ca ouvre",
+            "quand vous ouvrez", "c'est ouvert", "c'est disponible", "deja ouvert",
+            "déjà ouvert", "c'est lance", "c'est lancé", "disponible quand",
+            "liste attente", "liste d'attente", "m'inscrire pour le lancement",
+            "comment ca marche phase", "comment ça marche phase",
+          ],
+          answer:
+            "DogShift est actuellement en phase pilote 🚀 La plateforme est active sur la Riviera (entre Lausanne et Montreux), avec un nombre volontairement limité de dogsitters sélectionnés avec soin. L'expansion vers Genève, Nyon, Morges et d'autres villes est en cours progressivement.",
+        },
+        {
+          keywords: [
+            "commission", "combien vous prenez", "frais plateforme", "frais dogshift",
+            "pourcentage", "part dogshift", "frais service", "frais supplementaire",
+            "zero commission", "0 commission", "gratuit pour sitter",
+          ],
+          answer:
+            "Durant la phase pilote, DogShift applique 0% de commission : les dogsitters conservent 100% du montant des réservations (hors frais Stripe). C'est l'un des avantages d'être parmi les premiers sitters à rejoindre la plateforme.",
+        },
+        {
+          keywords: [
+            "tarif encadre", "tarifs encadrés", "grille tarifaire", "fourchette sitter",
+            "combien sitter gagne", "combien le sitter gagne", "prix minimum", "prix maximum",
+            "tarif minimum", "tarif maximum", "entre combien", "tarif pilote",
+          ],
+          answer:
+            "En phase pilote, les tarifs sont encadrés pour garantir la qualité et la cohérence : Promenade entre CHF 15 et 25, Garde à domicile entre CHF 18 et 30. Chaque sitter fixe son tarif dans cette fourchette selon son expérience.",
+        },
+        {
+          keywords: [
+            "selection sitter", "sélection sitter", "comment sitter est selectionne",
+            "comment sitter est choisi", "criterees sitter", "critères sitter",
+            "verifie comment", "processus selection", "rigoureux", "processus candidature",
+            "casier judiciaire", "background check sitter", "qui peut devenir sitter",
+          ],
+          answer:
+            "Les dogsitters DogShift sont sélectionnés manuellement avec exigence : vérification du profil, expérience avec les animaux, casier judiciaire vierge et entretien. Le nombre de sitters est volontairement limité pour garantir un niveau de qualité élevé dès le lancement.",
+        },
+        {
+          keywords: [
+            "contribuer", "soutenir", "don", "financement", "investir", "investissement",
+            "contribuer lancement", "soutenir lancement", "aider dogshift",
+            "participer lancement", "crowdfunding", "financement participatif",
+          ],
+          answer:
+            "DogShift est construit de manière indépendante et responsable. Si vous souhaitez soutenir le lancement de la plateforme, vous pouvez contribuer volontairement via le bouton « Contribuer au lancement » en bas du site. Merci pour votre confiance !",
+        },
         // ── Qu'est-ce que DogShift ───────────────────────────────────────────
         {
           keywords: [
