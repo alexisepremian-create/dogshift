@@ -1446,11 +1446,11 @@ function StickySearchBar({ visible = true, hero = false }: { visible?: boolean; 
         className={hero
           ? "relative z-[45]"
           : [
-              "absolute left-0 right-0 z-40 w-full transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]",
-              visible ? "opacity-100 scale-100" : "pointer-events-none opacity-0 scale-[0.98]",
+              "fixed left-0 right-0 z-40 w-full transition-all duration-400 ease-out origin-top",
+              visible ? "opacity-100 scale-100" : "pointer-events-none opacity-0 scale-95",
             ].join(" ")
         }
-        style={hero ? undefined : { top: "calc(env(safe-area-inset-top, 0px) + 16px)" }}
+        style={hero ? undefined : { top: "calc(max(env(safe-area-inset-top), 12px) + 12px)" }}
       >
         <div className={sz.wrapPad}>
           <div className={`mx-auto flex ${sz.maxW} items-center ${sz.gap} ${sz.px}`}>
@@ -1863,6 +1863,7 @@ function StickySearchBar({ visible = true, hero = false }: { visible?: boolean; 
 
         </div>
       </div>
+    </div>
     </>
   );
 }
@@ -2933,9 +2934,7 @@ export default function HomePageClient({ sitters = [] }: { sitters?: SitterPrevi
 
   return (
     <div className="min-h-screen bg-white text-slate-900">
-      <div className="sticky top-0 z-50 h-0 w-full overflow-visible">
-        <StickySearchBar visible={showSticky} />
-      </div>
+      <StickySearchBar visible={showSticky} />
       <main className="pb-24 md:pb-0">
         <HeroSection />
         {sitters.length > 0 && <FeaturedSittersSection sitters={sitters} />}
