@@ -10,8 +10,11 @@ import BrandLogo from "@/components/BrandLogo";
 import { useHostUser } from "@/components/HostUserProvider";
 import { useHostDashboardNavItems } from "@/components/dashboardNavItems";
 
-/** Keys shown in the mobile bottom nav, in display order */
-const BOTTOM_NAV_KEYS = ["dashboard", "requests", "messages", "availability", "settings"] as const;
+/** Primary tabs shown directly in the bottom bar (max 4 + "More") */
+const PRIMARY_NAV_KEYS = ["dashboard", "requests", "messages", "availability"] as const;
+
+/** Overflow items accessible via the "More" (⋯) tab */
+const MORE_NAV_KEYS = ["public", "wallet", "profile", "settings"] as const;
 
 /** Shorter labels that fit comfortably inside the tab pill */
 const BOTTOM_NAV_LABELS: Record<string, string> = {
@@ -19,7 +22,10 @@ const BOTTOM_NAV_LABELS: Record<string, string> = {
   requests: "Réservations",
   messages: "Messages",
   availability: "Agenda",
-  settings: "Profil",
+  public: "Profil public",
+  wallet: "Portefeuille",
+  profile: "Mon profil",
+  settings: "Paramètres",
 };
 
 export default function HostDashboardShell({ children }: { children: React.ReactNode }) {
@@ -32,11 +38,13 @@ export default function HostDashboardShell({ children }: { children: React.React
   const mode = (searchParams?.get("mode") ?? "").trim();
   const isPublicPreview = pathname?.startsWith("/sitter/") && mode === "preview";
 
-  /** Five tabs for the mobile bottom nav, in defined order with short labels */
-  const bottomNavItems = (BOTTOM_NAV_KEYS as readonly string[])
-    .map((key) => items.find((i) => i.key === key))
-    .filter(Boolean)
-    .map((item) => ({ ...item!, label: BOTTOM_NAV_LABELS[item!.key] ?? item!.label }));
+  const toNavItem = (key: string) => {
+    const found = items.find((i) => i.key === key);
+    return found ? { ...found, label: BOTTOM_NAV_LABELS[found.key] ?? found.label } : null;
+  };
+
+  const primaryNavItems = (PRIMARY_NAV_KEYS as readonly string[]).map(toNavItem).filter(Boolean) as import("@/components/MobileBottomNav").BottomNavItem[];
+  const moreNavItems = (MORE_NAV_KEYS as readonly string[]).map(toNavItem).filter(Boolean) as import("@/components/MobileBottomNav").BottomNavItem[];
 
   return (
     <div className="min-h-screen w-full max-w-[100vw] overflow-x-hidden bg-white text-slate-900">
@@ -75,7 +83,7 @@ export default function HostDashboardShell({ children }: { children: React.React
       </div>
 
       {/* ── Mobile bottom navigation ── */}
-      <MobileBottomNav items={bottomNavItems} />
+      <MobileBottomNav items={primaryNavItems} moreItems={moreNavItems} />
     </div>
   );
 }

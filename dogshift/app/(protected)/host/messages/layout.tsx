@@ -122,7 +122,7 @@ export default function HostMessagesLayout({ children }: { children: React.React
   }, [conversations]);
 
   return (
-    <div className="flex h-[calc(100vh-80px)] flex-col bg-white -mx-4 -mt-4 sm:mx-0 sm:mt-0 sm:rounded-3xl sm:border sm:border-slate-200 sm:shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)]" data-testid="host-messages-layout">
+    <div className="flex h-[calc(100vh-80px-var(--ds-bottom-nav-h,0px))] lg:h-[calc(100vh-80px)] flex-col bg-white -mx-4 -mt-4 sm:mx-0 sm:mt-0 sm:rounded-3xl sm:border sm:border-slate-200 sm:shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)]" data-testid="host-messages-layout">
         <div className="flex-1 min-h-0 relative">
             <div className="grid h-full gap-0 lg:grid-cols-[360px_1fr]">
             <aside
