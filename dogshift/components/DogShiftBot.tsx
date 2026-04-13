@@ -595,7 +595,7 @@ export default function DogShiftBot() {
   }
 
   return (
-    <div className="fixed bottom-5 right-5 z-50 hidden md:block">
+    <div className="fixed bottom-5 right-5 z-50 flex flex-col items-end gap-3">
       {open ? (
         <div className="w-[360px] max-w-[calc(100vw-2.5rem)] overflow-hidden rounded-3xl border border-white/70 bg-white/80 shadow-[0_24px_80px_-50px_rgba(2,6,23,0.65)] backdrop-blur-xl">
           <div className="flex items-center justify-between border-b border-slate-200/70 px-4 py-3">
@@ -619,7 +619,7 @@ export default function DogShiftBot() {
             </button>
           </div>
 
-          <div ref={scrollRef} className="max-h-[380px] overflow-auto px-4 py-3">
+          <div ref={scrollRef} className="max-h-[340px] overflow-auto px-4 py-3">
             <div className="flex flex-col gap-2">
               {messages.map((m) => {
                 const isUser = m.role === "user";
@@ -672,15 +672,16 @@ export default function DogShiftBot() {
         </div>
       ) : null}
 
+      {/* Bouton flottant — icône ronde sur mobile, pill avec texte sur desktop */}
       {!open ? (
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="group mt-3 inline-flex h-14 items-center gap-3 rounded-3xl bg-[var(--dogshift-blue)] pl-4 pr-5 text-white shadow-[0_18px_60px_-40px_rgba(2,6,23,0.75)] ring-1 ring-white/15 transition hover:bg-[var(--dogshift-blue-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)]"
+          className="group grid h-14 w-14 place-items-center rounded-full bg-[var(--dogshift-blue)] text-white shadow-[0_18px_60px_-40px_rgba(2,6,23,0.75)] ring-1 ring-white/15 transition hover:bg-[var(--dogshift-blue-hover)] md:inline-flex md:h-14 md:w-auto md:items-center md:gap-3 md:rounded-3xl md:pl-4 md:pr-5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)]"
           aria-label="Ouvrir DogShift Bot"
         >
           <DogRobotIcon className="h-7 w-7 text-white transition group-hover:scale-[1.03]" />
-          <span className="hidden select-none text-xs font-semibold text-white sm:inline">
+          <span className="hidden select-none text-xs font-semibold text-white md:inline">
             Posez-moi une question
           </span>
         </button>
