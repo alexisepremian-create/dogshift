@@ -13,6 +13,7 @@ type ChatMessage = {
 };
 
 const STORAGE_KEY = "dogshift:bot:v1";
+const BTN_SIZE = 56; // taille du bouton draggable en px
 
 function nowId() {
   return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
@@ -540,7 +541,6 @@ export default function DogShiftBot() {
   const dragBtnRef = useRef<HTMLButtonElement | null>(null);
   const dragState = useRef({ active: false, moved: false, startTX: 0, startTY: 0 });
   const justDragged = useRef(false);
-  const BTN = 56; // taille du bouton en px
 
   // touchmove non-passif : suit le doigt en temps réel
   useEffect(() => {
@@ -553,8 +553,8 @@ export default function DogShiftBot() {
       dragState.current.moved = true;
       e.preventDefault();
       // Clamp pour garder le bouton dans l'écran
-      const x = Math.max(0, Math.min(window.innerWidth - BTN, t.clientX - BTN / 2));
-      const y = Math.max(0, Math.min(window.innerHeight - BTN, t.clientY - BTN / 2));
+      const x = Math.max(0, Math.min(window.innerWidth - BTN_SIZE, t.clientX - BTN_SIZE / 2));
+      const y = Math.max(0, Math.min(window.innerHeight - BTN_SIZE, t.clientY - BTN_SIZE / 2));
       setLivePos({ x, y });
     };
     btn.addEventListener("touchmove", onMove, { passive: false });
