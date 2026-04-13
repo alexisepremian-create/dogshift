@@ -1559,7 +1559,7 @@ function StickySearchBar({ visible = true, hero = false }: { visible?: boolean; 
               <button
                 type="button"
                 onClick={handleSearch}
-                className={`flex shrink-0 items-center gap-1.5 rounded-full bg-[var(--dogshift-blue)] ${sz.searchPad} ${sz.searchTxt} text-white shadow-[0_4px_16px_-4px_rgba(47,77,107,0.45)] transition-all duration-200 hover:scale-[1.03] hover:shadow-[0_8px_24px_-6px_rgba(47,77,107,0.55)] active:scale-95`}
+                className={`flex shrink-0 items-center gap-1.5 rounded-full bg-slate-900 ${sz.searchPad} ${sz.searchTxt} text-white shadow-[0_4px_16px_-4px_rgba(2,6,23,0.35)] transition-all duration-200 hover:scale-[1.03] hover:bg-slate-800 hover:shadow-[0_8px_24px_-6px_rgba(2,6,23,0.40)] active:scale-95`}
               >
                 <Search className={hero ? "h-4 w-4 sm:h-5 sm:w-5" : "h-3.5 w-3.5 sm:h-4 sm:w-4"} aria-hidden="true" />
                 <span className="hidden sm:block">Rechercher</span>
