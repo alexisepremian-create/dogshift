@@ -2530,19 +2530,18 @@ function BecomeSitterSection() {
             ].map(({ label, icon }) => (
               <li
                 key={label}
-                className="flex flex-row items-center justify-start gap-3 rounded-2xl border border-white/10 bg-white/5 px-6 py-3.5 text-left text-blue-100 sm:flex-col sm:items-center sm:justify-center sm:gap-2.5 sm:px-4 sm:py-5"
+                className="flex flex-row items-center justify-start gap-3 rounded-2xl border border-white/10 bg-white/5 px-6 py-3.5 text-left text-blue-100 sm:flex-col sm:items-center sm:justify-start sm:gap-0 sm:px-4 sm:pt-6 sm:pb-5"
               >
+                {/* Mobile only: checkmark left of text */}
                 <CheckCircle2
                   className="mt-0.5 h-[18px] w-[18px] shrink-0 text-emerald-400 sm:hidden"
                   aria-hidden="true"
                 />
-                <img
-                  src={icon}
-                  alt=""
-                  aria-hidden="true"
-                  className="hidden sm:block h-9 w-9 shrink-0"
-                />
-                <span className="text-[13px] font-medium leading-snug sm:text-sm sm:text-center">{label}</span>
+                {/* Desktop: icon in fixed-height zone so all icons stay at same Y */}
+                <div className="hidden sm:flex h-10 w-10 items-center justify-center">
+                  <img src={icon} alt="" aria-hidden="true" className="h-9 w-9" />
+                </div>
+                <span className="text-[13px] font-medium leading-snug sm:mt-3 sm:text-sm sm:text-center">{label}</span>
               </li>
             ))}
           </ul>
