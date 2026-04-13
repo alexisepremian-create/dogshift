@@ -1464,7 +1464,7 @@ function StickySearchBar({ visible = true, hero = false }: { visible?: boolean; 
           <div className={`mx-auto flex ${sz.maxW} items-center ${sz.gap} ${sz.px}`}>
             <div
               ref={barRef}
-              className={`relative flex min-w-0 flex-1 items-stretch overflow-hidden rounded-full border border-slate-200/90 bg-slate-100 ${sz.pillShadow}`}
+              className={`relative flex min-w-0 flex-1 items-stretch overflow-hidden rounded-full border bg-slate-100 ${sz.pillShadow} ${locationError ? "border-red-300" : "border-slate-200/90"}`}
             >
                 {/*
                   ── Sliding pill — animation layer only ──
@@ -1492,11 +1492,9 @@ function StickySearchBar({ visible = true, hero = false }: { visible?: boolean; 
                     `relative z-10 flex min-w-0 flex-1 sm:flex-[1.4] flex-col justify-center rounded-[28px] ${sz.btnPad} text-left transition-all duration-200 focus-visible:outline-none`,
                     activeSection === "lieu" && !locationError
                       ? "bg-white shadow-[0_2px_12px_-3px_rgba(2,6,23,0.10)]"
-                      : activeSection === "lieu" && locationError
-                        ? "bg-red-100/80 ring-1 ring-inset ring-red-300/60 shadow-[0_2px_12px_-3px_rgba(2,6,23,0.10)]"
-                        : locationError
-                          ? "bg-red-100/80 ring-1 ring-inset ring-red-300/60"
-                          : "hover:bg-white/50",
+                      : locationError
+                        ? "bg-red-100"
+                        : "hover:bg-white/50",
                   ].join(" ")}
                 >
                   <span className={`${sz.labelCls} leading-none text-slate-400`}>
@@ -1524,7 +1522,7 @@ function StickySearchBar({ visible = true, hero = false }: { visible?: boolean; 
                 <button
                   ref={quandRef}
                   type="button"
-                  onClick={() => setActiveSection(activeSection === "quand" ? null : "quand")}
+                  onClick={() => { setLocationError(""); setActiveSection(activeSection === "quand" ? null : "quand"); }}
                   className={[
                     `relative z-10 flex min-w-0 flex-1 flex-col justify-center rounded-[28px] ${sz.btnPad} text-left transition-all duration-200 focus-visible:outline-none`,
                     activeSection === "quand"
@@ -1554,7 +1552,7 @@ function StickySearchBar({ visible = true, hero = false }: { visible?: boolean; 
                 <button
                   ref={besoinRef}
                   type="button"
-                  onClick={() => setActiveSection(activeSection === "besoin" ? null : "besoin")}
+                  onClick={() => { setLocationError(""); setActiveSection(activeSection === "besoin" ? null : "besoin"); }}
                   className={[
                     `relative z-10 flex min-w-0 flex-1 flex-col justify-center rounded-[28px] ${sz.btnPad} text-left transition-all duration-200 focus-visible:outline-none`,
                     activeSection === "besoin"
@@ -1578,8 +1576,8 @@ function StickySearchBar({ visible = true, hero = false }: { visible?: boolean; 
               </button>
             </div>
           </div>
-          {locationError && (
-            <p role="alert" className="mt-2 text-center text-xs font-medium text-red-500 animate-in fade-in slide-in-from-top-1 duration-200">
+          {locationError && !activeSection && (
+            <p role="alert" className="pointer-events-none absolute left-0 right-0 text-center text-xs font-medium text-red-500 animate-in fade-in slide-in-from-top-1 duration-200 z-[60]" style={{ top: "calc(100% + 6px)" }}>
               {locationError}
             </p>
           )}
