@@ -559,7 +559,7 @@ export default function DogShiftBot() {
     };
     btn.addEventListener("touchmove", onMove, { passive: false });
     return () => btn.removeEventListener("touchmove", onMove);
-  }, []);
+  }, [open]); // re-attache quand le bouton réapparaît après fermeture du panneau
 
   function onTouchStart(e: React.TouchEvent<HTMLButtonElement>) {
     if (open) return;
