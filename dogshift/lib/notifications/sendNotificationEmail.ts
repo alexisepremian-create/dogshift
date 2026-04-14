@@ -105,6 +105,7 @@ function formatDateTime(value: unknown) {
   if (!Number.isFinite(ts)) return "";
   try {
     return new Intl.DateTimeFormat("fr-CH", {
+      timeZone: "Europe/Zurich",
       weekday: "short",
       year: "numeric",
       month: "short",
