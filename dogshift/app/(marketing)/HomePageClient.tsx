@@ -1469,7 +1469,7 @@ function StickySearchBar({ visible = true, hero = false }: { visible?: boolean; 
               visible ? "opacity-100 scale-100" : "pointer-events-none opacity-0 scale-95",
             ].join(" ")
         }
-        style={hero ? undefined : { top: "calc(max(env(safe-area-inset-top), 12px) + 12px)" }}
+        style={hero ? undefined : { top: "calc(max(env(safe-area-inset-top), 16px) + 20px)" }}
       >
         <div className={sz.wrapPad}>
           <div className={`mx-auto flex ${sz.maxW} items-center ${sz.gap} ${sz.px}`}>
