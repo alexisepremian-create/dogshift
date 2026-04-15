@@ -12,7 +12,47 @@ console.log("[boot][env]", {
   DATABASE_URL: envDatabaseUrl ?? null,
 });
 
+const csp = [
+  // Only load resources from self by default
+  "default-src 'self'",
+  // Scripts: self + inline (Next.js hydration + login transit) + Google Ads + Clerk
+  "script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://js.stripe.com https://*.clerk.com https://*.clerk.accounts.dev",
+  // Styles: self + inline (Tailwind, Clerk injected styles)
+  "style-src 'self' 'unsafe-inline'",
+  // Images: self + data URIs + blob (canvas/jspdf) + Google avatars + MapTiler tiles + any https
+  "img-src 'self' data: blob: https:",
+  // Fonts: self + data URIs
+  "font-src 'self' data:",
+  // API/WebSocket calls: self + Clerk + Stripe + MapTiler + Google Ads
+  [
+    "connect-src 'self'",
+    "https://*.clerk.com",
+    "https://*.clerk.accounts.dev",
+    "wss://*.clerk.com",
+    "https://api.stripe.com",
+    "https://api.maptiler.com",
+    "https://*.maptiler.com",
+    "https://www.googletagmanager.com",
+    "https://www.google.com",
+    "https://googleads.g.doubleclick.net",
+  ].join(" "),
+  // Iframes: Stripe payment iframes
+  "frame-src 'self' https://js.stripe.com https://hooks.stripe.com https://*.stripe.com",
+  // Workers: self + blob (used by MapLibre/MapTiler GL)
+  "worker-src 'self' blob:",
+  // Objects: none
+  "object-src 'none'",
+  // Base URI: restrict to self to prevent base tag injection
+  "base-uri 'self'",
+  // Form submissions: self only
+  "form-action 'self'",
+].join("; ");
+
 const securityHeaders = [
+  {
+    key: "Content-Security-Policy",
+    value: csp,
+  },
   {
     key: "X-Frame-Options",
     value: "SAMEORIGIN",
