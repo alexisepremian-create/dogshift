@@ -5,7 +5,7 @@ import { useState } from "react";
 import { canGenerateContractAccessLink, lifecycleStatusLabel, type SitterLifecycleStatus } from "@/lib/sitterContract";
 
 type VerificationStatus = "not_verified" | "pending" | "approved" | "rejected";
-type ActionType = "select" | "generate_contract_link" | "approve" | "reject" | "suspend" | "reactivate" | "publish" | "unpublish";
+type ActionType = "select" | "generate_contract_link" | "approve" | "reject" | "suspend" | "reactivate" | "publish" | "unpublish" | "activate";
 
 type Props = {
   sitterUserId: string;
@@ -21,8 +21,9 @@ type Props = {
 const ACTIONS: Array<{ action: ActionType; label: string; tone: string }> = [
   { action: "select", label: "Sélectionner", tone: "bg-indigo-600 hover:bg-indigo-700 text-white" },
   { action: "generate_contract_link", label: "Envoyer le contrat", tone: "bg-violet-600 hover:bg-violet-700 text-white" },
-  { action: "approve", label: "Valider", tone: "bg-emerald-600 hover:bg-emerald-700 text-white" },
-  { action: "reject", label: "Refuser", tone: "bg-rose-600 hover:bg-rose-700 text-white" },
+  { action: "activate", label: "Activer le compte", tone: "bg-emerald-700 hover:bg-emerald-800 text-white" },
+  { action: "approve", label: "Valider vérif.", tone: "bg-emerald-600 hover:bg-emerald-700 text-white" },
+  { action: "reject", label: "Refuser vérif.", tone: "bg-rose-600 hover:bg-rose-700 text-white" },
   { action: "suspend", label: "Suspendre", tone: "bg-slate-900 hover:bg-slate-800 text-white" },
   { action: "reactivate", label: "Réactiver", tone: "bg-sky-600 hover:bg-sky-700 text-white" },
   { action: "publish", label: "Publier", tone: "border border-slate-300 bg-white hover:bg-slate-50 text-slate-900" },
@@ -32,6 +33,7 @@ const ACTIONS: Array<{ action: ActionType; label: string; tone: string }> = [
 const COMPACT_ACTION_GROUPS: Array<Array<ActionType>> = [
   ["select"],
   ["generate_contract_link"],
+  ["activate"],
   ["approve", "reject"],
   ["suspend", "reactivate"],
   ["publish", "unpublish"],
@@ -47,6 +49,7 @@ function verificationLabel(status: VerificationStatus) {
 function actionAllowed(action: ActionType, published: boolean, verificationStatus: VerificationStatus, lifecycleStatus: SitterLifecycleStatus) {
   if (action === "select") return lifecycleStatus === "application_received";
   if (action === "generate_contract_link") return canGenerateContractAccessLink(lifecycleStatus);
+  if (action === "activate") return lifecycleStatus === "contract_signed" && !published;
   if (action === "approve") return verificationStatus === "pending" || verificationStatus === "rejected" || verificationStatus === "not_verified";
   if (action === "reject") return verificationStatus === "pending" || verificationStatus === "approved";
   if (action === "suspend") return published && verificationStatus === "approved";
@@ -58,11 +61,14 @@ function actionAllowed(action: ActionType, published: boolean, verificationStatu
 
 function actionHelp(action: ActionType, published: boolean, verificationStatus: VerificationStatus, lifecycleStatus: SitterLifecycleStatus) {
   if (actionAllowed(action, published, verificationStatus, lifecycleStatus)) return null;
+  if (action === "activate" && lifecycleStatus !== "contract_signed") {
+    return lifecycleStatus === "activated" ? "Compte déjà activé." : "Requiert que le contrat soit signé.";
+  }
   if ((action === "publish" || action === "reactivate") && verificationStatus !== "approved") {
     return "Réservé aux profils approuvés.";
   }
   if ((action === "publish" || action === "reactivate") && lifecycleStatus !== "activated") {
-    return "Publication réservée aux comptes activés manuellement.";
+    return "Activez d'abord le compte (bouton « Activer le compte »).";
   }
   if (action === "generate_contract_link" && !canGenerateContractAccessLink(lifecycleStatus)) {
     return "Le lien sécurisé ne peut être émis qu’avant la signature du contrat.";
@@ -165,8 +171,8 @@ export default function AdminSitterActions({
               : lifecycleStatus === "activated"
                 ? "Profil approuvé et activé: publication ou réactivation disponibles."
                 : lifecycleStatus === "contract_signed"
-                  ? "Contrat signé: la suite de l’activation est gérée manuellement par DogShift."
-                  : "Profil approuvé mais non activé: envoyez le contrat sécurisé puis gérez l’activation plus tard, hors dashboard." 
+                  ? "Contrat signé ✓ — cliquez sur « Activer le compte » pour permettre à la dogsitter de publier son profil."
+                  : "Profil approuvé mais non activé : envoyez le contrat sécurisé puis activez le compte une fois signé." 
             : verificationStatus === "pending"
               ? "Profil en attente de revue: validation ou refus disponibles."
               : verificationStatus === "rejected"

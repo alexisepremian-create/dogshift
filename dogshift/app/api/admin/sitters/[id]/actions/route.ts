@@ -23,7 +23,7 @@ import {
 
 export const runtime = "nodejs";
 
-type ActionType = "select" | "generate_contract_link" | "approve" | "reject" | "suspend" | "reactivate" | "publish" | "unpublish";
+type ActionType = "select" | "generate_contract_link" | "approve" | "reject" | "suspend" | "reactivate" | "publish" | "unpublish" | "activate";
 
 function publicBaseUrlFromRequest(req: NextRequest) {
   const envUrl = (process.env.NEXTAUTH_URL || "").trim();
@@ -54,7 +54,8 @@ function parseAction(value: unknown): ActionType | null {
     value === "suspend" ||
     value === "reactivate" ||
     value === "publish" ||
-    value === "unpublish"
+    value === "unpublish" ||
+    value === "activate"
   ) {
     return value;
   }
@@ -70,6 +71,7 @@ function actionAllowed(action: ActionType, published: boolean, verificationStatu
   if (action === "reactivate") return !published && verificationStatus === VerificationStatus.approved && lifecycleStatus === "activated";
   if (action === "publish") return !published && verificationStatus === VerificationStatus.approved && lifecycleStatus === "activated";
   if (action === "unpublish") return published;
+  if (action === "activate") return lifecycleStatus === "contract_signed" && !published;
   return true;
 }
 
@@ -265,6 +267,12 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     if (action === "unpublish") {
       data.published = false;
       data.publishedAt = null;
+      data.verificationNotes = notes ?? sitter.sitterProfile.verificationNotes ?? null;
+    }
+
+    if (action === "activate") {
+      data.lifecycleStatus = "activated";
+      data.activatedAt = new Date();
       data.verificationNotes = notes ?? sitter.sitterProfile.verificationNotes ?? null;
     }
 
