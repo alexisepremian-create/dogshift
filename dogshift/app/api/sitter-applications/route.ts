@@ -136,7 +136,6 @@ export async function POST(req: NextRequest) {
 
     const idempotencyKey = (req.headers.get("x-idempotency-key") ?? "").trim() || null;
 
-    const ip = readIp(req);
     const userAgent = normalizeNullableString(req.headers.get("user-agent"), 500);
 
     const db = prisma as unknown as {
