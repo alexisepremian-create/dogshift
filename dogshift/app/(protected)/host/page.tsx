@@ -174,7 +174,7 @@ function HostAvatar({ src, alt }: { src: string | null; alt: string }) {
 export default function HostDashboardPage() {
   const { isLoaded, isSignedIn, user } = useUser();
   const host = useHostUser();
-  const { sitterId, profile: remoteProfile } = host;
+  const { sitterId, profile: remoteProfile, published: isPublished } = host;
   const [unreadTick, setUnreadTick] = useState(0);
   const [verificationStatus, setVerificationStatus] = useState<"not_verified" | "pending" | "approved" | "rejected">(
     (host.verificationStatus === "approved" || host.verificationStatus === "pending" || host.verificationStatus === "rejected")
@@ -333,12 +333,12 @@ export default function HostDashboardPage() {
   const rating = averageRating === null ? "—" : formatRating(averageRating);
 
   const todos = useMemo(() => {
-    const base = getHostTodos(profile);
-    if (verificationStatus === "approved") {
+    const base = getHostTodos({ ...profile, stripeAccountStatus: host.stripeAccountStatus });
+    if (verificationStatus === "approved" || verificationStatus === "pending") {
       return base.filter((item) => item.id !== "verify");
     }
     return base;
-  }, [profile, verificationStatus]);
+  }, [profile, verificationStatus, host.stripeAccountStatus]);
 
   const bookings = useMemo(() => (sitterId ? loadHostBookings(sitterId) : []), [sitterId]);
   const statuses = useMemo(() => (sitterId ? loadHostRequestStatus(sitterId) : {}), [sitterId]);
@@ -505,8 +505,14 @@ export default function HostDashboardPage() {
 
             {todos.length === 0 ? (
               <div className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50 p-5">
-                <p className="text-sm font-semibold text-emerald-900">Tout est prêt</p>
-                <p className="mt-1 text-sm text-emerald-900/80">Votre profil est complet.</p>
+                <p className="text-sm font-semibold text-emerald-900">
+                  {isPublished ? "Tout est en ordre ✓" : "Profil complet"}
+                </p>
+                <p className="mt-1 text-sm text-emerald-900/80">
+                  {isPublished
+                    ? "Votre profil est publié et complet. Rien à faire pour l'instant."
+                    : "Votre profil est complet. Rendez-vous dans l'onglet profil pour le publier."}
+                </p>
               </div>
             ) : (
               <div className="mt-5 space-y-3">
