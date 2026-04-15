@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { useSignIn, useUser } from "@clerk/nextjs";
+import { useClerk, useSignIn, useUser } from "@clerk/nextjs";
 import Link from "next/link";
 
 function normalizeEmail(input: string) {
@@ -14,6 +14,7 @@ type VerifyMode = "emailCode" | "mfa";
 
 export default function LoginForm() {
   const { signIn, fetchStatus } = useSignIn();
+  const { setActive } = useClerk();
   const { isLoaded: userLoaded, isSignedIn } = useUser();
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -109,14 +110,12 @@ export default function LoginForm() {
       const status = (signIn as any).status;
 
       if (status === "complete") {
-        // Try finalize() first; fall back to direct navigation if it doesn't redirect
-        try {
-          await finalizeSignIn();
-        } catch {
-          // ignore
+        // Activate the session then navigate directly (finalize() can misroute in v7)
+        const createdSessionId = (signIn as any).createdSessionId;
+        if (createdSessionId) {
+          await setActive({ session: createdSessionId });
         }
-        // Fallback: navigate directly in case finalize() didn't trigger navigation
-        router.replace(redirectAfterAuth);
+        window.location.replace(redirectAfterAuth);
         return;
       } else if (status === "needs_client_trust" || status === "needs_second_factor") {
         // Client Trust (new device) or MFA: verify identity via email code
