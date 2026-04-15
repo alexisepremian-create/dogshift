@@ -1,12 +1,19 @@
 import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
 import { auth, currentUser } from "@clerk/nextjs/server";
 
 import { prisma } from "@/lib/prisma";
 import { normalizeSitterLifecycleStatus, isActivatedStatus } from "@/lib/sitterContract";
+import { getRequestAdminAccess } from "@/lib/adminAuth";
 
 export const runtime = "nodejs";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const adminAccess = await getRequestAdminAccess(req);
+  if (!adminAccess.isAdmin) {
+    return NextResponse.json({ error: "FORBIDDEN", hint: "Admin access required" }, { status: 403 });
+  }
+
   const { userId: clerkUserId } = await auth();
   if (!clerkUserId) {
     return NextResponse.json({ error: "NOT_SIGNED_IN", hint: "Open this URL while signed in" }, { status: 401 });

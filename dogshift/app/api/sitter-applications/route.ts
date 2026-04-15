@@ -4,6 +4,7 @@ import type { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { sendEmail } from "@/lib/email/sendEmail";
 import { render } from "@react-email/render";
+import { checkRateLimit } from "@/lib/rateLimit";
 
 import {
   PilotSitterApplicationConfirmationEmail,
@@ -71,6 +72,15 @@ function normalizeAge(value: unknown) {
 
 export async function POST(req: NextRequest) {
   try {
+    const ip = readIp(req) ?? "unknown";
+    const rl = checkRateLimit(`sitter-apply:${ip}`, { limit: 3, windowMs: 60 * 60 * 1000 });
+    if (!rl.allowed) {
+      return NextResponse.json(
+        { ok: false, error: "RATE_LIMITED", retryAfter: Math.ceil((rl.resetAt - Date.now()) / 1000) },
+        { status: 429, headers: { "Retry-After": String(Math.ceil((rl.resetAt - Date.now()) / 1000)) } }
+      );
+    }
+
     const body = (await req.json().catch(() => null)) as unknown;
     if (!body || typeof body !== "object") {
       return NextResponse.json({ ok: false, error: "INVALID_BODY" }, { status: 400 });

@@ -4,6 +4,7 @@ import path from "path";
 import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from "pdf-lib";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { auth } from "@clerk/nextjs/server";
 
 import { formatSwissDateTimeHuman } from "@/lib/datetime/formatSwissDateTime";
 import { prisma } from "@/lib/prisma";
@@ -347,6 +348,11 @@ async function generateContractSignedPdfBytes(args: {
 
 export async function POST(req: NextRequest) {
   try {
+    const { userId: clerkUserId } = await auth();
+    if (!clerkUserId) {
+      return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
+    }
+
     const body = (await req.json().catch(() => null)) as
       | {
           contractSnapshot?: any;
@@ -388,17 +394,22 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, error: "INCONSISTENT_CONTRACT_VERSION" }, { status: 400 });
     }
 
-    const profile = await prisma.sitterProfile.findUnique({
+    const profile = await (prisma as any).sitterProfile.findUnique({
       where: { sitterId },
-      select: { id: true, contractSignedPdfUrl: true },
+      select: { id: true, contractSignedPdfUrl: true, user: { select: { clerkUserId: true } } },
     });
     if (!profile?.id) {
       return NextResponse.json({ ok: false, error: "NOT_FOUND" }, { status: 404 });
     }
 
-    if (profile.contractSignedPdfUrl) {
+    // Verify the authenticated user owns this sitter profile
+    if (profile.user?.clerkUserId !== clerkUserId) {
+      return NextResponse.json({ ok: false, error: "FORBIDDEN" }, { status: 403 });
+    }
+
+    if ((profile as any).contractSignedPdfUrl) {
       try {
-        const presigned = await presignGetObject({ key: profile.contractSignedPdfUrl, expiresInSeconds: 600 });
+        const presigned = await presignGetObject({ key: (profile as any).contractSignedPdfUrl, expiresInSeconds: 600 });
         return NextResponse.json({ ok: true, pdfUrl: presigned.url }, { status: 200 });
       } catch {
         // If R2 isn't configured in this environment, fall back to regenerating.

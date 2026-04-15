@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 
+import { checkRateLimit, getClientIp } from "@/lib/rateLimit";
+
 // Some environments ship nodemailer without TypeScript declarations.
 // Use a require() import to avoid TS build failures while keeping runtime behavior.
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -246,6 +248,15 @@ async function sendAutoReplyWithResend(input: { to: string }) {
 
 export async function POST(request: Request) {
   try {
+    const ip = getClientIp(request);
+    const rl = checkRateLimit(`contact:${ip}`, { limit: 5, windowMs: 15 * 60 * 1000 });
+    if (!rl.allowed) {
+      return NextResponse.json(
+        { ok: false, error: "RATE_LIMITED", retryAfter: Math.ceil((rl.resetAt - Date.now()) / 1000) },
+        { status: 429, headers: { "Retry-After": String(Math.ceil((rl.resetAt - Date.now()) / 1000)) } }
+      );
+    }
+
     const body = (await request.json()) as { message?: unknown; email?: unknown };
     const message = typeof body.message === "string" ? body.message.trim() : "";
     const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
