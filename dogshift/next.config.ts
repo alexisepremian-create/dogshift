@@ -32,7 +32,8 @@ const csp = [
   // Only load resources from self by default
   "default-src 'self'",
   // Scripts: self + inline (Next.js hydration + login transit) + Google Ads + Clerk
-  "script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://js.stripe.com https://*.clerk.com https://*.clerk.accounts.dev",
+  // clerk.dogshift.ch = sous-domaine personnalisé Clerk (proxy sur ton domaine)
+  "script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://js.stripe.com https://*.clerk.com https://*.clerk.accounts.dev https://clerk.dogshift.ch",
   // Styles: self + inline (Tailwind, Clerk injected styles)
   "style-src 'self' 'unsafe-inline'",
   // Images: self + data URIs + blob (canvas/jspdf) + Google avatars + MapTiler tiles + any https
@@ -44,7 +45,9 @@ const csp = [
     "connect-src 'self'",
     "https://*.clerk.com",
     "https://*.clerk.accounts.dev",
+    "https://clerk.dogshift.ch",
     "wss://*.clerk.com",
+    "wss://clerk.dogshift.ch",
     "https://api.stripe.com",
     "https://api.maptiler.com",
     "https://*.maptiler.com",
