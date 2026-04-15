@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { withSentryConfig } from "@sentry/nextjs";
 
 const envNextAuthUrl = process.env.NEXTAUTH_URL;
 const envNextAuthSecretPresent = Boolean((process.env.NEXTAUTH_SECRET || "").trim());
@@ -24,6 +25,7 @@ console.log("[boot][env]", {
  *   - Stripe     → paiements (JS + iframes)
  *   - MapTiler   → cartes interactives
  *   - Google Ads → AW-18081650051 (via googletagmanager.com)
+ *   - Sentry     → monitoring d'erreurs (ingest.de.sentry.io)
  *
  * Pour déboguer un service bloqué : ouvre la console navigateur,
  * cherche les erreurs "Content Security Policy" ou "CSP".
@@ -54,6 +56,8 @@ const csp = [
     "https://www.googletagmanager.com",
     "https://www.google.com",
     "https://googleads.g.doubleclick.net",
+    "https://*.sentry.io",
+    "https://ingest.de.sentry.io",
   ].join(" "),
   // Iframes: Stripe payment iframes
   "frame-src 'self' https://js.stripe.com https://hooks.stripe.com https://*.stripe.com",
@@ -120,4 +124,23 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+export default withSentryConfig(nextConfig, {
+  org: "dogshift",
+  project: "javascript-nextjs",
+
+  // Upload source maps to Sentry for readable stack traces in prod
+  // Requires SENTRY_AUTH_TOKEN env var on Vercel (optional but recommended)
+  silent: !process.env.CI,
+
+  // Disable source map upload if no auth token is set (avoids build errors)
+  sourcemaps: {
+    disable: !process.env.SENTRY_AUTH_TOKEN,
+  },
+
+  // Disable Sentry telemetry
+  telemetry: false,
+
+  // Auto-instrument API routes and server components
+  autoInstrumentServerFunctions: true,
+  autoInstrumentMiddleware: true,
+});
