@@ -4,6 +4,7 @@ import { Download, Info } from "lucide-react";
 
 import { prisma } from "@/lib/prisma";
 import { getAdminSessionFromCookies, isValidAdminSessionValue } from "@/lib/adminAuth";
+import AdminShell from "@/components/admin/AdminShell";
 
 export const metadata: Metadata = { title: "Journal juridique — Admin" };
 
@@ -125,6 +126,7 @@ export default async function AdminJuridiquePage({
   const allActions = Object.keys(ACTION_LABELS);
 
   return (
+    <AdminShell>
     <div className="space-y-8 px-2 pt-6 sm:px-4">
 
       {/* Header */}
@@ -271,5 +273,6 @@ export default async function AdminJuridiquePage({
         </div>
       )}
     </div>
+    </AdminShell>
   );
 }
