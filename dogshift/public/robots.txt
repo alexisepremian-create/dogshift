@@ -1,0 +1,15 @@
+User-agent: *
+Allow: /
+
+# Private / authenticated zones — do not index
+Disallow: /admin
+Disallow: /account
+Disallow: /dashboard
+Disallow: /checkout
+Disallow: /paiement
+Disallow: /onboarding
+Disallow: /messages
+Disallow: /api/
+
+# Sitemap
+Sitemap: https://www.dogshift.ch/sitemap.xml

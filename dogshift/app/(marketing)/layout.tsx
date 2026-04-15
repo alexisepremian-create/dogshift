@@ -5,6 +5,7 @@ import { Instagram, Facebook } from "lucide-react";
 import DogShiftBot from "@/components/DogShiftBot";
 import PageTopOffset from "@/components/PageTopOffset";
 import SiteHeader from "@/components/SiteHeader";
+import CookieSettingsButton from "@/components/CookieSettingsButton";
 import { VisaLogo, MastercardLogo, ApplePayLogo, TwintLogo } from "@/components/ui/PaymentIcons";
 
 export default function MarketingLayout({ children }: { children: React.ReactNode }) {
@@ -110,13 +111,17 @@ export default function MarketingLayout({ children }: { children: React.ReactNod
           </div>
 
           <div className="mt-12 flex flex-col items-start justify-start gap-4 border-t border-slate-200/70 pt-8">
-            <div className="flex items-center gap-4 text-xs text-slate-500">
+            <div className="flex flex-wrap items-center gap-4 text-xs text-slate-500">
               <Link href="/confidentialite" className="hover:text-slate-900">
                 Politique de confidentialité
               </Link>
               <Link href="/cgu" className="hover:text-slate-900">
                 Conditions d'utilisation
               </Link>
+              <Link href="/mentions-legales" className="hover:text-slate-900">
+                Mentions légales
+              </Link>
+              <CookieSettingsButton />
             </div>
             <p className="text-xs text-slate-500">© 2026 DogShift. Tous droits réservés.</p>
           </div>

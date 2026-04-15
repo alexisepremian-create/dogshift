@@ -182,6 +182,7 @@ function CheckoutForm({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [expressApplePayReady, setExpressApplePayReady] = useState<boolean | null>(null);
+  const [termsAccepted, setTermsAccepted] = useState(false);
 
   function routeAfterPaymentStatus(status?: string | null) {
     const safeBookingId = encodeURIComponent(bookingId);
@@ -349,11 +350,34 @@ function CheckoutForm({
         </div>
       </div>
       {error ? <p className="mt-4 text-sm font-medium text-rose-600">{error}</p> : null}
+
+      {/* CGU acceptance — required before payment (Swiss CO art. 1 / nLPD) */}
+      <label className="mt-5 flex cursor-pointer items-start gap-3">
+        <input
+          type="checkbox"
+          checked={termsAccepted}
+          onChange={(e) => setTermsAccepted(e.target.checked)}
+          className="mt-0.5 h-4 w-4 flex-none cursor-pointer rounded border-slate-300 accent-[var(--dogshift-blue)]"
+          aria-label="J'accepte les conditions d'utilisation et la politique d'annulation"
+        />
+        <span className="text-xs leading-relaxed text-slate-600">
+          J&apos;ai lu et j&apos;accepte les{" "}
+          <a href="/cgu" target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 hover:text-slate-900">
+            Conditions d&apos;utilisation
+          </a>{" "}
+          et la{" "}
+          <a href="/confidentialite" target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 hover:text-slate-900">
+            Politique de confidentialité
+          </a>
+          , ainsi que la politique d&apos;annulation applicable à ma réservation.
+        </span>
+      </label>
+
       <button
         type="button"
-        disabled={!stripe || !elements || submitting}
+        disabled={!stripe || !elements || submitting || !termsAccepted}
         onClick={() => void onPay()}
-        className={`mt-6 w-full ${PRIMARY_BTN}`}
+        className={`mt-4 w-full ${PRIMARY_BTN}`}
       >
         {submitting ? "Paiement…" : "Payer"}
       </button>

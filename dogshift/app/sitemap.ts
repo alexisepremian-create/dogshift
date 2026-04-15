@@ -1,48 +1,56 @@
 import type { MetadataRoute } from "next";
 
+const BASE = "https://www.dogshift.ch";
+
+/**
+ * Next.js sitemap — only public marketing pages.
+ * Authenticated / private routes are excluded (also blocked in robots.txt).
+ */
 export default function sitemap(): MetadataRoute.Sitemap {
-  const lastModified = new Date();
+  const now = new Date().toISOString();
 
   return [
     {
-      url: "https://www.dogshift.ch",
-      lastModified,
+      url: BASE,
+      lastModified: now,
+      changeFrequency: "weekly",
+      priority: 1,
     },
     {
-      url: "https://www.dogshift.ch/devenir-dogsitter",
-      lastModified,
+      url: `${BASE}/search`,
+      lastModified: now,
+      changeFrequency: "daily",
+      priority: 0.9,
     },
     {
-      url: "https://www.dogshift.ch/dog-sitter-lausanne",
-      lastModified,
+      url: `${BASE}/devenir-dogsitter`,
+      lastModified: now,
+      changeFrequency: "monthly",
+      priority: 0.8,
     },
     {
-      url: "https://www.dogshift.ch/dog-sitter-geneve",
-      lastModified,
+      url: `${BASE}/contribuer`,
+      lastModified: now,
+      changeFrequency: "monthly",
+      priority: 0.5,
     },
     {
-      url: "https://www.dogshift.ch/dog-sitter-montreux",
-      lastModified,
+      url: `${BASE}/cgu`,
+      lastModified: now,
+      changeFrequency: "yearly",
+      priority: 0.3,
     },
     {
-      url: "https://www.dogshift.ch/dog-sitter-vevey",
-      lastModified,
+      url: `${BASE}/confidentialite`,
+      lastModified: now,
+      changeFrequency: "yearly",
+      priority: 0.3,
     },
     {
-      url: "https://www.dogshift.ch/dog-sitter-nyon",
-      lastModified,
-    },
-    {
-      url: "https://www.dogshift.ch/dog-sitter-morges",
-      lastModified,
-    },
-    {
-      url: "https://www.dogshift.ch/reserver",
-      lastModified,
-    },
-    {
-      url: "https://www.dogshift.ch/profil",
-      lastModified,
+      url: `${BASE}/mentions-legales`,
+      lastModified: now,
+      changeFrequency: "yearly",
+      priority: 0.2,
     },
   ];
 }
