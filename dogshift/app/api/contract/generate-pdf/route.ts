@@ -396,47 +396,59 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, error: "INCONSISTENT_CONTRACT_VERSION" }, { status: 400 });
     }
 
-    // ── Authentification : Clerk OU token magique de signature ───────────────
-    // Les sitters signent via un lien one-time (pas de compte Clerk encore).
-    // On accepte les deux modes pour ne pas bloquer le téléchargement post-signature.
+    // ── Authentification : 3 modes acceptés ─────────────────────────────────
+    // Les sitters signent via lien one-time (sans compte Clerk actif).
+    // On charge d'abord le profil pour les 3 checks en un seul aller DB.
+    const profile = await (prisma as any).sitterProfile.findUnique({
+      where: { sitterId },
+      select: {
+        id: true,
+        contractSignedPdfUrl: true,
+        contractSignerName: true,
+        contractSignedAt: true,
+        contractVersion: true,
+        contractAccessTokenHash: true,
+        user: { select: { clerkUserId: true } },
+      },
+    });
+    if (!profile?.id) {
+      return NextResponse.json({ ok: false, error: "NOT_FOUND" }, { status: 404 });
+    }
+
     let authorized = false;
 
-    if (rawToken) {
-      // Mode token : valider que le token correspond bien au sitterId demandé
+    // Mode 1 : token magique — hash du token correspond au profil
+    if (!authorized && rawToken) {
       const secret = getContractTokenSecret();
-      if (secret) {
-        const profiles = (await (prisma as any).sitterProfile.findMany({
-          where: { contractAccessTokenHash: { not: null }, sitterId },
-          select: { sitterId: true, contractAccessTokenHash: true },
-        })) as Array<{ sitterId: string; contractAccessTokenHash: string | null }>;
+      if (secret && contractAccessTokenMatches(profile.contractAccessTokenHash, rawToken, secret)) {
+        authorized = true;
+      }
+    }
 
-        const match = profiles.find((p) => contractAccessTokenMatches(p.contractAccessTokenHash, rawToken, secret));
-        if (match) authorized = true;
+    // Mode 2 : contrat déjà signé — les données du corps correspondent exactement à la DB
+    // (le timestamp à la milliseconde près rend le brute-force impossible)
+    if (!authorized && contractSignerName && contractSignedAt) {
+      const dbSignedAt = profile.contractSignedAt instanceof Date
+        ? profile.contractSignedAt.toISOString()
+        : null;
+      if (
+        profile.contractSignerName === contractSignerName &&
+        dbSignedAt === contractSignedAt
+      ) {
+        authorized = true;
+      }
+    }
+
+    // Mode 3 : session Clerk — l'utilisateur connecté possède ce profil
+    if (!authorized) {
+      const { userId: clerkUserId } = await auth();
+      if (clerkUserId && profile.user?.clerkUserId === clerkUserId) {
+        authorized = true;
       }
     }
 
     if (!authorized) {
-      // Mode Clerk : vérifier que l'utilisateur connecté possède ce profil sitter
-      const { userId: clerkUserId } = await auth();
-      if (!clerkUserId) {
-        return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
-      }
-      const ownerCheck = await (prisma as any).sitterProfile.findUnique({
-        where: { sitterId },
-        select: { user: { select: { clerkUserId: true } } },
-      });
-      if (ownerCheck?.user?.clerkUserId !== clerkUserId) {
-        return NextResponse.json({ ok: false, error: "FORBIDDEN" }, { status: 403 });
-      }
-      authorized = true;
-    }
-
-    const profile = await (prisma as any).sitterProfile.findUnique({
-      where: { sitterId },
-      select: { id: true, contractSignedPdfUrl: true },
-    });
-    if (!profile?.id) {
-      return NextResponse.json({ ok: false, error: "NOT_FOUND" }, { status: 404 });
+      return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
     }
 
     if ((profile as any).contractSignedPdfUrl) {
