@@ -12,8 +12,8 @@ import { VisaLogo, MastercardLogo, ApplePayLogo, TwintLogo } from "@/components/
 export default function MarketingLayout({ children }: { children: React.ReactNode }) {
   return (
     <>
-      <SiteHeader />
       <CguUpdateBanner />
+      <SiteHeader />
       <PageTopOffset>{children}</PageTopOffset>
       <DogShiftBot />
       <footer className="border-t border-slate-200/70 bg-white">

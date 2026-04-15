@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useUser } from "@clerk/nextjs";
 import Link from "next/link";
 import { X, FileText } from "lucide-react";
@@ -9,18 +9,33 @@ import { CGU_VERSION } from "@/lib/cguVersion";
 
 // Affiché quand un utilisateur connecté n'a pas encore accepté la version
 // actuelle des CGU. La version acceptée est stockée dans unsafeMetadata Clerk.
-// Pour déclencher un nouveau banneau, il suffit de changer CGU_VERSION dans lib/cguVersion.ts.
+// Le banner se positionne AVANT le SiteHeader dans le DOM et ajuste la CSS
+// variable --ds-maintenance-banner-height dont le header dépend pour son top offset.
 export default function CguUpdateBanner() {
   const { isSignedIn, user } = useUser();
   const [visible, setVisible] = useState(false);
   const [accepting, setAccepting] = useState(false);
+  const bannerRef = useRef<HTMLDivElement>(null);
+
+  // Synchronise --ds-maintenance-banner-height avec la hauteur réelle du banner
+  useEffect(() => {
+    const el = bannerRef.current;
+    const root = document.documentElement;
+    if (visible && el) {
+      const h = el.getBoundingClientRect().height;
+      root.style.setProperty("--ds-maintenance-banner-height", `${h}px`);
+    } else {
+      root.style.setProperty("--ds-maintenance-banner-height", "0px");
+    }
+    return () => {
+      root.style.setProperty("--ds-maintenance-banner-height", "0px");
+    };
+  }, [visible]);
 
   useEffect(() => {
     if (!isSignedIn || !user) return;
     const accepted = (user.unsafeMetadata as Record<string, string>)?.cguVersion;
-    if (accepted !== CGU_VERSION) {
-      setVisible(true);
-    }
+    if (accepted !== CGU_VERSION) setVisible(true);
   }, [isSignedIn, user]);
 
   async function accept() {
@@ -30,7 +45,6 @@ export default function CguUpdateBanner() {
       await user.update({ unsafeMetadata: { ...user.unsafeMetadata, cguVersion: CGU_VERSION } });
       setVisible(false);
     } catch {
-      // fail silently, user can dismiss manually
       setVisible(false);
     } finally {
       setAccepting(false);
@@ -40,7 +54,7 @@ export default function CguUpdateBanner() {
   if (!visible) return null;
 
   return (
-    <div className="w-full bg-[#2f4d6b] px-4 py-3 text-white shadow-md">
+    <div ref={bannerRef} className="w-full bg-[#2f4d6b] px-4 py-3 text-white shadow-md">
       <div className="mx-auto flex max-w-5xl items-start gap-3 sm:items-center">
         <FileText className="mt-0.5 h-4 w-4 shrink-0 sm:mt-0" aria-hidden="true" />
 
