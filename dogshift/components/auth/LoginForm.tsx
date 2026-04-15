@@ -9,6 +9,8 @@ function normalizeEmail(input: string) {
   return input.replace(/\s+/g, "").trim().toLowerCase();
 }
 
+type Step = "email" | "password" | "emailCode";
+
 export default function LoginForm() {
   const { signIn, fetchStatus } = useSignIn();
   const { isLoaded: userLoaded, isSignedIn } = useUser();
@@ -23,16 +25,38 @@ export default function LoginForm() {
   const redirectAfterAuth = next ? `/post-login?next=${encodeURIComponent(next)}` : "/post-login";
 
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [emailCode, setEmailCode] = useState("");
+  const [step, setStep] = useState<Step>("email");
   const [loading, setLoading] = useState(false);
-  const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [autoGoogleStarted, setAutoGoogleStarted] = useState(false);
 
   const fetching = fetchStatus === "fetching";
   const disabled = fetching || loading || !signIn;
 
-  async function handleEmailLogin(e: React.FormEvent) {
+  async function finalizeSignIn() {
+    if ((signIn as any).status === "complete") {
+      await (signIn as any).finalize({
+        navigate: ({ session, decorateUrl }: { session?: any; decorateUrl: (url: string) => string }) => {
+          if (session?.currentTask) {
+            console.log("[LoginForm] session task:", session.currentTask);
+            return;
+          }
+          const url = decorateUrl(redirectAfterAuth);
+          if (url.startsWith("http")) {
+            window.location.href = url;
+          } else {
+            router.replace(url);
+          }
+        },
+      });
+      return true;
+    }
+    return false;
+  }
+
+  async function handleEmailContinue(e: React.FormEvent) {
     e.preventDefault();
     if (!signIn) return;
 
@@ -45,15 +69,60 @@ export default function LoginForm() {
     setError(null);
     setLoading(true);
     try {
-      const { error: createError } = await (signIn as any).create({ identifier: normalized });
-      if (createError) throw new Error(createError.message ?? "Erreur de connexion.");
+      await (signIn as any).create({ identifier: normalized });
 
-      await (signIn as any).emailCode.sendCode();
+      const factors: Array<{ strategy: string }> = (signIn as any).supportedFirstFactors ?? [];
+      const hasPassword = factors.some((f) => f.strategy === "password");
 
-      setSent(true);
+      if (hasPassword) {
+        setStep("password");
+      } else {
+        await (signIn as any).emailCode.sendCode();
+        setStep("emailCode");
+      }
     } catch (err) {
-      console.error("[LoginForm] handleEmailLogin error:", err);
-      setError(err instanceof Error ? err.message : "Impossible d'envoyer le lien. Réessaie.");
+      console.error("[LoginForm] handleEmailContinue error:", err);
+      setError(err instanceof Error ? err.message : "Impossible de continuer. Réessaie.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handlePasswordSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!signIn || loading) return;
+
+    if (!password) {
+      setError("Merci d'entrer ton mot de passe.");
+      return;
+    }
+
+    setError(null);
+    setLoading(true);
+    try {
+      await (signIn as any).attemptFirstFactor({ strategy: "password", password });
+      const done = await finalizeSignIn();
+      if (!done) {
+        setError("Connexion incomplète. Réessaie.");
+        setLoading(false);
+      }
+    } catch (err) {
+      console.error("[LoginForm] handlePasswordSubmit error:", err);
+      setError(err instanceof Error ? err.message : "Mot de passe incorrect.");
+      setLoading(false);
+    }
+  }
+
+  async function switchToEmailCode() {
+    if (!signIn || loading) return;
+    setError(null);
+    setLoading(true);
+    try {
+      await (signIn as any).emailCode.sendCode();
+      setStep("emailCode");
+    } catch (err) {
+      console.error("[LoginForm] switchToEmailCode error:", err);
+      setError(err instanceof Error ? err.message : "Impossible d'envoyer le code. Réessaie.");
     } finally {
       setLoading(false);
     }
@@ -73,32 +142,23 @@ export default function LoginForm() {
     setLoading(true);
     try {
       await (signIn as any).emailCode.verifyCode({ code });
-
-      if ((signIn as any).status === "complete") {
-        await (signIn as any).finalize({
-          navigate: ({ session, decorateUrl }: { session?: any; decorateUrl: (url: string) => string }) => {
-            if (session?.currentTask) {
-              console.log("[LoginForm] session task:", session.currentTask);
-              return;
-            }
-            const url = decorateUrl(redirectAfterAuth);
-            if (url.startsWith("http")) {
-              window.location.href = url;
-            } else {
-              router.replace(url);
-            }
-          },
-        });
-        return;
+      const done = await finalizeSignIn();
+      if (!done) {
+        setError("Connexion incomplète. Réessaie.");
+        setLoading(false);
       }
-
-      setError("Connexion incomplète. Réessaie.");
-      setLoading(false);
     } catch (err) {
       console.error("[LoginForm] handleEmailCodeVerify error:", err);
       setError(err instanceof Error ? err.message : "Code invalide.");
       setLoading(false);
     }
+  }
+
+  function resetToEmail() {
+    setStep("email");
+    setPassword("");
+    setEmailCode("");
+    setError(null);
   }
 
   async function handleGoogle() {
@@ -117,7 +177,6 @@ export default function LoginForm() {
       const status = (signIn as any).status;
       if (status === "needs_client_trust") {
         // Clerk's invisible CAPTCHA will resolve via the clerk-captcha div.
-        // Unlock the UI so the user isn't stuck with disabled buttons.
         setLoading(false);
         return;
       }
@@ -160,8 +219,8 @@ export default function LoginForm() {
           <div className="h-px flex-1 bg-slate-200" />
         </div>
 
-        {!sent ? (
-          <form onSubmit={handleEmailLogin} className="space-y-5">
+        {step === "email" && (
+          <form onSubmit={handleEmailContinue} className="space-y-5">
             <div>
               <label className="block text-sm font-medium text-slate-700" htmlFor="email">
                 E-mail
@@ -184,12 +243,64 @@ export default function LoginForm() {
               disabled={disabled}
               className="inline-flex w-full items-center justify-center rounded-full bg-slate-900 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {loading ? "Envoi…" : "Se connecter par e-mail"}
+              {loading ? "Vérification…" : "Continuer"}
             </button>
 
             {error ? <p className="text-sm text-rose-600">{error}</p> : null}
           </form>
-        ) : (
+        )}
+
+        {step === "password" && (
+          <form onSubmit={handlePasswordSubmit} className="space-y-5">
+            <div>
+              <label className="block text-sm font-medium text-slate-700" htmlFor="password">
+                Mot de passe
+              </label>
+              <p className="mt-0.5 text-xs text-slate-500">{email}</p>
+              <input
+                id="password"
+                type="password"
+                autoComplete="current-password"
+                autoFocus
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                disabled={disabled}
+                className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:ring-4 focus:ring-slate-200 disabled:cursor-not-allowed disabled:opacity-60"
+                placeholder="••••••••"
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={disabled}
+              className="inline-flex w-full items-center justify-center rounded-full bg-slate-900 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {loading ? "Connexion…" : "Se connecter"}
+            </button>
+
+            <button
+              type="button"
+              disabled={disabled}
+              onClick={() => void switchToEmailCode()}
+              className="inline-flex w-full items-center justify-center rounded-full border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              Utiliser un code par e-mail
+            </button>
+
+            <button
+              type="button"
+              disabled={disabled}
+              onClick={resetToEmail}
+              className="block w-full text-center text-sm text-slate-500 hover:text-slate-700"
+            >
+              ← Changer d'e-mail
+            </button>
+
+            {error ? <p className="text-sm text-rose-600">{error}</p> : null}
+          </form>
+        )}
+
+        {step === "emailCode" && (
           <form onSubmit={handleEmailCodeVerify} className="space-y-5">
             <div>
               <label className="block text-sm font-medium text-slate-700" htmlFor="email-code">
@@ -199,13 +310,14 @@ export default function LoginForm() {
                 id="email-code"
                 inputMode="numeric"
                 autoComplete="one-time-code"
+                autoFocus
                 value={emailCode}
                 onChange={(e) => setEmailCode(e.target.value)}
                 disabled={disabled}
                 className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:ring-4 focus:ring-slate-200 disabled:cursor-not-allowed disabled:opacity-60"
                 placeholder="123456"
               />
-              <p className="mt-2 text-sm text-slate-600">Un code vient d'être envoyé. Vérifie ta boîte mail (et les spams).</p>
+              <p className="mt-2 text-sm text-slate-600">Un code vient d'être envoyé à {email}. Vérifie ta boîte mail (et les spams).</p>
             </div>
 
             <button
@@ -219,15 +331,10 @@ export default function LoginForm() {
             <button
               type="button"
               disabled={disabled}
-              onClick={() => {
-                if (loading) return;
-                setSent(false);
-                setEmailCode("");
-                setError(null);
-              }}
+              onClick={resetToEmail}
               className="inline-flex w-full items-center justify-center rounded-full border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              Changer d'email
+              Changer d'e-mail
             </button>
 
             {error ? <p className="text-sm text-rose-600">{error}</p> : null}

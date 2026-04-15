@@ -9,7 +9,7 @@ export const runtime = "nodejs";
 
 export async function POST(req: NextRequest) {
   const access = await getRequestAdminAccess(req);
-  if (!access.ok) {
+  if (!access.isAdmin) {
     return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
   }
 
