@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { auth, clerkClient } from "@clerk/nextjs/server";
 
+import { zodParse } from "@/lib/validators/common";
+import { setPasswordSchema } from "@/lib/validators/auth";
+
 export const runtime = "nodejs";
 
 export async function POST(req: NextRequest) {
@@ -11,22 +14,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
     }
 
-    let body: { password?: unknown; passwordConfirm?: unknown };
+    let rawBody: unknown;
     try {
-      body = (await req.json()) as { password?: unknown; passwordConfirm?: unknown };
+      rawBody = await req.json();
     } catch {
       return NextResponse.json({ ok: false, error: "INVALID_BODY" }, { status: 400 });
     }
 
-    const password = typeof body.password === "string" ? body.password : "";
-    const passwordConfirm = typeof body.passwordConfirm === "string" ? body.passwordConfirm : "";
+    const parsed = zodParse(setPasswordSchema, rawBody);
+    if (!parsed.ok) return parsed.response;
 
-    if (!password || password.length < 8) {
-      return NextResponse.json({ ok: false, error: "PASSWORD_TOO_SHORT" }, { status: 400 });
-    }
-    if (password !== passwordConfirm) {
-      return NextResponse.json({ ok: false, error: "PASSWORDS_DO_NOT_MATCH" }, { status: 400 });
-    }
+    const { password } = parsed.data;
 
     const client = await clerkClient();
     await client.users.updateUser(userId, { password });

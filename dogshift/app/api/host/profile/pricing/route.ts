@@ -6,6 +6,8 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { ensureDbUserByClerkUserId } from "@/lib/auth/resolveDbUserId";
 import { buildEffectiveSitterCompletionProfile, computeSitterProfileCompletion } from "@/lib/sitterCompletion";
+import { zodParse } from "@/lib/validators/common";
+import { pricingUpdateSchema } from "@/lib/validators/sitter";
 
 export const runtime = "nodejs";
 
@@ -80,6 +82,9 @@ export async function PUT(req: NextRequest) {
     } catch {
       return NextResponse.json({ ok: false, error: "INVALID_BODY" }, { status: 400 });
     }
+
+    const parsedBody = zodParse(pricingUpdateSchema, body);
+    if (!parsedBody.ok) return parsedBody.response;
 
     const normalized = normalizePricing(body.pricing);
     if (!normalized.ok) return NextResponse.json({ ok: false, error: normalized.error }, { status: 400 });

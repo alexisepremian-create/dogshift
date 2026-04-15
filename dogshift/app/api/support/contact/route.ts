@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 
 import { checkRateLimit, getClientIp } from "@/lib/rateLimit";
+import { zodParse } from "@/lib/validators/common";
+import { contactSchema } from "@/lib/validators/contact";
 
 // Some environments ship nodemailer without TypeScript declarations.
 // Use a require() import to avoid TS build failures while keeping runtime behavior.
@@ -257,9 +259,18 @@ export async function POST(request: Request) {
       );
     }
 
-    const body = (await request.json()) as { message?: unknown; email?: unknown };
-    const message = typeof body.message === "string" ? body.message.trim() : "";
-    const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
+    let rawBody: unknown;
+    try {
+      rawBody = await request.json();
+    } catch {
+      return NextResponse.json({ ok: false, error: "INVALID_BODY" }, { status: 400 });
+    }
+
+    const parsedBody = zodParse(contactSchema, rawBody);
+    if (!parsedBody.ok) return parsedBody.response;
+
+    const message = parsedBody.data.message;
+    const email = (parsedBody.data.email ?? "").trim().toLowerCase();
     const emailValid = Boolean(email) && isValidEmail(email);
 
     console.info("[support/contact] request", {
@@ -269,14 +280,6 @@ export async function POST(request: Request) {
       emailValid,
       hasResendKey: Boolean((process.env.RESEND_API_KEY || "").trim()),
     });
-
-    if (!message) {
-      return NextResponse.json({ ok: false, error: "MESSAGE_REQUIRED" }, { status: 400 });
-    }
-
-    if (message.length > 5000) {
-      return NextResponse.json({ ok: false, error: "MESSAGE_TOO_LONG" }, { status: 400 });
-    }
 
     const forwardedFor = request.headers.get("x-forwarded-for") ?? "";
     const userAgent = request.headers.get("user-agent") ?? "";

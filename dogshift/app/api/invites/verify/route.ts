@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
 import { checkRateLimit, getClientIp } from "@/lib/rateLimit";
+import { zodParse } from "@/lib/validators/common";
+import { inviteVerifySchema } from "@/lib/validators/contact";
 
 export const runtime = "nodejs";
 
@@ -26,9 +28,17 @@ export async function POST(req: Request) {
       );
     }
 
-    const body = (await req.json()) as { code?: unknown };
-    const raw = typeof body?.code === "string" ? body.code : "";
-    const code = normalizeCode(raw);
+    let rawBody: unknown;
+    try {
+      rawBody = await req.json();
+    } catch {
+      return NextResponse.json({ ok: false, error: "INVALID_BODY" }, { status: 400 });
+    }
+
+    const parsedBody = zodParse(inviteVerifySchema, rawBody);
+    if (!parsedBody.ok) return parsedBody.response;
+
+    const code = normalizeCode(parsedBody.data.code);
 
     if (!code) {
       return NextResponse.json({ ok: false, error: "CODE_REQUIRED" }, { status: 400 });

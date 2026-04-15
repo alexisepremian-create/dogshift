@@ -7,6 +7,8 @@ import { DOGSHIFT_COMMISSION_RATE } from "@/lib/commission";
 import { resolveDbUserId } from "@/lib/auth/resolveDbUserId";
 import { checkBoardingRange, generateDaySlots, type ServiceType } from "@/lib/availability/slotEngine";
 import { BOOKING_ACCESS_COOKIE, isBookingAccessCodeProtectionEnabled } from "@/lib/bookingAccess";
+import { zodParse } from "@/lib/validators/common";
+import { createBookingSchema } from "@/lib/validators/bookings";
 
 export const runtime = "nodejs";
 
@@ -162,7 +164,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
     }
 
-    const body = (await req.json()) as CreateBookingBody;
+    let rawBody: unknown;
+    try {
+      rawBody = await req.json();
+    } catch {
+      return NextResponse.json({ ok: false, error: "INVALID_BODY" }, { status: 400 });
+    }
+
+    const parsed = zodParse(createBookingSchema, rawBody);
+    if (!parsed.ok) return parsed.response;
+
+    const body = parsed.data as CreateBookingBody;
     const sitterId = typeof body?.sitterId === "string" ? body.sitterId.trim() : "";
     const service = typeof body?.service === "string" ? body.service.trim() : "";
     const startDate = typeof body?.startDate === "string" ? body.startDate.trim() : "";

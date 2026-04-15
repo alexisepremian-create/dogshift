@@ -5,6 +5,8 @@ import { prisma } from "@/lib/prisma";
 import { sendEmail } from "@/lib/email/sendEmail";
 import { render } from "@react-email/render";
 import { checkRateLimit } from "@/lib/rateLimit";
+import { zodParse } from "@/lib/validators/common";
+import { sitterApplicationSchema } from "@/lib/validators/contact";
 
 import {
   PilotSitterApplicationConfirmationEmail,
@@ -81,18 +83,22 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const body = (await req.json().catch(() => null)) as unknown;
-    if (!body || typeof body !== "object") {
+    let rawBody: unknown;
+    try {
+      rawBody = await req.json();
+    } catch {
       return NextResponse.json({ ok: false, error: "INVALID_BODY" }, { status: 400 });
     }
 
-    const payload = body as Record<string, unknown>;
-
-    // basic spam honeypot
-    const company = normalizeString(payload.company, 120);
-    if (company) {
+    // Honeypot: if the company field is filled, silently succeed (bot detection)
+    if (rawBody && typeof rawBody === "object" && (rawBody as Record<string, unknown>).company) {
       return NextResponse.json({ ok: true }, { status: 200 });
     }
+
+    const parsedBody = zodParse(sitterApplicationSchema, rawBody);
+    if (!parsedBody.ok) return parsedBody.response;
+
+    const payload = parsedBody.data;
 
     const firstName = normalizeString(payload.firstName, 80);
     const lastName = normalizeString(payload.lastName, 80);

@@ -10,6 +10,8 @@ import { checkSitterSensitiveActionGate } from "@/lib/sitterGuards";
 import { getHostContractAmendmentState } from "@/lib/contractAmendments";
 import { isActivatedStatus, normalizeSitterLifecycleStatus } from "@/lib/sitterContract";
 import { CURRENT_TERMS_VERSION } from "@/lib/terms";
+import { zodParse } from "@/lib/validators/common";
+import { hostProfileUpdateSchema } from "@/lib/validators/sitter";
 
 export const runtime = "nodejs";
 
@@ -267,7 +269,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, error: "FORBIDDEN" }, { status: 403 });
     }
 
-    const body = (await req.json()) as unknown;
+    let rawBody: unknown;
+    try {
+      rawBody = await req.json();
+    } catch {
+      return NextResponse.json({ ok: false, error: "INVALID_BODY" }, { status: 400 });
+    }
+
+    const parsedBody = zodParse(hostProfileUpdateSchema, rawBody);
+    if (!parsedBody.ok) return parsedBody.response;
+
+    const body = parsedBody.data as unknown;
 
     const user = await prisma.user.findUnique({ where: { id: uid } });
     if (!user) {

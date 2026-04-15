@@ -45,7 +45,8 @@
     "react-leaflet": "^5.0.0",
     "react-map-gl": "^8.1.0",
     "stripe": "^20.1.0",
-    "uuid": "^13.0.0"
+    "uuid": "^13.0.0",
+    "zod": "^4.3.6"
   },
   "overrides": {
     "dompurify": ">=3.4.0"

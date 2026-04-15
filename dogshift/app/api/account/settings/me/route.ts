@@ -4,6 +4,8 @@ import { auth, currentUser } from "@clerk/nextjs/server";
 
 import { prisma } from "@/lib/prisma";
 import { ensureDbUserByClerkUserId } from "@/lib/auth/resolveDbUserId";
+import { zodParse } from "@/lib/validators/common";
+import { accountSettingsPatchSchema } from "@/lib/validators/auth";
 
 export const runtime = "nodejs";
 
@@ -257,7 +259,17 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
     }
 
-    const body = (await req.json()) as PatchBody;
+    let rawBody: unknown;
+    try {
+      rawBody = await req.json();
+    } catch {
+      return NextResponse.json({ ok: false, error: "INVALID_BODY" }, { status: 400 });
+    }
+
+    const parsedBody = zodParse(accountSettingsPatchSchema, rawBody);
+    if (!parsedBody.ok) return parsedBody.response;
+
+    const body = parsedBody.data as PatchBody;
 
     const firstName = typeof body?.firstName === "string" ? body.firstName.trim() : "";
     const lastName = typeof body?.lastName === "string" ? body.lastName.trim() : "";
