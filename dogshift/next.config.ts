@@ -33,7 +33,7 @@ const csp = [
   "default-src 'self'",
   // Scripts: self + inline (Next.js hydration + login transit) + Google Ads + Clerk
   // clerk.dogshift.ch = sous-domaine personnalisé Clerk (proxy sur ton domaine)
-  "script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://js.stripe.com https://*.clerk.com https://*.clerk.accounts.dev https://clerk.dogshift.ch",
+  "script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://js.stripe.com https://*.clerk.com https://*.clerk.accounts.dev https://clerk.dogshift.ch https://googleads.g.doubleclick.net https://www.google.com",
   // Styles: self + inline (Tailwind, Clerk injected styles)
   "style-src 'self' 'unsafe-inline'",
   // Images: self + data URIs + blob (canvas/jspdf) + Google avatars + MapTiler tiles + any https
