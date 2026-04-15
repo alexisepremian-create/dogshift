@@ -340,9 +340,62 @@ export default function ConfidentialitePage() {
               </div>
             </section>
 
-            {/* 10. Contact */}
+            {/* 10. Accords de traitement (DPA) */}
             <section>
-              <h2 className="text-base font-semibold text-slate-900">10. Contact et réclamations</h2>
+              <h2 className="text-base font-semibold text-slate-900">10. Accords de traitement des données (DPA)</h2>
+              <p className="mt-3">
+                Conformément à la nLPD et au RGPD, DogShift a conclu ou adhère aux accords de traitement
+                des données (Data Processing Agreements) proposés par chacun de ses sous-traitants. Ces
+                accords garantissent que vos données sont traitées de façon sécurisée, uniquement pour les
+                finalités définies, et dans le respect du cadre légal applicable.
+              </p>
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                {[
+                  {
+                    name: "Clerk",
+                    role: "Authentification et gestion des comptes",
+                    dpa: "https://clerk.com/legal/dpa",
+                  },
+                  {
+                    name: "Stripe",
+                    role: "Traitement des paiements",
+                    dpa: "https://stripe.com/legal/dpa",
+                  },
+                  {
+                    name: "Sentry",
+                    role: "Monitoring des erreurs (sans données personnelles)",
+                    dpa: "https://sentry.io/legal/dpa/",
+                  },
+                  {
+                    name: "Neon (PostgreSQL)",
+                    role: "Base de données — hébergée en Europe (UE)",
+                    dpa: "https://neon.tech/dpa",
+                  },
+                  {
+                    name: "Vercel",
+                    role: "Hébergement et déploiement de la plateforme",
+                    dpa: "https://vercel.com/legal/dpa",
+                  },
+                ].map((p) => (
+                  <div key={p.name} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                    <p className="font-semibold text-slate-900">{p.name}</p>
+                    <p className="mt-1 text-slate-600 text-xs">{p.role}</p>
+                    <a
+                      href={p.dpa}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-2 inline-block text-xs text-slate-500 underline underline-offset-2 hover:text-slate-700"
+                    >
+                      Voir le DPA →
+                    </a>
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            {/* 11. Contact */}
+            <section>
+              <h2 className="text-base font-semibold text-slate-900">11. Contact et réclamations</h2>
               <p className="mt-3">
                 Pour toute question, exercice de droits ou réclamation relative à vos données personnelles :
               </p>

@@ -6,12 +6,14 @@ import DogShiftBot from "@/components/DogShiftBot";
 import PageTopOffset from "@/components/PageTopOffset";
 import SiteHeader from "@/components/SiteHeader";
 import CookieSettingsButton from "@/components/CookieSettingsButton";
+import CguUpdateBanner from "@/components/CguUpdateBanner";
 import { VisaLogo, MastercardLogo, ApplePayLogo, TwintLogo } from "@/components/ui/PaymentIcons";
 
 export default function MarketingLayout({ children }: { children: React.ReactNode }) {
   return (
     <>
       <SiteHeader />
+      <CguUpdateBanner />
       <PageTopOffset>{children}</PageTopOffset>
       <DogShiftBot />
       <footer className="border-t border-slate-200/70 bg-white">
