@@ -55,8 +55,7 @@ export default function Sidebar({ ariaLabel, items, footer, onNavigate, classNam
         >
           <span
             className={
-              (forceExpanded ? "h-16 w-16" : "h-14 w-14") +
-              " flex shrink-0 items-center justify-center rounded-full bg-white ring-1 ring-slate-200"
+              "h-10 w-10 flex shrink-0 items-center justify-center rounded-full bg-white ring-1 ring-slate-200"
             }
           >
             <Image
@@ -64,7 +63,7 @@ export default function Sidebar({ ariaLabel, items, footer, onNavigate, classNam
               alt="DogShift"
               width={64}
               height={64}
-              className={(forceExpanded ? "h-11 w-11" : "h-11 w-11") + " object-contain"}
+              className="h-9 w-9 object-contain"
               priority
             />
           </span>

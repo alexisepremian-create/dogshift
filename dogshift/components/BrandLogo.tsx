@@ -15,7 +15,7 @@ export default function BrandLogo({ href, priority }: BrandLogoProps) {
           alt="DogShift"
           width={72}
           height={72}
-          className="h-8 w-auto"
+          className="h-9 w-auto"
           priority={Boolean(priority)}
         />
       </span>
