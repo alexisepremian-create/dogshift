@@ -58,6 +58,8 @@ const csp = [
     "https://googleads.g.doubleclick.net",
     "https://*.sentry.io",
     "https://ingest.de.sentry.io",
+    // Cloudflare R2 presigned URLs (téléchargement contrats PDF)
+    "https://*.r2.cloudflarestorage.com",
   ].join(" "),
   // Iframes: Stripe payment iframes
   "frame-src 'self' https://js.stripe.com https://hooks.stripe.com https://*.stripe.com",
