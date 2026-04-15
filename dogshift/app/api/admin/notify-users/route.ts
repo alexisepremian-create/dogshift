@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { render } from "@react-email/render";
 import { z } from "zod";
+import { clerkClient } from "@clerk/nextjs/server";
 
 import { getRequestAdminAccess } from "@/lib/adminAuth";
 import { sendEmail } from "@/lib/email/sendEmail";
@@ -42,27 +43,45 @@ async function getRecipients(
   target: "all" | "sitters" | "owners" | "custom",
   customEmails: string[],
 ): Promise<{ email: string; firstName: string }[]> {
+  // Custom : emails fournis manuellement, pas besoin de DB
   if (target === "custom") {
     return customEmails.map((email) => ({ email, firstName: "" }));
   }
 
-  const where =
-    target === "sitters"
-      ? { role: "SITTER" as const }
-      : target === "owners"
-        ? { role: "OWNER" as const }
-        : undefined;
+  // Sitters / Owners : filtrés depuis Prisma (qui a le champ role)
+  if (target === "sitters" || target === "owners") {
+    const users = await prisma.user.findMany({
+      where: { role: target === "sitters" ? "SITTER" : "OWNER" },
+      select: { email: true, name: true },
+      orderBy: { createdAt: "asc" },
+    });
+    return users.map((u) => ({
+      email: u.email,
+      firstName: u.name?.split(" ")[0] ?? "",
+    }));
+  }
 
-  const users = await prisma.user.findMany({
-    where,
-    select: { email: true, name: true },
-    orderBy: { createdAt: "asc" },
-  });
+  // All : Clerk est la source de vérité pour tous les comptes (paginé par 100)
+  const clerk = await clerkClient();
+  const result: { email: string; firstName: string }[] = [];
+  let offset = 0;
+  const limit = 100;
 
-  return users.map((u) => ({
-    email: u.email,
-    firstName: u.name?.split(" ")[0] ?? "",
-  }));
+  while (true) {
+    const page = await clerk.users.getUserList({ limit, offset });
+    for (const u of page.data) {
+      const email = u.emailAddresses.find(
+        (e) => e.id === u.primaryEmailAddressId,
+      )?.emailAddress;
+      if (email) {
+        result.push({ email, firstName: u.firstName ?? "" });
+      }
+    }
+    if (page.data.length < limit) break;
+    offset += limit;
+  }
+
+  return result;
 }
 
 // ─── GET — Historique des envois ──────────────────────────────────────────────
