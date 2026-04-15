@@ -215,8 +215,13 @@ export default function CguPage() {
                 respectés.
               </p>
               <p className="mt-3">
-                Une politique de confidentialité dédiée précise les traitements (finalités, bases légales, durées, droits). Pour toute question relative à vos données,
-                vous pouvez contacter DogShift.
+                Une politique de confidentialité dédiée précise les traitements (finalités, bases légales, durées de conservation, sous-traitants et droits des
+                utilisateurs). Pour toute question relative à vos données, vous pouvez contacter DogShift à support@dogshift.ch.
+              </p>
+              <p className="mt-3">
+                Conformément à la nLPD, les utilisateurs disposent notamment d'un droit d'accès, de rectification, d'effacement et de portabilité de leurs données
+                personnelles. Le droit à l'effacement peut être exercé directement depuis les paramètres du compte (section « Supprimer mon compte »), sous réserve
+                des obligations légales de conservation des archives financières (10 ans pour les transactions).
               </p>
 
 

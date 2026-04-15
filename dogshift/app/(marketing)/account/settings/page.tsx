@@ -19,6 +19,7 @@ import {
   RefreshCw,
   Settings,
   Shield,
+  Trash2,
   User2,
 } from "lucide-react";
 
@@ -138,6 +139,10 @@ export default function AccountSettingsPage() {
   const [emailSending, setEmailSending] = useState(false);
   const [emailSendStatus, setEmailSendStatus] = useState<null | { type: "success" | "error"; message: string }>(null);
   const [cooldownSecondsLeft, setCooldownSecondsLeft] = useState<number>(0);
+
+  const [deleteStep, setDeleteStep] = useState<"idle" | "confirm">("idle");
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -979,13 +984,75 @@ export default function AccountSettingsPage() {
           </button>
           <p className="-mt-1 max-w-[320px] text-center text-xs text-slate-500">Déconnecte ton compte de tous les appareils actuellement connectés.</p>
 
-          <button
-            type="button"
-            disabled
-            className="inline-flex w-auto max-w-[320px] items-center justify-center rounded-2xl border border-rose-200 bg-white px-5 py-3 text-sm font-semibold text-rose-900/70 shadow-sm transition disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            Supprimer mon compte (bientôt)
-          </button>
+          {deleteStep === "idle" && (
+            <button
+              type="button"
+              onClick={() => { setDeleteStep("confirm"); setDeleteError(null); }}
+              className="inline-flex w-auto max-w-[320px] items-center justify-center gap-2 rounded-2xl border border-rose-200 bg-white px-5 py-3 text-sm font-semibold text-rose-700 shadow-sm transition hover:bg-rose-50"
+            >
+              <Trash2 className="h-4 w-4" aria-hidden="true" />
+              Supprimer mon compte
+            </button>
+          )}
+
+          {deleteStep === "confirm" && (
+            <div className="w-full max-w-sm rounded-3xl border border-rose-200 bg-rose-50 p-5 text-left">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="mt-0.5 h-5 w-5 flex-none text-rose-600" aria-hidden="true" />
+                <div>
+                  <p className="text-sm font-semibold text-rose-900">Supprimer définitivement mon compte ?</p>
+                  <p className="mt-1.5 text-xs leading-relaxed text-rose-700">
+                    Cette action est irréversible. Tes données personnelles seront supprimées. Les archives de
+                    réservations passées peuvent être conservées pour obligations légales (comptabilité).
+                  </p>
+                </div>
+              </div>
+              {deleteError && (
+                <p className="mt-3 rounded-2xl border border-rose-300 bg-white px-3 py-2 text-xs font-medium text-rose-800">
+                  {deleteError}
+                </p>
+              )}
+              <div className="mt-4 flex flex-col gap-2">
+                <button
+                  type="button"
+                  disabled={isDeleting}
+                  onClick={async () => {
+                    setIsDeleting(true);
+                    setDeleteError(null);
+                    try {
+                      const res = await fetch("/api/account/delete", { method: "DELETE" });
+                      const payload = (await res.json()) as { ok?: boolean; error?: string; message?: string };
+                      if (!res.ok || !payload.ok) {
+                        if (payload.error === "ACTIVE_BOOKINGS") {
+                          setDeleteError(payload.message ?? "Tu as des réservations en cours. Finalise-les avant de supprimer ton compte.");
+                        } else {
+                          setDeleteError("Une erreur est survenue. Réessaie ou contacte le support.");
+                        }
+                        return;
+                      }
+                      window.location.href = "/sign-out";
+                    } catch {
+                      setDeleteError("Une erreur est survenue. Réessaie ou contacte le support.");
+                    } finally {
+                      setIsDeleting(false);
+                    }
+                  }}
+                  className="inline-flex items-center justify-center gap-2 rounded-2xl bg-rose-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <Trash2 className="h-4 w-4" aria-hidden="true" />
+                  {isDeleting ? "Suppression…" : "Oui, supprimer définitivement"}
+                </button>
+                <button
+                  type="button"
+                  disabled={isDeleting}
+                  onClick={() => { setDeleteStep("idle"); setDeleteError(null); }}
+                  className="inline-flex items-center justify-center rounded-2xl border border-rose-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  Annuler
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
       </div>
