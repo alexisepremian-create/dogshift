@@ -86,6 +86,16 @@ export function CommunicationsEmail(props: {
             <Link href={`${baseUrl}/mentions-legales`} style={styles.bottomLink}>Mentions légales</Link>
           </Text>
 
+          <Text style={styles.unsubscribe}>
+            Vous recevez cet email car vous êtes inscrit sur DogShift.{" "}
+            <Link
+              href={`mailto:support@dogshift.ch?subject=D%C3%A9sabonnement%20aux%20communications%20DogShift`}
+              style={styles.unsubscribeLink}
+            >
+              Se désabonner
+            </Link>
+          </Text>
+
         </Container>
       </Body>
     </Html>
@@ -215,6 +225,16 @@ const styles: Record<string, CSSProperties> = {
     textAlign: "center",
   },
   bottomLink: {
+    color: "#94a3b8",
+    textDecoration: "underline",
+  },
+  unsubscribe: {
+    margin: "10px 0 0",
+    fontSize: 11,
+    color: "#94a3b8",
+    textAlign: "center" as const,
+  },
+  unsubscribeLink: {
     color: "#94a3b8",
     textDecoration: "underline",
   },

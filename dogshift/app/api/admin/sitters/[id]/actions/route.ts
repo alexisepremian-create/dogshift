@@ -5,6 +5,7 @@ import type { NextRequest } from "next/server";
 import { getRequestAdminAccess } from "@/lib/adminAuth";
 import { logAdminAudit } from "@/lib/audit";
 import { sendEmail } from "@/lib/email/sendEmail";
+import { geocodeSwissLocation } from "@/lib/geocode";
 import { prisma } from "@/lib/prisma";
 import {
   buildContractAccessUrl,
@@ -117,6 +118,10 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
             contractVersion: true,
             contractAccessTokenIssuedAt: true,
             contractAccessTokenExpiresAt: true,
+            city: true,
+            postalCode: true,
+            lat: true,
+            lng: true,
           },
         },
       },
@@ -135,6 +140,10 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
             contractVersion?: string | null;
             contractAccessTokenIssuedAt?: Date | null;
             contractAccessTokenExpiresAt?: Date | null;
+            city?: string | null;
+            postalCode?: string | null;
+            lat?: number | null;
+            lng?: number | null;
           } | null;
         }
       | null;
@@ -262,6 +271,27 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       data.published = true;
       data.publishedAt = currentPublished ? undefined : new Date();
       data.verificationNotes = notes ?? sitter.sitterProfile.verificationNotes ?? null;
+    }
+
+    if (action === "publish" || action === "reactivate") {
+      const hasCoords =
+        typeof sitter.sitterProfile.lat === "number" &&
+        Number.isFinite(sitter.sitterProfile.lat) &&
+        typeof sitter.sitterProfile.lng === "number" &&
+        Number.isFinite(sitter.sitterProfile.lng);
+
+      if (!hasCoords) {
+        const city = String(sitter.sitterProfile.city ?? "").trim();
+        const postalCode = String(sitter.sitterProfile.postalCode ?? "").trim();
+        if (city || postalCode) {
+          const coords = await geocodeSwissLocation({ city, postalCode });
+          if (coords) {
+            data.lat = coords.lat;
+            data.lng = coords.lng;
+            console.info("[admin][actions] geocoded sitter coords", { id, city, postalCode, coords });
+          }
+        }
+      }
     }
 
     if (action === "unpublish") {

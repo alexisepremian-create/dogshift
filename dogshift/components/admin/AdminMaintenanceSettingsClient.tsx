@@ -4,6 +4,55 @@ import { useCallback, useEffect, useState } from "react";
 
 import { useMaintenance } from "@/components/platform/MaintenanceProvider";
 
+function GeocodeSittersButton() {
+  const [status, setStatus] = useState<"idle" | "running" | "done" | "error">("idle");
+  const [result, setResult] = useState<{ total: number; geocoded: number; failed: number; errors: string[] } | null>(null);
+
+  async function run() {
+    setStatus("running");
+    setResult(null);
+    try {
+      const res = await fetch("/api/admin/geocode-sitters", { method: "POST" });
+      const data = await res.json() as { ok?: boolean; total?: number; geocoded?: number; failed?: number; errors?: string[] };
+      if (!res.ok || !data.ok) {
+        setStatus("error");
+        return;
+      }
+      setResult({ total: data.total ?? 0, geocoded: data.geocoded ?? 0, failed: data.failed ?? 0, errors: data.errors ?? [] });
+      setStatus("done");
+    } catch {
+      setStatus("error");
+    }
+  }
+
+  return (
+    <div className="flex flex-wrap items-start justify-between gap-4">
+      <div>
+        <p className="text-sm font-semibold text-slate-900">Géocodage des profils publiés</p>
+        <p className="mt-1 text-sm text-slate-600">
+          Attribue les coordonnées GPS aux profils publiés qui n&apos;apparaissent pas encore sur la carte (lat/lng manquants).
+        </p>
+        {status === "done" && result ? (
+          <p className="mt-2 text-sm text-emerald-700">
+            ✓ {result.geocoded} géocodé{result.geocoded !== 1 ? "s" : ""} sur {result.total} profil{result.total !== 1 ? "s" : ""} concerné{result.total !== 1 ? "s" : ""}.
+            {result.failed > 0 ? ` ${result.failed} échec(s).` : ""}
+          </p>
+        ) : status === "error" ? (
+          <p className="mt-2 text-sm text-red-700">Une erreur est survenue. Réessayez.</p>
+        ) : null}
+      </div>
+      <button
+        type="button"
+        disabled={status === "running"}
+        onClick={() => void run()}
+        className="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-900 shadow-sm hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+      >
+        {status === "running" ? "Géocodage en cours…" : "Lancer le géocodage"}
+      </button>
+    </div>
+  );
+}
+
 export default function AdminMaintenanceSettingsClient() {
   const { refresh: refreshPublicMaintenance } = useMaintenance();
   const [maintenanceMode, setMaintenanceMode] = useState(false);
@@ -142,6 +191,10 @@ export default function AdminMaintenanceSettingsClient() {
         Les webhooks Stripe restent actifs pour traiter les paiements déjà initiés. Seules les créations de réservation, les Payment
         Intents et les sessions Checkout « contribution » sont refusées tant que la maintenance est active.
       </p>
+
+      <div className="border-t border-slate-100 pt-5">
+        <GeocodeSittersButton />
+      </div>
     </div>
   );
 }

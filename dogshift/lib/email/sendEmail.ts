@@ -3,6 +3,7 @@ export type SendEmailInput = {
   subject: string;
   text: string;
   html?: string;
+  headers?: Record<string, string>;
 };
 
 function baseFromEnv() {
@@ -41,6 +42,7 @@ async function sendWithResend(input: SendEmailInput) {
       subject: input.subject,
       text: input.text,
       html: input.html,
+      ...(input.headers ? { headers: input.headers } : {}),
     }),
   });
 

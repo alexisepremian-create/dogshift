@@ -175,7 +175,17 @@ export async function POST(req: NextRequest) {
         baseUrl: BASE_URL,
       });
 
-      await sendEmail({ to: user.email, subject, html, text });
+      const unsubscribeMailto = `mailto:support@dogshift.ch?subject=D%C3%A9sabonnement%20aux%20communications%20DogShift`;
+      await sendEmail({
+        to: user.email,
+        subject,
+        html,
+        text,
+        headers: {
+          "List-Unsubscribe": `<${unsubscribeMailto}>`,
+          "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+        },
+      });
       sent++;
     } catch (err) {
       failed++;
