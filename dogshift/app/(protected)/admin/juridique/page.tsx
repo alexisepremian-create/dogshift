@@ -125,19 +125,19 @@ export default async function AdminJuridiquePage({
   const allActions = Object.keys(ACTION_LABELS);
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6">
+    <div className="mx-auto max-w-6xl space-y-8 py-2">
 
       {/* Header */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h2 className="text-xl font-semibold tracking-tight text-slate-900">Journal juridique</h2>
-          <p className="mt-1 text-sm text-slate-500">
+          <h2 className="text-2xl font-semibold tracking-tight text-slate-900">Journal juridique</h2>
+          <p className="mt-2 text-sm text-slate-500">
             Trace immuable de toutes les actions critiques — à conserver en cas de litige.
           </p>
         </div>
         <a
           href={csvUrl()}
-          className="inline-flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
+          className="inline-flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
         >
           <Download className="h-4 w-4" aria-hidden="true" />
           Exporter CSV
@@ -145,9 +145,9 @@ export default async function AdminJuridiquePage({
       </div>
 
       {/* Notice légale */}
-      <div className="flex items-start gap-3 rounded-2xl border border-blue-200 bg-blue-50 p-4">
+      <div className="flex items-start gap-3 rounded-2xl border border-blue-200 bg-blue-50 p-5">
         <Info className="mt-0.5 h-4 w-4 flex-none text-blue-500" aria-hidden="true" />
-        <p className="text-xs leading-relaxed text-blue-700">
+        <p className="text-sm leading-relaxed text-blue-700">
           Ce journal est <strong>append-only</strong> — aucune entrée ne peut être modifiée ou supprimée.
           En cas de litige, exportez en CSV et transmettez-le à votre conseil juridique ou à l&apos;autorité compétente.
           Aucune donnée personnelle (email, nom) n&apos;est stockée ici — uniquement des identifiants techniques.
@@ -155,10 +155,10 @@ export default async function AdminJuridiquePage({
       </div>
 
       {/* Filters */}
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-2.5">
         <Link
           href={filterUrl("")}
-          className={`rounded-full border px-3 py-1 text-xs font-medium transition ${
+          className={`rounded-full border px-4 py-1.5 text-xs font-semibold transition ${
             !actionFilter
               ? "border-[var(--dogshift-blue)] bg-[color-mix(in_srgb,var(--dogshift-blue),white_88%)] text-[var(--dogshift-blue)]"
               : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
@@ -170,7 +170,7 @@ export default async function AdminJuridiquePage({
           <Link
             key={a}
             href={filterUrl(a)}
-            className={`rounded-full border px-3 py-1 text-xs font-medium transition ${
+            className={`rounded-full border px-4 py-1.5 text-xs font-semibold transition ${
               actionFilter === a
                 ? "border-[var(--dogshift-blue)] bg-[color-mix(in_srgb,var(--dogshift-blue),white_88%)] text-[var(--dogshift-blue)]"
                 : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
