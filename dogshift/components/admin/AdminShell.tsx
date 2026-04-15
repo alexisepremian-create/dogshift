@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { BarChart3, CalendarDays, FileText, LayoutDashboard, LogOut, ReceiptText, ScrollText, Settings, ShieldAlert, ShieldCheck, Users } from "lucide-react";
+import { BarChart3, CalendarDays, FileText, LayoutDashboard, LogOut, ReceiptText, ScrollText, Settings, ShieldAlert, ShieldCheck, ShieldPlus, Users } from "lucide-react";
 import { type ReactNode, useState } from "react";
 
 const navItems = [
@@ -16,6 +16,7 @@ const navItems = [
   { href: "/admin/bookings", label: "Réservations", icon: CalendarDays },
   { href: "/admin/incidents", label: "Signalements", icon: ShieldAlert },
   { href: "/admin/settings", label: "Settings", icon: Settings },
+  { href: "/admin/securite", label: "Sécurité du site", icon: ShieldPlus },
 ];
 
 export default function AdminShell({ children }: { children: ReactNode }) {
