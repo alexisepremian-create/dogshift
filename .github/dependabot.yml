@@ -1,0 +1,24 @@
+version: 2
+updates:
+  # npm dependencies for the dogshift app
+  - package-ecosystem: "npm"
+    directory: "/dogshift"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "08:00"
+      timezone: "Europe/Zurich"
+    open-pull-requests-limit: 5
+    # Group minor and patch updates to reduce noise
+    groups:
+      minor-and-patch:
+        update-types:
+          - "minor"
+          - "patch"
+    ignore:
+      # next-auth and nodemailer have known low-risk vulns in unused features — reviewed manually
+      - dependency-name: "next-auth"
+        update-types: ["version-update:semver-patch"]
+    labels:
+      - "dependencies"
+      - "security"

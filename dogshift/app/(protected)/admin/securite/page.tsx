@@ -145,6 +145,11 @@ const categories: SecurityCategory[] = [
         description: "Toutes les requêtes base de données passent par Prisma ORM avec des requêtes paramétrées. Les rares requêtes SQL brutes utilisent des paramètres $1, $2… jamais d'interpolation directe.",
         status: "ok",
       },
+      {
+        title: "Dependabot — mises à jour automatiques",
+        description: "GitHub Dependabot surveille les dépendances npm et ouvre automatiquement des Pull Requests chaque lundi si une CVE est détectée. Les mises à jour mineures et patch sont groupées pour réduire le bruit.",
+        status: "ok",
+      },
     ],
   },
   {
@@ -172,6 +177,12 @@ const categories: SecurityCategory[] = [
         status: "advisory",
         detail: "Dernière rotation : à planifier tous les 6-12 mois",
       },
+      {
+        title: "security.txt — contact sécurité public",
+        description: "Le fichier /.well-known/security.txt indique aux chercheurs en sécurité comment signaler une faille responsablement. Standard reconnu dans l'industrie (RFC 9116).",
+        status: "ok",
+        detail: "Contact : support@dogshift.ch",
+      },
     ],
   },
   {
@@ -181,6 +192,22 @@ const categories: SecurityCategory[] = [
       {
         title: "Sentry — monitoring d'erreurs",
         description: "Toutes les erreurs (front et serveur) sont capturées en temps réel sur dogshift.sentry.io. Alerte email automatique à chaque nouvelle erreur. Données stockées en EU.",
+        status: "ok",
+      },
+      {
+        title: "Sentry — scrubbing des données personnelles",
+        description: "Les événements envoyés à Sentry sont filtrés avant envoi (beforeSend) : les champs sensibles (email, nom, téléphone, mot de passe) sont remplacés par [Filtered]. Conformité RGPD sur les logs d'erreur.",
+        status: "ok",
+        detail: "Champs filtrés : email · name · phone · password · firstName · lastName",
+      },
+      {
+        title: "Audit log des actions admin",
+        description: "Les actions critiques du panel admin (sélection, approbation, rejet, suspension d'un sitter, changement de statut d'une candidature) sont tracées dans les logs Vercel et Sentry. Permet de savoir qui a fait quoi et quand.",
+        status: "ok",
+      },
+      {
+        title: "RGPD — Droit à l'effacement",
+        description: "Les utilisateurs peuvent supprimer leur compte via l'API /api/account/delete. Pour les propriétaires sans réservations actives : suppression complète. Pour les sitters avec réservations : anonymisation des données personnelles (les archives financières sont conservées pour obligations légales).",
         status: "ok",
       },
       {

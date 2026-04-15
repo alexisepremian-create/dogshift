@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 import { getRequestAdminAccess } from "@/lib/adminAuth";
+import { logAdminAudit } from "@/lib/adminAudit";
 import { sendEmail } from "@/lib/email/sendEmail";
 import { prisma } from "@/lib/prisma";
 import {
@@ -355,6 +356,14 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
         });
       }
     }
+
+    logAdminAudit({
+      action: `sitter.${action}` as Parameters<typeof logAdminAudit>[0]["action"],
+      adminUserId: access.userId,
+      targetId: sitter.id,
+      targetType: "USER",
+      detail: { sitterProfileId: sitter.sitterProfile?.id },
+    });
 
     return NextResponse.json(
       {

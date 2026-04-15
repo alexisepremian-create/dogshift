@@ -3,6 +3,7 @@ import type { NextRequest } from "next/server";
 
 import { getRequestAdminAccess } from "@/lib/adminAuth";
 import { prisma } from "@/lib/prisma";
+import { logAdminAudit } from "@/lib/adminAudit";
 
 export const runtime = "nodejs";
 
@@ -35,6 +36,14 @@ export async function POST(req: NextRequest) {
       where: { id },
       data: { status },
       select: { id: true },
+    });
+
+    logAdminAudit({
+      action: "application.status_change",
+      adminUserId: admin.userId,
+      targetId: id,
+      targetType: "PILOT_SITTER_APPLICATION",
+      detail: { newStatus: status },
     });
 
     return NextResponse.json({ ok: true }, { status: 200 });
