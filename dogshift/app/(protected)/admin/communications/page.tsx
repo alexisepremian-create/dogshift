@@ -192,7 +192,7 @@ export default function CommunicationsPage() {
 
   return (
     <AdminShell>
-      <div className="mx-auto max-w-3xl space-y-8 px-4 py-8">
+      <div className="space-y-8 px-2 pt-6 sm:px-4">
 
         {/* Header */}
         <div>

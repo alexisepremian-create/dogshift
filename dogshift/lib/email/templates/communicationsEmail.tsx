@@ -49,21 +49,19 @@ export function CommunicationsEmail(props: {
 
             {props.customMessage ? (
               <Section style={styles.messageBox}>
-                <Text style={styles.messageText}>{props.customMessage}</Text>
+                {props.customMessage.split("\n").map((line, i) =>
+                  line.trim() === "" ? (
+                    <Text key={i} style={styles.messageSpacer}>{" "}</Text>
+                  ) : (
+                    <Text key={i} style={styles.messageText}>{line}</Text>
+                  ),
+                )}
               </Section>
             ) : null}
 
-            <Text style={styles.body2}>
-              La prochaine fois que vous vous connectez sur DogShift, un bandeau apparaîtra
-              pour vous inviter à relire et accepter les nouvelles conditions.
-            </Text>
-
             <Section style={styles.ctaRow}>
-              <Button href={`${baseUrl}/cgu`} style={styles.ctaPrimary}>
-                Lire les CGU
-              </Button>
-              <Button href={`${baseUrl}/confidentialite`} style={styles.ctaSecondary}>
-                Confidentialité
+              <Button href={baseUrl} style={styles.ctaPrimary}>
+                Visiter DogShift
               </Button>
             </Section>
 
@@ -107,10 +105,7 @@ export function communicationsEmailPlainText(params: {
     params.subject,
     "",
     ...(params.customMessage ? [params.customMessage, ""] : []),
-    "La prochaine fois que vous vous connectez sur DogShift, un bandeau apparaîtra pour relire les nouvelles conditions.",
-    "",
-    `CGU : ${base}/cgu`,
-    `Politique de confidentialité : ${base}/confidentialite`,
+    `Visiter DogShift : ${base}`,
     "",
     "— L'équipe DogShift",
     "support@dogshift.ch",
@@ -170,21 +165,20 @@ const styles: Record<string, CSSProperties> = {
     borderLeft: `3px solid ${brandBlue}`,
   },
   messageText: {
-    margin: 0,
+    margin: "2px 0",
     fontSize: 13,
     lineHeight: "19px",
     color: "#334155",
   },
-  body2: {
-    margin: "14px 0 0",
-    fontSize: 13,
-    lineHeight: "19px",
-    color: "#64748b",
+  messageSpacer: {
+    margin: 0,
+    fontSize: 6,
+    lineHeight: "6px",
+    color: "transparent",
   },
   ctaRow: {
     textAlign: "center",
     paddingTop: 18,
-    gap: 8,
   },
   ctaPrimary: {
     backgroundColor: brandBlue,
@@ -192,22 +186,10 @@ const styles: Record<string, CSSProperties> = {
     fontSize: 13,
     fontWeight: 700,
     textDecoration: "none",
-    padding: "11px 18px",
+    padding: "11px 22px",
     borderRadius: 10,
     display: "inline-block",
     border: `1px solid ${brandBlueHover}`,
-    marginRight: 8,
-  },
-  ctaSecondary: {
-    backgroundColor: "#f1f5f9",
-    color: brandBlue,
-    fontSize: 13,
-    fontWeight: 700,
-    textDecoration: "none",
-    padding: "11px 18px",
-    borderRadius: 10,
-    display: "inline-block",
-    border: "1px solid #e2e8f0",
   },
   hr: {
     border: "none",
