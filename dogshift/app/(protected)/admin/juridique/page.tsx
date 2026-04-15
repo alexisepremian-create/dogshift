@@ -1,10 +1,9 @@
 import type { Metadata } from "next";
-import { cookies } from "next/headers";
 import Link from "next/link";
 import { Download, Info } from "lucide-react";
 
 import { prisma } from "@/lib/prisma";
-import { verifyAdminCookie } from "@/lib/adminAuth";
+import { getAdminSessionFromCookies, isValidAdminSessionValue } from "@/lib/adminAuth";
 
 export const metadata: Metadata = { title: "Journal juridique — Admin" };
 
@@ -75,9 +74,8 @@ export default async function AdminJuridiquePage({
   searchParams: Promise<{ page?: string; action?: string }>;
 }) {
   // Auth guard
-  const cookieStore = await cookies();
-  const adminToken = cookieStore.get("admin_token")?.value ?? "";
-  const isAdmin = await verifyAdminCookie(adminToken);
+  const sessionValue = await getAdminSessionFromCookies();
+  const isAdmin = isValidAdminSessionValue(sessionValue);
   if (!isAdmin) {
     return (
       <div className="rounded-3xl border border-rose-200 bg-rose-50 p-6 text-sm text-rose-700">
