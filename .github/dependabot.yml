@@ -19,6 +19,12 @@ updates:
       # next-auth and nodemailer have known low-risk vulns in unused features — reviewed manually
       - dependency-name: "next-auth"
         update-types: ["version-update:semver-patch"]
+      # Prisma v7 is a major breaking change (url/directUrl must move to prisma.config.ts)
+      # — requires a full migration effort, do NOT auto-bump major versions
+      - dependency-name: "prisma"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@prisma/client"
+        update-types: ["version-update:semver-major"]
     labels:
       - "dependencies"
       - "security"
