@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { useClerk, useSignIn, useUser } from "@clerk/nextjs";
+import { useSignIn, useUser } from "@clerk/nextjs";
 import Link from "next/link";
 
 function normalizeEmail(input: string) {
@@ -14,7 +14,6 @@ type VerifyMode = "emailCode" | "mfa";
 
 export default function LoginForm() {
   const { signIn, fetchStatus } = useSignIn();
-  const { setActive } = useClerk();
   const { isLoaded: userLoaded, isSignedIn } = useUser();
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -46,12 +45,11 @@ export default function LoginForm() {
             console.log("[LoginForm] session task:", session.currentTask);
             return;
           }
+          // Always use window.location.replace so the browser sends the Clerk
+          // handshake params in the next request, allowing the server middleware
+          // to set the session cookie before /api/auth/resolve-redirect is called.
           const url = decorateUrl(redirectAfterAuth);
-          if (url.startsWith("http")) {
-            window.location.href = url;
-          } else {
-            router.replace(url);
-          }
+          window.location.replace(url);
         },
       });
       return true;
@@ -110,13 +108,11 @@ export default function LoginForm() {
       const status = (signIn as any).status;
 
       if (status === "complete") {
-        // Activate the session then navigate directly (finalize() can misroute in v7)
-        const createdSessionId = (signIn as any).createdSessionId;
-        if (createdSessionId) {
-          await setActive({ session: createdSessionId });
+        const done = await finalizeSignIn();
+        if (!done) {
+          setError("Connexion incomplète. Réessaie.");
+          setLoading(false);
         }
-        window.location.replace(redirectAfterAuth);
-        return;
       } else if (status === "needs_client_trust" || status === "needs_second_factor") {
         // Client Trust (new device) or MFA: verify identity via email code
         await (signIn as any).mfa.sendEmailCode();
