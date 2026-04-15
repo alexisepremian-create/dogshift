@@ -159,6 +159,8 @@ export default function SecureContractSigningPage() {
     setPdfLoading(true);
     setPdfError(null);
     try {
+      // Le token est passé pour authentifier la requête sans Clerk
+      // (les sitters signent via lien magique, ils n'ont pas de compte actif)
       const res = await fetch("/api/contract/generate-pdf", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -167,6 +169,7 @@ export default function SecureContractSigningPage() {
           contractSignerName: payload.contractSignerName,
           contractSignedAt: payload.contractSignedAt,
           contractVersion: contractVersion,
+          token,
         }),
       });
 

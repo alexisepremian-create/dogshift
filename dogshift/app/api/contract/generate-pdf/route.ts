@@ -9,6 +9,10 @@ import { auth } from "@clerk/nextjs/server";
 import { formatSwissDateTimeHuman } from "@/lib/datetime/formatSwissDateTime";
 import { prisma } from "@/lib/prisma";
 import { presignGetObject, presignPutObject } from "@/lib/r2";
+import {
+  contractAccessTokenMatches,
+  getContractTokenSecret,
+} from "@/lib/sitterContract";
 
 export const runtime = "nodejs";
 
@@ -348,17 +352,14 @@ async function generateContractSignedPdfBytes(args: {
 
 export async function POST(req: NextRequest) {
   try {
-    const { userId: clerkUserId } = await auth();
-    if (!clerkUserId) {
-      return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
-    }
-
     const body = (await req.json().catch(() => null)) as
       | {
           contractSnapshot?: any;
           contractSignerName?: string;
           contractSignedAt?: string;
           contractVersion?: string;
+          // Token optionnel : transmis par la page de signature magique (sitters non-Clerk)
+          token?: string;
         }
       | null;
 
@@ -366,6 +367,7 @@ export async function POST(req: NextRequest) {
     const contractSignerName = typeof body?.contractSignerName === "string" ? body.contractSignerName.trim() : "";
     const contractSignedAt = typeof body?.contractSignedAt === "string" ? body.contractSignedAt.trim() : "";
     const contractVersion = typeof body?.contractVersion === "string" ? body.contractVersion.trim() : "";
+    const rawToken = typeof body?.token === "string" ? body.token.trim() : "";
 
     const sitterId = typeof contractSnapshot?.sitterId === "string" ? contractSnapshot.sitterId : null;
     if (!sitterId) {
@@ -394,17 +396,47 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, error: "INCONSISTENT_CONTRACT_VERSION" }, { status: 400 });
     }
 
+    // ── Authentification : Clerk OU token magique de signature ───────────────
+    // Les sitters signent via un lien one-time (pas de compte Clerk encore).
+    // On accepte les deux modes pour ne pas bloquer le téléchargement post-signature.
+    let authorized = false;
+
+    if (rawToken) {
+      // Mode token : valider que le token correspond bien au sitterId demandé
+      const secret = getContractTokenSecret();
+      if (secret) {
+        const profiles = (await (prisma as any).sitterProfile.findMany({
+          where: { contractAccessTokenHash: { not: null }, sitterId },
+          select: { sitterId: true, contractAccessTokenHash: true },
+        })) as Array<{ sitterId: string; contractAccessTokenHash: string | null }>;
+
+        const match = profiles.find((p) => contractAccessTokenMatches(p.contractAccessTokenHash, rawToken, secret));
+        if (match) authorized = true;
+      }
+    }
+
+    if (!authorized) {
+      // Mode Clerk : vérifier que l'utilisateur connecté possède ce profil sitter
+      const { userId: clerkUserId } = await auth();
+      if (!clerkUserId) {
+        return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
+      }
+      const ownerCheck = await (prisma as any).sitterProfile.findUnique({
+        where: { sitterId },
+        select: { user: { select: { clerkUserId: true } } },
+      });
+      if (ownerCheck?.user?.clerkUserId !== clerkUserId) {
+        return NextResponse.json({ ok: false, error: "FORBIDDEN" }, { status: 403 });
+      }
+      authorized = true;
+    }
+
     const profile = await (prisma as any).sitterProfile.findUnique({
       where: { sitterId },
-      select: { id: true, contractSignedPdfUrl: true, user: { select: { clerkUserId: true } } },
+      select: { id: true, contractSignedPdfUrl: true },
     });
     if (!profile?.id) {
       return NextResponse.json({ ok: false, error: "NOT_FOUND" }, { status: 404 });
-    }
-
-    // Verify the authenticated user owns this sitter profile
-    if (profile.user?.clerkUserId !== clerkUserId) {
-      return NextResponse.json({ ok: false, error: "FORBIDDEN" }, { status: 403 });
     }
 
     if ((profile as any).contractSignedPdfUrl) {
