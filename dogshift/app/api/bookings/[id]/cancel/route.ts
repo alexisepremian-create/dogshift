@@ -4,6 +4,7 @@ import type { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { resolveDbUserId } from "@/lib/auth/resolveDbUserId";
 import { setBookingStatus } from "@/lib/bookings/setBookingStatus";
+import { logAudit } from "@/lib/audit";
 
 export const runtime = "nodejs";
 
@@ -49,6 +50,15 @@ export async function POST(
 
     const res = await setBookingStatus(bookingId, "CANCELLED" as any, { req });
     if (!res.ok) return NextResponse.json({ ok: false, error: res.error }, { status: 500 });
+
+    void logAudit({
+      action: "booking.cancelled",
+      actorType: "user",
+      actorId: userId,
+      targetId: bookingId,
+      targetType: "BOOKING",
+      metadata: { previousStatus: booking.status },
+    });
 
     const updated = { id: bookingId, status: "CANCELLED" };
 

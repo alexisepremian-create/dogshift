@@ -4,7 +4,7 @@ import { auth, currentUser, clerkClient } from "@clerk/nextjs/server";
 
 import { prisma } from "@/lib/prisma";
 import { ensureDbUserByClerkUserId } from "@/lib/auth/resolveDbUserId";
-import { logAdminAudit } from "@/lib/adminAudit";
+import { logAdminAudit } from "@/lib/audit";
 
 export const runtime = "nodejs";
 

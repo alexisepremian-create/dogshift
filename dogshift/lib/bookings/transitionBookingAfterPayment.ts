@@ -7,6 +7,7 @@ import { setBookingStatus } from "@/lib/bookings/setBookingStatus";
 import { sendSms } from "@/lib/sms/sendSms";
 import { smsLastMinuteConfirmedBody } from "@/lib/sms/templates";
 import { getUserPhone } from "@/lib/user/getUserPhone";
+import { logAudit } from "@/lib/audit";
 
 const MIN_LEAD_TIME_MINUTES = 30;
 const DEFAULT_MIN_ADVANCE_HOURS = 24;
@@ -295,6 +296,21 @@ export async function transitionBookingAfterStripePaymentSuccess(
   });
 
   if (res.ok && res.changed) {
+    // Audit log: booking paid (or auto-confirmed for last-minute)
+    void logAudit({
+      action: shouldAutoConfirm ? "booking.confirmed" : "booking.paid",
+      actorType: "stripe",
+      actorId: logCtx?.eventId ? String(logCtx.eventId) : null,
+      targetId: bookingId,
+      targetType: "BOOKING",
+      metadata: {
+        previousStatus: statusBefore,
+        nextStatus,
+        livemode: logCtx?.livemode ?? null,
+        stripeEventType: logCtx?.eventType ?? null,
+      },
+    });
+
     if (shouldAutoConfirm) {
       await notifyLastMinuteConfirmed(req, bookingId);
 

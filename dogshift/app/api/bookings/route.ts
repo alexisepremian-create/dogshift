@@ -9,6 +9,7 @@ import { checkBoardingRange, generateDaySlots, type ServiceType } from "@/lib/av
 import { BOOKING_ACCESS_COOKIE, isBookingAccessCodeProtectionEnabled } from "@/lib/bookingAccess";
 import { zodParse } from "@/lib/validators/common";
 import { createBookingSchema } from "@/lib/validators/bookings";
+import { logAudit } from "@/lib/audit";
 
 export const runtime = "nodejs";
 
@@ -472,6 +473,15 @@ export async function POST(req: NextRequest) {
     } catch (err) {
       console.error("[api][bookings][POST] conversation upsert failed", err);
     }
+
+    void logAudit({
+      action: "booking.created",
+      actorType: "user",
+      actorId: userId,
+      targetId: booking.id,
+      targetType: "BOOKING",
+      metadata: { service, amount, sitterId },
+    });
 
     return NextResponse.json({ ok: true, bookingId: booking.id }, { status: 200 });
   } catch (err) {

@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 import { getRequestAdminAccess } from "@/lib/adminAuth";
-import { logAdminAudit } from "@/lib/adminAudit";
+import { logAdminAudit } from "@/lib/audit";
 import { sendEmail } from "@/lib/email/sendEmail";
 import { prisma } from "@/lib/prisma";
 import {

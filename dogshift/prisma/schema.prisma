@@ -668,6 +668,40 @@ model VerificationToken {
   @@unique([identifier, token])
 }
 
+/// Immutable audit trail for legal / dispute purposes.
+/// Records every critical action on the platform with actor, target and timestamp.
+/// Never delete rows — only append. No PII in metadata (use IDs only).
+model AuditLog {
+  id String @id @default(cuid())
+
+  /// e.g. "booking.created", "booking.paid", "booking.cancelled",
+  ///      "sitter.approved", "sitter.rejected", "account.deleted"
+  action String
+
+  /// "admin" | "user" | "system" | "stripe"
+  actorType String
+
+  /// Clerk user ID (admin/user), "system" or "stripe"
+  actorId String?
+
+  /// Primary key of the affected entity (booking ID, user ID, etc.)
+  targetId String?
+
+  /// "BOOKING" | "USER" | "SITTER_PROFILE" | "APPLICATION"
+  targetType String?
+
+  /// Additional context: amounts (in cents), old/new status, payment intent ID…
+  /// Never store email, name, phone or other PII here.
+  metadata Json?
+
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([action, createdAt])
+  @@index([targetId, targetType])
+  @@index([actorId, createdAt])
+}
+
 /// Singleton row `id = "global"` — platform-wide toggles (maintenance, etc.).
 model PlatformSettings {
   id                 String   @id

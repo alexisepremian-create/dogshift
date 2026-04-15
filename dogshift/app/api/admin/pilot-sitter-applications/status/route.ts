@@ -3,7 +3,7 @@ import type { NextRequest } from "next/server";
 
 import { getRequestAdminAccess } from "@/lib/adminAuth";
 import { prisma } from "@/lib/prisma";
-import { logAdminAudit } from "@/lib/adminAudit";
+import { logAdminAudit } from "@/lib/audit";
 
 export const runtime = "nodejs";
 
