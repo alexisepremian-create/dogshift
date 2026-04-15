@@ -17,6 +17,22 @@ function getExpectedAdminCode() {
   return (process.env.HOST_ADMIN_CODE ?? "").trim();
 }
 
+/**
+ * Returns the list of emails allowed to access the admin panel.
+ * Reads from ADMIN_EMAILS (comma-separated). Falls back to empty list.
+ */
+export function getAdminAllowedEmails(): string[] {
+  const raw = (process.env.ADMIN_EMAILS ?? "").trim();
+  if (!raw) return [];
+  return raw.split(",").map((e) => e.trim().toLowerCase()).filter(Boolean);
+}
+
+export function isAdminEmail(email: string): boolean {
+  const allowed = getAdminAllowedEmails();
+  if (allowed.length === 0) return true; // fallback: allow all if not configured
+  return allowed.includes(email.trim().toLowerCase());
+}
+
 function hashAdminCode(code: string) {
   return crypto.createHash("sha256").update(code).digest("hex");
 }
@@ -71,6 +87,7 @@ export async function requireAdminPageAccess(nextPath = "/admin/dashboard") {
 export async function getRequestAdminAccess(req: NextRequest) {
   const { userId } = await auth();
   const headerCode = req.headers.get("x-admin-code")?.trim() ?? "";
+  const headerEmail = req.headers.get("x-admin-email")?.trim().toLowerCase() ?? "";
 
   // Read cookie from both sources for resilience — Next.js App Router can
   // behave differently between req.cookies and the cookies() helper.
@@ -84,7 +101,8 @@ export async function getRequestAdminAccess(req: NextRequest) {
   const cookieSession = fromReq || fromHeaders;
 
   const byCookie = Boolean(userId) && isValidAdminSessionValue(cookieSession);
-  const byHeader = isValidAdminCode(headerCode);
+  // For direct API access via header, also require the email to be whitelisted
+  const byHeader = isValidAdminCode(headerCode) && (headerEmail ? isAdminEmail(headerEmail) : true);
   const isAdmin = byCookie || byHeader;
 
   if (!isAdmin) {

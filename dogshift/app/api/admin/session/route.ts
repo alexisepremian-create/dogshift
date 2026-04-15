@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { auth, currentUser } from "@clerk/nextjs/server";
 
-import { ADMIN_SESSION_COOKIE, createAdminSessionValue, isValidAdminCode } from "@/lib/adminAuth";
+import { ADMIN_SESSION_COOKIE, createAdminSessionValue, isAdminEmail, isValidAdminCode } from "@/lib/adminAuth";
+import { checkRateLimit, getClientIp } from "@/lib/rateLimit";
 
 export const runtime = "nodejs";
 
@@ -16,9 +17,27 @@ const sessionCookieOptions = {
 
 export async function POST(req: NextRequest) {
   try {
+    // Rate limit: max 5 attempts per IP per 10 minutes
+    const ip = getClientIp(req);
+    const rl = checkRateLimit(`admin-session:${ip}`, { limit: 5, windowMs: 10 * 60 * 1000 });
+    if (!rl.allowed) {
+      return NextResponse.json(
+        { ok: false, error: "RATE_LIMITED", retryAfter: Math.ceil((rl.resetAt - Date.now()) / 1000) },
+        { status: 429, headers: { "Retry-After": String(Math.ceil((rl.resetAt - Date.now()) / 1000)) } }
+      );
+    }
+
     const { userId } = await auth();
     if (!userId) {
       return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
+    }
+
+    // Email whitelist: only allowed emails can access the admin panel
+    const clerkUser = await currentUser();
+    const email = clerkUser?.primaryEmailAddress?.emailAddress ?? "";
+    if (!email || !isAdminEmail(email)) {
+      console.warn("[api][admin][session][POST] email not whitelisted", { email: email || "(none)" });
+      return NextResponse.json({ ok: false, error: "FORBIDDEN" }, { status: 403 });
     }
 
     const body = (await req.json().catch(() => null)) as { code?: unknown } | null;
