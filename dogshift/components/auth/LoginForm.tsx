@@ -10,6 +10,7 @@ function normalizeEmail(input: string) {
 }
 
 type Step = "email" | "password" | "emailCode";
+type VerifyMode = "emailCode" | "mfa";
 
 export default function LoginForm() {
   const { signIn, fetchStatus } = useSignIn();
@@ -28,6 +29,7 @@ export default function LoginForm() {
   const [password, setPassword] = useState("");
   const [emailCode, setEmailCode] = useState("");
   const [step, setStep] = useState<Step>("email");
+  const [verifyMode, setVerifyMode] = useState<VerifyMode>("emailCode");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [autoGoogleStarted, setAutoGoogleStarted] = useState(false);
@@ -78,6 +80,7 @@ export default function LoginForm() {
         setStep("password");
       } else {
         await (signIn as any).emailCode.sendCode();
+        setVerifyMode("emailCode");
         setStep("emailCode");
       }
     } catch (err) {
@@ -100,9 +103,24 @@ export default function LoginForm() {
     setError(null);
     setLoading(true);
     try {
-      await (signIn as any).attemptFirstFactor({ strategy: "password", password });
-      const done = await finalizeSignIn();
-      if (!done) {
+      // Clerk v7 API: signIn.password() replaces attemptFirstFactor({ strategy: "password" })
+      await (signIn as any).password({ emailAddress: normalizeEmail(email), password });
+
+      const status = (signIn as any).status;
+
+      if (status === "complete") {
+        const done = await finalizeSignIn();
+        if (!done) {
+          setError("Connexion incomplète. Réessaie.");
+          setLoading(false);
+        }
+      } else if (status === "needs_client_trust" || status === "needs_second_factor") {
+        // Client Trust (new device) or MFA: verify identity via email code
+        await (signIn as any).mfa.sendEmailCode();
+        setVerifyMode("mfa");
+        setStep("emailCode");
+        setLoading(false);
+      } else {
         setError("Connexion incomplète. Réessaie.");
         setLoading(false);
       }
@@ -119,6 +137,7 @@ export default function LoginForm() {
     setLoading(true);
     try {
       await (signIn as any).emailCode.sendCode();
+      setVerifyMode("emailCode");
       setStep("emailCode");
     } catch (err) {
       console.error("[LoginForm] switchToEmailCode error:", err);
@@ -141,7 +160,12 @@ export default function LoginForm() {
     setError(null);
     setLoading(true);
     try {
-      await (signIn as any).emailCode.verifyCode({ code });
+      // Use mfa.verifyEmailCode for password+ClientTrust flow, emailCode.verifyCode otherwise
+      if (verifyMode === "mfa") {
+        await (signIn as any).mfa.verifyEmailCode({ code });
+      } else {
+        await (signIn as any).emailCode.verifyCode({ code });
+      }
       const done = await finalizeSignIn();
       if (!done) {
         setError("Connexion incomplète. Réessaie.");
@@ -158,6 +182,7 @@ export default function LoginForm() {
     setStep("email");
     setPassword("");
     setEmailCode("");
+    setVerifyMode("emailCode");
     setError(null);
   }
 
