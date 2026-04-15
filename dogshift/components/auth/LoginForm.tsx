@@ -109,11 +109,15 @@ export default function LoginForm() {
       const status = (signIn as any).status;
 
       if (status === "complete") {
-        const done = await finalizeSignIn();
-        if (!done) {
-          setError("Connexion incomplète. Réessaie.");
-          setLoading(false);
+        // Try finalize() first; fall back to direct navigation if it doesn't redirect
+        try {
+          await finalizeSignIn();
+        } catch {
+          // ignore
         }
+        // Fallback: navigate directly in case finalize() didn't trigger navigation
+        router.replace(redirectAfterAuth);
+        return;
       } else if (status === "needs_client_trust" || status === "needs_second_factor") {
         // Client Trust (new device) or MFA: verify identity via email code
         await (signIn as any).mfa.sendEmailCode();
