@@ -17,17 +17,28 @@ export default function CguUpdateBanner() {
   const [accepting, setAccepting] = useState(false);
   const bannerRef = useRef<HTMLDivElement>(null);
 
-  // Synchronise --ds-maintenance-banner-height avec la hauteur réelle du banner
+  // Synchronise --ds-maintenance-banner-height avec la hauteur réelle du banner via ResizeObserver
   useEffect(() => {
-    const el = bannerRef.current;
     const root = document.documentElement;
-    if (visible && el) {
-      const h = el.getBoundingClientRect().height;
-      root.style.setProperty("--ds-maintenance-banner-height", `${h}px`);
-    } else {
+    if (!visible) {
       root.style.setProperty("--ds-maintenance-banner-height", "0px");
+      return;
     }
+
+    const el = bannerRef.current;
+    if (!el) return;
+
+    const update = () => {
+      root.style.setProperty("--ds-maintenance-banner-height", `${el.getBoundingClientRect().height}px`);
+    };
+
+    update();
+
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+
     return () => {
+      ro.disconnect();
       root.style.setProperty("--ds-maintenance-banner-height", "0px");
     };
   }, [visible]);

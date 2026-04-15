@@ -60,11 +60,17 @@ export default function HostDashboardShell({ children }: { children: React.React
         <div className="relative z-0 flex min-w-0 flex-1 flex-col">
 
           {/* Mobile top header — logo only (no hamburger, nav is in the bottom bar) */}
-          <header className="fixed inset-x-0 top-0 z-[70] flex h-14 items-center border-b border-slate-100 bg-white/95 px-5 backdrop-blur-md lg:hidden">
+          <header
+            className="fixed inset-x-0 z-[70] flex h-14 items-center border-b border-slate-100 bg-white/95 px-5 backdrop-blur-md lg:hidden"
+            style={{ top: "var(--ds-maintenance-banner-height, 0px)" }}
+          >
             <BrandLogo href="/" priority />
           </header>
 
-          <main className="flex-1 px-4 pt-14 sm:px-6 lg:px-10 lg:pt-8">
+          <main
+            className="flex-1 px-4 sm:px-6 lg:px-10 lg:pt-8"
+            style={{ paddingTop: "calc(3.5rem + var(--ds-maintenance-banner-height, 0px))" }}
+          >
             <div className="mx-auto w-full max-w-6xl py-6 lg:py-8">
               {children}
             </div>
