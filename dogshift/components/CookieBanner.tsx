@@ -40,7 +40,7 @@ export default function CookieBanner({ onConsent }: Props) {
       aria-label="Gestion des cookies"
       aria-modal="false"
       className={[
-        "fixed bottom-0 left-0 right-0 z-[9998] px-4 pb-4 sm:bottom-5 sm:left-auto sm:right-5 sm:w-full sm:max-w-md sm:px-0",
+        "fixed bottom-0 left-0 right-0 z-[9998] px-4 pb-4 sm:bottom-5 sm:left-5 sm:right-auto sm:w-full sm:max-w-md sm:px-0",
         "transition-all duration-500 ease-out",
         exiting
           ? "translate-y-4 opacity-0"
