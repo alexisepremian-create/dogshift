@@ -65,6 +65,12 @@ const categories: SecurityCategory[] = [
         detail: "5 req/15min sur contact · 10 req/15min sur invites · 3 req/h sur candidatures · 5 req/10min sur admin",
       },
       {
+        title: "Validation des entrées (Zod)",
+        description: "Toutes les routes API critiques valident le body entrant via des schémas Zod avant d'accéder à la base de données ou à Stripe. Un body malformé retourne immédiatement une erreur 400 avec un message précis, sans jamais atteindre la logique métier.",
+        status: "ok",
+        detail: "8 routes couvertes — bookings · host/profile · pricing · set-password · account/settings · contact · sitter-applications · invites/verify",
+      },
+      {
         title: "Webhook Stripe signé",
         description: "Les webhooks Stripe (confirmation de paiement) vérifient une signature cryptographique. Impossible de simuler un faux paiement via l'API.",
         status: "ok",
