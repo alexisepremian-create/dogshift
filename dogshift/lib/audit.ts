@@ -26,7 +26,9 @@ export type AuditAction =
   // Account / RGPD
   | "account.delete"
   // Platform
-  | "platform.settings_change";
+  | "platform.settings_change"
+  // Communications
+  | "communications.email_sent";
 
 type LogAuditParams = {
   action: AuditAction;

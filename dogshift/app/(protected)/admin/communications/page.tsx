@@ -1,244 +1,487 @@
 "use client";
 
-import { useState } from "react";
-import { Mail, Eye, Send, CheckCircle2, AlertTriangle, Users } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  Mail,
+  Eye,
+  Send,
+  AlertTriangle,
+  CheckCircle2,
+  ChevronDown,
+  ChevronUp,
+  Clock,
+  Users,
+  Dog,
+  UserCheck,
+  AtSign,
+} from "lucide-react";
 import AdminShell from "@/components/admin/AdminShell";
 
-type SendResult = {
-  total: number;
-  sent: number;
-  failed: number;
-  errors: string[];
-};
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+type Target = "all" | "sitters" | "owners" | "custom";
+
+interface HistoryEntry {
+  id: string;
+  createdAt: string;
+  actorId: string | null;
+  metadata: {
+    subject?: string;
+    target?: string;
+    total?: number;
+    sent?: number;
+    failed?: number;
+  } | null;
+}
+
+// ─── Constants ────────────────────────────────────────────────────────────────
+
+const TARGET_OPTIONS: { value: Target; label: string; Icon: React.ElementType; desc: string }[] = [
+  { value: "all", label: "Tout le monde", Icon: Users, desc: "Tous les utilisateurs inscrits" },
+  { value: "sitters", label: "Dogsitters", Icon: Dog, desc: "Dogsitters uniquement" },
+  { value: "owners", label: "Propriétaires", Icon: UserCheck, desc: "Propriétaires de chiens uniquement" },
+  { value: "custom", label: "Emails spécifiques", Icon: AtSign, desc: "Entrez manuellement les adresses" },
+];
+
+const DEFAULT_SUBJECT = "Mise à jour de nos Conditions Générales d'Utilisation";
+
+function formatDate(iso: string) {
+  return new Date(iso).toLocaleString("fr-CH", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function targetLabel(t?: string) {
+  return TARGET_OPTIONS.find((o) => o.value === t)?.label ?? t ?? "—";
+}
+
+// ─── Component ────────────────────────────────────────────────────────────────
 
 export default function CommunicationsPage() {
+  const [subject, setSubject] = useState(DEFAULT_SUBJECT);
+  const [target, setTarget] = useState<Target>("all");
+  const [customEmails, setCustomEmails] = useState("");
   const [customMessage, setCustomMessage] = useState("");
+
   const [previewHtml, setPreviewHtml] = useState<string | null>(null);
-  const [loadingPreview, setLoadingPreview] = useState(false);
+  const [previewLoading, setPreviewLoading] = useState(false);
+
   const [showConfirm, setShowConfirm] = useState(false);
   const [sending, setSending] = useState(false);
-  const [result, setResult] = useState<SendResult | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [result, setResult] = useState<{
+    ok: boolean;
+    total?: number;
+    sent?: number;
+    failed?: number;
+    errors?: string[];
+    error?: string;
+  } | null>(null);
 
-  async function loadPreview() {
-    setLoadingPreview(true);
+  const [history, setHistory] = useState<HistoryEntry[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(true);
+  const [historyOpen, setHistoryOpen] = useState(true);
+
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+
+  // ─── Load history ──────────────────────────────────────────────────────────
+
+  const loadHistory = useCallback(async () => {
+    setHistoryLoading(true);
+    try {
+      const res = await fetch("/api/admin/notify-users");
+      const data = await res.json();
+      if (data.ok) setHistory(data.logs ?? []);
+    } catch {
+      // silent
+    } finally {
+      setHistoryLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadHistory();
+  }, [loadHistory]);
+
+  // ─── Preview ───────────────────────────────────────────────────────────────
+
+  async function handlePreview() {
+    setPreviewLoading(true);
     setPreviewHtml(null);
     try {
       const res = await fetch("/api/admin/notify-users", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ customMessage, preview: true }),
+        body: JSON.stringify({
+          subject: subject.trim() || DEFAULT_SUBJECT,
+          customMessage: customMessage.trim(),
+          target,
+          customEmails: parseCustomEmails(),
+          preview: true,
+        }),
       });
       const data = await res.json();
-      if (data?.html) setPreviewHtml(data.html);
+      if (data.ok && data.html) {
+        setPreviewHtml(data.html);
+      }
     } catch {
-      setPreviewHtml(null);
+      // silent
     } finally {
-      setLoadingPreview(false);
+      setPreviewLoading(false);
     }
   }
 
-  async function sendEmails() {
-    setSending(true);
+  // ─── Send ──────────────────────────────────────────────────────────────────
+
+  function parseCustomEmails(): string[] {
+    return customEmails
+      .split(/[\n,;]+/)
+      .map((e) => e.trim())
+      .filter((e) => e.includes("@"));
+  }
+
+  async function handleSend() {
     setShowConfirm(false);
+    setSending(true);
     setResult(null);
-    setError(null);
     try {
       const res = await fetch("/api/admin/notify-users", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ customMessage }),
+        body: JSON.stringify({
+          subject: subject.trim() || DEFAULT_SUBJECT,
+          customMessage: customMessage.trim(),
+          target,
+          customEmails: parseCustomEmails(),
+          preview: false,
+        }),
       });
       const data = await res.json();
-      if (!res.ok || !data.ok) {
-        setError(data?.error ?? "Erreur lors de l'envoi.");
-      } else {
-        setResult(data as SendResult);
+      setResult(data);
+      if (data.ok) {
+        await loadHistory();
       }
     } catch {
-      setError("Impossible de contacter le serveur.");
+      setResult({ ok: false, error: "Erreur réseau" });
     } finally {
       setSending(false);
     }
   }
 
+  // ─── Sync preview iframe ───────────────────────────────────────────────────
+
+  useEffect(() => {
+    if (iframeRef.current && previewHtml !== null) {
+      const doc = iframeRef.current.contentDocument;
+      if (doc) {
+        doc.open();
+        doc.write(previewHtml);
+        doc.close();
+      }
+    }
+  }, [previewHtml]);
+
+  const canSend = subject.trim().length >= 3 && !sending;
+  const customEmailList = parseCustomEmails();
+  const customEmailsValid = target !== "custom" || customEmailList.length > 0;
+
+  // ─── Render ────────────────────────────────────────────────────────────────
+
   return (
     <AdminShell>
-      <div className="space-y-8 px-2 pt-6 sm:px-4">
+      <div className="mx-auto max-w-3xl space-y-8 px-4 py-8">
 
         {/* Header */}
         <div>
-          <h2 className="text-2xl font-semibold tracking-tight text-slate-900">Communications</h2>
-          <p className="mt-2 text-sm text-slate-500">
-            Envoyez un email à tous les utilisateurs de la plateforme (ex : mise à jour des CGU).
+          <h1 className="text-2xl font-extrabold tracking-tight text-slate-900">
+            Communications
+          </h1>
+          <p className="mt-1 text-sm text-slate-500">
+            Envoyez un e-mail groupé aux utilisateurs DogShift.
           </p>
         </div>
 
-        {/* Résultat envoi */}
-        {result && (
-          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5">
+        {/* Form card */}
+        <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <div className="border-b border-slate-100 px-6 py-4">
             <div className="flex items-center gap-2">
-              <CheckCircle2 className="h-5 w-5 text-emerald-600" />
-              <p className="font-semibold text-emerald-900">Envoi terminé</p>
+              <Mail className="h-4 w-4 text-[#2f4d6b]" />
+              <span className="font-semibold text-slate-800">Nouveau message</span>
             </div>
-            <div className="mt-3 grid grid-cols-3 gap-3">
-              <div className="rounded-xl bg-white p-3 text-center shadow-sm">
-                <p className="text-2xl font-bold text-slate-900">{result.total}</p>
-                <p className="text-xs text-slate-500">Total</p>
-              </div>
-              <div className="rounded-xl bg-white p-3 text-center shadow-sm">
-                <p className="text-2xl font-bold text-emerald-600">{result.sent}</p>
-                <p className="text-xs text-slate-500">Envoyés</p>
-              </div>
-              <div className="rounded-xl bg-white p-3 text-center shadow-sm">
-                <p className="text-2xl font-bold text-rose-600">{result.failed}</p>
-                <p className="text-xs text-slate-500">Échecs</p>
-              </div>
-            </div>
-            {result.errors.length > 0 && (
-              <div className="mt-3 rounded-xl bg-white p-3">
-                <p className="text-xs font-semibold text-rose-700">Erreurs :</p>
-                <ul className="mt-1 space-y-0.5">
-                  {result.errors.map((e) => (
-                    <li key={e} className="text-xs text-rose-600">{e}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
           </div>
-        )}
 
-        {error && (
-          <div className="flex items-center gap-2 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">
-            <AlertTriangle className="h-4 w-4 shrink-0" />
-            {error}
-          </div>
-        )}
+          <div className="space-y-6 px-6 py-6">
 
-        <div className="grid gap-6 lg:grid-cols-2">
-
-          {/* Formulaire */}
-          <div className="space-y-5 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-            <div className="flex items-center gap-2">
-              <Mail className="h-5 w-5 text-[#2f4d6b]" />
-              <h3 className="font-semibold text-slate-900">Composer l'email</h3>
+            {/* Sujet */}
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-slate-700">
+                Sujet de l'e-mail
+              </label>
+              <input
+                type="text"
+                value={subject}
+                onChange={(e) => setSubject(e.target.value)}
+                placeholder="Ex : Mise à jour de nos CGU"
+                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-900 outline-none ring-0 transition focus:border-[#2f4d6b] focus:bg-white focus:ring-2 focus:ring-[#2f4d6b]/20"
+              />
             </div>
 
+            {/* Destinataires */}
             <div>
-              <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">Objet (fixe)</p>
-              <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-                Mise à jour de nos Conditions Générales d'Utilisation — DogShift
+              <label className="mb-1.5 block text-sm font-medium text-slate-700">
+                Destinataires
+              </label>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                {TARGET_OPTIONS.map(({ value, label, Icon, desc }) => (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => setTarget(value)}
+                    className={`flex flex-col items-start gap-1 rounded-xl border px-3 py-2.5 text-left transition ${
+                      target === value
+                        ? "border-[#2f4d6b] bg-[#2f4d6b]/5 ring-2 ring-[#2f4d6b]/20"
+                        : "border-slate-200 bg-slate-50 hover:border-slate-300 hover:bg-white"
+                    }`}
+                  >
+                    <Icon
+                      className={`h-4 w-4 ${target === value ? "text-[#2f4d6b]" : "text-slate-400"}`}
+                    />
+                    <span
+                      className={`text-xs font-semibold ${target === value ? "text-[#2f4d6b]" : "text-slate-700"}`}
+                    >
+                      {label}
+                    </span>
+                    <span className="text-[10px] leading-tight text-slate-400">{desc}</span>
+                  </button>
+                ))}
               </div>
+
+              {/* Custom email textarea */}
+              {target === "custom" && (
+                <div className="mt-3">
+                  <label className="mb-1 block text-xs font-medium text-slate-500">
+                    Adresses e-mail (séparées par virgule, point-virgule ou saut de ligne)
+                  </label>
+                  <textarea
+                    value={customEmails}
+                    onChange={(e) => setCustomEmails(e.target.value)}
+                    rows={3}
+                    placeholder="alice@example.com, bob@example.com"
+                    className="w-full resize-none rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-900 outline-none transition focus:border-[#2f4d6b] focus:bg-white focus:ring-2 focus:ring-[#2f4d6b]/20"
+                  />
+                  {customEmails.trim() && (
+                    <p className="mt-1 text-xs text-slate-400">
+                      {customEmailList.length} adresse{customEmailList.length > 1 ? "s" : ""} détectée
+                      {customEmailList.length > 1 ? "s" : ""}
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
 
+            {/* Message personnalisé */}
             <div>
-              <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
-                Message personnalisé <span className="font-normal normal-case text-slate-400">(optionnel)</span>
+              <label className="mb-1.5 block text-sm font-medium text-slate-700">
+                Message personnalisé{" "}
+                <span className="font-normal text-slate-400">(optionnel)</span>
               </label>
               <textarea
                 value={customMessage}
                 onChange={(e) => setCustomMessage(e.target.value)}
-                rows={5}
-                placeholder="Ex : Nous avons clarifié notre politique d'annulation et mis à jour la section sur la conservation des données…"
-                className="w-full resize-none rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-[#2f4d6b] focus:ring-2 focus:ring-[#2f4d6b]/20"
+                rows={4}
+                placeholder="Ex : Nous avons clarifié les conditions relatives aux annulations..."
+                className="w-full resize-none rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-900 outline-none transition focus:border-[#2f4d6b] focus:bg-white focus:ring-2 focus:ring-[#2f4d6b]/20"
               />
-              <p className="mt-1 text-xs text-slate-400">
-                Ce texte apparaît dans un encadré bleu au milieu de l'email. Laissez vide pour un email générique.
-              </p>
             </div>
 
-            <div className="flex flex-col gap-3 pt-2 sm:flex-row">
+            {/* Actions */}
+            <div className="flex items-center gap-3">
               <button
                 type="button"
-                onClick={loadPreview}
-                disabled={loadingPreview}
-                className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:opacity-60"
+                onClick={handlePreview}
+                disabled={previewLoading || !subject.trim()}
+                className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-white disabled:opacity-50"
               >
                 <Eye className="h-4 w-4" />
-                {loadingPreview ? "Chargement…" : "Prévisualiser"}
+                {previewLoading ? "Chargement…" : "Prévisualiser"}
               </button>
 
               <button
                 type="button"
                 onClick={() => setShowConfirm(true)}
-                disabled={sending}
-                className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#2f4d6b] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:opacity-90 disabled:opacity-60"
+                disabled={!canSend || !customEmailsValid}
+                className="flex items-center gap-2 rounded-xl bg-[#2f4d6b] px-4 py-2.5 text-sm font-semibold text-white shadow transition hover:bg-[#263f58] disabled:opacity-50"
               >
                 <Send className="h-4 w-4" />
-                {sending ? "Envoi en cours…" : "Envoyer à tous"}
+                {sending ? "Envoi en cours…" : "Envoyer"}
               </button>
             </div>
 
-            {sending && (
-              <div className="rounded-xl border border-blue-200 bg-blue-50 p-3 text-sm text-blue-700">
-                Envoi en cours — ne fermez pas cette page. Cela peut prendre quelques minutes selon le nombre d'utilisateurs.
-              </div>
-            )}
-          </div>
-
-          {/* Preview */}
-          <div className="rounded-3xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-            <div className="flex items-center gap-2 border-b border-slate-200 px-6 py-4">
-              <Eye className="h-4 w-4 text-slate-400" />
-              <h3 className="font-semibold text-slate-900">Prévisualisation</h3>
-            </div>
-            {previewHtml ? (
-              <iframe
-                srcDoc={previewHtml}
-                className="h-[520px] w-full"
-                title="Prévisualisation de l'email"
-                sandbox="allow-same-origin"
-              />
-            ) : (
-              <div className="flex h-[520px] flex-col items-center justify-center gap-3 text-slate-400">
-                <Mail className="h-10 w-10 opacity-30" />
-                <p className="text-sm">Cliquez sur "Prévisualiser" pour voir le rendu</p>
+            {/* Result */}
+            {result && (
+              <div
+                className={`flex items-start gap-3 rounded-xl p-4 text-sm ${
+                  result.ok
+                    ? "border border-emerald-100 bg-emerald-50 text-emerald-800"
+                    : "border border-red-100 bg-red-50 text-red-800"
+                }`}
+              >
+                {result.ok ? (
+                  <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
+                ) : (
+                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                )}
+                <div>
+                  {result.ok ? (
+                    <>
+                      <p className="font-semibold">Envoi terminé</p>
+                      <p className="mt-0.5 text-xs opacity-80">
+                        {result.sent} envoyé{(result.sent ?? 0) > 1 ? "s" : ""} ·{" "}
+                        {result.failed} échec{(result.failed ?? 0) > 1 ? "s" : ""} sur{" "}
+                        {result.total} destinataire{(result.total ?? 0) > 1 ? "s" : ""}
+                      </p>
+                      {(result.errors?.length ?? 0) > 0 && (
+                        <ul className="mt-1 list-inside list-disc text-xs opacity-70">
+                          {result.errors!.slice(0, 5).map((e, i) => (
+                            <li key={i}>{e}</li>
+                          ))}
+                        </ul>
+                      )}
+                    </>
+                  ) : (
+                    <p className="font-semibold">{result.error ?? "Une erreur est survenue"}</p>
+                  )}
+                </div>
               </div>
             )}
           </div>
         </div>
 
-        {/* Info box */}
-        <div className="rounded-2xl border border-blue-200 bg-blue-50 p-5 text-sm text-blue-800">
-          <div className="flex items-start gap-3">
-            <Users className="mt-0.5 h-4 w-4 shrink-0" />
-            <div className="space-y-1">
-              <p className="font-semibold">À propos de cet envoi</p>
-              <p className="text-blue-700">L'email sera envoyé à <strong>tous les utilisateurs</strong> ayant un compte sur DogShift (propriétaires et dogsitters). L'envoi est cadencé pour respecter les limites Resend. Après l'envoi, les utilisateurs verront également le bandeau de re-acceptation des CGU la prochaine fois qu'ils visitent le site.</p>
-              <p className="mt-2 text-blue-700">Pour déclencher le bandeau CGU sur le site, pensez à mettre à jour <code className="rounded bg-blue-100 px-1 py-0.5 font-mono text-xs">CGU_VERSION</code> dans <code className="rounded bg-blue-100 px-1 py-0.5 font-mono text-xs">lib/cguVersion.ts</code>.</p>
+        {/* Preview iframe */}
+        {previewHtml !== null && (
+          <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+            <div className="flex items-center gap-2 border-b border-slate-100 px-6 py-4">
+              <Eye className="h-4 w-4 text-slate-400" />
+              <span className="font-semibold text-slate-800">Aperçu de l'e-mail</span>
+              <span className="ml-auto text-xs text-slate-400">
+                Rendu tel qu'il apparaîtra dans la boîte mail
+              </span>
+            </div>
+            <div className="overflow-hidden rounded-b-2xl">
+              <iframe
+                ref={iframeRef}
+                title="Aperçu e-mail"
+                className="h-[600px] w-full border-0"
+                sandbox="allow-same-origin"
+              />
             </div>
           </div>
+        )}
+
+        {/* History */}
+        <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <button
+            type="button"
+            onClick={() => setHistoryOpen((o) => !o)}
+            className="flex w-full items-center gap-2 px-6 py-4 text-left"
+          >
+            <Clock className="h-4 w-4 text-slate-400" />
+            <span className="font-semibold text-slate-800">Historique des envois</span>
+            <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-500">
+              {history.length}
+            </span>
+            <span className="ml-auto text-slate-400">
+              {historyOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            </span>
+          </button>
+
+          {historyOpen && (
+            <div className="border-t border-slate-100">
+              {historyLoading ? (
+                <div className="px-6 py-8 text-center text-sm text-slate-400">
+                  Chargement…
+                </div>
+              ) : history.length === 0 ? (
+                <div className="px-6 py-8 text-center text-sm text-slate-400">
+                  Aucun e-mail envoyé pour l'instant.
+                </div>
+              ) : (
+                <div className="divide-y divide-slate-100">
+                  {history.map((entry) => {
+                    const m = entry.metadata ?? {};
+                    return (
+                      <div
+                        key={entry.id}
+                        className="flex flex-col gap-1 px-6 py-4 sm:flex-row sm:items-center sm:gap-4"
+                      >
+                        <div className="flex-1 min-w-0">
+                          <p className="truncate text-sm font-medium text-slate-800">
+                            {m.subject ?? "—"}
+                          </p>
+                          <p className="mt-0.5 text-xs text-slate-400">
+                            Destinataires : {targetLabel(m.target)} ·{" "}
+                            <span className="text-emerald-600 font-medium">
+                              {m.sent ?? 0} envoyé{(m.sent ?? 0) > 1 ? "s" : ""}
+                            </span>
+                            {(m.failed ?? 0) > 0 && (
+                              <span className="ml-1 text-red-500">
+                                · {m.failed} échec{(m.failed ?? 1) > 1 ? "s" : ""}
+                              </span>
+                            )}
+                            {" · "}
+                            {m.total ?? 0} total
+                          </p>
+                        </div>
+                        <div className="shrink-0 text-right">
+                          <p className="text-xs text-slate-400">{formatDate(entry.createdAt)}</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
       </div>
 
-      {/* Modal de confirmation */}
+      {/* Confirm modal */}
       {showConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-          <div className="w-full max-w-sm rounded-3xl bg-white p-6 shadow-2xl">
+          <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-amber-100">
-                <Send className="h-5 w-5 text-amber-600" />
+                <AlertTriangle className="h-5 w-5 text-amber-600" />
               </div>
-              <h3 className="font-semibold text-slate-900">Confirmer l'envoi</h3>
+              <h2 className="font-bold text-slate-900">Confirmer l'envoi</h2>
             </div>
-            <p className="mt-3 text-sm text-slate-600">
-              Vous allez envoyer un email de mise à jour des CGU à <strong>tous les utilisateurs</strong> de DogShift. Cette action est irréversible.
+            <p className="mt-4 text-sm text-slate-600">
+              Vous êtes sur le point d'envoyer cet e-mail à{" "}
+              <strong>
+                {target === "custom"
+                  ? `${customEmailList.length} adresse${customEmailList.length > 1 ? "s" : ""}`
+                  : targetLabel(target).toLowerCase()}
+              </strong>
+              . Cette action est irréversible.
             </p>
-            <div className="mt-6 flex gap-3">
+            <div className="mt-5 flex gap-3">
               <button
                 type="button"
                 onClick={() => setShowConfirm(false)}
-                className="flex-1 rounded-2xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                className="flex-1 rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
               >
                 Annuler
               </button>
               <button
                 type="button"
-                onClick={sendEmails}
-                className="flex-1 rounded-2xl bg-[#2f4d6b] px-4 py-2.5 text-sm font-semibold text-white transition hover:opacity-90"
+                onClick={handleSend}
+                className="flex-1 rounded-xl bg-[#2f4d6b] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#263f58]"
               >
-                Envoyer
+                Confirmer
               </button>
             </div>
           </div>
