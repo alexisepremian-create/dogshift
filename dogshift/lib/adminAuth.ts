@@ -4,6 +4,8 @@ import { redirect } from "next/navigation";
 import type { NextRequest } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 
+// ⚠️  Variable HOST_ADMIN_CODE doit être un mot de passe fort configuré sur Vercel.
+//     Si tu le changes sur Vercel, les sessions admin actives seront invalidées (c'est voulu).
 export const ADMIN_SESSION_COOKIE = "ds_admin_session";
 
 function safeEqual(a: string, b: string) {
@@ -20,6 +22,11 @@ function getExpectedAdminCode() {
 /**
  * Returns the list of emails allowed to access the admin panel.
  * Reads from ADMIN_EMAILS (comma-separated). Falls back to empty list.
+ *
+ * ⚠️  Variable d'environnement ADMIN_EMAILS doit être configurée sur Vercel.
+ *     Format : "alexis.epremian@gmail.com" ou "email1@x.com,email2@x.com"
+ *     Si non configurée → fallback : TOUT utilisateur connecté peut accéder (dangereux !).
+ *     Pour ajouter un co-admin : ajouter son email dans ADMIN_EMAILS sur Vercel + redéployer.
  */
 export function getAdminAllowedEmails(): string[] {
   const raw = (process.env.ADMIN_EMAILS ?? "").trim();

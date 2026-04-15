@@ -12,6 +12,22 @@ console.log("[boot][env]", {
   DATABASE_URL: envDatabaseUrl ?? null,
 });
 
+/**
+ * Content Security Policy (CSP)
+ *
+ * ⚠️  Si tu ajoutes un nouveau service externe (ex: Crisp chat, Sentry, Hotjar,
+ *     nouvelles analytics, CDN...), tu DOIS ajouter ses domaines ici, sinon
+ *     le navigateur bloquera ses requêtes silencieusement.
+ *
+ * Services actuellement autorisés :
+ *   - Clerk      → authentification utilisateurs
+ *   - Stripe     → paiements (JS + iframes)
+ *   - MapTiler   → cartes interactives
+ *   - Google Ads → AW-18081650051 (via googletagmanager.com)
+ *
+ * Pour déboguer un service bloqué : ouvre la console navigateur,
+ * cherche les erreurs "Content Security Policy" ou "CSP".
+ */
 const csp = [
   // Only load resources from self by default
   "default-src 'self'",
@@ -81,10 +97,13 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   images: {
+    // ⚠️ Si tu affiches des images depuis un nouveau domaine externe (ex: nouveau
+    //    bucket R2, CDN, service d'avatars...), ajoute son hostname ici sinon
+    //    Next.js refusera d'optimiser/afficher l'image.
     remotePatterns: [
       {
         protocol: "https",
-        hostname: "lh3.googleusercontent.com",
+        hostname: "lh3.googleusercontent.com", // Google avatars (connexion Google)
       },
     ],
   },
