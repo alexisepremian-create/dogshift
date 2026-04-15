@@ -16,7 +16,7 @@ const PAGE_SIZE = 100;
  */
 export async function GET(req: NextRequest) {
   const admin = await getRequestAdminAccess(req);
-  if (!admin.ok) {
+  if (!admin.isAdmin) {
     return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
   }
 
