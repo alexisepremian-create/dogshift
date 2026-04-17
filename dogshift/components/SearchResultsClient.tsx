@@ -5,13 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { Check, ChevronDown, PawPrint, Search } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
-function normalize(text: string) {
-  return text
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/\p{Diacritic}/gu, "")
-    .trim();
-}
+import { LOCATION_HUB_COORDS, haversineKm, normalizeLocationText as normalize } from "@/lib/sitterMapGeo";
 
 function formatRating(rating: number) {
   return rating % 1 === 0 ? rating.toFixed(0) : rating.toFixed(1);
@@ -48,32 +42,7 @@ const SELECT_BASE_CLASS =
 const SELECT_COMPACT_CLASS =
   "rounded-2xl border border-slate-300 bg-white px-4 py-2 pr-11 text-sm font-semibold leading-5 text-slate-900 shadow-sm outline-none transition appearance-none [-webkit-appearance:none] [-moz-appearance:none] md:hover:bg-slate-50 focus:border-[var(--dogshift-blue)] focus:ring-4 focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_85%)]";
 
-const LOCATION_COORDS: Record<string, { lat: number; lng: number }> = {
-  geneve: { lat: 46.2044, lng: 6.1432 },
-  lausanne: { lat: 46.5197, lng: 6.6323 },
-  nyon: { lat: 46.3833, lng: 6.2396 },
-  "1201": { lat: 46.2046, lng: 6.1432 },
-  "1207": { lat: 46.2102, lng: 6.1589 },
-  "1003": { lat: 46.5191, lng: 6.6323 },
-  "1006": { lat: 46.5334, lng: 6.6645 },
-  "1260": { lat: 46.3833, lng: 6.2396 },
-};
-
-function toRad(deg: number) {
-  return (deg * Math.PI) / 180;
-}
-
-function haversineKm(a: { lat: number; lng: number }, b: { lat: number; lng: number }) {
-  const R = 6371;
-  const dLat = toRad(b.lat - a.lat);
-  const dLng = toRad(b.lng - a.lng);
-  const lat1 = toRad(a.lat);
-  const lat2 = toRad(b.lat);
-  const sinDLat = Math.sin(dLat / 2);
-  const sinDLng = Math.sin(dLng / 2);
-  const h = sinDLat * sinDLat + Math.cos(lat1) * Math.cos(lat2) * sinDLng * sinDLng;
-  return 2 * R * Math.asin(Math.min(1, Math.sqrt(h)));
-}
+const LOCATION_COORDS = LOCATION_HUB_COORDS;
 
 type ServiceType = "Promenade" | "Garde" | "Pension";
 

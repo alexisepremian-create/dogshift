@@ -11,6 +11,7 @@ import { getHostContractAmendmentState } from "@/lib/contractAmendments";
 import { isActivatedStatus, normalizeSitterLifecycleStatus } from "@/lib/sitterContract";
 import { CURRENT_TERMS_VERSION } from "@/lib/terms";
 import { geocodeSwissLocation } from "@/lib/geocode";
+import { isPersistedAvatarMediaPath } from "@/lib/sitterAvatarMedia";
 import { zodParse } from "@/lib/validators/common";
 import { hostProfileUpdateSchema } from "@/lib/validators/sitter";
 
@@ -150,12 +151,16 @@ export async function GET(req: NextRequest) {
       persistedPricing: sitterProfile?.pricing,
     });
     const persistedAvatarUrl = typeof (sitterProfile as any)?.avatarUrl === "string" ? (sitterProfile as any).avatarUrl : null;
-    const mergedProfile = {
+    const mergedProfile: Record<string, unknown> = {
       ...(builtCompletionProfile && typeof builtCompletionProfile === "object" ? builtCompletionProfile : {}),
       stripeAccountStatus: typeof sitterProfile?.stripeAccountStatus === "string" ? sitterProfile.stripeAccountStatus : null,
-      // Use persisted avatarUrl as fallback if hostProfileJson doesn't have avatarDataUrl
-      ...((persistedAvatarUrl && !(builtCompletionProfile as Record<string, unknown>)?.avatarDataUrl) ? { avatarUrl: persistedAvatarUrl } : {}),
     };
+    if (isPersistedAvatarMediaPath(persistedAvatarUrl)) {
+      mergedProfile.avatarUrl = persistedAvatarUrl;
+      delete mergedProfile.avatarDataUrl;
+    } else if (persistedAvatarUrl && !(builtCompletionProfile as Record<string, unknown>)?.avatarDataUrl) {
+      mergedProfile.avatarUrl = persistedAvatarUrl;
+    }
 
     const computedProfileCompletion = computeSitterProfileCompletion(mergedProfile);
     const persistedProfileCompletion =
@@ -285,11 +290,21 @@ export async function POST(req: NextRequest) {
       updatedAt: new Date().toISOString(),
     };
 
-    const hostProfileJson = JSON.stringify(normalized);
+    const jsonForStorage: Record<string, unknown> = { ...(normalized as Record<string, unknown>) };
+    const pathAvatar = typeof (b as Record<string, unknown>).avatarUrl === "string" ? String((b as Record<string, unknown>).avatarUrl).trim() : "";
+    if (isPersistedAvatarMediaPath(pathAvatar)) {
+      jsonForStorage.avatarUrl = pathAvatar;
+      delete jsonForStorage.avatarDataUrl;
+    } else {
+      const rawData = jsonForStorage.avatarDataUrl;
+      if (typeof rawData === "string" && rawData.length > 120_000) {
+        delete jsonForStorage.avatarDataUrl;
+      }
+    }
 
     await prisma.user.update({
       where: { id: uid },
-      data: { hostProfileJson } as unknown as Record<string, unknown>,
+      data: { hostProfileJson: JSON.stringify(jsonForStorage) } as unknown as Record<string, unknown>,
     });
 
     const publishedFlagRaw = (b as Record<string, unknown>)?.published;
@@ -306,8 +321,13 @@ export async function POST(req: NextRequest) {
     const dogSizesObj = dogSizesObjRaw && typeof dogSizesObjRaw === "object" ? (dogSizesObjRaw as Record<string, unknown>) : {};
     const enabledDogSizes = Object.keys(dogSizesObj).filter((k) => Boolean(dogSizesObj[k]));
 
-    const avatarDataUrl = typeof (b as Record<string, unknown>)?.avatarDataUrl === "string" ? String((b as Record<string, unknown>).avatarDataUrl) : "";
-    const avatarUrl = avatarDataUrl.trim() ? avatarDataUrl.trim() : null;
+    const avatarDataUrl = typeof (b as Record<string, unknown>)?.avatarDataUrl === "string" ? String((b as Record<string, unknown>).avatarDataUrl).trim() : "";
+    let resolvedAvatarForColumn: string | null = null;
+    if (isPersistedAvatarMediaPath(pathAvatar)) {
+      resolvedAvatarForColumn = pathAvatar;
+    } else if (avatarDataUrl) {
+      resolvedAvatarForColumn = avatarDataUrl;
+    }
 
     const displayName = typeof (b as Record<string, unknown>)?.firstName === "string" && String((b as Record<string, unknown>).firstName).trim()
       ? String((b as Record<string, unknown>).firstName).trim()
@@ -339,7 +359,7 @@ export async function POST(req: NextRequest) {
     });
 
     const completion = computeSitterProfileCompletion({
-      ...(normalized && typeof normalized === "object" ? normalized : {}),
+      ...(jsonForStorage && typeof jsonForStorage === "object" ? jsonForStorage : {}),
       ...(typeof existingProfile?.verificationStatus === "string"
         ? {
             verificationStatus:
@@ -445,7 +465,7 @@ export async function POST(req: NextRequest) {
     if (city) updateData.city = city;
     if (postalCode) updateData.postalCode = postalCode;
     if (bio) updateData.bio = bio;
-    if (avatarUrl) updateData.avatarUrl = avatarUrl;
+    if (resolvedAvatarForColumn) updateData.avatarUrl = resolvedAvatarForColumn;
     if (Array.isArray(enabledServices) && enabledServices.length > 0) updateData.services = enabledServices as Prisma.InputJsonValue;
     if (pricingObj && typeof pricingObj === "object" && Object.keys(pricingObj).length > 0) updateData.pricing = pricingObj as Prisma.InputJsonValue;
     if (Array.isArray(enabledDogSizes) && enabledDogSizes.length > 0) updateData.dogSizes = enabledDogSizes as Prisma.InputJsonValue;
@@ -467,7 +487,7 @@ export async function POST(req: NextRequest) {
         city,
         postalCode,
         bio,
-        avatarUrl,
+        avatarUrl: resolvedAvatarForColumn,
         lat: finalLat,
         lng: finalLng,
         services: enabledServices as Prisma.InputJsonValue,
@@ -487,7 +507,7 @@ export async function POST(req: NextRequest) {
         profileCompletion: completion,
         lifecycleStatus,
         publishBlocked,
-        profile: normalized,
+        profile: jsonForStorage,
       },
       { status: 200 }
     );

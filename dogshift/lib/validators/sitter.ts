@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { isPersistedAvatarMediaPath } from "@/lib/sitterAvatarMedia";
+
 const PRICING_SERVICES = ["Promenade", "Garde", "Pension"] as const;
 
 /**
@@ -33,7 +35,17 @@ export const hostProfileUpdateSchema = z
     services: z.record(z.string(), z.boolean()).optional(),
     pricing: z.record(z.string(), z.union([z.number().positive(), z.null()])).optional(),
     dogSizes: z.record(z.string(), z.boolean()).optional(),
-    avatarDataUrl: z.string().max(2_000_000).optional().nullable(),
+    /** Large photos must use R2 upload + /api/media path; small legacy data URLs only. */
+    avatarDataUrl: z.string().max(150_000).optional().nullable(),
+    /** Persisted first-party avatar path after R2 upload (`/api/media/sitter-avatar/...`). */
+    avatarUrl: z
+      .string()
+      .max(480)
+      .optional()
+      .nullable()
+      .refine((v) => v == null || v === "" || isPersistedAvatarMediaPath(v), {
+        message: "avatarUrl must be a /api/media/sitter-avatar/ path",
+      }),
     published: z.boolean().optional(),
   })
   .passthrough();

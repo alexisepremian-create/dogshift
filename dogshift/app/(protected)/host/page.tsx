@@ -354,6 +354,7 @@ export default function HostDashboardPage() {
 
   const avatarSrc =
     (profile.avatarDataUrl && profile.avatarDataUrl.trim() ? profile.avatarDataUrl.trim() : null) ??
+    (profile.avatarUrl && profile.avatarUrl.trim() ? profile.avatarUrl.trim() : null) ??
     (typeof user?.imageUrl === "string" && user.imageUrl.trim() ? user.imageUrl.trim() : null);
 
   if (!isLoaded || !isSignedIn) return null;

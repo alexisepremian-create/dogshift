@@ -52,8 +52,9 @@ export default function MapPreview({
               <div className="pointer-events-none absolute left-0 top-8 z-40 w-[300px] rounded-2xl border border-slate-200 bg-white/55 p-3 text-xs text-slate-700 opacity-0 shadow-[0_18px_60px_-44px_rgba(2,6,23,0.45)] backdrop-blur-md transition duration-150 ease-out translate-y-1 group-hover:translate-y-0 group-focus-within:translate-y-0 group-hover:opacity-100 group-focus-within:opacity-100">
                 <p className="font-semibold text-slate-900">À quoi sert la carte ?</p>
                 <p className="mt-1 leading-relaxed text-slate-600">
-                  Visualisez les dogsitters autour de vous, puis affinez avec les filtres (service + lieu). Cliquez sur un
-                  pin pour voir un aperçu et accéder au profil.
+                  Visualisez les dogsitters autour de vous, puis affinez avec les filtres (service + lieu). Pour une grande
+                  ville reconnue (ex. Lausanne, Genève), le filtre lieu correspond à un rayon d’environ 30&nbsp;km autour du
+                  centre. Sinon, le texte est comparé à la ville ou au NPA. Cliquez sur un pin pour un aperçu et le profil.
                 </p>
                 <p className="mt-2 leading-relaxed text-slate-500">Fond de carte: MapTiler • Données: OpenStreetMap.</p>
               </div>

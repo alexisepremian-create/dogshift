@@ -43,6 +43,7 @@ export default function HostProfileEditPage() {
     return stored ?? getDefaultHostProfile(sitterId);
   });
   const [avatarFileName, setAvatarFileName] = useState<string | null>(null);
+  const [avatarUploading, setAvatarUploading] = useState(false);
   const [verificationIdFileName, setVerificationIdFileName] = useState<string | null>(null);
   const [verificationSelfieFileName, setVerificationSelfieFileName] = useState<string | null>(null);
   const [verificationError, setVerificationError] = useState<string | null>(null);
@@ -143,6 +144,74 @@ export default function HostProfileEditPage() {
     window.addEventListener("hashchange", onHashChange);
     return () => window.removeEventListener("hashchange", onHashChange);
   }, []);
+
+  async function uploadHostAvatar(file: File) {
+    if (!sitterId) return;
+    setError(null);
+    setAvatarUploading(true);
+    try {
+      const rawType = (file.type || "").toLowerCase();
+      const contentType =
+        rawType === "image/png" ? "image/png" : rawType === "image/webp" ? "image/webp" : "image/jpeg";
+
+      const presRes = await fetch("/api/host/profile/avatar/presign", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ contentType, sizeBytes: file.size }),
+      });
+      const pres = (await presRes.json().catch(() => null)) as {
+        ok?: boolean;
+        uploadUrl?: string;
+        key?: string;
+        error?: string;
+      };
+      if (!presRes.ok || !pres?.ok || !pres.uploadUrl || !pres.key) {
+        setError(
+          pres?.error === "FILE_TOO_LARGE"
+            ? "Ce fichier est trop volumineux (max. 12 Mo)."
+            : "Impossible de préparer l’envoi de la photo. Réessaie ou choisis une autre image.",
+        );
+        return;
+      }
+
+      const putRes = await fetch(String(pres.uploadUrl), {
+        method: "PUT",
+        headers: { "Content-Type": contentType },
+        body: file,
+      });
+      if (!putRes.ok) {
+        setError("Échec du transfert de la photo. Réessaie.");
+        return;
+      }
+
+      const commitRes = await fetch("/api/host/profile/avatar/commit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ key: pres.key }),
+      });
+      const commit = (await commitRes.json().catch(() => null)) as { ok?: boolean; avatarUrl?: string };
+      if (!commitRes.ok || !commit?.ok || typeof commit.avatarUrl !== "string") {
+        setError("Impossible d’enregistrer la photo. Réessaie.");
+        return;
+      }
+
+      setAvatarFileName(file.name);
+      setProfile((p) => {
+        const next: HostProfileV1 = {
+          ...p,
+          avatarDataUrl: undefined,
+          avatarUrl: commit.avatarUrl,
+          updatedAt: new Date().toISOString(),
+        };
+        saveHostProfileToStorage(next);
+        return next;
+      });
+    } catch {
+      setError("Impossible d’envoyer la photo. Vérifie ta connexion et réessaie.");
+    } finally {
+      setAvatarUploading(false);
+    }
+  }
 
   async function persistProfile(nextProfile: HostProfileV1) {
     if (!sitterId) return;
@@ -326,44 +395,49 @@ export default function HostProfileEditPage() {
                   <label className="block text-sm font-medium text-slate-700" htmlFor="host_photo">
                     Photo
                   </label>
+                  <p className="mt-1 text-xs text-slate-500">
+                    JPG, PNG ou WebP — les photos du téléphone sont acceptées (téléversement sécurisé jusqu’à 12&nbsp;Mo).
+                  </p>
                   <div className="mt-2 flex flex-wrap items-center gap-3">
                     <input
                       id="host_photo"
                       type="file"
-                      accept="image/*"
+                      accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"
                       className="sr-only"
+                      disabled={avatarUploading}
                       onChange={(e) => {
                         const file = e.target.files?.[0];
                         if (!file) return;
-                        setAvatarFileName(file.name);
-                        const reader = new FileReader();
-                        reader.onload = () => {
-                          const value = typeof reader.result === "string" ? reader.result : "";
-                          setProfile((p) => ({ ...p, avatarDataUrl: value || undefined }));
-                        };
-                        reader.readAsDataURL(file);
+                        void uploadHostAvatar(file);
+                        e.target.value = "";
                       }}
                     />
                     <label
                       htmlFor="host_photo"
-                      className="inline-flex cursor-pointer items-center justify-center rounded-2xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50"
+                      className={
+                        "inline-flex cursor-pointer items-center justify-center rounded-2xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50" +
+                        (avatarUploading ? " pointer-events-none opacity-60" : "")
+                      }
                     >
-                      Choisir un fichier
+                      {avatarUploading ? "Envoi…" : "Choisir un fichier"}
                     </label>
                     <p className="text-xs font-medium text-slate-600">
-                      {avatarFileName
-                        ? avatarFileName
-                        : profile.avatarDataUrl
-                          ? "Photo ajoutée"
-                          : "Aucun fichier choisi"}
+                      {avatarUploading
+                        ? "Téléversement en cours…"
+                        : avatarFileName
+                          ? avatarFileName
+                          : profile.avatarDataUrl || profile.avatarUrl
+                            ? "Photo enregistrée"
+                            : "Aucun fichier choisi"}
                     </p>
                   </div>
-                  {profile.avatarDataUrl ? (
+                  {profile.avatarDataUrl || profile.avatarUrl ? (
                     <Image
-                      src={profile.avatarDataUrl}
+                      src={profile.avatarDataUrl || profile.avatarUrl || ""}
                       alt="Aperçu"
                       width={64}
                       height={64}
+                      unoptimized={Boolean(profile.avatarDataUrl)}
                       className="mt-3 h-16 w-16 rounded-2xl object-cover ring-1 ring-slate-200"
                     />
                   ) : null}

@@ -7,6 +7,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Map, { type MapRef, type MarkerEvent, Marker, Popup } from "react-map-gl/maplibre";
 
 import LeafletMap from "@/components/LeafletMap";
+import { matchesMapLocationFilter, resolveSitterFallbackCoords } from "@/lib/sitterMapGeo";
 
 type ServiceType = "Promenade" | "Garde" | "Pension";
 
@@ -27,29 +28,6 @@ type SitterListItem = {
   verified?: boolean;
   updatedAt: string;
 };
-
-const FALLBACK_COORDS: Record<string, { lat: number; lng: number }> = {
-  geneve: { lat: 46.2044, lng: 6.1432 },
-  lausanne: { lat: 46.5197, lng: 6.6323 },
-  nyon: { lat: 46.3833, lng: 6.2396 },
-  "1201": { lat: 46.2046, lng: 6.1432 },
-  "1207": { lat: 46.2102, lng: 6.1589 },
-  "1003": { lat: 46.5191, lng: 6.6323 },
-  "1006": { lat: 46.5334, lng: 6.6645 },
-  "1260": { lat: 46.3833, lng: 6.2396 },
-};
-
-function resolveCoords(city: string, postalCode: string) {
-  const pc = String(postalCode ?? "").trim();
-  if (pc && FALLBACK_COORDS[pc]) return FALLBACK_COORDS[pc];
-  const c = String(city ?? "")
-    .trim()
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/\p{Diacritic}/gu, "");
-  if (c && FALLBACK_COORDS[c]) return FALLBACK_COORDS[c];
-  return null;
-}
 
 type UiSitter = {
   id: string;
@@ -101,7 +79,7 @@ function toUiSitter(row: SitterListItem): UiSitter | null {
 
   const rawLat = typeof row.lat === "number" && Number.isFinite(row.lat) ? row.lat : null;
   const rawLng = typeof row.lng === "number" && Number.isFinite(row.lng) ? row.lng : null;
-  const fallback = rawLat == null || rawLng == null ? resolveCoords(row.city, row.postalCode) : null;
+  const fallback = rawLat == null || rawLng == null ? resolveSitterFallbackCoords(row.city, row.postalCode) : null;
   const lat = rawLat ?? fallback?.lat ?? null;
   const lng = rawLng ?? fallback?.lng ?? null;
   if (lat == null || lng == null) return null;
@@ -346,15 +324,12 @@ export default function MapboxMap({
   const location = locationFilter.trim();
   const sitters = useMemo(() => {
     const serviceLower = service.toLowerCase();
-    const locationLower = location.toLowerCase();
 
     const filtered = allSitters.filter((sitter) => {
       const matchesService = service
         ? sitter.services.some((s) => s.toLowerCase() === serviceLower)
         : true;
-      const matchesLocation = location
-        ? sitter.city.toLowerCase().includes(locationLower)
-        : true;
+      const matchesLocation = matchesMapLocationFilter(location, sitter.city, sitter.postalCode, sitter.lat, sitter.lng);
       return matchesService && matchesLocation;
     });
 

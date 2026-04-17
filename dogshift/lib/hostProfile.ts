@@ -19,6 +19,8 @@ export type HostProfileV1 = {
   firstName: string;
   city: string;
   postalCode: string;
+  /** Served avatar path after R2 upload (same-origin). Prefer over large avatarDataUrl. */
+  avatarUrl?: string;
   avatarDataUrl?: string;
   bio: string;
   services: Record<ServiceType, boolean>;
@@ -56,6 +58,7 @@ export function getDefaultHostProfile(sitterId: string): HostProfileV1 {
     firstName: "",
     city: "",
     postalCode: "",
+    avatarUrl: undefined,
     avatarDataUrl: undefined,
     bio: "",
     services: { ...DEFAULT_SERVICES },
@@ -127,13 +130,19 @@ export function loadHostProfileFromStorage(sitterId: string): HostProfileV1 | nu
 
   const boardingDetails = p.boardingDetails && typeof p.boardingDetails === "object" ? (p.boardingDetails as HostBoardingDetails) : undefined;
 
+  let avatarDataUrl = typeof p.avatarDataUrl === "string" ? p.avatarDataUrl : undefined;
+  if (avatarDataUrl && avatarDataUrl.length > 120_000) {
+    avatarDataUrl = undefined;
+  }
+
   return {
     profileVersion: 1,
     sitterId: p.sitterId,
     firstName: typeof p.firstName === "string" ? p.firstName : "",
     city: typeof p.city === "string" ? p.city : "",
     postalCode: typeof p.postalCode === "string" ? p.postalCode : "",
-    avatarDataUrl: typeof p.avatarDataUrl === "string" ? p.avatarDataUrl : undefined,
+    avatarUrl: typeof p.avatarUrl === "string" && p.avatarUrl.trim() ? p.avatarUrl.trim() : undefined,
+    avatarDataUrl,
     bio: typeof p.bio === "string" ? p.bio : "",
     services,
     pricing,
@@ -150,7 +159,16 @@ export function loadHostProfileFromStorage(sitterId: string): HostProfileV1 | nu
 export function saveHostProfileToStorage(profile: HostProfileV1) {
   if (typeof window === "undefined") return;
   const next: HostProfileV1 = { ...profile, profileVersion: 1, updatedAt: new Date().toISOString() };
-  window.localStorage.setItem(hostProfileStorageKey(profile.sitterId), JSON.stringify(next));
+  const payload: Record<string, unknown> = { ...next };
+  const adu = payload.avatarDataUrl;
+  if (typeof adu === "string" && adu.length > 120_000) {
+    delete payload.avatarDataUrl;
+  }
+  try {
+    window.localStorage.setItem(hostProfileStorageKey(profile.sitterId), JSON.stringify(payload));
+  } catch (err) {
+    console.warn("[hostProfile] localStorage save failed (quota?)", err);
+  }
 }
 
 export function getHostCompletion(profile: HostProfileV1) {
@@ -222,7 +240,9 @@ export function applyHostProfileToMockSitter(base: MockSitter, profile: HostProf
     pricePerDay,
     bio: profile.bio.trim() ? profile.bio.trim() : base.bio,
     dogSizes: (Object.keys(profile.dogSizes) as DogSize[]).filter((s) => profile.dogSizes[s]),
-    avatarUrl: profile.avatarDataUrl && profile.avatarDataUrl.trim() ? profile.avatarDataUrl.trim() : base.avatarUrl,
+    avatarUrl:
+      (profile.avatarUrl && profile.avatarUrl.trim() ? profile.avatarUrl.trim() : null) ??
+      (profile.avatarDataUrl && profile.avatarDataUrl.trim() ? profile.avatarDataUrl.trim() : base.avatarUrl),
     verified: profile.verificationStatus === "verified" ? true : false,
     reviewCount,
     rating,
