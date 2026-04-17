@@ -22,6 +22,13 @@ function formatDate(value: Date | null) {
     .replaceAll(".", "-");
 }
 
+function formatDateParts(value: Date | null) {
+  const label = formatDate(value);
+  if (label === "—") return { day: "—", time: "" };
+  const [day, time] = label.split(" ");
+  return { day: day || label, time: time || "" };
+}
+
 function formatCurrency(cents: number, currency = "chf") {
   return new Intl.NumberFormat("fr-CH", {
     style: "currency",
@@ -50,6 +57,13 @@ function payoutStatusBadge(status: string) {
     return "border-emerald-200 bg-emerald-50 text-emerald-900";
   }
   return "border-amber-200 bg-amber-50 text-amber-900";
+}
+
+function bookingStatusBadge(status: string) {
+  if (status === "PAID" || status === "CONFIRMED") return "border-emerald-200 bg-emerald-50 text-emerald-900";
+  if (status === "PENDING_PAYMENT" || status === "PENDING_ACCEPTANCE") return "border-amber-200 bg-amber-50 text-amber-900";
+  if (status === "CANCELLED" || status === "PAYMENT_FAILED" || status === "REFUNDED") return "border-rose-200 bg-rose-50 text-rose-900";
+  return "border-slate-200 bg-slate-50 text-slate-800";
 }
 
 export default async function AdminFinancePage({
@@ -161,6 +175,10 @@ export default async function AdminFinancePage({
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Finance</p>
           <h2 className="mt-3 text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">Dashboard financier</h2>
           <p className="mt-3 text-sm text-slate-600">Vue consolidee des paiements et payouts pour le suivi operationnel admin.</p>
+          <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            <span className="font-semibold">Note:</span> <span className="font-semibold">Payout status = PENDING</span> signifie en general
+            que le client a pu payer la reservation, mais que le paiement sitter n'est pas encore marque comme verse.
+          </div>
         </section>
 
         <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
@@ -219,13 +237,14 @@ export default async function AdminFinancePage({
 
         <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-[0_18px_60px_-46px_rgba(2,6,23,0.12)]">
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-slate-200 text-sm">
+            <table className="min-w-[1400px] divide-y divide-slate-200 text-sm">
               <thead className="bg-slate-50 text-left text-slate-600">
                 <tr>
                   <th className="px-4 py-3 font-semibold">Date</th>
                   <th className="px-4 py-3 font-semibold">Booking</th>
                   <th className="px-4 py-3 font-semibold">Proprietaire</th>
                   <th className="px-4 py-3 font-semibold">Dogsitter</th>
+                  <th className="px-4 py-3 font-semibold">Statut booking</th>
                   <th className="px-4 py-3 font-semibold">Montant</th>
                   <th className="px-4 py-3 font-semibold">Payout method</th>
                   <th className="px-4 py-3 font-semibold">Payout status</th>
@@ -238,18 +257,28 @@ export default async function AdminFinancePage({
               <tbody className="divide-y divide-slate-100 bg-white">
                 {bookings.map((booking: any) => (
                   <tr key={booking.id}>
-                    <td className="px-4 py-3 text-slate-600">{formatDate(booking.createdAt)}</td>
-                    <td className="px-4 py-3 font-mono text-xs text-slate-700">{booking.id}</td>
-                    <td className="px-4 py-3 text-slate-700">
+                    <td className="px-4 py-3 text-slate-600 whitespace-nowrap">
+                      <div>{formatDateParts(booking.createdAt).day}</div>
+                      <div className="text-xs text-slate-500">{formatDateParts(booking.createdAt).time || "—"}</div>
+                    </td>
+                    <td className="px-4 py-3 font-mono text-xs text-slate-700">
+                      <div className="max-w-[180px] break-all">{booking.id}</div>
+                    </td>
+                    <td className="px-4 py-3 text-slate-700 min-w-[180px]">
                       <div>{booking.user.name?.trim() || "—"}</div>
                       <div className="text-xs text-slate-500">{booking.user.email}</div>
                     </td>
-                    <td className="px-4 py-3 text-slate-700">
+                    <td className="px-4 py-3 text-slate-700 min-w-[180px]">
                       <div>{booking.sitter.name?.trim() || "—"}</div>
                       <div className="text-xs text-slate-500">{booking.sitter.email}</div>
                       <div className="text-xs text-slate-500">{booking.sitter.sitterProfile?.city || "—"}</div>
                     </td>
-                    <td className="px-4 py-3 text-slate-700">{formatCurrency(booking.amount, booking.currency)}</td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold ${bookingStatusBadge(booking.status)}`}>
+                        {booking.status}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-slate-700 whitespace-nowrap">{formatCurrency(booking.amount, booking.currency)}</td>
                     <td className="px-4 py-3">
                       <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold ${payoutMethodBadge(booking.payoutMethod)}`}>
                         {booking.payoutMethod === "MANUAL" ? "Paye manuellement" : "Paye via Stripe"}
@@ -260,10 +289,13 @@ export default async function AdminFinancePage({
                         {booking.payoutStatus}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-slate-600">{formatDate(booking.paidAt)}</td>
-                    <td className="px-4 py-3 font-mono text-xs text-slate-600">{booking.stripeChargeId || "—"}</td>
-                    <td className="px-4 py-3 font-mono text-xs text-slate-600">{booking.stripeTransferId || "—"}</td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3 text-slate-600 whitespace-nowrap">
+                      <div>{formatDateParts(booking.paidAt).day}</div>
+                      <div className="text-xs text-slate-500">{formatDateParts(booking.paidAt).time || "—"}</div>
+                    </td>
+                    <td className="px-4 py-3 font-mono text-xs text-slate-600"><div className="max-w-[120px] truncate">{booking.stripeChargeId || "—"}</div></td>
+                    <td className="px-4 py-3 font-mono text-xs text-slate-600"><div className="max-w-[120px] truncate">{booking.stripeTransferId || "—"}</div></td>
+                    <td className="px-4 py-3 whitespace-nowrap">
                       <Link href={`/admin/bookings/${booking.id}`} className="font-semibold text-[var(--dogshift-blue)] hover:text-[var(--dogshift-blue-hover)]">
                         Ouvrir
                       </Link>
