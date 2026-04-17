@@ -12,6 +12,7 @@ const navItems = [
   { href: "/admin/verifications", label: "Vérifications", icon: ShieldCheck },
   { href: "/admin/avenants", label: "Avenants", icon: ScrollText },
   { href: "/admin/couts-abonnements", label: "Coûts & abonnements", icon: ReceiptText },
+  { href: "/admin/finance", label: "Finance", icon: ReceiptText },
   { href: "/admin/owners", label: "Propriétaires", icon: FileText },
   { href: "/admin/bookings", label: "Réservations", icon: CalendarDays },
   { href: "/admin/incidents", label: "Signalements", icon: ShieldAlert },

@@ -129,6 +129,25 @@ async function main() {
     select: { id: true },
   });
 
+  await (prisma as any).bookingFinanceEvent.create({
+    data: {
+      bookingId: BOOKING_ID,
+      eventType: "PAYOUT_STRIPE_FIXED_SCRIPT",
+      message: "Payout Stripe cree par script fix-missing-transfer.",
+      payoutMethod: "STRIPE",
+      payoutStatus: "PAID",
+      amount: payoutAmount,
+      currency: String(booking.currency ?? "chf").toLowerCase(),
+      stripeChargeId: chargeId,
+      stripeTransferId: transfer.id,
+      stripePaymentIntentId: paymentIntentId,
+      actorType: "SYSTEM",
+      metadata: {
+        fixedBy: "fix-missing-transfer-script",
+      },
+    },
+  });
+
   console.log("[fix-missing-transfer] booking updated. Done.");
 }
 

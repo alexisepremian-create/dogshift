@@ -10,6 +10,7 @@ import { BOOKING_ACCESS_COOKIE, isBookingAccessCodeProtectionEnabled } from "@/l
 import { zodParse } from "@/lib/validators/common";
 import { createBookingSchema } from "@/lib/validators/bookings";
 import { logAudit } from "@/lib/audit";
+import { recordBookingFinanceEvent } from "@/lib/financeEvents";
 
 export const runtime = "nodejs";
 
@@ -481,6 +482,19 @@ export async function POST(req: NextRequest) {
       targetId: booking.id,
       targetType: "BOOKING",
       metadata: { service, amount, sitterId },
+    });
+
+    void recordBookingFinanceEvent({
+      bookingId: booking.id,
+      eventType: "BOOKING_CREATED",
+      message: "Reservation creee.",
+      payoutMethod: "STRIPE",
+      payoutStatus: "PENDING",
+      amount,
+      currency: "chf",
+      actorType: "SYSTEM",
+      actorId: userId,
+      metadata: { service, sitterId },
     });
 
     return NextResponse.json({ ok: true, bookingId: booking.id }, { status: 200 });

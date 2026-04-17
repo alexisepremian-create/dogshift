@@ -38,6 +38,12 @@ enum BookingPayoutStatus {
   PAID
 }
 
+enum FinanceActorType {
+  SYSTEM
+  ADMIN
+  STRIPE
+}
+
 enum NotificationType {
   newMessages
   newBookingRequest
@@ -469,11 +475,43 @@ model Booking {
   conversations Conversation[] @relation("BookingConversations")
 
   review Review?
+  financeEvents BookingFinanceEvent[]
 
   @@index([userId])
   @@index([sitterId])
   @@index([stripeSessionId])
   @@index([stripePaymentIntentId])
+}
+
+model BookingFinanceEvent {
+  id String @id @default(cuid())
+
+  bookingId String
+  eventType String
+  message   String
+
+  payoutMethod BookingPayoutMethod?
+  payoutStatus BookingPayoutStatus?
+
+  amount   Int?
+  currency String?
+
+  stripeChargeId    String?
+  stripeTransferId  String?
+  stripePaymentIntentId String?
+
+  metadata Json?
+
+  actorType FinanceActorType?
+  actorId   String?
+
+  createdAt DateTime @default(now())
+
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@index([bookingId, createdAt])
+  @@index([eventType, createdAt])
+  @@index([actorType, createdAt])
 }
 
 model Review {

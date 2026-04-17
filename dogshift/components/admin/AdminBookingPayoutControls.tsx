@@ -22,6 +22,8 @@ export default function AdminBookingPayoutControls({ bookingId }: { bookingId: s
   const [payoutMethod, setPayoutMethod] = useState<PayoutMethod>("STRIPE");
   const [payoutStatus, setPayoutStatus] = useState<PayoutStatus>("PENDING");
 
+  const toast = error ? { kind: "error" as const, text: error } : success ? { kind: "success" as const, text: success } : null;
+
   async function load() {
     setLoading(true);
     setError(null);
@@ -87,6 +89,14 @@ export default function AdminBookingPayoutControls({ bookingId }: { bookingId: s
       <p className="mt-2 text-sm text-slate-600">
         Réservation: <span className="font-semibold text-slate-900">{bookingStatus}</span>
       </p>
+      <div className="mt-2 flex flex-wrap gap-2">
+        <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold ${payoutMethod === "MANUAL" ? "border-emerald-200 bg-emerald-50 text-emerald-900" : "border-sky-200 bg-sky-50 text-sky-900"}`}>
+          {payoutMethod === "MANUAL" ? "Payé manuellement" : "Payé via Stripe"}
+        </span>
+        <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold ${payoutStatus === "PAID" ? "border-emerald-200 bg-emerald-50 text-emerald-900" : "border-amber-200 bg-amber-50 text-amber-900"}`}>
+          {payoutStatus === "PAID" ? "Payout payé" : "Payout en attente"}
+        </span>
+      </div>
 
       {loading ? <p className="mt-4 text-sm text-slate-600">Chargement…</p> : null}
 
@@ -144,6 +154,11 @@ export default function AdminBookingPayoutControls({ bookingId }: { bookingId: s
 
           {error ? <p className="text-sm font-medium text-rose-600">{error}</p> : null}
           {success ? <p className="text-sm font-medium text-emerald-700">{success}</p> : null}
+        </div>
+      ) : null}
+      {toast ? (
+        <div className={`fixed bottom-6 right-6 z-50 rounded-2xl border px-4 py-3 text-sm font-semibold shadow-lg ${toast.kind === "success" ? "border-emerald-200 bg-emerald-50 text-emerald-900" : "border-rose-200 bg-rose-50 text-rose-900"}`}>
+          {toast.text}
         </div>
       ) : null}
     </section>

@@ -7,6 +7,7 @@ import { stripe } from "@/lib/stripe";
 import { prisma } from "@/lib/prisma";
 import { syncBookingPaymentDetails } from "@/lib/stripe/bookingPayments";
 import { transitionBookingAfterStripePaymentSuccess } from "@/lib/bookings/transitionBookingAfterPayment";
+import { recordBookingFinanceEvent } from "@/lib/financeEvents";
 
 export const runtime = "nodejs";
 
@@ -67,6 +68,24 @@ async function markBookingPaid({
     eventId,
     eventType,
     livemode,
+  });
+
+  await recordBookingFinanceEvent({
+    bookingId,
+    eventType: "STRIPE_PAYMENT_RECEIVED",
+    message: `Paiement Stripe recu via webhook (${eventType}).`,
+    payoutMethod: "STRIPE",
+    payoutStatus: "PENDING",
+    stripeChargeId: chargeId ?? null,
+    stripePaymentIntentId: paymentIntentId ?? null,
+    actorType: "STRIPE",
+    actorId: eventId,
+    metadata: {
+      eventType,
+      livemode,
+      stripeAccount: stripeAccount || null,
+      sessionId: sessionId ?? null,
+    },
   });
 }
 

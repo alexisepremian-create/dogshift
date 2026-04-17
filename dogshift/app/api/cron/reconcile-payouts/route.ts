@@ -13,6 +13,7 @@ import type Stripe from "stripe";
 import { prisma } from "@/lib/prisma";
 import { stripe } from "@/lib/stripe";
 import { syncBookingPaymentDetails } from "@/lib/stripe/bookingPayments";
+import { recordBookingFinanceEvent } from "@/lib/financeEvents";
 
 export const runtime = "nodejs";
 
@@ -195,9 +196,39 @@ export async function GET(req: NextRequest) {
           transferAmount,
           chargeId: chargeId || null,
         });
+
+        await recordBookingFinanceEvent({
+          bookingId,
+          eventType: "PAYOUT_STRIPE_RECONCILED",
+          message: "Payout Stripe cree par cron reconcile-payouts.",
+          payoutMethod: "STRIPE",
+          payoutStatus: "PAID",
+          amount: transferAmount,
+          currency: String(booking.currency || "chf"),
+          stripeChargeId: chargeId,
+          stripeTransferId: transfer.id,
+          stripePaymentIntentId: paymentIntentId,
+          actorType: "SYSTEM",
+        });
       } catch (err) {
         fixFailed += 1;
         console.error("[api][cron][reconcile-payouts] fix attempt failed", { bookingId, err });
+        await recordBookingFinanceEvent({
+          bookingId,
+          eventType: "PAYOUT_STRIPE_FAILED",
+          message: "Echec payout Stripe dans reconcile-payouts.",
+          payoutMethod: "STRIPE",
+          payoutStatus: "PENDING",
+          amount: booking.amount,
+          currency: String(booking.currency || "chf"),
+          stripeChargeId: typeof booking.stripeChargeId === "string" ? booking.stripeChargeId : null,
+          stripePaymentIntentId: typeof booking.stripePaymentIntentId === "string" ? booking.stripePaymentIntentId : null,
+          actorType: "SYSTEM",
+          metadata: {
+            source: "reconcile-payouts",
+            error: err instanceof Error ? err.message : String(err),
+          },
+        });
       }
     }
 

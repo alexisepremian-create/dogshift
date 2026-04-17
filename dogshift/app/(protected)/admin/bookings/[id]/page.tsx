@@ -21,6 +21,15 @@ function formatDate(value: Date | null) {
     .replaceAll(".", "-");
 }
 
+function eventTone(eventType: string) {
+  if (eventType.includes("FAILED")) return "border-rose-200 bg-rose-50 text-rose-900";
+  if (eventType.includes("PAID") || eventType.includes("CREATED") || eventType.includes("RECEIVED")) {
+    return "border-emerald-200 bg-emerald-50 text-emerald-900";
+  }
+  if (eventType.includes("MANUAL")) return "border-sky-200 bg-sky-50 text-sky-900";
+  return "border-slate-200 bg-slate-50 text-slate-800";
+}
+
 export default async function AdminBookingDetailPage({ params }: { params: Promise<{ id: string }> }) {
   await requireAdminPageAccess();
   const { id } = await params;
@@ -47,6 +56,23 @@ export default async function AdminBookingDetailPage({ params }: { params: Promi
   });
 
   if (!booking) notFound();
+
+  const financeEvents = await (prisma as any).bookingFinanceEvent.findMany({
+    where: { bookingId: booking.id },
+    orderBy: { createdAt: "desc" },
+    take: 50,
+    select: {
+      id: true,
+      eventType: true,
+      message: true,
+      payoutMethod: true,
+      payoutStatus: true,
+      stripeChargeId: true,
+      stripeTransferId: true,
+      stripePaymentIntentId: true,
+      createdAt: true,
+    },
+  });
 
   return (
     <AdminShell>
@@ -94,6 +120,31 @@ export default async function AdminBookingDetailPage({ params }: { params: Promi
             </section>
 
             <AdminBookingPayoutControls bookingId={booking.id} />
+
+            <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.12)] sm:p-8">
+              <h3 className="text-lg font-semibold tracking-tight text-slate-900">Historique financier</h3>
+              <div className="mt-4 grid gap-3">
+                {financeEvents.map((event: any) => (
+                  <article key={event.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold ${eventTone(String(event.eventType))}`}>
+                        {event.eventType}
+                      </span>
+                      <span className="text-xs text-slate-500">{formatDate(event.createdAt)}</span>
+                    </div>
+                    <p className="mt-2 text-sm text-slate-800">{event.message}</p>
+                    <div className="mt-2 grid gap-1 text-xs text-slate-600 sm:grid-cols-2">
+                      <p>Methode: <span className="font-semibold text-slate-800">{event.payoutMethod || "—"}</span></p>
+                      <p>Statut: <span className="font-semibold text-slate-800">{event.payoutStatus || "—"}</span></p>
+                      <p className="font-mono">PI: {event.stripePaymentIntentId || "—"}</p>
+                      <p className="font-mono">Charge: {event.stripeChargeId || "—"}</p>
+                      <p className="font-mono sm:col-span-2">Transfer: {event.stripeTransferId || "—"}</p>
+                    </div>
+                  </article>
+                ))}
+                {financeEvents.length === 0 ? <p className="text-sm text-slate-600">Aucun événement financier pour le moment.</p> : null}
+              </div>
+            </section>
           </div>
 
           <AdminNotesPanel targetType="BOOKING" targetId={booking.id} />

@@ -3,6 +3,7 @@ import type { NextRequest } from "next/server";
 
 import { prisma } from "@/lib/prisma";
 import { getRequestAdminAccess } from "@/lib/adminAuth";
+import { recordBookingFinanceEvent } from "@/lib/financeEvents";
 
 export const runtime = "nodejs";
 
@@ -86,7 +87,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
     const existing = await (prisma as any).booking.findUnique({
       where: { id: bookingId },
-      select: { id: true, paidAt: true },
+      select: { id: true, payoutMethod: true, payoutStatus: true, paidAt: true, amount: true, currency: true },
     });
     if (!existing?.id) {
       return NextResponse.json({ ok: false, error: "NOT_FOUND" }, { status: 404 });
@@ -109,6 +110,53 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         updatedAt: true,
       },
     });
+
+    if (existing.payoutMethod !== updated.payoutMethod || existing.payoutStatus !== updated.payoutStatus) {
+      await recordBookingFinanceEvent({
+        bookingId,
+        eventType: "PAYOUT_ADMIN_UPDATED",
+        message: `Mise a jour admin payout: ${existing.payoutMethod}/${existing.payoutStatus} -> ${updated.payoutMethod}/${updated.payoutStatus}`,
+        payoutMethod: updated.payoutMethod,
+        payoutStatus: updated.payoutStatus,
+        amount: existing.amount,
+        currency: existing.currency,
+        actorType: "ADMIN",
+        actorId: access.userId ?? null,
+        metadata: {
+          from: { payoutMethod: existing.payoutMethod, payoutStatus: existing.payoutStatus },
+          to: { payoutMethod: updated.payoutMethod, payoutStatus: updated.payoutStatus },
+        },
+      });
+    }
+
+    if (updated.payoutMethod === "MANUAL" && existing.payoutMethod !== "MANUAL") {
+      await recordBookingFinanceEvent({
+        bookingId,
+        eventType: "PAYOUT_MARKED_MANUAL",
+        message: "Payout marque comme manuel par admin.",
+        payoutMethod: updated.payoutMethod,
+        payoutStatus: updated.payoutStatus,
+        amount: existing.amount,
+        currency: existing.currency,
+        actorType: "ADMIN",
+        actorId: access.userId ?? null,
+      });
+    }
+
+    if (updated.payoutStatus === "PAID" && existing.payoutStatus !== "PAID") {
+      await recordBookingFinanceEvent({
+        bookingId,
+        eventType: "PAYOUT_MARKED_PAID",
+        message: "Payout marque comme paye.",
+        payoutMethod: updated.payoutMethod,
+        payoutStatus: updated.payoutStatus,
+        amount: existing.amount,
+        currency: existing.currency,
+        actorType: "ADMIN",
+        actorId: access.userId ?? null,
+        metadata: { paidAt: updated.paidAt ? new Date(updated.paidAt).toISOString() : null },
+      });
+    }
 
     return NextResponse.json({ ok: true, booking: updated, message: "États de paiement mis à jour." }, { status: 200 });
   } catch (error) {
