@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { resolveDbUserId } from "@/lib/auth/resolveDbUserId";
 import { stripe } from "@/lib/stripe";
 import { syncBookingPaymentDetails } from "@/lib/stripe/bookingPayments";
+import { estimateStripePaymentFeeCents } from "@/lib/stripe/paymentFeeEstimate";
 import { transitionBookingAfterStripePaymentSuccess } from "@/lib/bookings/transitionBookingAfterPayment";
 
 export const runtime = "nodejs";
@@ -38,8 +39,50 @@ type BookingDetailResponse = {
   };
 };
 
+function normalizeMeta(value: unknown) {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function paymentIntentMatchesBooking(
+  intent: { metadata?: Record<string, string> | null; amount?: number | null },
+  booking: { id: string; sitterId: string; amount: number; currency: string }
+) {
+  const metaBookingId = normalizeMeta(intent.metadata?.bookingId);
+  if (metaBookingId && metaBookingId !== booking.id) {
+    return { ok: false as const, reason: "metadata_booking_mismatch" as const };
+  }
+
+  const metaSitterId = normalizeMeta(intent.metadata?.sitterId);
+  if (metaSitterId && metaSitterId !== booking.sitterId) {
+    return { ok: false as const, reason: "metadata_sitter_mismatch" as const };
+  }
+
+  if (!metaBookingId) {
+    const currency = String(booking.currency ?? "").toLowerCase();
+    if (currency !== "chf") {
+      return { ok: false as const, reason: "unsupported_currency" as const };
+    }
+    if (typeof booking.amount !== "number" || !Number.isFinite(booking.amount) || booking.amount < 100) {
+      return { ok: false as const, reason: "invalid_booking_amount" as const };
+    }
+    const expectedTotal = booking.amount + estimateStripePaymentFeeCents(booking.amount);
+    if (typeof intent.amount !== "number" || intent.amount !== expectedTotal) {
+      return { ok: false as const, reason: "amount_mismatch" as const };
+    }
+  }
+
+  return { ok: true as const };
+}
+
 async function reconcileBookingPaymentIfNeeded(
-  booking: { id: string; status: string; stripePaymentIntentId: string | null },
+  booking: {
+    id: string;
+    status: string;
+    stripePaymentIntentId: string | null;
+    sitterId: string;
+    amount: number;
+    currency: string;
+  },
   req: NextRequest
 ) {
   const status = String(booking.status ?? "");
@@ -82,6 +125,21 @@ async function reconcileBookingPaymentIfNeeded(
         bookingId: booking.id,
         paymentIntentId,
         intentStatus: intentStatus || null,
+      });
+      return null;
+    }
+
+    const match = paymentIntentMatchesBooking(intent as { metadata?: Record<string, string> | null; amount?: number | null }, {
+      id: booking.id,
+      sitterId: booking.sitterId,
+      amount: booking.amount,
+      currency: booking.currency,
+    });
+    if (!match.ok) {
+      console.warn("[api][account][bookings][id][GET] reconcile succeeded but intent does not match booking; skip transition", {
+        bookingId: booking.id,
+        paymentIntentId,
+        reason: match.reason,
       });
       return null;
     }
@@ -178,6 +236,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         id: String(booking.id),
         status: String(booking.status ?? ""),
         stripePaymentIntentId: typeof booking.stripePaymentIntentId === "string" ? booking.stripePaymentIntentId : null,
+        sitterId: String(booking.sitterId ?? ""),
+        amount: typeof booking.amount === "number" ? booking.amount : 0,
+        currency: typeof booking.currency === "string" ? booking.currency : "",
       },
       req
     );

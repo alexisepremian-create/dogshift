@@ -114,7 +114,22 @@ export async function POST(req: NextRequest) {
           amountMatches,
         });
 
-        if (canReuse && amountMatches && typeof existing.client_secret === "string" && existing.client_secret.includes("_secret_")) {
+        const reusableStatuses = new Set([
+          "requires_payment_method",
+          "requires_confirmation",
+          "requires_action",
+          "requires_capture",
+          "processing",
+        ]);
+        const statusOk = typeof existing.status === "string" && reusableStatuses.has(existing.status);
+
+        if (
+          statusOk &&
+          canReuse &&
+          amountMatches &&
+          typeof existing.client_secret === "string" &&
+          existing.client_secret.includes("_secret_")
+        ) {
           return NextResponse.json(
             {
               ok: true,
