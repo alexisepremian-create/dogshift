@@ -57,22 +57,32 @@ export default async function AdminBookingDetailPage({ params }: { params: Promi
 
   if (!booking) notFound();
 
-  const financeEvents = await (prisma as any).bookingFinanceEvent.findMany({
-    where: { bookingId: booking.id },
-    orderBy: { createdAt: "desc" },
-    take: 50,
-    select: {
-      id: true,
-      eventType: true,
-      message: true,
-      payoutMethod: true,
-      payoutStatus: true,
-      stripeChargeId: true,
-      stripeTransferId: true,
-      stripePaymentIntentId: true,
-      createdAt: true,
-    },
-  });
+  let financeEvents: any[] = [];
+  let financeEventsUnavailable = false;
+  try {
+    financeEvents = await (prisma as any).bookingFinanceEvent.findMany({
+      where: { bookingId: booking.id },
+      orderBy: { createdAt: "desc" },
+      take: 50,
+      select: {
+        id: true,
+        eventType: true,
+        message: true,
+        payoutMethod: true,
+        payoutStatus: true,
+        stripeChargeId: true,
+        stripeTransferId: true,
+        stripePaymentIntentId: true,
+        createdAt: true,
+      },
+    });
+  } catch (error) {
+    financeEventsUnavailable = true;
+    console.error("[admin][bookings][detail] finance history unavailable", {
+      bookingId: booking.id,
+      error,
+    });
+  }
 
   return (
     <AdminShell>
@@ -142,7 +152,12 @@ export default async function AdminBookingDetailPage({ params }: { params: Promi
                     </div>
                   </article>
                 ))}
-                {financeEvents.length === 0 ? <p className="text-sm text-slate-600">Aucun événement financier pour le moment.</p> : null}
+                {financeEventsUnavailable ? (
+                  <p className="text-sm text-amber-700">Historique financier indisponible temporairement (migration en attente).</p>
+                ) : null}
+                {!financeEventsUnavailable && financeEvents.length === 0 ? (
+                  <p className="text-sm text-slate-600">Aucun événement financier pour le moment.</p>
+                ) : null}
               </div>
             </section>
           </div>
