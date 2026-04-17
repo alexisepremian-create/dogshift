@@ -10,6 +10,7 @@ type BookingPayoutPayload = {
   status: string;
   payoutMethod: PayoutMethod;
   payoutStatus: PayoutStatus;
+  paidAt: string | null;
 };
 
 export default function AdminBookingPayoutControls({ bookingId }: { bookingId: string }) {
@@ -27,9 +28,9 @@ export default function AdminBookingPayoutControls({ bookingId }: { bookingId: s
     setSuccess(null);
     try {
       const res = await fetch(`/api/admin/bookings/${bookingId}/payout`, { cache: "no-store" });
-      const payload = (await res.json().catch(() => null)) as { ok?: boolean; booking?: BookingPayoutPayload } | null;
+      const payload = (await res.json().catch(() => null)) as { ok?: boolean; booking?: BookingPayoutPayload; message?: string } | null;
       if (!res.ok || !payload?.ok || !payload.booking) {
-        setError("Impossible de charger les états de paiement.");
+        setError(payload?.message ?? "Impossible de charger les états de paiement.");
         return;
       }
       setBookingStatus(payload.booking.status || "—");
@@ -59,12 +60,13 @@ export default function AdminBookingPayoutControls({ bookingId }: { bookingId: s
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ payoutMethod, payoutStatus }),
       });
-      const payload = (await res.json().catch(() => null)) as { ok?: boolean } | null;
+      const payload = (await res.json().catch(() => null)) as { ok?: boolean; message?: string } | null;
       if (!res.ok || !payload?.ok) {
-        setError("Impossible d'enregistrer les états de paiement.");
+        setError(payload?.message ?? "Impossible d'enregistrer les états de paiement.");
         return;
       }
-      setSuccess("États de paiement mis à jour.");
+      setSuccess(payload?.message ?? "États de paiement mis à jour.");
+      await load();
     } catch {
       setError("Erreur réseau.");
     } finally {

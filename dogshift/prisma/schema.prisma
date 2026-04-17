@@ -449,6 +449,7 @@ model Booking {
   payoutReleasedAt            DateTime?
   payoutMethod                BookingPayoutMethod @default(STRIPE)
   payoutStatus                BookingPayoutStatus @default(PENDING)
+  paidAt                      DateTime?
 
   stripeRefundId String?
   refundedAt     DateTime?

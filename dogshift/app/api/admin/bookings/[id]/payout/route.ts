@@ -17,6 +17,11 @@ function normalizePayoutStatus(value: unknown): PayoutStatus | null {
   return value === "PENDING" || value === "PAID" ? value : null;
 }
 
+function isMissingPayoutColumnsError(error: unknown) {
+  const msg = error instanceof Error ? error.message : String(error);
+  return msg.includes("payoutMethod") || msg.includes("payoutStatus") || msg.includes("paidAt");
+}
+
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const access = await getRequestAdminAccess(req);
@@ -37,6 +42,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         status: true,
         payoutMethod: true,
         payoutStatus: true,
+        paidAt: true,
       },
     });
 
@@ -47,7 +53,13 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     return NextResponse.json({ ok: true, booking }, { status: 200 });
   } catch (error) {
     console.error("[api][admin][bookings][payout][GET] error", error);
-    return NextResponse.json({ ok: false, error: "INTERNAL_ERROR" }, { status: 500 });
+    if (isMissingPayoutColumnsError(error)) {
+      return NextResponse.json(
+        { ok: false, error: "MIGRATION_REQUIRED", message: "Migration Prisma payout incomplète en production." },
+        { status: 500 }
+      );
+    }
+    return NextResponse.json({ ok: false, error: "INTERNAL_ERROR", message: "Erreur interne." }, { status: 500 });
   }
 }
 
@@ -74,29 +86,39 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
     const existing = await (prisma as any).booking.findUnique({
       where: { id: bookingId },
-      select: { id: true },
+      select: { id: true, paidAt: true },
     });
     if (!existing?.id) {
       return NextResponse.json({ ok: false, error: "NOT_FOUND" }, { status: 404 });
     }
+
+    const paidAt = payoutStatus === "PAID" ? existing.paidAt ?? new Date() : null;
 
     const updated = await (prisma as any).booking.update({
       where: { id: bookingId },
       data: {
         payoutMethod,
         payoutStatus,
+        paidAt,
       },
       select: {
         id: true,
         payoutMethod: true,
         payoutStatus: true,
+        paidAt: true,
         updatedAt: true,
       },
     });
 
-    return NextResponse.json({ ok: true, booking: updated }, { status: 200 });
+    return NextResponse.json({ ok: true, booking: updated, message: "États de paiement mis à jour." }, { status: 200 });
   } catch (error) {
     console.error("[api][admin][bookings][payout][PATCH] error", error);
-    return NextResponse.json({ ok: false, error: "INTERNAL_ERROR" }, { status: 500 });
+    if (isMissingPayoutColumnsError(error)) {
+      return NextResponse.json(
+        { ok: false, error: "MIGRATION_REQUIRED", message: "Migration Prisma payout incomplète en production." },
+        { status: 500 }
+      );
+    }
+    return NextResponse.json({ ok: false, error: "INTERNAL_ERROR", message: "Erreur interne." }, { status: 500 });
   }
 }
