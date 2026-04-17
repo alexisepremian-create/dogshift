@@ -39,15 +39,6 @@ export async function GET(req: NextRequest) {
   let failed = 0;
 
   try {
-    // Retrieve available balance for fallback use when no source_transaction is available.
-    // With source_transaction, Stripe links the transfer directly to the charge and does
-    // NOT require available balance — so we no longer exit early when balance is 0.
-    const balanceResponse = await stripe.balance.retrieve();
-    const chfAvailable = balanceResponse.available.find((b) => b.currency === "chf");
-    let availableBalance = typeof chfAvailable?.amount === "number" ? chfAvailable.amount : 0;
-
-    console.log("[api][cron][release-booking-payouts] balance", { availableBalance });
-
     const bookings = await (prisma as any).booking.findMany({
       where: {
         endDate: { lte: now },
@@ -149,29 +140,19 @@ export async function GET(req: NextRequest) {
         const platformFeeAmount = typeof booking.platformFeeAmount === "number" ? booking.platformFeeAmount : 0;
         const netAmount = Math.max(0, grossAmount - stripeFeeAmount - platformFeeAmount);
 
-        let transferAmount: number;
-
-        if (chargeId) {
-          // With source_transaction, Stripe transfers the earmarked funds from the specific
-          // charge — no available balance required. Use the full payout amount.
-          transferAmount = payoutAmount > 0 ? payoutAmount : netAmount;
-        } else {
-          // Fallback for bookings without a recorded chargeId: requires available balance.
-          if (availableBalance <= 0) {
-            skipped += 1;
-            console.warn("[api][cron][release-booking-payouts] no available balance and no chargeId, will retry", {
-              bookingId,
-              payoutAmount,
-              availableBalance,
-            });
-            continue;
-          }
-          transferAmount = payoutAmount <= availableBalance
-            ? payoutAmount
-            : netAmount <= availableBalance
-              ? netAmount
-              : 0;
+        if (!chargeId) {
+          skipped += 1;
+          console.error("[api][cron][release-booking-payouts] missing chargeId, skipping transfer to avoid pooled-balance payout", {
+            bookingId,
+            paymentIntentId,
+            payoutAmount,
+            netAmount,
+          });
+          continue;
         }
+
+        // With source_transaction, Stripe transfers funds from the exact charge for this booking.
+        const transferAmount = payoutAmount > 0 ? payoutAmount : netAmount;
 
         console.log("[api][cron][release-booking-payouts] computed payout", {
           bookingId,
@@ -181,18 +162,16 @@ export async function GET(req: NextRequest) {
           payoutAmount,
           netAmount,
           transferAmount,
-          chargeId: chargeId || null,
-          availableBalance,
-          useSourceTransaction: Boolean(chargeId),
+          chargeId,
+          useSourceTransaction: true,
         });
 
         if (!Number.isFinite(transferAmount) || transferAmount <= 0) {
           skipped += 1;
-          console.warn("[api][cron][release-booking-payouts] insufficient balance, will retry next run", {
+          console.warn("[api][cron][release-booking-payouts] invalid transfer amount, skipping", {
             bookingId,
             payoutAmount,
             netAmount,
-            availableBalance,
           });
           continue;
         }
@@ -216,19 +195,13 @@ export async function GET(req: NextRequest) {
         // source_transaction links the transfer to the specific charge, which means:
         // 1. Stripe can execute the transfer even before the charge fully settles.
         // 2. The money flow is auditable: charge → transfer → connected account.
-        if (chargeId) {
-          transferParams.source_transaction = chargeId;
-        }
+        transferParams.source_transaction = chargeId;
 
         const transfer = await stripe.transfers.create(transferParams, {
           idempotencyKey: `transfer:booking:${bookingId}:${paymentIntentId}:${transferAmount}`,
         });
 
         if (!transfer?.id) throw new Error("[api][cron][release-booking-payouts] missing transfer id after create");
-
-        if (!chargeId) {
-          availableBalance -= transferAmount;
-        }
 
         await (prisma as any).booking.update({
           where: { id: bookingId },
@@ -261,7 +234,6 @@ export async function GET(req: NextRequest) {
         released,
         skipped,
         failed,
-        availableBalance,
         asOf: now.toISOString(),
       },
       { status: 200 }
