@@ -1,0 +1,102 @@
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+
+import { prisma } from "@/lib/prisma";
+import { getRequestAdminAccess } from "@/lib/adminAuth";
+
+export const runtime = "nodejs";
+
+type PayoutMethod = "STRIPE" | "MANUAL";
+type PayoutStatus = "PENDING" | "PAID";
+
+function normalizePayoutMethod(value: unknown): PayoutMethod | null {
+  return value === "STRIPE" || value === "MANUAL" ? value : null;
+}
+
+function normalizePayoutStatus(value: unknown): PayoutStatus | null {
+  return value === "PENDING" || value === "PAID" ? value : null;
+}
+
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const access = await getRequestAdminAccess(req);
+    if (!access.isAdmin) {
+      return NextResponse.json({ ok: false, error: "FORBIDDEN" }, { status: 403 });
+    }
+
+    const { id } = await params;
+    const bookingId = typeof id === "string" ? id.trim() : "";
+    if (!bookingId) {
+      return NextResponse.json({ ok: false, error: "INVALID_ID" }, { status: 400 });
+    }
+
+    const booking = await (prisma as any).booking.findUnique({
+      where: { id: bookingId },
+      select: {
+        id: true,
+        status: true,
+        payoutMethod: true,
+        payoutStatus: true,
+      },
+    });
+
+    if (!booking) {
+      return NextResponse.json({ ok: false, error: "NOT_FOUND" }, { status: 404 });
+    }
+
+    return NextResponse.json({ ok: true, booking }, { status: 200 });
+  } catch (error) {
+    console.error("[api][admin][bookings][payout][GET] error", error);
+    return NextResponse.json({ ok: false, error: "INTERNAL_ERROR" }, { status: 500 });
+  }
+}
+
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const access = await getRequestAdminAccess(req);
+    if (!access.isAdmin) {
+      return NextResponse.json({ ok: false, error: "FORBIDDEN" }, { status: 403 });
+    }
+
+    const { id } = await params;
+    const bookingId = typeof id === "string" ? id.trim() : "";
+    if (!bookingId) {
+      return NextResponse.json({ ok: false, error: "INVALID_ID" }, { status: 400 });
+    }
+
+    const body = (await req.json().catch(() => null)) as { payoutMethod?: unknown; payoutStatus?: unknown } | null;
+    const payoutMethod = normalizePayoutMethod(body?.payoutMethod);
+    const payoutStatus = normalizePayoutStatus(body?.payoutStatus);
+
+    if (!payoutMethod || !payoutStatus) {
+      return NextResponse.json({ ok: false, error: "INVALID_BODY" }, { status: 400 });
+    }
+
+    const existing = await (prisma as any).booking.findUnique({
+      where: { id: bookingId },
+      select: { id: true },
+    });
+    if (!existing?.id) {
+      return NextResponse.json({ ok: false, error: "NOT_FOUND" }, { status: 404 });
+    }
+
+    const updated = await (prisma as any).booking.update({
+      where: { id: bookingId },
+      data: {
+        payoutMethod,
+        payoutStatus,
+      },
+      select: {
+        id: true,
+        payoutMethod: true,
+        payoutStatus: true,
+        updatedAt: true,
+      },
+    });
+
+    return NextResponse.json({ ok: true, booking: updated }, { status: 200 });
+  } catch (error) {
+    console.error("[api][admin][bookings][payout][PATCH] error", error);
+    return NextResponse.json({ ok: false, error: "INTERNAL_ERROR" }, { status: 500 });
+  }
+}

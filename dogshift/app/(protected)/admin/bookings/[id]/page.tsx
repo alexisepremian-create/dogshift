@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 
 import AdminShell from "@/components/admin/AdminShell";
 import AdminNotesPanel from "@/components/admin/AdminNotesPanel";
+import AdminBookingPayoutControls from "@/components/admin/AdminBookingPayoutControls";
 import { requireAdminPageAccess } from "@/lib/adminAuth";
 import { prisma } from "@/lib/prisma";
 
@@ -91,6 +92,8 @@ export default async function AdminBookingDetailPage({ params }: { params: Promi
                 <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-slate-700">{booking.message || "Aucun message."}</p>
               </div>
             </section>
+
+            <AdminBookingPayoutControls bookingId={booking.id} />
           </div>
 
           <AdminNotesPanel targetType="BOOKING" targetId={booking.id} />

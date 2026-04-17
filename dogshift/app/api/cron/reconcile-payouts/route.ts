@@ -60,6 +60,7 @@ export async function GET(req: NextRequest) {
       select: {
         id: true,
         sitterId: true,
+        payoutMethod: true,
         amount: true,
         currency: true,
         endDate: true,
@@ -73,6 +74,11 @@ export async function GET(req: NextRequest) {
 
     for (const booking of bookings ?? []) {
       const bookingId = String(booking.id);
+
+      if (booking.payoutMethod === "MANUAL") {
+        continue;
+      }
+
       detected += 1;
       missed.push({
         bookingId,

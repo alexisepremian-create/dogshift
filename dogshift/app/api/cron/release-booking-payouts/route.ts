@@ -61,6 +61,7 @@ export async function GET(req: NextRequest) {
       select: {
         id: true,
         sitterId: true,
+        payoutMethod: true,
         amount: true,
         currency: true,
         endDate: true,
@@ -78,6 +79,12 @@ export async function GET(req: NextRequest) {
     for (const booking of bookings ?? []) {
       const bookingId = String(booking.id);
       processed += 1;
+
+      if (booking.payoutMethod === "MANUAL") {
+        skipped += 1;
+        console.log("[api][cron][release-booking-payouts] skipping manual payout booking", { bookingId });
+        continue;
+      }
 
       try {
         const sitterProfile = await (prisma as any).sitterProfile.findUnique({
