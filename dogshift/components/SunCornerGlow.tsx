@@ -24,9 +24,12 @@ function colorsForVariant(variant: SunCornerGlowVariant) {
 export default function SunCornerGlow({
   variant,
   intensity = 1,
+  /** `page`: clip to the nearest positioned ancestor (owner dashboard); avoids covering global UI like the CGU bar. */
+  placement = "viewport",
 }: {
   variant: SunCornerGlowVariant;
   intensity?: number;
+  placement?: "viewport" | "page";
 }) {
   const { core, glow } = colorsForVariant(variant);
 
@@ -36,9 +39,11 @@ export default function SunCornerGlow({
   const rayColor = "rgba(251, 146, 60, 0.95)";
   const raySoftColor = "rgba(250, 204, 21, 0.65)";
 
+  const positionClass = placement === "page" ? "pointer-events-none absolute inset-0 z-0" : "pointer-events-none fixed inset-0 z-0";
+
   return (
     <div
-      className="pointer-events-none fixed inset-0 z-0"
+      className={positionClass}
       aria-hidden="true"
       style={{
         maskImage: MASK,

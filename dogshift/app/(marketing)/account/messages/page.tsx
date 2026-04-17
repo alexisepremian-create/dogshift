@@ -7,8 +7,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
 import { MessageCircle, RefreshCw } from "lucide-react";
 
-import SunCornerGlow from "@/components/SunCornerGlow";
-
 type ConversationListItem = {
   id: string;
   bookingId: string | null;

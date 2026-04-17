@@ -426,7 +426,7 @@ function OwnerWalletContent() {
 
   return (
     <div className="relative grid gap-6 overflow-x-hidden overflow-y-visible" data-testid="owner-wallet-page">
-      <SunCornerGlow variant="ownerDashboard" />
+      <SunCornerGlow variant="ownerDashboard" placement="page" />
 
       <div className="relative z-10 grid gap-6">
         <div>

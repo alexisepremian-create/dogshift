@@ -479,7 +479,7 @@ function AccountBookingsContent() {
 
   return (
     <div className="relative" data-testid="account-bookings-page">
-      <SunCornerGlow variant="ownerBookings" />
+      <SunCornerGlow variant="ownerBookings" placement="page" />
 
       <div className="grid items-start gap-6 lg:grid-cols-[380px_1fr]">
         <section className={mobileDetailOpen ? "hidden min-w-0 lg:block" : "min-w-0 block"}>

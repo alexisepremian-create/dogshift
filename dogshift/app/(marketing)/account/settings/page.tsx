@@ -310,7 +310,7 @@ export default function AccountSettingsPage() {
 
   return (
     <div className="relative grid gap-6" data-testid="account-settings-page">
-      <SunCornerGlow variant={glowVariant} />
+      <SunCornerGlow variant={glowVariant} placement="page" />
 
       <div className="relative z-10 grid gap-6 min-w-0">
       <div>
