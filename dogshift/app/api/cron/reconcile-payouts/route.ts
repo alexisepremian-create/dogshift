@@ -1,3 +1,10 @@
+/**
+ * Daily backstop that detects bookings whose service has ended but whose Stripe transfer
+ * was never created. Each missed payout is logged as a critical error (caught by Sentry)
+ * and the transfer is attempted on the spot using source_transaction when a chargeId is
+ * available. The main release-booking-payouts cron runs every 15 min and should handle
+ * all normal cases; this cron is the safety net for any silent failures.
+ */
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
@@ -9,15 +16,15 @@ import { syncBookingPaymentDetails } from "@/lib/stripe/bookingPayments";
 
 export const runtime = "nodejs";
 
+// Only flag bookings that ended at least this many hours ago, giving the main cron
+// enough time to have run (it fires every 15 min, so 2 h is very conservative).
+const STALE_THRESHOLD_HOURS = 2;
+
 function readCronSecretFromRequest(req: NextRequest) {
   const header = (req.headers.get("x-cron-secret") || "").trim();
   if (header) return header;
-
   const auth = (req.headers.get("authorization") || "").trim();
-  if (auth.toLowerCase().startsWith("bearer ")) {
-    return auth.slice("bearer ".length).trim();
-  }
-
+  if (auth.toLowerCase().startsWith("bearer ")) return auth.slice("bearer ".length).trim();
   return "";
 }
 
@@ -26,31 +33,23 @@ export async function GET(req: NextRequest) {
   if (!secret) {
     return NextResponse.json({ ok: false, error: "MISSING_CRON_SECRET" }, { status: 500 });
   }
-
   const provided = readCronSecretFromRequest(req);
   if (!provided || provided !== secret) {
     return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
   }
 
   const now = new Date();
-  let processed = 0;
-  let released = 0;
-  let skipped = 0;
-  let failed = 0;
+  const staleThreshold = new Date(now.getTime() - STALE_THRESHOLD_HOURS * 60 * 60 * 1000);
+
+  let detected = 0;
+  let fixed = 0;
+  let fixFailed = 0;
+  const missed: { bookingId: string; endDate: string; amount: number; sitterId: string }[] = [];
 
   try {
-    // Retrieve available balance for fallback use when no source_transaction is available.
-    // With source_transaction, Stripe links the transfer directly to the charge and does
-    // NOT require available balance — so we no longer exit early when balance is 0.
-    const balanceResponse = await stripe.balance.retrieve();
-    const chfAvailable = balanceResponse.available.find((b) => b.currency === "chf");
-    let availableBalance = typeof chfAvailable?.amount === "number" ? chfAvailable.amount : 0;
-
-    console.log("[api][cron][release-booking-payouts] balance", { availableBalance });
-
     const bookings = await (prisma as any).booking.findMany({
       where: {
-        endDate: { lte: now },
+        endDate: { lte: staleThreshold },
         status: { in: ["PAID", "CONFIRMED"] },
         canceledAt: null,
         refundedAt: null,
@@ -64,20 +63,32 @@ export async function GET(req: NextRequest) {
         amount: true,
         currency: true,
         endDate: true,
+        platformFeeAmount: true,
         stripePaymentIntentId: true,
         stripeChargeId: true,
-        stripeTransferId: true,
-        stripeProcessingFeeAmount: true,
-        platformFeeAmount: true,
-        sitterPayoutAmount: true,
       },
       orderBy: { endDate: "asc" },
-      take: 200,
+      take: 100,
     });
 
     for (const booking of bookings ?? []) {
       const bookingId = String(booking.id);
-      processed += 1;
+      detected += 1;
+      missed.push({
+        bookingId,
+        endDate: booking.endDate instanceof Date ? booking.endDate.toISOString() : String(booking.endDate),
+        amount: booking.amount,
+        sitterId: String(booking.sitterId),
+      });
+
+      console.error("[api][cron][reconcile-payouts] MISSED TRANSFER DETECTED", {
+        bookingId,
+        sitterId: String(booking.sitterId),
+        amount: booking.amount,
+        endDate: booking.endDate,
+        stripePaymentIntentId: booking.stripePaymentIntentId,
+        stripeChargeId: booking.stripeChargeId || null,
+      });
 
       try {
         const sitterProfile = await (prisma as any).sitterProfile.findUnique({
@@ -89,18 +100,18 @@ export async function GET(req: NextRequest) {
         const destinationStatus = typeof sitterProfile?.stripeAccountStatus === "string" ? sitterProfile.stripeAccountStatus.trim() : "";
 
         if (!destination || destinationStatus !== "ENABLED") {
-          skipped += 1;
-          console.warn("[api][cron][release-booking-payouts] sitter not ready", {
+          console.warn("[api][cron][reconcile-payouts] sitter account not ready, cannot fix", {
             bookingId,
             destination: destination || null,
             destinationStatus: destinationStatus || null,
           });
+          fixFailed += 1;
           continue;
         }
 
         const paymentIntentId = typeof booking.stripePaymentIntentId === "string" ? booking.stripePaymentIntentId.trim() : "";
         if (!paymentIntentId) {
-          skipped += 1;
+          fixFailed += 1;
           continue;
         }
 
@@ -111,27 +122,11 @@ export async function GET(req: NextRequest) {
         });
 
         if (!synced.ok) {
-          if (synced.error === "RESOURCE_MISSING") {
-            console.warn("[api][cron][release-booking-payouts] permanent failure, marking booking as skipped", {
-              bookingId,
-              paymentIntentId,
-              reason: "payment intent does not exist (likely test-mode data)",
-            });
-            await (prisma as any).booking.update({
-              where: { id: bookingId },
-              data: {
-                stripeTransferId: `SKIPPED:RESOURCE_MISSING:${paymentIntentId}`,
-                payoutReleasedAt: new Date(),
-                sitterPayoutAmount: 0,
-              },
-              select: { id: true },
-            });
-          }
-          failed += 1;
+          console.error("[api][cron][reconcile-payouts] sync failed, cannot fix", { bookingId, error: synced.error });
+          fixFailed += 1;
           continue;
         }
 
-        // chargeId from sync takes precedence; fall back to the DB value fetched above.
         const chargeId =
           (typeof synced.chargeId === "string" && synced.chargeId ? synced.chargeId : null) ||
           (typeof booking.stripeChargeId === "string" && booking.stripeChargeId ? booking.stripeChargeId : null);
@@ -141,52 +136,13 @@ export async function GET(req: NextRequest) {
         const stripeFeeAmount = typeof synced.stripeFeeAmount === "number" ? synced.stripeFeeAmount : 0;
         const platformFeeAmount = typeof booking.platformFeeAmount === "number" ? booking.platformFeeAmount : 0;
         const netAmount = Math.max(0, grossAmount - stripeFeeAmount - platformFeeAmount);
-
-        let transferAmount: number;
-
-        if (chargeId) {
-          // With source_transaction, Stripe transfers the earmarked funds from the specific
-          // charge — no available balance required. Use the full payout amount.
-          transferAmount = payoutAmount > 0 ? payoutAmount : netAmount;
-        } else {
-          // Fallback for bookings without a recorded chargeId: requires available balance.
-          if (availableBalance <= 0) {
-            skipped += 1;
-            console.warn("[api][cron][release-booking-payouts] no available balance and no chargeId, will retry", {
-              bookingId,
-              payoutAmount,
-              availableBalance,
-            });
-            continue;
-          }
-          transferAmount = payoutAmount <= availableBalance
-            ? payoutAmount
-            : netAmount <= availableBalance
-              ? netAmount
-              : 0;
-        }
-
-        console.log("[api][cron][release-booking-payouts] computed payout", {
-          bookingId,
-          grossAmount,
-          stripeFeeAmount,
-          platformFeeAmount,
-          payoutAmount,
-          netAmount,
-          transferAmount,
-          chargeId: chargeId || null,
-          availableBalance,
-          useSourceTransaction: Boolean(chargeId),
-        });
+        const transferAmount = payoutAmount > 0 ? payoutAmount : netAmount;
 
         if (!Number.isFinite(transferAmount) || transferAmount <= 0) {
-          skipped += 1;
-          console.warn("[api][cron][release-booking-payouts] insufficient balance, will retry next run", {
-            bookingId,
-            payoutAmount,
-            netAmount,
-            availableBalance,
+          console.error("[api][cron][reconcile-payouts] computed transfer amount is zero, cannot fix", {
+            bookingId, payoutAmount, netAmount,
           });
+          fixFailed += 1;
           continue;
         }
 
@@ -199,16 +155,13 @@ export async function GET(req: NextRequest) {
             bookingId,
             sitterId: String(booking.sitterId),
             paymentIntentId,
+            fixedBy: "reconcile-payouts-cron",
             grossAmount: String(grossAmount),
-            stripeFeeAmount: String(stripeFeeAmount),
             platformFeeAmount: String(platformFeeAmount),
             payoutAmount: String(transferAmount),
           },
         };
 
-        // source_transaction links the transfer to the specific charge, which means:
-        // 1. Stripe can execute the transfer even before the charge fully settles.
-        // 2. The money flow is auditable: charge → transfer → connected account.
         if (chargeId) {
           transferParams.source_transaction = chargeId;
         }
@@ -217,11 +170,7 @@ export async function GET(req: NextRequest) {
           idempotencyKey: `transfer:booking:${bookingId}:${paymentIntentId}:${transferAmount}`,
         });
 
-        if (!transfer?.id) throw new Error("[api][cron][release-booking-payouts] missing transfer id after create");
-
-        if (!chargeId) {
-          availableBalance -= transferAmount;
-        }
+        if (!transfer?.id) throw new Error("missing transfer id");
 
         await (prisma as any).booking.update({
           where: { id: bookingId },
@@ -233,34 +182,25 @@ export async function GET(req: NextRequest) {
           select: { id: true },
         });
 
-        released += 1;
-        console.log("[api][cron][release-booking-payouts] transfer created", {
+        fixed += 1;
+        console.log("[api][cron][reconcile-payouts] missed transfer fixed", {
           bookingId,
           transferId: transfer.id,
           transferAmount,
-          destination,
           chargeId: chargeId || null,
         });
       } catch (err) {
-        failed += 1;
-        console.error("[api][cron][release-booking-payouts] booking failed", { bookingId, err });
+        fixFailed += 1;
+        console.error("[api][cron][reconcile-payouts] fix attempt failed", { bookingId, err });
       }
     }
 
     return NextResponse.json(
-      {
-        ok: true,
-        processed,
-        released,
-        skipped,
-        failed,
-        availableBalance,
-        asOf: now.toISOString(),
-      },
+      { ok: true, detected, fixed, fixFailed, missed, asOf: now.toISOString() },
       { status: 200 }
     );
   } catch (err) {
-    console.error("[api][cron][release-booking-payouts] error", err);
+    console.error("[api][cron][reconcile-payouts] error", err);
     return NextResponse.json({ ok: false, error: "INTERNAL_ERROR" }, { status: 500 });
   }
 }
