@@ -700,7 +700,7 @@ export default function BecomeSitterForm() {
                                 setWalkRate(next.value);
                               }}
                               aria-label="Tarif Promenade en CHF par heure"
-                              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 pr-14 text-right text-base text-slate-900 shadow-sm outline-none transition focus:border-[var(--dogshift-blue)] focus:ring-4 focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_85%)]"
+                              className="no-spinner w-full rounded-xl border border-slate-300 bg-white px-3 py-2 pr-14 text-right text-base text-slate-900 shadow-sm outline-none transition focus:border-[var(--dogshift-blue)] focus:ring-4 focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_85%)]"
                             />
                             <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-xs font-medium text-slate-500">CHF/h</span>
                           </div>
@@ -734,7 +734,7 @@ export default function BecomeSitterForm() {
                                 setSittingRate(next.value);
                               }}
                               aria-label="Tarif Garde en CHF par heure"
-                              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 pr-14 text-right text-base text-slate-900 shadow-sm outline-none transition focus:border-[var(--dogshift-blue)] focus:ring-4 focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_85%)]"
+                              className="no-spinner w-full rounded-xl border border-slate-300 bg-white px-3 py-2 pr-14 text-right text-base text-slate-900 shadow-sm outline-none transition focus:border-[var(--dogshift-blue)] focus:ring-4 focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_85%)]"
                             />
                             <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-xs font-medium text-slate-500">CHF/h</span>
                           </div>
@@ -768,7 +768,7 @@ export default function BecomeSitterForm() {
                                 setPricePerDay(next.value);
                               }}
                               aria-label="Tarif Pension en CHF par jour"
-                              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 pr-16 text-right text-base text-slate-900 shadow-sm outline-none transition focus:border-[var(--dogshift-blue)] focus:ring-4 focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_85%)]"
+                              className="no-spinner w-full rounded-xl border border-slate-300 bg-white px-3 py-2 pr-16 text-right text-base text-slate-900 shadow-sm outline-none transition focus:border-[var(--dogshift-blue)] focus:ring-4 focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_85%)]"
                             />
                             <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-xs font-medium text-slate-500">CHF/jour</span>
                           </div>
