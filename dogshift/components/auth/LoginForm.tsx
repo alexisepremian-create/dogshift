@@ -32,11 +32,13 @@ export default function LoginForm() {
   const [step, setStep] = useState<Step>("email");
   const [verifyMode, setVerifyMode] = useState<VerifyMode>("emailCode");
   const [loading, setLoading] = useState(false);
+  /** Google OAuth: must not reuse `loading` — successful sso() often returns before navigation, and we never cleared `loading`, which disabled the whole form ("Vérification…"). */
+  const [oauthInFlight, setOauthInFlight] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [autoGoogleStarted, setAutoGoogleStarted] = useState(false);
 
   const fetching = fetchStatus === "fetching";
-  const disabled = fetching || loading || !signIn;
+  const disabled = fetching || loading || oauthInFlight || !signIn;
 
   async function finalizeSignIn() {
     if ((signIn as any).status === "complete") {
@@ -187,10 +189,10 @@ export default function LoginForm() {
   }
 
   async function handleGoogle() {
-    if (!signIn || loading) return;
+    if (!signIn || loading || oauthInFlight) return;
 
     setError(null);
-    setLoading(true);
+    setOauthInFlight(true);
     try {
       try {
         sessionStorage.setItem("ds_oauth_after", redirectAfterAuth);
@@ -203,17 +205,11 @@ export default function LoginForm() {
         redirectUrl: withPublicOrigin(redirectAfterAuth),
       });
       if (ssoError) throw new Error(ssoError.message ?? "Connexion Google impossible.");
-
-      const status = (signIn as any).status;
-      if (status === "needs_client_trust") {
-        // Clerk's invisible CAPTCHA will resolve via the clerk-captcha div.
-        setLoading(false);
-        return;
-      }
     } catch (err) {
       console.error("[LoginForm] handleGoogle error:", err);
       setError(err instanceof Error ? err.message : "Connexion Google impossible. Réessaie.");
-      setLoading(false);
+    } finally {
+      setOauthInFlight(false);
     }
   }
 
@@ -238,9 +234,10 @@ export default function LoginForm() {
           type="button"
           onClick={handleGoogle}
           disabled={disabled}
+          aria-busy={oauthInFlight}
           className="inline-flex w-full items-center justify-center rounded-full border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          Continuer avec Google
+          {oauthInFlight ? "Redirection…" : "Continuer avec Google"}
         </button>
 
         <div className="flex items-center gap-3">

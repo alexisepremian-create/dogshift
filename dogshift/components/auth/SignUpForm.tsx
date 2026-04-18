@@ -21,11 +21,12 @@ export default function SignUpForm() {
   const [email, setEmail] = useState("");
   const [emailCode, setEmailCode] = useState("");
   const [loading, setLoading] = useState(false);
+  const [oauthInFlight, setOauthInFlight] = useState(false);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const fetching = fetchStatus === "fetching";
-  const disabled = fetching || loading || !signUp;
+  const disabled = fetching || loading || oauthInFlight || !signUp;
 
   async function handleEmailSignUp(e: React.FormEvent) {
     e.preventDefault();
@@ -105,10 +106,10 @@ export default function SignUpForm() {
   }
 
   async function handleGoogle() {
-    if (!signUp || loading) return;
+    if (!signUp || loading || oauthInFlight) return;
 
     setError(null);
-    setLoading(true);
+    setOauthInFlight(true);
     try {
       try {
         sessionStorage.setItem("ds_oauth_after", redirectAfterAuth);
@@ -124,7 +125,8 @@ export default function SignUpForm() {
     } catch (err) {
       console.error("[SignUpForm] handleGoogle error:", err);
       setError(err instanceof Error ? err.message : "Inscription Google impossible. Réessaie.");
-      setLoading(false);
+    } finally {
+      setOauthInFlight(false);
     }
   }
 
@@ -138,9 +140,10 @@ export default function SignUpForm() {
           type="button"
           onClick={handleGoogle}
           disabled={disabled}
+          aria-busy={oauthInFlight}
           className="inline-flex w-full items-center justify-center rounded-full border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          S'inscrire avec Google
+          {oauthInFlight ? "Redirection…" : "S'inscrire avec Google"}
         </button>
 
         <div className="flex items-center gap-3">
