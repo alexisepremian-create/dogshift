@@ -18,3 +18,37 @@ export function withPublicOrigin(pathOrUrl: string): string {
   if (!origin) return p;
   return `${origin}${p.startsWith("/") ? p : `/${p}`}`;
 }
+
+/**
+ * Origin for full-page navigations right after OAuth / post-login.
+ * On production dogshift, `NEXT_PUBLIC_APP_URL` (typically https://www.dogshift.ch) avoids
+ * landing on apex while Clerk cookies were issued for www (or vice versa).
+ */
+export function navigationPublicOrigin(): string {
+  const env = (process.env.NEXT_PUBLIC_APP_URL || "").trim().replace(/\/$/, "");
+  if (typeof window === "undefined") return env;
+
+  let loc = "";
+  try {
+    loc = window.location.origin.replace(/\/$/, "");
+  } catch {
+    return env;
+  }
+
+  let host = "";
+  try {
+    host = new URL(loc).hostname.toLowerCase();
+  } catch {
+    return loc || env;
+  }
+
+  if (host === "localhost" || host === "127.0.0.1" || host.endsWith(".local")) {
+    return loc;
+  }
+
+  if (env && (host === "dogshift.ch" || host === "www.dogshift.ch")) {
+    return env;
+  }
+
+  return loc || env;
+}

@@ -2,13 +2,14 @@
 
 import { useClerk } from "@clerk/nextjs";
 import { useEffect, useRef, useState } from "react";
+import { navigationPublicOrigin } from "@/lib/url/publicOrigin";
 
 export const dynamic = "force-dynamic";
 
 const OAUTH_AFTER_KEY = "ds_oauth_after";
 
 function absUrl(path: string): string {
-  const origin = typeof window !== "undefined" ? window.location.origin.replace(/\/$/, "") : "";
+  const origin = typeof window !== "undefined" ? navigationPublicOrigin() : "";
   const p = (path || "").trim();
   if (!p) return `${origin}/post-login`;
   if (p.startsWith("http://") || p.startsWith("https://")) return p;

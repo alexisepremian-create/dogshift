@@ -2,35 +2,46 @@
 
 import { useAuth } from "@clerk/nextjs";
 import { useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
+
+import { navigationPublicOrigin } from "@/lib/url/publicOrigin";
 
 function absolutePath(path: string): string {
   const p = (path || "").trim();
-  if (!p.startsWith("/") || p.startsWith("//")) return "/account";
-  if (typeof window === "undefined") return p;
-  return `${window.location.origin}${p}`;
+  const origin = navigationPublicOrigin();
+  if (!p.startsWith("/") || p.startsWith("//")) return `${origin}/account`;
+  if (!origin) return p;
+  return `${origin}${p}`;
 }
 
 export default function PostLoginPage() {
-  const router = useRouter();
   const { isLoaded, userId } = useAuth();
-  const startedRef = useRef(false);
+  const userIdRef = useRef(userId);
+  userIdRef.current = userId;
+  const runStartedRef = useRef(false);
 
   useEffect(() => {
     if (!isLoaded) return;
-    if (!userId) {
-      router.replace("/login?force=1");
-      return;
-    }
-    if (startedRef.current) return;
-    startedRef.current = true;
+    if (runStartedRef.current) return;
+    runStartedRef.current = true;
 
-    const params = new URLSearchParams(window.location.search);
-    const next = (params.get("next") ?? "").trim();
+    let cancelled = false;
 
     void (async () => {
+      const deadline = Date.now() + 5500;
+      while (!cancelled && !userIdRef.current && Date.now() < deadline) {
+        await new Promise((r) => setTimeout(r, 180));
+      }
+      if (cancelled) return;
+      if (!userIdRef.current) {
+        window.location.replace(absolutePath("/login?force=1"));
+        return;
+      }
+
+      const params = new URLSearchParams(window.location.search);
+      const next = (params.get("next") ?? "").trim();
+
       let res = await fetch("/api/auth/resolve-redirect", { cache: "no-store", credentials: "same-origin" });
-      for (let i = 0; i < 10 && res.status === 401; i += 1) {
+      for (let i = 0; i < 12 && res.status === 401; i += 1) {
         await new Promise((r) => setTimeout(r, 200));
         res = await fetch("/api/auth/resolve-redirect", { cache: "no-store", credentials: "same-origin" });
       }
@@ -46,7 +57,12 @@ export default function PostLoginPage() {
       const dest = t.startsWith("/") && !t.startsWith("//") ? t : "/account";
       window.location.replace(absolutePath(dest));
     })();
-  }, [router, isLoaded, userId]);
+
+    return () => {
+      cancelled = true;
+      runStartedRef.current = false;
+    };
+  }, [isLoaded]);
 
   return null;
 }
