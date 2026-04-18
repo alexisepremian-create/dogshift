@@ -139,13 +139,7 @@ export default function BecomeSitterForm() {
       }
 
       if ((signUp as any).status === "complete") {
-        await (signUp as any).finalize({
-          navigate: ({ decorateUrl }: { decorateUrl: (url: string) => string }) => {
-            const url = decorateUrl("/post-login");
-            if (url.startsWith("http")) window.location.href = url;
-            else router.replace(url);
-          },
-        });
+        await (signUp as any).finalize({ navigate: () => {} });
         setAuthInlineStatus("idle");
         return true;
       }
@@ -207,13 +201,7 @@ export default function BecomeSitterForm() {
         return false;
       }
       if ((signUp as any).status === "complete") {
-        await (signUp as any).finalize({
-          navigate: ({ decorateUrl }: { decorateUrl: (url: string) => string }) => {
-            const url = decorateUrl("/post-login");
-            if (url.startsWith("http")) window.location.href = url;
-            else router.replace(url);
-          },
-        });
+        await (signUp as any).finalize({ navigate: () => {} });
         setAuthInlineStatus("idle");
         setStep(2);
         return true;
