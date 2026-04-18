@@ -209,7 +209,7 @@ export async function GET(req: NextRequest) {
         security: {
           googleConnected,
           emailVerified,
-          passwordSet: false,
+          passwordSet: Boolean((clerkUser as any)?.passwordEnabled),
         },
         emailVerificationStatus,
         lastVerificationEmailSentAt,

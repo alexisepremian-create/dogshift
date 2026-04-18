@@ -263,10 +263,10 @@ export default function BecomeSitterForm() {
   }, [serviceFlags]);
 
   const hourlyMin = serviceFlags.walk && serviceFlags.sitting
-    ? Math.min(WALK_MIN, SITTING_MIN)
+    ? Math.max(WALK_MIN, SITTING_MIN)
     : serviceFlags.walk ? WALK_MIN : SITTING_MIN;
   const hourlyMax = serviceFlags.walk && serviceFlags.sitting
-    ? Math.max(WALK_MAX, SITTING_MAX)
+    ? Math.min(WALK_MAX, SITTING_MAX)
     : serviceFlags.walk ? WALK_MAX : SITTING_MAX;
 
   const step2Errors = useMemo(() => {
