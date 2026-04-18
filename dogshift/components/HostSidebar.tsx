@@ -26,7 +26,7 @@ export default function HostSidebar({ onNavigate, className, forceExpanded }: Ho
         aria-busy="true"
         aria-live="polite"
       >
-        <div className="px-4 pt-6">
+        <div className="px-4 pt-4">
           <div className="flex items-center gap-3">
             <div className="h-12 w-12 rounded-2xl bg-slate-100" />
             <div className="flex-1">
@@ -35,7 +35,7 @@ export default function HostSidebar({ onNavigate, className, forceExpanded }: Ho
             </div>
           </div>
 
-          <div className="mt-6 space-y-2">
+          <div className="mt-4 space-y-2">
             {Array.from({ length: 6 }).map((_, idx) => (
               <div key={idx} className="flex items-center gap-3 rounded-2xl px-3 py-3">
                 <div className="h-4 w-4 rounded bg-slate-100" />

@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Info, Wallet, CheckCircle2, Clock, Landmark, ShieldCheck, PlayCircle, ArrowRightLeft, CalendarClock } from "lucide-react";
 
-import SunCornerGlow from "@/components/SunCornerGlow";
 
 function formatCents(amount: number) {
   return new Intl.NumberFormat("fr-CH", { style: "currency", currency: "CHF" }).format(amount / 100);
@@ -612,8 +611,6 @@ export default function HostWalletPage() {
 
   return (
     <div className="relative grid gap-6" data-testid="host-wallet-page">
-      <SunCornerGlow variant="sitterDashboard" />
-
       <div className="relative z-10 grid gap-6">
         {/* ─── Header ─── */}
         <div>

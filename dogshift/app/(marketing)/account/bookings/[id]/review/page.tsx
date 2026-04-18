@@ -7,7 +7,6 @@ import { useParams, useRouter } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
 import { CalendarDays, ChevronLeft, MapPin } from "lucide-react";
 
-import SunCornerGlow from "@/components/SunCornerGlow";
 
 type BookingDetail = {
   id: string;
@@ -248,8 +247,6 @@ export default function AccountBookingReviewPage() {
 
   return (
     <div className="relative grid gap-6 overflow-hidden" data-testid="account-booking-review-page">
-      <SunCornerGlow variant="ownerBookings" placement="page" />
-
       <div className="relative z-10">
         <Link
           href={`/account/bookings/${encodeURIComponent(bookingId)}`}

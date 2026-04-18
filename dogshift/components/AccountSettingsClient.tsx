@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
 
-import SunCornerGlow, { type SunCornerGlowVariant } from "@/components/SunCornerGlow";
 import {
   AlertTriangle,
   Bell,
@@ -89,13 +88,7 @@ function defaultSettings(): SettingsState {
   };
 }
 
-export default function AccountSettingsClient({
-  glowVariant,
-  basePath,
-}: {
-  glowVariant: SunCornerGlowVariant;
-  basePath: string;
-}) {
+export default function AccountSettingsClient({ basePath }: { basePath: string }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { isLoaded, isSignedIn, user } = useUser();
@@ -286,7 +279,6 @@ export default function AccountSettingsClient({
 
   return (
     <div className="relative grid gap-6 overflow-hidden" data-testid="account-settings-page">
-      <SunCornerGlow variant={glowVariant} placement="page" />
       <div className="relative z-10 grid gap-6">
         {/* Content unchanged in existing project; moved for build correctness. */}
         <div className={cardBase}>

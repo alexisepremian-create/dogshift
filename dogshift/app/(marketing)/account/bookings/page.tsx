@@ -7,7 +7,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
 import { CalendarDays, MapPin, Trash2, Clock, CheckCircle2, CreditCard, Banknote, Info, ShieldCheck, HandCoins, Footprints, Home, Moon, MessageCircle, Hash, X } from "lucide-react";
 
-import SunCornerGlow from "@/components/SunCornerGlow";
 
 type BookingListItem = {
   id: string;
@@ -479,8 +478,6 @@ function AccountBookingsContent() {
 
   return (
     <div className="relative" data-testid="account-bookings-page">
-      <SunCornerGlow variant="ownerBookings" placement="page" />
-
       <div className="grid items-start gap-6 lg:grid-cols-[380px_1fr]">
         <section className={mobileDetailOpen ? "hidden min-w-0 lg:block" : "min-w-0 block"}>
           <div className="rounded-3xl border border-slate-100 bg-white/60 p-5 shadow-[0_8px_30px_-12px_rgba(15,23,42,0.06)] backdrop-blur-xl sm:p-7">

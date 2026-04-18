@@ -5,7 +5,6 @@ import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Info, Pencil } from "lucide-react";
 
-import SunCornerGlow from "@/components/SunCornerGlow";
 import { useHostUser } from "@/components/HostUserProvider";
 import { isActivatedStatus } from "@/lib/sitterContract";
 import { CURRENT_TERMS_VERSION } from "@/lib/terms";
@@ -310,7 +309,6 @@ export default function HostProfileEditPage() {
   if (!sitterId) {
     return (
       <div className="relative grid gap-6 overflow-x-hidden" data-testid="host-profile-edit">
-        <SunCornerGlow variant="sitterProfile" />
         <div className="relative z-10 rounded-3xl border border-slate-200 bg-white p-6">
           <p className="text-sm font-semibold text-slate-900">Profil hôte</p>
           <p className="mt-2 text-sm text-slate-600">Ton profil hôte n’est pas encore disponible.</p>
@@ -326,8 +324,6 @@ export default function HostProfileEditPage() {
 
   return (
     <div className="relative grid gap-6 overflow-x-hidden" data-testid="host-profile-edit">
-      <SunCornerGlow variant="sitterProfile" />
-
       <div className="relative z-10">
         <div className="grid gap-4 sm:grid-cols-[1fr_auto] sm:items-end">
           <div>

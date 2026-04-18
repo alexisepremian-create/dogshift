@@ -6,7 +6,6 @@ import { useCallback, useEffect, useMemo, useRef, useState, Suspense } from "rea
 import { useUser } from "@clerk/nextjs";
 import { ArrowDownRight, ArrowUpRight, Briefcase, CreditCard, Info, RefreshCw, Wallet, CalendarClock, PlayCircle, ShieldCheck, CheckCircle2, Clock, Landmark } from "lucide-react";
 
-import SunCornerGlow from "@/components/SunCornerGlow";
 
 type WalletSummary = {
   totalPaid: number;
@@ -426,8 +425,6 @@ function OwnerWalletContent() {
 
   return (
     <div className="relative grid gap-6 overflow-x-hidden overflow-y-visible" data-testid="owner-wallet-page">
-      <SunCornerGlow variant="ownerDashboard" placement="page" />
-
       <div className="relative z-10 grid gap-6">
         <div>
           <p className="text-sm font-semibold text-slate-600">Mon compte</p>

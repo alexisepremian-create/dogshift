@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
 
-import SunCornerGlow from "@/components/SunCornerGlow";
 import {
   AlertTriangle,
   Bell,
@@ -93,7 +92,6 @@ function defaultSettings(): SettingsState {
 export default function AccountSettingsPage() {
   const pathname = usePathname();
   const isHost = typeof pathname === "string" && pathname.startsWith("/host/");
-  const glowVariant = isHost ? "sitterSettings" : "ownerSettings";
   const basePath = isHost ? "/host/settings" : "/account/settings";
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -310,8 +308,6 @@ export default function AccountSettingsPage() {
 
   return (
     <div className="relative grid gap-6" data-testid="account-settings-page">
-      <SunCornerGlow variant={glowVariant} placement="page" />
-
       <div className="relative z-10 grid gap-6 min-w-0">
       <div>
         <p className="text-sm font-semibold text-slate-600">Mon compte</p>

@@ -6,8 +6,6 @@ import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { MessageCircle } from "lucide-react";
 
-import SunCornerGlow from "@/components/SunCornerGlow";
-
 type ConversationListItem = {
   id: string;
   bookingId: string | null;

@@ -68,10 +68,13 @@ export default function HostDashboardShell({ children }: { children: React.React
           </header>
 
           <main
-            className="flex-1 px-4 sm:px-6 lg:px-10 lg:pt-8"
-            style={{ paddingTop: "calc(3.5rem + var(--ds-maintenance-banner-height, 0px))" }}
+            className={
+              "flex-1 px-4 sm:px-6 lg:px-10 " +
+              "pt-[calc(3.5rem+var(--ds-maintenance-banner-height,0px))] " +
+              "lg:pt-[calc(1.125rem+var(--ds-maintenance-banner-height,0px))]"
+            }
           >
-            <div className="mx-auto w-full max-w-6xl py-6 lg:py-8">
+            <div className="mx-auto w-full max-w-6xl py-4 lg:py-5">
               {children}
             </div>
 

@@ -2198,7 +2198,7 @@ function SitterPublicProfileContent({
 
   const content = (
     <div className="relative grid gap-6 overflow-hidden" data-testid="sitter-public-profile">
-      <SunCornerGlow variant="sitterPublicPreview" />
+      {showHostChrome ? null : <SunCornerGlow variant="sitterPublicPreview" />}
       <div className="relative z-10">
         {canEvaluateFinalizeModal ? (
           <Modal

@@ -42,7 +42,7 @@ export default function Sidebar({ ariaLabel, items, footer, onNavigate, classNam
         (forceExpanded ? "" : " items-center py-4")
       }
     >
-      <div className={forceExpanded ? "w-full px-4 pt-3" : "flex h-[84px] w-full items-center justify-center"}>
+      <div className={forceExpanded ? "w-full px-4 pt-2" : "flex h-[84px] w-full items-center justify-center"}>
         <Link
           href={headerHref}
           aria-label="DogShift"
@@ -75,7 +75,7 @@ export default function Sidebar({ ariaLabel, items, footer, onNavigate, classNam
         </Link>
       </div>
 
-      <div className={forceExpanded ? "w-full px-3 pt-6" : "flex w-full flex-1 items-center justify-center"}>
+      <div className={forceExpanded ? "w-full px-3 pt-4" : "flex w-full flex-1 items-center justify-center"}>
         <nav
           aria-label={ariaLabel}
           className={
