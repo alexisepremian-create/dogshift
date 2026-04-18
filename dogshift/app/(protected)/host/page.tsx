@@ -30,41 +30,57 @@ function formatRating(rating: number) {
   return rating % 1 === 0 ? rating.toFixed(0) : rating.toFixed(1);
 }
 
-const HOST_COMPLETION_CARD_DISMISSED_KEY = "ds_host_completion_card_dismissed_v1";
+const HOST_COMPLETION_CARD_DISMISSED_KEY_PREFIX = "ds_host_completion_card_dismissed_v1";
 const HOST_COMPLETION_CARD_DISMISSED_EVENT = "ds_host_completion_card_dismissed";
 
-const DOGSHIFT_BANNER_ACCOUNT_ACTIVATED_CLOSED_KEY = "dogshift_banner_account_activated_closed";
+function hostCompletionCardDismissedKey(sitterId: string | null): string {
+  return sitterId
+    ? `${HOST_COMPLETION_CARD_DISMISSED_KEY_PREFIX}:${sitterId}`
+    : HOST_COMPLETION_CARD_DISMISSED_KEY_PREFIX;
+}
+
+const DOGSHIFT_BANNER_ACCOUNT_ACTIVATED_CLOSED_KEY_PREFIX = "dogshift_banner_account_activated_closed";
 const DOGSHIFT_BANNER_ACCOUNT_ACTIVATED_CLOSED_EVENT = "dogshift:banner_account_activated_closed";
 
-function subscribeAccountActivatedBannerClosed(onStoreChange: () => void) {
-  if (typeof window === "undefined") return () => {};
+function accountActivatedBannerClosedKey(sitterId: string | null): string {
+  return sitterId
+    ? `${DOGSHIFT_BANNER_ACCOUNT_ACTIVATED_CLOSED_KEY_PREFIX}:${sitterId}`
+    : DOGSHIFT_BANNER_ACCOUNT_ACTIVATED_CLOSED_KEY_PREFIX;
+}
 
-  const onCustom = () => onStoreChange();
-  const onStorage = (e: StorageEvent) => {
-    if (e.key === DOGSHIFT_BANNER_ACCOUNT_ACTIVATED_CLOSED_KEY) onStoreChange();
-  };
-  window.addEventListener(DOGSHIFT_BANNER_ACCOUNT_ACTIVATED_CLOSED_EVENT, onCustom);
-  window.addEventListener("storage", onStorage);
-  return () => {
-    window.removeEventListener(DOGSHIFT_BANNER_ACCOUNT_ACTIVATED_CLOSED_EVENT, onCustom);
-    window.removeEventListener("storage", onStorage);
+function subscribeAccountActivatedBannerClosed(sitterId: string | null) {
+  const storageKey = accountActivatedBannerClosedKey(sitterId);
+  return (onStoreChange: () => void) => {
+    if (typeof window === "undefined") return () => {};
+
+    const onCustom = () => onStoreChange();
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === storageKey) onStoreChange();
+    };
+    window.addEventListener(DOGSHIFT_BANNER_ACCOUNT_ACTIVATED_CLOSED_EVENT, onCustom);
+    window.addEventListener("storage", onStorage);
+    return () => {
+      window.removeEventListener(DOGSHIFT_BANNER_ACCOUNT_ACTIVATED_CLOSED_EVENT, onCustom);
+      window.removeEventListener("storage", onStorage);
+    };
   };
 }
 
-function readAccountActivatedBannerClosed(): boolean {
+function readAccountActivatedBannerClosed(sitterId: string | null): boolean {
   try {
-    return window.localStorage.getItem(DOGSHIFT_BANNER_ACCOUNT_ACTIVATED_CLOSED_KEY) === "1";
+    return window.localStorage.getItem(accountActivatedBannerClosedKey(sitterId)) === "1";
   } catch {
     return false;
   }
 }
 
-function AccountActivatedBanner() {
+function AccountActivatedBanner({ sitterId }: { sitterId: string | null }) {
   const searchParams = useSearchParams();
   const debugShow = searchParams.get("showBanner") === "1";
+  const subscribe = useMemo(() => subscribeAccountActivatedBannerClosed(sitterId), [sitterId]);
   const persistedClosed = useSyncExternalStore(
-    subscribeAccountActivatedBannerClosed,
-    readAccountActivatedBannerClosed,
+    subscribe,
+    () => readAccountActivatedBannerClosed(sitterId),
     () => false
   );
   const [exiting, setExiting] = useState(false);
@@ -76,6 +92,11 @@ function AccountActivatedBanner() {
     }
   }, [searchParams]);
 
+  useEffect(() => {
+    setSessionDismissed(false);
+    setExiting(false);
+  }, [sitterId]);
+
   const shouldShow = !sessionDismissed && (debugShow || !persistedClosed || exiting);
   if (!shouldShow) return null;
 
@@ -83,7 +104,7 @@ function AccountActivatedBanner() {
     setExiting(true);
     window.setTimeout(() => {
       try {
-        window.localStorage.setItem(DOGSHIFT_BANNER_ACCOUNT_ACTIVATED_CLOSED_KEY, "1");
+        window.localStorage.setItem(accountActivatedBannerClosedKey(sitterId), "1");
         window.dispatchEvent(new Event(DOGSHIFT_BANNER_ACCOUNT_ACTIVATED_CLOSED_EVENT));
       } catch {
         // ignore
@@ -196,15 +217,16 @@ export default function HostDashboardPage() {
   const [verificationLoaded, setVerificationLoaded] = useState(false);
   const [reviewCount, setReviewCount] = useState(0);
   const [averageRating, setAverageRating] = useState<number | null>(null);
-  const completionCardDismissed = useSyncExternalStore(
-    (onStoreChange) => {
+  const completionCardStorageKey = hostCompletionCardDismissedKey(sitterId);
+  const subscribeCompletionCardDismissed = useMemo(() => {
+    return (onStoreChange: () => void) => {
       if (typeof window === "undefined") return () => {};
 
       const onCustom = () => onStoreChange();
       window.addEventListener(HOST_COMPLETION_CARD_DISMISSED_EVENT, onCustom);
 
       const onStorage = (e: StorageEvent) => {
-        if (e.key === HOST_COMPLETION_CARD_DISMISSED_KEY) {
+        if (e.key === completionCardStorageKey) {
           onStoreChange();
         }
       };
@@ -214,10 +236,14 @@ export default function HostDashboardPage() {
         window.removeEventListener(HOST_COMPLETION_CARD_DISMISSED_EVENT, onCustom);
         window.removeEventListener("storage", onStorage);
       };
-    },
+    };
+  }, [completionCardStorageKey]);
+
+  const completionCardDismissed = useSyncExternalStore(
+    subscribeCompletionCardDismissed,
     () => {
       try {
-        return window.localStorage.getItem(HOST_COMPLETION_CARD_DISMISSED_KEY) === "1";
+        return window.localStorage.getItem(completionCardStorageKey) === "1";
       } catch {
         return false;
       }
@@ -393,7 +419,7 @@ export default function HostDashboardPage() {
 
       <div className="relative z-10">
         <Suspense fallback={null}>
-          <AccountActivatedBanner />
+          <AccountActivatedBanner sitterId={sitterId} />
         </Suspense>
 
         <div className="grid gap-4 sm:grid-cols-[1fr_auto] sm:items-end">
@@ -416,7 +442,7 @@ export default function HostDashboardPage() {
                           aria-label="Fermer"
                           onClick={() => {
                             try {
-                              window.localStorage.setItem(HOST_COMPLETION_CARD_DISMISSED_KEY, "1");
+                              window.localStorage.setItem(completionCardStorageKey, "1");
                               window.dispatchEvent(new Event(HOST_COMPLETION_CARD_DISMISSED_EVENT));
                             } catch {
                               // ignore
