@@ -71,6 +71,149 @@ function safeTimeZone() {
   }
 }
 
+function Skeleton({ className }: { className?: string }) {
+  return (
+    <span
+      aria-hidden="true"
+      className={`inline-block animate-pulse rounded-md bg-slate-200/80 ${className ?? ""}`}
+    />
+  );
+}
+
+function SettingsSkeleton({ isHost }: { isHost: boolean }) {
+  const cardBase = "rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-8 min-w-0";
+  return (
+    <div className="grid gap-6" aria-busy="true" aria-live="polite">
+      <span className="sr-only">Chargement de tes paramètres…</span>
+
+      <div className={cardBase}>
+        <div className="flex items-start justify-between gap-4">
+          <div className="w-full">
+            <Skeleton className="h-5 w-56" />
+            <Skeleton className="mt-2 h-4 w-80 max-w-full" />
+          </div>
+          <Skeleton className="h-5 w-5 rounded-full" />
+        </div>
+
+        <div className="mt-6 grid gap-4 sm:grid-cols-2">
+          <div>
+            <Skeleton className="h-4 w-24" />
+            <Skeleton className="mt-2 h-11 w-full rounded-2xl" />
+          </div>
+          <div>
+            <Skeleton className="h-4 w-20" />
+            <Skeleton className="mt-2 h-11 w-full rounded-2xl" />
+          </div>
+          <div className="sm:col-span-2">
+            <Skeleton className="h-4 w-16" />
+            <Skeleton className="mt-2 h-11 w-full rounded-2xl" />
+            <Skeleton className="mt-2 h-3 w-64 max-w-full" />
+          </div>
+          {isHost ? (
+            <div className="sm:col-span-2">
+              <Skeleton className="h-4 w-40" />
+              <Skeleton className="mt-2 h-11 w-full rounded-2xl" />
+              <Skeleton className="mt-2 h-3 w-72 max-w-full" />
+            </div>
+          ) : null}
+        </div>
+
+        <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-4">
+          <div className="flex items-start justify-between gap-4">
+            <div className="min-w-0 flex-1">
+              <Skeleton className="h-4 w-36" />
+              <Skeleton className="mt-2 h-3 w-80 max-w-full" />
+            </div>
+            <div className="flex shrink-0 items-center gap-2">
+              <Skeleton className="h-10 w-10 rounded-2xl" />
+              <Skeleton className="h-10 w-28 rounded-2xl" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className={cardBase}>
+        <div className="flex items-start justify-between gap-4">
+          <div className="w-full">
+            <Skeleton className="h-5 w-48" />
+            <Skeleton className="mt-2 h-4 w-72 max-w-full" />
+          </div>
+          <Skeleton className="h-5 w-5 rounded-full" />
+        </div>
+
+        <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <Skeleton className="h-4 w-40" />
+            <Skeleton className="h-4 w-28" />
+          </div>
+          <div className="mt-3 grid gap-2 sm:grid-cols-3">
+            <Skeleton className="h-14 w-full rounded-2xl" />
+            <Skeleton className="h-14 w-full rounded-2xl" />
+            <Skeleton className="h-14 w-full rounded-2xl" />
+          </div>
+        </div>
+
+        <div className="mt-6 grid gap-3">
+          <Skeleton className="h-4 w-40" />
+          <Skeleton className="h-11 w-full rounded-2xl" />
+          <div className="flex items-center justify-between">
+            <Skeleton className="h-3 w-32" />
+            <Skeleton className="h-3 w-16" />
+          </div>
+          <Skeleton className="h-4 w-20" />
+          <Skeleton className="h-11 w-full rounded-2xl" />
+          <div className="mt-2 flex justify-center">
+            <Skeleton className="h-11 w-64 rounded-2xl" />
+          </div>
+        </div>
+      </div>
+
+      <div className={cardBase}>
+        <Skeleton className="h-5 w-32" />
+        <Skeleton className="mt-2 h-4 w-64 max-w-full" />
+        <div className="mt-6 grid gap-3">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <Skeleton key={i} className="h-14 w-full rounded-2xl" />
+          ))}
+        </div>
+      </div>
+
+      <div className={cardBase}>
+        <Skeleton className="h-5 w-28" />
+        <Skeleton className="mt-2 h-4 w-80 max-w-full" />
+        <div className="mt-6 grid gap-4 sm:grid-cols-2">
+          <div>
+            <Skeleton className="h-4 w-20" />
+            <Skeleton className="mt-2 h-11 w-full rounded-2xl" />
+          </div>
+          <div>
+            <Skeleton className="h-4 w-28" />
+            <Skeleton className="mt-2 h-11 w-full rounded-2xl" />
+          </div>
+          <div className="sm:col-span-2">
+            <Skeleton className="h-4 w-32" />
+            <Skeleton className="mt-2 h-11 w-full rounded-2xl" />
+          </div>
+        </div>
+        <div className="mt-6 flex justify-center">
+          <Skeleton className="h-11 w-64 rounded-2xl" />
+        </div>
+      </div>
+
+      <div className="rounded-3xl border border-slate-200 bg-slate-50 p-6 shadow-sm sm:p-8">
+        <div className="text-center">
+          <Skeleton className="h-5 w-48" />
+          <Skeleton className="mt-2 h-4 w-72 max-w-full" />
+        </div>
+        <div className="mt-6 flex flex-col items-center gap-3">
+          <Skeleton className="h-11 w-72 max-w-full rounded-2xl" />
+          <Skeleton className="h-11 w-72 max-w-full rounded-2xl" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function defaultSettings(): SettingsState {
   return {
     notifications: {
@@ -259,6 +402,8 @@ export default function AccountSettingsPage() {
     return <div className="grid gap-6" />;
   }
 
+  const initialLoading = meLoading && !meError && security === null;
+
   const cardBase = "rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-8 min-w-0";
   const sectionTitle = "flex items-start justify-between gap-4";
   const labelBase = "block text-sm font-medium text-slate-700";
@@ -330,6 +475,8 @@ export default function AccountSettingsPage() {
         <div className="rounded-3xl border border-rose-200 bg-rose-50 px-6 py-4 text-sm font-medium text-rose-900">{meError}</div>
       ) : null}
 
+      {initialLoading ? <SettingsSkeleton isHost={isHost} /> : (
+      <>
       <div className={cardBase} suppressHydrationWarning>
         <div className={sectionTitle}>
           <div>
@@ -1051,6 +1198,8 @@ export default function AccountSettingsPage() {
           )}
         </div>
       </div>
+      </>
+      )}
       </div>
     </div>
   );
