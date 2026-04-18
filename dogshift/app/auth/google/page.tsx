@@ -2,6 +2,7 @@
 
 import { AuthenticateWithRedirectCallback } from "@clerk/nextjs";
 import { useEffect, useState } from "react";
+import PageLoader from "@/components/ui/PageLoader";
 import { withPublicOrigin } from "@/lib/url/publicOrigin";
 
 export const dynamic = "force-dynamic";
@@ -31,12 +32,8 @@ export default function AuthGooglePage() {
   }, []);
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-white font-sans"
-      aria-busy="true"
-      aria-live="polite"
-    >
-      <p className="text-[13px] font-medium tracking-[0.18em] text-slate-400">Connexion…</p>
+    <>
+      <PageLoader label="Connexion…" static persist />
       {ready ? (
         <AuthenticateWithRedirectCallback
           signInFallbackRedirectUrl={withPublicOrigin(afterPath)}
@@ -46,6 +43,6 @@ export default function AuthGooglePage() {
           continueSignUpUrl={withPublicOrigin("/login?force=1")}
         />
       ) : null}
-    </div>
+    </>
   );
 }

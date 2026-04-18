@@ -35,7 +35,7 @@ const csp = [
   "default-src 'self'",
   // Scripts: self + inline (Next.js hydration + login transit) + Google Ads + Clerk
   // clerk.dogshift.ch = sous-domaine personnalisé Clerk (proxy sur ton domaine)
-  "script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://js.stripe.com https://*.clerk.com https://*.clerk.accounts.dev https://clerk.dogshift.ch https://googleads.g.doubleclick.net https://www.google.com",
+  "script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://js.stripe.com https://*.clerk.com https://*.clerk.accounts.dev https://clerk.dogshift.ch https://challenges.cloudflare.com https://googleads.g.doubleclick.net https://www.google.com",
   // Styles: self + inline (Tailwind, Clerk injected styles)
   "style-src 'self' 'unsafe-inline'",
   // Images: self + data URIs + blob (canvas/jspdf) + Google avatars + MapTiler tiles + any https
@@ -48,6 +48,7 @@ const csp = [
     "https://*.clerk.com",
     "https://*.clerk.accounts.dev",
     "https://clerk.dogshift.ch",
+    "https://challenges.cloudflare.com",
     "wss://*.clerk.com",
     "wss://clerk.dogshift.ch",
     "https://api.stripe.com",
@@ -62,7 +63,7 @@ const csp = [
     "https://*.r2.cloudflarestorage.com",
   ].join(" "),
   // Iframes: Stripe payment iframes
-  "frame-src 'self' https://js.stripe.com https://hooks.stripe.com https://*.stripe.com",
+  "frame-src 'self' https://js.stripe.com https://hooks.stripe.com https://*.stripe.com https://challenges.cloudflare.com",
   // Workers: self + blob (used by MapLibre/MapTiler GL)
   "worker-src 'self' blob:",
   // Objects: none
