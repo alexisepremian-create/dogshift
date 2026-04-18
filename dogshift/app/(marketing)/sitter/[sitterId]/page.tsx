@@ -9,6 +9,7 @@ import { loadHostProfileFromStorage, type HostProfileV1 } from "@/lib/hostProfil
 import HostDashboardShell from "@/components/HostDashboardShell";
 import { HostUserProvider, makeHostUserValuePreview } from "@/components/HostUserProvider";
 import SunCornerGlow from "@/components/SunCornerGlow";
+import { DogSizeIcon } from "@/components/DogSizeIcon";
 import { appendHostMessage } from "@/lib/hostMessages";
 import { BUCKET_LABELS_FR, bucketDetailFr, mapReasonToBucket } from "@/lib/availability/reasonBuckets";
 import PageLoader from "@/components/ui/PageLoader";
@@ -2313,12 +2314,19 @@ function SitterPublicProfileContent({
                       {dogSizeBadges.length > 0 ? (
                         <div className="mt-4 border-t border-slate-200/70 pt-3.5 text-left">
                           <p className="text-sm text-slate-600">Tailles acceptées</p>
-                          <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[13px] font-medium leading-none text-slate-700">
+                          <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-[13px] font-medium leading-none text-slate-700">
                             {dogSizeBadges.map((size) => (
                               <span key={size} className="inline-flex items-center gap-1.5 whitespace-nowrap">
-                                <span aria-hidden="true" className="text-[15px] leading-none">
-                                  {size === "Petit" ? "🐶" : size === "Moyen" ? "🐕" : "🐕‍🦺"}
-                                </span>
+                                <DogSizeIcon
+                                  size={size}
+                                  className={
+                                    size === "Petit"
+                                      ? "h-5 w-5 text-[var(--dogshift-blue)]"
+                                      : size === "Moyen"
+                                        ? "h-[22px] w-[22px] text-[var(--dogshift-blue)]"
+                                        : "h-6 w-6 text-[var(--dogshift-blue)]"
+                                  }
+                                />
                                 <span>{size}</span>
                               </span>
                             ))}
