@@ -113,7 +113,7 @@ export default function PageLoader({
         className="flex flex-col items-center"
         style={{
           animation: isStatic
-            ? "brandPulseSubtle 3.2s ease-in-out infinite"
+            ? "brandPulse 2.8s ease-in-out infinite"
             : "brandPulse 2.8s ease-in-out 2.2s infinite",
           willChange: "opacity",
         }}
