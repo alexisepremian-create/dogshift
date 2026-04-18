@@ -163,11 +163,23 @@ function StatusBadge({ status }: { status: "verified" | "pending" | "unverified"
 
 function HostAvatar({ src, alt }: { src: string | null; alt: string }) {
   if (!src) {
-    return null;
+    return (
+      <div
+        aria-hidden="true"
+        className="h-14 w-14 rounded-full border border-slate-200 bg-white"
+      />
+    );
   }
 
   return (
-    <Image src={src} alt={alt} width={56} height={56} className="h-14 w-14 rounded-full border border-slate-200 object-cover" />
+    <Image
+      src={src}
+      alt={alt}
+      width={56}
+      height={56}
+      unoptimized
+      className="h-14 w-14 rounded-full border border-slate-200 object-cover bg-white"
+    />
   );
 }
 
@@ -354,8 +366,7 @@ export default function HostDashboardPage() {
 
   const avatarSrc =
     (profile.avatarDataUrl && profile.avatarDataUrl.trim() ? profile.avatarDataUrl.trim() : null) ??
-    (profile.avatarUrl && profile.avatarUrl.trim() ? profile.avatarUrl.trim() : null) ??
-    (typeof user?.imageUrl === "string" && user.imageUrl.trim() ? user.imageUrl.trim() : null);
+    (profile.avatarUrl && profile.avatarUrl.trim() ? profile.avatarUrl.trim() : null);
 
   if (!isLoaded || !isSignedIn) return null;
 
