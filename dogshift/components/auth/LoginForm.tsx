@@ -192,6 +192,11 @@ export default function LoginForm() {
     setError(null);
     setLoading(true);
     try {
+      try {
+        sessionStorage.setItem("ds_oauth_after", redirectAfterAuth);
+      } catch {
+        /* private mode */
+      }
       const { error: ssoError } = await (signIn as any).sso({
         strategy: "oauth_google",
         redirectCallbackUrl: withPublicOrigin("/auth/google"),

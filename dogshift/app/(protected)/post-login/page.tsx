@@ -22,9 +22,10 @@ export default function PostLoginPage() {
           return;
         }
         const data = await res.json().catch(() => null);
-        const redirect = data?.redirect ?? "/host";
-        const t = redirect === "/host" && next ? next : redirect;
-        router.replace(t.startsWith("/host") ? t : "/host");
+        const redirect = typeof data?.redirect === "string" && data.redirect.startsWith("/") ? data.redirect : "/account";
+        const useNext = redirect.startsWith("/host") && next.startsWith("/") && !next.startsWith("//");
+        const t = useNext ? next : redirect;
+        router.replace(t.startsWith("/") && !t.startsWith("//") ? t : "/account");
       } catch {
         router.replace("/login?force=1");
       }
