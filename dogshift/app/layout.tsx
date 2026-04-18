@@ -5,6 +5,7 @@ import { ClerkProvider } from "@clerk/nextjs";
 import { frFR } from "@clerk/localizations";
 import SessionAuthProvider from "@/components/SessionAuthProvider";
 import ConsentScriptLoader from "@/components/ConsentScriptLoader";
+import InitialLoadSplash from "@/components/InitialLoadSplash";
 import "maplibre-gl/dist/maplibre-gl.css";
 import "./globals.css";
 
@@ -76,6 +77,8 @@ export default async function RootLayout({
             <SessionAuthProvider>{children}</SessionAuthProvider>
           </Suspense>
         </ClerkProvider>
+
+        <InitialLoadSplash />
 
         {/* Cookie consent banner + conditional Google Ads loading (RGPD/nLPD) */}
         <ConsentScriptLoader />
