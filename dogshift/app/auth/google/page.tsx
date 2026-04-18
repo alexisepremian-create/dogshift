@@ -33,7 +33,7 @@ export default function AuthGooglePage() {
 
   return (
     <>
-      <PageLoader label="Connexion…" static persist />
+      <PageLoader label="Connexion…" persist />
       {ready ? (
         <AuthenticateWithRedirectCallback
           signInFallbackRedirectUrl={withPublicOrigin(afterPath)}

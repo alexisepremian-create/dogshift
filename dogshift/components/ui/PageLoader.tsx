@@ -5,8 +5,10 @@ import { useState, useEffect, useRef } from "react";
 /* ── Config ────────────────────────────────────────────────────── */
 
 const EASE = "cubic-bezier(0.16, 1, 0.3, 1)";
-const DEFAULT_MIN = 1800;
+const DEFAULT_MIN = 2400;
 const FADE_MS = 450;
+
+export const PAGE_LOADER_MIN_DURATION_MS = DEFAULT_MIN;
 
 /* ── Helpers ───────────────────────────────────────────────────── */
 

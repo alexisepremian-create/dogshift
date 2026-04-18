@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useUser } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 
-import PageLoader from "@/components/ui/PageLoader";
+import PageLoader, { PAGE_LOADER_MIN_DURATION_MS } from "@/components/ui/PageLoader";
 
 export default function ClerkAuthGate({
   children,
@@ -16,6 +16,19 @@ export default function ClerkAuthGate({
   const router = useRouter();
   const { isLoaded, isSignedIn } = useUser();
   const [readyToRender, setReadyToRender] = useState(false);
+  const mountRef = useRef(Date.now());
+  const [minElapsed, setMinElapsed] = useState(false);
+
+  useEffect(() => {
+    const elapsed = Date.now() - mountRef.current;
+    const remaining = Math.max(0, PAGE_LOADER_MIN_DURATION_MS - elapsed);
+    if (remaining === 0) {
+      setMinElapsed(true);
+      return;
+    }
+    const t = setTimeout(() => setMinElapsed(true), remaining);
+    return () => clearTimeout(t);
+  }, []);
 
   useEffect(() => {
     if (!isLoaded) return;
@@ -46,6 +59,10 @@ export default function ClerkAuthGate({
   }
 
   if (!readyToRender) {
+    return <PageLoader label="Chargement…" />;
+  }
+
+  if (!minElapsed) {
     return <PageLoader label="Chargement…" />;
   }
 

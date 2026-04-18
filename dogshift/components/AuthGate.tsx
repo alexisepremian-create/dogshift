@@ -1,10 +1,10 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { getAuthRole, getAuthUser, type DogShiftAuthRole } from "@/lib/auth";
-import PageLoader from "@/components/ui/PageLoader";
+import PageLoader, { PAGE_LOADER_MIN_DURATION_MS } from "@/components/ui/PageLoader";
 
 type AuthGateProps = {
   children: React.ReactNode;
@@ -21,6 +21,19 @@ export default function AuthGate({ children, requireAuth = false, allowedRoles }
   const [hydrated, setHydrated] = useState(false);
   const [role, setRole] = useState<DogShiftAuthRole | null>(null);
   const [authed, setAuthed] = useState(false);
+  const mountRef = useRef(Date.now());
+  const [minElapsed, setMinElapsed] = useState(false);
+
+  useEffect(() => {
+    const elapsed = Date.now() - mountRef.current;
+    const remaining = Math.max(0, PAGE_LOADER_MIN_DURATION_MS - elapsed);
+    if (remaining === 0) {
+      setMinElapsed(true);
+      return;
+    }
+    const t = setTimeout(() => setMinElapsed(true), remaining);
+    return () => clearTimeout(t);
+  }, []);
 
   useEffect(() => {
     setHydrated(true);
@@ -62,6 +75,7 @@ export default function AuthGate({ children, requireAuth = false, allowedRoles }
   if (!hydrated) return <PageLoader label="Chargement…" />;
   if (requireAuth && !authed) return <PageLoader label="Connexion en cours…" />;
   if (requireAuth && authed && !roleAllowed) return <PageLoader label="Chargement…" />;
+  if (!minElapsed) return <PageLoader label="Chargement…" />;
 
   return <>{children}</>;
 }
