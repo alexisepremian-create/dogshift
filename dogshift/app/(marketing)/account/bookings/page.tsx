@@ -5,7 +5,25 @@ import Link from "next/link";
 import { useEffect, useMemo, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
-import { CalendarDays, MapPin, Trash2, Clock, CheckCircle2, CreditCard, Banknote, Info, ShieldCheck, HandCoins, Footprints, Home, Moon, MessageCircle, Hash, X } from "lucide-react";
+import {
+  ArchiveRestore,
+  CalendarDays,
+  MapPin,
+  Trash2,
+  Clock,
+  CheckCircle2,
+  CreditCard,
+  Banknote,
+  Info,
+  ShieldCheck,
+  HandCoins,
+  Footprints,
+  Home,
+  Moon,
+  MessageCircle,
+  Hash,
+  X,
+} from "lucide-react";
 
 
 type BookingListItem = {
@@ -245,6 +263,7 @@ function AccountBookingsContent() {
   const [detailLoading, setDetailLoading] = useState(false);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [unarchivingId, setUnarchivingId] = useState<string | null>(null);
   const [currentTab, setCurrentTab] = useState<TabKey>("ALL");
   const [search, setSearch] = useState("");
   const [isFlipped, setIsFlipped] = useState(false);
@@ -474,6 +493,25 @@ function AccountBookingsContent() {
     }
   }
 
+  async function unarchiveOwnerBooking(bookingId: string) {
+    if (!bookingId || unarchivingId) return;
+    setUnarchivingId(bookingId);
+    setError(null);
+    try {
+      const res = await fetch(`/api/account/bookings/${encodeURIComponent(bookingId)}/unarchive`, { method: "POST" });
+      const payload = (await res.json()) as { ok?: boolean };
+      if (!res.ok || !payload.ok) {
+        setError("Impossible de désarchiver cette réservation.");
+        return;
+      }
+      setBookings((prev) => prev.map((b) => (b.id === bookingId ? { ...b, archivedAt: null } : b)));
+    } catch {
+      setError("Impossible de désarchiver cette réservation.");
+    } finally {
+      setUnarchivingId(null);
+    }
+  }
+
   if (!isLoaded || !isSignedIn) return null;
 
   return (
@@ -629,7 +667,10 @@ function AccountBookingsContent() {
                   {rows.map((b) => {
                   const service = b.service?.trim() ? b.service.trim() : "Service";
                   const isCancelled = b.status === "CANCELLED" || b.status === "PAYMENT_FAILED";
-                  const canDelete = b.status === "PENDING_PAYMENT" || b.status === "DRAFT";
+                  const canDelete =
+                    !b.archivedAt && (b.status === "PENDING_PAYMENT" || b.status === "DRAFT");
+                  const canUnarchive =
+                    Boolean(b.archivedAt) && (b.status === "PENDING_PAYMENT" || b.status === "DRAFT");
                   const isSelected = b.id === selectedId;
 
                   return (
@@ -669,6 +710,22 @@ function AccountBookingsContent() {
                           className="pointer-events-none absolute -left-2 -top-2 inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 opacity-0 shadow-sm transition group-hover:pointer-events-auto group-hover:opacity-100 hover:bg-slate-50"
                         >
                           <Trash2 className="h-4 w-4" aria-hidden="true" />
+                        </button>
+                      ) : null}
+                      {canUnarchive ? (
+                        <button
+                          type="button"
+                          title="Remettre dans les réservations actives"
+                          aria-label="Désarchiver"
+                          onClick={(event) => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            void unarchiveOwnerBooking(b.id);
+                          }}
+                          disabled={unarchivingId === b.id}
+                          className="pointer-events-none absolute -right-2 -bottom-2 inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 opacity-0 shadow-sm transition group-hover:pointer-events-auto group-hover:opacity-100 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          <ArchiveRestore className="h-4 w-4" aria-hidden="true" />
                         </button>
                       ) : null}
                       <div className="flex items-start gap-3">
@@ -883,7 +940,7 @@ function AccountBookingsContent() {
               ) : null}
 
               <section className="border-t border-slate-100 bg-slate-50/30 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-colors hover:bg-slate-50/80">
-                <div className="w-full sm:w-auto flex-shrink-0">
+                <div className="w-full sm:w-auto flex-shrink-0 flex flex-col gap-3 sm:flex-row sm:items-center">
                   <Link
                     href={selectedId ? `/account/bookings/${encodeURIComponent(selectedId)}` : "#"}
                     className="inline-flex w-full sm:w-auto items-center justify-center gap-2 rounded-xl bg-white border border-slate-200 px-4 py-2.5 text-sm font-bold text-slate-700 shadow-sm transition-all hover:bg-slate-50 hover:text-slate-900 active:scale-95"
@@ -891,6 +948,19 @@ function AccountBookingsContent() {
                     <MessageCircle className="h-4 w-4" />
                     Voir la conversation
                   </Link>
+                  {selected &&
+                  selected.archivedAt &&
+                  (selected.status === "DRAFT" || selected.status === "PENDING_PAYMENT") ? (
+                    <button
+                      type="button"
+                      onClick={() => void unarchiveOwnerBooking(selected.id)}
+                      disabled={unarchivingId === selected.id}
+                      className="inline-flex w-full sm:w-auto items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 shadow-sm transition-all hover:bg-slate-50 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      <ArchiveRestore className="h-4 w-4" aria-hidden="true" />
+                      {unarchivingId === selected.id ? "Désarchivage…" : "Désarchiver"}
+                    </button>
+                  ) : null}
                 </div>
 
                 {(() => {

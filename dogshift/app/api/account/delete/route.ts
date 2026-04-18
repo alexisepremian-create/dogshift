@@ -52,6 +52,7 @@ export async function DELETE(req: NextRequest) {
     const activeOwnerBookings = await prisma.booking.count({
       where: {
         userId: uid,
+        archivedAt: null,
         status: { in: ACTIVE_BOOKING_STATUSES as any },
       },
     });
