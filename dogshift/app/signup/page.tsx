@@ -6,8 +6,10 @@ import { useUser } from "@clerk/nextjs";
 
 import AuthLayout from "@/components/auth/AuthLayout";
 import SignUpForm from "@/components/auth/SignUpForm";
+import { useCanonicalDogshiftHostRedirect } from "@/lib/url/useCanonicalDogshiftHost";
 
 export default function SignUpPage() {
+  useCanonicalDogshiftHostRedirect();
   const router = useRouter();
   const searchParams = useSearchParams();
   const { isLoaded, isSignedIn } = useUser();

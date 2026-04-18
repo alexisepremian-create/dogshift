@@ -118,16 +118,14 @@ export default function SignUpForm() {
       } catch {
         /* private mode */
       }
-      const { error: ssoError } = await (signUp as any).sso({
+      await (signUp as any).authenticateWithRedirect({
         strategy: "oauth_google",
-        redirectCallbackUrl: withPublicOrigin("/auth/google"),
-        redirectUrl: withPublicOrigin(redirectAfterAuth),
+        redirectUrl: withPublicOrigin("/auth/google"),
+        redirectUrlComplete: withPublicOrigin(redirectAfterAuth),
       });
-      if (ssoError) throw new Error(ssoError.message ?? "Inscription Google impossible.");
     } catch (err) {
       console.error("[SignUpForm] handleGoogle error:", err);
       setError(err instanceof Error ? err.message : "Inscription Google impossible. Réessaie.");
-    } finally {
       setOauthInFlight(false);
     }
   }

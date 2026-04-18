@@ -204,16 +204,14 @@ export default function LoginForm() {
       } catch {
         /* private mode */
       }
-      const { error: ssoError } = await (signIn as any).sso({
+      await (signIn as any).authenticateWithRedirect({
         strategy: "oauth_google",
-        redirectCallbackUrl: withPublicOrigin("/auth/google"),
-        redirectUrl: withPublicOrigin(redirectAfterAuth),
+        redirectUrl: withPublicOrigin("/auth/google"),
+        redirectUrlComplete: withPublicOrigin(redirectAfterAuth),
       });
-      if (ssoError) throw new Error(ssoError.message ?? "Connexion Google impossible.");
     } catch (err) {
       console.error("[LoginForm] handleGoogle error:", err);
       setError(err instanceof Error ? err.message : "Connexion Google impossible. Réessaie.");
-    } finally {
       setOauthInFlight(false);
     }
   }

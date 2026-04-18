@@ -6,8 +6,10 @@ import { SignOutButton, useAuth, useClerk, useUser } from "@clerk/nextjs";
 
 import AuthLayout from "@/components/auth/AuthLayout";
 import LoginForm from "@/components/auth/LoginForm";
+import { useCanonicalDogshiftHostRedirect } from "@/lib/url/useCanonicalDogshiftHost";
 
 export default function LoginPage() {
+  useCanonicalDogshiftHostRedirect();
   const router = useRouter();
   const searchParams = useSearchParams();
   const clerk = useClerk();
