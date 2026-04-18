@@ -54,7 +54,8 @@ export default function BecomeSitterForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [showPasswordConfirm, setShowPasswordConfirm] = useState(false);
   const [services, setServices] = useState<string[]>([]);
-  const [hourlyRate, setHourlyRate] = useState<number | null>(null);
+  const [walkRate, setWalkRate] = useState<number | null>(null);
+  const [sittingRate, setSittingRate] = useState<number | null>(null);
   const [pricePerDay, setPricePerDay] = useState<number | null>(null);
   const [availability, setAvailability] = useState("");
   const [bio, setBio] = useState("");
@@ -255,22 +256,15 @@ export default function BecomeSitterForm() {
     const needsDaily = serviceFlags.boarding;
     return {
       showNoneSelectedHint: !needsHourly && !needsDaily,
-      showHourlyRate: needsHourly,
+      showWalkRate: serviceFlags.walk,
+      showSittingRate: serviceFlags.sitting,
       showPricePerDay: needsDaily,
-      showPricePerDayAsBoardingOnly: needsDaily && !needsHourly,
       showPricePerDayAsBoardingSecondary: needsDaily && needsHourly,
     };
   }, [serviceFlags]);
 
-  const hourlyMin = serviceFlags.walk && serviceFlags.sitting
-    ? Math.max(WALK_MIN, SITTING_MIN)
-    : serviceFlags.walk ? WALK_MIN : SITTING_MIN;
-  const hourlyMax = serviceFlags.walk && serviceFlags.sitting
-    ? Math.min(WALK_MAX, SITTING_MAX)
-    : serviceFlags.walk ? WALK_MAX : SITTING_MAX;
-
   const step2Errors = useMemo(() => {
-    const errors: { hourlyRate?: string; pricePerDay?: string; services?: string } = {};
+    const errors: { walkRate?: string; sittingRate?: string; pricePerDay?: string; services?: string } = {};
     const hasAnyService = serviceFlags.walk || serviceFlags.sitting || serviceFlags.boarding;
 
     if (!hasAnyService) {
@@ -278,13 +272,23 @@ export default function BecomeSitterForm() {
       return errors;
     }
 
-    if (serviceFlags.walk || serviceFlags.sitting) {
-      if (hourlyRate === null || !Number.isFinite(hourlyRate)) {
-        errors.hourlyRate = "Le tarif horaire est requis.";
-      } else if (hourlyRate < hourlyMin) {
-        errors.hourlyRate = `Tarif trop bas — minimum ${hourlyMin} CHF/h pour la phase pilote.`;
-      } else if (hourlyRate > hourlyMax) {
-        errors.hourlyRate = `Tarif trop élevé — maximum ${hourlyMax} CHF/h pour la phase pilote.`;
+    if (serviceFlags.walk) {
+      if (walkRate === null || !Number.isFinite(walkRate)) {
+        errors.walkRate = "Le tarif Promenade est requis.";
+      } else if (walkRate < WALK_MIN) {
+        errors.walkRate = `Tarif Promenade trop bas — minimum ${WALK_MIN} CHF/h pour la phase pilote.`;
+      } else if (walkRate > WALK_MAX) {
+        errors.walkRate = `Tarif Promenade trop élevé — maximum ${WALK_MAX} CHF/h pour la phase pilote.`;
+      }
+    }
+
+    if (serviceFlags.sitting) {
+      if (sittingRate === null || !Number.isFinite(sittingRate)) {
+        errors.sittingRate = "Le tarif Garde est requis.";
+      } else if (sittingRate < SITTING_MIN) {
+        errors.sittingRate = `Tarif Garde trop bas — minimum ${SITTING_MIN} CHF/h pour la phase pilote.`;
+      } else if (sittingRate > SITTING_MAX) {
+        errors.sittingRate = `Tarif Garde trop élevé — maximum ${SITTING_MAX} CHF/h pour la phase pilote.`;
       }
     }
 
@@ -299,10 +303,10 @@ export default function BecomeSitterForm() {
     }
 
     return errors;
-  }, [serviceFlags, hourlyRate, pricePerDay, hourlyMin, hourlyMax, DAILY_MIN, DAILY_MAX]);
+  }, [serviceFlags, walkRate, sittingRate, pricePerDay, WALK_MIN, WALK_MAX, SITTING_MIN, SITTING_MAX, DAILY_MIN, DAILY_MAX]);
 
   const canNext2 = useMemo(() => {
-    const hasErrors = Boolean(step2Errors.hourlyRate || step2Errors.pricePerDay || step2Errors.services);
+    const hasErrors = Boolean(step2Errors.walkRate || step2Errors.sittingRate || step2Errors.pricePerDay || step2Errors.services);
     return !hasErrors && availability.trim().length > 0;
   }, [step2Errors, availability]);
   const canSubmit = useMemo(() => bio.trim().length > 0, [bio]);
@@ -342,7 +346,8 @@ export default function BecomeSitterForm() {
           city,
           email: effectiveEmail,
           services,
-          hourlyRate,
+          walkRate,
+          sittingRate,
           pricePerDay,
           availability,
           bio,
@@ -672,30 +677,58 @@ export default function BecomeSitterForm() {
                   </p>
                 ) : (
                   <div className="grid gap-4 sm:grid-cols-2">
-                    {pricingVisibility.showHourlyRate ? (
+                    {pricingVisibility.showWalkRate ? (
                       <div>
-                        <label htmlFor="hourlyRate" className="block text-sm font-medium text-slate-700">
-                          Tarif horaire (CHF)
+                        <label htmlFor="walkRate" className="block text-sm font-medium text-slate-700">
+                          Tarif Promenade (CHF/h)
                         </label>
-                        <p className="mt-0.5 text-xs text-slate-500">Phase pilote : {hourlyMin}–{hourlyMax} CHF/h</p>
+                        <p className="mt-0.5 text-xs text-slate-500">Phase pilote : {WALK_MIN}–{WALK_MAX} CHF/h</p>
                         <input
-                          id="hourlyRate"
+                          id="walkRate"
                           type="number"
                           inputMode="numeric"
                           pattern="[0-9]*"
-                          min={hourlyMin}
-                          max={hourlyMax}
+                          min={WALK_MIN}
+                          max={WALK_MAX}
                           step={1}
-                          value={hourlyRate ?? ""}
-                          placeholder={`${hourlyMin}–${hourlyMax}`}
+                          value={walkRate ?? ""}
+                          placeholder={`${WALK_MIN}–${WALK_MAX}`}
                           onChange={(e) => {
                             const next = sanitizeRateInput(e.target.value, 999);
-                            setHourlyRate(next.value);
+                            setWalkRate(next.value);
                           }}
                           className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-base text-slate-900 shadow-sm outline-none transition focus:border-[var(--dogshift-blue)] focus:ring-4 focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_85%)]"
                         />
-                        {step2Errors.hourlyRate ? (
-                          <p className="mt-2 text-xs font-medium text-rose-600">{step2Errors.hourlyRate}</p>
+                        {step2Errors.walkRate ? (
+                          <p className="mt-2 text-xs font-medium text-rose-600">{step2Errors.walkRate}</p>
+                        ) : null}
+                      </div>
+                    ) : null}
+
+                    {pricingVisibility.showSittingRate ? (
+                      <div>
+                        <label htmlFor="sittingRate" className="block text-sm font-medium text-slate-700">
+                          Tarif Garde (CHF/h)
+                        </label>
+                        <p className="mt-0.5 text-xs text-slate-500">Phase pilote : {SITTING_MIN}–{SITTING_MAX} CHF/h</p>
+                        <input
+                          id="sittingRate"
+                          type="number"
+                          inputMode="numeric"
+                          pattern="[0-9]*"
+                          min={SITTING_MIN}
+                          max={SITTING_MAX}
+                          step={1}
+                          value={sittingRate ?? ""}
+                          placeholder={`${SITTING_MIN}–${SITTING_MAX}`}
+                          onChange={(e) => {
+                            const next = sanitizeRateInput(e.target.value, 999);
+                            setSittingRate(next.value);
+                          }}
+                          className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-base text-slate-900 shadow-sm outline-none transition focus:border-[var(--dogshift-blue)] focus:ring-4 focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_85%)]"
+                        />
+                        {step2Errors.sittingRate ? (
+                          <p className="mt-2 text-xs font-medium text-rose-600">{step2Errors.sittingRate}</p>
                         ) : null}
                       </div>
                     ) : null}

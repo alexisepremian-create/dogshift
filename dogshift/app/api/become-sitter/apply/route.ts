@@ -68,7 +68,12 @@ export async function POST(req: NextRequest) {
     const bio = typeof payload.bio === "string" ? payload.bio.trim() : "";
     const avatarDataUrl = typeof payload.avatarDataUrl === "string" ? payload.avatarDataUrl : null;
     const services = typeof payload.services === "object" && payload.services ? payload.services : null;
-    const hourlyRate = typeof payload.hourlyRate === "number" ? payload.hourlyRate : null;
+    const walkRate = typeof payload.walkRate === "number" ? payload.walkRate : null;
+    const sittingRate = typeof payload.sittingRate === "number" ? payload.sittingRate : null;
+    // Backward compat: legacy clients sending a single hourlyRate for both.
+    const legacyHourly = typeof payload.hourlyRate === "number" ? payload.hourlyRate : null;
+    const effectiveWalkRate = walkRate ?? legacyHourly;
+    const effectiveSittingRate = sittingRate ?? legacyHourly;
     const pricePerDay = typeof payload.pricePerDay === "number" ? payload.pricePerDay : null;
     const termsAccepted = payload.termsAccepted === true;
 
@@ -95,8 +100,8 @@ export async function POST(req: NextRequest) {
         Pension: Array.isArray(services) ? services.includes("Pension") : false,
       },
       pricing: {
-        Promenade: Array.isArray(services) && services.includes("Promenade") && typeof hourlyRate === "number" ? hourlyRate : undefined,
-        Garde: Array.isArray(services) && services.includes("Garde") && typeof hourlyRate === "number" ? hourlyRate : undefined,
+        Promenade: Array.isArray(services) && services.includes("Promenade") && typeof effectiveWalkRate === "number" ? effectiveWalkRate : undefined,
+        Garde: Array.isArray(services) && services.includes("Garde") && typeof effectiveSittingRate === "number" ? effectiveSittingRate : undefined,
         Pension: Array.isArray(services) && services.includes("Pension") && typeof pricePerDay === "number" ? pricePerDay : undefined,
       },
       dogSizes: { Petit: false, Moyen: false, Grand: false },
@@ -169,7 +174,11 @@ export async function POST(req: NextRequest) {
           bio: bio || null,
           avatarUrl: avatarDataUrl,
           services: services as Prisma.InputJsonValue,
-          pricing: { hourlyRate, pricePerDay } as Prisma.InputJsonValue,
+          pricing: {
+            walkRate: effectiveWalkRate,
+            sittingRate: effectiveSittingRate,
+            pricePerDay,
+          } as Prisma.InputJsonValue,
           dogSizes: [] as unknown as Prisma.InputJsonValue,
         },
         update: {
@@ -186,7 +195,11 @@ export async function POST(req: NextRequest) {
           bio: bio || null,
           avatarUrl: avatarDataUrl,
           services: services as Prisma.InputJsonValue,
-          pricing: { hourlyRate, pricePerDay } as Prisma.InputJsonValue,
+          pricing: {
+            walkRate: effectiveWalkRate,
+            sittingRate: effectiveSittingRate,
+            pricePerDay,
+          } as Prisma.InputJsonValue,
           dogSizes: [] as unknown as Prisma.InputJsonValue,
         },
         select: { id: true },
