@@ -113,8 +113,31 @@ export default function BecomeSitterForm() {
 
     setAuthError(null);
     setAuthInlineStatus("creating");
+
+    const clerkErrorMessages: Record<string, string> = {
+      form_password_pwned: "Ce mot de passe a été trouvé dans une fuite de données. Choisis-en un autre plus unique.",
+      form_identifier_exists: "Cet email est déjà utilisé. Connecte-toi ou utilise une autre adresse.",
+      form_password_length_too_short: "Le mot de passe est trop court (minimum 8 caractères).",
+      form_password_not_strong_enough: "Le mot de passe n’est pas assez fort. Ajoute des chiffres, majuscules ou symboles.",
+      form_param_format_invalid: "Format invalide. Vérifie ton adresse email.",
+      form_param_nil: "Email et mot de passe requis.",
+    };
+
+    type ClerkErrorLike = { code?: string; longMessage?: string; message?: string } | null | undefined;
+    const describe = (e: ClerkErrorLike, fallback: string) => {
+      if (!e) return fallback;
+      const fr = e.code ? clerkErrorMessages[e.code] : undefined;
+      return fr ?? e.longMessage ?? e.message ?? fallback;
+    };
+
     try {
-      await (signUp as any).create({ emailAddress: emailTrimmed, password });
+      const createRes = await (signUp as any).create({ emailAddress: emailTrimmed, password });
+      if (createRes?.error) {
+        setAuthInlineStatus("idle");
+        setAuthError(describe(createRes.error, "Impossible de créer le compte. Vérifie l’email et le mot de passe."));
+        return false;
+      }
+
       if ((signUp as any).status === "complete") {
         await (signUp as any).finalize({
           navigate: ({ decorateUrl }: { decorateUrl: (url: string) => string }) => {
@@ -127,24 +150,41 @@ export default function BecomeSitterForm() {
         return true;
       }
 
-      await (signUp as any).verifications.sendEmailCode();
+      const sendRes = await (signUp as any).verifications.sendEmailCode();
+      if (sendRes?.error) {
+        setAuthInlineStatus("idle");
+        console.error("[BecomeSitterForm] sendEmailCode error:", sendRes.error);
+        setAuthError(describe(sendRes.error, "Impossible d’envoyer le code par email. Réessaie dans un instant."));
+        return false;
+      }
+
       setAuthInlineStatus("needs_code");
       return false;
     } catch (err) {
       setAuthInlineStatus("idle");
-      const clerkErr = err as { errors?: { code?: string; longMessage?: string; message?: string }[] };
-      const firstError = clerkErr?.errors?.[0];
-      const clerkErrorMessages: Record<string, string> = {
-        form_password_pwned: "Ce mot de passe a été trouvé dans une fuite de données. Choisis-en un autre plus unique.",
-        form_identifier_exists: "Cet email est déjà utilisé. Connecte-toi ou utilise une autre adresse.",
-        form_password_length_too_short: "Le mot de passe est trop court (minimum 8 caractères).",
-        form_password_not_strong_enough: "Le mot de passe n’est pas assez fort. Ajoute des chiffres, majuscules ou symboles.",
-        form_param_format_invalid: "Format invalide. Vérifie ton adresse email.",
-        form_param_nil: "Email et mot de passe requis.",
-      };
-      const frMsg = firstError?.code ? clerkErrorMessages[firstError.code] : undefined;
-      setAuthError(frMsg ?? firstError?.longMessage ?? firstError?.message ?? "Impossible de créer le compte. Vérifie l’email et le mot de passe.");
+      console.error("[BecomeSitterForm] ensureInlineSignUp error:", err);
+      const clerkErr = err as { errors?: ClerkErrorLike[] };
+      setAuthError(describe(clerkErr?.errors?.[0] ?? null, "Impossible de créer le compte. Vérifie l’email et le mot de passe."));
       return false;
+    }
+  }
+
+  async function resendInlineEmailCode(): Promise<void> {
+    if (sessionStatus === "authenticated") return;
+    if (!isSignUpLoaded || !signUp) return;
+    if (authInlineStatus === "verifying") return;
+    setAuthError(null);
+    try {
+      const res = await (signUp as any).verifications.sendEmailCode();
+      if (res?.error) {
+        console.error("[BecomeSitterForm] resendEmailCode error:", res.error);
+        setAuthError("Impossible d’envoyer un nouveau code. Réessaie dans un instant.");
+        return;
+      }
+      setAuthError("Nouveau code envoyé. Vérifie ta boîte mail (et les spams).");
+    } catch (err) {
+      console.error("[BecomeSitterForm] resendEmailCode error:", err);
+      setAuthError("Impossible d’envoyer un nouveau code. Réessaie dans un instant.");
     }
   }
 
@@ -160,7 +200,12 @@ export default function BecomeSitterForm() {
     setAuthError(null);
     setAuthInlineStatus("verifying");
     try {
-      await (signUp as any).verifications.verifyEmailCode({ code: codeTrimmed });
+      const verifyRes = await (signUp as any).verifications.verifyEmailCode({ code: codeTrimmed });
+      if (verifyRes?.error) {
+        setAuthInlineStatus("needs_code");
+        setAuthError("Code invalide. Réessaie.");
+        return false;
+      }
       if ((signUp as any).status === "complete") {
         await (signUp as any).finalize({
           navigate: ({ decorateUrl }: { decorateUrl: (url: string) => string }) => {
@@ -176,7 +221,8 @@ export default function BecomeSitterForm() {
       setAuthInlineStatus("needs_code");
       setAuthError("Code invalide. Réessaie.");
       return false;
-    } catch {
+    } catch (err) {
+      console.error("[BecomeSitterForm] verifyEmailCode error:", err);
       setAuthInlineStatus("needs_code");
       setAuthError("Code invalide. Réessaie.");
       return false;
@@ -528,7 +574,9 @@ export default function BecomeSitterForm() {
             {sessionStatus !== "authenticated" && showEmailCode ? (
               <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5">
                 <p className="text-sm font-semibold text-slate-900">Vérifie ton email</p>
-                <p className="mt-2 text-sm text-slate-600">Entre le code reçu par email pour activer ton compte.</p>
+                <p className="mt-2 text-sm text-slate-600">
+                  Un code vient d’être envoyé à <span className="font-medium text-slate-900">{email}</span>. Entre-le ci-dessous (vérifie aussi tes spams).
+                </p>
                 <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">
                   <input
                     value={emailCode}
@@ -548,6 +596,14 @@ export default function BecomeSitterForm() {
                     {authInlineStatus === "verifying" ? "Vérification…" : "Valider"}
                   </button>
                 </div>
+                <button
+                  type="button"
+                  onClick={() => void resendInlineEmailCode()}
+                  disabled={isAuthBusy}
+                  className="mt-3 text-xs font-semibold text-slate-600 underline underline-offset-2 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  Renvoyer le code
+                </button>
               </div>
             ) : null}
 
