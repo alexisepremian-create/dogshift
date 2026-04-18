@@ -1,6 +1,6 @@
 import type { NextRequest } from "next/server";
 
-import { auth, currentUser } from "@clerk/nextjs/server";
+import { auth, clerkClient, currentUser } from "@clerk/nextjs/server";
 
 import { prisma } from "@/lib/prisma";
 
@@ -145,14 +145,17 @@ export async function ensureDbUserFromClerkAuth(): Promise<(DbUserEnsured & { cr
   const { userId } = await auth();
   if (!userId) return null;
 
+  const client = await clerkClient();
   let email = "";
   let name: string | null = null;
-  for (let i = 0; i < 6; i += 1) {
-    const clerkUser = await currentUser();
+  for (let i = 0; i < 8; i += 1) {
+    const fromSession = await currentUser();
+    const clerkUser =
+      fromSession ?? (await client.users.getUser(userId).catch(() => null));
     email = clerkUser?.primaryEmailAddress?.emailAddress ?? "";
     name = typeof clerkUser?.fullName === "string" ? clerkUser.fullName : null;
     if (email) break;
-    await new Promise((r) => setTimeout(r, 1000));
+    await new Promise((r) => setTimeout(r, 400));
   }
   if (!email) return null;
 

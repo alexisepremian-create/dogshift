@@ -58,11 +58,8 @@ export default function AuthGooglePage() {
         window.location.replace(loginAbs);
         return;
       }
-      window.setTimeout(() => {
-        if (window.location.pathname.includes("/auth/google")) {
-          window.location.replace(afterAbs);
-        }
-      }, 350);
+      // Full navigation so session cookies are visible to middleware + /api on the next document.
+      window.location.replace(afterAbs);
     })();
   }, [clerk, clerk.loaded]);
 
