@@ -62,9 +62,6 @@ export default async function RootLayout({
     <html lang="fr">
       <head>
         <link rel="icon" href="/favicon.ico" />
-        <link rel="preload" as="image" href="/favicon.ico" />
-        <style dangerouslySetInnerHTML={{ __html: "html[data-ds-transit]::after{content:'';position:fixed;inset:0;z-index:99999;background:#fff}" }} />
-        <script dangerouslySetInnerHTML={{ __html: 'try{var t=sessionStorage.getItem("ds_login_transit");if(t&&Date.now()-Number(t)<30000){document.documentElement.dataset.dsTransit="1";setTimeout(function(){delete document.documentElement.dataset.dsTransit},10000)}}catch(e){}' }} />
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
