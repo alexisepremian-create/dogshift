@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useSignIn, useUser } from "@clerk/nextjs";
 import Link from "next/link";
+import { withPublicOrigin } from "@/lib/url/publicOrigin";
 
 function normalizeEmail(input: string) {
   return input.replace(/\s+/g, "").trim().toLowerCase();
@@ -193,8 +194,8 @@ export default function LoginForm() {
     try {
       const { error: ssoError } = await (signIn as any).sso({
         strategy: "oauth_google",
-        redirectCallbackUrl: "/auth/google",
-        redirectUrl: redirectAfterAuth,
+        redirectCallbackUrl: withPublicOrigin("/auth/google"),
+        redirectUrl: withPublicOrigin(redirectAfterAuth),
       });
       if (ssoError) throw new Error(ssoError.message ?? "Connexion Google impossible.");
 
