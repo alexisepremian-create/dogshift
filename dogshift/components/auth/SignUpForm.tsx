@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { useSignUp } from "@clerk/nextjs";
+import { useClerk, useSignUp } from "@clerk/nextjs";
 import Link from "next/link";
 import { withPublicOrigin } from "@/lib/url/publicOrigin";
 
@@ -11,6 +11,7 @@ function normalizeEmail(input: string) {
 }
 
 export default function SignUpForm() {
+  const clerk = useClerk();
   const { signUp, fetchStatus } = useSignUp();
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -118,11 +119,21 @@ export default function SignUpForm() {
       } catch {
         /* private mode */
       }
-      await (signUp as any).authenticateWithRedirect({
-        strategy: "oauth_google",
-        redirectUrl: withPublicOrigin("/auth/google"),
-        redirectUrlComplete: withPublicOrigin(redirectAfterAuth),
-      });
+      const legacySignUp = (clerk as any)?.client?.signUp;
+      if (legacySignUp && typeof legacySignUp.authenticateWithRedirect === "function") {
+        await legacySignUp.authenticateWithRedirect({
+          strategy: "oauth_google",
+          redirectUrl: withPublicOrigin("/auth/google"),
+          redirectUrlComplete: withPublicOrigin(redirectAfterAuth),
+        });
+      } else {
+        const { error: ssoError } = await (signUp as any).sso({
+          strategy: "oauth_google",
+          redirectCallbackUrl: withPublicOrigin("/auth/google"),
+          redirectUrl: withPublicOrigin(redirectAfterAuth),
+        });
+        if (ssoError) throw new Error(ssoError.message ?? "Inscription Google impossible.");
+      }
     } catch (err) {
       console.error("[SignUpForm] handleGoogle error:", err);
       setError(err instanceof Error ? err.message : "Inscription Google impossible. Réessaie.");

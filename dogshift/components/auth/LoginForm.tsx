@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { useSignIn, useUser } from "@clerk/nextjs";
+import { useClerk, useSignIn, useUser } from "@clerk/nextjs";
 import Link from "next/link";
 import { withPublicOrigin } from "@/lib/url/publicOrigin";
 
@@ -14,6 +14,7 @@ type Step = "email" | "password" | "emailCode";
 type VerifyMode = "emailCode" | "mfa";
 
 export default function LoginForm() {
+  const clerk = useClerk();
   const { signIn, fetchStatus } = useSignIn();
   const { isLoaded: userLoaded, isSignedIn } = useUser();
   const searchParams = useSearchParams();
@@ -204,11 +205,21 @@ export default function LoginForm() {
       } catch {
         /* private mode */
       }
-      await (signIn as any).authenticateWithRedirect({
-        strategy: "oauth_google",
-        redirectUrl: withPublicOrigin("/auth/google"),
-        redirectUrlComplete: withPublicOrigin(redirectAfterAuth),
-      });
+      const legacySignIn = (clerk as any)?.client?.signIn;
+      if (legacySignIn && typeof legacySignIn.authenticateWithRedirect === "function") {
+        await legacySignIn.authenticateWithRedirect({
+          strategy: "oauth_google",
+          redirectUrl: withPublicOrigin("/auth/google"),
+          redirectUrlComplete: withPublicOrigin(redirectAfterAuth),
+        });
+      } else {
+        const { error: ssoError } = await (signIn as any).sso({
+          strategy: "oauth_google",
+          redirectCallbackUrl: withPublicOrigin("/auth/google"),
+          redirectUrl: withPublicOrigin(redirectAfterAuth),
+        });
+        if (ssoError) throw new Error(ssoError.message ?? "Connexion Google impossible.");
+      }
     } catch (err) {
       console.error("[LoginForm] handleGoogle error:", err);
       setError(err instanceof Error ? err.message : "Connexion Google impossible. Réessaie.");
