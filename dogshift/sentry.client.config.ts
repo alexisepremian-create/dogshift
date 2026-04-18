@@ -2,8 +2,12 @@ import * as Sentry from "@sentry/nextjs";
 
 const PII_FIELDS = ["email", "name", "phone", "password", "passwordHash", "firstName", "lastName"];
 
+const sentryEnabled =
+  process.env.NODE_ENV === "production" || process.env.NEXT_PUBLIC_SENTRY_ENABLE_IN_DEV === "1";
+
 Sentry.init({
   dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
+  enabled: sentryEnabled,
 
   // Capture 10% of transactions in production for performance monitoring
   tracesSampleRate: process.env.NODE_ENV === "production" ? 0.1 : 1.0,
