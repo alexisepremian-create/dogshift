@@ -657,7 +657,7 @@ export default function BecomeSitterForm() {
             </div>
 
             <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
-              <div className="min-h-[170px]">
+              <div>
                 <div className="mb-3 flex items-start gap-2 text-sm text-slate-600">
                   <span className="mt-0.5 inline-flex h-5 w-5 items-center justify-center rounded-full border border-slate-200 bg-white text-[11px] font-semibold text-slate-700">
                     i
@@ -676,29 +676,35 @@ export default function BecomeSitterForm() {
                     Sélectionnez au moins un service pour définir vos tarifs.
                   </p>
                 ) : (
-                  <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-3">
                     {pricingVisibility.showWalkRate ? (
-                      <div>
-                        <label htmlFor="walkRate" className="block text-sm font-medium text-slate-700">
-                          Tarif Promenade (CHF/h)
-                        </label>
-                        <p className="mt-0.5 text-xs text-slate-500">Phase pilote : {WALK_MIN}–{WALK_MAX} CHF/h</p>
-                        <input
-                          id="walkRate"
-                          type="number"
-                          inputMode="numeric"
-                          pattern="[0-9]*"
-                          min={WALK_MIN}
-                          max={WALK_MAX}
-                          step={1}
-                          value={walkRate ?? ""}
-                          placeholder={`${WALK_MIN}–${WALK_MAX}`}
-                          onChange={(e) => {
-                            const next = sanitizeRateInput(e.target.value, 999);
-                            setWalkRate(next.value);
-                          }}
-                          className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-base text-slate-900 shadow-sm outline-none transition focus:border-[var(--dogshift-blue)] focus:ring-4 focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_85%)]"
-                        />
+                      <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                        <div className="flex items-center justify-between gap-3">
+                          <div>
+                            <p className="text-sm font-semibold text-slate-900">Promenade</p>
+                            <p className="mt-0.5 text-xs text-slate-500">Phase pilote : {WALK_MIN}–{WALK_MAX} CHF/h</p>
+                          </div>
+                          <div className="relative w-28 shrink-0">
+                            <input
+                              id="walkRate"
+                              type="number"
+                              inputMode="numeric"
+                              pattern="[0-9]*"
+                              min={WALK_MIN}
+                              max={WALK_MAX}
+                              step={1}
+                              value={walkRate ?? ""}
+                              placeholder={`${WALK_MIN}`}
+                              onChange={(e) => {
+                                const next = sanitizeRateInput(e.target.value, 999);
+                                setWalkRate(next.value);
+                              }}
+                              aria-label="Tarif Promenade en CHF par heure"
+                              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 pr-14 text-right text-base text-slate-900 shadow-sm outline-none transition focus:border-[var(--dogshift-blue)] focus:ring-4 focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_85%)]"
+                            />
+                            <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-xs font-medium text-slate-500">CHF/h</span>
+                          </div>
+                        </div>
                         {step2Errors.walkRate ? (
                           <p className="mt-2 text-xs font-medium text-rose-600">{step2Errors.walkRate}</p>
                         ) : null}
@@ -706,27 +712,33 @@ export default function BecomeSitterForm() {
                     ) : null}
 
                     {pricingVisibility.showSittingRate ? (
-                      <div>
-                        <label htmlFor="sittingRate" className="block text-sm font-medium text-slate-700">
-                          Tarif Garde (CHF/h)
-                        </label>
-                        <p className="mt-0.5 text-xs text-slate-500">Phase pilote : {SITTING_MIN}–{SITTING_MAX} CHF/h</p>
-                        <input
-                          id="sittingRate"
-                          type="number"
-                          inputMode="numeric"
-                          pattern="[0-9]*"
-                          min={SITTING_MIN}
-                          max={SITTING_MAX}
-                          step={1}
-                          value={sittingRate ?? ""}
-                          placeholder={`${SITTING_MIN}–${SITTING_MAX}`}
-                          onChange={(e) => {
-                            const next = sanitizeRateInput(e.target.value, 999);
-                            setSittingRate(next.value);
-                          }}
-                          className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-base text-slate-900 shadow-sm outline-none transition focus:border-[var(--dogshift-blue)] focus:ring-4 focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_85%)]"
-                        />
+                      <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                        <div className="flex items-center justify-between gap-3">
+                          <div>
+                            <p className="text-sm font-semibold text-slate-900">Garde</p>
+                            <p className="mt-0.5 text-xs text-slate-500">Phase pilote : {SITTING_MIN}–{SITTING_MAX} CHF/h</p>
+                          </div>
+                          <div className="relative w-28 shrink-0">
+                            <input
+                              id="sittingRate"
+                              type="number"
+                              inputMode="numeric"
+                              pattern="[0-9]*"
+                              min={SITTING_MIN}
+                              max={SITTING_MAX}
+                              step={1}
+                              value={sittingRate ?? ""}
+                              placeholder={`${SITTING_MIN}`}
+                              onChange={(e) => {
+                                const next = sanitizeRateInput(e.target.value, 999);
+                                setSittingRate(next.value);
+                              }}
+                              aria-label="Tarif Garde en CHF par heure"
+                              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 pr-14 text-right text-base text-slate-900 shadow-sm outline-none transition focus:border-[var(--dogshift-blue)] focus:ring-4 focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_85%)]"
+                            />
+                            <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-xs font-medium text-slate-500">CHF/h</span>
+                          </div>
+                        </div>
                         {step2Errors.sittingRate ? (
                           <p className="mt-2 text-xs font-medium text-rose-600">{step2Errors.sittingRate}</p>
                         ) : null}
@@ -734,29 +746,33 @@ export default function BecomeSitterForm() {
                     ) : null}
 
                     {pricingVisibility.showPricePerDay ? (
-                      <div>
-                        <label htmlFor="pricePerDay" className="block text-sm font-medium text-slate-700">
-                          {pricingVisibility.showPricePerDayAsBoardingSecondary
-                            ? "Prix par jour (CHF) — Pension"
-                            : "Prix par jour (CHF)"}
-                        </label>
-                        <p className="mt-0.5 text-xs text-slate-500">Phase pilote : {DAILY_MIN}–{DAILY_MAX} CHF/jour</p>
-                        <input
-                          id="pricePerDay"
-                          type="number"
-                          inputMode="numeric"
-                          pattern="[0-9]*"
-                          min={DAILY_MIN}
-                          max={DAILY_MAX}
-                          step={1}
-                          value={pricePerDay ?? ""}
-                          placeholder={`${DAILY_MIN}–${DAILY_MAX}`}
-                          onChange={(e) => {
-                            const next = sanitizeRateInput(e.target.value, 999);
-                            setPricePerDay(next.value);
-                          }}
-                          className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-base text-slate-900 shadow-sm outline-none transition focus:border-[var(--dogshift-blue)] focus:ring-4 focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_85%)]"
-                        />
+                      <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                        <div className="flex items-center justify-between gap-3">
+                          <div>
+                            <p className="text-sm font-semibold text-slate-900">Pension</p>
+                            <p className="mt-0.5 text-xs text-slate-500">Phase pilote : {DAILY_MIN}–{DAILY_MAX} CHF/jour</p>
+                          </div>
+                          <div className="relative w-32 shrink-0">
+                            <input
+                              id="pricePerDay"
+                              type="number"
+                              inputMode="numeric"
+                              pattern="[0-9]*"
+                              min={DAILY_MIN}
+                              max={DAILY_MAX}
+                              step={1}
+                              value={pricePerDay ?? ""}
+                              placeholder={`${DAILY_MIN}`}
+                              onChange={(e) => {
+                                const next = sanitizeRateInput(e.target.value, 999);
+                                setPricePerDay(next.value);
+                              }}
+                              aria-label="Tarif Pension en CHF par jour"
+                              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 pr-16 text-right text-base text-slate-900 shadow-sm outline-none transition focus:border-[var(--dogshift-blue)] focus:ring-4 focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_85%)]"
+                            />
+                            <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-xs font-medium text-slate-500">CHF/jour</span>
+                          </div>
+                        </div>
                         {step2Errors.pricePerDay ? (
                           <p className="mt-2 text-xs font-medium text-rose-600">{step2Errors.pricePerDay}</p>
                         ) : null}
@@ -764,9 +780,7 @@ export default function BecomeSitterForm() {
                     ) : null}
 
                     {step2Errors.services ? (
-                      <div className="sm:col-span-2">
-                        <p className="text-xs font-medium text-rose-600">{step2Errors.services}</p>
-                      </div>
+                      <p className="text-xs font-medium text-rose-600">{step2Errors.services}</p>
                     ) : null}
                   </div>
                 )}
