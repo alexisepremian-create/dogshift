@@ -30,6 +30,13 @@ type SitterReview = {
   createdAt: string;
 };
 
+type BoardingDetailsCard = {
+  housingType: "Appartement" | "Maison" | null;
+  hasGarden: boolean | null;
+  hasOtherPets: boolean | null;
+  notes: string | null;
+};
+
 type SitterCard = {
   id: string;
   name: string;
@@ -50,6 +57,7 @@ type SitterCard = {
   lng: number;
   avatarUrl: string;
   reviews: SitterReview[];
+  boardingDetails: BoardingDetailsCard | null;
 };
 
 type BookingStep = "form" | "confirm" | "sent";
@@ -446,6 +454,21 @@ function SitterPublicProfileContent({
     );
     const pricePerDay = pension ?? (hourlyCandidates.length ? Math.min(...hourlyCandidates) : 0);
 
+    const dogSizesRaw = profile.dogSizes && typeof profile.dogSizes === "object" ? profile.dogSizes : {};
+    const enabledDogSizes = DOG_SIZE_ORDER.filter((size) =>
+      Boolean((dogSizesRaw as Record<string, unknown>)[size])
+    );
+
+    const bd = profile.boardingDetails;
+    const boardingDetails: BoardingDetailsCard | null = bd
+      ? {
+          housingType: bd.housingType === "Appartement" || bd.housingType === "Maison" ? bd.housingType : null,
+          hasGarden: typeof bd.hasGarden === "boolean" ? bd.hasGarden : null,
+          hasOtherPets: typeof bd.hasOtherPets === "boolean" ? bd.hasOtherPets : null,
+          notes: typeof bd.notes === "string" && bd.notes.trim() ? bd.notes.trim() : null,
+        }
+      : null;
+
     return {
       id: profile.sitterId,
       name: profile.firstName && profile.firstName.trim() ? profile.firstName.trim() : sessionName,
@@ -455,7 +478,7 @@ function SitterPublicProfileContent({
       reviewCount: 0,
       pricePerDay,
       services: enabledServices ?? [],
-      dogSizes: [],
+      dogSizes: enabledDogSizes,
       availableDates: [],
       pricing: safePricingMap(pricing),
       bio: profile.bio ?? "",
@@ -469,6 +492,7 @@ function SitterPublicProfileContent({
           ? profile.avatarDataUrl
           : (sessionImage ?? "https://i.pravatar.cc/160?img=7"),
       reviews: apiSitter?.reviews ?? [],
+      boardingDetails,
     };
   }
 
@@ -499,6 +523,12 @@ function SitterPublicProfileContent({
                 services: unknown;
                 pricing: unknown;
                 dogSizes: unknown;
+                boardingDetails?: {
+                  housingType?: "Appartement" | "Maison" | null;
+                  hasGarden?: boolean | null;
+                  hasOtherPets?: boolean | null;
+                  notes?: string | null;
+                } | null;
                 verified?: boolean;
                 trustBadgeEligible?: boolean;
                 lat: number | null;
@@ -547,6 +577,16 @@ function SitterPublicProfileContent({
           lng: typeof payload.sitter.lng === "number" && Number.isFinite(payload.sitter.lng) ? payload.sitter.lng : 0,
           avatarUrl: payload.sitter.avatarUrl ?? "https://i.pravatar.cc/160?img=7",
           reviews: Array.isArray(payload.sitter.reviews) ? payload.sitter.reviews : [],
+          boardingDetails: (() => {
+            const bd = payload.sitter.boardingDetails;
+            if (!bd || typeof bd !== "object") return null;
+            const housingType = bd.housingType === "Appartement" || bd.housingType === "Maison" ? bd.housingType : null;
+            const hasGarden = typeof bd.hasGarden === "boolean" ? bd.hasGarden : null;
+            const hasOtherPets = typeof bd.hasOtherPets === "boolean" ? bd.hasOtherPets : null;
+            const notes = typeof bd.notes === "string" && bd.notes.trim() ? bd.notes.trim() : null;
+            if (!housingType && hasGarden == null && hasOtherPets == null && !notes) return null;
+            return { housingType, hasGarden, hasOtherPets, notes };
+          })(),
         };
 
         setApiSitter(sitter);
@@ -856,13 +896,15 @@ function SitterPublicProfileContent({
     return { price: cheapest.price, unit: cheapest.svc === "Pension" ? "/ jour" : "/ heure" };
   }, [sitter]);
 
-  const boardingDetails = profileData?.boardingDetails;
-  const showBoardingDetails = Boolean(profileData?.services?.Pension) &&
+  const boardingDetails = sitter?.boardingDetails ?? null;
+  const servicesIncludePension = Array.isArray(sitter?.services) && sitter.services.includes("Pension");
+  const showBoardingDetails =
+    servicesIncludePension &&
     Boolean(
       boardingDetails &&
         (boardingDetails.housingType ||
-          (typeof boardingDetails.hasGarden === "boolean") ||
-          (typeof boardingDetails.hasOtherPets === "boolean") ||
+          typeof boardingDetails.hasGarden === "boolean" ||
+          typeof boardingDetails.hasOtherPets === "boolean" ||
           (typeof boardingDetails.notes === "string" && boardingDetails.notes.trim()))
     );
 
@@ -2484,6 +2526,38 @@ function SitterPublicProfileContent({
                     <h2 className="text-sm font-semibold text-slate-900">À propos</h2>
                     <p className="mt-3 text-sm leading-relaxed text-slate-600 whitespace-pre-line">{sitter.bio}</p>
                   </div>
+
+                  {showBoardingDetails && boardingDetails ? (
+                    <div className="mt-7 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                      <h2 className="text-sm font-semibold text-slate-900">Détails pension</h2>
+                      <dl className="mt-3 grid gap-x-6 gap-y-3 sm:grid-cols-2">
+                        {boardingDetails.housingType ? (
+                          <div>
+                            <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Logement</dt>
+                            <dd className="mt-1 text-sm text-slate-900">{boardingDetails.housingType}</dd>
+                          </div>
+                        ) : null}
+                        {typeof boardingDetails.hasGarden === "boolean" ? (
+                          <div>
+                            <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Jardin</dt>
+                            <dd className="mt-1 text-sm text-slate-900">{boardingDetails.hasGarden ? "Oui" : "Non"}</dd>
+                          </div>
+                        ) : null}
+                        {typeof boardingDetails.hasOtherPets === "boolean" ? (
+                          <div>
+                            <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Autres animaux</dt>
+                            <dd className="mt-1 text-sm text-slate-900">{boardingDetails.hasOtherPets ? "Oui" : "Non"}</dd>
+                          </div>
+                        ) : null}
+                        {boardingDetails.notes ? (
+                          <div className="sm:col-span-2">
+                            <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Notes</dt>
+                            <dd className="mt-1 text-sm text-slate-600 whitespace-pre-line">{boardingDetails.notes}</dd>
+                          </div>
+                        ) : null}
+                      </dl>
+                    </div>
+                  ) : null}
 
                   <div className="mt-7 rounded-2xl border border-slate-200 bg-slate-50 p-4">
                     <div className="flex flex-wrap items-center justify-between gap-3">

@@ -17,6 +17,13 @@ const NO_STORE_JSON_HEADERS = {
   "Cache-Control": "private, no-store, max-age=0, must-revalidate",
 } as const;
 
+type BoardingDetails = {
+  housingType?: "Appartement" | "Maison" | null;
+  hasGarden?: boolean | null;
+  hasOtherPets?: boolean | null;
+  notes?: string | null;
+};
+
 type SitterDetail = {
   sitterId: string;
   name: string;
@@ -27,6 +34,7 @@ type SitterDetail = {
   services: unknown;
   pricing: unknown;
   dogSizes: unknown;
+  boardingDetails: BoardingDetails | null;
   verified: boolean;
   lifecycleStatus: SitterLifecycleStatus;
   trustBadgeEligible: boolean;
@@ -36,6 +44,19 @@ type SitterDetail = {
   averageRating: number | null;
   reviews: SitterReviewItem[];
 };
+
+function extractBoardingDetails(raw: unknown): BoardingDetails | null {
+  if (!raw || typeof raw !== "object") return null;
+  const obj = raw as Record<string, unknown>;
+  const housingType =
+    obj.housingType === "Appartement" || obj.housingType === "Maison" ? obj.housingType : null;
+  const hasGarden = typeof obj.hasGarden === "boolean" ? obj.hasGarden : null;
+  const hasOtherPets = typeof obj.hasOtherPets === "boolean" ? obj.hasOtherPets : null;
+  const notes =
+    typeof obj.notes === "string" && obj.notes.trim().length > 0 ? obj.notes.trim() : null;
+  if (!housingType && hasGarden == null && hasOtherPets == null && !notes) return null;
+  return { housingType, hasGarden, hasOtherPets, notes };
+}
 
 export async function GET(
   req: NextRequest,
@@ -116,19 +137,21 @@ export async function GET(
     const name = String(sitterProfile.displayName ?? "").trim();
     const pricing = normalizePersistedPublicPricing(sitterProfile.pricing);
 
-    // Fallback: if sitterProfile.bio is empty, try to read from hostProfileJson
+    // Pull fields we only persist in hostProfileJson (bio fallback, boarding details).
     let resolvedBio = sitterProfile.bio ?? "";
-    if (!resolvedBio) {
-      try {
-        const raw = typeof sitterProfile.user?.hostProfileJson === "string" ? sitterProfile.user.hostProfileJson : null;
-        if (raw) {
-          const parsed = JSON.parse(raw) as Record<string, unknown>;
+    let boardingDetails: BoardingDetails | null = null;
+    try {
+      const raw = typeof sitterProfile.user?.hostProfileJson === "string" ? sitterProfile.user.hostProfileJson : null;
+      if (raw) {
+        const parsed = JSON.parse(raw) as Record<string, unknown>;
+        if (!resolvedBio) {
           const jsonBio = typeof parsed?.bio === "string" ? parsed.bio.trim() : "";
           if (jsonBio) resolvedBio = jsonBio;
         }
-      } catch {
-        // ignore malformed JSON
+        boardingDetails = extractBoardingDetails(parsed?.boardingDetails);
       }
+    } catch {
+      // ignore malformed JSON
     }
 
     const serviceConfigs = await (prisma as any).serviceConfig.findMany({
@@ -159,6 +182,7 @@ export async function GET(
       services: enabledServices,
       pricing,
       dogSizes: sitterProfile.dogSizes ?? null,
+      boardingDetails,
       verified,
       lifecycleStatus,
       trustBadgeEligible: false,
