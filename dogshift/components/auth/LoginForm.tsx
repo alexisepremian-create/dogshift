@@ -38,7 +38,12 @@ export default function LoginForm() {
   const [autoGoogleStarted, setAutoGoogleStarted] = useState(false);
 
   const fetching = fetchStatus === "fetching";
-  const disabled = fetching || loading || oauthInFlight || !signIn;
+  /** Clerk v7 `useSignIn` has no `isLoaded`; `signIn` is null until the client is ready. */
+  const signInReady = !!signIn;
+  /** Email / password / code steps — can wait on Clerk fetch. */
+  const formDisabled = !signInReady || fetching || loading || oauthInFlight;
+  /** Google: do not tie to `fetching` / email `loading` so the button stays clickable when those get stuck. */
+  const googleDisabled = !signInReady || oauthInFlight;
 
   async function finalizeSignIn() {
     if ((signIn as any).status === "complete") {
@@ -189,7 +194,7 @@ export default function LoginForm() {
   }
 
   async function handleGoogle() {
-    if (!signIn || loading || oauthInFlight) return;
+    if (!signIn || oauthInFlight) return;
 
     setError(null);
     setOauthInFlight(true);
@@ -232,12 +237,12 @@ export default function LoginForm() {
       <div className="mt-6 flex flex-col gap-6">
         <button
           type="button"
-          onClick={handleGoogle}
-          disabled={disabled}
+          onClick={() => void handleGoogle()}
+          disabled={googleDisabled}
           aria-busy={oauthInFlight}
           className="inline-flex w-full items-center justify-center rounded-full border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {oauthInFlight ? "Redirection…" : "Continuer avec Google"}
+          {!signInReady ? "Chargement…" : oauthInFlight ? "Redirection…" : "Continuer avec Google"}
         </button>
 
         <div className="flex items-center gap-3">
@@ -259,7 +264,7 @@ export default function LoginForm() {
                 autoComplete="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                disabled={disabled}
+                disabled={formDisabled}
                 className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:ring-4 focus:ring-slate-200 disabled:cursor-not-allowed disabled:opacity-60"
                 placeholder="toi@exemple.com"
               />
@@ -267,7 +272,7 @@ export default function LoginForm() {
 
             <button
               type="submit"
-              disabled={disabled}
+              disabled={formDisabled}
               className="inline-flex w-full items-center justify-center rounded-full bg-slate-900 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {loading ? "Vérification…" : "Continuer"}
@@ -291,7 +296,7 @@ export default function LoginForm() {
                 autoFocus
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                disabled={disabled}
+                disabled={formDisabled}
                 className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:ring-4 focus:ring-slate-200 disabled:cursor-not-allowed disabled:opacity-60"
                 placeholder="••••••••"
               />
@@ -299,7 +304,7 @@ export default function LoginForm() {
 
             <button
               type="submit"
-              disabled={disabled}
+              disabled={formDisabled}
               className="inline-flex w-full items-center justify-center rounded-full bg-slate-900 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {loading ? "Connexion…" : "Se connecter"}
@@ -307,7 +312,7 @@ export default function LoginForm() {
 
             <button
               type="button"
-              disabled={disabled}
+              disabled={formDisabled}
               onClick={() => void switchToEmailCode()}
               className="inline-flex w-full items-center justify-center rounded-full border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
             >
@@ -316,7 +321,7 @@ export default function LoginForm() {
 
             <button
               type="button"
-              disabled={disabled}
+              disabled={formDisabled}
               onClick={resetToEmail}
               className="block w-full text-center text-sm text-slate-500 hover:text-slate-700"
             >
@@ -340,7 +345,7 @@ export default function LoginForm() {
                 autoFocus
                 value={emailCode}
                 onChange={(e) => setEmailCode(e.target.value)}
-                disabled={disabled}
+                disabled={formDisabled}
                 className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:ring-4 focus:ring-slate-200 disabled:cursor-not-allowed disabled:opacity-60"
                 placeholder="123456"
               />
@@ -349,7 +354,7 @@ export default function LoginForm() {
 
             <button
               type="submit"
-              disabled={disabled}
+              disabled={formDisabled}
               className="inline-flex w-full items-center justify-center rounded-full bg-slate-900 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {loading ? "Vérification…" : "Valider le code"}
@@ -357,7 +362,7 @@ export default function LoginForm() {
 
             <button
               type="button"
-              disabled={disabled}
+              disabled={formDisabled}
               onClick={resetToEmail}
               className="inline-flex w-full items-center justify-center rounded-full border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
             >
