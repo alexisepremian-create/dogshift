@@ -5,6 +5,7 @@ import { auth, currentUser, clerkClient } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
 import { ensureDbUserByClerkUserId } from "@/lib/auth/resolveDbUserId";
 import { logAdminAudit } from "@/lib/audit";
+import { ownerBookingBlocksAccountDeletion } from "@/lib/bookings/bookingServiceEnd";
 
 export const runtime = "nodejs";
 
@@ -17,7 +18,8 @@ const ACTIVE_BOOKING_STATUSES = ["PENDING_PAYMENT", "PENDING_ACCEPTANCE", "PAID"
  * Supprime le compte Clerk + les données personnelles Prisma de l'utilisateur connecté.
  *
  * Règles :
- * - Bloqué si l'utilisateur a des réservations actives en cours (propriétaire)
+ * - Bloqué si l'utilisateur a des réservations actives (paiement / validation) ou une
+ *   prestation payée / confirmée dont la fin (jour civil Zurich pour Pension–Garde) n'est pas encore passée
  * - Bloqué si l'utilisateur est un sitter avec des réservations (les archives financières
  *   doivent être conservées) — ses données perso sont anonymisées à la place
  * - Pour les utilisateurs sans contrainte : suppression complète en cascade (Prisma onDelete: Cascade)
@@ -48,14 +50,17 @@ export async function DELETE(req: NextRequest) {
 
     const uid = ensured.id;
 
-    // Check for active bookings as owner
-    const activeOwnerBookings = await prisma.booking.count({
+    // Owner-side gate: pending payment/acceptance always block; PAID/CONFIRMED only until service end.
+    const ownerGateBookings = await prisma.booking.findMany({
       where: {
         userId: uid,
         archivedAt: null,
         status: { in: ACTIVE_BOOKING_STATUSES as any },
       },
+      select: { id: true, status: true, service: true, endDate: true, endAt: true, archivedAt: true },
     });
+    const now = new Date();
+    const activeOwnerBookings = ownerGateBookings.filter((b) => ownerBookingBlocksAccountDeletion(b, now)).length;
 
     if (activeOwnerBookings > 0) {
       return NextResponse.json(
