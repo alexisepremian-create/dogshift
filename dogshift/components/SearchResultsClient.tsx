@@ -5,7 +5,12 @@ import { useSearchParams } from "next/navigation";
 import { Check, ChevronDown, PawPrint, Search } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
-import { LOCATION_HUB_COORDS, haversineKm, normalizeLocationText as normalize } from "@/lib/sitterMapGeo";
+import {
+  LOCATION_HUB_COORDS,
+  haversineKm,
+  normalizeLocationText as normalize,
+  resolveCoordsForPublishedSitterMap,
+} from "@/lib/sitterMapGeo";
 
 function formatRating(rating: number) {
   return rating % 1 === 0 ? rating.toFixed(0) : rating.toFixed(1);
@@ -156,6 +161,8 @@ function toUiSitter(row: SitterListItem): UiSitter | null {
   const priceCandidates = Object.values(pricing).filter((n): n is number => typeof n === "number" && Number.isFinite(n) && n > 0);
   const pricePerDay = priceCandidates.length ? Math.min(...priceCandidates) : 0;
 
+  const { lat, lng } = resolveCoordsForPublishedSitterMap(sitterId, row.city, row.postalCode, row.lat, row.lng);
+
   return {
     id: sitterId,
     name: row.name,
@@ -170,8 +177,8 @@ function toUiSitter(row: SitterListItem): UiSitter | null {
     bio: row.bio,
     responseTime: "~1h",
     verified: row.verified,
-    lat: typeof row.lat === "number" && Number.isFinite(row.lat) ? row.lat : 0,
-    lng: typeof row.lng === "number" && Number.isFinite(row.lng) ? row.lng : 0,
+    lat,
+    lng,
     avatarUrl: row.avatarUrl ?? "https://i.pravatar.cc/160?img=7",
   };
 }

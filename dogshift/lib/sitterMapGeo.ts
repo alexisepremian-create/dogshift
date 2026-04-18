@@ -68,13 +68,105 @@ export const LOCATION_HUB_COORDS: Record<string, { lat: number; lng: number }> =
  */
 export const SITTER_FALLBACK_COORDS: Record<string, { lat: number; lng: number }> = {
   ...LOCATION_HUB_COORDS,
+  // Romandie communes & NPAs (when DB lat/lng missing)
+  crissier: { lat: 46.5521, lng: 6.5728 },
+  ecublens: { lat: 46.5286, lng: 6.5626 },
+  lutry: { lat: 46.5029, lng: 6.6858 },
+  chexbres: { lat: 46.4811, lng: 6.7781 },
+  territet: { lat: 46.4167, lng: 6.9167 },
+  clarens: { lat: 46.4394, lng: 6.9094 },
+  pully: { lat: 46.5108, lng: 6.6608 },
+  prilly: { lat: 46.5386, lng: 6.6056 },
+  denges: { lat: 46.5175, lng: 6.5444 },
+  saintlegierlaville: { lat: 46.4736, lng: 6.7722 },
+  corsiersurvevey: { lat: 46.4667, lng: 6.85 },
+  chardonne: { lat: 46.4833, lng: 6.8167 },
+  "1020": { lat: 46.538, lng: 6.5881 },
+  "1023": { lat: 46.5521, lng: 6.5728 },
+  "1024": { lat: 46.5286, lng: 6.5626 },
+  "1025": { lat: 46.5667, lng: 6.55 },
+  "1026": { lat: 46.5208, lng: 6.5361 },
+  "1027": { lat: 46.5175, lng: 6.5119 },
+  "1028": { lat: 46.5167, lng: 6.4833 },
+  "1029": { lat: 46.5667, lng: 6.5167 },
+  "1071": { lat: 46.4811, lng: 6.7781 },
+  "1090": { lat: 46.5, lng: 6.7167 },
+  "1095": { lat: 46.5029, lng: 6.6858 },
+  "1801": { lat: 46.45, lng: 6.85 },
+  "1802": { lat: 46.4667, lng: 6.8333 },
+  "1803": { lat: 46.4833, lng: 6.8167 },
+  "1804": { lat: 46.4667, lng: 6.85 },
+  "1805": { lat: 46.4833, lng: 6.7833 },
+  "1806": { lat: 46.4667, lng: 6.7833 },
+  "1807": { lat: 46.4667, lng: 6.9 },
+  "1808": { lat: 46.45, lng: 6.8833 },
+  "1809": { lat: 46.45, lng: 6.8667 },
+  "1814": { lat: 46.4167, lng: 6.9167 },
+  "1815": { lat: 46.4394, lng: 6.9094 },
+  "1816": { lat: 46.4333, lng: 6.9167 },
+  "1817": { lat: 46.4333, lng: 6.9 },
+  "1818": { lat: 46.4312, lng: 6.9107 },
 };
 
+/** Switzerland rough center (matches marketing map default view). */
+const CH_MAP_CENTER = { lat: 46.8182, lng: 8.2275 };
+const PLACEHOLDER_SPREAD_LAT = 0.55;
+const PLACEHOLDER_SPREAD_LNG = 0.85;
+
+function fnv1a32(str: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < str.length; i++) {
+    h ^= str.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+
+/**
+ * Last-resort stable coordinates so every published sitter can be shown on the map
+ * when DB geocoding and city/NPA fallbacks are missing (e.g. new commune, typo).
+ */
+export function placeholderCoordsForSitterId(sitterId: string): { lat: number; lng: number } {
+  const h = fnv1a32(sitterId);
+  const u1 = (h & 0xffff) / 65535;
+  const u2 = ((h >>> 16) & 0xffff) / 65535;
+  return {
+    lat: CH_MAP_CENTER.lat + (u1 - 0.5) * 2 * PLACEHOLDER_SPREAD_LAT,
+    lng: CH_MAP_CENTER.lng + (u2 - 0.5) * 2 * PLACEHOLDER_SPREAD_LNG,
+  };
+}
+
+/**
+ * Resolves map coordinates for a published sitter: DB coords, then city/NPA table, then deterministic placeholder.
+ */
+export function resolveCoordsForPublishedSitterMap(
+  sitterId: string,
+  city: string,
+  postalCode: string,
+  dbLat: number | null | undefined,
+  dbLng: number | null | undefined,
+): { lat: number; lng: number } {
+  const rawLat = typeof dbLat === "number" && Number.isFinite(dbLat) ? dbLat : null;
+  const rawLng = typeof dbLng === "number" && Number.isFinite(dbLng) ? dbLng : null;
+  if (rawLat != null && rawLng != null) {
+    return { lat: rawLat, lng: rawLng };
+  }
+  const fromProfile = resolveSitterFallbackCoords(city, postalCode);
+  if (fromProfile) return fromProfile;
+  return placeholderCoordsForSitterId(sitterId);
+}
+
 export function resolveSitterFallbackCoords(city: string, postalCode: string): { lat: number; lng: number } | null {
-  const pc = String(postalCode ?? "").trim();
-  if (pc && SITTER_FALLBACK_COORDS[pc]) return SITTER_FALLBACK_COORDS[pc];
+  const pcRaw = String(postalCode ?? "").trim();
+  const pc4 = pcRaw.match(/\b(\d{4})\b/)?.[1] ?? "";
+  if (pc4 && SITTER_FALLBACK_COORDS[pc4]) return SITTER_FALLBACK_COORDS[pc4];
+  if (pcRaw && SITTER_FALLBACK_COORDS[normalizeLocationText(pcRaw)]) {
+    return SITTER_FALLBACK_COORDS[normalizeLocationText(pcRaw)];
+  }
   const c = normalizeLocationText(String(city ?? ""));
   if (c && SITTER_FALLBACK_COORDS[c]) return SITTER_FALLBACK_COORDS[c];
+  const first = c.split(/[\s,/]+/)[0];
+  if (first && first !== c && SITTER_FALLBACK_COORDS[first]) return SITTER_FALLBACK_COORDS[first];
   return null;
 }
 

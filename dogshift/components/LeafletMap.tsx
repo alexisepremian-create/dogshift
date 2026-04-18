@@ -7,7 +7,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { MapContainer, Marker, Popup, TileLayer } from "react-leaflet";
 
-import { resolveSitterFallbackCoords } from "@/lib/sitterMapGeo";
+import { resolveCoordsForPublishedSitterMap } from "@/lib/sitterMapGeo";
 
 type ServiceType = "Promenade" | "Garde" | "Pension";
 
@@ -63,12 +63,7 @@ function parsePricing(value: unknown): Partial<Record<ServiceType, number>> {
 function toUiSitter(row: SitterListItem): UiSitter | null {
   const sitterId = String(row.sitterId ?? "").trim();
   if (!sitterId) return null;
-  const rawLat = typeof row.lat === "number" && Number.isFinite(row.lat) ? row.lat : null;
-  const rawLng = typeof row.lng === "number" && Number.isFinite(row.lng) ? row.lng : null;
-  const fallback = rawLat == null || rawLng == null ? resolveSitterFallbackCoords(row.city, row.postalCode) : null;
-  const lat = rawLat ?? fallback?.lat ?? null;
-  const lng = rawLng ?? fallback?.lng ?? null;
-  if (lat == null || lng == null) return null;
+  const { lat, lng } = resolveCoordsForPublishedSitterMap(sitterId, row.city, row.postalCode, row.lat, row.lng);
 
   const services = parseServices(row.services);
   const pricing = parsePricing(row.pricing);

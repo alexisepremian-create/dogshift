@@ -7,7 +7,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Map, { type MapRef, type MarkerEvent, Marker, Popup } from "react-map-gl/maplibre";
 
 import LeafletMap from "@/components/LeafletMap";
-import { matchesMapLocationFilter, resolveSitterFallbackCoords } from "@/lib/sitterMapGeo";
+import { matchesMapLocationFilter, resolveCoordsForPublishedSitterMap } from "@/lib/sitterMapGeo";
 
 type ServiceType = "Promenade" | "Garde" | "Pension";
 
@@ -77,12 +77,7 @@ function toUiSitter(row: SitterListItem): UiSitter | null {
   const sitterId = String(row.sitterId ?? "").trim();
   if (!sitterId) return null;
 
-  const rawLat = typeof row.lat === "number" && Number.isFinite(row.lat) ? row.lat : null;
-  const rawLng = typeof row.lng === "number" && Number.isFinite(row.lng) ? row.lng : null;
-  const fallback = rawLat == null || rawLng == null ? resolveSitterFallbackCoords(row.city, row.postalCode) : null;
-  const lat = rawLat ?? fallback?.lat ?? null;
-  const lng = rawLng ?? fallback?.lng ?? null;
-  if (lat == null || lng == null) return null;
+  const { lat, lng } = resolveCoordsForPublishedSitterMap(sitterId, row.city, row.postalCode, row.lat, row.lng);
 
   const services = parseServices(row.services);
   const pricing = parsePricing(row.pricing);
