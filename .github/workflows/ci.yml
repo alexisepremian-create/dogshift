@@ -6,6 +6,23 @@ on:
   pull_request:
     branches: [main]
 
+# Dummy env vars shared by the build and e2e jobs — just enough for
+# `prisma generate`, `next build`, and `next start` to succeed.
+# Real secrets live in Vercel's environment, never in CI.
+env:
+  DATABASE_URL: postgresql://user:pass@localhost:5432/db?schema=public
+  DIRECT_URL: postgresql://user:pass@localhost:5432/db?schema=public
+  NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_ZHVtbXkuY2xlcmsuYWNjb3VudHMuZGV2JA
+  CLERK_SECRET_KEY: sk_test_dummy
+  STRIPE_SECRET_KEY: sk_test_dummy
+  STRIPE_PUBLISHABLE_KEY: pk_test_dummy
+  STRIPE_WEBHOOK_SECRET: whsec_dummy
+  NEXT_PUBLIC_MAPTILER_KEY: dummy
+  NEXT_PUBLIC_APP_URL: http://localhost:3000
+  CONTRACT_TOKEN_SECRET: dummy
+  NEXTAUTH_SECRET: dummy
+  NEXTAUTH_URL: http://localhost:3000
+
 jobs:
   quality:
     runs-on: ubuntu-latest
@@ -44,18 +61,64 @@ jobs:
 
       - name: Build (Next.js)
         run: npm run build
-        env:
-          # Dummy env vars — just enough for `prisma generate` + `next build` to succeed.
-          # Real secrets live in Vercel's environment, never in CI.
-          DATABASE_URL: postgresql://user:pass@localhost:5432/db?schema=public
-          DIRECT_URL: postgresql://user:pass@localhost:5432/db?schema=public
-          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_ZHVtbXkuY2xlcmsuYWNjb3VudHMuZGV2JA
-          CLERK_SECRET_KEY: sk_test_dummy
-          STRIPE_SECRET_KEY: sk_test_dummy
-          STRIPE_PUBLISHABLE_KEY: pk_test_dummy
-          STRIPE_WEBHOOK_SECRET: whsec_dummy
-          NEXT_PUBLIC_MAPTILER_KEY: dummy
-          NEXT_PUBLIC_APP_URL: http://localhost:3000
-          CONTRACT_TOKEN_SECRET: dummy
-          NEXTAUTH_SECRET: dummy
-          NEXTAUTH_URL: http://localhost:3000
+
+  e2e:
+    runs-on: ubuntu-latest
+    needs: quality
+    defaults:
+      run:
+        working-directory: dogshift
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+          cache-dependency-path: dogshift/package-lock.json
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Cache Next.js build
+        uses: actions/cache@v4
+        with:
+          path: dogshift/.next/cache
+          key: ${{ runner.os }}-nextjs-${{ hashFiles('dogshift/package-lock.json') }}-${{ hashFiles('dogshift/**/*.ts', 'dogshift/**/*.tsx') }}
+          restore-keys: |
+            ${{ runner.os }}-nextjs-${{ hashFiles('dogshift/package-lock.json') }}-
+
+      - name: Get installed Playwright version
+        id: playwright-version
+        run: |
+          VERSION=$(node -p "require('@playwright/test/package.json').version")
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ steps.playwright-version.outputs.version }}
+
+      - name: Install Playwright browsers
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: npx playwright install --with-deps chromium
+
+      - name: Install Playwright system deps
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: npx playwright install-deps chromium
+
+      - name: Build (Next.js)
+        run: npm run build
+
+      - name: Run Playwright smoke tests
+        run: npm run test:e2e
+
+      - name: Upload Playwright report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: dogshift/playwright-report/
+          retention-days: 7
