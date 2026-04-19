@@ -41,6 +41,17 @@ export default defineConfig({
     trace: "on-first-retry",
     video: "retain-on-failure",
     screenshot: "only-on-failure",
+    // When testing against a Vercel preview that has Deployment Protection
+    // enabled, we need to send a bypass header/cookie so the runner isn't
+    // redirected to the SSO login page. The secret is generated in
+    // Vercel → Project → Settings → Deployment Protection
+    // → "Protection Bypass for Automation".
+    extraHTTPHeaders: process.env.VERCEL_AUTOMATION_BYPASS_SECRET
+      ? {
+          "x-vercel-protection-bypass": process.env.VERCEL_AUTOMATION_BYPASS_SECRET,
+          "x-vercel-set-bypass-cookie": "samesitenone",
+        }
+      : undefined,
   },
   projects: [
     { name: "chromium", use: { ...devices["Desktop Chrome"] } },
