@@ -4,6 +4,12 @@ import { expect, test } from "@playwright/test";
 // These should be fast, deterministic, and never depend on real data or auth.
 // They run against `next start` in CI with dummy env vars, so anything that
 // requires real Clerk / Stripe / DB state is intentionally out of scope here.
+//
+// We deliberately DO NOT assert on <title> here: in React 19 streaming, the
+// <title> element can be injected into <head> after Playwright's
+// `domcontentloaded` signal fires, which makes the check racy. Instead we
+// assert that the server returns a non-error response and that the rendered
+// body contains a meaningful amount of text.
 
 const PUBLIC_ROUTES = [
   { path: "/", name: "homepage" },
@@ -19,13 +25,23 @@ for (const route of PUBLIC_ROUTES) {
   test(`${route.name} (${route.path}) renders without server error`, async ({ page }) => {
     const response = await page.goto(route.path, { waitUntil: "domcontentloaded" });
     expect(response, `expected a response for ${route.path}`).not.toBeNull();
+
+    const status = response!.status();
     expect(
-      response!.status(),
-      `expected non-5xx for ${route.path}, got ${response!.status()}`,
-    ).toBeLessThan(500);
+      status,
+      `expected a non-error status for ${route.path}, got ${status}`,
+    ).toBeLessThan(400);
 
     await expect(page.locator("body")).toBeVisible();
-    await expect(page).toHaveTitle(/.+/);
+
+    // The page must have rendered *something* substantial — not a blank shell
+    // and not a minimal error fallback. 200 chars is well below any real page
+    // and well above what an error boundary would emit.
+    const bodyText = (await page.locator("body").innerText()).trim();
+    expect(
+      bodyText.length,
+      `expected ${route.path} to render >200 chars of body text, got ${bodyText.length}`,
+    ).toBeGreaterThan(200);
   });
 }
 
