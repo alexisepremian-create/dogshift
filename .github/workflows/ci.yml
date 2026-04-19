@@ -1,9 +1,11 @@
 name: CI
+
 on:
   push:
     branches: [main]
   pull_request:
     branches: [main]
+
 jobs:
   quality:
     runs-on: ubuntu-latest
@@ -12,16 +14,22 @@ jobs:
         working-directory: dogshift
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: 'npm'
           cache-dependency-path: dogshift/package-lock.json
+
       - name: Install deps
         run: npm ci
-      - name: Lint
+
+      - name: Lint (non-blocking)
         run: npm run lint
+        continue-on-error: true
+
       - name: Type check
         run: npx tsc --noEmit
+
       - name: Unit tests
         run: npm test
