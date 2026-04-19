@@ -24,6 +24,14 @@ jobs:
       - name: Install deps
         run: npm ci
 
+      - name: Cache Next.js build
+        uses: actions/cache@v4
+        with:
+          path: dogshift/.next/cache
+          key: ${{ runner.os }}-nextjs-${{ hashFiles('dogshift/package-lock.json') }}-${{ hashFiles('dogshift/**/*.ts', 'dogshift/**/*.tsx') }}
+          restore-keys: |
+            ${{ runner.os }}-nextjs-${{ hashFiles('dogshift/package-lock.json') }}-
+
       - name: Lint (non-blocking)
         run: npm run lint
         continue-on-error: true
@@ -33,3 +41,21 @@ jobs:
 
       - name: Unit tests
         run: npm test
+
+      - name: Build (Next.js)
+        run: npm run build
+        env:
+          # Dummy env vars — just enough for `prisma generate` + `next build` to succeed.
+          # Real secrets live in Vercel's environment, never in CI.
+          DATABASE_URL: postgresql://user:pass@localhost:5432/db?schema=public
+          DIRECT_URL: postgresql://user:pass@localhost:5432/db?schema=public
+          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_ZHVtbXkuY2xlcmsuYWNjb3VudHMuZGV2JA
+          CLERK_SECRET_KEY: sk_test_dummy
+          STRIPE_SECRET_KEY: sk_test_dummy
+          STRIPE_PUBLISHABLE_KEY: pk_test_dummy
+          STRIPE_WEBHOOK_SECRET: whsec_dummy
+          NEXT_PUBLIC_MAPTILER_KEY: dummy
+          NEXT_PUBLIC_APP_URL: http://localhost:3000
+          CONTRACT_TOKEN_SECRET: dummy
+          NEXTAUTH_SECRET: dummy
+          NEXTAUTH_URL: http://localhost:3000
