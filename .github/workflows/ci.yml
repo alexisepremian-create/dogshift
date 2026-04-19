@@ -6,23 +6,6 @@ on:
   pull_request:
     branches: [main]
 
-# Dummy env vars shared by the build and e2e jobs — just enough for
-# `prisma generate`, `next build`, and `next start` to succeed.
-# Real secrets live in Vercel's environment, never in CI.
-env:
-  DATABASE_URL: postgresql://user:pass@localhost:5432/db?schema=public
-  DIRECT_URL: postgresql://user:pass@localhost:5432/db?schema=public
-  NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_ZHVtbXkuY2xlcmsuYWNjb3VudHMuZGV2JA
-  CLERK_SECRET_KEY: sk_test_dummy
-  STRIPE_SECRET_KEY: sk_test_dummy
-  STRIPE_PUBLISHABLE_KEY: pk_test_dummy
-  STRIPE_WEBHOOK_SECRET: whsec_dummy
-  NEXT_PUBLIC_MAPTILER_KEY: dummy
-  NEXT_PUBLIC_APP_URL: http://localhost:3000
-  CONTRACT_TOKEN_SECRET: dummy
-  NEXTAUTH_SECRET: dummy
-  NEXTAUTH_URL: http://localhost:3000
-
 jobs:
   quality:
     runs-on: ubuntu-latest
@@ -61,15 +44,42 @@ jobs:
 
       - name: Build (Next.js)
         run: npm run build
+        env:
+          # Dummy env vars — just enough for `prisma generate` + `next build`
+          # to succeed without real secrets. Real secrets live in Vercel.
+          DATABASE_URL: postgresql://user:pass@localhost:5432/db?schema=public
+          DIRECT_URL: postgresql://user:pass@localhost:5432/db?schema=public
+          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_ZHVtbXkuY2xlcmsuYWNjb3VudHMuZGV2JA
+          CLERK_SECRET_KEY: sk_test_dummy
+          STRIPE_SECRET_KEY: sk_test_dummy
+          STRIPE_PUBLISHABLE_KEY: pk_test_dummy
+          STRIPE_WEBHOOK_SECRET: whsec_dummy
+          NEXT_PUBLIC_MAPTILER_KEY: dummy
+          NEXT_PUBLIC_APP_URL: http://localhost:3000
+          CONTRACT_TOKEN_SECRET: dummy
+          NEXTAUTH_SECRET: dummy
+          NEXTAUTH_URL: http://localhost:3000
 
   e2e:
-    runs-on: ubuntu-latest
+    # Runs Playwright smoke tests against the Vercel preview deployment for
+    # the PR, so they exercise the real app with real secrets — no dummy
+    # Clerk/DB/Stripe keys involved.
+    if: github.event_name == 'pull_request'
     needs: quality
+    runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: dogshift
     steps:
       - uses: actions/checkout@v4
+
+      - name: Wait for Vercel preview deployment
+        uses: patrickedqvist/wait-for-vercel-preview@v1.3.2
+        id: vercel_preview
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          max_timeout: 600
+          check_interval: 10
 
       - uses: actions/setup-node@v4
         with:
@@ -79,14 +89,6 @@ jobs:
 
       - name: Install deps
         run: npm ci
-
-      - name: Cache Next.js build
-        uses: actions/cache@v4
-        with:
-          path: dogshift/.next/cache
-          key: ${{ runner.os }}-nextjs-${{ hashFiles('dogshift/package-lock.json') }}-${{ hashFiles('dogshift/**/*.ts', 'dogshift/**/*.tsx') }}
-          restore-keys: |
-            ${{ runner.os }}-nextjs-${{ hashFiles('dogshift/package-lock.json') }}-
 
       - name: Get installed Playwright version
         id: playwright-version
@@ -109,11 +111,10 @@ jobs:
         if: steps.playwright-cache.outputs.cache-hit == 'true'
         run: npx playwright install-deps chromium
 
-      - name: Build (Next.js)
-        run: npm run build
-
-      - name: Run Playwright smoke tests
+      - name: Run Playwright smoke tests against Vercel preview
         run: npm run test:e2e
+        env:
+          PLAYWRIGHT_BASE_URL: ${{ steps.vercel_preview.outputs.url }}
 
       - name: Upload Playwright report
         if: ${{ !cancelled() }}

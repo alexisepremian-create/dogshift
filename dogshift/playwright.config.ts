@@ -3,8 +3,13 @@ import { defineConfig, devices } from "@playwright/test";
 const PORT = Number(process.env.PLAYWRIGHT_PORT ?? 3100);
 const BASE_URL = process.env.PLAYWRIGHT_BASE_URL ?? `http://127.0.0.1:${PORT}`;
 
-// Dummy env vars — just enough for `next start` to boot without real secrets.
-// Keep these aligned with the CI build step in .github/workflows/ci.yml.
+// When running against a deployed environment (e.g. a Vercel preview URL),
+// we skip booting a local Next.js server.
+const useLocalServer = !process.env.PLAYWRIGHT_BASE_URL;
+
+// Dummy env vars for the local `next start` fallback. Kept in sync with the
+// CI build step in .github/workflows/ci.yml. In CI itself we run against the
+// Vercel preview URL, so these are only used for local developer runs.
 const dummyServerEnv: Record<string, string> = {
   DATABASE_URL: "postgresql://user:pass@localhost:5432/db?schema=public",
   DIRECT_URL: "postgresql://user:pass@localhost:5432/db?schema=public",
@@ -40,13 +45,17 @@ export default defineConfig({
   projects: [
     { name: "chromium", use: { ...devices["Desktop Chrome"] } },
   ],
-  webServer: {
-    command: `npx next start -p ${PORT}`,
-    url: BASE_URL,
-    reuseExistingServer: !process.env.CI,
-    timeout: 120_000,
-    stdout: "pipe",
-    stderr: "pipe",
-    env: dummyServerEnv,
-  },
+  ...(useLocalServer
+    ? {
+        webServer: {
+          command: `npx next start -p ${PORT}`,
+          url: BASE_URL,
+          reuseExistingServer: !process.env.CI,
+          timeout: 120_000,
+          stdout: "pipe",
+          stderr: "pipe",
+          env: dummyServerEnv,
+        },
+      }
+    : {}),
 });
