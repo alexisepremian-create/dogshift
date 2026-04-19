@@ -60,7 +60,7 @@ test("checkBoardingRange: range containing CONFIRMED booking makes range UNAVAIL
   assert.ok(res.blockingDays?.some((d) => d.date === "2026-02-16"));
 });
 
-test("checkBoardingRange: PENDING_ACCEPTANCE within TTL makes range ON_REQUEST", () => {
+test("checkBoardingRange: PENDING_ACCEPTANCE hard-blocks the range as UNAVAILABLE", () => {
   const sitterId = "s-1";
   const startDate = "2026-02-16";
   const endDate = "2026-02-17";
@@ -84,8 +84,8 @@ test("checkBoardingRange: PENDING_ACCEPTANCE within TTL makes range ON_REQUEST",
     config: { ...SERVICE_DEFAULTS.PENSION, sitterId },
   });
 
-  assert.equal(res.status, "ON_REQUEST");
-  assert.ok(res.days.some((d) => d.status === "ON_REQUEST"));
+  assert.equal(res.status, "UNAVAILABLE");
+  assert.ok(res.blockingDays?.some((d) => d.date === "2026-02-16"));
 });
 
 test("checkBoardingRange: exception UNAVAILABLE on one day makes range UNAVAILABLE", () => {
