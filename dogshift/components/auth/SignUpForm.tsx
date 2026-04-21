@@ -1,10 +1,22 @@
 "use client";
 
-import { useState } from "react";
+// Clerk's runtime API is richer than its exported TS types (resendEmailCode,
+// legacySignUp access, dynamic `.sso` vs `.authenticateWithRedirect`, etc.),
+// so we intentionally cast to `any` in a few spots — disable that rule here
+// rather than peppering the file with per-line comments.
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
+import { useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useClerk, useSignUp } from "@clerk/nextjs";
 import Link from "next/link";
 import { withPublicOrigin } from "@/lib/url/publicOrigin";
+import {
+  clerkErrorCode,
+  clerkErrorMessage,
+  sanitizeVerificationCode,
+} from "@/lib/auth/clerkErrorMessage";
+import { reportApiError } from "@/lib/observability/reportApiError";
 
 function normalizeEmail(input: string) {
   return input.replace(/\s+/g, "").trim().toLowerCase();
@@ -25,6 +37,10 @@ export default function SignUpForm() {
   const [oauthInFlight, setOauthInFlight] = useState(false);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  /** Tracks when the last email-code was sent, so we can show a "renvoyer" button
+   *  with a reasonable cooldown (Clerk rate-limits back-to-back sends). */
+  const [codeSentAt, setCodeSentAt] = useState<number | null>(null);
+  const [resendCooldownLeft, setResendCooldownLeft] = useState(0);
 
   const fetching = fetchStatus === "fetching";
   const signUpReady = !!signUp;
@@ -53,26 +69,88 @@ export default function SignUpForm() {
 
       await (signUp as any).verifications.sendEmailCode();
       setSent(true);
+      setCodeSentAt(Date.now());
     } catch (err) {
-      const message = err instanceof Error ? err.message : "";
-      const isAlreadyExists = message.toLowerCase().includes("identifier already exists");
+      const code = clerkErrorCode(err);
+      const rawMessage = err instanceof Error ? err.message : "";
+      const isAlreadyExists =
+        code === "form_identifier_exists" ||
+        rawMessage.toLowerCase().includes("identifier already exists");
       if (isAlreadyExists) {
-        setError("Un compte existe déjà avec cet email. Connecte-toi.");
+        setError("Un compte existe déjà avec cette adresse e-mail. Connecte-toi plutôt.");
       } else {
-        setError(message || "Impossible d'envoyer le lien. Réessaie.");
+        reportApiError({
+          kind: "upstream_error",
+          code: code ?? "CLERK_SIGN_UP_CREATE_FAILED",
+          route: "auth.signup.create",
+        });
+        setError(
+          clerkErrorMessage(
+            err,
+            "Impossible d'envoyer le code. Réessaie dans un instant.",
+          ),
+        );
       }
     } finally {
       setLoading(false);
     }
   }
 
+  /** Resends the verification email code. Shown as a button on the code step
+   *  — the #1 fix for users stuck on expired or lost codes. */
+  async function resendEmailCode() {
+    if (!signUp || loading) return;
+    if (resendCooldownLeft > 0) return;
+    setError(null);
+    setLoading(true);
+    try {
+      await (signUp as any).verifications.sendEmailCode();
+      setEmailCode("");
+      setCodeSentAt(Date.now());
+    } catch (err) {
+      console.error("[SignUpForm] resendEmailCode error:", err);
+      reportApiError({
+        kind: "upstream_error",
+        code: clerkErrorCode(err) ?? "CLERK_SIGN_UP_RESEND_CODE_FAILED",
+        route: "auth.signup.resend_code",
+      });
+      setError(
+        clerkErrorMessage(
+          err,
+          "Impossible d'envoyer un nouveau code. Réessaie dans un instant.",
+        ),
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // Countdown for the "Renvoyer un code" button (Clerk rate-limits ~30s between sends).
+  const RESEND_COOLDOWN_SECONDS = 30;
+  useEffect(() => {
+    if (!codeSentAt) {
+      setResendCooldownLeft(0);
+      return;
+    }
+    const tick = () => {
+      const elapsed = Math.floor((Date.now() - codeSentAt) / 1000);
+      const left = Math.max(0, RESEND_COOLDOWN_SECONDS - elapsed);
+      setResendCooldownLeft(left);
+    };
+    tick();
+    const id = window.setInterval(tick, 1000);
+    return () => window.clearInterval(id);
+  }, [codeSentAt]);
+
   async function handleEmailCodeVerify(e: React.FormEvent) {
     e.preventDefault();
     if (!signUp || loading) return;
 
-    const code = emailCode.replace(/\s+/g, "").trim();
+    // Strip every non-digit character — invisible whitespace from Gmail/Outlook
+    // copy-paste is the #1 cause of "code invalide" bug reports.
+    const code = sanitizeVerificationCode(emailCode);
     if (!code) {
-      setError("Merci d'entrer le code reçu par email.");
+      setError("Merci d'entrer le code reçu par e-mail.");
       return;
     }
 
@@ -103,7 +181,17 @@ export default function SignUpForm() {
       setLoading(false);
     } catch (err) {
       console.error("[SignUpForm] handleEmailCodeVerify error:", err);
-      setError(err instanceof Error ? err.message : "Code invalide.");
+      reportApiError({
+        kind: "upstream_error",
+        code: clerkErrorCode(err) ?? "CLERK_SIGN_UP_VERIFY_FAILED",
+        route: "auth.signup.verify_code",
+      });
+      setError(
+        clerkErrorMessage(
+          err,
+          "Code incorrect ou expiré. Demande un nouveau code puis réessaie.",
+        ),
+      );
       setLoading(false);
     }
   }
@@ -136,7 +224,17 @@ export default function SignUpForm() {
       }
     } catch (err) {
       console.error("[SignUpForm] handleGoogle error:", err);
-      setError(err instanceof Error ? err.message : "Inscription Google impossible. Réessaie.");
+      reportApiError({
+        kind: "upstream_error",
+        code: clerkErrorCode(err) ?? "CLERK_SIGN_UP_GOOGLE_FAILED",
+        route: "auth.signup.google",
+      });
+      setError(
+        clerkErrorMessage(
+          err,
+          "Inscription Google impossible. Réessaie dans un instant.",
+        ),
+      );
       setOauthInFlight(false);
     }
   }
@@ -204,14 +302,22 @@ export default function SignUpForm() {
               <input
                 id="email-code"
                 inputMode="numeric"
+                pattern="[0-9]*"
                 autoComplete="one-time-code"
+                autoFocus
                 value={emailCode}
-                onChange={(e) => setEmailCode(e.target.value)}
+                onChange={(e) => setEmailCode(sanitizeVerificationCode(e.target.value))}
                 disabled={formDisabled}
-                className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:ring-4 focus:ring-slate-200 disabled:cursor-not-allowed disabled:opacity-60"
+                maxLength={6}
+                className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-base tracking-[0.3em] text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:ring-4 focus:ring-slate-200 disabled:cursor-not-allowed disabled:opacity-60"
                 placeholder="123456"
               />
-              <p className="mt-2 text-sm text-slate-600">Un code vient d'être envoyé. Vérifie ta boîte mail (et les spams).</p>
+              <p className="mt-2 text-sm text-slate-600">
+                Un code à 6 chiffres a été envoyé à <span className="font-medium text-slate-800">{email}</span>. Vérifie ta boîte mail (et les spams) — il reste valable 10 minutes.
+              </p>
+              <p className="mt-1 text-xs text-slate-500">
+                Si tu as déjà demandé plusieurs codes, seul le dernier fonctionne.
+              </p>
             </div>
 
             <button
@@ -224,16 +330,28 @@ export default function SignUpForm() {
 
             <button
               type="button"
+              disabled={formDisabled || resendCooldownLeft > 0}
+              onClick={() => void resendEmailCode()}
+              className="inline-flex w-full items-center justify-center rounded-full border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {resendCooldownLeft > 0
+                ? `Renvoyer un code (${resendCooldownLeft}s)`
+                : "Renvoyer un nouveau code"}
+            </button>
+
+            <button
+              type="button"
               disabled={formDisabled}
               onClick={() => {
                 if (loading) return;
                 setSent(false);
                 setEmailCode("");
                 setError(null);
+                setCodeSentAt(null);
               }}
-              className="inline-flex w-full items-center justify-center rounded-full border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+              className="block w-full text-center text-sm text-slate-500 hover:text-slate-700"
             >
-              Changer d'email
+              ← Changer d&apos;adresse e-mail
             </button>
 
             {error ? <p className="text-sm text-rose-600">{error}</p> : null}
@@ -251,7 +369,7 @@ export default function SignUpForm() {
       <p className="mt-6 text-center text-xs text-slate-500">
         En continuant, tu acceptes nos{" "}
         <Link href="/cgu" className="underline underline-offset-2 hover:text-slate-700">
-          conditions d'utilisation
+          conditions d&apos;utilisation
         </Link>
         .
       </p>
