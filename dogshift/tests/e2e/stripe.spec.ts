@@ -53,10 +53,10 @@ test("checkout page with unknown bookingId shows an error, not a 500", async ({ 
   expect(bodyText.length, "checkout page must not be blank").toBeGreaterThan(10);
 });
 
-test("POST /api/stripe/webhooks with invalid signature returns 400, not 500", async ({
+test("POST /api/webhooks/stripe with invalid signature returns 400, not 500", async ({
   request,
 }) => {
-  const response = await request.post("/api/stripe/webhooks", {
+  const response = await request.post("/api/webhooks/stripe", {
     data: '{"type":"test"}',
     headers: {
       "Content-Type": "application/json",
@@ -71,7 +71,7 @@ test("POST /api/stripe/webhooks with invalid signature returns 400, not 500", as
   const status = response.status();
   expect(
     status,
-    `POST /api/stripe/webhooks with invalid signature returned ${status}, expected 400`,
+    `POST /api/webhooks/stripe with invalid signature returned ${status}, expected 400`,
   ).toBe(400);
 });
 
