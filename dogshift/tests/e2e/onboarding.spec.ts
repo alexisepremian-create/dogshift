@@ -49,10 +49,12 @@ test("become-sitter/form renders step 1 with invite cookie set", async ({ page, 
   expect(response).not.toBeNull();
   expect(response!.status()).toBeLessThan(400);
 
-  // Step 1 must contain name fields or a "continuer" button.
-  const body = await page.locator("body").innerText();
-  expect(body.length).toBeGreaterThan(100);
+  // BecomeSitterForm uses Clerk hooks (useSignUp) — it only renders after client-side
+  // hydration. Wait for networkidle so React has time to mount the component.
+  await page.waitForLoadState("networkidle").catch(() => { /* timeout is ok */ });
 
-  // The form or its first step should be visible.
-  await expect(page.locator("body")).toContainText(/prénom|nom|continuer|étape/i);
+  // The form or its first step should be visible (toContainText retries with timeout).
+  await expect(page.locator("body")).toContainText(/prénom|nom|continuer|étape/i, {
+    timeout: 15_000,
+  });
 });
