@@ -32,7 +32,7 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-nextjs-${{ hashFiles('dogshift/package-lock.json') }}-
 
-      - name: Lint (non-blocking)
+      - name: Lint
         run: npm run lint
         continue-on-error: true
 
@@ -45,8 +45,6 @@ jobs:
       - name: Build (Next.js)
         run: npm run build
         env:
-          # Dummy env vars — just enough for `prisma generate` + `next build` to succeed.
-          # Real secrets live in Vercel's environment, never in CI.
           DATABASE_URL: postgresql://user:pass@localhost:5432/db?schema=public
           DIRECT_URL: postgresql://user:pass@localhost:5432/db?schema=public
           NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_ZHVtbXkuY2xlcmsuYWNjb3VudHMuZGV2JA
@@ -59,3 +57,107 @@ jobs:
           CONTRACT_TOKEN_SECRET: dummy
           NEXTAUTH_SECRET: dummy
           NEXTAUTH_URL: http://localhost:3000
+
+  e2e:
+    # Runs Playwright tests against the Vercel preview deployment for the PR,
+    # so they exercise the real app with real Clerk/Stripe/DB secrets.
+    # Requires secrets: VERCEL_AUTOMATION_BYPASS_SECRET, CLERK_SECRET_KEY,
+    # PLAYWRIGHT_SITTER_EMAIL, PLAYWRIGHT_SITTER_PASSWORD,
+    # PLAYWRIGHT_OWNER_EMAIL, PLAYWRIGHT_OWNER_PASSWORD
+    if: github.event_name == 'pull_request'
+    needs: quality
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: dogshift
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Wait for Vercel preview deployment
+        id: vercel_preview
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const sha = context.payload.pull_request.head.sha;
+            const timeoutMs = 10 * 60 * 1000;
+            const intervalMs = 15 * 1000;
+            const start = Date.now();
+            while (Date.now() - start < timeoutMs) {
+              const { data: deployments } = await github.rest.repos.listDeployments({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                sha,
+                per_page: 50,
+              });
+              for (const deployment of deployments) {
+                const { data: statuses } = await github.rest.repos.listDeploymentStatuses({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  deployment_id: deployment.id,
+                  per_page: 50,
+                });
+                const success = statuses.find((s) => s.state === 'success');
+                const failure = statuses.find((s) => ['failure', 'error'].includes(s.state));
+                if (success && success.environment_url) {
+                  core.setOutput('url', success.environment_url);
+                  core.info(`Vercel preview ready: ${success.environment_url}`);
+                  return;
+                }
+                if (failure) {
+                  core.setFailed(`Vercel deployment ${deployment.id} failed with state=${failure.state}`);
+                  return;
+                }
+              }
+              core.info(`No successful Vercel deployment yet for ${sha}; retrying in ${intervalMs}ms…`);
+              await new Promise((r) => setTimeout(r, intervalMs));
+            }
+            core.setFailed(`Timed out after ${timeoutMs / 1000}s waiting for Vercel preview for ${sha}`);
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+          cache-dependency-path: dogshift/package-lock.json
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Get installed Playwright version
+        id: playwright-version
+        run: |
+          VERSION=$(node -p "require('@playwright/test/package.json').version")
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ steps.playwright-version.outputs.version }}
+
+      - name: Install Playwright browsers
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: npx playwright install --with-deps chromium
+
+      - name: Install Playwright system deps
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: npx playwright install-deps chromium
+
+      - name: Run Playwright E2E tests against Vercel preview
+        run: npm run test:e2e
+        env:
+          PLAYWRIGHT_BASE_URL: ${{ steps.vercel_preview.outputs.url }}
+          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+          # Real Clerk key for global-setup.ts to create sign-in tokens.
+          CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
+          # Test account credentials (used in auth.spec.ts smoke login test).
+          PLAYWRIGHT_SITTER_EMAIL: ${{ secrets.PLAYWRIGHT_SITTER_EMAIL }}
+          PLAYWRIGHT_OWNER_EMAIL: ${{ secrets.PLAYWRIGHT_OWNER_EMAIL }}
+
+      - name: Upload Playwright report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: dogshift/playwright-report/
+          retention-days: 7
