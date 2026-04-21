@@ -45,7 +45,8 @@ test("login page renders the email input and Continuer button", async ({ page })
   // The submit button renders as "Chargement…" while Clerk initialises, then
   // switches to "Continuer". We wait for Clerk to finish before asserting text.
   await page.waitForLoadState("networkidle").catch(() => { /* timeout is ok */ });
-  await expect(page.getByRole("button", { name: /continuer|chargement/i })).toBeVisible({ timeout: 15_000 });
+  // Use .first() because there are multiple buttons on the page that match (Google + email submit).
+  await expect(page.getByRole("button", { name: /continuer|chargement/i }).first()).toBeVisible({ timeout: 15_000 });
 
   // Google button must be present (appears once Clerk client is ready).
   await expect(page.getByRole("button", { name: /google/i })).toBeVisible({ timeout: 15_000 });
@@ -59,7 +60,8 @@ test("login form advances to password step after entering a valid email", async 
 
   // Wait for Clerk to finish initialising so the button is interactive.
   await page.waitForLoadState("networkidle").catch(() => { /* timeout is ok */ });
-  const continuerBtn = page.getByRole("button", { name: /continuer/i });
+  // The email step "Continuer" button is inside the form (not the Google button).
+  const continuerBtn = page.getByRole("button", { name: /continuer/i }).first();
   await expect(continuerBtn).toBeVisible({ timeout: 15_000 });
 
   await emailInput.fill(process.env.PLAYWRIGHT_SITTER_EMAIL ?? "test@dogshift.ch");
@@ -89,7 +91,7 @@ test("login form shows an error for a non-existent email", async ({ page }) => {
   await expect(emailInput).toBeVisible({ timeout: 15_000 });
 
   await page.waitForLoadState("networkidle").catch(() => { /* timeout is ok */ });
-  const continuerBtn = page.getByRole("button", { name: /continuer/i });
+  const continuerBtn = page.getByRole("button", { name: /continuer/i }).first();
   await expect(continuerBtn).toBeVisible({ timeout: 15_000 });
 
   await emailInput.fill("compte-qui-nexiste-vraiment-pas-xyzzy@dogshift-test.invalid");
