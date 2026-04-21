@@ -9,7 +9,10 @@ import { expect, test } from "@playwright/test";
 
 const AUTHED_API_ROUTES: Array<{ method: string; path: string; body?: string }> = [
   { method: "GET", path: "/api/sitters/me" },
-  { method: "GET", path: "/api/sitters/me/service-config" },
+  // /api/sitters/me/service-config validates query params before auth, so it
+  // can return 400 (missing serviceType) instead of 401 — both are acceptable
+  // as long as it's not a 500.
+  { method: "GET", path: "/api/sitters/me/service-config?serviceType=PROMENADE" },
   { method: "PATCH", path: "/api/host/profile", body: JSON.stringify({ firstName: "Test" }) },
   { method: "POST", path: "/api/bookings", body: JSON.stringify({}) },
   { method: "GET", path: "/api/messages" },

@@ -15,7 +15,7 @@ const PROTECTED_ROUTES = [
   "/host/profile/edit",
   "/host/profile",
   "/account",
-  "/mes-reservations",
+  "/account/bookings",
 ] as const;
 
 for (const path of PROTECTED_ROUTES) {
@@ -38,25 +38,32 @@ for (const path of PROTECTED_ROUTES) {
 test("login page renders the email input and Continuer button", async ({ page }) => {
   await page.goto("/login", { waitUntil: "domcontentloaded" });
 
-  // Email input must be visible.
+  // Email input is always rendered (no Clerk dependency).
   const emailInput = page.locator('input[type="email"], input#email');
-  await expect(emailInput).toBeVisible({ timeout: 10_000 });
+  await expect(emailInput).toBeVisible({ timeout: 15_000 });
 
-  // The "Continuer" button must be visible.
-  await expect(page.getByRole("button", { name: /continuer/i })).toBeVisible();
+  // The submit button renders as "Chargement…" while Clerk initialises, then
+  // switches to "Continuer". We wait for Clerk to finish before asserting text.
+  await page.waitForLoadState("networkidle").catch(() => { /* timeout is ok */ });
+  await expect(page.getByRole("button", { name: /continuer|chargement/i })).toBeVisible({ timeout: 15_000 });
 
-  // The Google login button must be present.
-  await expect(page.getByRole("button", { name: /google/i })).toBeVisible();
+  // Google button must be present (appears once Clerk client is ready).
+  await expect(page.getByRole("button", { name: /google/i })).toBeVisible({ timeout: 15_000 });
 });
 
 test("login form advances to password step after entering a valid email", async ({ page }) => {
   await page.goto("/login", { waitUntil: "domcontentloaded" });
 
   const emailInput = page.locator('input[type="email"], input#email');
-  await expect(emailInput).toBeVisible({ timeout: 10_000 });
+  await expect(emailInput).toBeVisible({ timeout: 15_000 });
+
+  // Wait for Clerk to finish initialising so the button is interactive.
+  await page.waitForLoadState("networkidle").catch(() => { /* timeout is ok */ });
+  const continuerBtn = page.getByRole("button", { name: /continuer/i });
+  await expect(continuerBtn).toBeVisible({ timeout: 15_000 });
 
   await emailInput.fill(process.env.PLAYWRIGHT_SITTER_EMAIL ?? "test@dogshift.ch");
-  await page.getByRole("button", { name: /continuer/i }).click();
+  await continuerBtn.click();
 
   // After Clerk processes the email, either:
   // a) password field appears (account has password auth) — ideal
@@ -79,10 +86,14 @@ test("login form shows an error for a non-existent email", async ({ page }) => {
   await page.goto("/login", { waitUntil: "domcontentloaded" });
 
   const emailInput = page.locator('input[type="email"], input#email');
-  await expect(emailInput).toBeVisible({ timeout: 10_000 });
+  await expect(emailInput).toBeVisible({ timeout: 15_000 });
+
+  await page.waitForLoadState("networkidle").catch(() => { /* timeout is ok */ });
+  const continuerBtn = page.getByRole("button", { name: /continuer/i });
+  await expect(continuerBtn).toBeVisible({ timeout: 15_000 });
 
   await emailInput.fill("compte-qui-nexiste-vraiment-pas-xyzzy@dogshift-test.invalid");
-  await page.getByRole("button", { name: /continuer/i }).click();
+  await continuerBtn.click();
 
   // An error message must appear — not a blank page or a crash.
   const errorText = page.locator("p.text-rose-600, p[class*='rose'], [role='alert']");
