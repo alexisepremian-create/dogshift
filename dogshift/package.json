@@ -13,7 +13,13 @@
     "migrate:deploy": "prisma migrate deploy",
     "migrate:deploy:prod": "prisma migrate deploy && prisma generate",
     "generate-invite-codes": "node scripts/generate-invite-codes.mjs",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "prepare": "node scripts/setup-git-hooks.mjs",
+    "ship": "bash scripts/ship.sh"
+  },
+  "lint-staged": {
+    "*.{ts,tsx}": "eslint --fix --max-warnings=0",
+    "*.{js,jsx,mjs,cjs}": "eslint --fix --max-warnings=0"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.987.0",
@@ -60,6 +66,8 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "^16.2.3",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.4.0",
     "prisma": "^6.19.1",
     "tailwindcss": "^4",
     "typescript": "^5"

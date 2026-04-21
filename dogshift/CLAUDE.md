@@ -13,7 +13,20 @@ npm test                 # Run unit tests (Node native test runner)
 npm run test:watch       # Watch mode
 
 npm run migrate:deploy   # Deploy pending Prisma migrations
+
+npm run ship -- "msg"    # Commit all changes, push, open PR, enable auto-merge (see WORKFLOW.md)
 ```
+
+## Shipping changes
+
+See [`WORKFLOW.md`](./WORKFLOW.md). Happy path is `npm run ship -- "commit msg"`
+— CI (lint + typecheck + unit tests + Next build + Playwright smoke tests)
+gates every merge, so the script is safe to fire and forget.
+
+Every bug fix **must** add at least one regression test in `tests/` (see
+existing examples in `tests/validators/`, `tests/availability/`). API errors
+must call `reportApiError()` from `lib/observability/reportApiError.ts` so
+Sentry alerts catch spikes.
 
 ## Architecture
 
