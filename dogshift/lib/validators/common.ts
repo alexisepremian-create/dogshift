@@ -17,10 +17,21 @@ export function zodParse<T>(
     field: i.path.join("."),
     message: i.message,
   }));
+  // Human-readable summary so the client can show what actually failed instead of
+  // a bare "VALIDATION_ERROR" code. Keeps the structured `issues` for programmatic use.
+  const details = issues
+    .map((i) => (i.field ? `${i.field}: ${i.message}` : i.message))
+    .filter((s) => s && s.length > 0)
+    .join("; ");
   return {
     ok: false,
     response: NextResponse.json(
-      { ok: false, error: "VALIDATION_ERROR", issues },
+      {
+        ok: false,
+        error: "VALIDATION_ERROR",
+        issues,
+        ...(details ? { details } : {}),
+      },
       { status: 400 }
     ),
   };
