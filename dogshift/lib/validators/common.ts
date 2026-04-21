@@ -1,39 +1,44 @@
 import { z } from "zod";
 import { NextResponse } from "next/server";
 
+import { buildValidationErrorBody } from "./zodErrorFormat";
+import { reportApiError } from "@/lib/observability/reportApiError";
+
+export type { ValidationIssue, ValidationErrorBody } from "./zodErrorFormat";
+export { buildValidationErrorBody } from "./zodErrorFormat";
+
+export interface ZodParseOptions {
+  /** Logical route/feature name used as a Sentry tag for alert grouping. */
+  route?: string;
+}
+
 /**
  * Helper to parse a Zod schema and return a standard 400 error on failure.
  * Returns { ok: true, data } or { ok: false, response } to short-circuit the handler.
+ *
+ * On failure, also reports a tagged Sentry event (`error_kind: validation_error`)
+ * so we can alert on spikes — see `lib/observability/reportApiError.ts`.
+ * Pass `options.route` to tag the specific endpoint for per-route alerting.
  */
 export function zodParse<T>(
   schema: z.ZodSchema<T>,
-  input: unknown
+  input: unknown,
+  options: ZodParseOptions = {}
 ): { ok: true; data: T } | { ok: false; response: NextResponse } {
   const result = schema.safeParse(input);
   if (result.success) {
     return { ok: true, data: result.data };
   }
-  const issues = result.error.issues.map((i) => ({
-    field: i.path.join("."),
-    message: i.message,
-  }));
-  // Human-readable summary so the client can show what actually failed instead of
-  // a bare "VALIDATION_ERROR" code. Keeps the structured `issues` for programmatic use.
-  const details = issues
-    .map((i) => (i.field ? `${i.field}: ${i.message}` : i.message))
-    .filter((s) => s && s.length > 0)
-    .join("; ");
+  const body = buildValidationErrorBody(result.error);
+  reportApiError({
+    kind: "validation_error",
+    code: "VALIDATION_ERROR",
+    route: options.route,
+    extra: { issues: body.issues },
+  });
   return {
     ok: false,
-    response: NextResponse.json(
-      {
-        ok: false,
-        error: "VALIDATION_ERROR",
-        issues,
-        ...(details ? { details } : {}),
-      },
-      { status: 400 }
-    ),
+    response: NextResponse.json(body, { status: 400 }),
   };
 }
 

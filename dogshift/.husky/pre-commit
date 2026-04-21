@@ -1,0 +1,11 @@
+#!/usr/bin/env sh
+# Pre-commit hook: fast local checks to stop regressions at commit time.
+# Heavy checks (full typecheck, Next build, Playwright) stay in CI so commits
+# feel instant.
+#
+# Runs lint-staged which lints+auto-fixes only the staged .ts/.tsx files.
+# If a staged file has errors that can't be auto-fixed, the commit is aborted.
+
+cd "$(dirname "$0")/.."
+
+npx --no-install lint-staged
