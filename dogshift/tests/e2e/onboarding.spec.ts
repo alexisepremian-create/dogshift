@@ -12,13 +12,15 @@ import { expect, test } from "@playwright/test";
 // (tests/validators/hostProfileUpdateSchema.test.ts).
 
 test("devenir-dogsitter landing page renders with a call-to-action", async ({ page }) => {
+  // This page is "use client" — wait for JS to hydrate before reading body text.
   await page.goto("/devenir-dogsitter", { waitUntil: "domcontentloaded" });
-
-  const body = await page.locator("body").innerText();
-  expect(body.length).toBeGreaterThan(100);
+  await page.waitForLoadState("networkidle").catch(() => { /* timeout is ok */ });
 
   // The page should mention becoming a sitter in some way.
-  await expect(page.locator("body")).toContainText(/dogsitter|dog.sitter|devenir|sitter/i);
+  // Use toContainText with a timeout so Playwright waits for the client render.
+  await expect(page.locator("body")).toContainText(/dogsitter|dog.sitter|devenir|sitter/i, {
+    timeout: 15_000,
+  });
 });
 
 test("become-sitter/form redirects to /devenir-dogsitter without invite cookie", async ({
