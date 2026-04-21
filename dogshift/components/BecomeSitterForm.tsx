@@ -309,6 +309,19 @@ export default function BecomeSitterForm() {
     const hasErrors = Boolean(step2Errors.walkRate || step2Errors.sittingRate || step2Errors.pricePerDay || step2Errors.services);
     return !hasErrors && availability.trim().length > 0;
   }, [step2Errors, availability]);
+
+  // Human-readable reason why step 2 can't advance. Used both inline (to flag fields)
+  // and as a top-level banner so users understand exactly what blocks "Continuer"
+  // instead of the button silently doing nothing.
+  const step2BlockingReason = useMemo(() => {
+    if (step2Errors.services) return step2Errors.services;
+    if (step2Errors.walkRate) return step2Errors.walkRate;
+    if (step2Errors.sittingRate) return step2Errors.sittingRate;
+    if (step2Errors.pricePerDay) return step2Errors.pricePerDay;
+    if (availability.trim().length === 0) return "Indique tes disponibilités pour continuer.";
+    return null;
+  }, [step2Errors, availability]);
+
   const canSubmit = useMemo(() => bio.trim().length > 0, [bio]);
 
   function toggleService(svc: string) {
@@ -789,16 +802,29 @@ export default function BecomeSitterForm() {
 
             <div>
               <label htmlFor="availability" className="block text-sm font-medium text-slate-700">
-                Disponibilités
+                Disponibilités <span className="text-rose-600">*</span>
               </label>
               <input
                 id="availability"
                 value={availability}
                 onChange={(e) => setAvailability(e.target.value)}
-                className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition focus:border-[var(--dogshift-blue)] focus:ring-4 focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_85%)]"
+                aria-invalid={step2Attempted && availability.trim().length === 0}
+                className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition focus:border-[var(--dogshift-blue)] focus:ring-4 focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_85%)] aria-[invalid=true]:border-rose-400"
                 placeholder="Ex. Soirs + week-ends"
               />
+              {step2Attempted && availability.trim().length === 0 ? (
+                <p className="mt-2 text-xs font-medium text-rose-600">Indique tes disponibilités pour continuer.</p>
+              ) : null}
             </div>
+
+            {step2Attempted && step2BlockingReason ? (
+              <div
+                role="alert"
+                className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700"
+              >
+                Impossible de passer à l’étape suivante : {step2BlockingReason}
+              </div>
+            ) : null}
           </div>
         ) : null}
 
@@ -920,7 +946,7 @@ export default function BecomeSitterForm() {
                 if (step === 2 && !canNext2) return;
                 setStep((s) => (s === 3 ? 3 : ((s + 1) as 1 | 2 | 3)));
               }}
-              disabled={(step === 1 && !canNext1) || formStatus === "submitting" || isAuthBusy}
+              disabled={(step === 1 && !canNext1) || (step === 2 && step2Attempted && !canNext2) || formStatus === "submitting" || isAuthBusy}
               className="inline-flex items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-6 py-3 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition hover:bg-[var(--dogshift-blue-hover)] disabled:cursor-not-allowed disabled:opacity-60"
             >
               {isContinueLoading ? (

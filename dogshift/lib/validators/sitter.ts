@@ -1,7 +1,5 @@
 import { z } from "zod";
 
-import { isPersistedAvatarMediaPath } from "@/lib/sitterAvatarMedia";
-
 const PRICING_SERVICES = ["Promenade", "Garde", "Pension"] as const;
 
 /**
@@ -35,17 +33,21 @@ export const hostProfileUpdateSchema = z
     services: z.record(z.string(), z.boolean()).optional(),
     pricing: z.record(z.string(), z.union([z.number().positive(), z.null()])).optional(),
     dogSizes: z.record(z.string(), z.boolean()).optional(),
-    /** Large photos must use R2 upload + /api/media path; small legacy data URLs only. */
-    avatarDataUrl: z.string().max(150_000).optional().nullable(),
-    /** Persisted first-party avatar path after R2 upload (`/api/media/sitter-avatar/...`). */
-    avatarUrl: z
-      .string()
-      .max(480)
-      .optional()
-      .nullable()
-      .refine((v) => v == null || v === "" || isPersistedAvatarMediaPath(v), {
-        message: "avatarUrl must be a /api/media/sitter-avatar/ path",
-      }),
+    /**
+     * Legacy base64 data URL for avatar. New avatars use R2 upload + `avatarUrl` path,
+     * but existing profiles may still roundtrip a large data URL here. The server
+     * strips oversized values (>120k) at write time, so we only apply a generous cap
+     * to avoid huge payloads — never reject a save over a legacy avatar.
+     */
+    avatarDataUrl: z.string().max(5_000_000).optional().nullable(),
+    /**
+     * First-party R2 avatar path (`/api/media/sitter-avatar/...`). Legacy profiles may
+     * still have other strings here (cloud URLs, etc.). We accept any string up to 480
+     * chars; the server only writes it to the `avatarUrl` DB column when it actually
+     * matches the persisted media format, so legacy values are ignored safely rather
+     * than blocking the entire profile save.
+     */
+    avatarUrl: z.string().max(480).optional().nullable(),
     published: z.boolean().optional(),
   })
   .passthrough();
