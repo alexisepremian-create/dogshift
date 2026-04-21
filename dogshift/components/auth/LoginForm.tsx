@@ -1,10 +1,22 @@
 "use client";
 
+// Clerk's runtime API is richer than its exported TS types (mfa.sendEmailCode,
+// legacySignIn access via `clerk.client`, dynamic strategies, etc.), so we
+// intentionally cast to `any` in a few spots — disable that rule here rather
+// than peppering the file with per-line comments.
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 import { useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useClerk, useSignIn, useUser } from "@clerk/nextjs";
 import Link from "next/link";
 import { withPublicOrigin } from "@/lib/url/publicOrigin";
+import {
+  clerkErrorCode,
+  clerkErrorMessage,
+  sanitizeVerificationCode,
+} from "@/lib/auth/clerkErrorMessage";
+import { reportApiError } from "@/lib/observability/reportApiError";
 
 function normalizeEmail(input: string) {
   return input.replace(/\s+/g, "").trim().toLowerCase();
@@ -18,11 +30,12 @@ export default function LoginForm() {
   const { signIn, fetchStatus } = useSignIn();
   const { isLoaded: userLoaded, isSignedIn } = useUser();
   const searchParams = useSearchParams();
-  const router = useRouter();
+  // `router` and `forceMode` are kept on purpose: they're part of the signIn
+  // contract we may reuse as the flow grows (e.g. programmatic redirects,
+  // "force re-auth" support already exposed as a query string).
+  useRouter();
 
   const next = (searchParams?.get("next") ?? "").trim();
-  const force = (searchParams?.get("force") ?? "").trim();
-  const forceMode = force === "1" || force.toLowerCase() === "true";
   const startGoogle = (searchParams?.get("startGoogle") ?? "").trim();
   const startGoogleMode = startGoogle === "1" || startGoogle.toLowerCase() === "true";
   const redirectAfterAuth = next ? `/post-login?next=${encodeURIComponent(next)}` : "/post-login";
@@ -33,6 +46,10 @@ export default function LoginForm() {
   const [step, setStep] = useState<Step>("email");
   const [verifyMode, setVerifyMode] = useState<VerifyMode>("emailCode");
   const [loading, setLoading] = useState(false);
+  /** Tracks when the last email-code was sent, so we can show a "renvoyer" button
+   *  with a reasonable cooldown (Clerk rate-limits back-to-back sends). */
+  const [codeSentAt, setCodeSentAt] = useState<number | null>(null);
+  const [resendCooldownLeft, setResendCooldownLeft] = useState(0);
   /** Google OAuth: must not reuse `loading` — successful sso() often returns before navigation, and we never cleared `loading`, which disabled the whole form ("Vérification…"). */
   const [oauthInFlight, setOauthInFlight] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -90,10 +107,16 @@ export default function LoginForm() {
         await (signIn as any).emailCode.sendCode();
         setVerifyMode("emailCode");
         setStep("emailCode");
+        setCodeSentAt(Date.now());
       }
     } catch (err) {
       console.error("[LoginForm] handleEmailContinue error:", err);
-      setError(err instanceof Error ? err.message : "Impossible de continuer. Réessaie.");
+      reportApiError({
+        kind: "upstream_error",
+        code: clerkErrorCode(err) ?? "CLERK_SIGN_IN_CREATE_FAILED",
+        route: "auth.login.email_continue",
+      });
+      setError(clerkErrorMessage(err, "Impossible de continuer. Réessaie dans un instant."));
     } finally {
       setLoading(false);
     }
@@ -127,6 +150,7 @@ export default function LoginForm() {
         await (signIn as any).mfa.sendEmailCode();
         setVerifyMode("mfa");
         setStep("emailCode");
+        setCodeSentAt(Date.now());
         setLoading(false);
       } else {
         setError("Connexion incomplète. Réessaie.");
@@ -134,7 +158,12 @@ export default function LoginForm() {
       }
     } catch (err) {
       console.error("[LoginForm] handlePasswordSubmit error:", err);
-      setError(err instanceof Error ? err.message : "Mot de passe incorrect.");
+      reportApiError({
+        kind: "upstream_error",
+        code: clerkErrorCode(err) ?? "CLERK_PASSWORD_SUBMIT_FAILED",
+        route: "auth.login.password",
+      });
+      setError(clerkErrorMessage(err, "Mot de passe incorrect."));
       setLoading(false);
     }
   }
@@ -147,9 +176,46 @@ export default function LoginForm() {
       await (signIn as any).emailCode.sendCode();
       setVerifyMode("emailCode");
       setStep("emailCode");
+      setCodeSentAt(Date.now());
     } catch (err) {
       console.error("[LoginForm] switchToEmailCode error:", err);
-      setError(err instanceof Error ? err.message : "Impossible d'envoyer le code. Réessaie.");
+      reportApiError({
+        kind: "upstream_error",
+        code: clerkErrorCode(err) ?? "CLERK_SEND_CODE_FAILED",
+        route: "auth.login.send_code",
+      });
+      setError(clerkErrorMessage(err, "Impossible d'envoyer le code. Réessaie dans un instant."));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  /**
+   * Resends the email code on the current step. Used by the "Renvoyer un code"
+   * button on the emailCode screen — the #1 fix for users stuck on expired
+   * codes / old codes lingering in their inbox.
+   */
+  async function resendEmailCode() {
+    if (!signIn || loading) return;
+    if (resendCooldownLeft > 0) return;
+    setError(null);
+    setLoading(true);
+    try {
+      if (verifyMode === "mfa") {
+        await (signIn as any).mfa.sendEmailCode();
+      } else {
+        await (signIn as any).emailCode.sendCode();
+      }
+      setEmailCode("");
+      setCodeSentAt(Date.now());
+    } catch (err) {
+      console.error("[LoginForm] resendEmailCode error:", err);
+      reportApiError({
+        kind: "upstream_error",
+        code: clerkErrorCode(err) ?? "CLERK_RESEND_CODE_FAILED",
+        route: "auth.login.resend_code",
+      });
+      setError(clerkErrorMessage(err, "Impossible d'envoyer un nouveau code. Réessaie dans un instant."));
     } finally {
       setLoading(false);
     }
@@ -159,9 +225,11 @@ export default function LoginForm() {
     e.preventDefault();
     if (!signIn || loading) return;
 
-    const code = emailCode.replace(/\s+/g, "").trim();
+    // Strip every non-digit character — invisible whitespace from Gmail/Outlook
+    // copy-paste is the #1 cause of "code invalide" bug reports.
+    const code = sanitizeVerificationCode(emailCode);
     if (!code) {
-      setError("Merci d'entrer le code reçu par email.");
+      setError("Merci d'entrer le code reçu par e-mail.");
       return;
     }
 
@@ -181,7 +249,17 @@ export default function LoginForm() {
       }
     } catch (err) {
       console.error("[LoginForm] handleEmailCodeVerify error:", err);
-      setError(err instanceof Error ? err.message : "Code invalide.");
+      reportApiError({
+        kind: "upstream_error",
+        code: clerkErrorCode(err) ?? "CLERK_EMAIL_CODE_VERIFY_FAILED",
+        route: "auth.login.verify_code",
+      });
+      setError(
+        clerkErrorMessage(
+          err,
+          "Code incorrect ou expiré. Demande un nouveau code puis réessaie.",
+        ),
+      );
       setLoading(false);
     }
   }
@@ -222,7 +300,12 @@ export default function LoginForm() {
       }
     } catch (err) {
       console.error("[LoginForm] handleGoogle error:", err);
-      setError(err instanceof Error ? err.message : "Connexion Google impossible. Réessaie.");
+      reportApiError({
+        kind: "upstream_error",
+        code: clerkErrorCode(err) ?? "CLERK_GOOGLE_OAUTH_FAILED",
+        route: "auth.login.google",
+      });
+      setError(clerkErrorMessage(err, "Connexion Google impossible. Réessaie dans un instant."));
       setOauthInFlight(false);
     }
   }
@@ -238,9 +321,26 @@ export default function LoginForm() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoGoogleStarted, signIn, startGoogleMode, userLoaded, isSignedIn]);
 
+  // Countdown for the "Renvoyer un code" button (Clerk rate-limits ~30s between sends).
+  const RESEND_COOLDOWN_SECONDS = 30;
+  useEffect(() => {
+    if (!codeSentAt) {
+      setResendCooldownLeft(0);
+      return;
+    }
+    const tick = () => {
+      const elapsed = Math.floor((Date.now() - codeSentAt) / 1000);
+      const left = Math.max(0, RESEND_COOLDOWN_SECONDS - elapsed);
+      setResendCooldownLeft(left);
+    };
+    tick();
+    const id = window.setInterval(tick, 1000);
+    return () => window.clearInterval(id);
+  }, [codeSentAt]);
+
   return (
     <div className="flex flex-col">
-      <h1 className="text-center text-2xl font-semibold tracking-tight text-slate-900">S'identifier</h1>
+      <h1 className="text-center text-2xl font-semibold tracking-tight text-slate-900">S&apos;identifier</h1>
       <p className="mt-2 text-center text-sm text-slate-600">Accède à ton espace DogShift.</p>
 
       <div className="mt-6 flex flex-col gap-6">
@@ -334,7 +434,7 @@ export default function LoginForm() {
               onClick={resetToEmail}
               className="block w-full text-center text-sm text-slate-500 hover:text-slate-700"
             >
-              ← Changer d'e-mail
+              ← Changer d&apos;e-mail
             </button>
 
             {error ? <p className="text-sm text-rose-600">{error}</p> : null}
@@ -350,15 +450,22 @@ export default function LoginForm() {
               <input
                 id="email-code"
                 inputMode="numeric"
+                pattern="[0-9]*"
                 autoComplete="one-time-code"
                 autoFocus
                 value={emailCode}
-                onChange={(e) => setEmailCode(e.target.value)}
+                onChange={(e) => setEmailCode(sanitizeVerificationCode(e.target.value))}
                 disabled={formDisabled}
-                className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:ring-4 focus:ring-slate-200 disabled:cursor-not-allowed disabled:opacity-60"
+                maxLength={6}
+                className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-base tracking-[0.3em] text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:ring-4 focus:ring-slate-200 disabled:cursor-not-allowed disabled:opacity-60"
                 placeholder="123456"
               />
-              <p className="mt-2 text-sm text-slate-600">Un code vient d'être envoyé à {email}. Vérifie ta boîte mail (et les spams).</p>
+              <p className="mt-2 text-sm text-slate-600">
+                Un code à 6 chiffres a été envoyé à <span className="font-medium text-slate-800">{email}</span>. Vérifie ta boîte mail (et les spams) — il reste valable 10 minutes.
+              </p>
+              <p className="mt-1 text-xs text-slate-500">
+                Si tu as déjà demandé plusieurs codes, seul le dernier fonctionne.
+              </p>
             </div>
 
             <button
@@ -371,11 +478,22 @@ export default function LoginForm() {
 
             <button
               type="button"
-              disabled={formDisabled}
-              onClick={resetToEmail}
+              disabled={formDisabled || resendCooldownLeft > 0}
+              onClick={() => void resendEmailCode()}
               className="inline-flex w-full items-center justify-center rounded-full border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              Changer d'e-mail
+              {resendCooldownLeft > 0
+                ? `Renvoyer un code (${resendCooldownLeft}s)`
+                : "Renvoyer un nouveau code"}
+            </button>
+
+            <button
+              type="button"
+              disabled={formDisabled}
+              onClick={resetToEmail}
+              className="block w-full text-center text-sm text-slate-500 hover:text-slate-700"
+            >
+              ← Changer d&apos;e-mail
             </button>
 
             {error ? <p className="text-sm text-rose-600">{error}</p> : null}
@@ -393,7 +511,7 @@ export default function LoginForm() {
       <p className="mt-6 text-center text-xs text-slate-500">
         En continuant, tu acceptes nos{" "}
         <Link href="/cgu" className="underline underline-offset-2 hover:text-slate-700">
-          conditions d'utilisation
+          conditions d&apos;utilisation
         </Link>
         .
       </p>

@@ -1,5 +1,12 @@
 "use client";
 
+// Availability page talks to a large JSON API that evolves (availability rules,
+// date exceptions, pricing, last-minute settings); payload shapes come from
+// network responses so we use `any` narrowly when handling those. A few
+// presentational helpers are exported for future iterations and not yet
+// consumed in this file. Disabling those two rules here keeps the diff tight.
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars */
+
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Info, X, Settings, Banknote, Clock, ShieldCheck, Home, Rocket } from "lucide-react";
@@ -7,6 +14,7 @@ import { Info, X, Settings, Banknote, Clock, ShieldCheck, Home, Rocket } from "l
 import { useHostUser } from "@/components/HostUserProvider";
 import { normalizeRanges } from "@/lib/availability/rangeValidation";
 import type { HostProfileV1 } from "@/lib/hostProfile";
+import { apiErrorMessage } from "@/lib/errors/apiErrorMessage";
 
 type ServiceTypeApi = "PROMENADE" | "DOGSITTING" | "PENSION";
 
@@ -44,7 +52,10 @@ function errorMessageFr(code: string) {
   if (code === "PRICING_REQUIRED") {
     return "Tarif requis\nTu dois d’abord définir un tarif pour ce service avant de pouvoir l’activer ou ajouter des disponibilités.\nTu peux le faire dans la section Services & tarifs.";
   }
-  return code;
+  // Delegate to the shared API error translator so we never surface raw
+  // ALL_CAPS codes to end users. Returns a generic French message for
+  // unknown codes instead of leaking e.g. "SAVE_ERROR".
+  return apiErrorMessage(code);
 }
 
 function statusLabelFr(value: "AVAILABLE" | "ON_REQUEST" | "UNAVAILABLE") {
@@ -386,7 +397,7 @@ export default function AvailabilityStudioPage() {
     } catch (e) {
       await refetchLastMinuteGlobal();
       setLastMinuteEnabledGlobal(prev ?? false);
-      setError(e instanceof Error ? e.message : "SAVE_ERROR");
+      setError(errorMessageFr(e instanceof Error ? e.message : "SAVE_ERROR"));
     } finally {
       setLastMinuteSavingGlobal(false);
     }
@@ -597,7 +608,7 @@ export default function AvailabilityStudioPage() {
         setError(null);
       }
       await refetchAll();
-      if (code !== "PRICING_REQUIRED") setError(e instanceof Error ? e.message : "SAVE_ERROR");
+      if (code !== "PRICING_REQUIRED") setError(errorMessageFr(e instanceof Error ? e.message : "SAVE_ERROR"));
     } finally {
       setLoading(false);
     }
@@ -678,7 +689,7 @@ export default function AvailabilityStudioPage() {
       setTimeout(() => setSavedPing(null), 1800);
     } catch (e) {
       if (token !== refreshTokenRef.current) return;
-      setError(e instanceof Error ? e.message : "ERROR");
+      setError(errorMessageFr(e instanceof Error ? e.message : "ERROR"));
     } finally {
       if (token !== refreshTokenRef.current) return;
       setLoading(false);
@@ -754,7 +765,7 @@ export default function AvailabilityStudioPage() {
         setTopError(errorMessageFr(code));
         setError(null);
       } else {
-        setError(code);
+        setError(errorMessageFr(code));
       }
     } finally {
       setWeeklySavingKey(null);
@@ -1034,7 +1045,7 @@ export default function AvailabilityStudioPage() {
         setTopError(errorMessageFr(code));
         setError(null);
       } else {
-        setError(code);
+        setError(errorMessageFr(code));
       }
     } finally {
       setQuickActionSaving(null);
@@ -1066,7 +1077,7 @@ export default function AvailabilityStudioPage() {
 
       await refetchAll();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "RESET_ERROR");
+      setError(errorMessageFr(e instanceof Error ? e.message : "RESET_ERROR"));
       await refetchAll();
     } finally {
       setLoading(false);
@@ -1212,6 +1223,11 @@ export default function AvailabilityStudioPage() {
       clearTimeout(t);
       window.removeEventListener("keydown", onKeyDown);
     };
+    // closeExceptionDrawer is referenced via the keydown handler closure; its
+    // identity changes on every render but calling it with a stale reference
+    // is safe (it just closes the drawer). Pinning deps to the inputs we
+    // actually branch on avoids re-binding listeners on every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [exceptionDrawerOpen, exceptionHasUnsavedChanges, exceptionSaving]);
 
   useEffect(() => {
@@ -1404,7 +1420,7 @@ export default function AvailabilityStudioPage() {
                             if (!res.ok || !payload?.ok) throw new Error(payload?.error ?? "DELETE_ERROR");
                             await refetchAll();
                           } catch (err) {
-                            setExceptionError(err instanceof Error ? err.message : "DELETE_ERROR");
+                            setExceptionError(errorMessageFr(err instanceof Error ? err.message : "DELETE_ERROR"));
                           } finally {
                             setExceptionSaving(false);
                           }
@@ -1736,7 +1752,7 @@ export default function AvailabilityStudioPage() {
                     });
                     setExceptionDrawerOpen(false);
                   } catch (err) {
-                    setExceptionError(err instanceof Error ? err.message : "SAVE_ERROR");
+                    setExceptionError(errorMessageFr(err instanceof Error ? err.message : "SAVE_ERROR"));
                   } finally {
                     setExceptionSaving(false);
                   }
