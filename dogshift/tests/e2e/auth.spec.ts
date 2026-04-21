@@ -60,26 +60,30 @@ test("login form advances to password step after entering a valid email", async 
 
   // Wait for Clerk to finish initialising so the button is interactive.
   await page.waitForLoadState("networkidle").catch(() => { /* timeout is ok */ });
-  // The email step "Continuer" button is inside the form (not the Google button).
   const continuerBtn = page.getByRole("button", { name: /continuer/i }).first();
   await expect(continuerBtn).toBeVisible({ timeout: 15_000 });
 
-  await emailInput.fill(process.env.PLAYWRIGHT_SITTER_EMAIL ?? "test@dogshift.ch");
+  // Use the owner email — we know it exists in Clerk (global-setup confirmed it).
+  // Clerk never hides the submit button — it disables it while processing then
+  // shows a new step. So we do NOT wait for the button to disappear; instead we
+  // wait for the next-step input to appear (password or OTP code field).
+  const email = process.env.PLAYWRIGHT_OWNER_EMAIL ?? process.env.PLAYWRIGHT_SITTER_EMAIL ?? "test@dogshift.ch";
+  await emailInput.fill(email);
   await continuerBtn.click();
 
-  // After Clerk processes the email, either:
-  // a) password field appears (account has password auth) — ideal
-  // b) email code field appears (email-only account)
-  // c) an error message appears (unknown account) — should not happen with real test account
-  //
-  // In all success cases, the form changes state — the email submit button disappears.
-  await expect(page.getByRole("button", { name: /continuer/i })).not.toBeVisible({
-    timeout: 15_000,
-  });
-
-  // Either a password field or an email-code field must appear.
+  // After Clerk processes the email one of these appears:
+  //   a) password field  — account has password auth
+  //   b) numeric code field — email-code / OTP account
+  // Both confirm Clerk accepted the email and advanced the form.
   const passwordField = page.locator('input[type="password"]');
   const codeField = page.locator('input[inputmode="numeric"]');
+
+  // Wait up to 20s for either field to become visible.
+  await Promise.race([
+    passwordField.waitFor({ state: "visible", timeout: 20_000 }),
+    codeField.waitFor({ state: "visible", timeout: 20_000 }),
+  ]).catch(() => { /* will be caught by assertion below */ });
+
   const eitherVisible = (await passwordField.isVisible()) || (await codeField.isVisible());
   expect(eitherVisible, "expected password or email-code field to appear after email step").toBe(true);
 });
