@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
@@ -27,6 +27,7 @@ import {
 import {
   STEP_1_FIELDS,
   STEP_2_FIELDS,
+  STEP_3_FIELDS,
   sitterApplicationSchemaV2,
   type SitterApplicationV2,
 } from "@/lib/sitterApplication/schema";
@@ -119,6 +120,22 @@ export default function SitterApplicationForm({
   const [serverError, setServerError] = useState<string>("");
   const [emailEligibility, setEmailEligibility] =
     useState<EmailEligibilityState>({ kind: "ok" });
+  const topAnchorRef = useRef<HTMLDivElement | null>(null);
+  const hasScrolledOnceRef = useRef(false);
+
+  useEffect(() => {
+    // Bring the user back to the top of the form whenever they step forward
+    // or backward. Skip the very first run on mount so the initial navigation
+    // that originally brought them to /candidater isn't hijacked.
+    if (!hasScrolledOnceRef.current) {
+      hasScrolledOnceRef.current = true;
+      return;
+    }
+    topAnchorRef.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+  }, [step]);
 
   const cityOptions = useMemo(
     () => [
@@ -135,6 +152,7 @@ export default function SitterApplicationForm({
     trigger,
     setValue,
     getValues,
+    clearErrors,
     formState: { errors, isSubmitting },
   } = useForm<SitterApplicationV2>({
     resolver: zodResolver(sitterApplicationSchemaV2),
@@ -227,11 +245,20 @@ export default function SitterApplicationForm({
       const eligible = await checkEmailEligibility(getValues("email") ?? "");
       if (!eligible) return;
     }
+    // Clear any stale validation errors on the step the user is stepping INTO
+    // so newly-revealed fields start clean (no red messages on mount, only
+    // after the user actually touched/submitted them).
+    const nextStepFields = step === 0 ? STEP_2_FIELDS : STEP_3_FIELDS;
+    clearErrors([...nextStepFields]);
     setStep((s) => Math.min(2, s + 1));
   }
 
   function handlePrev() {
     setServerError("");
+    // Same idea in reverse: don't surface step-3 errors from a failed submit
+    // when the user steps back to edit previous answers.
+    const prevStepFields = step === 2 ? STEP_2_FIELDS : STEP_1_FIELDS;
+    clearErrors([...prevStepFields]);
     setStep((s) => Math.max(0, s - 1));
   }
 
@@ -367,6 +394,11 @@ export default function SitterApplicationForm({
 
   return (
     <form noValidate onSubmit={onSubmit} className="grid gap-6">
+      <div
+        ref={topAnchorRef}
+        aria-hidden="true"
+        className="pointer-events-none -mt-4 h-0 w-full scroll-mt-24"
+      />
       <Stepper steps={STEP_LABELS} current={step} />
 
       {/* ------------------------------------------------------------------ */}
