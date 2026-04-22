@@ -28,6 +28,10 @@ import {
   pilotSitterApplicationConfirmationCtaUrl,
   pilotSitterApplicationConfirmationPlainText,
 } from "@/lib/email/templates/pilotSitterApplicationConfirmation";
+import {
+  buildApplicationScoringPayload,
+  triggerApplicationScoring,
+} from "@/lib/integrations/triggerApplicationScoring";
 
 export const runtime = "nodejs";
 
@@ -325,6 +329,43 @@ export async function POST(req: NextRequest) {
       },
       select: { id: true, email: true, firstName: true },
     });
+
+    // Best-effort push to the external n8n scoring workflow. Must never
+    // block or fail the application creation — if n8n is down, the
+    // candidate is still saved and will receive the generic confirmation
+    // email below.
+    try {
+      const scoringPayload = buildApplicationScoringPayload({
+        applicationId: created.id,
+        firstName,
+        lastName,
+        email,
+        phone,
+        city,
+        cityOther,
+        npa,
+        linkAnimalProfession,
+        linkAnimalProfessionOther,
+        gardeExperienceLevel,
+        experienceText,
+        motivationText,
+        availabilityStructured: availabilityStructured ?? null,
+        gardeTypes,
+        dogSizes,
+        housingType,
+        hasCarLicense,
+      });
+      const result = await triggerApplicationScoring(scoringPayload);
+      if (!result.ok && result.reason !== "disabled") {
+        console.warn("[api][sitter-applications] n8n scoring trigger failed", {
+          applicationId: created.id,
+          reason: result.reason,
+          detail: result.detail,
+        });
+      }
+    } catch (err) {
+      console.warn("[api][sitter-applications] n8n scoring trigger threw", err);
+    }
 
     // Best-effort confirmation email (does not block application creation).
     try {
