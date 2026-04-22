@@ -558,7 +558,7 @@ export default function SitterApplicationForm({
                 <TextInput
                   type="number"
                   inputMode="numeric"
-                  min={16}
+                  min={18}
                   max={99}
                   placeholder="ex. 28"
                   value={field.value == null ? "" : String(field.value)}
