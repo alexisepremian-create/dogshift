@@ -144,6 +144,12 @@ export default function SitterApplicationForm({
   const [status, setStatus] = useState<SubmitStatus>("idle");
   const [serverError, setServerError] = useState<string>("");
   const [isAdvancing, setIsAdvancing] = useState(false);
+  // Gate for RED field-level error messages. We keep RHF's `errors` state
+  // as-is (so reValidateMode:onChange can keep the form in sync), but we
+  // only SHOW those errors once the user has actually tried to advance /
+  // submit the current step. Resets on step change so a fresh step never
+  // greets the user with inherited red messages.
+  const [showErrors, setShowErrors] = useState(false);
   const [emailEligibility, setEmailEligibility] =
     useState<EmailEligibilityState>({ kind: "ok" });
   const topAnchorRef = useRef<HTMLDivElement | null>(null);
@@ -209,10 +215,10 @@ export default function SitterApplicationForm({
   const otherAnimalsValue = useWatch({ control, name: "otherAnimals" });
 
   useEffect(() => {
-    // Defensive: whatever path the user took to land on this step (Suivant,
-    // Précédent, failed submit, re-mount…), arriving at a step should always
-    // give a pristine errors object. Single source of truth so we can stop
-    // patching handleNext / handlePrev individually.
+    // Arriving at a new step always starts visually clean: reset the gate,
+    // and also clear RHF's errors so that `reValidateMode:onChange` doesn't
+    // keep stale errors hanging around from a prior submit/trigger.
+    setShowErrors(false);
     clearErrors();
 
     // Bring the user back to the top of the form whenever they step forward
@@ -288,14 +294,19 @@ export default function SitterApplicationForm({
     setIsAdvancing(true);
     try {
       const ok = await trigger([...fields], { shouldFocus: true });
-      if (!ok) return;
+      if (!ok) {
+        // User clicked Suivant with invalid data → reveal the red messages
+        // for the current step so they know what to fix.
+        setShowErrors(true);
+        return;
+      }
       if (step === 0) {
         // Re-probe the email right before advancing so we catch users who just
         // typed a sitter email and skipped the blur event (e.g. keyboard submit).
         const eligible = await checkEmailEligibility(getValues("email") ?? "");
         if (!eligible) return;
       }
-      // Errors are wiped by the step-change useEffect — no need to double up.
+      // Errors + showErrors are wiped by the step-change useEffect.
       setStep((s) => Math.min(2, s + 1));
     } finally {
       setIsAdvancing(false);
@@ -307,8 +318,9 @@ export default function SitterApplicationForm({
     setStep((s) => Math.max(0, s - 1));
   }
 
-  const onSubmit = handleSubmit(async (data) => {
-    setServerError("");
+  const onSubmit = handleSubmit(
+    async (data) => {
+      setServerError("");
     // Final eligibility probe — if the signed-in session is already a sitter
     // or the typed email belongs to a sitter, block right here and surface
     // the message inline rather than fire a submit that will 409.
@@ -422,7 +434,13 @@ export default function SitterApplicationForm({
       setServerError("Impossible d'envoyer la candidature.");
       setStatus("error");
     }
-  });
+    },
+    () => {
+      // Zod / RHF found validation errors → flip the gate so the red
+      // messages are now visible for the fields the user left empty.
+      setShowErrors(true);
+    },
+  );
 
   if (status === "success") {
     return (
@@ -436,6 +454,13 @@ export default function SitterApplicationForm({
       </div>
     );
   }
+
+  // `errs` is what the UI renders from. It's either the live RHF errors
+  // (once the user has attempted to advance/submit) or an empty shim, so
+  // nothing is shown red before the user asked for it.
+  const errs = showErrors
+    ? errors
+    : ({} as typeof errors);
 
   return (
     <form noValidate onSubmit={onSubmit} className="grid gap-6">
@@ -452,18 +477,18 @@ export default function SitterApplicationForm({
       {step === 0 ? (
         <div className="grid gap-4">
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Prénom" required error={errors.firstName?.message}>
+            <Field label="Prénom" required error={errs.firstName?.message}>
               <TextInput
                 {...register("firstName")}
                 autoComplete="given-name"
-                invalid={Boolean(errors.firstName)}
+                invalid={Boolean(errs.firstName)}
               />
             </Field>
-            <Field label="Nom" required error={errors.lastName?.message}>
+            <Field label="Nom" required error={errs.lastName?.message}>
               <TextInput
                 {...register("lastName")}
                 autoComplete="family-name"
-                invalid={Boolean(errors.lastName)}
+                invalid={Boolean(errs.lastName)}
               />
             </Field>
           </div>
@@ -472,7 +497,7 @@ export default function SitterApplicationForm({
             label="Email"
             required
             error={
-              errors.email?.message ||
+              errs.email?.message ||
               (emailEligibility.kind === "blocked"
                 ? emailEligibility.message
                 : undefined)
@@ -491,7 +516,7 @@ export default function SitterApplicationForm({
                   autoComplete="email"
                   inputMode="email"
                   invalid={
-                    Boolean(errors.email) ||
+                    Boolean(errs.email) ||
                     emailEligibility.kind === "blocked"
                   }
                   {...emailField}
@@ -508,7 +533,7 @@ export default function SitterApplicationForm({
             label="Téléphone"
             required
             hint="Format suisse uniquement."
-            error={errors.phone?.message}
+            error={errs.phone?.message}
           >
             <Controller
               control={control}
@@ -519,13 +544,13 @@ export default function SitterApplicationForm({
                   value={field.value ?? ""}
                   onChange={field.onChange}
                   onBlur={field.onBlur}
-                  invalid={Boolean(errors.phone)}
+                  invalid={Boolean(errs.phone)}
                 />
               )}
             />
           </Field>
 
-          <Field label="Âge (optionnel)" error={errors.age?.message}>
+          <Field label="Âge (optionnel)" error={errs.age?.message}>
             <Controller
               control={control}
               name="age"
@@ -546,14 +571,14 @@ export default function SitterApplicationForm({
                     }
                   }}
                   onBlur={field.onBlur}
-                  invalid={Boolean(errors.age)}
+                  invalid={Boolean(errs.age)}
                 />
               )}
             />
           </Field>
 
           <div className="grid gap-4 sm:grid-cols-[1.2fr_0.8fr]">
-            <Field label="Ville / Région" required error={errors.city?.message}>
+            <Field label="Ville / Région" required error={errs.city?.message}>
               <Controller
                 control={control}
                 name="city"
@@ -565,19 +590,19 @@ export default function SitterApplicationForm({
                       field.onChange(e.target.value as SitterApplicationV2["city"])
                     }
                     onBlur={field.onBlur}
-                    invalid={Boolean(errors.city)}
+                    invalid={Boolean(errs.city)}
                     placeholder="Choisir une ville…"
                     options={cityOptions}
                   />
                 )}
               />
             </Field>
-            <Field label="NPA" required error={errors.npa?.message}>
+            <Field label="NPA" required error={errs.npa?.message}>
               <TextInput
                 inputMode="numeric"
                 placeholder="ex. 1004"
                 maxLength={4}
-                invalid={Boolean(errors.npa)}
+                invalid={Boolean(errs.npa)}
                 {...register("npa")}
               />
             </Field>
@@ -587,11 +612,11 @@ export default function SitterApplicationForm({
             <Field
               label="Précise ta ville"
               required
-              error={errors.cityOther?.message}
+              error={errs.cityOther?.message}
             >
               <TextInput
                 placeholder="ex. Nyon"
-                invalid={Boolean(errors.cityOther)}
+                invalid={Boolean(errs.cityOther)}
                 {...register("cityOther")}
               />
             </Field>
@@ -607,7 +632,7 @@ export default function SitterApplicationForm({
           <Field
             label="Lien professionnel avec les animaux"
             required
-            error={errors.linkAnimalProfession?.message}
+            error={errs.linkAnimalProfession?.message}
           >
             <Controller
               control={control}
@@ -622,7 +647,7 @@ export default function SitterApplicationForm({
                     )
                   }
                   onBlur={field.onBlur}
-                  invalid={Boolean(errors.linkAnimalProfession)}
+                  invalid={Boolean(errs.linkAnimalProfession)}
                   placeholder="Choisir…"
                   options={LINK_ANIMAL_PROFESSION_OPTIONS.map((o) => ({
                     value: o.value,
@@ -637,11 +662,11 @@ export default function SitterApplicationForm({
             <Field
               label="Précise le métier animalier"
               required
-              error={errors.linkAnimalProfessionOther?.message}
+              error={errs.linkAnimalProfessionOther?.message}
             >
               <TextInput
                 placeholder="ex. Auxiliaire vétérinaire"
-                invalid={Boolean(errors.linkAnimalProfessionOther)}
+                invalid={Boolean(errs.linkAnimalProfessionOther)}
                 {...register("linkAnimalProfessionOther")}
               />
             </Field>
@@ -650,7 +675,7 @@ export default function SitterApplicationForm({
           <Field
             label="As-tu déjà gardé des chiens ?"
             required
-            error={errors.gardeExperienceLevel?.message}
+            error={errs.gardeExperienceLevel?.message}
           >
             <Controller
               control={control}
@@ -665,7 +690,7 @@ export default function SitterApplicationForm({
                     )
                   }
                   onBlur={field.onBlur}
-                  invalid={Boolean(errors.gardeExperienceLevel)}
+                  invalid={Boolean(errs.gardeExperienceLevel)}
                   placeholder="Choisir…"
                   options={GARDE_EXPERIENCE_LEVEL_OPTIONS.map((o) => ({
                     value: o.value,
@@ -680,12 +705,12 @@ export default function SitterApplicationForm({
             label="Expérience avec les chiens"
             required
             hint="Décris les tailles, races, situations déjà rencontrées."
-            error={errors.experienceText?.message}
+            error={errs.experienceText?.message}
           >
             <Textarea
               rows={4}
               placeholder="ex. tailles, races, éducation, promenades, gardes précédentes…"
-              invalid={Boolean(errors.experienceText)}
+              invalid={Boolean(errs.experienceText)}
               {...register("experienceText")}
             />
           </Field>
@@ -694,23 +719,23 @@ export default function SitterApplicationForm({
             label="Pourquoi DogShift ?"
             required
             hint="Ta motivation aide à comprendre ton profil."
-            error={errors.motivationText?.message}
+            error={errs.motivationText?.message}
           >
             <Textarea
               rows={4}
               placeholder="Explique ce qui te motive à rejoindre DogShift…"
-              invalid={Boolean(errors.motivationText)}
+              invalid={Boolean(errs.motivationText)}
               {...register("motivationText")}
             />
           </Field>
 
           <Field
             label="Allergies aux animaux (optionnel)"
-            error={errors.allergies?.message}
+            error={errs.allergies?.message}
           >
             <TextInput
               placeholder="Aucune / Préciser si oui (chats, certains chiens…)"
-              invalid={Boolean(errors.allergies)}
+              invalid={Boolean(errs.allergies)}
               {...register("allergies")}
             />
           </Field>
@@ -726,8 +751,8 @@ export default function SitterApplicationForm({
             label="Disponibilités générales"
             required
             error={
-              errors.availabilityStructured?.message ||
-              errors.availabilityStructured?.root?.message
+              errs.availabilityStructured?.message ||
+              errs.availabilityStructured?.root?.message
             }
           >
             <Controller
@@ -745,7 +770,7 @@ export default function SitterApplicationForm({
           <Field
             label="Type(s) de garde proposé(s)"
             required
-            error={errors.gardeTypes?.message}
+            error={errs.gardeTypes?.message}
           >
             <Controller
               control={control}
@@ -771,7 +796,7 @@ export default function SitterApplicationForm({
           <Field
             label="Taille(s) de chiens acceptée(s)"
             required
-            error={errors.dogSizes?.message}
+            error={errs.dogSizes?.message}
           >
             <Controller
               control={control}
@@ -796,7 +821,7 @@ export default function SitterApplicationForm({
           <Field
             label="Type de logement"
             required
-            error={errors.housingType?.message}
+            error={errs.housingType?.message}
           >
             <Controller
               control={control}
@@ -811,7 +836,7 @@ export default function SitterApplicationForm({
                     )
                   }
                   onBlur={field.onBlur}
-                  invalid={Boolean(errors.housingType)}
+                  invalid={Boolean(errs.housingType)}
                   placeholder="Choisir…"
                   options={HOUSING_TYPE_OPTIONS.map((o) => ({
                     value: o.value,
@@ -826,11 +851,11 @@ export default function SitterApplicationForm({
             <Field
               label="Précise le type de logement"
               required
-              error={errors.housingTypeOther?.message}
+              error={errs.housingTypeOther?.message}
             >
               <TextInput
                 placeholder="ex. Studio avec grande terrasse partagée"
-                invalid={Boolean(errors.housingTypeOther)}
+                invalid={Boolean(errs.housingTypeOther)}
                 {...register("housingTypeOther")}
               />
             </Field>
@@ -840,7 +865,7 @@ export default function SitterApplicationForm({
             label="Autres animaux à mon domicile"
             required
             error={
-              errors.otherAnimals?.message || errors.otherAnimals?.root?.message
+              errs.otherAnimals?.message || errs.otherAnimals?.root?.message
             }
           >
             <Controller
@@ -888,7 +913,7 @@ export default function SitterApplicationForm({
             <Field
               label="Combien de chiens ?"
               required
-              error={errors.otherAnimalsDogCount?.message}
+              error={errs.otherAnimalsDogCount?.message}
             >
               <Controller
                 control={control}
@@ -909,7 +934,7 @@ export default function SitterApplicationForm({
                       }
                     }}
                     onBlur={field.onBlur}
-                    invalid={Boolean(errors.otherAnimalsDogCount)}
+                    invalid={Boolean(errs.otherAnimalsDogCount)}
                   />
                 )}
               />
@@ -950,9 +975,9 @@ export default function SitterApplicationForm({
                   onChange={(e) => field.onChange(e.target.checked)}
                   label="J'accepte d'être contacté·e pour un court entretien."
                 />
-                {errors.consentInterview ? (
+                {errs.consentInterview ? (
                   <p className="mt-1 text-center text-sm font-medium text-rose-600">
-                    {errors.consentInterview.message}
+                    {errs.consentInterview.message}
                   </p>
                 ) : null}
               </div>
@@ -970,9 +995,9 @@ export default function SitterApplicationForm({
                   onChange={(e) => field.onChange(e.target.checked)}
                   label="J'accepte la politique de confidentialité et le traitement de mes données dans le cadre de cette candidature."
                 />
-                {errors.consentPrivacy ? (
+                {errs.consentPrivacy ? (
                   <p className="mt-1 text-center text-sm font-medium text-rose-600">
-                    {errors.consentPrivacy.message}
+                    {errs.consentPrivacy.message}
                   </p>
                 ) : null}
               </div>
