@@ -168,7 +168,7 @@ function ApplicationStatusLow(props: { firstName: string }) {
       <Text style={styles.lead}>
         Rien n&apos;est définitif : à mesure que la plateforme grandit, nous rouvrirons les
         candidatures. Nous serons ravis de relire ton profil plus tard — n&apos;hésite pas à
-        recandidater.
+        postuler à nouveau.
       </Text>
       <Text style={styles.smallMuted}>Merci encore pour ta confiance et à bientôt, peut-être !</Text>
     </>

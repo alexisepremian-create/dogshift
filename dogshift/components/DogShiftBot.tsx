@@ -489,18 +489,18 @@ export default function DogShiftBot() {
             "comment on devient dogsitter", "comment devenir dogsitter",
             "comment devenir sitter", "comment je deviens dogsitter",
             "comment m'inscrire comme sitter", "comment proposer mes services",
-            "comment candidater", "comment rejoindre dogshift",
+            "comment candidater", "comment postuler", "comment rejoindre dogshift",
             "je veux devenir dogsitter", "je voudrais devenir dogsitter",
             "je souhaite devenir dogsitter", "je veux etre sitter",
             "dogsitter", "dog sitter",
             "proposer mes services", "rejoindre", "m'inscrire comme sitter",
             "sitter moi meme", "travailler", "gagner argent",
-            "revenus complementaires", "side job", "candidater",
+            "revenus complementaires", "side job", "candidater", "postuler",
             "commencer a garder", "inscription sitter", "profil sitter",
             "creer profil sitter", "candidature sitter",
           ],
           answer:
-            "Devenir dogsitter DogShift : c'est gratuit et rapide ! Cliquez sur « Candidater maintenant », créez votre profil sitter, définissez vos services, tarifs et disponibilités. Vous recevrez ensuite des demandes de propriétaires près de chez vous.",
+            "Devenir dogsitter DogShift : c'est gratuit et rapide ! Cliquez sur « Postuler maintenant », créez votre profil sitter, définissez vos services, tarifs et disponibilités. Vous recevrez ensuite des demandes de propriétaires près de chez vous.",
         },
         // ── Support / Bug ────────────────────────────────────────────────────
         {

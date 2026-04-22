@@ -71,7 +71,7 @@ export function applicationStatusEmailPlainText(params: {
     `${greeting}\n\n` +
     `Merci beaucoup de l'intérêt que tu portes à DogShift et du temps que tu as consacré à ta candidature.\n\n` +
     `Nous sommes actuellement en phase pilote avec une sélection très restreinte de dog-sitters. À ce stade, nous ne pourrons malheureusement pas retenir ta candidature.\n\n` +
-    `Rien n'est définitif : à mesure que la plateforme grandit, nous rouvrirons les candidatures et serons ravis de relire ton profil. N'hésite pas à recandidater plus tard.\n\n` +
+    `Rien n'est définitif : à mesure que la plateforme grandit, nous rouvrirons les candidatures et serons ravis de relire ton profil. N'hésite pas à postuler à nouveau plus tard.\n\n` +
     `${signOff}\n`
   );
 }
