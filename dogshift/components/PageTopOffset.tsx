@@ -11,6 +11,13 @@ export default function PageTopOffset({ children }: { children: React.ReactNode 
   const isHostArea = Boolean(pathname && pathname.startsWith("/host"));
   const isAccountArea = Boolean(pathname && pathname.startsWith("/account"));
   const isHostPreview = Boolean(pathname && pathname.startsWith("/sitter/") && (searchParams?.get("mode") ?? "") === "preview");
+  // Pages where we want the header to sit right above the content with no
+  // extra breathing room (long form flows where vertical real estate matters).
+  const isCompactPage = Boolean(
+    pathname &&
+      (pathname === "/devenir-dogsitter" ||
+        pathname.startsWith("/devenir-dogsitter/")),
+  );
 
   const needsOffset = useMemo(() => {
     if (!pathname) return false;
@@ -29,9 +36,9 @@ export default function PageTopOffset({ children }: { children: React.ReactNode 
 
   const paddingTop = useMemo(() => {
     if (!needsOffset) return undefined;
-    if (scrolled) return "var(--ds-page-top-offset)";
+    if (isCompactPage || scrolled) return "var(--ds-page-top-offset)";
     return "120px";
-  }, [needsOffset, scrolled]);
+  }, [needsOffset, scrolled, isCompactPage]);
 
   if (!needsOffset) return <>{children}</>;
 
