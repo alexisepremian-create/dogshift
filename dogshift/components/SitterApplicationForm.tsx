@@ -62,6 +62,32 @@ const STEP_LABELS = [
   "Modalités",
 ] as const;
 
+function Spinner() {
+  return (
+    <svg
+      aria-hidden="true"
+      className="h-4 w-4 animate-spin text-white"
+      viewBox="0 0 24 24"
+      fill="none"
+    >
+      <circle
+        cx="12"
+        cy="12"
+        r="10"
+        stroke="currentColor"
+        strokeOpacity="0.25"
+        strokeWidth="4"
+      />
+      <path
+        d="M22 12a10 10 0 0 1-10 10"
+        stroke="currentColor"
+        strokeWidth="4"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
 function getUtm(search: URLSearchParams) {
   const read = (k: string) => {
     const v = (search.get(k) || "").trim();
@@ -117,6 +143,7 @@ export default function SitterApplicationForm({
   const [step, setStep] = useState(0);
   const [status, setStatus] = useState<SubmitStatus>("idle");
   const [serverError, setServerError] = useState<string>("");
+  const [isAdvancing, setIsAdvancing] = useState(false);
   const [emailEligibility, setEmailEligibility] =
     useState<EmailEligibilityState>({ kind: "ok" });
   const topAnchorRef = useRef<HTMLDivElement | null>(null);
@@ -166,7 +193,11 @@ export default function SitterApplicationForm({
     formState: { errors, isSubmitting },
   } = useForm<SitterApplicationV2>({
     resolver: zodResolver(sitterApplicationSchemaV2),
-    mode: "onTouched",
+    // Only validate on explicit action (Suivant / Envoyer). reValidateMode
+    // kicks in once a field already has an error so corrections clear the
+    // red message as the user types — but nothing is validated pre-action.
+    mode: "onSubmit",
+    reValidateMode: "onChange",
     shouldFocusError: true,
     defaultValues: {
       firstName: "",
@@ -243,24 +274,30 @@ export default function SitterApplicationForm({
   }
 
   async function handleNext() {
+    if (isAdvancing) return;
     setServerError("");
     const fields =
       step === 0 ? STEP_1_FIELDS : step === 1 ? STEP_2_FIELDS : [];
     if (fields.length === 0) return;
-    const ok = await trigger([...fields], { shouldFocus: true });
-    if (!ok) return;
-    if (step === 0) {
-      // Re-probe the email right before advancing so we catch users who just
-      // typed a sitter email and skipped the blur event (e.g. keyboard submit).
-      const eligible = await checkEmailEligibility(getValues("email") ?? "");
-      if (!eligible) return;
+    setIsAdvancing(true);
+    try {
+      const ok = await trigger([...fields], { shouldFocus: true });
+      if (!ok) return;
+      if (step === 0) {
+        // Re-probe the email right before advancing so we catch users who just
+        // typed a sitter email and skipped the blur event (e.g. keyboard submit).
+        const eligible = await checkEmailEligibility(getValues("email") ?? "");
+        if (!eligible) return;
+      }
+      // Nuke every leftover validation error on step transition. A previous
+      // submit attempt populates errors for all invalid fields (RHF behavior on
+      // handleSubmit), which would otherwise greet the user with red messages
+      // on the next step before they've even interacted with it.
+      clearErrors();
+      setStep((s) => Math.min(2, s + 1));
+    } finally {
+      setIsAdvancing(false);
     }
-    // Nuke every leftover validation error on step transition. A previous
-    // submit attempt populates errors for all invalid fields (RHF behavior on
-    // handleSubmit), which would otherwise greet the user with red messages
-    // on the next step before they've even interacted with it.
-    clearErrors();
-    setStep((s) => Math.min(2, s + 1));
   }
 
   function handlePrev() {
@@ -641,7 +678,7 @@ export default function SitterApplicationForm({
           <Field
             label="Expérience avec les chiens"
             required
-            hint="Minimum 30 caractères. Décris les tailles, races, situations déjà rencontrées."
+            hint="Décris les tailles, races, situations déjà rencontrées."
             error={errors.experienceText?.message}
           >
             <Textarea
@@ -655,7 +692,7 @@ export default function SitterApplicationForm({
           <Field
             label="Pourquoi DogShift ?"
             required
-            hint="Minimum 80 caractères. Ta motivation aide à comprendre ton profil."
+            hint="Ta motivation aide à comprendre ton profil."
             error={errors.motivationText?.message}
           >
             <Textarea
@@ -976,19 +1013,32 @@ export default function SitterApplicationForm({
           <button
             type="button"
             onClick={() => void handleNext()}
-            className="inline-flex h-11 items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-6 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition hover:bg-[var(--dogshift-blue-hover)]"
+            disabled={isAdvancing}
+            className="inline-flex h-11 min-w-32 items-center justify-center gap-2 rounded-2xl bg-[var(--dogshift-blue)] px-6 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition hover:bg-[var(--dogshift-blue-hover)] disabled:cursor-not-allowed disabled:opacity-60"
           >
-            Suivant
+            {isAdvancing ? (
+              <>
+                <Spinner />
+                <span>Vérification…</span>
+              </>
+            ) : (
+              <span>Suivant</span>
+            )}
           </button>
         ) : (
           <button
             type="submit"
             disabled={isSubmitting || status === "submitting"}
-            className="inline-flex h-11 items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-6 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition hover:bg-[var(--dogshift-blue-hover)] disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex h-11 min-w-40 items-center justify-center gap-2 rounded-2xl bg-[var(--dogshift-blue)] px-6 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition hover:bg-[var(--dogshift-blue-hover)] disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {isSubmitting || status === "submitting"
-              ? "Envoi…"
-              : "Envoyer ma candidature"}
+            {isSubmitting || status === "submitting" ? (
+              <>
+                <Spinner />
+                <span>Envoi…</span>
+              </>
+            ) : (
+              <span>Envoyer ma candidature</span>
+            )}
           </button>
         )}
       </div>
