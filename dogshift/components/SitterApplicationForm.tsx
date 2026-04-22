@@ -27,7 +27,6 @@ import {
 import {
   STEP_1_FIELDS,
   STEP_2_FIELDS,
-  STEP_3_FIELDS,
   sitterApplicationSchemaV2,
   type SitterApplicationV2,
 } from "@/lib/sitterApplication/schema";
@@ -131,10 +130,21 @@ export default function SitterApplicationForm({
       hasScrolledOnceRef.current = true;
       return;
     }
-    topAnchorRef.current?.scrollIntoView({
-      behavior: "smooth",
-      block: "start",
+    // rAF ensures the newly-rendered step content has been laid out before we
+    // measure the anchor position; without it, fast step transitions can read
+    // a stale bounding box and overshoot/undershoot (2 → 3 symptoms reported).
+    const anchor = topAnchorRef.current;
+    if (!anchor) return;
+    const raf = requestAnimationFrame(() => {
+      const rect = anchor.getBoundingClientRect();
+      const headerOffset = 96; // clears the fixed SiteHeader (h-16) + padding
+      const targetTop = rect.top + window.scrollY - headerOffset;
+      window.scrollTo({
+        top: Math.max(0, targetTop),
+        behavior: "smooth",
+      });
     });
+    return () => cancelAnimationFrame(raf);
   }, [step]);
 
   const cityOptions = useMemo(
@@ -245,20 +255,17 @@ export default function SitterApplicationForm({
       const eligible = await checkEmailEligibility(getValues("email") ?? "");
       if (!eligible) return;
     }
-    // Clear any stale validation errors on the step the user is stepping INTO
-    // so newly-revealed fields start clean (no red messages on mount, only
-    // after the user actually touched/submitted them).
-    const nextStepFields = step === 0 ? STEP_2_FIELDS : STEP_3_FIELDS;
-    clearErrors([...nextStepFields]);
+    // Nuke every leftover validation error on step transition. A previous
+    // submit attempt populates errors for all invalid fields (RHF behavior on
+    // handleSubmit), which would otherwise greet the user with red messages
+    // on the next step before they've even interacted with it.
+    clearErrors();
     setStep((s) => Math.min(2, s + 1));
   }
 
   function handlePrev() {
     setServerError("");
-    // Same idea in reverse: don't surface step-3 errors from a failed submit
-    // when the user steps back to edit previous answers.
-    const prevStepFields = step === 2 ? STEP_2_FIELDS : STEP_1_FIELDS;
-    clearErrors([...prevStepFields]);
+    clearErrors();
     setStep((s) => Math.max(0, s - 1));
   }
 
