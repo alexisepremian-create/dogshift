@@ -12,7 +12,7 @@ import {
   SWISS_NPA_REGEX,
   SWISS_PHONE_REGEX,
   hasAnyAvailabilitySlot,
-} from "./options";
+} from "./options.ts";
 
 // ---------------------------------------------------------------------------
 // Availability grid schema
