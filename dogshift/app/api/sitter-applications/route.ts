@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { auth } from "@clerk/nextjs/server";
 
 import { prisma } from "@/lib/prisma";
 import { sendEmail } from "@/lib/email/sendEmail";
@@ -7,6 +8,10 @@ import { render } from "@react-email/render";
 import { checkRateLimit } from "@/lib/rateLimit";
 import { baseUrlFromRequest } from "@/lib/url/baseUrlFromRequest";
 import { zodParse } from "@/lib/validators/common";
+import {
+  clerkUserIsExistingSitter,
+  emailBelongsToExistingSitter,
+} from "@/lib/sitterApplication/existingSitter";
 import {
   sitterApplicationApiSchema,
   type SitterApplicationApiBody,
@@ -273,6 +278,49 @@ export async function POST(req: NextRequest) {
         { ok: false, error: "CONSENT_REQUIRED", message: "Merci d'accepter les consentements." },
         { status: 400 },
       );
+    }
+
+    // ----- Block already-activated dog-sitters ----------------------------
+    // Either the caller is signed in with a sitter account, or the submitted
+    // email already belongs to a sitter user. Both paths short-circuit with
+    // a French 409 so the client form can display a tailored message.
+    try {
+      const { userId: clerkUserId } = await auth();
+      if (clerkUserId) {
+        const { isSitter } = await clerkUserIsExistingSitter(clerkUserId);
+        if (isSitter) {
+          return NextResponse.json(
+            {
+              ok: false,
+              error: "ALREADY_SITTER",
+              message:
+                "Tu es déjà dog-sitter DogShift. Inutile de postuler à nouveau — connecte-toi à ton espace sitter.",
+            },
+            { status: 409 },
+          );
+        }
+      }
+    } catch (err) {
+      // Clerk session lookup failing must never block a legitimate submission
+      // — fall through to the email-based check below.
+      console.warn("[api][sitter-applications] clerk auth lookup failed", err);
+    }
+
+    try {
+      const emailIsSitter = await emailBelongsToExistingSitter(email);
+      if (emailIsSitter) {
+        return NextResponse.json(
+          {
+            ok: false,
+            error: "ALREADY_SITTER",
+            message:
+              "Cette adresse email correspond déjà à un dog-sitter DogShift. Connecte-toi à ton espace sitter ou utilise une autre adresse.",
+          },
+          { status: 409 },
+        );
+      }
+    } catch (err) {
+      console.warn("[api][sitter-applications] sitter lookup by email failed", err);
     }
 
     const idempotencyKey = (req.headers.get("x-idempotency-key") ?? "").trim() || null;

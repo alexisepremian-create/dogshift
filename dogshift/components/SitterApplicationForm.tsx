@@ -33,9 +33,28 @@ import {
 
 type Props = {
   onSuccess?: () => void;
+  /**
+   * Email pre-filled from the server-side Clerk session when the visitor is
+   * signed in as a (non-sitter) owner. Empty otherwise.
+   */
+  defaultEmail?: string | null;
 };
 
 type SubmitStatus = "idle" | "submitting" | "success" | "error";
+
+type EmailEligibilityState =
+  | { kind: "ok" }
+  | { kind: "checking" }
+  | { kind: "blocked"; reason: string; message: string };
+
+const INELIGIBLE_MESSAGES: Record<string, string> = {
+  signed_in_as_sitter:
+    "Tu es déjà dog-sitter DogShift. Inutile de postuler à nouveau — connecte-toi à ton espace sitter.",
+  email_belongs_to_sitter:
+    "Cette adresse email correspond déjà à un dog-sitter DogShift. Connecte-toi à ton espace sitter ou utilise une autre adresse.",
+};
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const STEP_LABELS = [
   "Infos personnelles",
@@ -91,10 +110,15 @@ function availabilityToText(value: SitterApplicationV2["availabilityStructured"]
   return parts.length ? parts.join(" · ") : "—";
 }
 
-export default function SitterApplicationForm({ onSuccess }: Props) {
+export default function SitterApplicationForm({
+  onSuccess,
+  defaultEmail = null,
+}: Props) {
   const [step, setStep] = useState(0);
   const [status, setStatus] = useState<SubmitStatus>("idle");
   const [serverError, setServerError] = useState<string>("");
+  const [emailEligibility, setEmailEligibility] =
+    useState<EmailEligibilityState>({ kind: "ok" });
 
   const cityOptions = useMemo(
     () => [
@@ -110,6 +134,7 @@ export default function SitterApplicationForm({ onSuccess }: Props) {
     handleSubmit,
     trigger,
     setValue,
+    getValues,
     formState: { errors, isSubmitting },
   } = useForm<SitterApplicationV2>({
     resolver: zodResolver(sitterApplicationSchemaV2),
@@ -118,7 +143,7 @@ export default function SitterApplicationForm({ onSuccess }: Props) {
     defaultValues: {
       firstName: "",
       lastName: "",
-      email: "",
+      email: (defaultEmail ?? "").trim().toLowerCase(),
       phone: "",
       age: null,
       city: "" as unknown as SitterApplicationV2["city"],
@@ -149,13 +174,60 @@ export default function SitterApplicationForm({ onSuccess }: Props) {
   const housingTypeValue = useWatch({ control, name: "housingType" });
   const otherAnimalsValue = useWatch({ control, name: "otherAnimals" });
 
+  async function checkEmailEligibility(raw: string): Promise<boolean> {
+    const normalized = raw.trim().toLowerCase();
+    if (!normalized || !EMAIL_RE.test(normalized)) {
+      setEmailEligibility({ kind: "ok" });
+      return true;
+    }
+    setEmailEligibility({ kind: "checking" });
+    try {
+      const res = await fetch(
+        `/api/sitter-applications/eligibility?email=${encodeURIComponent(normalized)}`,
+        { cache: "no-store" },
+      );
+      // Ignore stale responses — user may have changed the email field in
+      // the meantime.
+      const current = (getValues("email") ?? "").trim().toLowerCase();
+      if (current && current !== normalized) return true;
+      if (!res.ok) {
+        setEmailEligibility({ kind: "ok" });
+        return true;
+      }
+      const json = (await res.json().catch(() => null)) as
+        | { eligible?: boolean; reason?: string }
+        | null;
+      if (json && json.eligible === false) {
+        const reason =
+          typeof json.reason === "string" ? json.reason : "ineligible";
+        const message =
+          INELIGIBLE_MESSAGES[reason] ??
+          "Cette adresse email ne peut pas être utilisée pour postuler.";
+        setEmailEligibility({ kind: "blocked", reason, message });
+        return false;
+      }
+      setEmailEligibility({ kind: "ok" });
+      return true;
+    } catch {
+      setEmailEligibility({ kind: "ok" });
+      return true;
+    }
+  }
+
   async function handleNext() {
     setServerError("");
     const fields =
       step === 0 ? STEP_1_FIELDS : step === 1 ? STEP_2_FIELDS : [];
     if (fields.length === 0) return;
     const ok = await trigger([...fields], { shouldFocus: true });
-    if (ok) setStep((s) => Math.min(2, s + 1));
+    if (!ok) return;
+    if (step === 0) {
+      // Re-probe the email right before advancing so we catch users who just
+      // typed a sitter email and skipped the blur event (e.g. keyboard submit).
+      const eligible = await checkEmailEligibility(getValues("email") ?? "");
+      if (!eligible) return;
+    }
+    setStep((s) => Math.min(2, s + 1));
   }
 
   function handlePrev() {
@@ -165,6 +237,14 @@ export default function SitterApplicationForm({ onSuccess }: Props) {
 
   const onSubmit = handleSubmit(async (data) => {
     setServerError("");
+    // Final eligibility probe — if the signed-in session is already a sitter
+    // or the typed email belongs to a sitter, block right here and surface
+    // the message inline rather than fire a submit that will 409.
+    const eligible = await checkEmailEligibility(data.email);
+    if (!eligible) {
+      setStep(0);
+      return;
+    }
     setStatus("submitting");
     try {
       const sp = new URLSearchParams(
@@ -240,12 +320,25 @@ export default function SitterApplicationForm({ onSuccess }: Props) {
       const json = (await res.json().catch(() => null)) as {
         ok?: boolean;
         message?: string;
+        error?: string;
       } | null;
       if (!res.ok || !json?.ok) {
         const msg =
           typeof json?.message === "string" && json.message.trim()
             ? json.message.trim()
             : "Impossible d'envoyer la candidature.";
+        if (res.status === 409 && json?.error === "ALREADY_SITTER") {
+          // Surface the block inline on the email field and drop back to step 1
+          // so the user sees the tailored message without scrolling.
+          setEmailEligibility({
+            kind: "blocked",
+            reason: "email_belongs_to_sitter",
+            message: msg,
+          });
+          setStep(0);
+          setStatus("idle");
+          return;
+        }
         setServerError(msg);
         setStatus("error");
         return;
@@ -298,14 +391,40 @@ export default function SitterApplicationForm({ onSuccess }: Props) {
             </Field>
           </div>
 
-          <Field label="Email" required error={errors.email?.message}>
-            <TextInput
-              type="email"
-              autoComplete="email"
-              inputMode="email"
-              invalid={Boolean(errors.email)}
-              {...register("email")}
-            />
+          <Field
+            label="Email"
+            required
+            error={
+              errors.email?.message ||
+              (emailEligibility.kind === "blocked"
+                ? emailEligibility.message
+                : undefined)
+            }
+            hint={
+              emailEligibility.kind === "checking"
+                ? "Vérification de l'adresse…"
+                : undefined
+            }
+          >
+            {(() => {
+              const emailField = register("email");
+              return (
+                <TextInput
+                  type="email"
+                  autoComplete="email"
+                  inputMode="email"
+                  invalid={
+                    Boolean(errors.email) ||
+                    emailEligibility.kind === "blocked"
+                  }
+                  {...emailField}
+                  onBlur={(e) => {
+                    void emailField.onBlur(e);
+                    void checkEmailEligibility(e.target.value);
+                  }}
+                />
+              );
+            })()}
           </Field>
 
           <Field
