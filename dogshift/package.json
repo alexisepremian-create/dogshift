@@ -49,6 +49,7 @@
     "pdf-lib": "^1.17.1",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
+    "react-hook-form": "^7.71.2",
     "react-leaflet": "^5.0.0",
     "react-map-gl": "^8.1.0",
     "stripe": "^20.1.0",
