@@ -70,12 +70,15 @@ export const GARDE_EXPERIENCE_LEVEL_VALUES =
 // ----------------------------------------------------------------------------
 // Sitting types offered
 // ----------------------------------------------------------------------------
+// Kept aligned with the 3 services publicly offered on the platform:
+// promenade, dogsitting (half / full day), pension (multi-day boarding).
+// Historical values (at_my_home, home_visits, overnight, at_owner_home) are
+// still accepted at the API / DB layer for legacy rows but are no longer
+// surfaced in the form.
 export const GARDE_TYPE_OPTIONS = [
-  { value: "at_my_home", label: "Garde à mon domicile (le chien vient chez moi)" },
-  { value: "at_owner_home", label: "Garde au domicile du propriétaire (je me déplace)" },
-  { value: "walks_only", label: "Promenades uniquement (sans garde)" },
-  { value: "home_visits", label: "Visites à domicile (passer nourrir / sortir)" },
-  { value: "overnight", label: "Garde de nuit" },
+  { value: "walks_only", label: "Promenade" },
+  { value: "at_owner_home", label: "Dogsitting (garde à la journée)" },
+  { value: "at_my_home", label: "Pension (garde sur plusieurs jours à mon domicile)" },
 ] as const;
 
 export const GARDE_TYPE_VALUES =
@@ -84,11 +87,13 @@ export const GARDE_TYPE_VALUES =
 // ----------------------------------------------------------------------------
 // Accepted dog sizes
 // ----------------------------------------------------------------------------
+// Aligned with the 3 size buckets exposed on the public sitter search.
+// Historical `xl` value is still accepted at the DB layer for legacy rows but
+// is no longer offered in the form.
 export const DOG_SIZE_OPTIONS = [
   { value: "small", label: "Petit (< 10 kg)" },
   { value: "medium", label: "Moyen (10-25 kg)" },
-  { value: "large", label: "Grand (25-40 kg)" },
-  { value: "xl", label: "Très grand (> 40 kg)" },
+  { value: "large", label: "Grand (> 25 kg)" },
 ] as const;
 
 export const DOG_SIZE_VALUES =

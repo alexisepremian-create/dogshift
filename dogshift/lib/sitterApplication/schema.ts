@@ -111,16 +111,8 @@ export const sitterApplicationSchemaV2 = z
       message: "Merci de choisir une option.",
     }),
 
-    experienceText: nonEmptyTrim(
-      30,
-      5000,
-      "Expérience requise (min. 30 caractères).",
-    ),
-    motivationText: nonEmptyTrim(
-      80,
-      5000,
-      "Motivation requise (min. 80 caractères).",
-    ),
+    experienceText: nonEmptyTrim(1, 5000, "Merci de décrire ton expérience."),
+    motivationText: nonEmptyTrim(1, 5000, "Merci d'expliquer ta motivation."),
     allergies: z.string().trim().max(500).optional().nullable(),
 
     // ----- Step 3: modalities -----------------------------------------------

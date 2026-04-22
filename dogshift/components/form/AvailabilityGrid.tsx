@@ -28,8 +28,9 @@ const COLUMN_LABELS: Array<{ key: SlotKey; label: string }> = [
  *
  * Rules:
  *  - Toggling "journeeEntiere" ON sets matin + apresMidi ON.
- *  - Toggling "journeeEntiere" OFF leaves matin + apresMidi as-is (so the
- *    sitter can fall back to a half-day without losing previous selection).
+ *  - Toggling "journeeEntiere" OFF clears matin + apresMidi too — if the user
+ *    "removes" the full day, the whole day is cleared (user-requested: it's
+ *    counter-intuitive otherwise to still have half-day ticks left behind).
  *  - If both "matin" and "apresMidi" end up ON, "journeeEntiere" is set ON.
  *  - If any of them is OFF, "journeeEntiere" is OFF.
  */
@@ -39,10 +40,8 @@ function toggleSlot(current: DaySlots, slot: SlotKey): DaySlots {
 
   if (slot === "journeeEntiere") {
     next.journeeEntiere = newVal;
-    if (newVal) {
-      next.matin = true;
-      next.apresMidi = true;
-    }
+    next.matin = newVal;
+    next.apresMidi = newVal;
     return next;
   }
 

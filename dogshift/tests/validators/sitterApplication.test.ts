@@ -185,11 +185,28 @@ test("sitterApplicationSchemaV2 requires at least 1 dog size", () => {
   assert.equal(res.success, false);
 });
 
-test("sitterApplicationSchemaV2 rejects motivation < 80 chars", () => {
+test("sitterApplicationSchemaV2 rejects empty motivation", () => {
   const payload = baseValidPayload();
-  payload.motivationText = "trop court";
+  payload.motivationText = "";
   const res = sitterApplicationSchemaV2.safeParse(payload);
   assert.equal(res.success, false);
+});
+
+test("sitterApplicationSchemaV2 rejects empty experience", () => {
+  const payload = baseValidPayload();
+  payload.experienceText = "";
+  const res = sitterApplicationSchemaV2.safeParse(payload);
+  assert.equal(res.success, false);
+});
+
+test("sitterApplicationSchemaV2 accepts a short motivation (no min-length floor)", () => {
+  // User-facing requirement: we dropped the 80/30 minimums, we only require
+  // the field to be filled in at all.
+  const payload = baseValidPayload();
+  payload.motivationText = "j'aime les chiens";
+  payload.experienceText = "beaucoup";
+  const res = sitterApplicationSchemaV2.safeParse(payload);
+  assert.equal(res.success, true);
 });
 
 test("sitterApplicationSchemaV2 rejects otherAnimals=none combined with others", () => {
