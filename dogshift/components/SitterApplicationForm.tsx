@@ -149,31 +149,6 @@ export default function SitterApplicationForm({
   const topAnchorRef = useRef<HTMLDivElement | null>(null);
   const hasScrolledOnceRef = useRef(false);
 
-  useEffect(() => {
-    // Bring the user back to the top of the form whenever they step forward
-    // or backward. Skip the very first run on mount so the initial navigation
-    // that originally brought them to /candidater isn't hijacked.
-    if (!hasScrolledOnceRef.current) {
-      hasScrolledOnceRef.current = true;
-      return;
-    }
-    // rAF ensures the newly-rendered step content has been laid out before we
-    // measure the anchor position; without it, fast step transitions can read
-    // a stale bounding box and overshoot/undershoot (2 → 3 symptoms reported).
-    const anchor = topAnchorRef.current;
-    if (!anchor) return;
-    const raf = requestAnimationFrame(() => {
-      const rect = anchor.getBoundingClientRect();
-      const headerOffset = 96; // clears the fixed SiteHeader (h-16) + padding
-      const targetTop = rect.top + window.scrollY - headerOffset;
-      window.scrollTo({
-        top: Math.max(0, targetTop),
-        behavior: "smooth",
-      });
-    });
-    return () => cancelAnimationFrame(raf);
-  }, [step]);
-
   const cityOptions = useMemo(
     () => [
       ...TARGET_CITIES.map((c) => ({ value: c, label: c })),
@@ -233,6 +208,37 @@ export default function SitterApplicationForm({
   const housingTypeValue = useWatch({ control, name: "housingType" });
   const otherAnimalsValue = useWatch({ control, name: "otherAnimals" });
 
+  useEffect(() => {
+    // Defensive: whatever path the user took to land on this step (Suivant,
+    // Précédent, failed submit, re-mount…), arriving at a step should always
+    // give a pristine errors object. Single source of truth so we can stop
+    // patching handleNext / handlePrev individually.
+    clearErrors();
+
+    // Bring the user back to the top of the form whenever they step forward
+    // or backward. Skip the very first run on mount so the initial navigation
+    // that originally brought them to /candidater isn't hijacked.
+    if (!hasScrolledOnceRef.current) {
+      hasScrolledOnceRef.current = true;
+      return;
+    }
+    // rAF ensures the newly-rendered step content has been laid out before we
+    // measure the anchor position; without it, fast step transitions can read
+    // a stale bounding box and overshoot/undershoot (2 → 3 symptoms reported).
+    const anchor = topAnchorRef.current;
+    if (!anchor) return;
+    const raf = requestAnimationFrame(() => {
+      const rect = anchor.getBoundingClientRect();
+      const headerOffset = 96;
+      const targetTop = rect.top + window.scrollY - headerOffset;
+      window.scrollTo({
+        top: Math.max(0, targetTop),
+        behavior: "smooth",
+      });
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [step, clearErrors]);
+
   async function checkEmailEligibility(raw: string): Promise<boolean> {
     const normalized = raw.trim().toLowerCase();
     if (!normalized || !EMAIL_RE.test(normalized)) {
@@ -289,11 +295,7 @@ export default function SitterApplicationForm({
         const eligible = await checkEmailEligibility(getValues("email") ?? "");
         if (!eligible) return;
       }
-      // Nuke every leftover validation error on step transition. A previous
-      // submit attempt populates errors for all invalid fields (RHF behavior on
-      // handleSubmit), which would otherwise greet the user with red messages
-      // on the next step before they've even interacted with it.
-      clearErrors();
+      // Errors are wiped by the step-change useEffect — no need to double up.
       setStep((s) => Math.min(2, s + 1));
     } finally {
       setIsAdvancing(false);
@@ -302,7 +304,6 @@ export default function SitterApplicationForm({
 
   function handlePrev() {
     setServerError("");
-    clearErrors();
     setStep((s) => Math.max(0, s - 1));
   }
 
