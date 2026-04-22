@@ -6,12 +6,21 @@ export type SendEmailInput = {
   headers?: Record<string, string>;
 };
 
+export type SendEmailResult = {
+  mode: "resend" | "smtp" | "log";
+  /**
+   * Provider-assigned message id. Populated for Resend; undefined for SMTP and log fallbacks.
+   * Useful for logging / webhook responses / Sentry breadcrumbs.
+   */
+  messageId?: string;
+};
+
 function baseFromEnv() {
   const fromEnv = (process.env.EMAIL_FROM || "").trim();
   return fromEnv || "DogShift <no-reply@dogshift.ch>";
 }
 
-async function sendWithResend(input: SendEmailInput) {
+async function sendWithResend(input: SendEmailInput): Promise<SendEmailResult> {
   const resendKey = (process.env.RESEND_API_KEY || "").trim();
   const fromEnv = (process.env.EMAIL_FROM || "").trim();
   const from = baseFromEnv();
@@ -58,12 +67,33 @@ async function sendWithResend(input: SendEmailInput) {
     throw new Error("EMAIL_SEND_FAILED");
   }
 
-  return { mode: "resend" as const };
+  let messageId: string | undefined;
+  try {
+    const body = (await res.json()) as { id?: unknown };
+    if (typeof body?.id === "string" && body.id.length > 0) {
+      messageId = body.id;
+    }
+  } catch {
+    // Resend occasionally returns an empty body on success; we treat that as a soft success
+    // because the 2xx status code is authoritative.
+  }
+
+  return { mode: "resend", messageId };
 }
 
-async function sendWithSmtp(input: SendEmailInput) {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const nodemailer = require("nodemailer") as any;
+type NodemailerLike = {
+  createTransport: (opts: unknown) => { sendMail: (mail: unknown) => Promise<unknown> };
+};
+
+async function sendWithSmtp(input: SendEmailInput): Promise<SendEmailResult> {
+  // Lazy dynamic import so nodemailer is only loaded when SMTP is actually used,
+  // avoiding bundling costs on serverless cold starts that only rely on Resend.
+  // @ts-expect-error — @types/nodemailer is not installed; we narrow with NodemailerLike.
+  const mod = (await import("nodemailer")) as { default?: NodemailerLike } & Partial<NodemailerLike>;
+  const createTransport = mod.default?.createTransport ?? mod.createTransport;
+  if (!createTransport) {
+    throw new Error("NODEMAILER_IMPORT_FAILED");
+  }
 
   const host = (process.env.SMTP_HOST || "").trim();
   const portRaw = (process.env.SMTP_PORT || "").trim();
@@ -75,7 +105,7 @@ async function sendWithSmtp(input: SendEmailInput) {
   const secure = port === 465;
   const requireTLS = port === 587;
 
-  const transporter = nodemailer.createTransport({
+  const transporter = createTransport({
     host,
     port,
     secure,
@@ -85,18 +115,21 @@ async function sendWithSmtp(input: SendEmailInput) {
 
   const from = (process.env.SMTP_FROM || "").trim() || user;
 
-  await transporter.sendMail({
+  const info = (await transporter.sendMail({
     from,
     to: input.to,
     subject: input.subject,
     text: input.text,
     html: input.html,
-  });
+  })) as { messageId?: unknown };
 
-  return { mode: "smtp" as const };
+  const messageId =
+    typeof info?.messageId === "string" && info.messageId.length > 0 ? info.messageId : undefined;
+
+  return { mode: "smtp", messageId };
 }
 
-export async function sendEmail(input: SendEmailInput) {
+export async function sendEmail(input: SendEmailInput): Promise<SendEmailResult> {
   const resendKey = (process.env.RESEND_API_KEY || "").trim();
   if (resendKey) return sendWithResend(input);
 
@@ -117,6 +150,6 @@ export async function sendEmail(input: SendEmailInput) {
       subject: input.subject,
       text: input.text,
     });
-    return { mode: "log" as const };
+    return { mode: "log" };
   }
 }
