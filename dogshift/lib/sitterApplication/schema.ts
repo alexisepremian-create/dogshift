@@ -87,7 +87,7 @@ export const sitterApplicationSchemaV2 = z
     age: z
       .number()
       .int("Âge invalide.")
-      .min(16, "Tu dois avoir au moins 16 ans.")
+      .min(18, "Tu dois avoir au moins 18 ans.")
       .max(99, "Âge invalide.")
       .optional()
       .nullable(),
