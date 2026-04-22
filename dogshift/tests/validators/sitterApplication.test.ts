@@ -133,7 +133,7 @@ function baseValidPayload() {
     housingType: "apartment_with_outdoor" as const,
     housingTypeOther: "",
     otherAnimals: { none: true, dogs: false, cats: false, others: false },
-    otherAnimalsDogCount: null,
+    otherAnimalsDogCount: null as number | null,
     hasCarLicense: true,
     consentInterview: true,
     consentPrivacy: true,
