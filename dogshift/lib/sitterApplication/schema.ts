@@ -3,7 +3,6 @@ import { z } from "zod";
 import {
   CITY_VALUES,
   CITY_OTHER_VALUE,
-  DAY_KEYS,
   DOG_SIZE_VALUES,
   GARDE_EXPERIENCE_LEVEL_VALUES,
   GARDE_TYPE_VALUES,
@@ -44,10 +43,10 @@ const availabilityStructuredSchema = z
 // ---------------------------------------------------------------------------
 
 const otherAnimalsSchema = z.object({
-  none: z.boolean().default(false),
-  dogs: z.boolean().default(false),
-  cats: z.boolean().default(false),
-  others: z.boolean().default(false),
+  none: z.boolean(),
+  dogs: z.boolean(),
+  cats: z.boolean(),
+  others: z.boolean(),
 });
 
 // ---------------------------------------------------------------------------
@@ -149,7 +148,7 @@ export const sitterApplicationSchemaV2 = z
       .optional()
       .nullable(),
 
-    hasCarLicense: z.boolean().default(false),
+    hasCarLicense: z.boolean(),
 
     consentInterview: z.literal(true, {
       message: "Merci de confirmer que tu acceptes d'être contacté·e.",
