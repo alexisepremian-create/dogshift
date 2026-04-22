@@ -215,9 +215,6 @@ export default function SitterApplicationForm({
   const otherAnimalsValue = useWatch({ control, name: "otherAnimals" });
 
   useEffect(() => {
-    // [DEBUG TEMP] trace every step change
-    // eslint-disable-next-line no-console
-    console.log("[dbg] useEffect step change → step=", step);
     // Arriving at a new step always starts visually clean: reset the gate,
     // and also clear RHF's errors so that `reValidateMode:onChange` doesn't
     // keep stale errors hanging around from a prior submit/trigger.
@@ -297,13 +294,9 @@ export default function SitterApplicationForm({
     setIsAdvancing(true);
     try {
       const ok = await trigger([...fields], { shouldFocus: true });
-      // eslint-disable-next-line no-console
-      console.log("[dbg] handleNext trigger result → ok=", ok, "step=", step);
       if (!ok) {
         // User clicked Suivant with invalid data → reveal the red messages
         // for the current step so they know what to fix.
-        // eslint-disable-next-line no-console
-        console.log("[dbg] handleNext → setShowErrors(true) (trigger failed)");
         setShowErrors(true);
         return;
       }
@@ -445,8 +438,6 @@ export default function SitterApplicationForm({
     () => {
       // Zod / RHF found validation errors → flip the gate so the red
       // messages are now visible for the fields the user left empty.
-      // eslint-disable-next-line no-console
-      console.log("[dbg] handleSubmit onInvalid → setShowErrors(true)");
       setShowErrors(true);
     },
   );
@@ -471,21 +462,18 @@ export default function SitterApplicationForm({
     ? errors
     : ({} as typeof errors);
 
-  // [DEBUG TEMP] log every render so we can trace the red-errors bug.
-  // eslint-disable-next-line no-console
-  console.log(
-    "[dbg] render → step=",
-    step,
-    "showErrors=",
-    showErrors,
-    "errorsKeys=",
-    Object.keys(errors),
-    "errsKeys=",
-    Object.keys(errs),
-  );
+  // The form has NO `onSubmit` handler on purpose — submission is driven
+  // exclusively by an explicit onClick on the Envoyer button below. This
+  // completely eliminates any risk of implicit form submission (Enter-in-
+  // input, browser autofill, button-type swap during React reconciliation,
+  // etc.) from accidentally firing handleSubmit and showing red errors on
+  // step 3 arrival. See nav-submit button comment for full context.
+  const guardedSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+  };
 
   return (
-    <form noValidate onSubmit={onSubmit} className="grid gap-6">
+    <form noValidate onSubmit={guardedSubmit} className="grid gap-6">
       <div
         ref={topAnchorRef}
         aria-hidden="true"
@@ -1059,6 +1047,7 @@ export default function SitterApplicationForm({
 
         {step < 2 ? (
           <button
+            key="nav-next"
             type="button"
             onClick={() => void handleNext()}
             disabled={isAdvancing}
@@ -1074,8 +1063,20 @@ export default function SitterApplicationForm({
             )}
           </button>
         ) : (
+          // NOTE — This button is `type="button"` (not `type="submit"`) on
+          // purpose. When React toggles the `step < 2` conditional above from
+          // the Suivant button to this one, it reuses the same <button> DOM
+          // node and swaps its attributes. If this one were `type="submit"`,
+          // the pending click-cycle from the Suivant click on step 2 could be
+          // interpreted by Chrome as a form submission on the now-mutated
+          // button, firing an implicit submit on step 3 arrival (which made
+          // the red error messages appear unprompted — see DBG-2026-04-22).
+          // We call the handleSubmit-wrapped onSubmit() explicitly instead so
+          // submission only happens when the user clicks this exact button.
           <button
-            type="submit"
+            key="nav-submit"
+            type="button"
+            onClick={() => void onSubmit()}
             disabled={isSubmitting || status === "submitting"}
             className="inline-flex h-11 min-w-40 items-center justify-center gap-2 rounded-2xl bg-[var(--dogshift-blue)] px-6 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition hover:bg-[var(--dogshift-blue-hover)] disabled:cursor-not-allowed disabled:opacity-60"
           >
