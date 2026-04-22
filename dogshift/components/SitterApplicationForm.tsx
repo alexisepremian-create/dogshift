@@ -215,6 +215,9 @@ export default function SitterApplicationForm({
   const otherAnimalsValue = useWatch({ control, name: "otherAnimals" });
 
   useEffect(() => {
+    // [DEBUG TEMP] trace every step change
+    // eslint-disable-next-line no-console
+    console.log("[dbg] useEffect step change → step=", step);
     // Arriving at a new step always starts visually clean: reset the gate,
     // and also clear RHF's errors so that `reValidateMode:onChange` doesn't
     // keep stale errors hanging around from a prior submit/trigger.
@@ -294,9 +297,13 @@ export default function SitterApplicationForm({
     setIsAdvancing(true);
     try {
       const ok = await trigger([...fields], { shouldFocus: true });
+      // eslint-disable-next-line no-console
+      console.log("[dbg] handleNext trigger result → ok=", ok, "step=", step);
       if (!ok) {
         // User clicked Suivant with invalid data → reveal the red messages
         // for the current step so they know what to fix.
+        // eslint-disable-next-line no-console
+        console.log("[dbg] handleNext → setShowErrors(true) (trigger failed)");
         setShowErrors(true);
         return;
       }
@@ -438,6 +445,8 @@ export default function SitterApplicationForm({
     () => {
       // Zod / RHF found validation errors → flip the gate so the red
       // messages are now visible for the fields the user left empty.
+      // eslint-disable-next-line no-console
+      console.log("[dbg] handleSubmit onInvalid → setShowErrors(true)");
       setShowErrors(true);
     },
   );
@@ -461,6 +470,19 @@ export default function SitterApplicationForm({
   const errs = showErrors
     ? errors
     : ({} as typeof errors);
+
+  // [DEBUG TEMP] log every render so we can trace the red-errors bug.
+  // eslint-disable-next-line no-console
+  console.log(
+    "[dbg] render → step=",
+    step,
+    "showErrors=",
+    showErrors,
+    "errorsKeys=",
+    Object.keys(errors),
+    "errsKeys=",
+    Object.keys(errs),
+  );
 
   return (
     <form noValidate onSubmit={onSubmit} className="grid gap-6">
