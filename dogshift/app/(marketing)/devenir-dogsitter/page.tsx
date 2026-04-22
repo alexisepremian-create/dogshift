@@ -32,7 +32,7 @@ export default function DevenirDogsitterPage() {
         <div className="mt-8 grid gap-4 sm:grid-cols-2">
           <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-44px_rgba(2,6,23,0.12)] sm:p-8">
             <p className="text-xs font-semibold text-slate-600">Nouveau sitter</p>
-            <h2 className="mt-2 text-lg font-semibold text-slate-900">Candidater pour devenir dog-sitter</h2>
+            <h2 className="mt-2 text-lg font-semibold text-slate-900">Postuler pour devenir dog-sitter</h2>
             <p className="mt-2 text-sm leading-relaxed text-slate-600">
               Formulaire en 3 étapes (4–6 minutes). Sélection manuelle.
             </p>
@@ -42,7 +42,7 @@ export default function DevenirDogsitterPage() {
               rel="noopener noreferrer"
               className="mt-5 inline-flex w-full items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-6 py-3 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition hover:bg-[var(--dogshift-blue-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)]"
             >
-              Candidater maintenant
+              Postuler maintenant
             </a>
           </div>
 
