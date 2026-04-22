@@ -1,13 +1,11 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { Bone, Dog, Heart, MapPin, Calendar, Home } from "lucide-react";
 
 import BecomeSitterAccessForm from "@/components/BecomeSitterAccessForm";
-import SitterApplicationForm from "@/components/SitterApplicationForm";
 
 export default function DevenirDogsitterPage() {
-  const formRef = useRef<HTMLDivElement | null>(null);
   const [accessOpen, setAccessOpen] = useState(false);
 
   return (
@@ -22,104 +20,89 @@ export default function DevenirDogsitterPage() {
         <Home className="absolute bottom-20 right-[25%] h-24 w-24 rotate-6 text-[#7969F0]/[0.04]" strokeWidth={1.5} />
       </div>
 
-      <section className="relative z-10 mx-auto max-w-6xl px-4 py-14 sm:px-6">
-        <div className="grid gap-10 lg:grid-cols-[1.15fr_0.85fr] lg:items-start">
-          <div>
-            <p className="text-xs font-semibold text-slate-600">Phase pilote</p>
-            <h1 className="mt-4 text-balance text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl">
-              DogShift recrute ses 20 premiers dog-sitters
-            </h1>
-            <p className="mt-4 text-pretty text-base leading-relaxed text-slate-600 sm:text-lg">
-              Profils sélectionnés manuellement – Phase pilote Lausanne &amp; Riviera
+      <section className="relative z-10 mx-auto max-w-4xl px-4 py-14 sm:px-6">
+        <p className="text-xs font-semibold text-slate-600">Phase pilote</p>
+        <h1 className="mt-4 text-balance text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl">
+          DogShift recrute ses 20 premiers dog-sitters
+        </h1>
+        <p className="mt-4 text-pretty text-base leading-relaxed text-slate-600 sm:text-lg">
+          Profils sélectionnés manuellement – Phase pilote Lausanne &amp; Riviera
+        </p>
+
+        <div className="mt-8 grid gap-4 sm:grid-cols-2">
+          <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-44px_rgba(2,6,23,0.12)] sm:p-8">
+            <p className="text-xs font-semibold text-slate-600">Nouveau sitter</p>
+            <h2 className="mt-2 text-lg font-semibold text-slate-900">Candidater pour devenir dog-sitter</h2>
+            <p className="mt-2 text-sm leading-relaxed text-slate-600">
+              Formulaire en 3 étapes (4–6 minutes). Sélection manuelle.
             </p>
+            <a
+              href="/devenir-dogsitter/candidater"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-5 inline-flex w-full items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-6 py-3 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition hover:bg-[var(--dogshift-blue-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)]"
+            >
+              Candidater maintenant
+            </a>
+          </div>
 
-            <div className="mt-8 grid gap-4 sm:grid-cols-2">
-              <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-44px_rgba(2,6,23,0.12)] sm:p-8">
-                <p className="text-xs font-semibold text-slate-600">Nouveau sitter</p>
-                <h2 className="mt-2 text-lg font-semibold text-slate-900">Candidater pour devenir dog-sitter</h2>
-                <p className="mt-2 text-sm leading-relaxed text-slate-600">
-                  Formulaire en 3 étapes (4–6 minutes). Sélection manuelle.
-                </p>
-                <button
-                  type="button"
-                  onClick={() => formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
-                  className="mt-5 inline-flex w-full items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-6 py-3 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition hover:bg-[var(--dogshift-blue-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)]"
-                >
-                  Candidater maintenant
-                </button>
-              </div>
+          <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-44px_rgba(2,6,23,0.12)] sm:p-8">
+            <p className="text-xs font-semibold text-slate-600">Déjà sélectionné</p>
+            <h2 className="mt-2 text-lg font-semibold text-slate-900">Entrer ton code d&rsquo;accès</h2>
+            <p className="mt-2 text-sm leading-relaxed text-slate-600">
+              Tu as reçu un code du type DS-XXXX-XXXX ? Déverrouille ton espace sitter.
+            </p>
+            <button
+              type="button"
+              onClick={() => setAccessOpen(true)}
+              className="mt-5 inline-flex w-full items-center justify-center rounded-2xl border border-slate-300 bg-white px-6 py-3 text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-400"
+            >
+              Entrer mon code
+            </button>
+          </div>
+        </div>
 
-              <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-44px_rgba(2,6,23,0.12)] sm:p-8">
-                <p className="text-xs font-semibold text-slate-600">Déjà sélectionné</p>
-                <h2 className="mt-2 text-lg font-semibold text-slate-900">Entrer ton code d&rsquo;accès</h2>
-                <p className="mt-2 text-sm leading-relaxed text-slate-600">
-                  Tu as reçu un code du type DS-XXXX-XXXX ? Déverrouille ton espace sitter.
-                </p>
-                <button
-                  type="button"
-                  onClick={() => setAccessOpen(true)}
-                  className="mt-5 inline-flex w-full items-center justify-center rounded-2xl border border-slate-300 bg-white px-6 py-3 text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-400"
-                >
-                  Entrer mon code
-                </button>
-              </div>
+        <div id="comment-ca-marche" className="mt-12 rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-44px_rgba(2,6,23,0.15)] sm:p-8">
+          <h2 className="text-lg font-semibold text-slate-900">Comment ça marche</h2>
+          <div className="mt-6 grid gap-4 sm:grid-cols-2">
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+              <p className="text-sm font-semibold text-slate-900">1. Tu candidates</p>
+              <p className="mt-2 text-sm text-slate-600">Un formulaire en 3 étapes, simple et structuré.</p>
             </div>
-
-            <div id="comment-ca-marche" className="mt-12 rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-44px_rgba(2,6,23,0.15)] sm:p-8">
-              <h2 className="text-lg font-semibold text-slate-900">Comment ça marche</h2>
-              <div className="mt-6 grid gap-4 sm:grid-cols-2">
-                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
-                  <p className="text-sm font-semibold text-slate-900">1. Tu candidates</p>
-                  <p className="mt-2 text-sm text-slate-600">Un formulaire en 3 étapes, simple et structuré.</p>
-                </div>
-                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
-                  <p className="text-sm font-semibold text-slate-900">2. On analyse ton profil</p>
-                  <p className="mt-2 text-sm text-slate-600">Sélection manuelle, qualité avant quantité.</p>
-                </div>
-                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
-                  <p className="text-sm font-semibold text-slate-900">3. On te contacte si ton profil est retenu</p>
-                  <p className="mt-2 text-sm text-slate-600">Mini entretien pour valider l&rsquo;adéquation.</p>
-                </div>
-                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
-                  <p className="text-sm font-semibold text-slate-900">4. Validation + profil activé</p>
-                  <p className="mt-2 text-sm text-slate-600">Ton profil est ensuite activé sur la plateforme.</p>
-                </div>
-              </div>
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+              <p className="text-sm font-semibold text-slate-900">2. On analyse ton profil</p>
+              <p className="mt-2 text-sm text-slate-600">Sélection manuelle, qualité avant quantité.</p>
             </div>
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+              <p className="text-sm font-semibold text-slate-900">3. On te contacte si ton profil est retenu</p>
+              <p className="mt-2 text-sm text-slate-600">Mini entretien pour valider l&rsquo;adéquation.</p>
+            </div>
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+              <p className="text-sm font-semibold text-slate-900">4. Validation + profil activé</p>
+              <p className="mt-2 text-sm text-slate-600">Ton profil est ensuite activé sur la plateforme.</p>
+            </div>
+          </div>
+        </div>
 
-            <div className="mt-10 grid gap-6 sm:grid-cols-2">
-              <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-44px_rgba(2,6,23,0.12)] sm:p-8">
-                <h2 className="text-lg font-semibold text-slate-900">Ce qu&rsquo;on recherche</h2>
-                <div className="mt-4 grid gap-2 text-sm text-slate-700">
-                  <p>Fiabilité</p>
-                  <p>Amour des chiens</p>
-                  <p>Disponibilité</p>
-                  <p>Sérieux</p>
-                </div>
-              </div>
-
-              <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-44px_rgba(2,6,23,0.12)] sm:p-8">
-                <h2 className="text-lg font-semibold text-slate-900">Avantages</h2>
-                <div className="mt-4 grid gap-2 text-sm text-slate-700">
-                  <p>Revenus flexibles</p>
-                  <p>Clients locaux</p>
-                  <p>Paiement sécurisé</p>
-                  <p>Tu choisis tes disponibilités</p>
-                  <p>Plateforme suisse</p>
-                </div>
-              </div>
+        <div className="mt-10 grid gap-6 sm:grid-cols-2">
+          <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-44px_rgba(2,6,23,0.12)] sm:p-8">
+            <h2 className="text-lg font-semibold text-slate-900">Ce qu&rsquo;on recherche</h2>
+            <div className="mt-4 grid gap-2 text-sm text-slate-700">
+              <p>Fiabilité</p>
+              <p>Amour des chiens</p>
+              <p>Disponibilité</p>
+              <p>Sérieux</p>
             </div>
           </div>
 
-          <div ref={formRef} className="rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-44px_rgba(2,6,23,0.18)] sm:p-8">
-            <p className="text-xs font-semibold text-slate-600">Candidature dog-sitter</p>
-            <h2 className="mt-3 text-xl font-semibold tracking-tight text-slate-900">Candidater</h2>
-            <p className="mt-2 text-sm text-slate-600">
-              Candidature envoyée = pas d&rsquo;activation automatique. Nous te recontactons si ton profil est retenu.
-            </p>
-
-            <div className="mt-6">
-              <SitterApplicationForm />
+          <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-44px_rgba(2,6,23,0.12)] sm:p-8">
+            <h2 className="text-lg font-semibold text-slate-900">Avantages</h2>
+            <div className="mt-4 grid gap-2 text-sm text-slate-700">
+              <p>Revenus flexibles</p>
+              <p>Clients locaux</p>
+              <p>Paiement sécurisé</p>
+              <p>Tu choisis tes disponibilités</p>
+              <p>Plateforme suisse</p>
             </div>
           </div>
         </div>
