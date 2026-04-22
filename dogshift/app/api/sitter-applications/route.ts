@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { sendEmail } from "@/lib/email/sendEmail";
 import { render } from "@react-email/render";
 import { checkRateLimit } from "@/lib/rateLimit";
+import { baseUrlFromRequest } from "@/lib/url/baseUrlFromRequest";
 import { zodParse } from "@/lib/validators/common";
 import {
   sitterApplicationApiSchema,
@@ -29,29 +30,6 @@ import {
 } from "@/lib/email/templates/pilotSitterApplicationConfirmation";
 
 export const runtime = "nodejs";
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-function baseUrlFromRequest(req: NextRequest) {
-  const appUrl = (process.env.APP_URL || "").trim();
-  if (appUrl) return appUrl.replace(/\/$/, "");
-
-  const publicAppUrl = (process.env.NEXT_PUBLIC_APP_URL || "").trim();
-  if (publicAppUrl) return publicAppUrl.replace(/\/$/, "");
-
-  const env = (process.env.NEXTAUTH_URL || "").trim();
-  if (env) return env.replace(/\/$/, "");
-
-  const proto = (req.headers.get("x-forwarded-proto") || "https").split(",")[0]?.trim() || "https";
-  const host =
-    (req.headers.get("x-forwarded-host") || "").split(",")[0]?.trim() ||
-    (req.headers.get("host") || "").split(",")[0]?.trim() ||
-    "";
-  if (!host) return "";
-  return `${proto}://${host}`;
-}
 
 function isValidEmail(value: string) {
   const v = value.trim().toLowerCase();
