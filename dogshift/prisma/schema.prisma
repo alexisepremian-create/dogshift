@@ -228,6 +228,23 @@ model PilotSitterApplication {
   consentInterview Boolean
   consentPrivacy   Boolean
 
+  // Structured fields for automated scoring (n8n). Nullable / defaulted for
+  // backward compatibility with legacy pilot applications.
+  npa                       String?
+  cityOther                 String?
+  linkAnimalProfession      String?
+  linkAnimalProfessionOther String?
+  gardeExperienceLevel      String?
+  availabilityStructured    Json?
+  gardeTypes                String[] @default([])
+  dogSizes                  String[] @default([])
+  housingType               String?
+  housingTypeOther          String?
+  otherAnimals              Json?
+  otherAnimalsDogCount      Int?
+  hasCarLicense             Boolean?
+  allergies                 String?
+
   status SitterApplicationStatus @default(PENDING)
 
   utmSource   String?
@@ -247,6 +264,7 @@ model PilotSitterApplication {
   @@index([createdAt])
   @@index([status, createdAt])
   @@index([email, createdAt])
+  @@index([city, status])
   @@unique([email, idempotencyKey])
 }
 
