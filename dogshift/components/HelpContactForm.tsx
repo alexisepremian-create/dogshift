@@ -1,4 +1,5 @@
 "use client";
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { useState } from "react";
 import { useUser } from "@clerk/nextjs";
@@ -110,6 +111,7 @@ export default function HelpContactForm() {
           disabled={disabled}
           aria-label="Message pour l’équipe DogShift"
         />
+        {status === "error" && errorText ? <p className="mt-2 text-center text-sm font-medium text-red-600">{errorText}</p> : null}
       </div>
 
       <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -126,8 +128,6 @@ export default function HelpContactForm() {
             Merci pour votre message, notre équipe vous répondra dans les plus brefs délais.
           </p>
         ) : null}
-
-        {status === "error" && errorText ? <p className="text-sm font-medium text-red-600">{errorText}</p> : null}
       </div>
     </form>
   );

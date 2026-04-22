@@ -377,6 +377,7 @@ export default function LoginForm() {
                 className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:ring-4 focus:ring-slate-200 disabled:cursor-not-allowed disabled:opacity-60"
                 placeholder="toi@exemple.com"
               />
+              {error ? <p className="mt-2 text-center text-sm text-rose-600">{error}</p> : null}
             </div>
 
             <button
@@ -386,8 +387,6 @@ export default function LoginForm() {
             >
               {loading ? "Vérification…" : "Continuer"}
             </button>
-
-            {error ? <p className="text-sm text-rose-600">{error}</p> : null}
           </form>
         )}
 
@@ -409,6 +408,7 @@ export default function LoginForm() {
                 className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:ring-4 focus:ring-slate-200 disabled:cursor-not-allowed disabled:opacity-60"
                 placeholder="••••••••"
               />
+              {error ? <p className="mt-2 text-center text-sm text-rose-600">{error}</p> : null}
             </div>
 
             <button
@@ -436,8 +436,6 @@ export default function LoginForm() {
             >
               ← Changer d&apos;e-mail
             </button>
-
-            {error ? <p className="text-sm text-rose-600">{error}</p> : null}
           </form>
         )}
 
@@ -466,6 +464,7 @@ export default function LoginForm() {
               <p className="mt-1 text-xs text-slate-500">
                 Si tu as déjà demandé plusieurs codes, seul le dernier fonctionne.
               </p>
+              {error ? <p className="mt-2 text-center text-sm text-rose-600">{error}</p> : null}
             </div>
 
             <button
@@ -495,8 +494,6 @@ export default function LoginForm() {
             >
               ← Changer d&apos;e-mail
             </button>
-
-            {error ? <p className="text-sm text-rose-600">{error}</p> : null}
           </form>
         )}
       </div>

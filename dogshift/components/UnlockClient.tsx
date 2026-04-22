@@ -74,7 +74,7 @@ export default function UnlockClient({ next }: { next: string }) {
             />
           </div>
 
-          {error ? <p className="text-sm font-medium text-red-600">{error}</p> : null}
+          {error ? <p className="text-center text-sm font-medium text-red-600">{error}</p> : null}
 
           <button
             type="submit"

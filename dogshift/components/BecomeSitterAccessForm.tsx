@@ -74,7 +74,7 @@ export default function BecomeSitterAccessForm({
           autoComplete="one-time-code"
         />
 
-        {error ? <p className="mt-3 text-sm font-medium text-rose-600">{error}</p> : null}
+        {error ? <p className="mt-3 text-center text-sm font-medium text-rose-600">{error}</p> : null}
 
         <button
           type="submit"

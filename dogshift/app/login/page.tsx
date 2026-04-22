@@ -1,4 +1,5 @@
 "use client";
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -226,7 +227,7 @@ export default function LoginPage() {
             </button>
           </div>
 
-          {switchError ? <p className="mt-3 text-sm font-medium text-rose-600">{switchError}</p> : null}
+          {switchError ? <p className="mt-3 text-center text-sm font-medium text-rose-600">{switchError}</p> : null}
         </div>
       ) : null}
 
