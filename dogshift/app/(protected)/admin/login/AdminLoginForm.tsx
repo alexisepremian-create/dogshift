@@ -59,7 +59,7 @@ export default function AdminLoginForm() {
         />
       </div>
 
-      {error ? <p className="text-sm font-medium text-rose-600">{error}</p> : null}
+      {error ? <p className="text-center text-sm font-medium text-rose-600">{error}</p> : null}
 
       <button
         type="submit"
