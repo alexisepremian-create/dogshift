@@ -6,6 +6,17 @@ import { useRouter, useSearchParams } from "next/navigation";
 import AdminNotesPanel from "@/components/admin/AdminNotesPanel";
 import { formatSwissDateTimeCompact, formatSwissDateTimeHuman } from "@/lib/datetime/formatSwissDateTime";
 import type { SitterLifecycleStatus } from "@/lib/sitterContract";
+import {
+  availabilityToRows,
+  describeOtherAnimals,
+  labelForDogSize,
+  labelForGardeExperienceLevel,
+  labelForGardeType,
+  labelForHousingType,
+  labelForLinkAnimalProfession,
+  type DaySlotsShape,
+  type OtherAnimalsShape,
+} from "@/lib/sitterApplication/labels";
 
 type AppStatus = "PENDING" | "CONTACTED" | "ACCEPTED" | "ACTIVATED" | "REJECTED";
 
@@ -24,6 +35,22 @@ type ApplicationItem = {
   consentInterview: boolean;
   consentPrivacy: boolean;
   status: AppStatus;
+  // Structured fields from the v2 form. All nullable for backward compat
+  // with legacy rows that predate the structured schema.
+  npa: string | null;
+  cityOther: string | null;
+  linkAnimalProfession: string | null;
+  linkAnimalProfessionOther: string | null;
+  gardeExperienceLevel: string | null;
+  availabilityStructured: Record<string, DaySlotsShape> | null;
+  gardeTypes: string[];
+  dogSizes: string[];
+  housingType: string | null;
+  housingTypeOther: string | null;
+  otherAnimals: OtherAnimalsShape | null;
+  otherAnimalsDogCount: number | null;
+  hasCarLicense: boolean | null;
+  allergies: string | null;
   utmSource: string | null;
   utmMedium: string | null;
   utmCampaign: string | null;
@@ -57,6 +84,7 @@ type ContractDetailsPayload = {
     contractSignerName?: string | null;
     contractSignedAt?: string | null;
     lifecycleStatus?: string | null;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- contract snapshot is a JSON blob produced by legacy signed contracts; typing it would require generating a schema and is out of scope for this change.
     contractSnapshot?: any;
   } | null;
   error?: string;
@@ -94,6 +122,185 @@ function formatFrCh(iso: string) {
 
 function formatSignedAtHumanFrCh(iso: string) {
   return formatSwissDateTimeHuman(iso);
+}
+
+function InfoRow({ label, value }: { label: string; value: ReactNode }) {
+  return (
+    <div className="flex items-start justify-between gap-4 py-1">
+      <span className="text-xs font-semibold text-slate-500">{label}</span>
+      <span className="text-right text-xs text-slate-800">{value}</span>
+    </div>
+  );
+}
+
+function Badge({ children, tone = "slate" }: { children: ReactNode; tone?: "slate" | "blue" | "emerald" }) {
+  const classes =
+    tone === "blue"
+      ? "border-sky-200 bg-sky-50 text-sky-900"
+      : tone === "emerald"
+        ? "border-emerald-200 bg-emerald-50 text-emerald-900"
+        : "border-slate-200 bg-white text-slate-700";
+  return (
+    <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold ${classes}`}>
+      {children}
+    </span>
+  );
+}
+
+function ApplicationProfileDetails({ item }: { item: ApplicationItem }) {
+  const displayCity = item.city === "Autre" && item.cityOther ? `${item.cityOther} (Autre)` : item.city;
+  const profession = labelForLinkAnimalProfession(item.linkAnimalProfession);
+  const professionExtra = item.linkAnimalProfession === "other" ? item.linkAnimalProfessionOther : null;
+  const experienceLevel = labelForGardeExperienceLevel(item.gardeExperienceLevel);
+  const housing = labelForHousingType(item.housingType);
+  const housingExtra = item.housingType === "other" ? item.housingTypeOther : null;
+  const otherAnimalsText = describeOtherAnimals(item.otherAnimals, item.otherAnimalsDogCount);
+
+  // When the row predates the structured form entirely, hide the block so we
+  // don't pollute the admin view with a grid of "—".
+  const hasAnyStructuredField =
+    item.npa ||
+    item.linkAnimalProfession ||
+    item.gardeExperienceLevel ||
+    item.gardeTypes.length > 0 ||
+    item.dogSizes.length > 0 ||
+    item.housingType ||
+    item.otherAnimals ||
+    item.hasCarLicense != null ||
+    item.allergies ||
+    item.age != null;
+
+  if (!hasAnyStructuredField) return null;
+
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-4">
+      <p className="text-xs font-semibold text-slate-700">Profil détaillé</p>
+
+      <div className="mt-3 grid gap-6 md:grid-cols-2">
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Identité</p>
+          <div className="mt-2 divide-y divide-slate-100 rounded-2xl border border-slate-200 bg-slate-50 px-3">
+            <InfoRow label="Âge" value={item.age != null ? `${item.age} ans` : "—"} />
+            <InfoRow label="NPA" value={item.npa ?? "—"} />
+            <InfoRow label="Ville" value={displayCity} />
+            <InfoRow label="Permis B" value={item.hasCarLicense == null ? "—" : item.hasCarLicense ? "Oui" : "Non"} />
+          </div>
+        </div>
+
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Profil dogsitter</p>
+          <div className="mt-2 divide-y divide-slate-100 rounded-2xl border border-slate-200 bg-slate-50 px-3">
+            <InfoRow
+              label="Métier animalier"
+              value={
+                profession ? (
+                  <span>
+                    {profession}
+                    {professionExtra ? <span className="text-slate-500"> — {professionExtra}</span> : null}
+                  </span>
+                ) : (
+                  "—"
+                )
+              }
+            />
+            <InfoRow label="Expérience de garde" value={experienceLevel ?? "—"} />
+            <InfoRow
+              label="Logement"
+              value={
+                housing ? (
+                  <span>
+                    {housing}
+                    {housingExtra ? <span className="text-slate-500"> — {housingExtra}</span> : null}
+                  </span>
+                ) : (
+                  "—"
+                )
+              }
+            />
+            <InfoRow label="Autres animaux" value={otherAnimalsText} />
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-4 grid gap-6 md:grid-cols-2">
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Types de garde</p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {item.gardeTypes.length === 0 ? (
+              <span className="text-xs text-slate-500">—</span>
+            ) : (
+              item.gardeTypes.map((g) => (
+                <Badge key={g} tone="blue">
+                  {labelForGardeType(g)}
+                </Badge>
+              ))
+            )}
+          </div>
+        </div>
+
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Tailles de chiens</p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {item.dogSizes.length === 0 ? (
+              <span className="text-xs text-slate-500">—</span>
+            ) : (
+              item.dogSizes.map((s) => (
+                <Badge key={s} tone="emerald">
+                  {labelForDogSize(s)}
+                </Badge>
+              ))
+            )}
+          </div>
+        </div>
+      </div>
+
+      {item.allergies ? (
+        <div className="mt-4">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Allergies / remarques santé</p>
+          <p className="mt-1 text-sm text-slate-800 whitespace-pre-wrap">{item.allergies}</p>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function ApplicationAvailabilityBlock({ item }: { item: ApplicationItem }) {
+  const rows = availabilityToRows(item.availabilityStructured);
+  const hasStructured = rows.some((r) => r.hasSlot);
+  const hasLegacyText = Boolean(item.availabilityText && item.availabilityText.trim());
+
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+      <p className="text-xs font-semibold text-slate-700">Disponibilités</p>
+
+      {hasStructured ? (
+        <div className="mt-3 grid grid-cols-7 gap-1 text-center">
+          {rows.map((row) => (
+            <div
+              key={row.day}
+              className={
+                "rounded-xl border px-1 py-2 text-[11px] " +
+                (row.hasSlot
+                  ? "border-emerald-200 bg-emerald-50 text-emerald-900"
+                  : "border-slate-200 bg-white text-slate-400")
+              }
+            >
+              <p className="text-[10px] font-semibold uppercase tracking-wide">{row.shortLabel}</p>
+              <p className="mt-1 text-[10px] leading-tight">{row.description}</p>
+            </div>
+          ))}
+        </div>
+      ) : null}
+
+      {hasLegacyText ? (
+        <p className={(hasStructured ? "mt-3 " : "mt-2 ") + "text-sm text-slate-800 whitespace-pre-wrap"}>
+          {item.availabilityText}
+        </p>
+      ) : hasStructured ? null : (
+        <p className="mt-2 text-sm text-slate-500">—</p>
+      )}
+    </div>
+  );
 }
 
 export default function AdminSitterApplicationsClient({ adminCode }: { adminCode?: string }) {
@@ -145,6 +352,7 @@ export default function AdminSitterApplicationsClient({ adminCode }: { adminCode
       version: string;
       content: string;
       meta?: ReactNode;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- mirrors ContractDetailsPayload.profile.contractSnapshot (same legacy JSON blob).
       contractSnapshot?: any;
       contractSignerName?: string | null;
       contractSignedAt?: string | null;
@@ -167,6 +375,7 @@ export default function AdminSitterApplicationsClient({ adminCode }: { adminCode
         method: "GET",
         headers: adminHeaders(),
       });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic JSON shape; narrowed by runtime checks below.
       const payload = (await res.json().catch(() => null)) as any;
       if (!res.ok || !payload?.ok || !Array.isArray(payload?.applications)) {
         setError("Impossible de charger les candidatures.");
@@ -195,6 +404,7 @@ export default function AdminSitterApplicationsClient({ adminCode }: { adminCode
         headers: adminHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify({ id: selected.id }),
       });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic JSON shape; narrowed by runtime checks below.
       const payload = (await res.json().catch(() => null)) as any;
       if (!res.ok || !payload?.ok) {
         if (payload?.error === "CONTRACT_LINK_INVALID_STATE") {
@@ -252,6 +462,7 @@ export default function AdminSitterApplicationsClient({ adminCode }: { adminCode
     return () => {
       cancelled = true;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `adminHeaders` is a stable closure over `adminCode`; adding it would cause needless re-runs.
   }, [adminCode, selected?.id]);
 
   function openCurrentContractPreview() {
@@ -349,6 +560,7 @@ export default function AdminSitterApplicationsClient({ adminCode }: { adminCode
         return;
       }
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic JSON shape; narrowed by runtime checks below.
       const data = (await res.json().catch(() => null)) as any;
       const pdfUrl = data?.pdfUrl;
       if (!pdfUrl) return;
@@ -372,6 +584,7 @@ export default function AdminSitterApplicationsClient({ adminCode }: { adminCode
         headers: adminHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify({ id: selected.id, status: next }),
       });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic JSON shape; narrowed by runtime checks below.
       const payload = (await res.json().catch(() => null)) as any;
       if (!res.ok || !payload?.ok) {
         setError("Impossible d’enregistrer le statut.");
@@ -523,6 +736,8 @@ export default function AdminSitterApplicationsClient({ adminCode }: { adminCode
                 </div>
 
                 <div className="mt-5 grid gap-4">
+                  <ApplicationProfileDetails item={selected} />
+
                   <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                     <p className="text-xs font-semibold text-slate-700">Expérience</p>
                     <p className="mt-2 text-sm text-slate-800 whitespace-pre-wrap">{selected.experienceText}</p>
@@ -534,10 +749,7 @@ export default function AdminSitterApplicationsClient({ adminCode }: { adminCode
                     <p className="mt-2 text-sm text-slate-800 whitespace-pre-wrap">{selected.motivationText}</p>
                   </div>
 
-                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                    <p className="text-xs font-semibold text-slate-700">Disponibilités</p>
-                    <p className="mt-2 text-sm text-slate-800 whitespace-pre-wrap">{selected.availabilityText}</p>
-                  </div>
+                  <ApplicationAvailabilityBlock item={selected} />
 
                   <div className="rounded-2xl border border-slate-200 bg-white p-4">
                     <p className="text-xs font-semibold text-slate-700">Statut</p>
