@@ -3,10 +3,7 @@ import type { NextRequest } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 
 import { prisma } from "@/lib/prisma";
-import { sendEmail } from "@/lib/email/sendEmail";
-import { render } from "@react-email/render";
 import { checkRateLimit } from "@/lib/rateLimit";
-import { baseUrlFromRequest } from "@/lib/url/baseUrlFromRequest";
 import { zodParse } from "@/lib/validators/common";
 import {
   clerkUserIsExistingSitter,
@@ -28,11 +25,6 @@ import {
   normalizeSwissPhone,
 } from "@/lib/sitterApplication/options";
 
-import {
-  PilotSitterApplicationConfirmationEmail,
-  pilotSitterApplicationConfirmationCtaUrl,
-  pilotSitterApplicationConfirmationPlainText,
-} from "@/lib/email/templates/pilotSitterApplicationConfirmation";
 import {
   buildApplicationScoringPayload,
   triggerApplicationScoring,
@@ -415,28 +407,11 @@ export async function POST(req: NextRequest) {
       console.warn("[api][sitter-applications] n8n scoring trigger threw", err);
     }
 
-    // Best-effort confirmation email (does not block application creation).
-    try {
-      const baseUrl = baseUrlFromRequest(req);
-      const ctaUrl = pilotSitterApplicationConfirmationCtaUrl(baseUrl);
-      const text = pilotSitterApplicationConfirmationPlainText({ firstName: created.firstName, ctaUrl });
-      const html = await render(
-        PilotSitterApplicationConfirmationEmail({
-          baseUrl,
-          firstName: created.firstName,
-          previewText: "Candidature reçue — DogShift",
-        })
-      );
-      await sendEmail({
-        to: created.email,
-        subject: "Candidature reçue — DogShift",
-        text,
-        html,
-      });
-    } catch {
-      // ignored
-    }
-
+    // Note — we used to send a generic "Candidature reçue" confirmation email
+    // here, but this produced two back-to-back emails for every HIGH/REVIEW
+    // candidate (the confirmation, then the n8n scoring email with the
+    // interview CTA or the status update). The n8n workflow now owns all
+    // applicant-facing emails so they get exactly one contextual message.
     return NextResponse.json({ ok: true, id: created.id }, { status: 200 });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : "";
