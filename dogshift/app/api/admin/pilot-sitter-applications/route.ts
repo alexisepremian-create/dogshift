@@ -32,6 +32,22 @@ export async function GET(req: NextRequest) {
             consentInterview: boolean;
             consentPrivacy: boolean;
             status: "PENDING" | "CONTACTED" | "ACCEPTED" | "ACTIVATED" | "REJECTED";
+            // Structured fields added for the v2 form. All nullable for
+            // backward compat with legacy rows.
+            npa: string | null;
+            cityOther: string | null;
+            linkAnimalProfession: string | null;
+            linkAnimalProfessionOther: string | null;
+            gardeExperienceLevel: string | null;
+            availabilityStructured: unknown;
+            gardeTypes: string[];
+            dogSizes: string[];
+            housingType: string | null;
+            housingTypeOther: string | null;
+            otherAnimals: unknown;
+            otherAnimalsDogCount: number | null;
+            hasCarLicense: boolean | null;
+            allergies: string | null;
             utmSource: string | null;
             utmMedium: string | null;
             utmCampaign: string | null;
