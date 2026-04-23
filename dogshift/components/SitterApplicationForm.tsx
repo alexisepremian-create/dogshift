@@ -4,9 +4,24 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
+import {
+  CalendarClock,
+  Car,
+  Dog,
+  Heart,
+  Home,
+  Mail,
+  MapPin,
+  PawPrint,
+  ShieldCheck,
+  Sparkles,
+  User,
+} from "lucide-react";
+
 import AvailabilityGrid from "@/components/form/AvailabilityGrid";
 import Checkbox from "@/components/form/Checkbox";
 import Field from "@/components/form/Field";
+import FormSection from "@/components/form/FormSection";
 import MultiCheckboxGroup from "@/components/form/MultiCheckboxGroup";
 import PhoneInput from "@/components/form/PhoneInput";
 import Select from "@/components/form/Select";
@@ -61,6 +76,19 @@ const STEP_LABELS = [
   "Profil sitter",
   "Modalités",
 ] as const;
+
+/**
+ * Rendered by the Stepper at the top of the form. Kept as a function
+ * returning fresh JSX so the icons are not created at module load (and so
+ * linters don't complain about module-level JSX).
+ */
+function buildStepItems() {
+  return [
+    { label: STEP_LABELS[0], icon: <User strokeWidth={2} /> },
+    { label: STEP_LABELS[1], icon: <Heart strokeWidth={2} /> },
+    { label: STEP_LABELS[2], icon: <CalendarClock strokeWidth={2} /> },
+  ];
+}
 
 function Spinner() {
   return (
@@ -479,461 +507,47 @@ export default function SitterApplicationForm({
         aria-hidden="true"
         className="pointer-events-none -mt-4 h-0 w-full scroll-mt-24"
       />
-      <Stepper steps={STEP_LABELS} current={step} />
+      <Stepper steps={buildStepItems()} current={step} />
 
       {/* ------------------------------------------------------------------ */}
       {/* STEP 1 — Personal infos                                             */}
       {/* ------------------------------------------------------------------ */}
       {step === 0 ? (
-        <div className="grid gap-4">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Prénom" required error={errs.firstName?.message}>
-              <TextInput
-                {...register("firstName")}
-                autoComplete="given-name"
-                invalid={Boolean(errs.firstName)}
-              />
-            </Field>
-            <Field label="Nom" required error={errs.lastName?.message}>
-              <TextInput
-                {...register("lastName")}
-                autoComplete="family-name"
-                invalid={Boolean(errs.lastName)}
-              />
-            </Field>
-          </div>
-
-          <Field
-            label="Email"
-            required
-            error={
-              errs.email?.message ||
-              (emailEligibility.kind === "blocked"
-                ? emailEligibility.message
-                : undefined)
-            }
-            hint={
-              emailEligibility.kind === "checking"
-                ? "Vérification de l'adresse…"
-                : undefined
-            }
-          >
-            {(() => {
-              const emailField = register("email");
-              return (
-                <TextInput
-                  type="email"
-                  autoComplete="email"
-                  inputMode="email"
-                  invalid={
-                    Boolean(errs.email) ||
-                    emailEligibility.kind === "blocked"
-                  }
-                  {...emailField}
-                  onBlur={(e) => {
-                    void emailField.onBlur(e);
-                    void checkEmailEligibility(e.target.value);
-                  }}
-                />
-              );
-            })()}
-          </Field>
-
-          <Field
-            label="Téléphone"
-            required
-            hint="Format suisse uniquement."
-            error={errs.phone?.message}
-          >
-            <Controller
-              control={control}
-              name="phone"
-              render={({ field }) => (
-                <PhoneInput
-                  name={field.name}
-                  value={field.value ?? ""}
-                  onChange={field.onChange}
-                  onBlur={field.onBlur}
-                  invalid={Boolean(errs.phone)}
-                />
-              )}
-            />
-          </Field>
-
-          <Field label="Âge (optionnel)" error={errs.age?.message}>
-            <Controller
-              control={control}
-              name="age"
-              render={({ field }) => (
-                <TextInput
-                  type="number"
-                  inputMode="numeric"
-                  min={18}
-                  max={99}
-                  placeholder="ex. 28"
-                  value={field.value == null ? "" : String(field.value)}
-                  onChange={(e) => {
-                    const raw = e.target.value;
-                    if (raw === "") field.onChange(null);
-                    else {
-                      const n = Number.parseInt(raw, 10);
-                      field.onChange(Number.isFinite(n) ? n : null);
-                    }
-                  }}
-                  onBlur={field.onBlur}
-                  invalid={Boolean(errs.age)}
-                />
-              )}
-            />
-          </Field>
-
-          <div className="grid gap-4 sm:grid-cols-[1.2fr_0.8fr]">
-            <Field label="Ville / Région" required error={errs.city?.message}>
-              <Controller
-                control={control}
-                name="city"
-                render={({ field }) => (
-                  <Select
-                    name={field.name}
-                    value={field.value ?? ""}
-                    onChange={(e) =>
-                      field.onChange(e.target.value as SitterApplicationV2["city"])
-                    }
-                    onBlur={field.onBlur}
-                    invalid={Boolean(errs.city)}
-                    placeholder="Choisir une ville…"
-                    options={cityOptions}
-                  />
-                )}
-              />
-            </Field>
-            <Field label="NPA" required error={errs.npa?.message}>
-              <TextInput
-                inputMode="numeric"
-                placeholder="ex. 1004"
-                maxLength={4}
-                invalid={Boolean(errs.npa)}
-                {...register("npa")}
-              />
-            </Field>
-          </div>
-
-          {cityValue === CITY_OTHER_VALUE ? (
-            <Field
-              label="Précise ta ville"
-              required
-              error={errs.cityOther?.message}
-            >
-              <TextInput
-                placeholder="ex. Nyon"
-                invalid={Boolean(errs.cityOther)}
-                {...register("cityOther")}
-              />
-            </Field>
-          ) : null}
-        </div>
-      ) : null}
-
-      {/* ------------------------------------------------------------------ */}
-      {/* STEP 2 — Sitter profile                                             */}
-      {/* ------------------------------------------------------------------ */}
-      {step === 1 ? (
-        <div className="grid gap-4">
-          <Field
-            label="Lien professionnel avec les animaux"
-            required
-            error={errs.linkAnimalProfession?.message}
-          >
-            <Controller
-              control={control}
-              name="linkAnimalProfession"
-              render={({ field }) => (
-                <Select
-                  name={field.name}
-                  value={field.value ?? ""}
-                  onChange={(e) =>
-                    field.onChange(
-                      e.target.value as SitterApplicationV2["linkAnimalProfession"],
-                    )
-                  }
-                  onBlur={field.onBlur}
-                  invalid={Boolean(errs.linkAnimalProfession)}
-                  placeholder="Choisir…"
-                  options={LINK_ANIMAL_PROFESSION_OPTIONS.map((o) => ({
-                    value: o.value,
-                    label: o.label,
-                  }))}
-                />
-              )}
-            />
-          </Field>
-
-          {linkAnimalProfessionValue === "other" ? (
-            <Field
-              label="Précise le métier animalier"
-              required
-              error={errs.linkAnimalProfessionOther?.message}
-            >
-              <TextInput
-                placeholder="ex. Auxiliaire vétérinaire"
-                invalid={Boolean(errs.linkAnimalProfessionOther)}
-                {...register("linkAnimalProfessionOther")}
-              />
-            </Field>
-          ) : null}
-
-          <Field
-            label="As-tu déjà gardé des chiens ?"
-            required
-            error={errs.gardeExperienceLevel?.message}
-          >
-            <Controller
-              control={control}
-              name="gardeExperienceLevel"
-              render={({ field }) => (
-                <Select
-                  name={field.name}
-                  value={field.value ?? ""}
-                  onChange={(e) =>
-                    field.onChange(
-                      e.target.value as SitterApplicationV2["gardeExperienceLevel"],
-                    )
-                  }
-                  onBlur={field.onBlur}
-                  invalid={Boolean(errs.gardeExperienceLevel)}
-                  placeholder="Choisir…"
-                  options={GARDE_EXPERIENCE_LEVEL_OPTIONS.map((o) => ({
-                    value: o.value,
-                    label: o.label,
-                  }))}
-                />
-              )}
-            />
-          </Field>
-
-          <Field
-            label="Expérience avec les chiens"
-            required
-            hint="Décris les tailles, races, situations déjà rencontrées."
-            error={errs.experienceText?.message}
-          >
-            <Textarea
-              rows={4}
-              placeholder="ex. tailles, races, éducation, promenades, gardes précédentes…"
-              invalid={Boolean(errs.experienceText)}
-              {...register("experienceText")}
-            />
-          </Field>
-
-          <Field
-            label="Pourquoi DogShift ?"
-            required
-            hint="Ta motivation aide à comprendre ton profil."
-            error={errs.motivationText?.message}
-          >
-            <Textarea
-              rows={4}
-              placeholder="Explique ce qui te motive à rejoindre DogShift…"
-              invalid={Boolean(errs.motivationText)}
-              {...register("motivationText")}
-            />
-          </Field>
-
-          <Field
-            label="Allergies aux animaux (optionnel)"
-            error={errs.allergies?.message}
-          >
-            <TextInput
-              placeholder="Aucune / Préciser si oui (chats, certains chiens…)"
-              invalid={Boolean(errs.allergies)}
-              {...register("allergies")}
-            />
-          </Field>
-        </div>
-      ) : null}
-
-      {/* ------------------------------------------------------------------ */}
-      {/* STEP 3 — Modalities                                                 */}
-      {/* ------------------------------------------------------------------ */}
-      {step === 2 ? (
         <div className="grid gap-5">
-          <Field
-            label="Disponibilités générales"
-            required
-            error={
-              errs.availabilityStructured?.message ||
-              errs.availabilityStructured?.root?.message
-            }
+          <FormSection
+            icon={<User />}
+            kicker="Qui es-tu ?"
+            title="Identité"
+            description="Renseigne ton nom comme tu aimerais qu'il apparaisse sur ton profil sitter."
           >
-            <Controller
-              control={control}
-              name="availabilityStructured"
-              render={({ field }) => (
-                <AvailabilityGrid
-                  value={field.value}
-                  onChange={field.onChange}
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field label="Prénom" required error={errs.firstName?.message}>
+                <TextInput
+                  {...register("firstName")}
+                  autoComplete="given-name"
+                  invalid={Boolean(errs.firstName)}
                 />
-              )}
-            />
-          </Field>
-
-          <Field
-            label="Type(s) de garde proposé(s)"
-            required
-            error={errs.gardeTypes?.message}
-          >
-            <Controller
-              control={control}
-              name="gardeTypes"
-              render={({ field }) => (
-                <MultiCheckboxGroup
-                  name={field.name}
-                  value={field.value ?? []}
-                  onChange={(next) =>
-                    field.onChange(
-                      next as SitterApplicationV2["gardeTypes"],
-                    )
-                  }
-                  options={GARDE_TYPE_OPTIONS.map((o) => ({
-                    value: o.value,
-                    label: o.label,
-                  }))}
+              </Field>
+              <Field label="Nom" required error={errs.lastName?.message}>
+                <TextInput
+                  {...register("lastName")}
+                  autoComplete="family-name"
+                  invalid={Boolean(errs.lastName)}
                 />
-              )}
-            />
-          </Field>
+              </Field>
+            </div>
 
-          <Field
-            label="Taille(s) de chiens acceptée(s)"
-            required
-            error={errs.dogSizes?.message}
-          >
-            <Controller
-              control={control}
-              name="dogSizes"
-              render={({ field }) => (
-                <MultiCheckboxGroup
-                  name={field.name}
-                  value={field.value ?? []}
-                  onChange={(next) =>
-                    field.onChange(next as SitterApplicationV2["dogSizes"])
-                  }
-                  options={DOG_SIZE_OPTIONS.map((o) => ({
-                    value: o.value,
-                    label: o.label,
-                  }))}
-                  columns={2}
-                />
-              )}
-            />
-          </Field>
-
-          <Field
-            label="Type de logement"
-            required
-            error={errs.housingType?.message}
-          >
-            <Controller
-              control={control}
-              name="housingType"
-              render={({ field }) => (
-                <Select
-                  name={field.name}
-                  value={field.value ?? ""}
-                  onChange={(e) =>
-                    field.onChange(
-                      e.target.value as SitterApplicationV2["housingType"],
-                    )
-                  }
-                  onBlur={field.onBlur}
-                  invalid={Boolean(errs.housingType)}
-                  placeholder="Choisir…"
-                  options={HOUSING_TYPE_OPTIONS.map((o) => ({
-                    value: o.value,
-                    label: o.label,
-                  }))}
-                />
-              )}
-            />
-          </Field>
-
-          {housingTypeValue === "other" ? (
-            <Field
-              label="Précise le type de logement"
-              required
-              error={errs.housingTypeOther?.message}
-            >
-              <TextInput
-                placeholder="ex. Studio avec grande terrasse partagée"
-                invalid={Boolean(errs.housingTypeOther)}
-                {...register("housingTypeOther")}
-              />
-            </Field>
-          ) : null}
-
-          <Field
-            label="Autres animaux à mon domicile"
-            required
-            error={
-              errs.otherAnimals?.message || errs.otherAnimals?.root?.message
-            }
-          >
-            <Controller
-              control={control}
-              name="otherAnimals"
-              render={({ field }) => (
-                <div className="grid gap-2">
-                  {OTHER_ANIMAL_OPTIONS.map((o) => {
-                    const checked = Boolean(
-                      (field.value as Record<string, boolean>)[o.value],
-                    );
-                    return (
-                      <Checkbox
-                        key={o.value}
-                        cardStyle
-                        checked={checked}
-                        onChange={(e) => {
-                          const next = {
-                            ...(field.value as Record<string, boolean>),
-                            [o.value]: e.target.checked,
-                          };
-                          // If user picks 'none', clear the others (UX sugar).
-                          if (o.value === "none" && e.target.checked) {
-                            next.dogs = false;
-                            next.cats = false;
-                            next.others = false;
-                            setValue("otherAnimalsDogCount", null);
-                          }
-                          // If user picks anything else, drop 'none'.
-                          if (o.value !== "none" && e.target.checked) {
-                            next.none = false;
-                          }
-                          field.onChange(next);
-                        }}
-                        label={o.label}
-                      />
-                    );
-                  })}
-                </div>
-              )}
-            />
-          </Field>
-
-          {otherAnimalsValue?.dogs ? (
-            <Field
-              label="Combien de chiens ?"
-              required
-              error={errs.otherAnimalsDogCount?.message}
-            >
+            <Field label="Âge (optionnel)" error={errs.age?.message}>
               <Controller
                 control={control}
-                name="otherAnimalsDogCount"
+                name="age"
                 render={({ field }) => (
                   <TextInput
                     type="number"
                     inputMode="numeric"
-                    min={1}
-                    max={20}
+                    min={18}
+                    max={99}
+                    placeholder="ex. 28"
                     value={field.value == null ? "" : String(field.value)}
                     onChange={(e) => {
                       const raw = e.target.value;
@@ -944,25 +558,503 @@ export default function SitterApplicationForm({
                       }
                     }}
                     onBlur={field.onBlur}
-                    invalid={Boolean(errs.otherAnimalsDogCount)}
+                    invalid={Boolean(errs.age)}
                   />
                 )}
               />
             </Field>
-          ) : null}
+          </FormSection>
 
-          <Controller
-            control={control}
-            name="hasCarLicense"
-            render={({ field }) => (
-              <Checkbox
-                cardStyle
-                checked={Boolean(field.value)}
-                onChange={(e) => field.onChange(e.target.checked)}
-                label="J'ai le permis de conduire et un véhicule disponible"
+          <FormSection
+            icon={<Mail />}
+            kicker="Comment te joindre ?"
+            title="Contact"
+            description="On utilise ces informations uniquement pour te recontacter au sujet de ta candidature."
+          >
+            <Field
+              label="Email"
+              required
+              error={
+                errs.email?.message ||
+                (emailEligibility.kind === "blocked"
+                  ? emailEligibility.message
+                  : undefined)
+              }
+              hint={
+                emailEligibility.kind === "checking"
+                  ? "Vérification de l'adresse…"
+                  : undefined
+              }
+            >
+              {(() => {
+                const emailField = register("email");
+                return (
+                  <TextInput
+                    type="email"
+                    autoComplete="email"
+                    inputMode="email"
+                    invalid={
+                      Boolean(errs.email) ||
+                      emailEligibility.kind === "blocked"
+                    }
+                    {...emailField}
+                    onBlur={(e) => {
+                      void emailField.onBlur(e);
+                      void checkEmailEligibility(e.target.value);
+                    }}
+                  />
+                );
+              })()}
+            </Field>
+
+            <Field
+              label="Téléphone"
+              required
+              hint="Format suisse uniquement."
+              error={errs.phone?.message}
+            >
+              <Controller
+                control={control}
+                name="phone"
+                render={({ field }) => (
+                  <PhoneInput
+                    name={field.name}
+                    value={field.value ?? ""}
+                    onChange={field.onChange}
+                    onBlur={field.onBlur}
+                    invalid={Boolean(errs.phone)}
+                  />
+                )}
               />
-            )}
-          />
+            </Field>
+          </FormSection>
+
+          <FormSection
+            icon={<MapPin />}
+            kicker="Où es-tu basé·e ?"
+            title="Localisation"
+            description="Les propriétaires proches de toi verront ton profil en priorité."
+          >
+            <div className="grid gap-4 sm:grid-cols-[1.2fr_0.8fr]">
+              <Field label="Ville / Région" required error={errs.city?.message}>
+                <Controller
+                  control={control}
+                  name="city"
+                  render={({ field }) => (
+                    <Select
+                      name={field.name}
+                      value={field.value ?? ""}
+                      onChange={(e) =>
+                        field.onChange(e.target.value as SitterApplicationV2["city"])
+                      }
+                      onBlur={field.onBlur}
+                      invalid={Boolean(errs.city)}
+                      placeholder="Choisir une ville…"
+                      options={cityOptions}
+                    />
+                  )}
+                />
+              </Field>
+              <Field label="NPA" required error={errs.npa?.message}>
+                <TextInput
+                  inputMode="numeric"
+                  placeholder="ex. 1004"
+                  maxLength={4}
+                  invalid={Boolean(errs.npa)}
+                  {...register("npa")}
+                />
+              </Field>
+            </div>
+
+            {cityValue === CITY_OTHER_VALUE ? (
+              <Field
+                label="Précise ta ville"
+                required
+                error={errs.cityOther?.message}
+              >
+                <TextInput
+                  placeholder="ex. Nyon"
+                  invalid={Boolean(errs.cityOther)}
+                  {...register("cityOther")}
+                />
+              </Field>
+            ) : null}
+          </FormSection>
+        </div>
+      ) : null}
+
+      {/* ------------------------------------------------------------------ */}
+      {/* STEP 2 — Sitter profile                                             */}
+      {/* ------------------------------------------------------------------ */}
+      {step === 1 ? (
+        <div className="grid gap-5">
+          <FormSection
+            icon={<PawPrint />}
+            kicker="Ton lien avec les animaux"
+            title="Ton expérience animalière"
+            description="Utile pour qualifier ton profil — un métier animalier n'est jamais requis, seule ta passion compte."
+          >
+            <Field
+              label="Lien professionnel avec les animaux"
+              required
+              error={errs.linkAnimalProfession?.message}
+            >
+              <Controller
+                control={control}
+                name="linkAnimalProfession"
+                render={({ field }) => (
+                  <Select
+                    name={field.name}
+                    value={field.value ?? ""}
+                    onChange={(e) =>
+                      field.onChange(
+                        e.target.value as SitterApplicationV2["linkAnimalProfession"],
+                      )
+                    }
+                    onBlur={field.onBlur}
+                    invalid={Boolean(errs.linkAnimalProfession)}
+                    placeholder="Choisir…"
+                    options={LINK_ANIMAL_PROFESSION_OPTIONS.map((o) => ({
+                      value: o.value,
+                      label: o.label,
+                    }))}
+                  />
+                )}
+              />
+            </Field>
+
+            {linkAnimalProfessionValue === "other" ? (
+              <Field
+                label="Précise le métier animalier"
+                required
+                error={errs.linkAnimalProfessionOther?.message}
+              >
+                <TextInput
+                  placeholder="ex. Auxiliaire vétérinaire"
+                  invalid={Boolean(errs.linkAnimalProfessionOther)}
+                  {...register("linkAnimalProfessionOther")}
+                />
+              </Field>
+            ) : null}
+
+            <Field
+              label="As-tu déjà gardé des chiens ?"
+              required
+              error={errs.gardeExperienceLevel?.message}
+            >
+              <Controller
+                control={control}
+                name="gardeExperienceLevel"
+                render={({ field }) => (
+                  <Select
+                    name={field.name}
+                    value={field.value ?? ""}
+                    onChange={(e) =>
+                      field.onChange(
+                        e.target.value as SitterApplicationV2["gardeExperienceLevel"],
+                      )
+                    }
+                    onBlur={field.onBlur}
+                    invalid={Boolean(errs.gardeExperienceLevel)}
+                    placeholder="Choisir…"
+                    options={GARDE_EXPERIENCE_LEVEL_OPTIONS.map((o) => ({
+                      value: o.value,
+                      label: o.label,
+                    }))}
+                  />
+                )}
+              />
+            </Field>
+          </FormSection>
+
+          <FormSection
+            icon={<Sparkles />}
+            kicker="Dis-nous tout"
+            title="Parcours & motivation"
+            description="Quelques lignes pour comprendre qui tu es et ce qui te motive à rejoindre DogShift."
+          >
+            <Field
+              label="Expérience avec les chiens"
+              required
+              hint="Décris les tailles, races, situations déjà rencontrées."
+              error={errs.experienceText?.message}
+            >
+              <Textarea
+                rows={4}
+                placeholder="ex. tailles, races, éducation, promenades, gardes précédentes…"
+                invalid={Boolean(errs.experienceText)}
+                {...register("experienceText")}
+              />
+            </Field>
+
+            <Field
+              label="Pourquoi DogShift ?"
+              required
+              hint="Ta motivation aide à comprendre ton profil."
+              error={errs.motivationText?.message}
+            >
+              <Textarea
+                rows={4}
+                placeholder="Explique ce qui te motive à rejoindre DogShift…"
+                invalid={Boolean(errs.motivationText)}
+                {...register("motivationText")}
+              />
+            </Field>
+
+            <Field
+              label="Allergies aux animaux (optionnel)"
+              error={errs.allergies?.message}
+            >
+              <TextInput
+                placeholder="Aucune / Préciser si oui (chats, certains chiens…)"
+                invalid={Boolean(errs.allergies)}
+                {...register("allergies")}
+              />
+            </Field>
+          </FormSection>
+        </div>
+      ) : null}
+
+      {/* ------------------------------------------------------------------ */}
+      {/* STEP 3 — Modalities                                                 */}
+      {/* ------------------------------------------------------------------ */}
+      {step === 2 ? (
+        <div className="grid gap-5">
+          <FormSection
+            icon={<CalendarClock />}
+            kicker="Ton agenda"
+            title="Tes disponibilités"
+            description="Coche les jours et créneaux où tu serais disponible. Tu pourras affiner tout ça plus tard depuis ton profil."
+          >
+            <Field
+              label="Disponibilités générales"
+              required
+              error={
+                errs.availabilityStructured?.message ||
+                errs.availabilityStructured?.root?.message
+              }
+            >
+              <Controller
+                control={control}
+                name="availabilityStructured"
+                render={({ field }) => (
+                  <AvailabilityGrid
+                    value={field.value}
+                    onChange={field.onChange}
+                  />
+                )}
+              />
+            </Field>
+          </FormSection>
+
+          <FormSection
+            icon={<Dog />}
+            kicker="Tes services"
+            title="Services proposés"
+            description="Tu peux sélectionner plusieurs types de garde et plusieurs tailles de chiens."
+          >
+            <Field
+              label="Type(s) de garde proposé(s)"
+              required
+              error={errs.gardeTypes?.message}
+            >
+              <Controller
+                control={control}
+                name="gardeTypes"
+                render={({ field }) => (
+                  <MultiCheckboxGroup
+                    name={field.name}
+                    value={field.value ?? []}
+                    onChange={(next) =>
+                      field.onChange(
+                        next as SitterApplicationV2["gardeTypes"],
+                      )
+                    }
+                    options={GARDE_TYPE_OPTIONS.map((o) => ({
+                      value: o.value,
+                      label: o.label,
+                    }))}
+                  />
+                )}
+              />
+            </Field>
+
+            <Field
+              label="Taille(s) de chiens acceptée(s)"
+              required
+              error={errs.dogSizes?.message}
+            >
+              <Controller
+                control={control}
+                name="dogSizes"
+                render={({ field }) => (
+                  <MultiCheckboxGroup
+                    name={field.name}
+                    value={field.value ?? []}
+                    onChange={(next) =>
+                      field.onChange(next as SitterApplicationV2["dogSizes"])
+                    }
+                    options={DOG_SIZE_OPTIONS.map((o) => ({
+                      value: o.value,
+                      label: o.label,
+                    }))}
+                    columns={2}
+                  />
+                )}
+              />
+            </Field>
+          </FormSection>
+
+          <FormSection
+            icon={<Home />}
+            kicker="Ton foyer"
+            title="Ton environnement"
+            description="Ces infos aident les propriétaires à savoir dans quel cadre leur chien serait accueilli."
+          >
+            <Field
+              label="Type de logement"
+              required
+              error={errs.housingType?.message}
+            >
+              <Controller
+                control={control}
+                name="housingType"
+                render={({ field }) => (
+                  <Select
+                    name={field.name}
+                    value={field.value ?? ""}
+                    onChange={(e) =>
+                      field.onChange(
+                        e.target.value as SitterApplicationV2["housingType"],
+                      )
+                    }
+                    onBlur={field.onBlur}
+                    invalid={Boolean(errs.housingType)}
+                    placeholder="Choisir…"
+                    options={HOUSING_TYPE_OPTIONS.map((o) => ({
+                      value: o.value,
+                      label: o.label,
+                    }))}
+                  />
+                )}
+              />
+            </Field>
+
+            {housingTypeValue === "other" ? (
+              <Field
+                label="Précise le type de logement"
+                required
+                error={errs.housingTypeOther?.message}
+              >
+                <TextInput
+                  placeholder="ex. Studio avec grande terrasse partagée"
+                  invalid={Boolean(errs.housingTypeOther)}
+                  {...register("housingTypeOther")}
+                />
+              </Field>
+            ) : null}
+
+            <Field
+              label="Autres animaux à mon domicile"
+              required
+              error={
+                errs.otherAnimals?.message || errs.otherAnimals?.root?.message
+              }
+            >
+              <Controller
+                control={control}
+                name="otherAnimals"
+                render={({ field }) => (
+                  <div className="grid gap-2">
+                    {OTHER_ANIMAL_OPTIONS.map((o) => {
+                      const checked = Boolean(
+                        (field.value as Record<string, boolean>)[o.value],
+                      );
+                      return (
+                        <Checkbox
+                          key={o.value}
+                          cardStyle
+                          checked={checked}
+                          onChange={(e) => {
+                            const next = {
+                              ...(field.value as Record<string, boolean>),
+                              [o.value]: e.target.checked,
+                            };
+                            // If user picks 'none', clear the others (UX sugar).
+                            if (o.value === "none" && e.target.checked) {
+                              next.dogs = false;
+                              next.cats = false;
+                              next.others = false;
+                              setValue("otherAnimalsDogCount", null);
+                            }
+                            // If user picks anything else, drop 'none'.
+                            if (o.value !== "none" && e.target.checked) {
+                              next.none = false;
+                            }
+                            field.onChange(next);
+                          }}
+                          label={o.label}
+                        />
+                      );
+                    })}
+                  </div>
+                )}
+              />
+            </Field>
+
+            {otherAnimalsValue?.dogs ? (
+              <Field
+                label="Combien de chiens ?"
+                required
+                error={errs.otherAnimalsDogCount?.message}
+              >
+                <Controller
+                  control={control}
+                  name="otherAnimalsDogCount"
+                  render={({ field }) => (
+                    <TextInput
+                      type="number"
+                      inputMode="numeric"
+                      min={1}
+                      max={20}
+                      value={field.value == null ? "" : String(field.value)}
+                      onChange={(e) => {
+                        const raw = e.target.value;
+                        if (raw === "") field.onChange(null);
+                        else {
+                          const n = Number.parseInt(raw, 10);
+                          field.onChange(Number.isFinite(n) ? n : null);
+                        }
+                      }}
+                      onBlur={field.onBlur}
+                      invalid={Boolean(errs.otherAnimalsDogCount)}
+                    />
+                  )}
+                />
+              </Field>
+            ) : null}
+          </FormSection>
+
+          <FormSection
+            icon={<Car />}
+            kicker="Ta mobilité"
+            title="Déplacements"
+            description="Un véhicule personnel est un plus pour certaines gardes à domicile."
+          >
+            <Controller
+              control={control}
+              name="hasCarLicense"
+              render={({ field }) => (
+                <Checkbox
+                  cardStyle
+                  checked={Boolean(field.value)}
+                  onChange={(e) => field.onChange(e.target.checked)}
+                  label="J'ai le permis de conduire et un véhicule disponible"
+                  description="Utile pour les gardes qui demandent de se déplacer chez le propriétaire."
+                />
+              )}
+            />
+          </FormSection>
 
           {/* Honeypot (spam trap) */}
           <label className="hidden" aria-hidden="true">
@@ -974,45 +1066,54 @@ export default function SitterApplicationForm({
             />
           </label>
 
-          <Controller
-            control={control}
-            name="consentInterview"
-            render={({ field }) => (
-              <div className="grid gap-1">
-                <Checkbox
-                  cardStyle
-                  checked={Boolean(field.value)}
-                  onChange={(e) => field.onChange(e.target.checked)}
-                  label="J'accepte d'être contacté·e pour un court entretien."
-                />
-                {errs.consentInterview ? (
-                  <p className="mt-1 text-center text-sm font-medium text-rose-600">
-                    {errs.consentInterview.message}
-                  </p>
-                ) : null}
-              </div>
-            )}
-          />
+          <FormSection
+            icon={<ShieldCheck />}
+            kicker="Dernière étape"
+            title="Tes consentements"
+            description="Ces deux accords sont nécessaires pour que nous puissions traiter ta candidature."
+            tone="muted"
+          >
+            <Controller
+              control={control}
+              name="consentInterview"
+              render={({ field }) => (
+                <div className="grid gap-1">
+                  <Checkbox
+                    cardStyle
+                    checked={Boolean(field.value)}
+                    onChange={(e) => field.onChange(e.target.checked)}
+                    label="J'accepte d'être contacté·e pour un court entretien."
+                    description="Par email ou téléphone, généralement sous 5 jours ouvrés."
+                  />
+                  {errs.consentInterview ? (
+                    <p className="mt-1 text-center text-sm font-medium text-rose-600">
+                      {errs.consentInterview.message}
+                    </p>
+                  ) : null}
+                </div>
+              )}
+            />
 
-          <Controller
-            control={control}
-            name="consentPrivacy"
-            render={({ field }) => (
-              <div className="grid gap-1">
-                <Checkbox
-                  cardStyle
-                  checked={Boolean(field.value)}
-                  onChange={(e) => field.onChange(e.target.checked)}
-                  label="J'accepte la politique de confidentialité et le traitement de mes données dans le cadre de cette candidature."
-                />
-                {errs.consentPrivacy ? (
-                  <p className="mt-1 text-center text-sm font-medium text-rose-600">
-                    {errs.consentPrivacy.message}
-                  </p>
-                ) : null}
-              </div>
-            )}
-          />
+            <Controller
+              control={control}
+              name="consentPrivacy"
+              render={({ field }) => (
+                <div className="grid gap-1">
+                  <Checkbox
+                    cardStyle
+                    checked={Boolean(field.value)}
+                    onChange={(e) => field.onChange(e.target.checked)}
+                    label="J'accepte la politique de confidentialité et le traitement de mes données dans le cadre de cette candidature."
+                  />
+                  {errs.consentPrivacy ? (
+                    <p className="mt-1 text-center text-sm font-medium text-rose-600">
+                      {errs.consentPrivacy.message}
+                    </p>
+                  ) : null}
+                </div>
+              )}
+            />
+          </FormSection>
         </div>
       ) : null}
 
