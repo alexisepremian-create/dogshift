@@ -168,3 +168,33 @@ test("sendApplicationEmailSchema lowercases the email field", () => {
     assert.equal(res.data.email, "jeanne@example.ch");
   }
 });
+
+test("sendApplicationEmailSchema accepts an optional applicationId", () => {
+  const res = sendApplicationEmailSchema.safeParse({
+    ...baseBody(),
+    applicationId: "app_abc123",
+  });
+  assert.equal(res.success, true);
+  if (res.success) {
+    assert.equal(res.data.applicationId, "app_abc123");
+  }
+});
+
+test("sendApplicationEmailSchema still accepts payloads without applicationId (n8n backward compat)", () => {
+  // Legacy n8n workflows don't echo back the applicationId yet. Their
+  // payloads must keep validating so production email delivery never stalls
+  // on a schema regression.
+  const res = sendApplicationEmailSchema.safeParse(baseBody());
+  assert.equal(res.success, true);
+  if (res.success) {
+    assert.equal(res.data.applicationId, undefined);
+  }
+});
+
+test("sendApplicationEmailSchema rejects an empty-string applicationId", () => {
+  const res = sendApplicationEmailSchema.safeParse({
+    ...baseBody(),
+    applicationId: "",
+  });
+  assert.equal(res.success, false);
+});

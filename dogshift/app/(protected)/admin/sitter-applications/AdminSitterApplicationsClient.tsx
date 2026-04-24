@@ -51,6 +51,9 @@ type ApplicationItem = {
   otherAnimalsDogCount: number | null;
   hasCarLicense: boolean | null;
   allergies: string | null;
+  calendlyLink: string | null;
+  acceptedEmailSentAt: string | null;
+  acceptedEmailSource: string | null;
   utmSource: string | null;
   utmMedium: string | null;
   utmCampaign: string | null;
@@ -342,6 +345,9 @@ export default function AdminSitterApplicationsClient({ adminCode }: { adminCode
 
   const [actionLoading, setActionLoading] = useState(false);
   const [contractActionLoading, setContractActionLoading] = useState(false);
+  const [calendlySaveLoading, setCalendlySaveLoading] = useState(false);
+  const [interviewEmailLoading, setInterviewEmailLoading] = useState(false);
+  const [calendlyDraft, setCalendlyDraft] = useState<string>("");
   const [success, setSuccess] = useState<string | null>(null);
   const [contractDetails, setContractDetails] = useState<ContractDetailsPayload | null>(null);
   const [contractDetailsLoading, setContractDetailsLoading] = useState(false);
@@ -427,6 +433,93 @@ export default function AdminSitterApplicationsClient({ adminCode }: { adminCode
     void load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    setCalendlyDraft(selected?.calendlyLink ?? "");
+  }, [selected?.id, selected?.calendlyLink]);
+
+  function isHttpUrl(value: string) {
+    try {
+      const u = new URL(value);
+      return u.protocol === "https:" || u.protocol === "http:";
+    } catch {
+      return false;
+    }
+  }
+
+  async function saveCalendlyLink() {
+    if (!selected || calendlySaveLoading) return;
+    const trimmed = calendlyDraft.trim();
+    if (trimmed && !isHttpUrl(trimmed)) {
+      setError("Lien Calendly invalide (URL http(s) requise).");
+      return;
+    }
+    setCalendlySaveLoading(true);
+    setError(null);
+    setSuccess(null);
+    try {
+      const res = await fetch("/api/admin/pilot-sitter-applications/calendly-link", {
+        method: "POST",
+        headers: adminHeaders({ "Content-Type": "application/json" }),
+        body: JSON.stringify({ id: selected.id, calendlyLink: trimmed }),
+      });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic JSON shape; narrowed by runtime checks below.
+      const payload = (await res.json().catch(() => null)) as any;
+      if (!res.ok || !payload?.ok) {
+        setError("Impossible d’enregistrer le lien Calendly.");
+        return;
+      }
+      setSuccess(trimmed ? "Lien Calendly enregistré." : "Lien Calendly supprimé.");
+      await load();
+    } catch {
+      setError("Impossible d’enregistrer le lien Calendly.");
+    } finally {
+      setCalendlySaveLoading(false);
+    }
+  }
+
+  async function sendInterviewEmailAction() {
+    if (!selected || interviewEmailLoading) return;
+    const trimmed = (selected.calendlyLink ?? "").trim();
+    if (!trimmed) {
+      setError("Ajoute d’abord un lien Calendly à cette candidature.");
+      return;
+    }
+    if (selected.acceptedEmailSentAt) {
+      const sentAt = formatFrCh(selected.acceptedEmailSentAt);
+      const source = selected.acceptedEmailSource === "n8n" ? "automatiquement (n8n)" : "manuellement";
+      const ok = window.confirm(
+        `Un email d’entretien a déjà été envoyé ${source} le ${sentAt}.\nRenvoyer quand même ?`,
+      );
+      if (!ok) return;
+    }
+    setInterviewEmailLoading(true);
+    setError(null);
+    setSuccess(null);
+    try {
+      const res = await fetch("/api/admin/pilot-sitter-applications/send-interview-email", {
+        method: "POST",
+        headers: adminHeaders({ "Content-Type": "application/json" }),
+        body: JSON.stringify({ id: selected.id }),
+      });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic JSON shape; narrowed by runtime checks below.
+      const payload = (await res.json().catch(() => null)) as any;
+      if (!res.ok || !payload?.ok) {
+        if (payload?.error === "MISSING_CALENDLY_LINK") {
+          setError("Lien Calendly manquant sur la candidature.");
+        } else {
+          setError("Impossible d’envoyer l’email d’entretien.");
+        }
+        return;
+      }
+      setSuccess("Email d’entretien envoyé (lien Calendly).");
+      await load();
+    } catch {
+      setError("Impossible d’envoyer l’email d’entretien.");
+    } finally {
+      setInterviewEmailLoading(false);
+    }
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -590,7 +683,15 @@ export default function AdminSitterApplicationsClient({ adminCode }: { adminCode
         setError("Impossible d’enregistrer le statut.");
         return;
       }
-      await load();
+      // "Accepté" is the admin's commitment to interview the candidate — we
+      // chain the interview-booking email (same template as the n8n HIGH
+      // flow) so the admin only has one button to click. Re-clicks trigger a
+      // confirm dialog client-side via sendInterviewEmailAction().
+      if (next === "ACCEPTED") {
+        await sendInterviewEmailAction();
+      } else {
+        await load();
+      }
     } catch {
       setError("Impossible d’enregistrer le statut.");
     } finally {
@@ -750,6 +851,57 @@ export default function AdminSitterApplicationsClient({ adminCode }: { adminCode
                   </div>
 
                   <ApplicationAvailabilityBlock item={selected} />
+
+                  <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-semibold text-slate-900">Lien Calendly (entretien)</p>
+                        <p className="mt-1 text-xs text-slate-600">
+                          Envoyé au candidat quand tu cliques sur « Accepté ». Un lien unique par candidature.
+                        </p>
+                      </div>
+                      {selected.acceptedEmailSentAt ? (
+                        <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-900">
+                          Email envoyé le {formatFrCh(selected.acceptedEmailSentAt)}
+                          {selected.acceptedEmailSource ? ` (${selected.acceptedEmailSource})` : ""}
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-semibold text-slate-700">
+                          Aucun email envoyé
+                        </span>
+                      )}
+                    </div>
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
+                      <input
+                        type="url"
+                        value={calendlyDraft}
+                        onChange={(e) => setCalendlyDraft(e.target.value)}
+                        placeholder="https://calendly.com/ton-compte/entretien-dogshift"
+                        className="h-11 min-w-0 flex-1 rounded-2xl border border-slate-300 bg-white px-4 text-sm text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-[var(--dogshift-blue)] focus:ring-2 focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_80%)]"
+                      />
+                      <button
+                        type="button"
+                        disabled={calendlySaveLoading || (calendlyDraft.trim() === (selected.calendlyLink ?? "").trim())}
+                        onClick={() => void saveCalendlyLink()}
+                        className="inline-flex items-center justify-center rounded-2xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {calendlySaveLoading ? "Enregistrement…" : "Enregistrer"}
+                      </button>
+                      <button
+                        type="button"
+                        disabled={interviewEmailLoading || !(selected.calendlyLink ?? "").trim()}
+                        onClick={() => void sendInterviewEmailAction()}
+                        className="inline-flex items-center justify-center rounded-2xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {interviewEmailLoading ? "Envoi…" : selected.acceptedEmailSentAt ? "Renvoyer l’email" : "Envoyer l’email"}
+                      </button>
+                    </div>
+                    {!(selected.calendlyLink ?? "").trim() ? (
+                      <p className="mt-2 text-xs text-amber-700">
+                        Ajoute un lien avant de cliquer sur « Accepté » — sinon l’email ne partira pas.
+                      </p>
+                    ) : null}
+                  </div>
 
                   <div className="rounded-2xl border border-slate-200 bg-white p-4">
                     <p className="text-xs font-semibold text-slate-700">Statut</p>
