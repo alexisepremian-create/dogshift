@@ -71,7 +71,7 @@ function actionHelp(action: ActionType, published: boolean, verificationStatus: 
     return "Activez d'abord le compte (bouton « Activer le compte »).";
   }
   if (action === "generate_contract_link" && !canGenerateContractAccessLink(lifecycleStatus)) {
-    return "Le lien sécurisé ne peut être émis qu’avant la signature du contrat.";
+    return "Le lien sécurisé ne peut pas être émis tant que la candidature n’est pas sélectionnée.";
   }
   if (action === "select" && lifecycleStatus !== "application_received") {
     return "La sélection est déjà effectuée ou dépassée.";
@@ -127,6 +127,7 @@ export default function AdminSitterActions({
         },
         body: JSON.stringify({ action, notes }),
       });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic JSON shape; narrowed by runtime checks below.
       const payload = (await res.json().catch(() => null)) as any;
       if (!res.ok || !payload?.ok || !payload?.profile) {
         setError("Impossible d’exécuter l’action admin.");
