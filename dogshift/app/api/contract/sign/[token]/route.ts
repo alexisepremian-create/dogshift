@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
@@ -353,6 +354,39 @@ export async function POST(req: NextRequest, context: { params: Promise<{ token:
       select: { id: true },
     });
 
+    try {
+
+      await fetch("https://dogshift.app.n8n.cloud/webhook/contract-signed", {
+    
+        method: "POST",
+    
+        headers: {
+    
+          "Content-Type": "application/json",
+    
+        },
+    
+        body: JSON.stringify({
+    
+          sitterId: access.profile.sitterId,
+    
+          userId: access.profile.userId,
+    
+          email: access.profile.user?.email,
+    
+          signedAt,
+    
+        }),
+    
+      });
+    
+    } catch (e) {
+    
+      console.error("n8n webhook failed", e);
+    
+    }
+    
+   
     return NextResponse.json(
       {
         ok: true,
