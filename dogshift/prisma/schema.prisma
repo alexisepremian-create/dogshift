@@ -247,6 +247,18 @@ model PilotSitterApplication {
 
   status SitterApplicationStatus @default(PENDING)
 
+  // Per-candidate Calendly link used by the "Accepté" flow. When set, clicking
+  // "Accepté" in the admin UI sends the same HIGH email the n8n scoring
+  // workflow would have sent, pointing to this link.
+  calendlyLink String?
+
+  // Set the first time the "HIGH / interview" email has been delivered to the
+  // candidate — whether by the n8n scoring workflow (source="n8n") or by a
+  // manual admin click on "Accepté" (source="admin"). Used to dedupe and to
+  // let the UI warn before re-sending.
+  acceptedEmailSentAt DateTime?
+  acceptedEmailSource String?
+
   utmSource   String?
   utmMedium   String?
   utmCampaign String?

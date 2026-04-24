@@ -48,6 +48,9 @@ export async function GET(req: NextRequest) {
             otherAnimalsDogCount: number | null;
             hasCarLicense: boolean | null;
             allergies: string | null;
+            calendlyLink: string | null;
+            acceptedEmailSentAt: Date | null;
+            acceptedEmailSource: string | null;
             utmSource: string | null;
             utmMedium: string | null;
             utmCampaign: string | null;
@@ -104,6 +107,7 @@ export async function GET(req: NextRequest) {
           const linkedProfile = linkedUser?.sitterProfile ?? null;
           return {
             ...a,
+            acceptedEmailSentAt: a.acceptedEmailSentAt ? a.acceptedEmailSentAt.toISOString() : null,
             linkedUserId: linkedUser?.id ?? null,
             sitterProfileId: linkedProfile?.id ?? null,
             sitterLifecycleStatus: linkedProfile ? normalizeSitterLifecycleStatus(linkedProfile.lifecycleStatus, linkedProfile.published) : null,

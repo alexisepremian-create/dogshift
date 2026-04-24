@@ -21,6 +21,10 @@ export const sendApplicationEmailSchema = z
     status: z.enum(["HIGH", "REVIEW", "LOW"]),
     score: z.number().int().min(0).max(100).optional(),
     calendlyLink: z.string().url("calendlyLink doit être une URL valide").optional(),
+    // Optional so legacy n8n workflow configs (that don't pass it) keep
+    // working. When present, the backend tracks the HIGH email emission on
+    // the matching PilotSitterApplication (acceptedEmailSentAt + Source).
+    applicationId: z.string().trim().min(1).max(200).optional(),
   })
   .superRefine((val, ctx) => {
     if (val.status === "HIGH" && !val.calendlyLink) {

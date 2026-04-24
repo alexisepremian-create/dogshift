@@ -13,6 +13,7 @@ import { reportApiError } from "@/lib/observability/reportApiError";
 import { baseUrlFromRequest } from "@/lib/url/baseUrlFromRequest";
 import { zodParse } from "@/lib/validators/common";
 import { sendApplicationEmailSchema } from "@/lib/sitterApplication/sendApplicationEmailSchema";
+import { sendInterviewEmail } from "@/lib/sitterApplication/sendInterviewEmail";
 
 export const runtime = "nodejs";
 
@@ -75,13 +76,49 @@ export async function POST(req: NextRequest) {
   const parsed = zodParse(sendApplicationEmailSchema, rawBody, { route: ROUTE });
   if (!parsed.ok) return parsed.response;
 
-  const { firstName, lastName, email, status, score, calendlyLink } = parsed.data;
+  const { firstName, lastName, email, status, score, calendlyLink, applicationId } = parsed.data;
 
   // ---------------------------------------------------------------------------
   // 3. Render + send
   // ---------------------------------------------------------------------------
   try {
     const baseUrl = baseUrlFromRequest(req) || "https://www.dogshift.ch";
+
+    // HIGH flows through the shared helper so the admin-triggered path and the
+    // n8n-triggered path stay in perfect sync (same template, same tracking on
+    // acceptedEmailSentAt/acceptedEmailSource).
+    if (status === "HIGH") {
+      const result = await sendInterviewEmail({
+        firstName,
+        lastName,
+        email,
+        calendlyLink: calendlyLink ?? "",
+        baseUrl,
+        applicationId: applicationId ?? null,
+        source: "n8n",
+      });
+
+      console.log("[api][emails][send-application-email] sent", {
+        to: email,
+        status,
+        score,
+        mode: result.mode,
+        messageId: result.messageId,
+        applicationId: applicationId ?? null,
+        acceptedEmailSentAt: result.acceptedEmailSentAt?.toISOString() ?? null,
+      });
+
+      return NextResponse.json(
+        {
+          success: true,
+          status,
+          mode: result.mode,
+          messageId: result.messageId,
+        },
+        { status: 200 }
+      );
+    }
+
     const subject = applicationStatusEmailSubject(status);
     const text = applicationStatusEmailPlainText({ firstName, lastName, status, calendlyLink });
     const html = await render(
