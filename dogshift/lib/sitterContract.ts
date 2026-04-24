@@ -69,7 +69,16 @@ export function canAccessContractPage(status: SitterLifecycleStatus) {
 }
 
 export function canGenerateContractAccessLink(status: SitterLifecycleStatus) {
-  return status === "selected" || status === "contract_to_sign";
+  // Admins can (re)issue a contract link at any stage after selection.
+  // For "activated" sitters this is used to re-send the contract without regressing
+  // their status or unpublishing them — the server-side routes preserve activation
+  // via `safeLifecycleTransition` + explicit `isAlreadyActivated` branches.
+  return (
+    status === "selected" ||
+    status === "contract_to_sign" ||
+    status === "contract_signed" ||
+    status === "activated"
+  );
 }
 
 export function isContractSignedStatus(status: SitterLifecycleStatus) {
@@ -169,10 +178,6 @@ export function isContractAccessLinkExpired(expiresAt: Date | string | null | un
   if (!expiresAt) return true;
   const ts = expiresAt instanceof Date ? expiresAt.getTime() : new Date(expiresAt).getTime();
   return !Number.isFinite(ts) || ts <= now;
-}
-
-export function contractSigningAllowed(status: SitterLifecycleStatus) {
-  return status === "selected" || status === "contract_to_sign";
 }
 
 export function buildSignedContractSnapshot(args: {
