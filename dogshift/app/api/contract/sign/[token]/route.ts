@@ -4,6 +4,10 @@ import type { NextRequest } from "next/server";
 
 import { prisma } from "@/lib/prisma";
 import {
+  computeActivationCodeExpiresAt,
+  generateUniqueActivationCode,
+} from "@/lib/sitterActivationCode";
+import {
   buildSignedContractSnapshot,
   canAccessContractPage,
   contractAccessTokenFingerprint,
@@ -19,6 +23,97 @@ import {
   SITTER_CONTRACT_CONTENT,
   SITTER_CONTRACT_TITLE,
 } from "@/lib/sitterContract";
+
+const N8N_CONTRACT_SIGNED_WEBHOOK_URL =
+  "https://dogshift.app.n8n.cloud/webhook/contract-signed";
+/** Hard cap on the webhook fetch so a slow n8n never stalls the sitter's response. */
+const N8N_CONTRACT_SIGNED_WEBHOOK_TIMEOUT_MS = 5000;
+
+/**
+ * Best-effort: generate a fresh activation code for the signed sitter and
+ * persist it on the SitterProfile (same shape as POST /api/host/activation-code/issue).
+ *
+ * Returns the plaintext code so the caller can forward it to n8n. Returns null
+ * on any failure — callers MUST treat that as "skip the webhook" and log, never
+ * as a signing failure. The contract is already persisted by the time this
+ * runs, so an activation-code bug is a recoverable support issue, not a broken
+ * signing flow.
+ */
+async function issueActivationCodeForSignedSitter(args: {
+  sitterProfileId: string;
+}): Promise<string | null> {
+  try {
+    const { rawCode, hash } = await generateUniqueActivationCode(prisma, {
+      excludeSitterProfileId: args.sitterProfileId,
+    });
+    const issuedAt = new Date();
+    const expiresAt = computeActivationCodeExpiresAt(issuedAt);
+    await (prisma as any).sitterProfile.update({
+      where: { id: args.sitterProfileId },
+      data: {
+        activationCodeHash: hash,
+        activationCodeIssuedAt: issuedAt,
+        activationCodeExpiresAt: expiresAt,
+        activationCodeUsedAt: null,
+      },
+      select: { id: true },
+    });
+    return rawCode;
+  } catch (err) {
+    console.error("[contract-sign][activation-code] issue failed", {
+      sitterProfileId: args.sitterProfileId,
+      message: err instanceof Error ? err.message : String(err),
+    });
+    return null;
+  }
+}
+
+/**
+ * Fire the n8n "contract-signed" webhook with `{ userId, activationCode }`.
+ * Fully guarded: a timeout, an HTTP error, or a transport failure must never
+ * bubble up to the signing response — n8n is the dispatcher for the activation
+ * email but the contract signature itself remains authoritative regardless.
+ */
+async function notifyN8nContractSigned(params: {
+  userId: string;
+  activationCode: string;
+}): Promise<void> {
+  const controller = new AbortController();
+  const timeout = setTimeout(
+    () => controller.abort(),
+    N8N_CONTRACT_SIGNED_WEBHOOK_TIMEOUT_MS,
+  );
+  try {
+    const res = await fetch(N8N_CONTRACT_SIGNED_WEBHOOK_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        userId: params.userId,
+        activationCode: params.activationCode,
+      }),
+      signal: controller.signal,
+    });
+    if (!res.ok) {
+      console.error("[contract-sign][n8n] webhook non-2xx", {
+        status: res.status,
+        userId: params.userId,
+      });
+      return;
+    }
+    console.info("[contract-sign][n8n] webhook ok", {
+      status: res.status,
+      userId: params.userId,
+    });
+  } catch (err) {
+    console.error("[contract-sign][n8n] webhook failed", {
+      userId: params.userId,
+      message: err instanceof Error ? err.message : String(err),
+      aborted: controller.signal.aborted,
+    });
+  } finally {
+    clearTimeout(timeout);
+  }
+}
 
 export const runtime = "nodejs";
 
@@ -354,39 +449,27 @@ export async function POST(req: NextRequest, context: { params: Promise<{ token:
       select: { id: true },
     });
 
-    try {
-
-      await fetch("https://dogshift.app.n8n.cloud/webhook/contract-signed", {
-    
-        method: "POST",
-    
-        headers: {
-    
-          "Content-Type": "application/json",
-    
-        },
-    
-        body: JSON.stringify({
-    
-          sitterId: access.profile.sitterId,
-    
-          userId: access.profile.userId,
-    
-          email: access.profile.user?.email,
-    
-          signedAt,
-    
-        }),
-    
+    // Post-signature side effects: issue a fresh activation code on the same
+    // SitterProfile (reuses lib/sitterActivationCode, same source of truth as
+    // POST /api/host/activation-code/issue) and forward it to n8n so the
+    // workflow can send the activation email. Both steps are best-effort:
+    // failures are logged and swallowed because the contract is already
+    // persisted and must never appear un-signed to the sitter.
+    const activationCode = await issueActivationCodeForSignedSitter({
+      sitterProfileId: access.profile.id,
+    });
+    if (activationCode) {
+      await notifyN8nContractSigned({
+        userId: access.profile.userId,
+        activationCode,
       });
-    
-    } catch (e) {
-    
-      console.error("n8n webhook failed", e);
-    
+    } else {
+      console.warn("[contract-sign][n8n] skipping webhook: no activation code", {
+        sitterProfileId: access.profile.id,
+        userId: access.profile.userId,
+      });
     }
-    
-   
+
     return NextResponse.json(
       {
         ok: true,
