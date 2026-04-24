@@ -105,8 +105,8 @@ function ApplicationStatusHigh(props: { firstName: string; calendlyLink: string 
       </Text>
       <Text style={styles.lead}>
         Pour finaliser ta candidature, nous organisons un court entretien de{" "}
-        <strong>15 minutes</strong>. C&apos;est une étape <strong>obligatoire</strong> avant
-        l&apos;activation de ton profil.
+        <strong>15 minutes</strong>. C&apos;est une étape{" "}
+        <strong>obligatoire</strong> avant l&apos;activation de ton profil.
       </Text>
 
       {props.calendlyLink ? (
