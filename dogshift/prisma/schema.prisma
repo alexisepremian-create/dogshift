@@ -338,10 +338,11 @@ model SitterProfile {
   contractAccessTokenIssuedAt DateTime?
   contractAccessTokenExpiresAt DateTime?
   contractAccessTokenUsedAt DateTime?
-  activationCodeHash     String?
-  activationCodeIssuedAt DateTime?
-  activationCodeUsedAt   DateTime?
-  activatedAt            DateTime?
+  activationCodeHash      String?   @unique
+  activationCodeIssuedAt  DateTime?
+  activationCodeExpiresAt DateTime?
+  activationCodeUsedAt    DateTime?
+  activatedAt             DateTime?
 
   verificationStatus      VerificationStatus @default(not_verified)
   idDocumentUrl           String?
