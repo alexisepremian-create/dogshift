@@ -7,7 +7,6 @@ import { sendEmail } from "@/lib/email/sendEmail";
 import { prisma } from "@/lib/prisma";
 import {
   buildContractAccessUrl,
-  canAccessContractPage,
   CURRENT_SITTER_CONTRACT_VERSION,
   contractAccessTokenMatches,
   contractAccessTokenFingerprint,
@@ -66,6 +65,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, error: "CONFIG_ERROR" }, { status: 500 });
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Prisma client cast while generated types lag the pilot schema.
     const application = await (prisma as any).pilotSitterApplication.findUnique({
       where: { id },
       select: {
@@ -116,6 +116,7 @@ export async function POST(req: NextRequest) {
     // - new resend => new version, even if the contract template is unchanged
     const issuedContractVersion = `${CURRENT_SITTER_CONTRACT_VERSION}-${contractLinkFingerprint}`;
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Prisma client cast while generated types lag the pilot schema.
     const existingProfile = await (prisma as any).sitterProfile.findUnique({
       where: { userId: ensured.id },
       select: {
@@ -128,9 +129,12 @@ export async function POST(req: NextRequest) {
     const currentLifecycleStatus = existingProfile
       ? normalizeSitterLifecycleStatus(existingProfile.lifecycleStatus, existingProfile.published)
       : null;
-    if (currentLifecycleStatus && !canAccessContractPage(currentLifecycleStatus)) {
-      return NextResponse.json({ ok: false, error: "CONTRACT_LINK_INVALID_STATE" }, { status: 409 });
-    }
+    // No lifecycle gate here: the admin "Envoyer le contrat" button is the entrypoint
+    // from the pilot flow and must work from every upstream state:
+    // - no profile / application_received  -> create or promote to contract_to_sign
+    // - selected / contract_to_sign        -> keep or re-issue token
+    // - contract_signed / activated        -> re-sign path, preserves activation + publication
+    // The concrete transition is computed below and protected by the `alreadyActivated` branch.
     const willResetSignatureProof = Boolean(existingProfile?.contractVersion && existingProfile.contractVersion !== issuedContractVersion);
     const alreadyActivated = currentLifecycleStatus ? hasReachedSitterLifecycleStatus(currentLifecycleStatus, "activated") : false;
     // Never regress an activated sitter. For non-activated sitters, downgrade to contract_to_sign when signature proof is reset.
@@ -143,6 +147,7 @@ export async function POST(req: NextRequest) {
           : "contract_to_sign";
     const keepPublicationState = alreadyActivated;
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Prisma client cast while generated types lag the pilot schema.
     const persisted = await (prisma as any).sitterProfile.upsert({
       where: { userId: ensured.id },
       create: {
