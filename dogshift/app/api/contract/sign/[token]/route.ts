@@ -7,6 +7,7 @@ import {
   computeActivationCodeExpiresAt,
   generateUniqueActivationCode,
 } from "@/lib/sitterActivationCode";
+import { sendTelegramMessage } from "@/lib/telegram/sendTelegramMessage";
 import {
   buildSignedContractSnapshot,
   canAccessContractPage,
@@ -69,7 +70,10 @@ async function issueActivationCodeForSignedSitter(args: {
 }
 
 /**
- * Fire the n8n "contract-signed" webhook with `{ userId, activationCode }`.
+ * Fire the n8n "contract-signed" webhook with sitter details so n8n can
+ * both send the activation email AND provide enough context for Telegram
+ * notifications built inside the n8n workflow.
+ *
  * Fully guarded: a timeout, an HTTP error, or a transport failure must never
  * bubble up to the signing response — n8n is the dispatcher for the activation
  * email but the contract signature itself remains authoritative regardless.
@@ -77,6 +81,8 @@ async function issueActivationCodeForSignedSitter(args: {
 async function notifyN8nContractSigned(params: {
   userId: string;
   activationCode: string;
+  name: string | null;
+  email: string | null;
 }): Promise<void> {
   const controller = new AbortController();
   const timeout = setTimeout(
@@ -90,6 +96,8 @@ async function notifyN8nContractSigned(params: {
       body: JSON.stringify({
         userId: params.userId,
         activationCode: params.activationCode,
+        name: params.name ?? null,
+        email: params.email ?? null,
       }),
       signal: controller.signal,
     });
@@ -458,10 +466,15 @@ export async function POST(req: NextRequest, context: { params: Promise<{ token:
     const activationCode = await issueActivationCodeForSignedSitter({
       sitterProfileId: access.profile.id,
     });
+    const sitterName = access.profile.user?.name ?? null;
+    const sitterEmail = access.profile.user?.email ?? null;
+
     if (activationCode) {
       await notifyN8nContractSigned({
         userId: access.profile.userId,
         activationCode,
+        name: sitterName,
+        email: sitterEmail,
       });
     } else {
       console.warn("[contract-sign][n8n] skipping webhook: no activation code", {
@@ -469,6 +482,13 @@ export async function POST(req: NextRequest, context: { params: Promise<{ token:
         userId: access.profile.userId,
       });
     }
+
+    // Best-effort Telegram admin notification — never blocks the signing response.
+    const namePart = sitterName ? `\n👤 ${sitterName}` : "";
+    const emailPart = sitterEmail ? `\n📧 ${sitterEmail}` : "";
+    await sendTelegramMessage(
+      `✍️ Contrat signé !${namePart}${emailPart}\n🆔 ${access.profile.userId}`,
+    );
 
     return NextResponse.json(
       {
