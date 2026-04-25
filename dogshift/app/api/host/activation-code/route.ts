@@ -4,6 +4,7 @@ import { auth, currentUser } from "@clerk/nextjs/server";
 import { ensureDbUserByClerkUserId } from "@/lib/auth/resolveDbUserId";
 import { prisma } from "@/lib/prisma";
 import { hashActivationCode, normalizeSitterLifecycleStatus } from "@/lib/sitterContract";
+import { sendTelegramMessage } from "@/lib/telegram/sendTelegramMessage";
 
 export const runtime = "nodejs";
 
@@ -35,6 +36,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "CODE_REQUIRED" }, { status: 400 });
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Prisma dynamic select.
     const sitterProfile = await (prisma as any).sitterProfile.findUnique({
       where: { userId: ensured.id },
       select: {
@@ -65,6 +67,7 @@ export async function POST(req: Request) {
     }
 
     const now = new Date();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Prisma dynamic update.
     await (prisma as any).sitterProfile.update({
       where: { id: sitterProfile.id },
       data: {
@@ -74,6 +77,14 @@ export async function POST(req: Request) {
       },
       select: { id: true },
     });
+
+    // Best-effort Telegram admin notification — never blocks the activation response.
+    const fullName = typeof clerkUser?.fullName === "string" ? clerkUser.fullName.trim() : "";
+    const namePart = fullName ? `\n👤 ${fullName}` : "";
+    const emailPart = email ? `\n📧 ${email}` : "";
+    await sendTelegramMessage(
+      `🚀 Sitter activé !${namePart}${emailPart}\n🆔 ${ensured.id}`,
+    );
 
     return NextResponse.json(
       {
