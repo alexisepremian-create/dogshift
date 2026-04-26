@@ -47,11 +47,21 @@ export default function BecomeSitterAccessForm({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ code: trimmed }),
       });
-      const activationJson = (await activationRes.json().catch(() => null)) as { ok?: boolean; error?: string } | null;
+      const activationJson = (await activationRes.json().catch(() => null)) as {
+        ok?: boolean;
+        error?: string;
+        hasClerkAccount?: boolean;
+      } | null;
 
       if (activationRes.ok && activationJson?.ok) {
-        setActivated(true);
-        setLoading(false);
+        if (activationJson.hasClerkAccount) {
+          // Sitter already has an account — just ask them to log in.
+          setActivated(true);
+          setLoading(false);
+        } else {
+          // No account yet — send them to the registration form.
+          window.location.assign("/become-sitter/create-account");
+        }
         return;
       }
 
@@ -95,17 +105,17 @@ export default function BecomeSitterAccessForm({
       <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white/90 p-6 text-center shadow-xl">
         <CheckCircle2 className="mx-auto h-12 w-12 text-emerald-500" strokeWidth={1.5} />
         <h2 className="mt-4 text-xl font-semibold tracking-tight text-slate-900">
-          Compte activé ! 🎉
+          Compte activé !
         </h2>
         <p className="mt-2 text-sm text-slate-600">
-          Ton compte dogsitter est maintenant actif. Crée ton compte DogShift ou connecte-toi pour accéder à ton espace.
+          Ton profil dogsitter est actif. Connecte-toi pour accéder à ton espace.
         </p>
-        <div className="mt-6 flex flex-col gap-3">
+        <div className="mt-6">
           <Link
             href="/login"
             className="inline-flex w-full items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-6 py-3 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition hover:bg-[var(--dogshift-blue-hover)]"
           >
-            Créer mon compte / Se connecter
+            Se connecter
           </Link>
         </div>
       </div>

@@ -31,7 +31,7 @@ export async function POST(req: Request) {
         activationCodeExpiresAt: true,
         activationCodeUsedAt: true,
         user: {
-          select: { id: true, name: true, email: true },
+          select: { id: true, name: true, email: true, clerkUserId: true },
         },
       },
     });
@@ -79,8 +79,10 @@ export async function POST(req: Request) {
       `🚀 Sitter activé !${namePart}${emailPart}\n🆔 ${sitterProfile.userId}`,
     );
 
+    const hasClerkAccount = Boolean(sitterProfile.user?.clerkUserId);
+
     return NextResponse.json(
-      { ok: true, lifecycleStatus: "activated", activatedAt: now.toISOString() },
+      { ok: true, lifecycleStatus: "activated", activatedAt: now.toISOString(), hasClerkAccount },
       { status: 200 },
     );
   } catch (err) {
