@@ -45,26 +45,24 @@ test("activationCodeEmailPlainText falls back to a generic greeting when firstNa
   assert.match(body, /^Bonjour,/);
 });
 
-test("activationCodeEmailPlainText renders the activation code on its own line, unmodified", () => {
+test("activationCodeEmailPlainText renders the activation code on its own indented line", () => {
   const code = "DS-8H3K-Q9M2";
   const body = activationCodeEmailPlainText({
     firstName: "Alexis",
     activationCode: code,
   });
-  // The code must appear exactly once, on its own indented line, so reflowing
-  // email clients never break it across two lines.
-  const matches = body.match(new RegExp(code, "g")) || [];
-  assert.equal(matches.length, 1, "activation code should appear exactly once in the plain text");
+  // The code must appear on its own indented line in the body section.
+  // It also appears in the CTA URL, so we check for the indented line form.
   assert.match(body, new RegExp(`\\n\\s+${code}\\n`));
 });
 
-test("activationCodeEmailPlainText links to the /host dashboard on the provided baseUrl", () => {
+test("activationCodeEmailPlainText links to /become-sitter/access with the code on the provided baseUrl", () => {
   const body = activationCodeEmailPlainText({
     firstName: "Alexis",
     activationCode: "DS-8H3K-Q9M2",
     baseUrl: "https://preview.dogshift.ch/",
   });
-  assert.match(body, /https:\/\/preview\.dogshift\.ch\/host/);
+  assert.match(body, /https:\/\/preview\.dogshift\.ch\/become-sitter\/access\?code=/);
 });
 
 test("activationCodeEmailPlainText falls back to dogshift.ch when no baseUrl is supplied", () => {
@@ -72,7 +70,7 @@ test("activationCodeEmailPlainText falls back to dogshift.ch when no baseUrl is 
     firstName: "Alexis",
     activationCode: "DS-8H3K-Q9M2",
   });
-  assert.match(body, /https:\/\/www\.dogshift\.ch\/host/);
+  assert.match(body, /https:\/\/www\.dogshift\.ch\/become-sitter\/access\?code=/);
 });
 
 test("activationCodeEmailPlainText mentions the expiry date in French when expiresAt is provided", () => {
