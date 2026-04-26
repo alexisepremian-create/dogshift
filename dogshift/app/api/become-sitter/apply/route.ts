@@ -13,8 +13,10 @@ export const runtime = "nodejs";
 
 export async function POST(req: NextRequest) {
   try {
-    const inviteId = req.cookies.get("dogsitter_invite_id")?.value;
-    if (!inviteId) {
+    const inviteId = req.cookies.get("dogsitter_invite_id")?.value ?? null;
+    const activationProfileId = req.cookies.get("ds_activation_profile_id")?.value ?? null;
+
+    if (!inviteId && !activationProfileId) {
       return NextResponse.json({ ok: false, error: "INVITE_REQUIRED" }, { status: 403 });
     }
 
@@ -45,21 +47,30 @@ export async function POST(req: NextRequest) {
     }
 
     const now = new Date();
-    const invite = await prisma.inviteCode.findUnique({
-      where: { id: inviteId },
-      select: { id: true, type: true, usedAt: true, expiresAt: true },
-    });
 
-    if (!invite) {
-      return NextResponse.json({ ok: false, error: "INVITE_INVALID" }, { status: 403 });
-    }
+    // --- Activation-code path: skip InviteCode DB check ---
+    // The activation code was already validated and the profile already set to "activated"
+    // by /api/host/activation-code. We just need to update the profile with the form data.
+    let invite: { id: string; type: string; usedAt: Date | null } | null = null;
+    if (inviteId) {
+      invite = await prisma.inviteCode.findUnique({
+        where: { id: inviteId },
+        select: { id: true, type: true, usedAt: true, expiresAt: true },
+      }) as typeof invite;
 
-    if (invite.expiresAt && invite.expiresAt instanceof Date && invite.expiresAt.getTime() <= now.getTime()) {
-      return NextResponse.json({ ok: false, error: "INVITE_EXPIRED" }, { status: 403 });
-    }
+      if (!invite) {
+        return NextResponse.json({ ok: false, error: "INVITE_INVALID" }, { status: 403 });
+      }
 
-    if (invite.type === "single_use" && invite.usedAt) {
-      return NextResponse.json({ ok: false, error: "INVITE_ALREADY_USED" }, { status: 403 });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const expiresAt = (invite as any).expiresAt as Date | null;
+      if (expiresAt && expiresAt instanceof Date && expiresAt.getTime() <= now.getTime()) {
+        return NextResponse.json({ ok: false, error: "INVITE_EXPIRED" }, { status: 403 });
+      }
+
+      if (invite.type === "single_use" && invite.usedAt) {
+        return NextResponse.json({ ok: false, error: "INVITE_ALREADY_USED" }, { status: 403 });
+      }
     }
 
     const payload = body as Record<string, unknown>;
@@ -117,17 +128,18 @@ export async function POST(req: NextRequest) {
     const hostProfileJson = JSON.stringify(hostProfile);
     const lifecycleStatus = normalizeSitterLifecycleStatus("activated", true);
 
-    console.info("[become-sitter][apply] auto-activating sitter via invite code", {
+    console.info("[become-sitter][apply] auto-activating sitter", {
       clerkUserId: userId,
       dbUserId: ensured.id,
       email: primaryEmail,
-      inviteId: invite.id,
-      inviteType: invite.type,
+      inviteId: invite?.id ?? null,
+      inviteType: invite?.type ?? null,
+      activationProfileId: activationProfileId ?? null,
       lifecycleStatus,
     });
 
     await prisma.$transaction(async (tx) => {
-      if (invite.type === "single_use") {
+      if (invite && invite.type === "single_use") {
         const updated = await tx.inviteCode.updateMany({
           where: { id: invite.id, usedAt: null },
           data: { usedAt: now },
@@ -143,6 +155,7 @@ export async function POST(req: NextRequest) {
         select: { id: true },
       });
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const existingProfile = await (tx as any).sitterProfile.findUnique({
         where: { userId: ensured.id },
         select: {
@@ -157,6 +170,7 @@ export async function POST(req: NextRequest) {
         ? maxSitterLifecycleStatus(currentLifecycleStatus, lifecycleStatus)
         : lifecycleStatus;
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await (tx as any).sitterProfile.upsert({
         where: { userId: ensured.id },
         create: {

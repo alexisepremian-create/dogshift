@@ -80,11 +80,22 @@ export async function POST(req: Request) {
     );
 
     const hasClerkAccount = Boolean(sitterProfile.user?.clerkUserId);
+    const sevenDays = 7 * 24 * 60 * 60;
+    const secure = process.env.NODE_ENV === "production";
 
-    return NextResponse.json(
+    const res = NextResponse.json(
       { ok: true, lifecycleStatus: "activated", activatedAt: now.toISOString(), hasClerkAccount },
       { status: 200 },
     );
+
+    // Set the same cookies as /api/invites/verify so the existing /become-sitter/form
+    // and /api/become-sitter/apply flows work without changes.
+    res.cookies.set({ name: "ds_invite_unlocked", value: "1", httpOnly: true, secure, sameSite: "lax", maxAge: sevenDays, path: "/" });
+    res.cookies.set({ name: "ds_invite", value: "1", httpOnly: true, secure, sameSite: "lax", maxAge: sevenDays, path: "/" });
+    // Store the sitter profile id so the apply endpoint can use it as an alternative to inviteId.
+    res.cookies.set({ name: "ds_activation_profile_id", value: sitterProfile.id, httpOnly: true, secure, sameSite: "lax", maxAge: sevenDays, path: "/" });
+
+    return res;
   } catch (err) {
     console.error("[api][host][activation-code][POST] error", err);
     return NextResponse.json({ ok: false, error: "INTERNAL_ERROR" }, { status: 500 });
