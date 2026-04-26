@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useState } from "react";
-import { useAuth } from "@clerk/nextjs";
 
 export default function BecomeSitterAccessForm({
   onUnlocked,
@@ -11,11 +10,9 @@ export default function BecomeSitterAccessForm({
   onUnlocked?: () => void;
 }) {
   const searchParams = useSearchParams();
-  const { isSignedIn } = useAuth();
   const [code, setCode] = useState(() => searchParams?.get("code") ?? "");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [showLoginPrompt, setShowLoginPrompt] = useState(false);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -42,45 +39,40 @@ export default function BecomeSitterAccessForm({
         return;
       }
 
-      // 2. If InviteCode failed and code looks like a sitter activation code (DS-XXXX-XXXX)
-      //    but the user is NOT signed in, prompt them to log in first.
-      const looksLikeActivationCode = /^DS-[A-Z2-9]{4}-[A-Z2-9]{4}$/i.test(trimmed);
-      if (!isSignedIn && looksLikeActivationCode) {
-        setShowLoginPrompt(true);
-        setLoading(false);
+      // 2. Try sitter activation code (no auth needed — code is the proof of identity)
+      const activationRes = await fetch("/api/host/activation-code", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: trimmed }),
+      });
+      const activationJson = (await activationRes.json().catch(() => null)) as { ok?: boolean; error?: string } | null;
+
+      if (activationRes.ok && activationJson?.ok) {
+        // Activation succeeded — redirect to login so the sitter can access /host
+        window.location.assign("/login");
         return;
       }
 
-      // 3. If InviteCode failed and user is logged in, try sitter activation code
-      if (isSignedIn) {
-        const activationRes = await fetch("/api/host/activation-code", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ code: trimmed }),
-        });
-        const activationJson = (await activationRes.json().catch(() => null)) as { ok?: boolean; error?: string } | null;
-
-        if (activationRes.ok && activationJson?.ok) {
-          window.location.assign("/host");
-          return;
-        }
-
-        const activationReason = activationJson?.error ?? "";
-        if (activationReason === "INVALID_ACTIVATION_CODE") {
-          setError("Code invalide. Vérifie que tu as bien copié le code depuis l'email.");
-          setLoading(false);
-          return;
-        }
-        if (activationReason === "ACCOUNT_NOT_READY_FOR_ACTIVATION") {
-          setError("Ton compte n'est pas encore prêt pour l'activation. Contacte le support si besoin.");
-          setLoading(false);
-          return;
-        }
-        if (activationReason === "ACTIVATION_CODE_NOT_ISSUED") {
-          setError("Aucun code d'activation n'a été émis pour ce compte. Contacte le support.");
-          setLoading(false);
-          return;
-        }
+      const activationReason = activationJson?.error ?? "";
+      if (activationReason === "INVALID_ACTIVATION_CODE") {
+        setError("Code invalide. Vérifie que tu as bien copié le code depuis l'email.");
+        setLoading(false);
+        return;
+      }
+      if (activationReason === "ACTIVATION_CODE_ALREADY_USED") {
+        setError("Ce code d'activation a déjà été utilisé.");
+        setLoading(false);
+        return;
+      }
+      if (activationReason === "ACTIVATION_CODE_EXPIRED") {
+        setError("Ce code d'activation a expiré. Contacte le support pour en obtenir un nouveau.");
+        setLoading(false);
+        return;
+      }
+      if (activationReason === "ACCOUNT_NOT_READY_FOR_ACTIVATION") {
+        setError("Ton compte n'est pas encore prêt pour l'activation. Contacte le support si besoin.");
+        setLoading(false);
+        return;
       }
 
       // Fall back to InviteCode error messages
@@ -123,20 +115,6 @@ export default function BecomeSitterAccessForm({
         />
 
         {error ? <p className="mt-3 text-center text-sm font-medium text-rose-600">{error}</p> : null}
-
-        {showLoginPrompt ? (
-          <div className="mt-4 rounded-2xl border border-[color-mix(in_srgb,var(--dogshift-blue),white_60%)] bg-[color-mix(in_srgb,var(--dogshift-blue),white_93%)] px-4 py-3">
-            <p className="text-sm font-medium text-[color-mix(in_srgb,var(--dogshift-blue),black_20%)]">
-              Ce code est un code d&apos;activation dogsitter. Connecte-toi pour l&apos;utiliser.
-            </p>
-            <Link
-              href="/login"
-              className="mt-3 inline-flex w-full items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[var(--dogshift-blue-hover)]"
-            >
-              Se connecter
-            </Link>
-          </div>
-        ) : null}
 
         <button
           type="submit"
