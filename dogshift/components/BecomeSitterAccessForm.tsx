@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useState } from "react";
+import { CheckCircle2 } from "lucide-react";
 
 export default function BecomeSitterAccessForm({
   onUnlocked,
@@ -13,6 +14,7 @@ export default function BecomeSitterAccessForm({
   const [code, setCode] = useState(() => searchParams?.get("code") ?? "");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [activated, setActivated] = useState(false);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -48,8 +50,8 @@ export default function BecomeSitterAccessForm({
       const activationJson = (await activationRes.json().catch(() => null)) as { ok?: boolean; error?: string } | null;
 
       if (activationRes.ok && activationJson?.ok) {
-        // Activation succeeded — redirect to login so the sitter can access /host
-        window.location.assign("/login");
+        setActivated(true);
+        setLoading(false);
         return;
       }
 
@@ -86,6 +88,28 @@ export default function BecomeSitterAccessForm({
       setError("Impossible de vérifier le code. Réessaie.");
       setLoading(false);
     }
+  }
+
+  if (activated) {
+    return (
+      <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white/90 p-6 text-center shadow-xl">
+        <CheckCircle2 className="mx-auto h-12 w-12 text-emerald-500" strokeWidth={1.5} />
+        <h2 className="mt-4 text-xl font-semibold tracking-tight text-slate-900">
+          Compte activé ! 🎉
+        </h2>
+        <p className="mt-2 text-sm text-slate-600">
+          Ton compte dogsitter est maintenant actif. Crée ton compte DogShift ou connecte-toi pour accéder à ton espace.
+        </p>
+        <div className="mt-6 flex flex-col gap-3">
+          <Link
+            href="/login"
+            className="inline-flex w-full items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-6 py-3 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition hover:bg-[var(--dogshift-blue-hover)]"
+          >
+            Créer mon compte / Se connecter
+          </Link>
+        </div>
+      </div>
+    );
   }
 
   return (
