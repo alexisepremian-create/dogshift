@@ -51,20 +51,19 @@ export async function POST(req: NextRequest) {
     // --- Activation-code path: skip InviteCode DB check ---
     // The activation code was already validated and the profile already set to "activated"
     // by /api/host/activation-code. We just need to update the profile with the form data.
-    let invite: { id: string; type: string; usedAt: Date | null } | null = null;
+    type InviteRow = { id: string; type: string; usedAt: Date | null; expiresAt: Date | null };
+    let invite: InviteRow | null = null;
     if (inviteId) {
-      invite = await prisma.inviteCode.findUnique({
+      invite = (await prisma.inviteCode.findUnique({
         where: { id: inviteId },
         select: { id: true, type: true, usedAt: true, expiresAt: true },
-      }) as typeof invite;
+      })) as InviteRow | null;
 
       if (!invite) {
         return NextResponse.json({ ok: false, error: "INVITE_INVALID" }, { status: 403 });
       }
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const expiresAt = (invite as any).expiresAt as Date | null;
-      if (expiresAt && expiresAt instanceof Date && expiresAt.getTime() <= now.getTime()) {
+      if (invite.expiresAt instanceof Date && invite.expiresAt.getTime() <= now.getTime()) {
         return NextResponse.json({ ok: false, error: "INVITE_EXPIRED" }, { status: 403 });
       }
 
