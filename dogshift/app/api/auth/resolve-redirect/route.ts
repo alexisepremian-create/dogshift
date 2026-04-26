@@ -50,7 +50,7 @@ export async function GET() {
 
     const needsActivation = lifecycleStatus !== null && CONTRACT_SIGNED_STATUSES.has(lifecycleStatus);
 
-    const redirect = isSitter ? "/host" : needsActivation ? "/become-sitter/activate" : "/account";
+    const redirect = isSitter ? "/host" : needsActivation ? "/become-sitter/access" : "/account";
 
     return NextResponse.json({ redirect });
   } catch (e) {

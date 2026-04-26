@@ -1,14 +1,18 @@
 "use client";
 
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useState } from "react";
+import { useAuth } from "@clerk/nextjs";
 
 export default function BecomeSitterAccessForm({
   onUnlocked,
 }: {
   onUnlocked?: () => void;
 }) {
-  const [code, setCode] = useState("");
+  const searchParams = useSearchParams();
+  const { isSignedIn } = useAuth();
+  const [code, setCode] = useState(() => searchParams?.get("code") ?? "");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -16,32 +20,66 @@ export default function BecomeSitterAccessForm({
     e.preventDefault();
     const trimmed = code.trim();
     if (!trimmed) {
-      setError("Merci d’entrer un code d’invitation.");
+      setError("Merci d'entrer un code d'accès.");
       return;
     }
 
     setError(null);
     setLoading(true);
     try {
-      const res = await fetch("/api/invites/verify", {
+      // 1. Try InviteCode first (pilot access — no auth needed)
+      const inviteRes = await fetch("/api/invites/verify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ code: trimmed }),
       });
+      const inviteJson = (await inviteRes.json().catch(() => null)) as { ok?: boolean; error?: string } | null;
 
-      const json = (await res.json().catch(() => null)) as { ok?: boolean; error?: string } | null;
-      if (!res.ok || !json?.ok) {
-        const reason = json?.error || "CODE_INVALID";
-        if (reason === "CODE_EXPIRED") setError("Ce code a expiré.");
-        else if (reason === "CODE_ALREADY_USED") setError("Ce code a déjà été utilisé.");
-        else if (reason === "CODE_REQUIRED") setError("Merci d’entrer un code d’invitation.");
-        else setError("Code invalide.");
-        setLoading(false);
+      if (inviteRes.ok && inviteJson?.ok) {
+        if (typeof onUnlocked === "function") onUnlocked();
+        window.location.assign("/become-sitter/form");
         return;
       }
 
-      if (typeof onUnlocked === "function") onUnlocked();
-      window.location.assign("/become-sitter/form");
+      // 2. If InviteCode failed and user is logged in, try sitter activation code
+      if (isSignedIn) {
+        const activationRes = await fetch("/api/host/activation-code", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ code: trimmed }),
+        });
+        const activationJson = (await activationRes.json().catch(() => null)) as { ok?: boolean; error?: string } | null;
+
+        if (activationRes.ok && activationJson?.ok) {
+          window.location.assign("/host");
+          return;
+        }
+
+        const activationReason = activationJson?.error ?? "";
+        if (activationReason === "INVALID_ACTIVATION_CODE") {
+          setError("Code invalide. Vérifie que tu as bien copié le code depuis l'email.");
+          setLoading(false);
+          return;
+        }
+        if (activationReason === "ACCOUNT_NOT_READY_FOR_ACTIVATION") {
+          setError("Ton compte n'est pas encore prêt pour l'activation. Contacte le support si besoin.");
+          setLoading(false);
+          return;
+        }
+        if (activationReason === "ACTIVATION_CODE_NOT_ISSUED") {
+          setError("Aucun code d'activation n'a été émis pour ce compte. Contacte le support.");
+          setLoading(false);
+          return;
+        }
+      }
+
+      // Fall back to InviteCode error messages
+      const inviteReason = inviteJson?.error ?? "CODE_INVALID";
+      if (inviteReason === "CODE_EXPIRED") setError("Ce code a expiré.");
+      else if (inviteReason === "CODE_ALREADY_USED") setError("Ce code a déjà été utilisé.");
+      else if (inviteReason === "CODE_REQUIRED") setError("Merci d'entrer un code d'accès.");
+      else setError("Code invalide.");
+      setLoading(false);
     } catch {
       setError("Impossible de vérifier le code. Réessaie.");
       setLoading(false);
@@ -55,17 +93,17 @@ export default function BecomeSitterAccessForm({
       </div>
       <h2 className="mt-4 text-xl font-semibold tracking-tight text-slate-900">DogShift est en phase pilote</h2>
       <p className="mt-2 text-sm text-slate-600">
-        Nous ouvrons l’accès progressivement et en quantité limitée. Chaque dogsitter est sélectionné minutieusement pour garantir un niveau de confiance
+        Nous ouvrons l&apos;accès progressivement et en quantité limitée. Chaque dogsitter est sélectionné minutieusement pour garantir un niveau de confiance
         maximal dès les premières réservations.
       </p>
 
       <form onSubmit={onSubmit} className="mt-6">
         <label htmlFor="invite" className="block text-sm font-medium text-slate-700">
-          Code d’accès
+          Code d&apos;accès
         </label>
         <input
           id="invite"
-          aria-label="Code d’accès"
+          aria-label="Code d'accès"
           value={code}
           onChange={(e) => setCode(e.target.value)}
           disabled={loading}
@@ -88,7 +126,7 @@ export default function BecomeSitterAccessForm({
           href="/"
           className="mt-3 inline-flex w-full items-center justify-center rounded-2xl border border-slate-300 bg-white px-6 py-3 text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50"
         >
-          Retour à l’accueil
+          Retour à l&apos;accueil
         </Link>
       </form>
     </div>
