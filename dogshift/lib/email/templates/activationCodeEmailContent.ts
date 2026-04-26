@@ -51,7 +51,7 @@ export function activationCodeEmailPlainText(params: ActivationCodeEmailParams):
   const firstName = (params.firstName || "").trim();
   const greeting = `Bonjour${firstName ? ` ${firstName}` : ""},`;
   const baseUrl = (params.baseUrl || DEFAULT_APP_URL).trim().replace(/\/$/, "") || DEFAULT_APP_URL;
-  const dashboardUrl = `${baseUrl}/host`;
+  const dashboardUrl = `${baseUrl}/become-sitter/access?code=${encodeURIComponent(params.activationCode)}`;
   const expiryLabel = formatActivationCodeExpiry(params.expiresAt);
 
   const expiryLine = expiryLabel
