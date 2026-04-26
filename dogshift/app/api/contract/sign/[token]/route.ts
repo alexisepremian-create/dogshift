@@ -466,7 +466,11 @@ export async function POST(req: NextRequest, context: { params: Promise<{ token:
     const activationCode = await issueActivationCodeForSignedSitter({
       sitterProfileId: access.profile.id,
     });
-    const sitterName = access.profile.user?.name ?? null;
+    // Prefer the name used to sign the contract; fall back to the DB user name.
+    const sitterName =
+      (typeof access.profile.contractSignerName === "string" && access.profile.contractSignerName.trim()
+        ? access.profile.contractSignerName.trim()
+        : null) ?? access.profile.user?.name ?? null;
     const sitterEmail = access.profile.user?.email ?? null;
 
     if (activationCode) {
