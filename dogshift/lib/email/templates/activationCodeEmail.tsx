@@ -48,7 +48,7 @@ export function ActivationCodeEmail(props: {
   const logoUrl = `${baseUrl}/dogshift-logo.png`;
   const firstName = (props.firstName || "").trim();
   const activationCode = (props.activationCode || "").trim();
-  const dashboardUrl = `${baseUrl}/host`;
+  const dashboardUrl = `${baseUrl}/become-sitter/activate?code=${encodeURIComponent(activationCode)}`;
   const expiryLabel = formatActivationCodeExpiry(props.expiresAt);
   const previewText = (
     props.previewText || activationCodeEmailDefaultPreviewText()

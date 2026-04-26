@@ -5,6 +5,10 @@ import { ensureDbUserFromClerkAuth } from "@/lib/auth/resolveDbUserId";
 import { prisma } from "@/lib/prisma";
 import { isActivatedStatus, normalizeSitterLifecycleStatus } from "@/lib/sitterContract";
 
+// Lifecycle statuses that require the sitter to complete activation via code.
+const CONTRACT_SIGNED_STATUSES = new Set(["contract_signed"]);
+
+
 export async function GET() {
   const { userId } = await auth();
   if (!userId) {
@@ -12,6 +16,7 @@ export async function GET() {
   }
 
   try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Prisma dynamic field (clerkUserId not in generated types).
     let dbUser = await (prisma as any).user.findUnique({
       where: { clerkUserId: userId },
       select: { id: true, role: true, email: true, sitterId: true },
@@ -23,6 +28,7 @@ export async function GET() {
         console.warn("[resolve-redirect] unable to ensure DB user", { clerkUserId: userId });
         return NextResponse.json({ redirect: "/login?force=1" });
       }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Prisma dynamic field.
       dbUser = await (prisma as any).user.findUnique({
         where: { id: ensured.id },
         select: { id: true, role: true, email: true, sitterId: true },
@@ -42,7 +48,9 @@ export async function GET() {
       (lifecycleStatus && isActivatedStatus(lifecycleStatus)) ||
       (dbUser.role === "SITTER" && !!dbUser.sitterId);
 
-    const redirect = isSitter ? "/host" : "/account";
+    const needsActivation = lifecycleStatus !== null && CONTRACT_SIGNED_STATUSES.has(lifecycleStatus);
+
+    const redirect = isSitter ? "/host" : needsActivation ? "/become-sitter/activate" : "/account";
 
     return NextResponse.json({ redirect });
   } catch (e) {
