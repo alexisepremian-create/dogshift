@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useState } from "react";
-import { useAuth } from "@clerk/nextjs";
 
 export default function BecomeSitterAccessForm({
   onUnlocked,
@@ -11,7 +10,6 @@ export default function BecomeSitterAccessForm({
   onUnlocked?: () => void;
 }) {
   const searchParams = useSearchParams();
-  const { isSignedIn } = useAuth();
   const [code, setCode] = useState(() => searchParams?.get("code") ?? "");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -41,36 +39,44 @@ export default function BecomeSitterAccessForm({
         return;
       }
 
-      // 2. If InviteCode failed and user is logged in, try sitter activation code
-      if (isSignedIn) {
-        const activationRes = await fetch("/api/host/activation-code", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ code: trimmed }),
-        });
-        const activationJson = (await activationRes.json().catch(() => null)) as { ok?: boolean; error?: string } | null;
+      // 2. Try sitter activation code (no auth needed — code is the proof of identity)
+      const activationRes = await fetch("/api/host/activation-code", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: trimmed }),
+      });
+      const activationJson = (await activationRes.json().catch(() => null)) as {
+        ok?: boolean;
+        error?: string;
+        hasClerkAccount?: boolean;
+      } | null;
 
-        if (activationRes.ok && activationJson?.ok) {
-          window.location.assign("/host");
-          return;
-        }
+      if (activationRes.ok && activationJson?.ok) {
+        // Cookies set server-side by the API — redirect to the full registration form.
+        window.location.assign("/become-sitter/form");
+        return;
+      }
 
-        const activationReason = activationJson?.error ?? "";
-        if (activationReason === "INVALID_ACTIVATION_CODE") {
-          setError("Code invalide. Vérifie que tu as bien copié le code depuis l'email.");
-          setLoading(false);
-          return;
-        }
-        if (activationReason === "ACCOUNT_NOT_READY_FOR_ACTIVATION") {
-          setError("Ton compte n'est pas encore prêt pour l'activation. Contacte le support si besoin.");
-          setLoading(false);
-          return;
-        }
-        if (activationReason === "ACTIVATION_CODE_NOT_ISSUED") {
-          setError("Aucun code d'activation n'a été émis pour ce compte. Contacte le support.");
-          setLoading(false);
-          return;
-        }
+      const activationReason = activationJson?.error ?? "";
+      if (activationReason === "INVALID_ACTIVATION_CODE") {
+        setError("Code invalide. Vérifie que tu as bien copié le code depuis l'email.");
+        setLoading(false);
+        return;
+      }
+      if (activationReason === "ACTIVATION_CODE_ALREADY_USED") {
+        setError("Ce code d'activation a déjà été utilisé.");
+        setLoading(false);
+        return;
+      }
+      if (activationReason === "ACTIVATION_CODE_EXPIRED") {
+        setError("Ce code d'activation a expiré. Contacte le support pour en obtenir un nouveau.");
+        setLoading(false);
+        return;
+      }
+      if (activationReason === "ACCOUNT_NOT_READY_FOR_ACTIVATION") {
+        setError("Ton compte n'est pas encore prêt pour l'activation. Contacte le support si besoin.");
+        setLoading(false);
+        return;
       }
 
       // Fall back to InviteCode error messages
