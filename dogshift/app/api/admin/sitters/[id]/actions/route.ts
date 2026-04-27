@@ -1,12 +1,15 @@
 import { VerificationStatus } from "@prisma/client";
+import { render } from "@react-email/render";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 import { getRequestAdminAccess } from "@/lib/adminAuth";
 import { logAdminAudit } from "@/lib/audit";
 import { sendEmail } from "@/lib/email/sendEmail";
+import { ActivationCodeEmail, activationCodeEmailSubject, activationCodeEmailPlainText } from "@/lib/email/templates/activationCodeEmail";
 import { geocodeSwissLocation } from "@/lib/geocode";
 import { prisma } from "@/lib/prisma";
+import { computeActivationCodeExpiresAt, generateUniqueActivationCode } from "@/lib/sitterActivationCode";
 import {
   buildContractAccessUrl,
   CURRENT_SITTER_CONTRACT_VERSION,
@@ -24,7 +27,7 @@ import {
 
 export const runtime = "nodejs";
 
-type ActionType = "select" | "generate_contract_link" | "approve" | "reject" | "suspend" | "reactivate" | "publish" | "unpublish" | "activate";
+type ActionType = "select" | "generate_contract_link" | "approve" | "reject" | "suspend" | "reactivate" | "publish" | "unpublish" | "activate" | "send_activation_code";
 
 function publicBaseUrlFromRequest(req: NextRequest) {
   const envUrl = (process.env.NEXTAUTH_URL || "").trim();
@@ -56,7 +59,8 @@ function parseAction(value: unknown): ActionType | null {
     value === "reactivate" ||
     value === "publish" ||
     value === "unpublish" ||
-    value === "activate"
+    value === "activate" ||
+    value === "send_activation_code"
   ) {
     return value;
   }
@@ -73,6 +77,7 @@ function actionAllowed(action: ActionType, published: boolean, verificationStatu
   if (action === "publish") return !published && verificationStatus === VerificationStatus.approved && lifecycleStatus === "activated";
   if (action === "unpublish") return published;
   if (action === "activate") return lifecycleStatus === "contract_signed" && !published;
+  if (action === "send_activation_code") return lifecycleStatus === "contract_signed" || lifecycleStatus === "activated";
   return true;
 }
 
@@ -159,6 +164,76 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
 
     if (!actionAllowed(action, currentPublished, currentStatus, lifecycleStatus)) {
       return NextResponse.json({ ok: false, error: "INVALID_STATE_TRANSITION" }, { status: 409 });
+    }
+
+    // ── send_activation_code ─────────────────────────────────────────────────
+    // Generates a fresh code, stores its hash, and emails the sitter.
+    // Does NOT change the sitter's lifecycleStatus — admin stays in control.
+    if (action === "send_activation_code") {
+      if (!sitter.email) {
+        return NextResponse.json({ ok: false, error: "NO_EMAIL" }, { status: 422 });
+      }
+
+      const { rawCode, hash } = await generateUniqueActivationCode(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        prisma as any,
+        { excludeSitterProfileId: sitter.sitterProfile.id },
+      );
+      const issuedAt = new Date();
+      const expiresAt = computeActivationCodeExpiresAt(issuedAt);
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (prisma as any).sitterProfile.update({
+        where: { id: sitter.sitterProfile.id },
+        data: {
+          activationCodeHash: hash,
+          activationCodeIssuedAt: issuedAt,
+          activationCodeExpiresAt: expiresAt,
+          activationCodeUsedAt: null,
+        },
+      });
+
+      const firstName = (sitter.name ?? "").trim().split(/\s+/)[0] ?? "";
+      const baseUrl = (process.env.NEXT_PUBLIC_APP_URL || "https://www.dogshift.ch").replace(/\/$/, "");
+      const emailHtml = await render(
+        ActivationCodeEmail({ firstName, activationCode: rawCode, expiresAt, baseUrl }),
+      );
+      const emailText = activationCodeEmailPlainText({ firstName, activationCode: rawCode, expiresAt, baseUrl });
+
+      await sendEmail({
+        to: sitter.email,
+        subject: activationCodeEmailSubject(),
+        text: emailText,
+        html: emailHtml,
+      });
+
+      logAdminAudit({
+        action: "sitter.send_activation_code" as Parameters<typeof logAdminAudit>[0]["action"],
+        adminUserId: access.userId,
+        targetId: sitter.id,
+        targetType: "USER",
+        detail: { sitterProfileId: sitter.sitterProfile.id },
+      });
+
+      return NextResponse.json(
+        {
+          ok: true,
+          sitterId: sitter.id,
+          profile: {
+            id: sitter.sitterProfile.id,
+            published: currentPublished,
+            publishedAt: null,
+            verificationStatus: currentStatus,
+            verificationReviewedAt: null,
+            verificationNotes: sitter.sitterProfile.verificationNotes ?? null,
+            lifecycleStatus,
+            contractAccessTokenIssuedAt: sitter.sitterProfile.contractAccessTokenIssuedAt instanceof Date ? sitter.sitterProfile.contractAccessTokenIssuedAt.toISOString() : null,
+            contractAccessTokenExpiresAt: sitter.sitterProfile.contractAccessTokenExpiresAt instanceof Date ? sitter.sitterProfile.contractAccessTokenExpiresAt.toISOString() : null,
+          },
+          activationCodeSent: true,
+        },
+        { status: 200 },
+      );
     }
 
     const data: Record<string, unknown> = {};

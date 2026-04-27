@@ -5,7 +5,7 @@ import { useState } from "react";
 import { canGenerateContractAccessLink, lifecycleStatusLabel, type SitterLifecycleStatus } from "@/lib/sitterContract";
 
 type VerificationStatus = "not_verified" | "pending" | "approved" | "rejected";
-type ActionType = "select" | "generate_contract_link" | "approve" | "reject" | "suspend" | "reactivate" | "publish" | "unpublish" | "activate";
+type ActionType = "select" | "generate_contract_link" | "approve" | "reject" | "suspend" | "reactivate" | "publish" | "unpublish" | "activate" | "send_activation_code";
 
 type Props = {
   sitterUserId: string;
@@ -21,6 +21,7 @@ type Props = {
 const ACTIONS: Array<{ action: ActionType; label: string; tone: string }> = [
   { action: "select", label: "Sélectionner", tone: "bg-indigo-600 hover:bg-indigo-700 text-white" },
   { action: "generate_contract_link", label: "Envoyer le contrat", tone: "bg-violet-600 hover:bg-violet-700 text-white" },
+  { action: "send_activation_code", label: "Envoyer code d'activation", tone: "bg-amber-500 hover:bg-amber-600 text-white" },
   { action: "activate", label: "Activer le compte", tone: "bg-emerald-700 hover:bg-emerald-800 text-white" },
   { action: "approve", label: "Valider vérif.", tone: "bg-emerald-600 hover:bg-emerald-700 text-white" },
   { action: "reject", label: "Refuser vérif.", tone: "bg-rose-600 hover:bg-rose-700 text-white" },
@@ -33,6 +34,7 @@ const ACTIONS: Array<{ action: ActionType; label: string; tone: string }> = [
 const COMPACT_ACTION_GROUPS: Array<Array<ActionType>> = [
   ["select"],
   ["generate_contract_link"],
+  ["send_activation_code"],
   ["activate"],
   ["approve", "reject"],
   ["suspend", "reactivate"],
@@ -50,6 +52,7 @@ function actionAllowed(action: ActionType, published: boolean, verificationStatu
   if (action === "select") return lifecycleStatus === "application_received";
   if (action === "generate_contract_link") return canGenerateContractAccessLink(lifecycleStatus);
   if (action === "activate") return lifecycleStatus === "contract_signed" && !published;
+  if (action === "send_activation_code") return lifecycleStatus === "contract_signed" || lifecycleStatus === "activated";
   if (action === "approve") return verificationStatus === "pending" || verificationStatus === "rejected" || verificationStatus === "not_verified";
   if (action === "reject") return verificationStatus === "pending" || verificationStatus === "approved";
   if (action === "suspend") return published && verificationStatus === "approved";
@@ -63,6 +66,9 @@ function actionHelp(action: ActionType, published: boolean, verificationStatus: 
   if (actionAllowed(action, published, verificationStatus, lifecycleStatus)) return null;
   if (action === "activate" && lifecycleStatus !== "contract_signed") {
     return lifecycleStatus === "activated" ? "Compte déjà activé." : "Requiert que le contrat soit signé.";
+  }
+  if (action === "send_activation_code" && lifecycleStatus !== "contract_signed" && lifecycleStatus !== "activated") {
+    return "Disponible uniquement après signature du contrat.";
   }
   if ((action === "publish" || action === "reactivate") && verificationStatus !== "approved") {
     return "Réservé aux profils approuvés.";
@@ -142,7 +148,7 @@ export default function AdminSitterActions({
       setContractAccessTokenExpiresAt(typeof payload.profile.contractAccessTokenExpiresAt === "string" ? payload.profile.contractAccessTokenExpiresAt : null);
       setLatestContractAccessLink(typeof payload.contractAccessLink === "string" ? payload.contractAccessLink : null);
       setLatestContractAccessFingerprint(typeof payload.contractAccessTokenFingerprint === "string" ? payload.contractAccessTokenFingerprint : null);
-      setSuccess("Action enregistrée.");
+      setSuccess(action === "send_activation_code" ? "Code d'activation envoyé par email." : "Action enregistrée.");
     } catch {
       setError("Impossible d’exécuter l’action admin.");
     } finally {
