@@ -452,7 +452,7 @@ export default function AdminSitterApplicationsClient({ adminCode }: { adminCode
     if (!selected || calendlySaveLoading) return;
     const trimmed = calendlyDraft.trim();
     if (trimmed && !isHttpUrl(trimmed)) {
-      setError("Lien Calendly invalide (URL http(s) requise).");
+      setError("Lien invalide (URL http(s) requise).");
       return;
     }
     setCalendlySaveLoading(true);
@@ -467,13 +467,13 @@ export default function AdminSitterApplicationsClient({ adminCode }: { adminCode
       // eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic JSON shape; narrowed by runtime checks below.
       const payload = (await res.json().catch(() => null)) as any;
       if (!res.ok || !payload?.ok) {
-        setError("Impossible d’enregistrer le lien Calendly.");
+        setError("Impossible d’enregistrer le lien.");
         return;
       }
-      setSuccess(trimmed ? "Lien Calendly enregistré." : "Lien Calendly supprimé.");
+      setSuccess(trimmed ? "Lien enregistré." : "Lien supprimé.");
       await load();
     } catch {
-      setError("Impossible d’enregistrer le lien Calendly.");
+      setError("Impossible d’enregistrer le lien.");
     } finally {
       setCalendlySaveLoading(false);
     }
@@ -483,7 +483,7 @@ export default function AdminSitterApplicationsClient({ adminCode }: { adminCode
     if (!selected || interviewEmailLoading) return;
     const trimmed = (selected.calendlyLink ?? "").trim();
     if (!trimmed) {
-      setError("Ajoute d’abord un lien Calendly à cette candidature.");
+      setError("Ajoute d’abord un lien d’entretien à cette candidature.");
       return;
     }
     if (selected.acceptedEmailSentAt) {
@@ -507,13 +507,13 @@ export default function AdminSitterApplicationsClient({ adminCode }: { adminCode
       const payload = (await res.json().catch(() => null)) as any;
       if (!res.ok || !payload?.ok) {
         if (payload?.error === "MISSING_CALENDLY_LINK") {
-          setError("Lien Calendly manquant sur la candidature.");
+          setError("Lien d’entretien manquant sur la candidature.");
         } else {
           setError("Impossible d’envoyer l’email d’entretien.");
         }
         return;
       }
-      setSuccess("Email d’entretien envoyé (lien Calendly).");
+      setSuccess("Email d’entretien envoyé.");
       await load();
     } catch {
       setError("Impossible d’envoyer l’email d’entretien.");
@@ -883,9 +883,9 @@ export default function AdminSitterApplicationsClient({ adminCode }: { adminCode
                   <div className="rounded-2xl border border-slate-200 bg-white p-4">
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div>
-                        <p className="text-sm font-semibold text-slate-900">Lien Calendly (entretien)</p>
+                        <p className="text-sm font-semibold text-slate-900">Lien d’entretien (Cal.com)</p>
                         <p className="mt-1 text-xs text-slate-600">
-                          Envoyé au candidat quand tu cliques sur « Accepté ». Un lien unique par candidature.
+                          Lien de prise de rendez-vous envoyé avec l’email d’entretien.
                         </p>
                       </div>
                       {selected.acceptedEmailSentAt ? (
@@ -904,7 +904,7 @@ export default function AdminSitterApplicationsClient({ adminCode }: { adminCode
                         type="url"
                         value={calendlyDraft}
                         onChange={(e) => setCalendlyDraft(e.target.value)}
-                        placeholder="https://calendly.com/ton-compte/entretien-dogshift"
+                        placeholder="https://cal.com/dogshift/entretien-dogshift"
                         className="h-11 min-w-0 flex-1 rounded-2xl border border-slate-300 bg-white px-4 text-sm text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-[var(--dogshift-blue)] focus:ring-2 focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_80%)]"
                       />
                       <button
@@ -926,7 +926,7 @@ export default function AdminSitterApplicationsClient({ adminCode }: { adminCode
                     </div>
                     {!(selected.calendlyLink ?? "").trim() ? (
                       <p className="mt-2 text-xs text-amber-700">
-                        Ajoute un lien avant de cliquer sur « Accepté » — sinon l’email ne partira pas.
+                        Ajoute un lien Cal.com avant d’envoyer l’email d’entretien.
                       </p>
                     ) : null}
                   </div>
