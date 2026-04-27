@@ -38,7 +38,7 @@
     "@stripe/stripe-js": "^7.9.0",
     "@vonage/server-sdk": "^3.27.0",
     "bcryptjs": "^2.4.3",
-    "jspdf": "^2.5.2",
+    "jspdf": "^4.2.1",
     "leaflet": "^1.9.4",
     "lucide-react": "^0.561.0",
     "mapbox-gl": "^3.17.0",
