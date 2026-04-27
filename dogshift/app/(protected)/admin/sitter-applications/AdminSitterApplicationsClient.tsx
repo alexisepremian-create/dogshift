@@ -347,6 +347,7 @@ export default function AdminSitterApplicationsClient({ adminCode }: { adminCode
   const [contractActionLoading, setContractActionLoading] = useState(false);
   const [calendlySaveLoading, setCalendlySaveLoading] = useState(false);
   const [interviewEmailLoading, setInterviewEmailLoading] = useState(false);
+  const [activationCodeLoading, setActivationCodeLoading] = useState(false);
   const [calendlyDraft, setCalendlyDraft] = useState<string>("");
   const [success, setSuccess] = useState<string | null>(null);
   const [contractDetails, setContractDetails] = useState<ContractDetailsPayload | null>(null);
@@ -662,6 +663,41 @@ export default function AdminSitterApplicationsClient({ adminCode }: { adminCode
       downloadBlob(blob, `dogshift-contrat-signe-${contractModal.version}.pdf`);
     } catch {
       // ignore
+    }
+  }
+
+  async function sendActivationCode() {
+    const item = selected;
+    if (!item || activationCodeLoading) return;
+    if (!item.linkedUserId) {
+      setError("Pas de compte lié à cette candidature. Le profil sitter doit exister en base.");
+      return;
+    }
+    const canSend = item.sitterLifecycleStatus === "contract_signed" || item.sitterLifecycleStatus === "activated";
+    if (!canSend) {
+      setError("Le code d'activation n'est disponible qu'après signature du contrat.");
+      return;
+    }
+    setActivationCodeLoading(true);
+    setError(null);
+    setSuccess(null);
+    try {
+      const res = await fetch(`/api/admin/sitters/${item.linkedUserId}/actions`, {
+        method: "POST",
+        headers: adminHeaders({ "Content-Type": "application/json" }),
+        body: JSON.stringify({ action: "send_activation_code" }),
+      });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic JSON shape
+      const payload = (await res.json().catch(() => null)) as any;
+      if (!res.ok || !payload?.ok) {
+        setError("Impossible d'envoyer le code d'activation.");
+        return;
+      }
+      setSuccess("Code d'activation envoyé par email.");
+    } catch {
+      setError("Impossible d'envoyer le code d'activation.");
+    } finally {
+      setActivationCodeLoading(false);
     }
   }
 
@@ -1019,6 +1055,34 @@ export default function AdminSitterApplicationsClient({ adminCode }: { adminCode
                         </div>
                       </div>
                     </div>
+                  </div>
+
+                  <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-semibold text-slate-900">Code d'activation</p>
+                        <p className="mt-1 text-xs text-slate-600">
+                          Génère un nouveau code et l'envoie par email au sitter. Disponible après signature du contrat.
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        disabled={
+                          activationCodeLoading ||
+                          !selected.linkedUserId ||
+                          (selected.sitterLifecycleStatus !== "contract_signed" && selected.sitterLifecycleStatus !== "activated")
+                        }
+                        onClick={() => void sendActivationCode()}
+                        className="inline-flex items-center justify-center rounded-2xl bg-amber-500 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-amber-600 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {activationCodeLoading ? "En cours…" : "Envoyer code d'activation"}
+                      </button>
+                    </div>
+                    {!selected.linkedUserId ? (
+                      <p className="mt-2 text-xs text-slate-500">Pas de profil sitter lié à cette candidature.</p>
+                    ) : selected.sitterLifecycleStatus !== "contract_signed" && selected.sitterLifecycleStatus !== "activated" ? (
+                      <p className="mt-2 text-xs text-slate-500">Disponible une fois le contrat signé.</p>
+                    ) : null}
                   </div>
 
                   <div className="rounded-2xl border border-slate-200 bg-white p-4">
