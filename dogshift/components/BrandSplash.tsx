@@ -6,10 +6,10 @@ import { useSplash } from "@/components/SplashContext";
 /* ── Config ────────────────────────────────────────────────────── */
 
 const LOGIN_KEY = "ds_login_transit";
-const FADE_MS = 450;
+const FADE_MS = 350;
 const EASE = "cubic-bezier(0.16, 1, 0.3, 1)";
-const MIN_DEFAULT = 1800;
-const MIN_LOGIN = 2800;
+const MIN_DEFAULT = 800;
+const MIN_LOGIN = 1200;
 
 /* ── Helpers ───────────────────────────────────────────────────── */
 

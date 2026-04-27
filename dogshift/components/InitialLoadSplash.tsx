@@ -18,7 +18,14 @@ export default function InitialLoadSplash() {
 
     const onLoad = () => setPageReady(true);
     window.addEventListener("load", onLoad, { once: true });
-    return () => window.removeEventListener("load", onLoad);
+
+    // Safety: if window.load never fires (webview, slow 3G), unblock after 4s
+    const safetyTimer = window.setTimeout(() => setPageReady(true), 4000);
+
+    return () => {
+      window.removeEventListener("load", onLoad);
+      window.clearTimeout(safetyTimer);
+    };
   }, []);
 
   if (done) return null;

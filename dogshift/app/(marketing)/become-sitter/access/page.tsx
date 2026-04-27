@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { Bone, Dog, Heart, MapPin, Calendar, Home } from "lucide-react";
@@ -24,7 +25,9 @@ export default async function BecomeSitterAccessPage() {
       </div>
 
       <main className="relative z-10 mx-auto flex min-h-[calc(100vh-120px)] max-w-6xl items-center justify-center px-4 py-14 sm:px-6">
-        <BecomeSitterAccessForm />
+        <Suspense fallback={null}>
+          <BecomeSitterAccessForm />
+        </Suspense>
       </main>
     </div>
   );

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 
 export default function BecomeSitterAccessForm({
@@ -9,6 +9,7 @@ export default function BecomeSitterAccessForm({
 }: {
   onUnlocked?: () => void;
 }) {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const [code, setCode] = useState(() => searchParams?.get("code") ?? "");
   const [loading, setLoading] = useState(false);
@@ -35,7 +36,7 @@ export default function BecomeSitterAccessForm({
 
       if (inviteRes.ok && inviteJson?.ok) {
         if (typeof onUnlocked === "function") onUnlocked();
-        window.location.assign("/become-sitter/form");
+        router.push("/become-sitter/form");
         return;
       }
 
@@ -53,7 +54,7 @@ export default function BecomeSitterAccessForm({
 
       if (activationRes.ok && activationJson?.ok) {
         // Cookies set server-side by the API — redirect to the full registration form.
-        window.location.assign("/become-sitter/form");
+        router.push("/become-sitter/form");
         return;
       }
 
