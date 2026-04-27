@@ -118,6 +118,7 @@ export default function SecureContractSigningPage() {
       }
 
       setSuccess(next.message ?? "Votre contrat a bien été signé. DogShift vous contactera pour la suite de l’activation.");
+      window.scrollTo({ top: 0, behavior: "smooth" });
       const refreshed = await fetch(`/api/contract/sign/${encodeURIComponent(token)}`, { method: "GET", cache: "no-store" });
       const refreshedPayload = (await refreshed.json().catch(() => null)) as ContractPayload | null;
       if (refreshed.ok && refreshedPayload?.ok) {

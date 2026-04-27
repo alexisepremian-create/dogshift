@@ -118,6 +118,10 @@ export default function BecomeSitterForm() {
     const clerkErrorMessages: Record<string, string> = {
       form_password_pwned: "Ce mot de passe a été trouvé dans une fuite de données. Choisis-en un autre plus unique.",
       form_identifier_exists: "Cet email est déjà utilisé. Connecte-toi ou utilise une autre adresse.",
+      form_identifier_not_available: "Cet email est déjà utilisé. Connecte-toi ou utilise une autre adresse.",
+      email_address_taken: "Cet email est déjà utilisé. Connecte-toi ou utilise une autre adresse.",
+      verification_failed: "Code de vérification incorrect. Réessaie.",
+      verification_expired: "Le code de vérification a expiré. Demande un nouveau code.",
       form_password_length_too_short: "Le mot de passe est trop court (minimum 8 caractères).",
       form_password_not_strong_enough: "Le mot de passe n’est pas assez fort. Ajoute des chiffres, majuscules ou symboles.",
       form_param_format_invalid: "Format invalide. Vérifie ton adresse email.",
@@ -128,7 +132,7 @@ export default function BecomeSitterForm() {
     const describe = (e: ClerkErrorLike, fallback: string) => {
       if (!e) return fallback;
       const fr = e.code ? clerkErrorMessages[e.code] : undefined;
-      return fr ?? e.longMessage ?? e.message ?? fallback;
+      return fr ?? fallback;
     };
 
     try {
