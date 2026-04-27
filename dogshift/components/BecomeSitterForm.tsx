@@ -179,10 +179,20 @@ export default function BecomeSitterForm() {
       return false;
     } catch (err) {
       setAuthInlineStatus("idle");
-      console.error("[BecomeSitterForm] ensureInlineSignUp error:", err);
+      // Log the full error so we can inspect the exact Clerk code in the console.
+      console.error("[BecomeSitterForm] ensureInlineSignUp error:", JSON.stringify(err), err);
       const code = extractClerkCode(err);
       const mapped = code ? clerkErrorMessages[code] : undefined;
-      setAuthError(mapped ?? "Impossible de créer le compte. Vérifie l’email et le mot de passe.");
+      // A 422 from Clerk’s sign_ups endpoint almost always means the email already exists.
+      const status = err && typeof err === "object" ? (err as Record<string,unknown>).status : undefined;
+      const is422 = status === 422 || status === "422";
+      if (mapped) {
+        setAuthError(mapped);
+      } else if (is422) {
+        setAuthError("__EMAIL_TAKEN__");
+      } else {
+        setAuthError("Impossible de créer le compte. Vérifie l’email et le mot de passe.");
+      }
       return false;
     }
   }
