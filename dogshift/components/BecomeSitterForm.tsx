@@ -117,9 +117,11 @@ export default function BecomeSitterForm() {
 
     const clerkErrorMessages: Record<string, string> = {
       form_password_pwned: "Ce mot de passe a été trouvé dans une fuite de données. Choisis-en un autre plus unique.",
-      form_identifier_exists: "Cet email est déjà utilisé. Connecte-toi ou utilise une autre adresse.",
-      form_identifier_not_available: "Cet email est déjà utilisé. Connecte-toi ou utilise une autre adresse.",
-      email_address_taken: "Cet email est déjà utilisé. Connecte-toi ou utilise une autre adresse.",
+      form_identifier_exists: "__EMAIL_TAKEN__",
+      form_identifier_not_available: "__EMAIL_TAKEN__",
+      email_address_taken: "__EMAIL_TAKEN__",
+      identifier_already_signed_in: "__EMAIL_TAKEN__",
+      form_identifier_already_signed_in: "__EMAIL_TAKEN__",
       verification_failed: "Code de vérification incorrect. Réessaie.",
       verification_expired: "Le code de vérification a expiré. Demande un nouveau code.",
       form_password_length_too_short: "Le mot de passe est trop court (minimum 8 caractères).",
@@ -129,9 +131,25 @@ export default function BecomeSitterForm() {
     };
 
     type ClerkErrorLike = { code?: string; longMessage?: string; message?: string } | null | undefined;
-    const describe = (e: ClerkErrorLike, fallback: string) => {
-      if (!e) return fallback;
-      const fr = e.code ? clerkErrorMessages[e.code] : undefined;
+
+    // Clerk can throw a ClerkAPIResponseError: { errors: [{code, message}] }
+    // or return { error: {code} } on some SDK paths. Try all shapes.
+    function extractClerkCode(err: unknown): string | null {
+      if (!err || typeof err !== "object") return null;
+      const e = err as Record<string, unknown>;
+      if (Array.isArray(e.errors) && e.errors.length > 0) {
+        const first = e.errors[0] as Record<string, unknown>;
+        if (typeof first?.code === "string") return first.code;
+      }
+      if (typeof e.code === "string") return e.code;
+      return null;
+    }
+
+    const describe = (e: ClerkErrorLike | unknown, fallback: string): string => {
+      const code = e && typeof e === "object"
+        ? (e as Record<string, unknown>).code as string | undefined
+        : undefined;
+      const fr = code ? clerkErrorMessages[code] : undefined;
       return fr ?? fallback;
     };
 
@@ -162,8 +180,9 @@ export default function BecomeSitterForm() {
     } catch (err) {
       setAuthInlineStatus("idle");
       console.error("[BecomeSitterForm] ensureInlineSignUp error:", err);
-      const clerkErr = err as { errors?: ClerkErrorLike[] };
-      setAuthError(describe(clerkErr?.errors?.[0] ?? null, "Impossible de créer le compte. Vérifie l’email et le mot de passe."));
+      const code = extractClerkCode(err);
+      const mapped = code ? clerkErrorMessages[code] : undefined;
+      setAuthError(mapped ?? "Impossible de créer le compte. Vérifie l’email et le mot de passe.");
       return false;
     }
   }
@@ -579,7 +598,17 @@ export default function BecomeSitterForm() {
 
             <div id="clerk-captcha" />
 
-            {authError ? <p className="text-sm font-medium text-rose-600">{authError}</p> : null}
+            {authError ? (
+              authError === "__EMAIL_TAKEN__" ? (
+                <p className="text-sm font-medium text-rose-600">
+                  Cet email est déjà utilisé.{" "}
+                  <a href="/login" className="underline">Connecte-toi</a>{" "}
+                  ou utilise une autre adresse.
+                </p>
+              ) : (
+                <p className="text-sm font-medium text-rose-600">{authError}</p>
+              )
+            ) : null}
 
             {sessionStatus !== "authenticated" && showEmailCode ? (
               <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5">
