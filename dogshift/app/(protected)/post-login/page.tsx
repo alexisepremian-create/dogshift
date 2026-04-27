@@ -52,7 +52,14 @@ export default function PostLoginPage() {
       const data = await res.json().catch(() => null);
       const redirect =
         typeof data?.redirect === "string" && data.redirect.startsWith("/") ? data.redirect : "/account";
-      const useNext = redirect.startsWith("/host") && next.startsWith("/") && !next.startsWith("//");
+      // Allow callers (e.g. /become-sitter/form login link) to specify a `next`
+      // destination. We only honor it for known-safe prefixes to prevent open redirects.
+      const SAFE_NEXT_PREFIXES = ["/host", "/become-sitter/", "/account"];
+      const isSafeNext =
+        next.startsWith("/") &&
+        !next.startsWith("//") &&
+        SAFE_NEXT_PREFIXES.some((prefix) => next.startsWith(prefix));
+      const useNext = isSafeNext;
       const t = useNext ? next : redirect;
       const dest = t.startsWith("/") && !t.startsWith("//") ? t : "/account";
       window.location.replace(absolutePath(dest));
