@@ -348,7 +348,8 @@ export default function AdminSitterApplicationsClient({ adminCode }: { adminCode
   const [calendlySaveLoading, setCalendlySaveLoading] = useState(false);
   const [interviewEmailLoading, setInterviewEmailLoading] = useState(false);
   const [activationCodeLoading, setActivationCodeLoading] = useState(false);
-  const [calendlyDraft, setCalendlyDraft] = useState<string>("");
+  const DEFAULT_CALCOM_URL = process.env.NEXT_PUBLIC_CALCOM_INTERVIEW_URL ?? "";
+  const [calendlyDraft, setCalendlyDraft] = useState<string>(DEFAULT_CALCOM_URL);
   const [success, setSuccess] = useState<string | null>(null);
   const [contractDetails, setContractDetails] = useState<ContractDetailsPayload | null>(null);
   const [contractDetailsLoading, setContractDetailsLoading] = useState(false);
@@ -436,7 +437,7 @@ export default function AdminSitterApplicationsClient({ adminCode }: { adminCode
   }, []);
 
   useEffect(() => {
-    setCalendlyDraft(selected?.calendlyLink ?? "");
+    setCalendlyDraft(selected?.calendlyLink ?? DEFAULT_CALCOM_URL);
   }, [selected?.id, selected?.calendlyLink]);
 
   function isHttpUrl(value: string) {
