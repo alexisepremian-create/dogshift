@@ -67,7 +67,7 @@ type BookingRow = {
   startAt: Date | null;
   endAt: Date | null;
   platformFeeAmount: number;
-  sitterPayoutAmount: number;
+  sitterPayoutAmount: number | null;
   archivedAt: Date | null;
   user: { id: string; name: string | null; email: string };
   sitter: { id: string; name: string | null; email: string; sitterProfile: { city: string | null } | null };
