@@ -40,22 +40,29 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "INVALID_ACTIVATION_CODE" }, { status: 403 });
     }
 
-    // Guard: code already used
-    if (sitterProfile.activationCodeUsedAt) {
-      return NextResponse.json({ ok: false, error: "ACTIVATION_CODE_ALREADY_USED" }, { status: 409 });
-    }
-
-    // Guard: code expired
-    if (sitterProfile.activationCodeExpiresAt && new Date(sitterProfile.activationCodeExpiresAt) < new Date()) {
-      return NextResponse.json({ ok: false, error: "ACTIVATION_CODE_EXPIRED" }, { status: 409 });
-    }
-
     const lifecycleStatus = normalizeSitterLifecycleStatus(
       sitterProfile.lifecycleStatus,
       Boolean(sitterProfile.published),
     );
-    if (lifecycleStatus !== "contract_signed") {
-      return NextResponse.json({ ok: false, error: "ACCOUNT_NOT_READY_FOR_ACTIVATION" }, { status: 409 });
+
+    // A sitter already `activated` may re-enter the form (e.g. profile not yet filled).
+    // In that case skip code-validity guards — the profile is already good to go.
+    const alreadyActivated = lifecycleStatus === "activated";
+
+    if (!alreadyActivated) {
+      // Guard: code already used
+      if (sitterProfile.activationCodeUsedAt) {
+        return NextResponse.json({ ok: false, error: "ACTIVATION_CODE_ALREADY_USED" }, { status: 409 });
+      }
+
+      // Guard: code expired
+      if (sitterProfile.activationCodeExpiresAt && new Date(sitterProfile.activationCodeExpiresAt) < new Date()) {
+        return NextResponse.json({ ok: false, error: "ACTIVATION_CODE_EXPIRED" }, { status: 409 });
+      }
+
+      if (lifecycleStatus !== "contract_signed") {
+        return NextResponse.json({ ok: false, error: "ACCOUNT_NOT_READY_FOR_ACTIVATION" }, { status: 409 });
+      }
     }
 
     const now = new Date();
