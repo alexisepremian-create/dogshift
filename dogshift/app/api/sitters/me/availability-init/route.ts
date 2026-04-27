@@ -169,11 +169,26 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // Shape configs by service
+    // Parse services selected during registration from hostProfileJson.
+    // These are used as defaults when no serviceConfig DB record exists yet (new sitter).
+    const hostProfileRaw: unknown = (() => {
+      const raw = (user as any)?.hostProfileJson;
+      if (typeof raw !== "string") return null;
+      try { return JSON.parse(raw); } catch { return null; }
+    })();
+    const hostServices =
+      hostProfileRaw && typeof hostProfileRaw === "object" && "services" in (hostProfileRaw as object) &&
+      typeof (hostProfileRaw as any).services === "object"
+        ? (hostProfileRaw as any).services as Record<string, unknown>
+        : null;
+
+    // Shape configs by service — DB records take precedence; fall back to what was
+    // selected in the registration form (hostServices). Default to true only if
+    // hostProfileJson is unavailable (legacy profiles).
     const configsByService: Record<ServiceType, { enabled: boolean }> = {
-      PROMENADE: { enabled: true },
-      DOGSITTING: { enabled: true },
-      PENSION: { enabled: true },
+      PROMENADE: { enabled: hostServices ? Boolean(hostServices.Promenade) : true },
+      DOGSITTING: { enabled: hostServices ? Boolean(hostServices.Garde) : true },
+      PENSION: { enabled: hostServices ? Boolean(hostServices.Pension) : true },
     };
     for (const cfg of allConfigs ?? []) {
       const st = cfg?.serviceType as ServiceType;
