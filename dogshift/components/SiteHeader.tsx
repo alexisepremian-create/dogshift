@@ -69,15 +69,11 @@ export default function SiteHeader() {
   useEffect(() => {
     if (navOpen) {
       setNavMounted(true);
-      const prevOverflow = document.body.style.overflow;
       document.body.style.overflow = "hidden";
       const frame = requestAnimationFrame(() => {
         requestAnimationFrame(() => setNavAnimating(true));
       });
-      return () => {
-        cancelAnimationFrame(frame);
-        document.body.style.overflow = prevOverflow;
-      };
+      return () => cancelAnimationFrame(frame);
     }
     setNavAnimating(false);
     document.body.style.overflow = "";

@@ -107,9 +107,8 @@ export default function PageLoader({
       style={{
         transition: phase === "fadeOut" ? `opacity ${FADE_MS}ms ease` : undefined,
         opacity: phase === "fadeOut" ? 0 : 1,
-        pointerEvents: phase === "fadeOut" ? "none" : undefined,
       }}
-      aria-busy={phase === "fadeOut" ? "false" : "true"}
+      aria-busy="true"
       aria-live="polite"
     >
       <div

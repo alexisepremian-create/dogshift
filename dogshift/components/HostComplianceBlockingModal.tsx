@@ -68,9 +68,9 @@ export default function HostComplianceBlockingModal({ host }: Props) {
       : "J’accepte l’avenant";
 
   return (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center px-4 py-8" role="dialog" aria-modal="true">
-      <div className="absolute inset-0 bg-slate-900/45" aria-hidden="true" />
-      <div className="relative z-10 w-full max-w-3xl rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_25px_80px_-45px_rgba(2,6,23,0.6)] sm:p-8">
+    <div className="fixed inset-0 z-[70] flex items-center justify-center px-4 py-8">
+      <button type="button" className="absolute inset-0 bg-slate-900/45" aria-label="Modal" disabled />
+      <div className="relative w-full max-w-3xl rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_25px_80px_-45px_rgba(2,6,23,0.6)] sm:p-8">
         <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Conformité contractuelle</p>
         <h2 className="mt-2 text-xl font-semibold tracking-tight text-slate-900">
           {needsCombinedAcceptance ? "Veuillez accepter les conditions et l’avenant pour continuer à utiliser DogShift" : "Veuillez accepter les éléments requis pour continuer à utiliser DogShift"}
