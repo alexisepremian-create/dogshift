@@ -45,14 +45,17 @@ export default function LoginPage() {
     }
   }, [isLoaded, isSignedIn]);
 
+  const next = (searchParams?.get("next") ?? "").trim();
+
   useEffect(() => {
     if (!isLoaded) return;
     if (!isSignedIn) return;
     // Only block auto-redirect in forceMode if the user was ALREADY signed in
     // when the page loaded (i.e. they arrived signed in, not just signed in now).
     if (forceMode && alreadySignedInOnLoad.current === true) return;
-    router.replace("/post-login");
-  }, [forceMode, isLoaded, isSignedIn, router]);
+    const dest = next ? `/post-login?next=${encodeURIComponent(next)}` : "/post-login";
+    router.replace(dest);
+  }, [forceMode, isLoaded, isSignedIn, next, router]);
 
   useEffect(() => {
     if (!debugMode) return;
