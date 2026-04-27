@@ -32,17 +32,27 @@ export default async function BecomeSitterFormPage() {
       redirect("/host");
     }
 
-    // If we arrived here via an activation code (ds_activation_profile_id cookie) but the
-    // profile doesn't belong to the currently signed-in user, the cookies are stale (e.g.
-    // from a previous test session). Send the user back to /account so they can use the
-    // site as an owner without being stuck in the sitter registration flow.
+    // If the ds_activation_profile_id cookie points to a sitter profile that is ALREADY
+    // claimed by a different Clerk-authenticated user, the cookie is stale (e.g. left over
+    // from a previous test session). In that case send the user back to /account.
+    // If the profile is unlinked (userId null) or linked to a DB user without a Clerk
+    // account, the current logged-in user can still claim it by completing the form, so
+    // we let them through.
     if (dbUser && activationProfileId) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const activationProfile = await (prisma as any).sitterProfile.findUnique({
         where: { id: activationProfileId },
-        select: { userId: true },
+        select: {
+          userId: true,
+          user: { select: { clerkUserId: true } },
+        },
       });
-      if (activationProfile && activationProfile.userId !== dbUser.id) {
+      const claimedByOtherUser =
+        !!activationProfile &&
+        !!activationProfile.userId &&
+        activationProfile.userId !== dbUser.id &&
+        !!activationProfile.user?.clerkUserId;
+      if (claimedByOtherUser) {
         redirect("/account");
       }
     }
