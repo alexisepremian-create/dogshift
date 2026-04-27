@@ -54,6 +54,91 @@ function statusGroupMatches(status: BookingStatus, statusGroup: string) {
   return true;
 }
 
+type BookingRow = {
+  id: string;
+  status: BookingStatus;
+  serviceType: string | null;
+  service: string | null;
+  amount: number;
+  currency: string;
+  createdAt: Date;
+  startDate: Date | null;
+  endDate: Date | null;
+  startAt: Date | null;
+  endAt: Date | null;
+  platformFeeAmount: number;
+  sitterPayoutAmount: number | null;
+  archivedAt: Date | null;
+  user: { id: string; name: string | null; email: string };
+  sitter: { id: string; name: string | null; email: string; sitterProfile: { city: string | null } | null };
+};
+
+function BookingTable({ bookings, showArchive }: { bookings: BookingRow[]; showArchive: boolean }) {
+  if (bookings.length === 0) return null;
+  return (
+    <table className="min-w-full divide-y divide-slate-200 text-sm">
+      <thead className="bg-slate-50 text-left text-slate-600">
+        <tr>
+          <th className="px-5 py-4 font-semibold">Propriétaire</th>
+          <th className="px-5 py-4 font-semibold">Dogsitter</th>
+          <th className="px-5 py-4 font-semibold">Dates</th>
+          <th className="px-5 py-4 font-semibold">Statut</th>
+          <th className="px-5 py-4 font-semibold">Montant</th>
+          <th className="px-5 py-4 font-semibold">Création</th>
+          <th className="px-5 py-4 font-semibold">Détail</th>
+          {showArchive ? <th className="px-5 py-4 font-semibold">Admin</th> : null}
+        </tr>
+      </thead>
+      <tbody className="divide-y divide-slate-100 bg-white">
+        {bookings.map((booking) => (
+          <tr key={booking.id} className="align-top">
+            <td className="px-5 py-4 text-slate-700">
+              <div>{booking.user.name?.trim() || "—"}</div>
+              <div className="text-xs text-slate-500">{booking.user.email}</div>
+              <Link href={`/admin/owners/${booking.user.id}`} className="mt-1 inline-block font-semibold text-[var(--dogshift-blue)] hover:text-[var(--dogshift-blue-hover)]">
+                Voir
+              </Link>
+            </td>
+            <td className="px-5 py-4 text-slate-700">
+              <div>{booking.sitter.name?.trim() || "—"}</div>
+              <div className="text-xs text-slate-500">{booking.sitter.email}</div>
+              <div className="text-xs text-slate-500">{booking.sitter.sitterProfile?.city || "—"}</div>
+              <Link href={`/admin/sitters/${booking.sitter.id}`} className="mt-1 inline-block font-semibold text-[var(--dogshift-blue)] hover:text-[var(--dogshift-blue-hover)]">
+                Voir le sitter
+              </Link>
+            </td>
+            <td className="px-5 py-4 text-slate-600">
+              <div>{formatDate(booking.startAt ?? booking.startDate)}</div>
+              <div className="text-xs text-slate-500">au {formatDate(booking.endAt ?? booking.endDate)}</div>
+              <div className="mt-1 text-xs text-slate-500">{booking.serviceType || booking.service || "—"}</div>
+            </td>
+            <td className="px-5 py-4 text-slate-600">
+              <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold ${statusTone(booking.status)}`}>
+                {statusLabel(booking.status)}
+              </span>
+            </td>
+            <td className="px-5 py-4 text-slate-600">
+              <div>{formatCurrency(booking.amount, booking.currency)}</div>
+              <div className="text-xs text-slate-500">Fee: {formatCurrency(booking.platformFeeAmount, booking.currency)}</div>
+            </td>
+            <td className="px-5 py-4 text-slate-600">{formatDate(booking.createdAt)}</td>
+            <td className="px-5 py-4">
+              <Link href={`/admin/bookings/${booking.id}`} className="font-semibold text-[var(--dogshift-blue)] hover:text-[var(--dogshift-blue-hover)]">
+                Voir la fiche
+              </Link>
+            </td>
+            {showArchive ? (
+              <td className="px-5 py-4">
+                <AdminBookingArchiveButton bookingId={booking.id} />
+              </td>
+            ) : null}
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
 export default async function AdminBookingsPage({
   searchParams,
 }: {
@@ -67,19 +152,21 @@ export default async function AdminBookingsPage({
   const cityRaw = resolvedSearchParams?.city;
   const startDateRaw = resolvedSearchParams?.startDate;
   const endDateRaw = resolvedSearchParams?.endDate;
+  const tabRaw = resolvedSearchParams?.tab;
 
   const q = (Array.isArray(qRaw) ? qRaw[0] : qRaw ?? "").trim();
   const statusGroup = (Array.isArray(statusRaw) ? statusRaw[0] : statusRaw ?? "").trim();
   const city = (Array.isArray(cityRaw) ? cityRaw[0] : cityRaw ?? "").trim();
   const startDate = (Array.isArray(startDateRaw) ? startDateRaw[0] : startDateRaw ?? "").trim();
   const endDate = (Array.isArray(endDateRaw) ? endDateRaw[0] : endDateRaw ?? "").trim();
+  const tab = (Array.isArray(tabRaw) ? tabRaw[0] : tabRaw ?? "confirmed").trim() as "confirmed" | "other" | "archived";
 
   const createdAtFilter = {
     ...(startDate ? { gte: new Date(`${startDate}T00:00:00.000Z`) } : {}),
     ...(endDate ? { lte: new Date(`${endDate}T23:59:59.999Z`) } : {}),
   };
 
-  const where = {
+  const baseFilter = {
     ...(Object.keys(createdAtFilter).length > 0 ? { createdAt: createdAtFilter } : {}),
     ...(q
       ? {
@@ -102,50 +189,63 @@ export default async function AdminBookingsPage({
       : {}),
   };
 
-  const bookings = await prisma.booking.findMany({
-    where,
-    orderBy: { createdAt: "desc" },
-    take: 100,
-    select: {
-      id: true,
-      status: true,
-      serviceType: true,
-      service: true,
-      amount: true,
-      currency: true,
-      createdAt: true,
-      startDate: true,
-      endDate: true,
-      startAt: true,
-      endAt: true,
-      platformFeeAmount: true,
-      sitterPayoutAmount: true,
-      archivedAt: true,
-      user: { select: { id: true, name: true, email: true } },
-      sitter: { select: { id: true, name: true, email: true, sitterProfile: { select: { city: true } } } },
-    },
-  });
+  const bookingSelect = {
+    id: true,
+    status: true,
+    serviceType: true,
+    service: true,
+    amount: true,
+    currency: true,
+    createdAt: true,
+    startDate: true,
+    endDate: true,
+    startAt: true,
+    endAt: true,
+    platformFeeAmount: true,
+    sitterPayoutAmount: true,
+    archivedAt: true,
+    user: { select: { id: true, name: true, email: true } },
+    sitter: { select: { id: true, name: true, email: true, sitterProfile: { select: { city: true } } } },
+  } as const;
 
-  const filteredBookings = bookings.filter((booking) => statusGroupMatches(booking.status, statusGroup));
-  const totalBookings = filteredBookings.length;
-  const pendingBookings = filteredBookings.filter(
-    (booking) =>
-      booking.status === BookingStatus.DRAFT ||
-      booking.status === BookingStatus.PENDING_PAYMENT ||
-      booking.status === BookingStatus.PENDING_ACCEPTANCE,
+  const [activeBookingsRaw, archivedBookings] = await Promise.all([
+    prisma.booking.findMany({
+      where: { ...baseFilter, archivedAt: null },
+      orderBy: { createdAt: "desc" },
+      take: 200,
+      select: bookingSelect,
+    }),
+    prisma.booking.findMany({
+      where: { ...baseFilter, archivedAt: { not: null } },
+      orderBy: { archivedAt: "desc" },
+      take: 100,
+      select: bookingSelect,
+    }),
+  ]);
+
+  const activeBookings = activeBookingsRaw.filter((b) => statusGroupMatches(b.status, statusGroup));
+  const confirmedBookings = activeBookings.filter(
+    (b) => b.status === BookingStatus.PAID || b.status === BookingStatus.CONFIRMED,
   );
-  const confirmedBookings = filteredBookings.filter(
-    (booking) => booking.status === BookingStatus.PAID || booking.status === BookingStatus.CONFIRMED,
+  const otherBookings = activeBookings.filter(
+    (b) => b.status !== BookingStatus.PAID && b.status !== BookingStatus.CONFIRMED,
   );
-  const cancelledBookings = filteredBookings.filter(
-    (booking) =>
-      booking.status === BookingStatus.CANCELLED ||
-      booking.status === BookingStatus.REFUNDED ||
-      booking.status === BookingStatus.REFUND_FAILED ||
-      booking.status === BookingStatus.PAYMENT_FAILED,
+  const pendingBookings = activeBookings.filter(
+    (b) =>
+      b.status === BookingStatus.DRAFT ||
+      b.status === BookingStatus.PENDING_PAYMENT ||
+      b.status === BookingStatus.PENDING_ACCEPTANCE,
   );
-  const totalVolume = filteredBookings.reduce((sum, booking) => sum + booking.amount, 0);
-  const confirmedVolume = confirmedBookings.reduce((sum, booking) => sum + booking.amount, 0);
+  const cancelledBookings = activeBookings.filter(
+    (b) =>
+      b.status === BookingStatus.CANCELLED ||
+      b.status === BookingStatus.REFUNDED ||
+      b.status === BookingStatus.REFUND_FAILED ||
+      b.status === BookingStatus.PAYMENT_FAILED,
+  );
+  const totalBookings = activeBookings.length;
+  const totalVolume = activeBookings.reduce((sum, b) => sum + b.amount, 0);
+  const confirmedVolume = confirmedBookings.reduce((sum, b) => sum + b.amount, 0);
 
   return (
     <AdminShell>
@@ -287,72 +387,46 @@ export default async function AdminBookingsPage({
           </div>
         </section>
 
+        {/* ── Tabbed booking table ── */}
         <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-[0_18px_60px_-46px_rgba(2,6,23,0.12)]">
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-slate-200 text-sm">
-              <thead className="bg-slate-50 text-left text-slate-600">
-                <tr>
-                  <th className="px-5 py-4 font-semibold">Propriétaire</th>
-                  <th className="px-5 py-4 font-semibold">Dogsitter</th>
-                  <th className="px-5 py-4 font-semibold">Dates</th>
-                  <th className="px-5 py-4 font-semibold">Statut</th>
-                  <th className="px-5 py-4 font-semibold">Montant</th>
-                  <th className="px-5 py-4 font-semibold">Création</th>
-                  <th className="px-5 py-4 font-semibold">Détail</th>
-                  <th className="px-5 py-4 font-semibold">Admin</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 bg-white">
-                {filteredBookings.map((booking) => (
-                  <tr key={booking.id} className="align-top">
-                    <td className="px-5 py-4 text-slate-700">
-                      <div>{booking.user.name?.trim() || "—"}</div>
-                      <div className="text-xs text-slate-500">{booking.user.email}</div>
-                      <Link href={`/admin/owners/${booking.user.id}`} className="mt-1 inline-block font-semibold text-[var(--dogshift-blue)] hover:text-[var(--dogshift-blue-hover)]">
-                        Voir
-                      </Link>
-                    </td>
-                    <td className="px-5 py-4 text-slate-700">
-                      <div>{booking.sitter.name?.trim() || "—"}</div>
-                      <div className="text-xs text-slate-500">{booking.sitter.email}</div>
-                      <div className="text-xs text-slate-500">{booking.sitter.sitterProfile?.city || "—"}</div>
-                      <Link href={`/admin/sitters/${booking.sitter.id}`} className="mt-1 inline-block font-semibold text-[var(--dogshift-blue)] hover:text-[var(--dogshift-blue-hover)]">
-                        Voir le sitter
-                      </Link>
-                    </td>
-                    <td className="px-5 py-4 text-slate-600">
-                      <div>{formatDate(booking.startAt ?? booking.startDate)}</div>
-                      <div className="text-xs text-slate-500">au {formatDate(booking.endAt ?? booking.endDate)}</div>
-                      <div className="mt-1 text-xs text-slate-500">{booking.serviceType || booking.service || "—"}</div>
-                    </td>
-                    <td className="px-5 py-4 text-slate-600">
-                      <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold ${statusTone(booking.status)}`}>
-                        {statusLabel(booking.status)}
-                      </span>
-                    </td>
-                    <td className="px-5 py-4 text-slate-600">
-                      <div>{formatCurrency(booking.amount, booking.currency)}</div>
-                      <div className="text-xs text-slate-500">Fee: {formatCurrency(booking.platformFeeAmount, booking.currency)}</div>
-                    </td>
-                    <td className="px-5 py-4 text-slate-600">{formatDate(booking.createdAt)}</td>
-                    <td className="px-5 py-4">
-                      <Link href={`/admin/bookings/${booking.id}`} className="font-semibold text-[var(--dogshift-blue)] hover:text-[var(--dogshift-blue-hover)]">
-                        Voir la fiche
-                      </Link>
-                    </td>
-                    <td className="px-5 py-4">
-                      {!booking.archivedAt ? (
-                        <AdminBookingArchiveButton bookingId={booking.id} />
-                      ) : (
-                        <span className="text-xs font-semibold text-slate-400">Archivée</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          {/* Tab bar */}
+          <div className="flex gap-0 border-b border-slate-200">
+            {(
+              [
+                { key: "confirmed", label: "Confirmées", count: confirmedBookings.length, active: tab === "confirmed" },
+                { key: "other",     label: "En attente / autres", count: otherBookings.length, active: tab === "other" },
+                { key: "archived",  label: "Archivées", count: archivedBookings.length, active: tab === "archived" },
+              ] as const
+            ).map(({ key, label, count, active }) => {
+              const params = new URLSearchParams({ ...(q ? { q } : {}), ...(statusGroup ? { status: statusGroup } : {}), ...(city ? { city } : {}), ...(startDate ? { startDate } : {}), ...(endDate ? { endDate } : {}), tab: key });
+              return (
+                <Link
+                  key={key}
+                  href={`/admin/bookings?${params.toString()}`}
+                  className={`flex-1 border-b-2 px-4 py-3 text-center text-sm font-semibold transition sm:flex-none sm:px-6 ${
+                    active
+                      ? "border-[var(--dogshift-blue)] text-[var(--dogshift-blue)]"
+                      : "border-transparent text-slate-500 hover:text-slate-800"
+                  }`}
+                >
+                  {label}
+                  <span className={`ml-1.5 rounded-full px-2 py-0.5 text-xs ${active ? "bg-[color-mix(in_srgb,var(--dogshift-blue),transparent_85%)] text-[var(--dogshift-blue)]" : "bg-slate-100 text-slate-500"}`}>
+                    {count}
+                  </span>
+                </Link>
+              );
+            })}
           </div>
-          {filteredBookings.length === 0 ? <div className="border-t border-slate-200 px-5 py-6 text-sm text-slate-600">Aucune réservation trouvée pour ces filtres.</div> : null}
+
+          {/* Tab content */}
+          <div className="overflow-x-auto">
+            {tab === "confirmed" && <BookingTable bookings={confirmedBookings} showArchive />}
+            {tab === "other"     && <BookingTable bookings={otherBookings}     showArchive />}
+            {tab === "archived"  && <BookingTable bookings={archivedBookings}  showArchive={false} />}
+          </div>
+          {tab === "confirmed" && confirmedBookings.length === 0 && <div className="border-t border-slate-200 px-5 py-6 text-sm text-slate-500">Aucune réservation confirmée.</div>}
+          {tab === "other"     && otherBookings.length === 0     && <div className="border-t border-slate-200 px-5 py-6 text-sm text-slate-500">Aucune réservation en attente.</div>}
+          {tab === "archived"  && archivedBookings.length === 0  && <div className="border-t border-slate-200 px-5 py-6 text-sm text-slate-500">Aucune réservation archivée.</div>}
         </section>
       </div>
     </AdminShell>
