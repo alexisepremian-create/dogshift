@@ -2,6 +2,7 @@ import Link from "next/link";
 import { BookingStatus } from "@prisma/client";
 
 import AdminShell from "@/components/admin/AdminShell";
+import AdminBookingArchiveButton from "@/components/admin/AdminBookingArchiveButton";
 import { requireAdminPageAccess } from "@/lib/adminAuth";
 import { prisma } from "@/lib/prisma";
 
@@ -119,6 +120,7 @@ export default async function AdminBookingsPage({
       endAt: true,
       platformFeeAmount: true,
       sitterPayoutAmount: true,
+      archivedAt: true,
       user: { select: { id: true, name: true, email: true } },
       sitter: { select: { id: true, name: true, email: true, sitterProfile: { select: { city: true } } } },
     },
@@ -297,6 +299,7 @@ export default async function AdminBookingsPage({
                   <th className="px-5 py-4 font-semibold">Montant</th>
                   <th className="px-5 py-4 font-semibold">Création</th>
                   <th className="px-5 py-4 font-semibold">Détail</th>
+                  <th className="px-5 py-4 font-semibold">Admin</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 bg-white">
@@ -336,6 +339,13 @@ export default async function AdminBookingsPage({
                       <Link href={`/admin/bookings/${booking.id}`} className="font-semibold text-[var(--dogshift-blue)] hover:text-[var(--dogshift-blue-hover)]">
                         Voir la fiche
                       </Link>
+                    </td>
+                    <td className="px-5 py-4">
+                      {!booking.archivedAt ? (
+                        <AdminBookingArchiveButton bookingId={booking.id} />
+                      ) : (
+                        <span className="text-xs font-semibold text-slate-400">Archivée</span>
+                      )}
                     </td>
                   </tr>
                 ))}

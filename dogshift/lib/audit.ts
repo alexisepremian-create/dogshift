@@ -12,6 +12,7 @@ export type AuditAction =
   | "booking.confirmed"
   | "booking.cancelled"
   | "booking.refunded"
+  | "booking.archive"
   // Sitter admin actions
   | "sitter.select"
   | "sitter.approve"
