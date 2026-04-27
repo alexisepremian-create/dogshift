@@ -157,9 +157,9 @@ export default async function AccountDashboardPage({
   }
 
   return (
-    <div className="relative grid gap-6 overflow-hidden" data-testid="account-dashboard">
+    <div className="relative grid gap-6" data-testid="account-dashboard">
       {hostUser?.sitterId ? <ContractAmendmentBlockingModal sitterId={hostUser.sitterId} state={hostUser.contractAmendment} /> : null}
-      <SunCornerGlow variant="ownerDashboard" placement="page" />
+      <SunCornerGlow variant="ownerDashboard" />
 
       <div className="relative z-10">
         <p className="text-sm font-semibold text-slate-600">Mon compte</p>
