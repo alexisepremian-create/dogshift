@@ -67,7 +67,8 @@ export default function SignUpForm() {
         throw new Error(isAlreadyExists ? "Un compte existe déjà avec cet email. Connecte-toi." : (msg || "Impossible de créer le compte."));
       }
 
-      await (signUp as any).verifications.sendEmailCode();
+      const { error: sendError } = await (signUp as any).verifications.sendEmailCode();
+      if (sendError) throw sendError;
       setSent(true);
       setCodeSentAt(Date.now());
     } catch (err) {
@@ -104,7 +105,8 @@ export default function SignUpForm() {
     setError(null);
     setLoading(true);
     try {
-      await (signUp as any).verifications.sendEmailCode();
+      const { error: resendError } = await (signUp as any).verifications.sendEmailCode();
+      if (resendError) throw resendError;
       setEmailCode("");
       setCodeSentAt(Date.now());
     } catch (err) {
@@ -157,7 +159,8 @@ export default function SignUpForm() {
     setError(null);
     setLoading(true);
     try {
-      await (signUp as any).verifications.verifyEmailCode({ code });
+      const { error: verifyError } = await (signUp as any).verifications.verifyEmailCode({ code });
+      if (verifyError) throw verifyError;
 
       if ((signUp as any).status === "complete") {
         await (signUp as any).finalize({

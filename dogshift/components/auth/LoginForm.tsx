@@ -96,7 +96,8 @@ export default function LoginForm() {
     setError(null);
     setLoading(true);
     try {
-      await (signIn as any).create({ identifier: normalized });
+      const { error: createError } = await (signIn as any).create({ identifier: normalized });
+      if (createError) throw createError;
 
       const factors: Array<{ strategy: string }> = (signIn as any).supportedFirstFactors ?? [];
       const hasPassword = factors.some((f) => f.strategy === "password");
@@ -104,7 +105,8 @@ export default function LoginForm() {
       if (hasPassword) {
         setStep("password");
       } else {
-        await (signIn as any).emailCode.sendCode();
+        const { error: sendError } = await (signIn as any).emailCode.sendCode();
+        if (sendError) throw sendError;
         setVerifyMode("emailCode");
         setStep("emailCode");
         setCodeSentAt(Date.now());
@@ -135,7 +137,8 @@ export default function LoginForm() {
     setLoading(true);
     try {
       // Clerk v7 API: signIn.password() replaces attemptFirstFactor({ strategy: "password" })
-      await (signIn as any).password({ emailAddress: normalizeEmail(email), password });
+      const { error: passwordError } = await (signIn as any).password({ emailAddress: normalizeEmail(email), password });
+      if (passwordError) throw passwordError;
 
       const status = (signIn as any).status;
 
@@ -147,7 +150,8 @@ export default function LoginForm() {
         }
       } else if (status === "needs_client_trust" || status === "needs_second_factor") {
         // Client Trust (new device) or MFA: verify identity via email code
-        await (signIn as any).mfa.sendEmailCode();
+        const { error: mfaSendError } = await (signIn as any).mfa.sendEmailCode();
+        if (mfaSendError) throw mfaSendError;
         setVerifyMode("mfa");
         setStep("emailCode");
         setCodeSentAt(Date.now());
@@ -173,7 +177,8 @@ export default function LoginForm() {
     setError(null);
     setLoading(true);
     try {
-      await (signIn as any).emailCode.sendCode();
+      const { error: sendError } = await (signIn as any).emailCode.sendCode();
+      if (sendError) throw sendError;
       setVerifyMode("emailCode");
       setStep("emailCode");
       setCodeSentAt(Date.now());
@@ -202,9 +207,11 @@ export default function LoginForm() {
     setLoading(true);
     try {
       if (verifyMode === "mfa") {
-        await (signIn as any).mfa.sendEmailCode();
+        const { error: resendError } = await (signIn as any).mfa.sendEmailCode();
+        if (resendError) throw resendError;
       } else {
-        await (signIn as any).emailCode.sendCode();
+        const { error: resendError } = await (signIn as any).emailCode.sendCode();
+        if (resendError) throw resendError;
       }
       setEmailCode("");
       setCodeSentAt(Date.now());
@@ -238,9 +245,11 @@ export default function LoginForm() {
     try {
       // Use mfa.verifyEmailCode for password+ClientTrust flow, emailCode.verifyCode otherwise
       if (verifyMode === "mfa") {
-        await (signIn as any).mfa.verifyEmailCode({ code });
+        const { error: verifyError } = await (signIn as any).mfa.verifyEmailCode({ code });
+        if (verifyError) throw verifyError;
       } else {
-        await (signIn as any).emailCode.verifyCode({ code });
+        const { error: verifyError } = await (signIn as any).emailCode.verifyCode({ code });
+        if (verifyError) throw verifyError;
       }
       const done = await finalizeSignIn();
       if (!done) {
