@@ -4,12 +4,14 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { ensureDbUserByClerkUserId } from "@/lib/auth/resolveDbUserId";
+import { prisma } from "@/lib/prisma";
 
 export default async function BecomeSitterFormPage() {
   const c = await cookies();
+  const activationProfileId = c.get("ds_activation_profile_id")?.value ?? null;
   const unlocked =
     c.get("ds_invite_unlocked")?.value === "1" ||
-    !!c.get("ds_activation_profile_id")?.value;
+    !!activationProfileId;
   if (!unlocked) {
     redirect("/devenir-dogsitter");
   }
@@ -26,10 +28,23 @@ export default async function BecomeSitterFormPage() {
         })
       : null;
 
-    const isAlreadySitter = dbUser?.role === "SITTER";
-
-    if (isAlreadySitter) {
+    if (dbUser?.role === "SITTER") {
       redirect("/host");
+    }
+
+    // If we arrived here via an activation code (ds_activation_profile_id cookie) but the
+    // profile doesn't belong to the currently signed-in user, the cookies are stale (e.g.
+    // from a previous test session). Send the user back to /account so they can use the
+    // site as an owner without being stuck in the sitter registration flow.
+    if (dbUser && activationProfileId) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const activationProfile = await (prisma as any).sitterProfile.findUnique({
+        where: { id: activationProfileId },
+        select: { userId: true },
+      });
+      if (activationProfile && activationProfile.userId !== dbUser.id) {
+        redirect("/account");
+      }
     }
   }
 

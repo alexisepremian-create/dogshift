@@ -5,10 +5,6 @@ import { ensureDbUserFromClerkAuth } from "@/lib/auth/resolveDbUserId";
 import { prisma } from "@/lib/prisma";
 import { isActivatedStatus, normalizeSitterLifecycleStatus } from "@/lib/sitterContract";
 
-// Lifecycle statuses that require the sitter to complete activation via code.
-const CONTRACT_SIGNED_STATUSES = new Set(["contract_signed"]);
-
-
 export async function GET() {
   const { userId } = await auth();
   if (!userId) {
@@ -48,9 +44,9 @@ export async function GET() {
       (lifecycleStatus && isActivatedStatus(lifecycleStatus)) ||
       (dbUser.role === "SITTER" && !!dbUser.sitterId);
 
-    const needsActivation = lifecycleStatus !== null && CONTRACT_SIGNED_STATUSES.has(lifecycleStatus);
-
-    const redirect = isSitter ? "/host" : needsActivation ? "/become-sitter/access" : "/account";
+    // Owners always go to /account — even if there's a stale contract_signed sitter profile
+    // from a previous attempt. The activation email contains a direct link to /become-sitter/access.
+    const redirect = isSitter ? "/host" : "/account";
 
     return NextResponse.json({ redirect });
   } catch (e) {
