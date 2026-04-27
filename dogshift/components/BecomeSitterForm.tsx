@@ -489,7 +489,7 @@ export default function BecomeSitterForm() {
             {sessionStatus !== "authenticated" ? (
               <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-600">
                 Déjà un compte DogShift ?{" "}
-                <a href="/login" className="font-semibold text-[var(--dogshift-blue)] underline">
+                <a href="/login?next=%2Fbecome-sitter%2Fform" className="font-semibold text-[var(--dogshift-blue)] underline">
                   Connecte-toi d&apos;abord
                 </a>
                 {" "}— le formulaire reconnaîtra ta session automatiquement.
@@ -623,7 +623,7 @@ export default function BecomeSitterForm() {
               authError === "__EMAIL_TAKEN__" ? (
                 <p className="text-sm font-medium text-rose-600">
                   Cet email est déjà utilisé.{" "}
-                  <a href="/login" className="underline">Connecte-toi</a>{" "}
+                  <a href="/login?next=%2Fbecome-sitter%2Fform" className="underline">Connecte-toi</a>{" "}
                   ou utilise une autre adresse.
                 </p>
               ) : (
