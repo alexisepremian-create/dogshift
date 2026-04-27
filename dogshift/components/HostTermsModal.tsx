@@ -13,15 +13,15 @@ export default function HostTermsModal() {
   const [error, setError] = useState<string | null>(null);
   const [acceptedOverride, setAcceptedOverride] = useState(false);
 
-  if (!host.sitterId) return null;
-
   const needsAcceptance = useMemo(() => {
     if (acceptedOverride) return false;
+    if (!host.sitterId) return false;
     if (!host.termsAcceptedAt) return true;
     if (!host.termsVersion) return true;
     return host.termsVersion !== CURRENT_TERMS_VERSION;
-  }, [acceptedOverride, host.termsAcceptedAt, host.termsVersion]);
+  }, [acceptedOverride, host.sitterId, host.termsAcceptedAt, host.termsVersion]);
 
+  if (!host.sitterId) return null;
   if (!needsAcceptance) return null;
 
   async function accept() {
@@ -50,9 +50,9 @@ export default function HostTermsModal() {
   }
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center px-4 py-8">
-      <button type="button" className="absolute inset-0 bg-slate-900/40" aria-label="Modal" disabled />
-      <div className="relative w-full max-w-lg rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_25px_80px_-45px_rgba(2,6,23,0.6)] sm:p-8">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center px-4 py-8" role="dialog" aria-modal="true">
+      <div className="absolute inset-0 bg-slate-900/40" aria-hidden="true" />
+      <div className="relative z-10 w-full max-w-lg rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_25px_80px_-45px_rgba(2,6,23,0.6)] sm:p-8">
         <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Règlement / CGU sitter</p>
         <h2 className="mt-2 text-xl font-semibold tracking-tight text-slate-900">Avant de continuer</h2>
         <p className="mt-3 text-sm leading-relaxed text-slate-600">

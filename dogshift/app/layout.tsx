@@ -52,7 +52,10 @@ export const metadata: Metadata = {
   },
 };
 
-export const dynamic = "force-dynamic";
+// Note: removed `export const dynamic = "force-dynamic"` from the root layout
+// so that pages using `revalidate` (e.g. homepage with revalidate=300) can be
+// statically cached, dramatically improving TTFB on mobile. Pages that need
+// dynamic rendering still get it implicitly via auth()/cookies()/headers().
 
 export default async function RootLayout({
   children,
