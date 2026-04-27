@@ -719,15 +719,7 @@ export default function AdminSitterApplicationsClient({ adminCode }: { adminCode
         setError("Impossible d’enregistrer le statut.");
         return;
       }
-      // "Accepté" is the admin's commitment to interview the candidate — we
-      // chain the interview-booking email (same template as the n8n HIGH
-      // flow) so the admin only has one button to click. Re-clicks trigger a
-      // confirm dialog client-side via sendInterviewEmailAction().
-      if (next === "ACCEPTED") {
-        await sendInterviewEmailAction();
-      } else {
-        await load();
-      }
+      await load();
     } catch {
       setError("Impossible d’enregistrer le statut.");
     } finally {
