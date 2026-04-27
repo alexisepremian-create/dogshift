@@ -157,7 +157,9 @@ export default function BecomeSitterForm() {
       const createRes = await (signUp as any).create({ emailAddress: emailTrimmed, password });
       if (createRes?.error) {
         setAuthInlineStatus("idle");
-        setAuthError(describe(createRes.error, "Impossible de créer le compte. Vérifie l’email et le mot de passe."));
+        // Default to __EMAIL_TAKEN__ since a createRes.error at this stage is almost always a duplicate email.
+        const msg = describe(createRes.error, "__EMAIL_TAKEN__");
+        setAuthError(msg);
         return false;
       }
 
@@ -484,6 +486,15 @@ export default function BecomeSitterForm() {
       <div className="mt-8 space-y-6">
         {step === 1 ? (
           <div className="space-y-5">
+            {sessionStatus !== "authenticated" ? (
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-600">
+                Déjà un compte DogShift ?{" "}
+                <a href="/login" className="font-semibold text-[var(--dogshift-blue)] underline">
+                  Connecte-toi d&apos;abord
+                </a>
+                {" "}— le formulaire reconnaîtra ta session automatiquement.
+              </div>
+            ) : null}
             {sessionStatus !== "authenticated" ? (
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
