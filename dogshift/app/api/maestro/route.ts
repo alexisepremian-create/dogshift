@@ -6,53 +6,70 @@ const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || "https://dogshift.vercel.ap
 interface AgentRoute {
   url: string;
   method: "POST" | "GET";
-  body: Record<string, any>;
+  body?: Record<string, any>;
 }
 
 const AGENT_REGISTRY: Record<string, AgentRoute> = {
+  // ─── Agents existants ───
   check_availability: {
     url: `${BASE_URL}/api/agents/availability`,
     method: "POST",
-    body: { sitterId: "", date: "", serviceType: "" },
   },
   disponibilite: {
     url: `${BASE_URL}/api/agents/availability`,
     method: "POST",
-    body: { sitterId: "", date: "", serviceType: "" },
   },
   create_booking: {
     url: `${BASE_URL}/api/agents/booking`,
     method: "POST",
-    body: { action: "create_booking", sitterId: "", userId: "", startAt: "", endAt: "", serviceType: "" },
   },
   cancel_booking: {
     url: `${BASE_URL}/api/agents/booking`,
     method: "POST",
-    body: { action: "cancel_booking", bookingId: "" },
   },
   get_booking: {
     url: `${BASE_URL}/api/agents/booking`,
     method: "POST",
-    body: { action: "get_booking", bookingId: "" },
   },
   notify: {
     url: `${BASE_URL}/api/agents/notification`,
     method: "POST",
-    body: { action: "notify", userId: "", message: "" },
   },
   status: {
     url: `${BASE_URL}/api/agents/supervision`,
     method: "GET",
-    body: {},
   },
   health: {
     url: `${BASE_URL}/api/agents/supervision`,
     method: "GET",
-    body: {},
+  },
+
+  // ─── NOUVEAUX AGENTS (remplacent n8n) ───
+  candidature_apply: {
+    url: `${BASE_URL}/api/agents/candidature`,
+    method: "POST",
+  },
+  contrat_send: {
+    url: `${BASE_URL}/api/agents/contrat`,
+    method: "POST",
+    body: { action: "send_contract" },
+  },
+  contrat_signed: {
+    url: `${BASE_URL}/api/agents/contrat`,
+    method: "POST",
+    body: { action: "contract_signed" },
+  },
+  activation_new: {
+    url: `${BASE_URL}/api/agents/activation`,
+    method: "POST",
+  },
+  calendrier_booking: {
+    url: `${BASE_URL}/api/agents/calendrier`,
+    method: "POST",
   },
 };
 
-// Structure des agents pour le frontend
+// ─── Arbre des agents pour le frontend ───
 export const AGENTS_TREE = {
   id: "maestro",
   name: "Maestro",
@@ -60,6 +77,7 @@ export const AGENTS_TREE = {
   description: "Orchestrateur principal - reçoit toutes les requêtes et délègue aux sous-agents",
   status: "online",
   children: [
+    // Opérationnels
     {
       id: "booking",
       name: "Booking Agent",
@@ -92,13 +110,43 @@ export const AGENTS_TREE = {
       status: "online",
       actions: ["status", "health"],
     },
+    // Nouveaux agents n8n
+    {
+      id: "candidature",
+      name: "Candidature Agent",
+      emoji: "📋",
+      description: "Analyse les candidatures sitters (score, décision, notifications)",
+      status: "online",
+      actions: ["candidature_apply"],
+    },
+    {
+      id: "contrat",
+      name: "Contrat Agent",
+      emoji: "📝",
+      description: "Gère l'envoi et la signature des contrats",
+      status: "online",
+      actions: ["contrat_send", "contrat_signed"],
+    },
+    {
+      id: "activation",
+      name: "Activation Agent",
+      emoji: "✅",
+      description: "Notifie les nouveaux sitters inscrits",
+      status: "online",
+      actions: ["activation_new"],
+    },
+    {
+      id: "calendrier",
+      name: "Calendrier Agent",
+      emoji: "📅",
+      description: "Notifie les événements Cal.com (création, annulation, replanification)",
+      status: "online",
+      actions: ["calendrier_booking"],
+    },
   ],
 };
 
-/**
- * POST /api/maestro
- * Reçoit une requête, détermine l'intention, appelle le sous-agent
- */
+// ─── POST /api/maestro ───
 export async function POST(req: NextRequest) {
   const start = Date.now();
   try {
@@ -118,10 +166,10 @@ export async function POST(req: NextRequest) {
     }
 
     // Construire le body avec les paramètres reçus
-    const requestBody = { ...route.body };
+    const requestBody: Record<string, any> = { ...(route.body || {}) };
     for (const [key, value] of Object.entries(params)) {
       if (value !== undefined) {
-        (requestBody as any)[key] = value;
+        requestBody[key] = value;
       }
     }
 
@@ -135,14 +183,14 @@ export async function POST(req: NextRequest) {
     const data = await response.json();
     const durationMs = Date.now() - start;
 
-    // Logger l'appel
+    // Logger
     await prisma.agentLog.create({
       data: {
         agentName: "maestro",
         actionType: `call_${action}`,
         summary: `Action "${action}" exécutée en ${durationMs}ms`,
         details: { action, params, durationMs },
-        targetId: (data as any).bookingId || (data as any).sitterId || null,
+        targetId: data?.bookingId || data?.sitterId || data?.applicationId || null,
         durationMs,
         status: response.ok ? "success" : "error",
       },
@@ -171,13 +219,9 @@ export async function POST(req: NextRequest) {
   }
 }
 
-/**
- * GET /api/maestro
- * Retourne l'arbre des agents (utilisé par le frontend dashboard)
- */
+// ─── GET /api/maestro (pour le dashboard) ───
 export async function GET() {
-  // Récupérer les logs récents pour chaque agent
-  const agents = AGENTS_TREE.children.map(async (agent) => {
+  const agentList = AGENTS_TREE.children.map(async (agent) => {
     const lastLog = await prisma.agentLog.findFirst({
       where: { agentName: agent.id },
       orderBy: { createdAt: "desc" },
@@ -186,9 +230,8 @@ export async function GET() {
     return { ...agent, lastLog };
   });
 
-  const childrenWithLogs = await Promise.all(agents);
+  const childrenWithLogs = await Promise.all(agentList);
 
-  // Dernière exécution du Maestro
   const maestroLastLog = await prisma.agentLog.findFirst({
     where: { agentName: "maestro" },
     orderBy: { createdAt: "desc" },
