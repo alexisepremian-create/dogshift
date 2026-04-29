@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { BarChart3, CalendarDays, FileText, LayoutDashboard, LogOut, Mail, ReceiptText, Scale, ScrollText, Settings, ShieldAlert, ShieldCheck, ShieldPlus, Users } from "lucide-react";
+import { BarChart3, Bot, CalendarDays, FileText, LayoutDashboard, LogOut, Mail, ReceiptText, Scale, ScrollText, Settings, ShieldAlert, ShieldCheck, ShieldPlus, Users } from "lucide-react";
 import { type ReactNode, useState } from "react";
 
 const navItems = [
@@ -14,6 +14,7 @@ const navItems = [
   { href: "/admin/couts-abonnements", label: "Coûts & abonnements", icon: ReceiptText },
   { href: "/admin/finance", label: "Finance", icon: ReceiptText },
   { href: "/admin/owners", label: "Propriétaires", icon: FileText },
+  { href: "/admin/agents", label: "Agents", icon: Bot },
   { href: "/admin/bookings", label: "Réservations", icon: CalendarDays },
   { href: "/admin/incidents", label: "Signalements", icon: ShieldAlert },
   { href: "/admin/settings", label: "Settings", icon: Settings },
