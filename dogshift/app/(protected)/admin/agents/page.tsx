@@ -378,13 +378,13 @@ function AgentSkeleton() {
   );
 }
 
-// Hide AdminShell header + strip main padding so the canvas can be truly fullscreen.
-// The sidebar (lg:w-72 = 288px) remains visible — the canvas is offset by SIDEBAR_WIDTH.
+// CSS targets body.agents-canvas-active (set via useEffect) so it can reach
+// AdminShell's <header> which is an ancestor of the agents div, not a descendant.
 const fullscreenStyles = `
-  .agents-fullscreen header {
+  body.agents-canvas-active header {
     display: none !important;
   }
-  .agents-fullscreen main {
+  body.agents-canvas-active main {
     padding: 0 !important;
     overflow: hidden !important;
   }
@@ -404,6 +404,13 @@ export default function AgentsDashboard() {
   const [panOrigin, setPanOrigin] = useState({ x: 0, y: 0 });
   const canvasRef = useRef<HTMLDivElement>(null);
   const hasCentered = useRef(false);
+
+  // Add class to body so fullscreenStyles can target AdminShell's <header>
+  // (which is an ancestor, not a descendant — CSS descendant selectors can't reach it otherwise)
+  useEffect(() => {
+    document.body.classList.add('agents-canvas-active');
+    return () => document.body.classList.remove('agents-canvas-active');
+  }, []);
 
   function centerTree(canvasEl: HTMLDivElement, treeData: AgentNode) {
     const rect = canvasEl.getBoundingClientRect();
@@ -534,7 +541,7 @@ export default function AgentsDashboard() {
   if (loading) return <AgentSkeleton />;
 
   return (
-    <div className="agents-fullscreen" style={{ height: "100%" }}>
+    <div style={{ height: "100%" }}>
       <style>{fullscreenStyles}</style>
 
       {/* Floating toolbar */}
@@ -586,7 +593,7 @@ export default function AgentsDashboard() {
       {/* Canvas */}
       <div
         ref={canvasRef}
-        className="absolute inset-0 overflow-hidden"
+        className="absolute inset-0 overflow-hidden bg-white"
         style={{
           left: SIDEBAR_WIDTH,
           cursor: isPanning ? "grabbing" : "grab",
