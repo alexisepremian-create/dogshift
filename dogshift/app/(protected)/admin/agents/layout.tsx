@@ -1,9 +1,6 @@
 import type { ReactNode } from "react";
+import AdminShell from "@/components/admin/AdminShell";
 
 export default function AgentsLayout({ children }: { children: ReactNode }) {
-  return (
-    <div className="relative" style={{ minHeight: "calc(100vh - 0px)" }}>
-      {children}
-    </div>
-  );
+  return <AdminShell>{children}</AdminShell>;
 }
