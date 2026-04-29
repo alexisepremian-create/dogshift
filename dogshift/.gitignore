@@ -53,6 +53,9 @@ next-env.d.ts
 /tests/e2e/.auth/
 
 # Sous-projets MCP / serveurs
+n8n-mcp/node_modules/
+n8n-mcp/build/
+n8n-mcp/.env
 mcp-server/node_modules/
 mcp-server/build/
 ai-proxy/node_modules/
@@ -61,3 +64,7 @@ server/node_modules/
 server/dist/
 venv/
 config.json
+
+n8n-mcp/node_modules/
+n8n-mcp/build/
+n8n-mcp/.env
