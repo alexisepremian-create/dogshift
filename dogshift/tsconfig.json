@@ -31,5 +31,5 @@
     ".next/dev/types/**/*.ts",
     "**/*.mts"
   ],
-  "exclude": ["node_modules", ".next", "mcp-server", "ai-proxy", "server"]
+  "exclude": ["node_modules", ".next", "mcp-server", "ai-proxy", "server", "n8n-mcp"]
 }
