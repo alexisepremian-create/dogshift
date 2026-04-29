@@ -41,65 +41,83 @@ interface AgentTree {
 }
 
 // ─── Agent visual config ───
-const AGENT_CONFIG: Record<string, { icon: any; color: string; bg: string; label: string }> = {
-  maestro: { icon: BrainCircuit, color: "#7c3aed", bg: "rgba(124,58,237,0.12)", label: "Maestro" },
-  booking: { icon: CalendarDays, color: "#2563eb", bg: "rgba(37,99,235,0.12)", label: "Booking" },
-  disponibilite: { icon: CalendarDays, color: "#059669", bg: "rgba(5,150,105,0.12)", label: "Disponibilité" },
-  notification: { icon: Sparkles, color: "#d97706", bg: "rgba(217,119,6,0.12)", label: "Notification" },
-  supervision: { icon: Shield, color: "#dc2626", bg: "rgba(220,38,38,0.12)", label: "Supervision" },
-};
+const COLORS = {
+  maestro: { icon: BrainCircuit, color: "#7c3aed", bg: "rgba(124,58,237,0.12)" },
+  booking: { icon: CalendarDays, color: "#2563eb", bg: "rgba(37,99,235,0.12)" },
+  disponibilite: { icon: CalendarDays, color: "#059669", bg: "rgba(5,150,105,0.12)" },
+  notification: { icon: Sparkles, color: "#d97706", bg: "rgba(217,119,6,0.12)" },
+  supervision: { icon: Shield, color: "#dc2626", bg: "rgba(220,38,38,0.12)" },
+} as const;
 
-// ─── Agent circle component ───
+// ─── Layout constants ───
+const SIDEBAR_WIDTH = 288;
+const VERTICAL_GAP = 120;
+const HORIZONTAL_SPACING = 180;
+const MAESTRO_SIZE = 64;
+const CHILD_SIZE = 50;
+
+// ─── Agent circle ───
 function AgentCircle({
   agent,
   isSelected,
   onClick,
-  size = 56,
+  size = 50,
 }: {
   agent: AgentNode;
   isSelected: boolean;
   onClick: () => void;
   size?: number;
 }) {
-  const config = AGENT_CONFIG[agent.id] || AGENT_CONFIG.maestro;
-  const Icon = config.icon;
-  const circleSize = size;
-  const iconSize = size * 0.42;
+  const c = COLORS[agent.id as keyof typeof COLORS] || COLORS.maestro;
+  const Icon = c.icon;
+  const iconSize = size * 0.44;
 
   return (
-    <div className="flex flex-col items-center gap-1.5 cursor-pointer select-none" onClick={onClick}>
+    <div className="flex flex-col items-center gap-2 cursor-pointer select-none" onClick={onClick}>
       <div
-        className="relative flex items-center justify-center rounded-full transition-all duration-200 hover:scale-110"
+        className="relative flex items-center justify-center rounded-full transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg"
         style={{
-          width: circleSize,
-          height: circleSize,
-          backgroundColor: isSelected ? config.color : config.bg,
+          width: size,
+          height: size,
+          backgroundColor: isSelected ? c.color : c.bg,
           boxShadow: isSelected
-            ? `0 0 0 3px white, 0 0 0 5px ${config.color}40, 0 4px 12px ${config.color}30`
-            : `0 2px 8px ${config.color}15`,
+            ? `0 0 0 3px white, 0 0 0 5px ${c.color}50, 0 4px 16px ${c.color}30`
+            : `0 2px 8px rgba(0,0,0,0.06)`,
         }}
       >
-        <Icon
-          size={iconSize}
-          style={{ color: isSelected ? "white" : config.color }}
-        />
+        <Icon size={iconSize} style={{ color: isSelected ? "white" : c.color }} />
         {agent.status === "online" && (
           <span
-            className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-white animate-pulse"
-            style={{ backgroundColor: "#22c55e" }}
+            className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-white"
+            style={{ backgroundColor: "#22c55e", animation: "pulse 2s ease-in-out infinite" }}
           />
         )}
       </div>
       <span
-        className="text-[11px] font-medium tracking-tight"
+        className="text-xs font-semibold tracking-tight"
         style={{
-          color: isSelected ? config.color : "#64748b",
-          fontWeight: isSelected ? 600 : 500,
+          color: isSelected ? c.color : "#475569",
         }}
       >
         {agent.name.split(" ")[0]}
       </span>
     </div>
+  );
+}
+
+// ─── Bezier curve path ───
+function BezierLine({ x1, y1, x2, y2, color = "#94a3b8" }: { x1: number; y1: number; x2: number; y2: number; color?: string }) {
+  const midY = (y1 + y2) / 2;
+  const path = `M ${x1} ${y1} C ${x1} ${midY}, ${x2} ${midY}, ${x2} ${y2}`;
+  return (
+    <path
+      d={path}
+      fill="none"
+      stroke={color}
+      strokeWidth={1.5}
+      strokeOpacity={0.3}
+      strokeLinecap="round"
+    />
   );
 }
 
@@ -117,8 +135,8 @@ function AgentModal({
   onTestAction: (action: string) => void;
   testResult: string | null;
 }) {
-  const config = AGENT_CONFIG[agent.id] || AGENT_CONFIG.maestro;
-  const Icon = config.icon;
+  const c = COLORS[agent.id as keyof typeof COLORS] || COLORS.maestro;
+  const Icon = c.icon;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center" onClick={onClose}>
@@ -127,29 +145,21 @@ function AgentModal({
         className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
         <div className="px-6 pt-6 pb-4 border-b border-gray-100">
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-4">
               <div
                 className="flex items-center justify-center rounded-full"
-                style={{
-                  width: 48,
-                  height: 48,
-                  backgroundColor: config.bg,
-                }}
+                style={{ width: 48, height: 48, backgroundColor: c.bg }}
               >
-                <Icon size={22} style={{ color: config.color }} />
+                <Icon size={22} style={{ color: c.color }} />
               </div>
               <div>
                 <h2 className="text-lg font-semibold text-gray-900">{agent.name}</h2>
                 <p className="text-xs text-gray-400 font-mono mt-0.5">{agent.id}</p>
               </div>
             </div>
-            <button
-              onClick={onClose}
-              className="p-1.5 rounded-lg hover:bg-gray-100 transition"
-            >
+            <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100 transition">
               <X size={18} className="text-gray-400" />
             </button>
           </div>
@@ -157,16 +167,9 @@ function AgentModal({
         </div>
 
         <div className="px-6 py-4 max-h-[50vh] overflow-y-auto space-y-4">
-          {/* Status */}
           <div className="flex items-center gap-2 text-sm">
-            <span
-              className={`w-2 h-2 rounded-full ${
-                agent.status === "online" ? "bg-green-500" : "bg-red-500"
-              }`}
-            />
-            <span className="text-gray-600 font-medium">
-              {agent.status === "online" ? "En ligne" : "Hors ligne"}
-            </span>
+            <span className={`w-2 h-2 rounded-full ${agent.status === "online" ? "bg-green-500" : "bg-red-500"}`} />
+            <span className="text-gray-600 font-medium">{agent.status === "online" ? "En ligne" : "Hors ligne"}</span>
             {agent.lastLog && (
               <span className="text-gray-400 text-xs ml-auto flex items-center gap-1">
                 <Clock size={12} />
@@ -175,12 +178,10 @@ function AgentModal({
             )}
           </div>
 
-          {/* Actions */}
           {agent.actions && agent.actions.length > 0 && (
             <div>
               <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                <Zap size={12} />
-                Actions
+                <Zap size={12} /> Actions
               </h4>
               <div className="flex flex-wrap gap-1.5">
                 {agent.actions.map((action) => (
@@ -189,16 +190,12 @@ function AgentModal({
                     onClick={() => onTestAction(action)}
                     className="px-2.5 py-1 text-xs font-medium rounded-lg border transition-all"
                     style={{
-                      backgroundColor: config.bg,
-                      borderColor: `${config.color}30`,
-                      color: config.color,
+                      backgroundColor: c.bg,
+                      borderColor: `${c.color}30`,
+                      color: c.color,
                     }}
-                    onMouseEnter={(e) =>
-                      (e.currentTarget.style.backgroundColor = config.color + "20")
-                    }
-                    onMouseLeave={(e) =>
-                      (e.currentTarget.style.backgroundColor = config.bg)
-                    }
+                    onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = c.color + "20")}
+                    onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = c.bg)}
                   >
                     {action}
                   </button>
@@ -207,33 +204,25 @@ function AgentModal({
             </div>
           )}
 
-          {/* Test result */}
           {testResult && (
             <div>
-              <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
-                Résultat
-              </h4>
+              <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Résultat</h4>
               <pre className="text-xs bg-gray-50 p-3 rounded-lg border border-gray-200 max-h-28 overflow-auto whitespace-pre-wrap font-mono text-gray-700">
                 {testResult}
               </pre>
             </div>
           )}
 
-          {/* Logs */}
           <div>
             <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-              <Activity size={12} />
-              Activité récente
+              <Activity size={12} /> Activité récente
             </h4>
             <div className="space-y-1.5">
               {logs.length === 0 ? (
                 <p className="text-sm text-gray-400 italic">Aucune action pour l&apos;instant</p>
               ) : (
                 logs.map((log: any, i: number) => (
-                  <div
-                    key={i}
-                    className="text-xs bg-gray-50 p-2.5 rounded-lg border border-gray-100"
-                  >
+                  <div key={i} className="text-xs bg-gray-50 p-2.5 rounded-lg border border-gray-100">
                     <div className="flex items-center gap-2">
                       {log.status === "success" ? (
                         <CheckCircle2 size={12} className="text-green-500" />
@@ -242,14 +231,8 @@ function AgentModal({
                       ) : (
                         <Activity size={12} className="text-yellow-500" />
                       )}
-                      <span className="font-medium text-gray-700">
-                        {log.actionType}
-                      </span>
-                      {log.durationMs && (
-                        <span className="text-gray-400 ml-auto">
-                          {log.durationMs}ms
-                        </span>
-                      )}
+                      <span className="font-medium text-gray-700">{log.actionType}</span>
+                      {log.durationMs && <span className="text-gray-400 ml-auto">{log.durationMs}ms</span>}
                     </div>
                     <p className="text-gray-600 mt-0.5 ml-6">{log.summary}</p>
                     <p className="text-gray-400 mt-0.5 ml-6 text-[10px]">
@@ -266,7 +249,7 @@ function AgentModal({
   );
 }
 
-// ─── Canvas tree renderer ───
+// ─── Tree renderer (pure SVG + positioned nodes) ───
 function AgentTreeCanvas({
   tree,
   zoom,
@@ -282,92 +265,94 @@ function AgentTreeCanvas({
 }) {
   const children = tree.children || [];
   const childCount = children.length;
-  const verticalGap = 100;
-  const horizontalSpacing = 160;
-  const totalWidth = Math.max(1, childCount) * horizontalSpacing;
-  const startX = -totalWidth / 2 + horizontalSpacing / 2;
+
+  // Total tree bounding box
+  const totalWidth = childCount * HORIZONTAL_SPACING;
+  const startX = -totalWidth / 2;
+
+  // Maestro center
+  const maestroCx = 0;
+  const maestroCy = 0;
+
+  // Child centers
+  const childPositions = children.map((_, i) => ({
+    cx: startX + i * HORIZONTAL_SPACING + HORIZONTAL_SPACING / 2,
+    cy: VERTICAL_GAP,
+  }));
 
   return (
     <div
-      className="absolute"
+      className="absolute transition-transform duration-100"
       style={{
         transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
         transformOrigin: "0 0",
       }}
     >
+      {/* SVG layer for lines */}
       <svg
-        className="absolute pointer-events-none"
+        width={totalWidth + HORIZONTAL_SPACING}
+        height={VERTICAL_GAP + CHILD_SIZE + 40}
         style={{
-          left: -300,
-          top: -200,
-          width: 600,
-          height: 500,
+          position: "absolute",
+          left: maestroCx - totalWidth / 2 - HORIZONTAL_SPACING / 2,
+          top: maestroCy + MAESTRO_SIZE / 2 - 10,
+          pointerEvents: "none",
+          overflow: "visible",
         }}
       >
         {children.map((child, i) => {
-          const x = startX + i * horizontalSpacing;
+          const childCx = childPositions[i].cx;
+          const childCy = childPositions[i].cy;
+          const c = COLORS[child.id as keyof typeof COLORS];
+          const lineColor = c?.color || "#94a3b8";
+
           return (
-            <g key={child.id}>
-              <line
-                x1={0}
-                y1={40}
-                x2={0}
-                y2={40 + verticalGap * 0.35}
-                stroke="#94a3b8"
-                strokeWidth={1.5}
-                strokeOpacity={0.25}
-              />
-              <line
-                x1={0}
-                y1={40 + verticalGap * 0.35}
-                x2={x}
-                y2={40 + verticalGap * 0.35}
-                stroke="#94a3b8"
-                strokeWidth={1.5}
-                strokeOpacity={0.2}
-              />
-              <line
-                x1={x}
-                y1={40 + verticalGap * 0.35}
-                x2={x}
-                y2={40 + verticalGap * 0.65}
-                stroke="#94a3b8"
-                strokeWidth={1.5}
-                strokeOpacity={0.25}
-              />
-            </g>
+            <BezierLine
+              key={child.id}
+              x1={totalWidth / 2 + HORIZONTAL_SPACING / 2}
+              y1={0}
+              x2={totalWidth / 2 + HORIZONTAL_SPACING / 2 - totalWidth / 2 - HORIZONTAL_SPACING / 2 + childCx}
+              y2={childCy - VERTICAL_GAP / 2}
+              color={lineColor}
+            />
           );
         })}
       </svg>
 
-      {/* Maestro */}
-      <div className="absolute" style={{ left: -28, top: 0 }}>
+      {/* Maestro node */}
+      <div
+        style={{
+          position: "absolute",
+          left: maestroCx - MAESTRO_SIZE / 2,
+          top: maestroCy,
+        }}
+      >
         <AgentCircle
           agent={tree}
           isSelected={selectedId === "maestro"}
           onClick={() => onSelect(tree)}
-          size={56}
+          size={MAESTRO_SIZE}
         />
       </div>
 
-      {/* Children */}
-      {children.map((child, i) => {
-        const x = startX + i * horizontalSpacing - 22;
-        return (
-          <div
-            key={child.id}
-            className="absolute"
-            style={{ left: x, top: 40 + verticalGap }}
-          >
-            <AgentCircle
-              agent={child}
-              isSelected={selectedId === child.id}
-              onClick={() => onSelect(child)}
-              size={44}
-            />
-          </div>
-        );
-      })}
+      {/* Child nodes */}
+      {children.map((child, i) => (
+        <div
+          key={child.id}
+          style={{
+            position: "absolute",
+            left: childPositions[i].cx - CHILD_SIZE / 2,
+            top: childPositions[i].cy,
+          }}
+        >
+          <AgentCircle
+            agent={child}
+            isSelected={selectedId === child.id}
+            onClick={() => onSelect(child)}
+            size={CHILD_SIZE}
+          />
+        </div>
+      ))}
     </div>
   );
 }
@@ -375,15 +360,18 @@ function AgentTreeCanvas({
 // ─── Skeleton ───
 function AgentSkeleton() {
   return (
-    <div className="h-full w-full flex items-center justify-center">
+    <div
+      className="flex items-center justify-center"
+      style={{ height: "calc(100vh - 0px)", marginLeft: SIDEBAR_WIDTH }}
+    >
       <div className="animate-pulse flex flex-col items-center gap-4">
-        <div className="w-14 h-14 bg-gray-200 rounded-full" />
-        <div className="w-20 h-3 bg-gray-200 rounded" />
-        <div className="flex gap-8 mt-8">
+        <div className="w-16 h-16 bg-gray-200 rounded-full" />
+        <div className="w-24 h-3.5 bg-gray-200 rounded" />
+        <div className="flex gap-12 mt-12">
           {[1, 2, 3, 4].map((i) => (
             <div key={i} className="flex flex-col items-center gap-2">
-              <div className="w-11 h-11 bg-gray-100 rounded-full" />
-              <div className="w-16 h-2.5 bg-gray-100 rounded" />
+              <div className="w-12 h-12 bg-gray-100 rounded-full" />
+              <div className="w-20 h-3 bg-gray-100 rounded" />
             </div>
           ))}
         </div>
@@ -392,11 +380,11 @@ function AgentSkeleton() {
   );
 }
 
-// ─── Global style override for fullscreen ───
+// ─── Global style overrides for fullscreen ───
 const fullscreenStyles = `
   .agents-fullscreen main {
     padding: 0 !important;
-    margin: 0 !important;
+    overflow: hidden !important;
   }
   .agents-fullscreen header {
     display: none !important;
@@ -411,16 +399,38 @@ export default function AgentsDashboard() {
   const [logs, setLogs] = useState<any[]>([]);
   const [testResult, setTestResult] = useState<string | null>(null);
   const [zoom, setZoom] = useState(0.85);
-  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [pan, setPan] = useState({ x: SIDEBAR_WIDTH, y: 0 });
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
   const [panOrigin, setPanOrigin] = useState({ x: 0, y: 0 });
   const canvasRef = useRef<HTMLDivElement>(null);
+  const hasCentered = useRef(false);
+
+  function centerTree(canvasEl: HTMLDivElement, treeData: AgentNode) {
+    if (!treeData) return;
+    const rect = canvasEl.getBoundingClientRect();
+    const cw = rect.width;
+    const ch = rect.height;
+    const childCount = treeData.children?.length || 1;
+    const treeWidth = childCount * HORIZONTAL_SPACING;
+    const treeHeight = VERTICAL_GAP + 60;
+
+    // Fit zoom based on width, with a small margin
+    const fitZoom = Math.min(
+      (cw - 80) / treeWidth,
+      (ch - 120) / treeHeight,
+      1.2
+    );
+
+    setZoom(Math.max(0.3, Math.min(fitZoom, 1.5)));
+    setPan({
+      x: (cw - treeWidth * fitZoom) / 2,
+      y: (ch - treeHeight * fitZoom) / 2 + 20,
+    });
+  }
 
   useEffect(() => {
     fetchTree();
-    // Add fullscreen class to parent
-    const el = document.querySelector('.agents-fullscreen main');
   }, []);
 
   async function fetchTree() {
@@ -429,8 +439,8 @@ export default function AgentsDashboard() {
       const data: AgentTree = await res.json();
       setTree(data.tree);
       if (canvasRef.current) {
-        const rect = canvasRef.current.getBoundingClientRect();
-        setPan({ x: rect.width / 2, y: rect.height / 3 });
+        centerTree(canvasRef.current, data.tree);
+        hasCentered.current = true;
       }
     } catch (e) {
       console.error("Failed to fetch agent tree", e);
@@ -477,11 +487,16 @@ export default function AgentsDashboard() {
     }
   }
 
+  const resetView = useCallback(() => {
+    if (canvasRef.current && tree) {
+      centerTree(canvasRef.current, tree);
+    }
+  }, [tree]);
+
   // ─── Canvas interactions ───
   const handleWheel = useCallback((e: React.WheelEvent) => {
     e.preventDefault();
-    const delta = -e.deltaY * 0.001;
-    setZoom((z) => Math.max(0.2, Math.min(3, z + delta)));
+    setZoom((z) => Math.max(0.2, Math.min(3, z - e.deltaY * 0.001)));
   }, []);
 
   const handleMouseDown = useCallback(
@@ -498,77 +513,44 @@ export default function AgentsDashboard() {
   const handleMouseMove = useCallback(
     (e: React.MouseEvent) => {
       if (!isPanning) return;
-      const dx = e.clientX - panStart.x;
-      const dy = e.clientY - panStart.y;
-      setPan({ x: panOrigin.x + dx, y: panOrigin.y + dy });
+      setPan({ x: panOrigin.x + e.clientX - panStart.x, y: panOrigin.y + e.clientY - panStart.y });
     },
     [isPanning, panStart, panOrigin]
   );
 
-  const handleMouseUp = useCallback(() => {
-    setIsPanning(false);
-  }, []);
-
-  const sidebarWidth = 288;
+  const handleMouseUp = useCallback(() => setIsPanning(false), []);
 
   if (loading) return <AgentSkeleton />;
 
   return (
-    <div className="agents-fullscreen">
-      {/* Override admin layout styles */}
+    <div className="agents-fullscreen" style={{ height: "100%" }}>
       <style>{fullscreenStyles}</style>
 
-      {/* Top bar */}
+      {/* Top toolbar (above canvas) */}
       <div
-        className="fixed top-0 right-0 z-40 flex items-center justify-between px-6 py-3"
-        style={{ left: sidebarWidth }}
+        className="fixed z-40 flex items-center justify-between px-6 py-3"
+        style={{ left: SIDEBAR_WIDTH, right: 0, top: 0 }}
       >
         <div className="flex items-center gap-3">
           <h1 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
             <Bot size={20} className="text-violet-600" />
             Agents
           </h1>
-          <span className="text-xs text-gray-400 hidden sm:inline">
-            Ctrl+molette zoom • Glisser pour naviguer
-          </span>
+          <span className="text-xs text-gray-400 hidden sm:inline">Molette zoom • Glisser naviguer</span>
         </div>
         <div className="flex items-center gap-1.5">
-          <span className="text-xs text-gray-400 mr-1 w-8 text-right">
-            {Math.round(zoom * 100)}%
-          </span>
-          <button
-            onClick={() => setZoom((z) => Math.max(0.2, z - 0.1))}
-            className="p-1.5 rounded-lg hover:bg-gray-100 transition"
-            title="Zoom arrière"
-          >
+          <span className="text-xs text-gray-400 mr-1 w-8 text-right">{Math.round(zoom * 100)}%</span>
+          <button onClick={() => setZoom((z) => Math.max(0.2, z - 0.1))} className="p-1.5 rounded-lg hover:bg-gray-100 transition" title="Zoom arrière">
             <Minus size={14} className="text-gray-500" />
           </button>
-          <button
-            onClick={() => {
-              setZoom(0.85);
-              if (canvasRef.current) {
-                const rect = canvasRef.current.getBoundingClientRect();
-                setPan({ x: rect.width / 2, y: rect.height / 3 });
-              }
-            }}
-            className="p-1.5 rounded-lg hover:bg-gray-100 transition"
-            title="Réinitialiser"
-          >
+          <button onClick={resetView} className="p-1.5 rounded-lg hover:bg-gray-100 transition" title="Réinitialiser la vue">
             <Maximize2 size={14} className="text-gray-500" />
           </button>
-          <button
-            onClick={() => setZoom((z) => Math.min(3, z + 0.1))}
-            className="p-1.5 rounded-lg hover:bg-gray-100 transition"
-            title="Zoom avant"
-          >
+          <button onClick={() => setZoom((z) => Math.min(3, z + 0.1))} className="p-1.5 rounded-lg hover:bg-gray-100 transition" title="Zoom avant">
             <Plus size={14} className="text-gray-500" />
           </button>
           <div className="w-px h-4 bg-gray-200 mx-1" />
-          <button
-            onClick={fetchTree}
-            className="p-1.5 rounded-lg hover:bg-gray-100 transition"
-            title="Rafraîchir"
-          >
+          <button onClick={fetchTree} className="p-1.5 rounded-lg hover:bg-gray-100 transition" title="Rafraîchir">
             <RefreshCw size={14} className="text-gray-500" />
           </button>
         </div>
@@ -577,19 +559,22 @@ export default function AgentsDashboard() {
       {/* Fullscreen canvas */}
       <div
         ref={canvasRef}
-        className="absolute inset-0 overflow-hidden cursor-grab active:cursor-grabbing"
-        style={{ top: 0, left: sidebarWidth, bottom: 0, right: 0 }}
+        className="absolute inset-0 overflow-hidden"
+        style={{
+          top: 0,
+          left: SIDEBAR_WIDTH,
+          right: 0,
+          bottom: 0,
+          cursor: isPanning ? "grabbing" : "grab",
+        }}
         onWheel={handleWheel}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
       >
-        {/* Dot grid */}
-        <svg
-          className="absolute inset-0 w-full h-full pointer-events-none"
-          style={{ opacity: 0.4 }}
-        >
+        {/* Dot grid background */}
+        <svg className="absolute inset-0 w-full h-full pointer-events-none" style={{ opacity: 0.35 }}>
           <defs>
             <pattern
               id="grid"
