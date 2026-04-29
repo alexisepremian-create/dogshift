@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { type ElementType, useState, useEffect, useRef, useCallback } from "react";
 import {
   Bot,
   BrainCircuit,
@@ -23,7 +23,8 @@ import {
   SearchCheck,
 } from "lucide-react";
 
-// ─── Types ───
+// ─── Types ───────────────────────────────────────────────────────────────────
+
 interface AgentNode {
   id: string;
   name: string;
@@ -44,34 +45,44 @@ interface AgentTree {
   tree: AgentNode;
 }
 
-// ─── Agent color config (12 agents max) ───
-const COLORS: Record<string, { icon: any; color: string; bg: string }> = {
-  maestro: { icon: BrainCircuit, color: "#7c3aed", bg: "rgba(124,58,237,0.12)" },
-  booking: { icon: CalendarDays, color: "#2563eb", bg: "rgba(37,99,235,0.12)" },
+interface AgentLog {
+  status: string;
+  actionType: string;
+  summary: string;
+  durationMs?: number;
+  createdAt: string;
+}
+
+// ─── Color config ─────────────────────────────────────────────────────────────
+
+const COLORS: Record<string, { icon: ElementType; color: string; bg: string }> = {
+  maestro:       { icon: BrainCircuit, color: "#7c3aed", bg: "rgba(124,58,237,0.12)" },
+  booking:       { icon: CalendarDays, color: "#2563eb", bg: "rgba(37,99,235,0.12)" },
   disponibilite: { icon: CalendarDays, color: "#059669", bg: "rgba(5,150,105,0.12)" },
-  notification: { icon: Sparkles, color: "#d97706", bg: "rgba(217,119,6,0.12)" },
-  supervision: { icon: Shield, color: "#dc2626", bg: "rgba(220,38,38,0.12)" },
-  candidature: { icon: SearchCheck, color: "#0891b2", bg: "rgba(8,145,178,0.12)" },
-  contrat: { icon: FileText, color: "#8b5cf6", bg: "rgba(139,92,246,0.12)" },
-  activation: { icon: UserCheck, color: "#16a34a", bg: "rgba(22,163,74,0.12)" },
-  calendrier: { icon: BellRing, color: "#e11d48", bg: "rgba(225,29,72,0.12)" },
+  notification:  { icon: Sparkles,     color: "#d97706", bg: "rgba(217,119,6,0.12)" },
+  supervision:   { icon: Shield,       color: "#dc2626", bg: "rgba(220,38,38,0.12)" },
+  candidature:   { icon: SearchCheck,  color: "#0891b2", bg: "rgba(8,145,178,0.12)" },
+  contrat:       { icon: FileText,     color: "#8b5cf6", bg: "rgba(139,92,246,0.12)" },
+  activation:    { icon: UserCheck,    color: "#16a34a", bg: "rgba(22,163,74,0.12)" },
+  calendrier:    { icon: BellRing,     color: "#e11d48", bg: "rgba(225,29,72,0.12)" },
 };
 
-// Default for unknown agents
 const DEFAULT_COLOR = { icon: Bot, color: "#64748b", bg: "rgba(100,116,139,0.12)" };
 
 function getColor(id: string) {
-  return COLORS[id] || DEFAULT_COLOR;
+  return COLORS[id] ?? DEFAULT_COLOR;
 }
 
-// ─── Layout constants ───
+// ─── Layout constants ─────────────────────────────────────────────────────────
+
 const SIDEBAR_WIDTH = 288;
 const VERTICAL_GAP = 130;
 const HORIZONTAL_SPACING = 140;
 const MAESTRO_SIZE = 64;
 const CHILD_SIZE = 48;
 
-// ─── Agent circle ───
+// ─── Agent circle ─────────────────────────────────────────────────────────────
+
 function AgentCircle({
   agent,
   isSelected,
@@ -90,7 +101,7 @@ function AgentCircle({
   return (
     <div className="flex flex-col items-center gap-2 cursor-pointer select-none" onClick={onClick}>
       <div
-        className="relative flex items-center justify-center rounded-full transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg"
+        className="relative flex items-center justify-center rounded-full transition-transform duration-150 hover:scale-105"
         style={{
           width: size,
           height: size,
@@ -104,12 +115,12 @@ function AgentCircle({
         {agent.status === "online" && (
           <span
             className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-white"
-            style={{ backgroundColor: "#22c55e", animation: "pulse 2s ease-in-out infinite" }}
+            style={{ backgroundColor: "#22c55e", animation: "agentPulse 2s ease-in-out infinite" }}
           />
         )}
       </div>
       <span
-        className="text-xs font-semibold tracking-tight"
+        className="text-sm font-medium tracking-tight"
         style={{ color: isSelected ? c.color : "#475569" }}
       >
         {agent.name.split(" ")[0]}
@@ -118,14 +129,8 @@ function AgentCircle({
   );
 }
 
-// ─── Bezier line ───
-function BezierLine({ x1, y1, x2, y2, color = "#94a3b8" }: { x1: number; y1: number; x2: number; y2: number; color?: string }) {
-  const midY = (y1 + y2) / 2;
-  const path = `M ${x1} ${y1} C ${x1} ${midY}, ${x2} ${midY}, ${x2} ${y2}`;
-  return <path d={path} fill="none" stroke={color} strokeWidth={1.5} strokeOpacity={0.3} strokeLinecap="round" />;
-}
+// ─── Detail modal ─────────────────────────────────────────────────────────────
 
-// ─── Modal ───
 function AgentModal({
   agent,
   logs,
@@ -134,7 +139,7 @@ function AgentModal({
   testResult,
 }: {
   agent: AgentNode;
-  logs: any[];
+  logs: AgentLog[];
   onClose: () => void;
   onTestAction: (action: string) => void;
   testResult: string | null;
@@ -173,7 +178,9 @@ function AgentModal({
         <div className="px-6 py-4 max-h-[50vh] overflow-y-auto space-y-4">
           <div className="flex items-center gap-2 text-sm">
             <span className={`w-2 h-2 rounded-full ${agent.status === "online" ? "bg-green-500" : "bg-red-500"}`} />
-            <span className="text-gray-600 font-medium">{agent.status === "online" ? "En ligne" : "Hors ligne"}</span>
+            <span className="text-gray-600 font-medium">
+              {agent.status === "online" ? "En ligne" : "Hors ligne"}
+            </span>
             {agent.lastLog && (
               <span className="text-gray-400 text-xs ml-auto flex items-center gap-1">
                 <Clock size={12} />
@@ -193,11 +200,7 @@ function AgentModal({
                     key={action}
                     onClick={() => onTestAction(action)}
                     className="px-2.5 py-1 text-xs font-medium rounded-lg border transition-all"
-                    style={{
-                      backgroundColor: c.bg,
-                      borderColor: `${c.color}30`,
-                      color: c.color,
-                    }}
+                    style={{ backgroundColor: c.bg, borderColor: `${c.color}30`, color: c.color }}
                     onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = c.color + "20")}
                     onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = c.bg)}
                   >
@@ -225,7 +228,7 @@ function AgentModal({
               {logs.length === 0 ? (
                 <p className="text-sm text-gray-400 italic">Aucune action pour l&apos;instant</p>
               ) : (
-                logs.map((log: any, i: number) => (
+                logs.map((log, i) => (
                   <div key={i} className="text-xs bg-gray-50 p-2.5 rounded-lg border border-gray-100">
                     <div className="flex items-center gap-2">
                       {log.status === "success" ? (
@@ -253,7 +256,8 @@ function AgentModal({
   );
 }
 
-// ─── Tree renderer ───
+// ─── Tree canvas ──────────────────────────────────────────────────────────────
+
 function AgentTreeCanvas({
   tree,
   zoom,
@@ -267,7 +271,7 @@ function AgentTreeCanvas({
   selectedId: string | null;
   onSelect: (agent: AgentNode) => void;
 }) {
-  const children = tree.children || [];
+  const children = tree.children ?? [];
   const childCount = children.length;
   const totalWidth = childCount * HORIZONTAL_SPACING;
   const startX = -totalWidth / 2;
@@ -279,63 +283,45 @@ function AgentTreeCanvas({
 
   return (
     <div
-      className="absolute transition-transform duration-100"
+      className="absolute"
       style={{
         transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
         transformOrigin: "0 0",
       }}
     >
-      {/* SVG layer for bezier lines */}
-      <svg
-        width={totalWidth + HORIZONTAL_SPACING}
-        height={VERTICAL_GAP + CHILD_SIZE + 40}
-        style={{
-          position: "absolute",
-          left: -totalWidth / 2 - HORIZONTAL_SPACING / 2,
-          top: MAESTRO_SIZE / 2 - 10,
-          pointerEvents: "none",
-          overflow: "visible",
-        }}
-      >
-        {children.map((child, i) => {
-          const c = getColor(child.id);
-          const cx = childPositions[i].cx + (totalWidth / 2 + HORIZONTAL_SPACING / 2);
-          const cy = childPositions[i].cy - VERTICAL_GAP / 2;
-          return (
-            <BezierLine
-              key={child.id}
-              x1={totalWidth / 2 + HORIZONTAL_SPACING / 2}
-              y1={0}
-              x2={cx}
-              y2={cy}
-              color={c.color}
-            />
-          );
-        })}
-      </svg>
-
-      {/* Maestro */}
+      {/* Maestro — center at (0, MAESTRO_SIZE/2) */}
       <div style={{ position: "absolute", left: -MAESTRO_SIZE / 2, top: 0 }}>
-        <AgentCircle agent={tree} isSelected={selectedId === "maestro"} onClick={() => onSelect(tree)} size={MAESTRO_SIZE} />
+        <AgentCircle
+          agent={tree}
+          isSelected={selectedId === tree.id}
+          onClick={() => onSelect(tree)}
+          size={MAESTRO_SIZE}
+        />
       </div>
 
-      {/* Children */}
+      {/* Sub-agents */}
       {children.map((child, i) => (
-        <div key={child.id} style={{ position: "absolute", left: childPositions[i].cx - CHILD_SIZE / 2, top: childPositions[i].cy }}>
-          <AgentCircle agent={child} isSelected={selectedId === child.id} onClick={() => onSelect(child)} size={CHILD_SIZE} />
+        <div
+          key={child.id}
+          style={{ position: "absolute", left: childPositions[i].cx - CHILD_SIZE / 2, top: childPositions[i].cy }}
+        >
+          <AgentCircle
+            agent={child}
+            isSelected={selectedId === child.id}
+            onClick={() => onSelect(child)}
+            size={CHILD_SIZE}
+          />
         </div>
       ))}
     </div>
   );
 }
 
-// ─── Skeleton ───
+// ─── Loading skeleton ─────────────────────────────────────────────────────────
+
 function AgentSkeleton() {
   return (
-    <div
-      className="flex items-center justify-center"
-      style={{ height: "calc(100vh - 0px)", marginLeft: SIDEBAR_WIDTH }}
-    >
+    <div className="flex items-center justify-center" style={{ height: "100vh" }}>
       <div className="animate-pulse flex flex-col items-center gap-4">
         <div className="w-16 h-16 bg-gray-200 rounded-full" />
         <div className="w-24 h-3.5 bg-gray-200 rounded" />
@@ -343,7 +329,7 @@ function AgentSkeleton() {
           {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
             <div key={i} className="flex flex-col items-center gap-2">
               <div className="w-12 h-12 bg-gray-100 rounded-full" />
-              <div className="w-16 h-3 bg-gray-100 rounded" />
+              <div className="w-14 h-3 bg-gray-100 rounded" />
             </div>
           ))}
         </div>
@@ -352,58 +338,73 @@ function AgentSkeleton() {
   );
 }
 
-// ─── Global style overrides ───
+// ─── Global overrides injected while this page is mounted ─────────────────────
+
 const fullscreenStyles = `
-  .agents-fullscreen main {
-    padding: 0 !important;
-    overflow: hidden !important;
-  }
-  .agents-fullscreen header {
-    display: none !important;
+  body.agents-canvas-active header { display: none !important; }
+  body.agents-canvas-active main   { padding: 0 !important; overflow: hidden !important; }
+  @keyframes agentPulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50%       { opacity: 0.6; transform: scale(0.85); }
   }
 `;
 
-// ─── Main page ───
+// ─── Page ─────────────────────────────────────────────────────────────────────
+
 export default function AgentsDashboard() {
   const [tree, setTree] = useState<AgentNode | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedAgent, setSelectedAgent] = useState<AgentNode | null>(null);
-  const [logs, setLogs] = useState<any[]>([]);
+  const [logs, setLogs] = useState<AgentLog[]>([]);
   const [testResult, setTestResult] = useState<string | null>(null);
   const [zoom, setZoom] = useState(0.85);
-  const [pan, setPan] = useState({ x: SIDEBAR_WIDTH, y: 0 });
+  const [pan, setPan] = useState({ x: 0, y: 0 });
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
   const [panOrigin, setPanOrigin] = useState({ x: 0, y: 0 });
   const canvasRef = useRef<HTMLDivElement>(null);
+  const hasCentered = useRef(false);
 
-  function centerTree(canvasEl: HTMLDivElement, treeData: AgentNode) {
-    if (!treeData) return;
-    const rect = canvasEl.getBoundingClientRect();
-    const cw = rect.width;
-    const ch = rect.height;
-    const childCount = treeData.children?.length || 1;
-    const treeWidth = childCount * HORIZONTAL_SPACING;
-    const treeHeight = VERTICAL_GAP + 60;
+  // Hide AdminShell header while on this page (body → header descendant selector works)
+  useEffect(() => {
+    document.body.classList.add("agents-canvas-active");
+    return () => document.body.classList.remove("agents-canvas-active");
+  }, []);
 
-    const fitZoom = Math.min((cw - 80) / treeWidth, (ch - 120) / treeHeight, 1.2);
-    setZoom(Math.max(0.3, Math.min(fitZoom, 1.5)));
-    setPan({
-      x: (cw - treeWidth * fitZoom) / 2,
-      y: (ch - treeHeight * fitZoom) / 2 + 20,
-    });
-  }
+  // Center tree once after first data load (after React has committed the new DOM)
+  useEffect(() => {
+    if (tree && !hasCentered.current && canvasRef.current) {
+      hasCentered.current = true;
+      requestAnimationFrame(() => {
+        if (canvasRef.current) centerTree(canvasRef.current, tree);
+      });
+    }
+  }, [tree]);
 
   useEffect(() => {
-    fetchTree();
+    void fetchTree();
   }, []);
+
+  function centerTree(canvasEl: HTMLDivElement, treeData: AgentNode) {
+    const { width: cw, height: ch } = canvasEl.getBoundingClientRect();
+    const childCount = treeData.children?.length ?? 1;
+    const treeW = childCount * HORIZONTAL_SPACING;
+    const treeH = VERTICAL_GAP + CHILD_SIZE + 32;
+
+    const fitZoom = Math.min((cw - 80) / treeW, (ch - 100) / treeH, 1.2);
+    const z = Math.max(0.3, Math.min(fitZoom, 1.5));
+    setZoom(z);
+    setPan({
+      x: cw / 2,
+      y: Math.max(60, (ch - treeH * z) / 2 + 24),
+    });
+  }
 
   async function fetchTree() {
     try {
       const res = await fetch("/api/maestro");
       const data: AgentTree = await res.json();
       setTree(data.tree);
-      if (canvasRef.current) centerTree(canvasRef.current, data.tree);
     } catch (e) {
       console.error("Failed to fetch agent tree", e);
     } finally {
@@ -414,19 +415,20 @@ export default function AgentsDashboard() {
   async function fetchLogs(agentId: string) {
     try {
       const res = await fetch(`/api/agents/logs?agentName=${agentId}&limit=20`);
-      const data = await res.json();
-      setLogs(data);
-    } catch { setLogs([]); }
+      setLogs((await res.json()) as AgentLog[]);
+    } catch {
+      setLogs([]);
+    }
   }
 
   function handleAgentClick(agent: AgentNode) {
     setSelectedAgent(agent);
-    fetchLogs(agent.id);
+    void fetchLogs(agent.id);
     setTestResult(null);
   }
 
   async function handleTestAction(action: string) {
-    setTestResult(`Exécution de "${action}"...`);
+    setTestResult(`Exécution de "${action}"…`);
     try {
       const res = await fetch("/api/maestro", {
         method: "POST",
@@ -440,12 +442,11 @@ export default function AgentsDashboard() {
           date: new Date().toISOString().split("T")[0],
         }),
       });
-      const data = await res.json();
-      setTestResult(JSON.stringify(data, null, 2));
-      fetchTree();
-      if (selectedAgent) fetchLogs(selectedAgent.id);
+      setTestResult(JSON.stringify(await res.json(), null, 2));
+      void fetchTree();
+      if (selectedAgent) void fetchLogs(selectedAgent.id);
     } catch (e) {
-      setTestResult(`Erreur: ${(e as Error).message}`);
+      setTestResult(`Erreur : ${(e as Error).message}`);
     }
   }
 
@@ -458,55 +459,81 @@ export default function AgentsDashboard() {
     setZoom((z) => Math.max(0.2, Math.min(3, z - e.deltaY * 0.001)));
   }, []);
 
-  const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    if (e.button === 0) {
+  const handleMouseDown = useCallback(
+    (e: React.MouseEvent) => {
+      if (e.button !== 0) return;
       setIsPanning(true);
       setPanStart({ x: e.clientX, y: e.clientY });
       setPanOrigin({ x: pan.x, y: pan.y });
-    }
-  }, [pan]);
+    },
+    [pan],
+  );
 
-  const handleMouseMove = useCallback((e: React.MouseEvent) => {
-    if (!isPanning) return;
-    setPan({ x: panOrigin.x + e.clientX - panStart.x, y: panOrigin.y + e.clientY - panStart.y });
-  }, [isPanning, panStart, panOrigin]);
+  const handleMouseMove = useCallback(
+    (e: React.MouseEvent) => {
+      if (!isPanning) return;
+      setPan({ x: panOrigin.x + e.clientX - panStart.x, y: panOrigin.y + e.clientY - panStart.y });
+    },
+    [isPanning, panStart, panOrigin],
+  );
 
   const handleMouseUp = useCallback(() => setIsPanning(false), []);
 
   if (loading) return <AgentSkeleton />;
 
   return (
-    <div className="agents-fullscreen" style={{ height: "100%" }}>
+    <>
       <style>{fullscreenStyles}</style>
 
-      {/* Top toolbar */}
-      <div className="fixed z-40 flex items-center justify-between px-6 py-3" style={{ left: SIDEBAR_WIDTH, right: 0, top: 0 }}>
+      {/* Toolbar */}
+      <div
+        className="fixed z-40 flex items-center justify-between px-5 py-2.5 bg-white/90 backdrop-blur-md border-b border-slate-100 shadow-sm"
+        style={{ left: SIDEBAR_WIDTH, right: 0, top: 0 }}
+      >
         <div className="flex items-center gap-3">
-          <h1 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-            <Bot size={20} className="text-violet-600" />
-            Agents
+          <h1 className="text-base font-semibold text-gray-900 flex items-center gap-2">
+            <Bot size={18} className="text-violet-600" />
+            Agents autonomes
           </h1>
-          <span className="text-xs text-gray-400 hidden sm:inline">Molette zoom • Glisser naviguer • Cliquer = détails</span>
+          <span className="text-xs text-gray-400 hidden sm:inline select-none">
+            Molette · zoom &nbsp;|&nbsp; Glisser · naviguer &nbsp;|&nbsp; Clic · détails
+          </span>
         </div>
-        <div className="flex items-center gap-1.5">
-          <span className="text-xs text-gray-400 mr-1 w-8 text-right">{Math.round(zoom * 100)}%</span>
-          <button onClick={() => setZoom((z) => Math.max(0.2, z - 0.1))} className="p-1.5 rounded-lg hover:bg-gray-100 transition">
+        <div className="flex items-center gap-0.5">
+          <span className="text-xs text-gray-400 mr-2 w-9 text-right tabular-nums">{Math.round(zoom * 100)}%</span>
+          <button
+            onClick={() => setZoom((z) => Math.max(0.2, z - 0.1))}
+            className="p-1.5 rounded-lg hover:bg-gray-100 transition"
+            title="Dézoomer"
+          >
             <Minus size={14} className="text-gray-500" />
           </button>
-          <button onClick={resetView} className="p-1.5 rounded-lg hover:bg-gray-100 transition">
+          <button
+            onClick={resetView}
+            className="p-1.5 rounded-lg hover:bg-gray-100 transition"
+            title="Recentrer"
+          >
             <Maximize2 size={14} className="text-gray-500" />
           </button>
-          <button onClick={() => setZoom((z) => Math.min(3, z + 0.1))} className="p-1.5 rounded-lg hover:bg-gray-100 transition">
+          <button
+            onClick={() => setZoom((z) => Math.min(3, z + 0.1))}
+            className="p-1.5 rounded-lg hover:bg-gray-100 transition"
+            title="Zoomer"
+          >
             <Plus size={14} className="text-gray-500" />
           </button>
-          <div className="w-px h-4 bg-gray-200 mx-1" />
-          <button onClick={fetchTree} className="p-1.5 rounded-lg hover:bg-gray-100 transition">
+          <div className="w-px h-4 bg-gray-200 mx-1.5" />
+          <button
+            onClick={() => void fetchTree()}
+            className="p-1.5 rounded-lg hover:bg-gray-100 transition"
+            title="Rafraîchir"
+          >
             <RefreshCw size={14} className="text-gray-500" />
           </button>
         </div>
       </div>
 
-      {/* Fullscreen canvas */}
+      {/* Infinite canvas */}
       <div
         ref={canvasRef}
         className="absolute inset-0 overflow-hidden"
@@ -515,6 +542,7 @@ export default function AgentsDashboard() {
           left: SIDEBAR_WIDTH,
           right: 0,
           bottom: 0,
+          backgroundColor: "#f8fafc",
           cursor: isPanning ? "grabbing" : "grab",
         }}
         onWheel={handleWheel}
@@ -524,13 +552,22 @@ export default function AgentsDashboard() {
         onMouseLeave={handleMouseUp}
       >
         {/* Dot grid */}
-        <svg className="absolute inset-0 w-full h-full pointer-events-none" style={{ opacity: 0.35 }}>
+        <svg
+          className="absolute inset-0 w-full h-full pointer-events-none"
+          style={{ opacity: 0.4 }}
+        >
           <defs>
-            <pattern id="grid" width={24} height={24} patternUnits="userSpaceOnUse" patternTransform={`translate(${pan.x % 24}, ${pan.y % 24}) scale(${zoom})`}>
+            <pattern
+              id="agentGrid"
+              width={24}
+              height={24}
+              patternUnits="userSpaceOnUse"
+              patternTransform={`translate(${pan.x % 24},${pan.y % 24})`}
+            >
               <circle cx={12} cy={12} r={1} fill="#cbd5e1" />
             </pattern>
           </defs>
-          <rect width="100%" height="100%" fill="url(#grid)" />
+          <rect width="100%" height="100%" fill="url(#agentGrid)" />
         </svg>
 
         {tree && (
@@ -538,7 +575,7 @@ export default function AgentsDashboard() {
             tree={tree}
             zoom={zoom}
             pan={pan}
-            selectedId={selectedAgent?.id || null}
+            selectedId={selectedAgent?.id ?? null}
             onSelect={handleAgentClick}
           />
         )}
@@ -549,10 +586,13 @@ export default function AgentsDashboard() {
           agent={selectedAgent}
           logs={logs}
           testResult={testResult}
-          onClose={() => { setSelectedAgent(null); setTestResult(null); }}
+          onClose={() => {
+            setSelectedAgent(null);
+            setTestResult(null);
+          }}
           onTestAction={handleTestAction}
         />
       )}
-    </div>
+    </>
   );
 }
