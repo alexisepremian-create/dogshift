@@ -51,3 +51,13 @@ next-env.d.ts
 /blob-report/
 /playwright/.cache/
 /tests/e2e/.auth/
+
+# Sous-projets MCP / serveurs
+mcp-server/node_modules/
+mcp-server/build/
+ai-proxy/node_modules/
+ai-proxy/.env
+server/node_modules/
+server/dist/
+venv/
+config.json
