@@ -81,6 +81,8 @@ export const SITTER_FALLBACK_COORDS: Record<string, { lat: number; lng: number }
   saintlegierlaville: { lat: 46.4736, lng: 6.7722 },
   corsiersurvevey: { lat: 46.4667, lng: 6.85 },
   chardonne: { lat: 46.4833, lng: 6.8167 },
+  penthaz: { lat: 46.5976, lng: 6.5402 },
+  "1303": { lat: 46.5976, lng: 6.5402 },
   "1020": { lat: 46.538, lng: 6.5881 },
   "1023": { lat: 46.5521, lng: 6.5728 },
   "1024": { lat: 46.5286, lng: 6.5626 },
