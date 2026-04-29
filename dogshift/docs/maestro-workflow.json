@@ -1,0 +1,304 @@
+{
+  "name": "🤖 MAESTRO - Orchestrateur Agents Autonomes",
+  "nodes": [
+    {
+      "id": "webhook",
+      "name": "Webhook Entrée",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [0, 300],
+      "parameters": {
+        "path": "maestro",
+        "responseMode": "lastNode",
+        "options": {}
+      }
+    },
+    {
+      "id": "log-received",
+      "name": "Logger Réception",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [250, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.BASE_URL }}/api/agent-logs",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "agentName", "value": "maestro" },
+            { "name": "actionType", "value": "webhook_received" },
+            { "name": "summary", "value": "=Requête reçue: {{ $json.body.message }}" },
+            { "name": "details", "value": "={{ $json.body }}" },
+            { "name": "status", "value": "running" }
+          ]
+        }
+      }
+    },
+    {
+      "id": "determine-intent",
+      "name": "Déterminer Intention",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 1,
+      "position": [500, 300],
+      "parameters": {
+        "dataType": "string",
+        "value1": "={{ $json.body.action || '' }}",
+        "rules": {
+          "conditions": [
+            {
+              "outputKey": "disponibilite",
+              "rawExpression": "=action === 'check_availability' || action === 'disponibilite'"
+            },
+            {
+              "outputKey": "booking",
+              "rawExpression": "=action === 'create_booking' || action === 'cancel_booking' || action === 'get_booking'"
+            },
+            {
+              "outputKey": "paiement",
+              "rawExpression": "=action === 'paiement' || action === 'refund' || action === 'payout'"
+            },
+            {
+              "outputKey": "notification",
+              "rawExpression": "=action === 'notify' || action === 'send_email' || action === 'send_sms'"
+            },
+            {
+              "outputKey": "supervision",
+              "rawExpression": "=action === 'status' || action === 'health' || action === 'supervision'"
+            }
+          ]
+        },
+        "fallbackOutput": "unknown"
+      }
+    },
+    {
+      "id": "call-dispo",
+      "name": "Agent Disponibilité",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [750, 100],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.BASE_URL }}/api/agent-availability",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "action", "value": "={{ $json.body.action }}" },
+            { "name": "sitterId", "value": "={{ $json.body.sitterId }}" },
+            { "name": "date", "value": "={{ $json.body.date }}" },
+            { "name": "serviceType", "value": "={{ $json.body.serviceType }}" }
+          ]
+        }
+      }
+    },
+    {
+      "id": "call-booking",
+      "name": "Agent Booking",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [750, 200],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.BASE_URL }}/api/agent-booking",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "action", "value": "={{ $json.body.action }}" },
+            { "name": "bookingId", "value": "={{ $json.body.bookingId }}" },
+            { "name": "sitterId", "value": "={{ $json.body.sitterId }}" },
+            { "name": "userId", "value": "={{ $json.body.userId }}" },
+            { "name": "startAt", "value": "={{ $json.body.startAt }}" },
+            { "name": "endAt", "value": "={{ $json.body.endAt }}" },
+            { "name": "serviceType", "value": "={{ $json.body.serviceType }}" }
+          ]
+        }
+      }
+    },
+    {
+      "id": "call-payment",
+      "name": "Agent Paiement",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [750, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.BASE_URL }}/api/agent-payment",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "action", "value": "={{ $json.body.action }}" },
+            { "name": "bookingId", "value": "={{ $json.body.bookingId }}" },
+            { "name": "amount", "value": "={{ $json.body.amount }}" }
+          ]
+        }
+      }
+    },
+    {
+      "id": "call-notification",
+      "name": "Agent Notification",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [750, 400],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.BASE_URL }}/api/agent-notification",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "action", "value": "={{ $json.body.action }}" },
+            { "name": "type", "value": "={{ $json.body.notificationType }}" },
+            { "name": "userId", "value": "={{ $json.body.userId }}" },
+            { "name": "message", "value": "={{ $json.body.message }}" }
+          ]
+        }
+      }
+    },
+    {
+      "id": "call-supervision",
+      "name": "Agent Supervision",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [750, 500],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.BASE_URL }}/api/agent-supervision/status",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      }
+    },
+    {
+      "id": "unknown-action",
+      "name": "Action Inconnue",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [750, 600],
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "error",
+              "value": "=Action '{{ $json.body.action }}' inconnue. Actions disponibles: check_availability, create_booking, cancel_booking, get_booking, paiement, refund, payout, notify, send_email, send_sms, status, health"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "log-success",
+      "name": "Logger Succès",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1000, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.BASE_URL }}/api/agent-logs",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "agentName", "value": "maestro" },
+            { "name": "actionType", "value": "sub_agent_called" },
+            { "name": "summary", "value": "=Agent appelé: {{ $json.body.action }} → OK" },
+            { "name": "details", "value": "={{ $json }}" },
+            { "name": "status", "value": "success" }
+          ]
+        }
+      }
+    },
+    {
+      "id": "log-error",
+      "name": "Logger Erreur",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1250, 600],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.BASE_URL }}/api/agent-logs",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "agentName", "value": "maestro" },
+            { "name": "actionType", "value": "error" },
+            { "name": "summary", "value": "=Erreur: {{ $json.body.action }} - action inconnue" },
+            { "name": "details", "value": "={{ $json }}" },
+            { "name": "status", "value": "error" }
+          ]
+        }
+      }
+    },
+    {
+      "id": "response",
+      "name": "Réponse Finale",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1250, 300],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}"
+      }
+    }
+  ],
+  "connections": {
+    "webhook": {
+      "main": [[{ "node": "log-received", "type": "main", "index": 0 }]]
+    },
+    "log-received": {
+      "main": [[{ "node": "determine-intent", "type": "main", "index": 0 }]]
+    },
+    "determine-intent": {
+      "main": [
+        [{ "node": "call-dispo", "type": "main", "index": 0 }],
+        [{ "node": "call-booking", "type": "main", "index": 0 }],
+        [{ "node": "call-payment", "type": "main", "index": 0 }],
+        [{ "node": "call-notification", "type": "main", "index": 0 }],
+        [{ "node": "call-supervision", "type": "main", "index": 0 }],
+        [{ "node": "unknown-action", "type": "main", "index": 0 }]
+      ]
+    },
+    "call-dispo": {
+      "main": [[{ "node": "log-success", "type": "main", "index": 0 }]]
+    },
+    "call-booking": {
+      "main": [[{ "node": "log-success", "type": "main", "index": 0 }]]
+    },
+    "call-payment": {
+      "main": [[{ "node": "log-success", "type": "main", "index": 0 }]]
+    },
+    "call-notification": {
+      "main": [[{ "node": "log-success", "type": "main", "index": 0 }]]
+    },
+    "call-supervision": {
+      "main": [[{ "node": "log-success", "type": "main", "index": 0 }]]
+    },
+    "unknown-action": {
+      "main": [[{ "node": "log-error", "type": "main", "index": 0 }]]
+    },
+    "log-success": {
+      "main": [[{ "node": "response", "type": "main", "index": 0 }]]
+    },
+    "log-error": {
+      "main": [[{ "node": "response", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "timezone": "Europe/Zurich",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "saveManualExecutions": true
+  },
+  "staticData": null,
+  "tags": ["autonomous-agents", "maestro"]
+}

@@ -792,3 +792,111 @@ model PlatformSettings {
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 }
+
+/// Persistent memory for autonomous agents (Maestro & sub-agents).
+/// Stores conversation history, context, and state between runs.
+model AgentMemory {
+  id        String   @id @default(cuid())
+
+  /// Agent name: "maestro", "booking_agent", "dispo_agent", "payment_agent"…
+  agentName String
+
+  /// Session ID to group related interactions
+  sessionId String
+
+  /// Role: "system" | "user" | "assistant" | "tool_call" | "tool_result"
+  role String
+
+  /// The actual message content (JSON stringified for complex objects)
+  content String
+
+  /// Token count for context window management
+  tokenCount Int @default(0)
+
+  /// Metadata for filtering (bookingId, sitterId, userId, etc.)
+  metadata Json?
+
+  createdAt DateTime @default(now())
+
+  @@index([agentName, sessionId, createdAt])
+  @@index([agentName, createdAt])
+  @@index([sessionId, createdAt])
+}
+
+/// Logs every action taken by an autonomous agent. Append only.
+model AgentLog {
+  id        String   @id @default(cuid())
+
+  /// "maestro" | "booking_agent" | "dispo_agent" | "payment_agent" | "notification_agent" | "supervision_agent"
+  agentName String
+
+  /// "webhook_received" | "intent_determined" | "sub_agent_called" | "api_call" | "error" | "success"
+  actionType String
+
+  /// What the agent did (human readable)
+  summary String
+
+  /// Full details (request, response, error stack…)
+  details Json?
+
+  /// Related entities (booking ID, user ID, sitter ID…)
+  targetId String?
+
+  /// Duration in ms
+  durationMs Int?
+
+  /// Status: "success" | "error" | "running"
+  status String @default("success")
+
+  createdAt DateTime @default(now())
+
+  @@index([agentName, createdAt])
+  @@index([actionType, createdAt])
+  @@index([status, createdAt])
+  @@index([createdAt])
+}
+
+/// Tracks scheduled or running tasks for autonomous agents.
+model AgentTask {
+  id        String   @id @default(cuid())
+
+  /// "maestro" | "booking_agent" | "dispo_agent" | …
+  agentName String
+
+  /// "scheduled" | "running" | "completed" | "failed" | "cancelled"
+  status String @default("scheduled")
+
+  /// Human readable task description
+  title String
+
+  /// Full task definition / parameters
+  payload Json?
+
+  /// Result of the task execution
+  result Json?
+
+  /// Error message if failed
+  errorMessage String?
+
+  /// How many times it has been retried
+  retryCount Int @default(0)
+
+  /// Max retries before marking as failed
+  maxRetries Int @default(3)
+
+  /// When the task should be executed
+  scheduledAt DateTime?
+
+  /// When the task started
+  startedAt DateTime?
+
+  /// When the task completed/failed
+  completedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([agentName, status, scheduledAt])
+  @@index([status, scheduledAt])
+  @@index([createdAt])
+}
