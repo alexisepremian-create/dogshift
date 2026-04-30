@@ -8,9 +8,9 @@ export const runtime = 'nodejs';
 // Schéma de la réponse structurée que Claude doit renvoyer
 const CandidatureAnalysisSchema = z.object({
   niveau: z.enum(['PREMIUM', 'STANDARD', 'INSUFFISANT']),
-  score_qualitatif: z.number().min(0).max(100),
-  forces: z.array(z.string()).min(1).max(3),
-  points_attention: z.array(z.string()).max(3),
+  score_qualitatif: z.number().describe('Score qualitatif entre 0 et 100'),
+  forces: z.array(z.string()).describe('Entre 1 et 3 forces principales du candidat'),
+  points_attention: z.array(z.string()).describe('Maximum 3 points d\'attention'),
   recommandation: z.string(),
   drapeaux_rouges: z.array(z.string()),
 });
