@@ -23,6 +23,7 @@
     "*.{js,jsx,mjs,cjs}": "eslint --fix --max-warnings=0"
   },
   "dependencies": {
+    "@ai-sdk/anthropic": "^3.0.72",
     "@aws-sdk/client-s3": "^3.987.0",
     "@aws-sdk/s3-request-presigner": "^3.987.0",
     "@clerk/localizations": "^4.4.0",
@@ -37,6 +38,7 @@
     "@stripe/react-stripe-js": "^3.10.0",
     "@stripe/stripe-js": "^7.9.0",
     "@vonage/server-sdk": "^3.27.0",
+    "ai": "^6.0.170",
     "bcryptjs": "^2.4.3",
     "jspdf": "^2.5.2",
     "leaflet": "^1.9.4",
@@ -55,7 +57,7 @@
     "stripe": "^20.1.0",
     "svix": "^1.92.2",
     "uuid": "^13.0.0",
-    "zod": "^4.3.6"
+    "zod": "^4.4.1"
   },
   "overrides": {
     "dompurify": ">=3.4.0"
