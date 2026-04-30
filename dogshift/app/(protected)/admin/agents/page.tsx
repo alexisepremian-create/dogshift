@@ -384,7 +384,7 @@ function HierarchyCanvas({
         const agent = AGENT_MAP[id];
         if (!agent) return null;
         return (
-          <div key={id} style={{ position: "absolute", left: FREE_CX[i] - CHILD_SIZE / 2, top: Y_FREE }}>
+          <div key={id} style={{ position: "absolute", left: FREE_CX[i], top: Y_FREE, transform: "translateX(-50%)" }}>
             <AgentCircle
               agent={agent}
               isSelected={selectedId === id}
@@ -396,7 +396,7 @@ function HierarchyCanvas({
       })}
 
       {/* ── Zone 2 : Maestro ── */}
-      <div style={{ position: "absolute", left: MAESTRO_CX - MAESTRO_SIZE / 2, top: Y_MAESTRO }}>
+      <div style={{ position: "absolute", left: MAESTRO_CX, top: Y_MAESTRO, transform: "translateX(-50%)" }}>
         <AgentCircle
           agent={AGENT_MAP["maestro"]!}
           isSelected={selectedId === "maestro"}
@@ -410,7 +410,7 @@ function HierarchyCanvas({
         const agent = AGENT_MAP[id];
         if (!agent) return null;
         return (
-          <div key={id} style={{ position: "absolute", left: MAESTRO_CHILDREN_CX[i] - CHILD_SIZE / 2, top: Y_MAESTRO_CHILDREN }}>
+          <div key={id} style={{ position: "absolute", left: MAESTRO_CHILDREN_CX[i], top: Y_MAESTRO_CHILDREN, transform: "translateX(-50%)" }}>
             <AgentCircle
               agent={agent}
               isSelected={selectedId === id}
@@ -426,7 +426,7 @@ function HierarchyCanvas({
         const agent = AGENT_MAP[id];
         if (!agent) return null;
         return (
-          <div key={id} style={{ position: "absolute", left: CANDIDATURE_CHILDREN_CX[i] - CHILD_SIZE / 2, top: Y_CANDIDATURE_CHILDREN }}>
+          <div key={id} style={{ position: "absolute", left: CANDIDATURE_CHILDREN_CX[i], top: Y_CANDIDATURE_CHILDREN, transform: "translateX(-50%)" }}>
             <AgentCircle
               agent={agent}
               isSelected={selectedId === id}
