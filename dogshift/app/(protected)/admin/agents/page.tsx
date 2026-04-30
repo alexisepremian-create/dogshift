@@ -3,9 +3,12 @@
 import { type ElementType, useState, useEffect, useRef, useCallback } from "react";
 import {
   Bot,
+  Brain,
   BrainCircuit,
   Sparkles,
   CalendarDays,
+  CalendarCheck,
+  Calculator,
   Shield,
   RefreshCw,
   Plus,
@@ -41,10 +44,6 @@ interface AgentNode {
   } | null;
 }
 
-interface AgentTree {
-  tree: AgentNode;
-}
-
 interface AgentLog {
   status: string;
   actionType: string;
@@ -53,18 +52,28 @@ interface AgentLog {
   createdAt: string;
 }
 
+interface AgentDef {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+}
+
 // ─── Color config ─────────────────────────────────────────────────────────────
 
 const COLORS: Record<string, { icon: ElementType; color: string; bg: string }> = {
-  maestro:       { icon: BrainCircuit, color: "#7c3aed", bg: "rgba(124,58,237,0.12)" },
-  booking:       { icon: CalendarDays, color: "#2563eb", bg: "rgba(37,99,235,0.12)" },
-  disponibilite: { icon: CalendarDays, color: "#059669", bg: "rgba(5,150,105,0.12)" },
-  notification:  { icon: Sparkles,     color: "#d97706", bg: "rgba(217,119,6,0.12)" },
-  supervision:   { icon: Shield,       color: "#dc2626", bg: "rgba(220,38,38,0.12)" },
-  candidature:   { icon: SearchCheck,  color: "#0891b2", bg: "rgba(8,145,178,0.12)" },
-  contrat:       { icon: FileText,     color: "#8b5cf6", bg: "rgba(139,92,246,0.12)" },
-  activation:    { icon: UserCheck,    color: "#16a34a", bg: "rgba(22,163,74,0.12)" },
-  calendrier:    { icon: BellRing,     color: "#e11d48", bg: "rgba(225,29,72,0.12)" },
+  maestro:             { icon: BrainCircuit,  color: "#4f46e5", bg: "#eef2ff" },
+  auth:                { icon: Shield,        color: "#2563eb", bg: "#eff6ff" },
+  reservations:        { icon: Bot,           color: "#ea580c", bg: "#fff7ed" },
+  calendrier:          { icon: CalendarDays,  color: "#e11d48", bg: "#fff1f2" },
+  contrat:             { icon: FileText,      color: "#8b5cf6", bg: "#f5f3ff" },
+  activation:          { icon: UserCheck,     color: "#16a34a", bg: "#f0fdf4" },
+  assistant:           { icon: Sparkles,      color: "#4338ca", bg: "#eef2ff" },
+  booking:             { icon: CalendarCheck, color: "#0d9488", bg: "#f0fdfa" },
+  candidature:         { icon: SearchCheck,   color: "#0891b2", bg: "#ecfeff" },
+  notifications:       { icon: BellRing,      color: "#dc2626", bg: "#fef2f2" },
+  candidature_classic: { icon: Calculator,    color: "#475569", bg: "#f8fafc" },
+  candidature_ai:      { icon: Brain,         color: "#d97706", bg: "#fffbeb" },
 };
 
 const DEFAULT_COLOR = { icon: Bot, color: "#64748b", bg: "rgba(100,116,139,0.12)" };
@@ -76,10 +85,51 @@ function getColor(id: string) {
 // ─── Layout constants ─────────────────────────────────────────────────────────
 
 const SIDEBAR_WIDTH = 288;
-const VERTICAL_GAP = 130;
-const HORIZONTAL_SPACING = 140;
 const MAESTRO_SIZE = 64;
 const CHILD_SIZE = 48;
+
+// Y positions (top edge of each circle row)
+const Y_FREE               = 100;
+const Y_MAESTRO            = 280;
+const Y_MAESTRO_CHILDREN   = 460;
+const Y_CANDIDATURE_CHILDREN = 640;
+
+// X centers for each row
+const FREE_CX        = [-350, -210, -70, 70, 210, 350] as const;
+const MAESTRO_CX     = 0;
+const MAESTRO_CHILDREN_CX = [-200, 0, 200] as const;
+const CANDIDATURE_CX = 0; // candidature is index 1 of MAESTRO_CHILDREN → cx=0
+const CANDIDATURE_CHILDREN_CX = [-110, 110] as const;
+
+// ─── Static agent definitions ─────────────────────────────────────────────────
+
+const AGENTS: AgentDef[] = [
+  { id: "maestro",            name: "Maestro",       description: "Orchestrateur central",              icon: "BrainCircuit" },
+  { id: "auth",               name: "Auth",          description: "Gestion des accès",                  icon: "Shield" },
+  { id: "reservations",       name: "Réservations",  description: "Gestion des bookings",               icon: "Bot" },
+  { id: "calendrier",         name: "Calendrier",    description: "Gère les rendez-vous Cal.com",       icon: "CalendarDays" },
+  { id: "contrat",            name: "Contrat",       description: "Signatures électroniques",           icon: "FileText" },
+  { id: "activation",         name: "Activation",    description: "Onboarding pet-sitters",             icon: "UserCheck" },
+  { id: "assistant",          name: "Assistant IA",  description: "Support utilisateur",                icon: "Sparkles" },
+  { id: "booking",            name: "Booking",       description: "Gestion des réservations",           icon: "CalendarCheck" },
+  { id: "candidature",        name: "Candidature",   description: "Wrapper enrichi (score + IA)",       icon: "SearchCheck" },
+  { id: "notifications",      name: "Notifications", description: "Système de communication",           icon: "BellRing" },
+  { id: "candidature_classic",name: "Score classique",description: "Algorithme par règles",             icon: "Calculator" },
+  { id: "candidature_ai",     name: "Analyse IA",    description: "Claude qualitatif",                  icon: "Brain" },
+];
+
+// Zone membership
+const FREE_AGENTS          = ["auth", "reservations", "calendrier", "contrat", "activation", "assistant"] as const;
+const MAESTRO_CHILDREN     = ["booking", "candidature", "notifications"] as const;
+const CANDIDATURE_CHILDREN = ["candidature_classic", "candidature_ai"] as const;
+
+// Build lookup: id → AgentNode (static fake node for rendering)
+function agentDefToNode(def: AgentDef): AgentNode {
+  return { id: def.id, name: def.name, emoji: "", description: def.description, status: "online" };
+}
+const AGENT_MAP: Record<string, AgentNode> = Object.fromEntries(
+  AGENTS.map((a) => [a.id, agentDefToNode(a)])
+);
 
 // ─── Agent circle ─────────────────────────────────────────────────────────────
 
@@ -256,30 +306,34 @@ function AgentModal({
   );
 }
 
-// ─── Tree canvas ──────────────────────────────────────────────────────────────
+// ─── Hierarchy canvas ─────────────────────────────────────────────────────────
 
-function AgentTreeCanvas({
-  tree,
+function HierarchyCanvas({
   zoom,
   pan,
   selectedId,
   onSelect,
 }: {
-  tree: AgentNode;
   zoom: number;
   pan: { x: number; y: number };
   selectedId: string | null;
   onSelect: (agent: AgentNode) => void;
 }) {
-  const children = tree.children ?? [];
-  const childCount = children.length;
-  const totalWidth = childCount * HORIZONTAL_SPACING;
-  const startX = -totalWidth / 2;
+  // Centers (Y) for Bezier control points
+  const maestroCY    = Y_MAESTRO            + MAESTRO_SIZE / 2;
+  const childCY      = Y_MAESTRO_CHILDREN   + CHILD_SIZE  / 2;
+  const grandchildCY = Y_CANDIDATURE_CHILDREN + CHILD_SIZE / 2;
+  const midY1 = (maestroCY + childCY)      / 2;
+  const midY2 = (childCY   + grandchildCY) / 2;
 
-  const childPositions = children.map((_, i) => ({
-    cx: startX + i * HORIZONTAL_SPACING + HORIZONTAL_SPACING / 2,
-    cy: VERTICAL_GAP,
-  }));
+  // SVG spans x ∈ [-600, 600], y ∈ [0, 800] in container coords
+  const svgLeft = -600;
+  const svgTop  = 0;
+  const svgW    = 1200;
+  const svgH    = 800;
+  // Translate so that container (0,0) maps to SVG (600, 0)
+  const tx = -svgLeft; // 600
+  const ty = -svgTop;  // 0
 
   return (
     <div
@@ -289,30 +343,99 @@ function AgentTreeCanvas({
         transformOrigin: "0 0",
       }}
     >
-      {/* Maestro — center at (0, MAESTRO_SIZE/2) */}
-      <div style={{ position: "absolute", left: -MAESTRO_SIZE / 2, top: 0 }}>
+      {/* ── Bezier connection lines ── */}
+      <svg
+        style={{ position: "absolute", left: svgLeft, top: svgTop, width: svgW, height: svgH, pointerEvents: "none" }}
+      >
+        <g transform={`translate(${tx}, ${ty})`}>
+          {/* Maestro → Maestro children */}
+          {MAESTRO_CHILDREN.map((id, i) => {
+            const cx = MAESTRO_CHILDREN_CX[i];
+            return (
+              <path
+                key={id}
+                d={`M ${MAESTRO_CX},${maestroCY} C ${MAESTRO_CX},${midY1} ${cx},${midY1} ${cx},${childCY}`}
+                fill="none"
+                stroke="#cbd5e1"
+                strokeWidth={1.5}
+              />
+            );
+          })}
+
+          {/* Candidature → sub-children */}
+          {CANDIDATURE_CHILDREN.map((id, i) => {
+            const cx = CANDIDATURE_CHILDREN_CX[i];
+            return (
+              <path
+                key={id}
+                d={`M ${CANDIDATURE_CX},${childCY} C ${CANDIDATURE_CX},${midY2} ${cx},${midY2} ${cx},${grandchildCY}`}
+                fill="none"
+                stroke="#cbd5e1"
+                strokeWidth={1.5}
+                strokeDasharray="5 4"
+              />
+            );
+          })}
+        </g>
+      </svg>
+
+      {/* ── Zone 1 : électrons libres (aucune ligne) ── */}
+      {FREE_AGENTS.map((id, i) => {
+        const agent = AGENT_MAP[id];
+        if (!agent) return null;
+        return (
+          <div key={id} style={{ position: "absolute", left: FREE_CX[i] - CHILD_SIZE / 2, top: Y_FREE }}>
+            <AgentCircle
+              agent={agent}
+              isSelected={selectedId === id}
+              onClick={() => onSelect(agent)}
+              size={CHILD_SIZE}
+            />
+          </div>
+        );
+      })}
+
+      {/* ── Zone 2 : Maestro ── */}
+      <div style={{ position: "absolute", left: MAESTRO_CX - MAESTRO_SIZE / 2, top: Y_MAESTRO }}>
         <AgentCircle
-          agent={tree}
-          isSelected={selectedId === tree.id}
-          onClick={() => onSelect(tree)}
+          agent={AGENT_MAP["maestro"]!}
+          isSelected={selectedId === "maestro"}
+          onClick={() => onSelect(AGENT_MAP["maestro"]!)}
           size={MAESTRO_SIZE}
         />
       </div>
 
-      {/* Sub-agents */}
-      {children.map((child, i) => (
-        <div
-          key={child.id}
-          style={{ position: "absolute", left: childPositions[i].cx - CHILD_SIZE / 2, top: childPositions[i].cy }}
-        >
-          <AgentCircle
-            agent={child}
-            isSelected={selectedId === child.id}
-            onClick={() => onSelect(child)}
-            size={CHILD_SIZE}
-          />
-        </div>
-      ))}
+      {/* ── Zone 3 : enfants de Maestro ── */}
+      {MAESTRO_CHILDREN.map((id, i) => {
+        const agent = AGENT_MAP[id];
+        if (!agent) return null;
+        return (
+          <div key={id} style={{ position: "absolute", left: MAESTRO_CHILDREN_CX[i] - CHILD_SIZE / 2, top: Y_MAESTRO_CHILDREN }}>
+            <AgentCircle
+              agent={agent}
+              isSelected={selectedId === id}
+              onClick={() => onSelect(agent)}
+              size={CHILD_SIZE}
+            />
+          </div>
+        );
+      })}
+
+      {/* ── Zone 4 : sous-enfants de Candidature ── */}
+      {CANDIDATURE_CHILDREN.map((id, i) => {
+        const agent = AGENT_MAP[id];
+        if (!agent) return null;
+        return (
+          <div key={id} style={{ position: "absolute", left: CANDIDATURE_CHILDREN_CX[i] - CHILD_SIZE / 2, top: Y_CANDIDATURE_CHILDREN }}>
+            <AgentCircle
+              agent={agent}
+              isSelected={selectedId === id}
+              onClick={() => onSelect(agent)}
+              size={CHILD_SIZE}
+            />
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -352,7 +475,6 @@ const fullscreenStyles = `
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function AgentsDashboard() {
-  const [tree, setTree] = useState<AgentNode | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedAgent, setSelectedAgent] = useState<AgentNode | null>(null);
   const [logs, setLogs] = useState<AgentLog[]>([]);
@@ -371,40 +493,36 @@ export default function AgentsDashboard() {
     return () => document.body.classList.remove("agents-canvas-active");
   }, []);
 
-  // Center tree once after first data load (after React has committed the new DOM)
-  useEffect(() => {
-    if (tree && !hasCentered.current && canvasRef.current) {
-      hasCentered.current = true;
-      requestAnimationFrame(() => {
-        if (canvasRef.current) centerTree(canvasRef.current, tree);
-      });
-    }
-  }, [tree]);
-
-  useEffect(() => {
-    void fetchTree();
-  }, []);
-
-  function centerTree(canvasEl: HTMLDivElement, treeData: AgentNode) {
+  const centerTree = useCallback((canvasEl: HTMLDivElement) => {
     const { width: cw, height: ch } = canvasEl.getBoundingClientRect();
-    const childCount = treeData.children?.length ?? 1;
-    const treeW = childCount * HORIZONTAL_SPACING;
-    const treeH = VERTICAL_GAP + CHILD_SIZE + 32;
-
-    const fitZoom = Math.min((cw - 80) / treeW, (ch - 100) / treeH, 1.2);
+    const treeW = FREE_CX[FREE_CX.length - 1] * 2 + CHILD_SIZE + 80; // ~780px
+    const treeH = Y_CANDIDATURE_CHILDREN + CHILD_SIZE + 80;           // ~776px
+    const fitZoom = Math.min((cw - 80) / treeW, (ch - 80) / treeH, 1.2);
     const z = Math.max(0.3, Math.min(fitZoom, 1.5));
     setZoom(z);
     setPan({
       x: cw / 2,
       y: Math.max(60, (ch - treeH * z) / 2 + 24),
     });
-  }
+  }, []);
+
+  // Center once after loading completes (canvas is in the DOM)
+  useEffect(() => {
+    if (!hasCentered.current && !loading && canvasRef.current) {
+      hasCentered.current = true;
+      requestAnimationFrame(() => {
+        if (canvasRef.current) centerTree(canvasRef.current);
+      });
+    }
+  }, [loading, centerTree]);
+
+  useEffect(() => {
+    void fetchTree();
+  }, []);
 
   async function fetchTree() {
     try {
-      const res = await fetch("/api/maestro");
-      const data: AgentTree = await res.json();
-      setTree(data.tree);
+      await fetch("/api/maestro");
     } catch (e) {
       console.error("Failed to fetch agent tree", e);
     } finally {
@@ -451,8 +569,8 @@ export default function AgentsDashboard() {
   }
 
   const resetView = useCallback(() => {
-    if (canvasRef.current && tree) centerTree(canvasRef.current, tree);
-  }, [tree]);
+    if (canvasRef.current) centerTree(canvasRef.current);
+  }, [centerTree]);
 
   const handleWheel = useCallback((e: React.WheelEvent) => {
     e.preventDefault();
@@ -570,15 +688,12 @@ export default function AgentsDashboard() {
           <rect width="100%" height="100%" fill="url(#agentGrid)" />
         </svg>
 
-        {tree && (
-          <AgentTreeCanvas
-            tree={tree}
-            zoom={zoom}
-            pan={pan}
-            selectedId={selectedAgent?.id ?? null}
-            onSelect={handleAgentClick}
-          />
-        )}
+        <HierarchyCanvas
+          zoom={zoom}
+          pan={pan}
+          selectedId={selectedAgent?.id ?? null}
+          onSelect={handleAgentClick}
+        />
       </div>
 
       {selectedAgent && (
