@@ -123,12 +123,31 @@ const FREE_AGENTS          = ["auth", "reservations", "calendrier", "contrat", "
 const MAESTRO_CHILDREN     = ["booking", "candidature", "notifications"] as const;
 const CANDIDATURE_CHILDREN = ["candidature_classic", "candidature_ai"] as const;
 
-// Build lookup: id → AgentNode (static fake node for rendering)
+// Build lookup: id → AgentNode (static node for rendering — status comes from health polling)
 function agentDefToNode(def: AgentDef): AgentNode {
   return { id: def.id, name: def.name, emoji: "", description: def.description, status: "online" };
 }
 const AGENT_MAP: Record<string, AgentNode> = Object.fromEntries(
   AGENTS.map((a) => [a.id, agentDefToNode(a)])
+);
+
+// ─── Health status ─────────────────────────────────────────────────────────────
+
+type AgentHealthStatus = "online" | "offline" | "unknown" | "loading";
+
+const STATUS_DOT_COLOR: Record<AgentHealthStatus, string> = {
+  online:  "#16a34a",
+  offline: "#dc2626",
+  unknown: "#9ca3af",
+  loading: "#f59e0b",
+};
+
+/** Comma-separated list of all agent IDs sent as query param to the health endpoint. */
+const ALL_AGENT_IDS = AGENTS.map((a) => a.id).join(",");
+
+/** Initial statuses: all agents start as "loading" until the first health fetch resolves. */
+const INITIAL_STATUSES: Record<string, AgentHealthStatus> = Object.fromEntries(
+  AGENTS.map((a) => [a.id, "loading" as AgentHealthStatus])
 );
 
 // ─── Agent circle ─────────────────────────────────────────────────────────────
@@ -138,11 +157,13 @@ function AgentCircle({
   isSelected,
   onClick,
   size = 50,
+  status = "unknown",
 }: {
   agent: AgentNode;
   isSelected: boolean;
   onClick: () => void;
   size?: number;
+  status?: AgentHealthStatus;
 }) {
   const c = getColor(agent.id);
   const Icon = c.icon;
@@ -162,12 +183,14 @@ function AgentCircle({
         }}
       >
         <Icon size={iconSize} style={{ color: isSelected ? "white" : c.color }} />
-        {agent.status === "online" && (
-          <span
-            className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-white"
-            style={{ backgroundColor: "#22c55e", animation: "agentPulse 2s ease-in-out infinite" }}
-          />
-        )}
+        {/* Health-status dot — always visible, color reflects real liveness */}
+        <span
+          className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-white"
+          style={{
+            backgroundColor: STATUS_DOT_COLOR[status],
+            animation: "agentPulse 2s ease-in-out infinite",
+          }}
+        />
       </div>
       <span
         className="text-sm font-medium tracking-tight"
@@ -313,11 +336,13 @@ function HierarchyCanvas({
   pan,
   selectedId,
   onSelect,
+  statuses,
 }: {
   zoom: number;
   pan: { x: number; y: number };
   selectedId: string | null;
   onSelect: (agent: AgentNode) => void;
+  statuses: Record<string, AgentHealthStatus>;
 }) {
   // Centers (Y) for Bezier control points
   const maestroCY    = Y_MAESTRO            + MAESTRO_SIZE / 2;
@@ -390,6 +415,7 @@ function HierarchyCanvas({
               isSelected={selectedId === id}
               onClick={() => onSelect(agent)}
               size={CHILD_SIZE}
+              status={statuses[id] ?? "loading"}
             />
           </div>
         );
@@ -402,6 +428,7 @@ function HierarchyCanvas({
           isSelected={selectedId === "maestro"}
           onClick={() => onSelect(AGENT_MAP["maestro"]!)}
           size={MAESTRO_SIZE}
+          status={statuses["maestro"] ?? "loading"}
         />
       </div>
 
@@ -416,6 +443,7 @@ function HierarchyCanvas({
               isSelected={selectedId === id}
               onClick={() => onSelect(agent)}
               size={CHILD_SIZE}
+              status={statuses[id] ?? "loading"}
             />
           </div>
         );
@@ -432,6 +460,7 @@ function HierarchyCanvas({
               isSelected={selectedId === id}
               onClick={() => onSelect(agent)}
               size={CHILD_SIZE}
+              status={statuses[id] ?? "loading"}
             />
           </div>
         );
@@ -476,6 +505,7 @@ const fullscreenStyles = `
 
 export default function AgentsDashboard() {
   const [loading, setLoading] = useState(true);
+  const [agentStatuses, setAgentStatuses] = useState<Record<string, AgentHealthStatus>>(INITIAL_STATUSES);
   const [selectedAgent, setSelectedAgent] = useState<AgentNode | null>(null);
   const [logs, setLogs] = useState<AgentLog[]>([]);
   const [testResult, setTestResult] = useState<string | null>(null);
@@ -516,19 +546,29 @@ export default function AgentsDashboard() {
     }
   }, [loading, centerTree]);
 
-  useEffect(() => {
-    void fetchTree();
+  // ── Health polling ──────────────────────────────────────────────────────────
+
+  const fetchStatuses = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/admin/agents-health?ids=${ALL_AGENT_IDS}`);
+      if (res.ok) {
+        const data = (await res.json()) as { results: Record<string, "online" | "offline" | "unknown"> };
+        setAgentStatuses((prev) => ({ ...prev, ...data.results }));
+      }
+    } catch {
+      // Network errors silently ignored — statuses keep their last known value
+    } finally {
+      // Move out of global "loading" after the very first attempt (success or not)
+      setLoading((prev) => (prev ? false : prev));
+    }
   }, []);
 
-  async function fetchTree() {
-    try {
-      await fetch("/api/maestro");
-    } catch (e) {
-      console.error("Failed to fetch agent tree", e);
-    } finally {
-      setLoading(false);
-    }
-  }
+  // Immediate fetch on mount + 30 s polling interval
+  useEffect(() => {
+    void fetchStatuses();
+    const interval = setInterval(() => void fetchStatuses(), 30_000);
+    return () => clearInterval(interval);
+  }, [fetchStatuses]);
 
   async function fetchLogs(agentId: string) {
     try {
@@ -561,7 +601,7 @@ export default function AgentsDashboard() {
         }),
       });
       setTestResult(JSON.stringify(await res.json(), null, 2));
-      void fetchTree();
+      void fetchStatuses();
       if (selectedAgent) void fetchLogs(selectedAgent.id);
     } catch (e) {
       setTestResult(`Erreur : ${(e as Error).message}`);
@@ -642,9 +682,9 @@ export default function AgentsDashboard() {
           </button>
           <div className="w-px h-4 bg-gray-200 mx-1.5" />
           <button
-            onClick={() => void fetchTree()}
+            onClick={() => void fetchStatuses()}
             className="p-1.5 rounded-lg hover:bg-gray-100 transition"
-            title="Rafraîchir"
+            title="Rafraîchir le statut des agents"
           >
             <RefreshCw size={14} className="text-gray-500" />
           </button>
@@ -693,6 +733,7 @@ export default function AgentsDashboard() {
           pan={pan}
           selectedId={selectedAgent?.id ?? null}
           onSelect={handleAgentClick}
+          statuses={agentStatuses}
         />
       </div>
 
