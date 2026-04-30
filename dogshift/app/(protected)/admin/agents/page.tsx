@@ -210,12 +210,14 @@ function AgentModal({
   onClose,
   onTestAction,
   testResult,
+  status = "unknown",
 }: {
   agent: AgentNode;
   logs: AgentLog[];
   onClose: () => void;
   onTestAction: (action: string) => void;
   testResult: string | null;
+  status?: AgentHealthStatus;
 }) {
   const c = getColor(agent.id);
   const Icon = c.icon;
@@ -250,9 +252,15 @@ function AgentModal({
 
         <div className="px-6 py-4 max-h-[50vh] overflow-y-auto space-y-4">
           <div className="flex items-center gap-2 text-sm">
-            <span className={`w-2 h-2 rounded-full ${agent.status === "online" ? "bg-green-500" : "bg-red-500"}`} />
+            <span
+              className="w-2 h-2 rounded-full"
+              style={{ backgroundColor: STATUS_DOT_COLOR[status] }}
+            />
             <span className="text-gray-600 font-medium">
-              {agent.status === "online" ? "En ligne" : "Hors ligne"}
+              {status === "online"  ? "En ligne"     :
+               status === "offline" ? "Hors ligne"   :
+               status === "loading" ? "Vérification…" :
+                                      "Inconnu"}
             </span>
             {agent.lastLog && (
               <span className="text-gray-400 text-xs ml-auto flex items-center gap-1">
@@ -742,6 +750,7 @@ export default function AgentsDashboard() {
           agent={selectedAgent}
           logs={logs}
           testResult={testResult}
+          status={agentStatuses[selectedAgent.id] ?? "unknown"}
           onClose={() => {
             setSelectedAgent(null);
             setTestResult(null);
