@@ -2974,47 +2974,43 @@ function ZootherapieSection() {
     <section
       ref={reveal.ref}
       style={reveal.style}
-      className="relative overflow-hidden h-[420px] md:h-[520px]"
+      className="flex flex-col md:flex-row h-auto md:h-[460px]"
     >
-      {/* Background image */}
-      <img
-        src="/images/zootherapie/zootherapie2.jpg"
-        alt="Jeune femme serrant tendrement un golden retriever dans ses bras"
-        className="absolute inset-0 h-full w-full object-cover"
-        style={{ objectPosition: "center 65%" }}
-      />
-
-      {/* Gradient overlay — heavier on left for legibility */}
-      <div aria-hidden className="absolute inset-0 bg-gradient-to-r from-slate-900/85 via-slate-900/50 to-transparent" />
-
-      {/* Text content */}
-      <div className="absolute inset-0 flex items-end md:items-center pb-10 md:pb-0">
-        <div className="mx-auto max-w-6xl px-6 sm:px-10 w-full">
-          <div className="max-w-md">
-            {/* Badge */}
-            <div className="flex items-center gap-2 mb-5">
-              <div className="h-px w-8 bg-violet-400" />
-              <span className="text-violet-300 text-xs font-semibold uppercase tracking-widest">
-                Science &amp; bien-être
-              </span>
-            </div>
-
-            <h2 className="text-white text-2xl md:text-3xl font-bold leading-tight">
-              Votre chien vous fait du bien — le saviez-vous ?
-            </h2>
-            <p className="mt-3 text-white/70 text-sm leading-relaxed sm:text-base">
-              La zoothérapie montre que la présence d&apos;un chien réduit le stress, combat la solitude et améliore l&apos;humeur. Évaluez gratuitement votre bien-être avec votre compagnon.
-            </p>
-
-            <Link
-              href="/zootherapie"
-              className="mt-6 inline-flex items-center gap-2 rounded-2xl bg-violet-600 px-6 py-3 text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:bg-violet-500 active:scale-[0.98]"
-            >
-              Faire mon évaluation gratuite
-              <ArrowRight className="h-4 w-4" aria-hidden="true" />
-            </Link>
-          </div>
+      {/* Left — violet panel */}
+      <div className="relative flex items-center md:w-2/5 bg-gradient-to-br from-violet-950 via-violet-800 to-indigo-700 px-8 py-14 sm:px-12 md:px-14">
+        {/* Subtle pattern overlay */}
+        <div aria-hidden className="absolute inset-0 opacity-10" style={{backgroundImage:"radial-gradient(circle at 20% 80%, #fff 1px, transparent 1px), radial-gradient(circle at 80% 20%, #fff 1px, transparent 1px)", backgroundSize:"40px 40px"}} />
+        <div className="relative z-10 max-w-sm">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-xs font-semibold tracking-wide text-violet-200 mb-5 border border-white/10">
+            <Sparkles className="h-3 w-3" aria-hidden="true" />
+            Science &amp; bien-être
+          </span>
+          <h2 className="text-white text-2xl sm:text-3xl font-bold leading-tight">
+            Votre chien vous fait du bien — le saviez-vous ?
+          </h2>
+          <p className="mt-4 text-violet-200 text-sm leading-relaxed">
+            La zoothérapie montre que la présence d&apos;un chien réduit le stress, combat la solitude et améliore l&apos;humeur. Évaluez gratuitement votre bien-être avec votre compagnon.
+          </p>
+          <Link
+            href="/zootherapie"
+            className="mt-7 inline-flex items-center gap-2 rounded-2xl bg-white px-6 py-3 text-sm font-semibold text-violet-800 shadow-sm transition-all duration-200 hover:bg-violet-50 active:scale-[0.98]"
+          >
+            Faire mon évaluation gratuite
+            <ArrowRight className="h-4 w-4" aria-hidden="true" />
+          </Link>
         </div>
+      </div>
+
+      {/* Right — image */}
+      <div className="relative md:w-3/5 h-64 md:h-auto">
+        <img
+          src="/images/zootherapie/zootherapie2.jpg"
+          alt="Jeune femme serrant tendrement un golden retriever dans ses bras"
+          className="absolute inset-0 h-full w-full object-cover"
+          style={{ objectPosition: "center 55%" }}
+        />
+        {/* Subtle left fade to blend with violet panel */}
+        <div aria-hidden className="absolute inset-0 bg-gradient-to-r from-indigo-700/40 to-transparent" />
       </div>
     </section>
   );
