@@ -5,7 +5,7 @@ import { anthropic } from "@ai-sdk/anthropic";
 import { prisma } from "@/lib/prisma";
 import { checkAgentActive } from "@/lib/agent-guard";
 import { sendEmail } from "@/lib/email/sendEmail";
-import { renderEmailLayout } from "@/lib/email/templates/layout";
+import { renderZootherapieEmail } from "@/lib/email/templates/zootherapieEmail";
 
 // ====================================================================
 // AGENT ZOOTHERAPIE EVALUATION
@@ -134,23 +134,13 @@ export async function POST(req: NextRequest) {
         value: para.trim(),
       }));
 
-    const { html } = renderEmailLayout({
-      title: evaluation.titre,
-      subtitle: `Bonjour ${prenom}, voici votre évaluation bien-être personnalisée 🐾`,
-      summaryTitle: "Votre analyse zoothérapeutique",
-      summaryRows: [
-        ...analyseRows,
-        { label: "Conseil pratique", value: evaluation.conseil },
-        { label: "Pour conclure", value: evaluation.conclusion },
-      ],
-      ctaLabel: "Découvrir DogShift →",
-      ctaUrl: baseUrl,
-      secondaryLinkLabel: "Trouver un dog-sitter vérifié",
-      secondaryLinkUrl: `${baseUrl}/search`,
-      footerText:
-        "Vous recevez cet email car vous avez participé à l'évaluation bien-être sur dogshift.ch. " +
-        "DogShift • support@dogshift.ch",
-      footerLinks: [{ label: "dogshift.ch", url: baseUrl }],
+    const { html } = renderZootherapieEmail({
+      baseUrl,
+      prenom,
+      titre: evaluation.titre,
+      analyseRows,
+      conseil: evaluation.conseil,
+      conclusion: evaluation.conclusion,
     });
 
     const text =
@@ -162,7 +152,7 @@ export async function POST(req: NextRequest) {
 
     await sendEmail({
       to: email,
-      subject: "Votre évaluation bien-être personnalisée 🐾",
+      subject: "Votre évaluation bien-être personnalisée",
       text,
       html,
     });

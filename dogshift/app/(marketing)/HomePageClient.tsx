@@ -2971,38 +2971,44 @@ function CareersSection() {
 function ZootherapieSection() {
   const reveal = useRevealOnce({ repeat: true });
   return (
-    <section className="bg-white py-16 sm:py-20">
-      <div className="mx-auto max-w-5xl px-6 sm:px-8 lg:px-10">
-        <div
-          ref={reveal.ref}
-          style={reveal.style}
-          className="overflow-hidden rounded-3xl border border-violet-100 shadow-sm flex flex-col md:flex-row"
-        >
-          {/* Image */}
-          <div className="relative md:w-2/5 h-56 md:h-auto shrink-0">
-            <img
-              src="/images/zootherapie/zootherapie2.jpg"
-              alt="Zoothérapie — lien entre l'humain et le chien"
-              className="absolute inset-0 h-full w-full object-cover object-center"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent md:bg-gradient-to-r md:from-transparent md:to-transparent" />
-          </div>
+    <section
+      ref={reveal.ref}
+      style={reveal.style}
+      className="relative overflow-hidden h-[420px] md:h-[520px]"
+    >
+      {/* Background image */}
+      <img
+        src="/images/zootherapie/zootherapie2.jpg"
+        alt="Jeune femme serrant tendrement un golden retriever dans ses bras"
+        className="absolute inset-0 h-full w-full object-cover"
+        style={{ objectPosition: "center 65%" }}
+      />
 
-          {/* Content */}
-          <div className="bg-gradient-to-br from-violet-50 to-white p-8 sm:p-10 flex flex-col justify-center md:w-3/5">
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-violet-100 px-3 py-1 text-xs font-semibold tracking-wide text-violet-700 w-fit mb-4">
-              <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
-              Évaluation gratuite
-            </span>
-            <h2 className="text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">
+      {/* Gradient overlay — heavier on left for legibility */}
+      <div aria-hidden className="absolute inset-0 bg-gradient-to-r from-slate-900/85 via-slate-900/50 to-transparent" />
+
+      {/* Text content */}
+      <div className="absolute inset-0 flex items-end md:items-center pb-10 md:pb-0">
+        <div className="mx-auto max-w-6xl px-6 sm:px-10 w-full">
+          <div className="max-w-md">
+            {/* Badge */}
+            <div className="flex items-center gap-2 mb-5">
+              <div className="h-px w-8 bg-violet-400" />
+              <span className="text-violet-300 text-xs font-semibold uppercase tracking-widest">
+                Science &amp; bien-être
+              </span>
+            </div>
+
+            <h2 className="text-white text-2xl md:text-3xl font-bold leading-tight">
               Votre chien vous fait du bien — le saviez-vous ?
             </h2>
-            <p className="mt-3 text-sm leading-relaxed text-slate-500 sm:text-base">
+            <p className="mt-3 text-white/70 text-sm leading-relaxed sm:text-base">
               La zoothérapie montre que la présence d&apos;un chien réduit le stress, combat la solitude et améliore l&apos;humeur. Évaluez gratuitement votre bien-être avec votre compagnon.
             </p>
+
             <Link
               href="/zootherapie"
-              className="mt-6 inline-flex items-center gap-2 rounded-2xl bg-violet-600 px-6 py-3 text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:bg-violet-700 active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-600 w-fit"
+              className="mt-6 inline-flex items-center gap-2 rounded-2xl bg-violet-600 px-6 py-3 text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:bg-violet-500 active:scale-[0.98]"
             >
               Faire mon évaluation gratuite
               <ArrowRight className="h-4 w-4" aria-hidden="true" />
