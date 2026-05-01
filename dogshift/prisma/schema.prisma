@@ -904,6 +904,20 @@ model AgentTask {
 model LeadMagnet {
   id         String   @id @default(cuid())
   email      String   @unique
+  prenom     String?
   source     String   @default("homepage_banner")
   capturedAt DateTime @default(now())
+}
+
+model ScheduledEmail {
+  id        String    @id @default(cuid())
+  userId    String
+  email     String
+  type      String
+  sendAfter DateTime
+  sent      Boolean   @default(false)
+  sentAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([sent, sendAfter])
 }

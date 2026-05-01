@@ -58,15 +58,20 @@ export default function LeadMagnetBanner() {
     if (!email || status === "loading" || status === "success") return;
     setStatus("loading");
     try {
-      const res = await fetch("/api/lead-magnet", {
+      const res = await fetch("/api/agents/lead-magnet", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, source: "homepage_banner" }),
       });
       if (res.ok) {
-        setStatus("success");
-        // Auto-dismiss after success
-        setTimeout(dismiss, 2_800);
+        const data = (await res.json()) as { success: boolean; reason?: string };
+        // Treat "already_exists" as success — user still gets a good UX
+        if (data.success || data.reason === "already_exists") {
+          setStatus("success");
+          setTimeout(dismiss, 2_800);
+        } else {
+          setStatus("error");
+        }
       } else {
         setStatus("error");
       }

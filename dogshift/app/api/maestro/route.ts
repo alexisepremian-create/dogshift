@@ -6,6 +6,7 @@ const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || "https://dogshift.vercel.ap
 interface AgentRoute {
   url: string;
   method: "POST" | "GET";
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   body?: Record<string, any>;
 }
 
@@ -65,6 +66,14 @@ const AGENT_REGISTRY: Record<string, AgentRoute> = {
   },
   calendrier_booking: {
     url: `${BASE_URL}/api/agents/calendrier`,
+    method: "POST",
+  },
+  lead_magnet_captured: {
+    url: `${BASE_URL}/api/agents/lead-magnet`,
+    method: "POST",
+  },
+  owner_registered: {
+    url: `${BASE_URL}/api/agents/onboarding-owner`,
     method: "POST",
   },
 };
@@ -143,6 +152,22 @@ export const AGENTS_TREE = {
       status: "online",
       actions: ["calendrier_booking"],
     },
+    {
+      id: "lead-magnet",
+      name: "Lead Magnet Agent",
+      emoji: "📧",
+      description: "Capture les leads email et envoie le guide gratuit DogShift",
+      status: "online",
+      actions: ["lead_magnet_captured"],
+    },
+    {
+      id: "onboarding-owner",
+      name: "Onboarding Owner Agent",
+      emoji: "🏠",
+      description: "Onboarding des nouveaux propriétaires : email de bienvenue + suivi J+3",
+      status: "online",
+      actions: ["owner_registered"],
+    },
   ],
 };
 
@@ -166,6 +191,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Construire le body avec les paramètres reçus
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const requestBody: Record<string, any> = { ...(route.body || {}) };
     for (const [key, value] of Object.entries(params)) {
       if (value !== undefined) {
