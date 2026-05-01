@@ -72,10 +72,15 @@ export async function GET(req: NextRequest) {
       };
     };
 
-    // ?archived=1 to fetch only archived items; otherwise exclude them
+    // ?archived=1 to fetch only archived items; otherwise show all active ones.
+    // We use an explicit IN list rather than { not: "ARCHIVED" } to avoid
+    // runtime errors when the production DB enum hasn't been migrated yet.
     const showArchived = req.nextUrl.searchParams.get("archived") === "1";
+    const ACTIVE_STATUSES = ["PENDING", "CONTACTED", "ACCEPTED", "ACTIVATED", "REJECTED"];
     const items = await db.pilotSitterApplication.findMany({
-      where: showArchived ? { status: "ARCHIVED" } : { status: { not: "ARCHIVED" } } as unknown as Record<string, unknown>,
+      where: (showArchived
+        ? { status: "ARCHIVED" }
+        : { status: { in: ACTIVE_STATUSES } }) as unknown as Record<string, unknown>,
       orderBy: { createdAt: "desc" },
     });
 
