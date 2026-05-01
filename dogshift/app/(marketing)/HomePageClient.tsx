@@ -20,6 +20,7 @@ import {
   Search,
   Shield,
   ShieldCheck,
+  Sparkles,
   Umbrella,
   UserCheck,
   UserPlus,
@@ -2971,26 +2972,42 @@ function ZootherapieSection() {
   const reveal = useRevealOnce({ repeat: true });
   return (
     <section className="bg-white py-16 sm:py-20">
-      <div className="mx-auto max-w-4xl px-6 sm:px-8 lg:px-10">
+      <div className="mx-auto max-w-5xl px-6 sm:px-8 lg:px-10">
         <div
           ref={reveal.ref}
           style={reveal.style}
-          className="rounded-3xl border border-violet-100 bg-gradient-to-br from-violet-50 to-white p-8 sm:p-12 text-center shadow-sm"
+          className="overflow-hidden rounded-3xl border border-violet-100 shadow-sm flex flex-col md:flex-row"
         >
-          <span className="text-3xl" aria-hidden="true">🐾</span>
-          <h2 className="mt-4 text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">
-            Votre chien vous fait du bien — le saviez-vous ?
-          </h2>
-          <p className="mt-3 text-sm leading-relaxed text-slate-500 sm:text-base max-w-xl mx-auto">
-            La zoothérapie montre que la présence d&apos;un chien réduit le stress, combat la solitude et améliore l&apos;humeur. Évaluez gratuitement votre bien-être avec votre compagnon.
-          </p>
-          <Link
-            href="/zootherapie"
-            className="mt-6 inline-flex items-center justify-center gap-2 rounded-2xl bg-violet-600 px-6 py-3 text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:bg-violet-700 active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-600"
-          >
-            Faire mon évaluation gratuite
-            <ArrowRight className="h-4 w-4" aria-hidden="true" />
-          </Link>
+          {/* Image */}
+          <div className="relative md:w-2/5 h-56 md:h-auto shrink-0">
+            <img
+              src="/images/zootherapie/zootherapie2.jpg"
+              alt="Zoothérapie — lien entre l'humain et le chien"
+              className="absolute inset-0 h-full w-full object-cover object-center"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent md:bg-gradient-to-r md:from-transparent md:to-transparent" />
+          </div>
+
+          {/* Content */}
+          <div className="bg-gradient-to-br from-violet-50 to-white p-8 sm:p-10 flex flex-col justify-center md:w-3/5">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-violet-100 px-3 py-1 text-xs font-semibold tracking-wide text-violet-700 w-fit mb-4">
+              <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
+              Évaluation gratuite
+            </span>
+            <h2 className="text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">
+              Votre chien vous fait du bien — le saviez-vous ?
+            </h2>
+            <p className="mt-3 text-sm leading-relaxed text-slate-500 sm:text-base">
+              La zoothérapie montre que la présence d&apos;un chien réduit le stress, combat la solitude et améliore l&apos;humeur. Évaluez gratuitement votre bien-être avec votre compagnon.
+            </p>
+            <Link
+              href="/zootherapie"
+              className="mt-6 inline-flex items-center gap-2 rounded-2xl bg-violet-600 px-6 py-3 text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:bg-violet-700 active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-600 w-fit"
+            >
+              Faire mon évaluation gratuite
+              <ArrowRight className="h-4 w-4" aria-hidden="true" />
+            </Link>
+          </div>
         </div>
       </div>
     </section>
