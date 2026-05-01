@@ -24,6 +24,8 @@ const ROUTE_MAP: Record<string, string | null> = {
   activation:          "/api/agents/activation",
   booking:             "/api/agents/booking",
   notifications:       "/api/agents/notification",
+  "lead-magnet":       "/api/agents/lead-magnet",
+  "onboarding-owner":  "/api/agents/onboarding-owner",
   // No dedicated route yet
   auth:                null,
   reservations:        null,

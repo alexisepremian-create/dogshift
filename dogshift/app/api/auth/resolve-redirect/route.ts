@@ -29,6 +29,22 @@ export async function GET() {
         where: { id: ensured.id },
         select: { id: true, role: true, email: true, sitterId: true },
       });
+
+      // Fire-and-forget onboarding for brand-new OWNER accounts
+      if (ensured.created && ensured.role === "OWNER" && dbUser?.email) {
+        const appUrl = (
+          process.env.NEXT_PUBLIC_APP_URL ??
+          process.env.NEXT_PUBLIC_BASE_URL ??
+          ""
+        ).replace(/\/$/, "");
+        if (appUrl) {
+          void fetch(`${appUrl}/api/agents/onboarding-owner`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email: dbUser.email, userId: ensured.id }),
+          }).catch(() => {});
+        }
+      }
     }
 
     const sitterProfile = await prisma.sitterProfile.findUnique({
