@@ -323,97 +323,67 @@ export async function POST(req: NextRequest) {
       };
     };
 
-    const created = await db.pilotSitterApplication.create({
-      data: {
-        // Legacy / required
-        firstName,
-        lastName,
-        city,
-        email,
-        phone,
-        age,
-        experienceText,
-        hasDogExperience,
-        motivationText,
-        availabilityText,
-        consentInterview,
-        consentPrivacy,
-
-        // Structured (all nullable / defaulted in schema)
-        npa,
-        cityOther,
-        linkAnimalProfession,
-        linkAnimalProfessionOther,
-        gardeExperienceLevel,
-        availabilityStructured: availabilityStructured ?? undefined,
-        gardeTypes,
-        dogSizes,
-        housingType,
-        housingTypeOther,
-        otherAnimals: otherAnimals ?? undefined,
-        otherAnimalsDogCount,
-        hasCarLicense,
-        allergies,
-
-        // Tracking
-        utmSource,
-        utmMedium,
-        utmCampaign,
-        utmContent,
-        utmTerm,
-        referrer,
-        userAgent,
-        ip,
-        idempotencyKey,
-      },
-      select: { id: true, email: true, firstName: true },
-    });
+    // DB insert — isolated so a duplicate never blocks scoring/email/Telegram
+    let applicationId: string | null = null;
+    try {
+      const created = await db.pilotSitterApplication.create({
+        data: {
+          firstName, lastName, city, email, phone, age,
+          experienceText, hasDogExperience, motivationText, availabilityText,
+          consentInterview, consentPrivacy,
+          npa, cityOther, linkAnimalProfession, linkAnimalProfessionOther,
+          gardeExperienceLevel, availabilityStructured: availabilityStructured ?? undefined,
+          gardeTypes, dogSizes, housingType, housingTypeOther,
+          otherAnimals: otherAnimals ?? undefined, otherAnimalsDogCount,
+          hasCarLicense, allergies,
+          utmSource, utmMedium, utmCampaign, utmContent, utmTerm,
+          referrer, userAgent, ip, idempotencyKey,
+        },
+        select: { id: true },
+      });
+      applicationId = created.id;
+    } catch (dbErr) {
+      // Duplicate or other DB error — still run scoring/email/Telegram below
+      console.warn("[api][sitter-applications] db insert failed (duplicate?)", dbErr);
+    }
 
     // ---------------------------------------------------------------
-    // Inline processing — no HTTP self-calls (unreliable on Vercel).
-    // All operations run synchronously before the response is sent.
+    // Inline processing — always runs, even on duplicate submissions.
+    // No HTTP self-calls (unreliable on Vercel).
     // ---------------------------------------------------------------
 
     const scoringStart = performance.now();
 
-    // 1. Score the application
+    // 1. Score
     const scoreResult = calculateCandidatureScore({
-      firstName,
-      lastName,
-      email,
-      phone,
-      city,
-      cityOther,
-      npa,
-      linkAnimalProfession,
-      gardeExperienceLevel,
-      experience: experienceText,
-      motivation: motivationText,
+      firstName, lastName, email, phone, city, cityOther, npa,
+      linkAnimalProfession, gardeExperienceLevel,
+      experience: experienceText, motivation: motivationText,
       availabilityStructured: availabilityStructured ?? null,
-      gardeTypes,
-      dogSizes,
-      hasCarLicense,
-      applicationId: created.id,
+      gardeTypes, dogSizes, hasCarLicense,
+      applicationId: applicationId ?? undefined,
     });
 
-    // 2. Log scoring result
-    try {
-      await prisma.agentLog.create({
-        data: {
-          agentName: "candidature",
-          actionType: "apply",
-          summary: `Candidature ${firstName} ${lastName} → ${scoreResult.decision} (${scoreResult.score}/100)`,
-          details: { email, decision: scoreResult.decision, score: scoreResult.score },
-          targetId: created.id,
-          durationMs: Math.round(performance.now() - scoringStart),
-          status: "success",
-        },
-      });
-    } catch (err) {
-      console.warn("[api][sitter-applications] agent log failed", err);
+    // 2. Log
+    if (applicationId) {
+      try {
+        await prisma.agentLog.create({
+          data: {
+            agentName: "candidature",
+            actionType: "apply",
+            summary: `Candidature ${firstName} ${lastName} → ${scoreResult.decision} (${scoreResult.score}/100)`,
+            details: { email, decision: scoreResult.decision, score: scoreResult.score },
+            targetId: applicationId,
+            durationMs: Math.round(performance.now() - scoringStart),
+            status: "success",
+          },
+        });
+      } catch (err) {
+        console.warn("[api][sitter-applications] agent log failed", err);
+      }
     }
 
-    // 3. Telegram notification (always send, not only for HIGH/REVIEW)
+    // 3. Telegram
     const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || "";
     const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID || "977094430";
     if (TELEGRAM_BOT_TOKEN) {
@@ -429,7 +399,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 4. Confirmation email to candidate
+    // 4. Confirmation email
     const baseUrl = (process.env.NEXT_PUBLIC_APP_URL ?? process.env.NEXT_PUBLIC_BASE_URL ?? "https://www.dogshift.ch").replace(/\/$/, "");
     try {
       const { html } = renderEmailLayout({
@@ -456,12 +426,8 @@ export async function POST(req: NextRequest) {
       console.warn("[api][sitter-applications] confirmation email failed", err);
     }
 
-    return NextResponse.json({ ok: true, id: created.id, score: scoreResult.score, decision: scoreResult.decision }, { status: 200 });
+    return NextResponse.json({ ok: true, id: applicationId, score: scoreResult.score, decision: scoreResult.decision }, { status: 200 });
   } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : "";
-    if (msg.toLowerCase().includes("unique") || msg.toLowerCase().includes("constraint")) {
-      return NextResponse.json({ ok: true }, { status: 200 });
-    }
     console.error("[api][sitter-applications][POST] error", err);
     return NextResponse.json({ ok: false, error: "INTERNAL_ERROR" }, { status: 500 });
   }
