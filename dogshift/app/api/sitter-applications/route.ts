@@ -27,8 +27,9 @@ import {
 
 import {
   buildApplicationScoringPayload,
-  triggerApplicationScoring,
 } from "@/lib/integrations/triggerApplicationScoring";
+import { sendEmail } from "@/lib/email/sendEmail";
+import { renderEmailLayout } from "@/lib/email/templates/layout";
 
 export const runtime = "nodejs";
 
@@ -370,48 +371,81 @@ export async function POST(req: NextRequest) {
       select: { id: true, email: true, firstName: true },
     });
 
-    // Best-effort push to the external n8n scoring workflow. Must never
-    // block or fail the application creation — if n8n is down, the
-    // candidate is still saved and will receive the generic confirmation
-    // email below.
-    try {
-      const scoringPayload = buildApplicationScoringPayload({
-        applicationId: created.id,
-        firstName,
-        lastName,
-        email,
-        phone,
-        city,
-        cityOther,
-        npa,
-        linkAnimalProfession,
-        linkAnimalProfessionOther,
-        gardeExperienceLevel,
-        experienceText,
-        motivationText,
-        availabilityStructured: availabilityStructured ?? null,
-        gardeTypes,
-        dogSizes,
-        housingType,
-        hasCarLicense,
-      });
-      const result = await triggerApplicationScoring(scoringPayload);
-      if (!result.ok && result.reason !== "disabled") {
-        console.warn("[api][sitter-applications] n8n scoring trigger failed", {
-          applicationId: created.id,
-          reason: result.reason,
-          detail: result.detail,
-        });
-      }
-    } catch (err) {
-      console.warn("[api][sitter-applications] n8n scoring trigger threw", err);
-    }
+    const scoringPayload = buildApplicationScoringPayload({
+      applicationId: created.id,
+      firstName,
+      lastName,
+      email,
+      phone,
+      city,
+      cityOther,
+      npa,
+      linkAnimalProfession,
+      linkAnimalProfessionOther,
+      gardeExperienceLevel,
+      experienceText,
+      motivationText,
+      availabilityStructured: availabilityStructured ?? null,
+      gardeTypes,
+      dogSizes,
+      housingType,
+      hasCarLicense,
+    });
 
-    // Note — we used to send a generic "Candidature reçue" confirmation email
-    // here, but this produced two back-to-back emails for every HIGH/REVIEW
-    // candidate (the confirmation, then the n8n scoring email with the
-    // interview CTA or the status update). The n8n workflow now owns all
-    // applicant-facing emails so they get exactly one contextual message.
+    // Fire-and-forget: trigger the autonomous candidature-enriched agent
+    // (scoring + AI review + Telegram). Never blocks the response.
+    void (async () => {
+      try {
+        const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL ?? "").replace(/\/$/, "");
+        const agentUrl = baseUrl
+          ? `${baseUrl}/api/agents/candidature-enriched`
+          : null;
+        if (!agentUrl) {
+          console.warn("[api][sitter-applications] NEXT_PUBLIC_BASE_URL not set, skipping agent");
+          return;
+        }
+        const res = await fetch(agentUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(scoringPayload),
+        });
+        if (!res.ok) {
+          console.warn("[api][sitter-applications] candidature-enriched agent returned", res.status);
+        }
+      } catch (err) {
+        console.warn("[api][sitter-applications] candidature-enriched agent call failed", err);
+      }
+    })();
+
+    // Send confirmation email to the candidate
+    void (async () => {
+      try {
+        const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL ?? "https://www.dogshift.ch").replace(/\/$/, "");
+        const { html } = renderEmailLayout({
+          title: `Candidature reçue, ${firstName} !`,
+          subtitle: "Nous avons bien reçu ta candidature pour devenir dog-sitter DogShift.",
+          summaryTitle: "Prochaines étapes",
+          summaryRows: [
+            { label: "1. Analyse", value: "Nous analysons ton profil avec soin. Cette étape prend généralement 2 à 5 jours ouvrés." },
+            { label: "2. Contact", value: "Si ton profil correspond à nos critères, nous te contactons pour un mini entretien de validation." },
+            { label: "3. Activation", value: "Une fois validé, ton profil est activé et tu peux commencer à recevoir des demandes de garde." },
+          ],
+          ctaLabel: "Voir ma candidature →",
+          ctaUrl: baseUrl,
+          footerText: "Tu reçois cet email car tu as postulé pour devenir dog-sitter sur dogshift.ch. DogShift • support@dogshift.ch",
+          footerLinks: [{ label: "dogshift.ch", url: baseUrl }],
+        });
+        await sendEmail({
+          to: email,
+          subject: "Ta candidature DogShift a bien été reçue",
+          text: `Bonjour ${firstName},\n\nNous avons bien reçu ta candidature pour devenir dog-sitter DogShift.\n\nNous l'analysons avec soin et te recontactons sous 2 à 5 jours ouvrés si ton profil correspond à nos critères.\n\n— L'équipe DogShift\nhttps://www.dogshift.ch`,
+          html,
+        });
+      } catch (err) {
+        console.warn("[api][sitter-applications] confirmation email failed", err);
+      }
+    })();
+
     return NextResponse.json({ ok: true, id: created.id }, { status: 200 });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : "";
