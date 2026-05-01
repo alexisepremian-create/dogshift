@@ -138,16 +138,6 @@ export default function ZootherapiePage() {
                 en zoothérapie.
               </p>
 
-              <div className="mt-8 flex justify-center">
-                <Image
-                  src="/hero-illustration.svg"
-                  alt="Un chien et son maître se promènent ensemble"
-                  width={320}
-                  height={220}
-                  priority
-                  className="opacity-80"
-                />
-              </div>
             </div>
 
             {/* Right column — zootherapie1.jpg (hidden on mobile) */}
@@ -168,13 +158,14 @@ export default function ZootherapiePage() {
       </section>
 
       {/* PLACEMENT 2 — Full-width zootherapie2 between hero and science */}
-      <div className="relative overflow-hidden h-[280px] md:h-[420px]">
+      <div className="relative overflow-hidden h-[300px] md:h-[460px]">
         <Image
           src="/images/zootherapie/zootherapie2.jpg"
           alt="Jeune femme serrant tendrement un golden retriever dans ses bras, les yeux fermés"
           fill
           priority
-          className="object-cover object-top"
+          className="object-cover"
+          style={{ objectPosition: "center 65%" }}
         />
         <div aria-hidden className="absolute inset-0 bg-black/10" />
       </div>
@@ -201,34 +192,33 @@ export default function ZootherapiePage() {
             ))}
           </div>
 
-          {/* PLACEMENT 3 — zootherapie4 editorial accent after science cards */}
-          <div className="mt-16 max-w-sm mx-auto">
-            <div className="relative h-[500px] rounded-3xl overflow-hidden shadow-2xl">
+          {/* PLACEMENT 3 — zootherapie3 horizontal split after science cards */}
+          <div className="mt-16 flex flex-col md:flex-row md:items-center md:gap-0 overflow-hidden rounded-2xl shadow-xl">
+            {/* Image (left, 40%) */}
+            <div className="relative h-[280px] md:h-[400px] md:w-2/5 flex-shrink-0">
               <Image
-                src="/images/zootherapie/zootherapie4.jpg"
-                alt="Gros plan extrême sur l'œil expressif d'un chien"
+                src="/images/zootherapie/zootherapie3.jpg"
+                alt="Homme détendu se reposant aux côtés de son golden retriever"
                 fill
-                className="object-cover object-center"
+                className="object-cover object-center rounded-t-2xl md:rounded-l-2xl md:rounded-tr-none"
               />
             </div>
-            <p className="mt-4 text-center text-sm text-slate-400 italic">
-              Ce regard. Cette présence. Sans condition.
-            </p>
+            {/* Editorial text (right, 60%) */}
+            <div className="flex flex-col justify-center bg-slate-50 px-8 py-10 md:w-3/5 md:pl-12 md:pr-10 rounded-b-2xl md:rounded-r-2xl md:rounded-bl-none">
+              <h3 className="text-xl font-bold text-slate-900 mb-4">
+                Un lien qui se vit au quotidien
+              </h3>
+              <p className="text-slate-500 text-sm leading-relaxed">
+                Chaque promenade, chaque moment de silence partagé, chaque regard échangé — tout cela construit quelque chose de profond entre vous et votre chien. La zoothérapie ne se pratique pas uniquement en cabinet : elle se vit, chaque jour, dans la relation que vous entretenez avec lui.
+              </p>
+              <p className="mt-5 text-sm text-slate-400 italic">
+                Ce regard. Cette présence. Sans condition.
+              </p>
+            </div>
           </div>
 
         </div>
       </section>
-
-      {/* PLACEMENT 4 — Full-width zootherapie3 before form section */}
-      <div className="relative overflow-hidden h-[240px] md:h-[380px]">
-        <Image
-          src="/images/zootherapie/zootherapie3.jpg"
-          alt="Homme détendu se reposant aux côtés de son golden retriever"
-          fill
-          className="object-cover"
-          style={{ objectPosition: "center 30%" }}
-        />
-      </div>
 
       {/* ── Evaluation form ───────────────────────────────────────────────── */}
       <section className="bg-slate-50 py-14 sm:py-20">
