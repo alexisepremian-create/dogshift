@@ -20,7 +20,7 @@ const SERVICE_DISPLAY: Record<string, string> = {
   Pension: "Pension",
 };
 
-export default function SitterCard({ sitter }: { sitter: SitterPreview }) {
+export default function SitterCard({ sitter, priority = false }: { sitter: SitterPreview; priority?: boolean }) {
   const initials = sitter.displayName
     .split(" ")
     .slice(0, 2)
@@ -44,6 +44,7 @@ export default function SitterCard({ sitter }: { sitter: SitterPreview }) {
             src={sitter.avatarUrl}
             alt={sitter.displayName}
             fill
+            priority={priority}
             className="object-cover transition-transform duration-500 ease-out group-hover:scale-[1.04]"
             sizes="(max-width: 640px) 50vw, 220px"
             unoptimized
