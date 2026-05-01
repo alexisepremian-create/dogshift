@@ -403,6 +403,7 @@ function AgentDrawer({
   agent,
   logs,
   onClose,
+  onCloseStart,
   onTestAction,
   testResult,
   status = "unknown",
@@ -412,6 +413,7 @@ function AgentDrawer({
   agent: AgentNode;
   logs: AgentLog[];
   onClose: () => void;
+  onCloseStart?: () => void;
   onTestAction: (action: string) => void;
   testResult: string | null;
   status?: AgentHealthStatus;
@@ -429,6 +431,7 @@ function AgentDrawer({
   }, []);
 
   function handleClose() {
+    onCloseStart?.(); // tell parent to start canvas/toolbar shift immediately
     setVisible(false);
     setTimeout(onClose, 300);
   }
@@ -1419,10 +1422,6 @@ const fullscreenStyles = `
     0%, 100% { opacity: 1; transform: scale(1); }
     50%       { opacity: 0.6; transform: scale(0.85); }
   }
-  @media (min-width: 768px) {
-    .drawer-canvas-shift  { transition: right 300ms ease-out; }
-    .drawer-canvas-shift.drawer-open { right: 480px !important; }
-  }
 `;
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
@@ -1432,6 +1431,8 @@ export default function AgentsDashboard() {
   const [agentStatuses, setAgentStatuses] = useState<Record<string, AgentHealthStatus>>(INITIAL_STATUSES);
   const [agentConfigs, setAgentConfigs] = useState<Record<string, AgentConfigData>>({});
   const [selectedAgent, setSelectedAgent] = useState<AgentNode | null>(null);
+  // Separate from selectedAgent so canvas/toolbar shift starts simultaneously with drawer animation
+  const [drawerShifted, setDrawerShifted] = useState(false);
   const [logs, setLogs] = useState<AgentLog[]>([]);
   const [testResult, setTestResult] = useState<string | null>(null);
   const [zoom, setZoom] = useState(0.85);
@@ -1520,6 +1521,8 @@ export default function AgentsDashboard() {
     setSelectedAgent(agent);
     void fetchLogs(agent.id);
     setTestResult(null);
+    // Trigger canvas/toolbar shift on next frame (allows drawer to mount first)
+    requestAnimationFrame(() => setDrawerShifted(true));
   }
 
   async function handleTestAction(action: string) {
@@ -1551,7 +1554,15 @@ export default function AgentsDashboard() {
 
   const handleWheel = useCallback((e: React.WheelEvent) => {
     e.preventDefault();
-    setZoom((z) => Math.max(0.2, Math.min(3, z - e.deltaY * 0.001)));
+    if (e.ctrlKey) {
+      // Pinch-to-zoom (Mac trackpad) or Ctrl+scroll (mouse wheel)
+      const delta = e.deltaMode === 1 ? e.deltaY * 0.05 : e.deltaY * 0.005;
+      setZoom((z) => Math.max(0.2, Math.min(3, z - delta)));
+    } else {
+      // Two-finger scroll (trackpad) or regular scroll → pan canvas
+      const speed = e.deltaMode === 1 ? 20 : 1; // DOM_DELTA_LINE vs DOM_DELTA_PIXEL
+      setPan((p) => ({ x: p.x - e.deltaX * speed, y: p.y - e.deltaY * speed }));
+    }
   }, []);
 
   const handleMouseDown = useCallback(
@@ -1582,8 +1593,8 @@ export default function AgentsDashboard() {
 
       {/* Toolbar */}
       <div
-        className={`fixed z-40 flex items-center justify-between px-5 py-2.5 bg-white/90 backdrop-blur-md border-b border-slate-100 shadow-sm drawer-canvas-shift${selectedAgent ? " drawer-open" : ""}`}
-        style={{ left: SIDEBAR_WIDTH, right: 0, top: 0 }}
+        className="fixed z-40 flex items-center justify-between px-5 py-2.5 bg-white/90 backdrop-blur-md border-b border-slate-100 shadow-sm"
+        style={{ left: SIDEBAR_WIDTH, right: drawerShifted ? 480 : 0, top: 0, transition: "right 300ms ease-out" }}
       >
         <div className="flex items-center gap-3">
           <h1 className="text-base font-semibold text-gray-900 flex items-center gap-2">
@@ -1591,7 +1602,7 @@ export default function AgentsDashboard() {
             Agents autonomes
           </h1>
           <span className="text-xs text-gray-400 hidden sm:inline select-none">
-            Molette · zoom &nbsp;|&nbsp; Glisser · naviguer &nbsp;|&nbsp; Clic · détails
+            Pinch · zoom &nbsp;|&nbsp; Deux doigts · naviguer &nbsp;|&nbsp; Clic · détails
           </span>
         </div>
         <div className="flex items-center gap-0.5">
@@ -1631,12 +1642,13 @@ export default function AgentsDashboard() {
       {/* Infinite canvas */}
       <div
         ref={canvasRef}
-        className={`absolute inset-0 overflow-hidden drawer-canvas-shift${selectedAgent ? " drawer-open" : ""}`}
+        className="absolute inset-0 overflow-hidden"
         style={{
           top: 0,
           left: SIDEBAR_WIDTH,
-          right: 0,
+          right: drawerShifted ? 480 : 0,
           bottom: 0,
+          transition: "right 300ms ease-out",
           backgroundColor: "#f8fafc",
           cursor: isPanning ? "grabbing" : "grab",
         }}
@@ -1683,6 +1695,7 @@ export default function AgentsDashboard() {
           status={agentStatuses[selectedAgent.id] ?? "unknown"}
           initialConfig={agentConfigs[selectedAgent.id] ?? null}
           onConfigChange={(updated) => setAgentConfigs((prev) => ({ ...prev, [updated.slug]: updated }))}
+          onCloseStart={() => setDrawerShifted(false)}
           onClose={() => {
             setSelectedAgent(null);
             setTestResult(null);
