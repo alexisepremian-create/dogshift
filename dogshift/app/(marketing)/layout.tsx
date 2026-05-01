@@ -7,12 +7,14 @@ import PageTopOffset from "@/components/PageTopOffset";
 import SiteHeader from "@/components/SiteHeader";
 import CookieSettingsButton from "@/components/CookieSettingsButton";
 import CguUpdateBanner from "@/components/CguUpdateBanner";
+import LeadMagnetBanner from "@/components/LeadMagnetBanner";
 import { VisaLogo, MastercardLogo, ApplePayLogo, TwintLogo } from "@/components/ui/PaymentIcons";
 
 export default function MarketingLayout({ children }: { children: React.ReactNode }) {
   return (
     <>
       <CguUpdateBanner />
+      <LeadMagnetBanner />
       <SiteHeader />
       <PageTopOffset>{children}</PageTopOffset>
       <DogShiftBot />
@@ -93,7 +95,7 @@ export default function MarketingLayout({ children }: { children: React.ReactNod
                   Mentions légales
                 </Link>
                 <Link href="/cgu" className="text-sm text-slate-500 transition-colors hover:text-slate-900">
-                  Conditions d'utilisation
+                  Conditions d&apos;utilisation
                 </Link>
                 <Link href="/confidentialite" className="text-sm text-slate-500 transition-colors hover:text-slate-900">
                   Politique de confidentialité
@@ -118,7 +120,7 @@ export default function MarketingLayout({ children }: { children: React.ReactNod
                 Politique de confidentialité
               </Link>
               <Link href="/cgu" className="hover:text-slate-900">
-                Conditions d'utilisation
+                Conditions d&apos;utilisation
               </Link>
               <Link href="/mentions-legales" className="hover:text-slate-900">
                 Mentions légales

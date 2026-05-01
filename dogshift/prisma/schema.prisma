@@ -900,3 +900,10 @@ model AgentTask {
   @@index([status, scheduledAt])
   @@index([createdAt])
 }
+
+model LeadMagnet {
+  id         String   @id @default(cuid())
+  email      String   @unique
+  source     String   @default("homepage_banner")
+  capturedAt DateTime @default(now())
+}
