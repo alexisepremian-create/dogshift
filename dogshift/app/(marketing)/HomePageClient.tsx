@@ -1080,6 +1080,7 @@ function StickySearchBar({ visible = true, hero = false }: { visible?: boolean; 
   const [geoLat, setGeoLat] = useState<number | null>(null);
   const [geoLng, setGeoLng] = useState<number | null>(null);
   const [geoLoading, setGeoLoading] = useState(false);
+  const [geoError, setGeoError] = useState("");
   const [calTab, setCalTab] = useState<"dates" | "flexible">("dates");
   const [dogSize, setDogSize] = useState<DogSizeKey | null>(null);
 
@@ -1125,7 +1126,7 @@ function StickySearchBar({ visible = true, hero = false }: { visible?: boolean; 
   ].filter(Boolean).join(" · ");
 
   useEffect(() => { setBodyMounted(true); }, []);
-  useEffect(() => { if (!visible) { setActiveSection(null); setLocationError(""); } }, [visible]);
+  useEffect(() => { if (!visible) { setActiveSection(null); setLocationError(""); setGeoError(""); } }, [visible]);
   // (body scroll-lock removed — floating card doesn't need it and it caused layout shifts)
   useEffect(() => {
     if (service === "Garde") setDuration("2h");
@@ -1134,7 +1135,7 @@ function StickySearchBar({ visible = true, hero = false }: { visible?: boolean; 
   // ── Keyboard: Escape closes ──
   useEffect(() => {
     if (!activeSection) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") { setActiveSection(null); setLocationError(""); } };
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") { setActiveSection(null); setLocationError(""); setGeoError(""); } };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, [activeSection]);
@@ -1281,8 +1282,9 @@ function StickySearchBar({ visible = true, hero = false }: { visible?: boolean; 
   }
 
   async function requestProximity() {
+    setGeoError("");
     if (!navigator.geolocation) {
-      setLocationError("Géolocalisation non supportée par votre navigateur.");
+      setGeoError("Géolocalisation non supportée par votre navigateur.");
       return;
     }
     // Check permission state before asking — avoid silent failures
@@ -1290,7 +1292,7 @@ function StickySearchBar({ visible = true, hero = false }: { visible?: boolean; 
       try {
         const perm = await navigator.permissions.query({ name: "geolocation" });
         if (perm.state === "denied") {
-          setLocationError("Autorisez dogshift.ch à accéder à votre position dans les paramètres de votre navigateur.");
+          setGeoError("Accès refusé. Autorisez la localisation pour dogshift.ch dans les réglages de votre navigateur.");
           return;
         }
       } catch {
@@ -1298,24 +1300,23 @@ function StickySearchBar({ visible = true, hero = false }: { visible?: boolean; 
       }
     }
     setGeoLoading(true);
-    setLocationError("");
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         setGeoLat(pos.coords.latitude);
         setGeoLng(pos.coords.longitude);
         setLocation("À proximité");
         setGeoLoading(false);
-        setLocationError("");
+        setGeoError("");
         setActiveSection("quand");
       },
       (err) => {
         setGeoLoading(false);
         if (err.code === 1) {
-          setLocationError("Accès à la position refusé. Autorisez-le dans les paramètres de votre navigateur.");
+          setGeoError("Accès refusé. Autorisez la localisation dans les réglages de votre navigateur.");
         } else if (err.code === 3) {
-          setLocationError("Localisation trop longue. Réessayez ou entrez une ville manuellement.");
+          setGeoError("Délai dépassé. Réessayez ou entrez une ville manuellement.");
         } else {
-          setLocationError("Impossible de déterminer votre position. Entrez une ville manuellement.");
+          setGeoError("Position indisponible. Entrez une ville manuellement.");
         }
       },
       { timeout: 12000, maximumAge: 60_000 },
@@ -1668,33 +1669,38 @@ function StickySearchBar({ visible = true, hero = false }: { visible?: boolean; 
                         .filter((s) => !location || s.label.toLowerCase().startsWith(location.toLowerCase()))
                         .slice(0, 5)
                         .map(({ Icon, label, sublabel }) => (
-                          <button
-                            key={label}
-                            type="button"
-                            disabled={label === "À proximité" && geoLoading}
-                            onClick={() => {
-                              if (label === "À proximité") {
-                                requestProximity();
-                              } else {
-                                setLocation(label);
-                                setLocationError("");
-                                setActiveSection("quand");
-                              }
-                            }}
-                            className="flex w-full items-center gap-2.5 rounded-xl px-2 py-2 text-left transition-colors duration-100 hover:bg-slate-50 disabled:opacity-60"
-                          >
-                            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-100">
-                              {label === "À proximité" && geoLoading
-                                ? <span className="h-3 w-3 animate-spin rounded-full border-2 border-slate-300 border-t-slate-600" />
-                                : <Icon className="h-3 w-3 text-slate-500" aria-hidden="true" />}
-                            </span>
-                            <div className="min-w-0">
-                              <p className="text-sm font-semibold text-slate-900">{label}</p>
-                              <p className="text-[11px] text-slate-400">
-                                {label === "À proximité" && geoLoading ? "Localisation en cours…" : sublabel}
-                              </p>
-                            </div>
-                          </button>
+                          <div key={label}>
+                            <button
+                              type="button"
+                              disabled={label === "À proximité" && geoLoading}
+                              onClick={() => {
+                                if (label === "À proximité") {
+                                  void requestProximity();
+                                } else {
+                                  setLocation(label);
+                                  setLocationError("");
+                                  setGeoError("");
+                                  setActiveSection("quand");
+                                }
+                              }}
+                              className="flex w-full items-center gap-2.5 rounded-xl px-2 py-2 text-left transition-colors duration-100 hover:bg-slate-50 disabled:opacity-60"
+                            >
+                              <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${label === "À proximité" && geoError ? "bg-red-100" : "bg-slate-100"}`}>
+                                {label === "À proximité" && geoLoading
+                                  ? <span className="h-3 w-3 animate-spin rounded-full border-2 border-slate-300 border-t-slate-600" />
+                                  : <Icon className={`h-3 w-3 ${label === "À proximité" && geoError ? "text-red-500" : "text-slate-500"}`} aria-hidden="true" />}
+                              </span>
+                              <div className="min-w-0">
+                                <p className={`text-sm font-semibold ${label === "À proximité" && geoError ? "text-red-600" : "text-slate-900"}`}>{label}</p>
+                                <p className="text-[11px] text-slate-400">
+                                  {label === "À proximité" && geoLoading ? "Localisation en cours…" : sublabel}
+                                </p>
+                              </div>
+                            </button>
+                            {label === "À proximité" && geoError && (
+                              <p className="px-2 pb-1 text-[11px] text-red-500 leading-snug">{geoError}</p>
+                            )}
+                          </div>
                         ))}
                     </div>
                   )}
