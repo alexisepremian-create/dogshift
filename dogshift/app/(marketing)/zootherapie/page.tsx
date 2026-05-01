@@ -327,11 +327,15 @@ export default function ZootherapiePage() {
       <section id="evaluation" className="bg-slate-50 py-16 sm:py-24">
         <div
           ref={formReveal.ref}
-          className={`mx-auto max-w-5xl px-4 sm:px-6 transition-all duration-700 ease-out ${
+          className={`mx-auto max-w-7xl px-4 sm:px-6 transition-all duration-700 ease-out ${
             formReveal.shown ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
           }`}
         >
           <div className="text-center mb-10">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-violet-100 px-3.5 py-1 text-xs font-semibold tracking-wide text-violet-700 mb-4">
+              <Sparkles className="h-3.5 w-3.5" />
+              Analyse personnalisée par IA
+            </span>
             <h2 className="text-2xl sm:text-3xl font-bold text-slate-900">
               Votre évaluation personnalisée
             </h2>
@@ -362,8 +366,8 @@ export default function ZootherapiePage() {
           ) : (
             <div className="overflow-hidden rounded-2xl shadow-xl md:flex">
 
-              {/* Image column */}
-              <div className="hidden md:block md:w-2/5 relative min-h-[500px]">
+              {/* Image column — wider so the dog is fully visible */}
+              <div className="hidden md:block md:w-1/2 relative min-h-[560px]">
                 <Image
                   src="/images/zootherapie/zootherapie5.jpg"
                   alt="Jeune femme tenant tendrement un golden retriever contre elle"
@@ -373,7 +377,7 @@ export default function ZootherapiePage() {
               </div>
 
               {/* Form column */}
-              <div className="md:w-3/5">
+              <div className="md:w-1/2">
             <form
               onSubmit={(e) => { void handleSubmit(e); }}
               className="bg-white h-full p-8 sm:p-10 space-y-8"
