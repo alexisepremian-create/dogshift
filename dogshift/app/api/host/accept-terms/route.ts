@@ -4,6 +4,7 @@ import { auth, currentUser } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
 import { ensureDbUserByClerkUserId } from "@/lib/auth/resolveDbUserId";
 import { CURRENT_TERMS_VERSION } from "@/lib/terms";
+import { logAudit } from "@/lib/audit";
 
 export const runtime = "nodejs";
 
@@ -14,6 +15,7 @@ export async function POST() {
       return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- clerkUserId not in generated Prisma types
     const existingUser = await (prisma as any).user.findUnique({
       where: { clerkUserId: userId },
       select: { id: true },
@@ -47,6 +49,7 @@ export async function POST() {
         termsAcceptedAt: now.toISOString(),
       });
 
+      void logAudit({ action: "consent.host_terms", actorType: "user", actorId: userId, targetId: existingUser.id, metadata: { termsVersion: CURRENT_TERMS_VERSION } });
       return NextResponse.json({ ok: true, termsVersion: CURRENT_TERMS_VERSION }, { status: 200 });
     }
 
@@ -91,6 +94,7 @@ export async function POST() {
       termsAcceptedAt: now.toISOString(),
     });
 
+    void logAudit({ action: "consent.host_terms", actorType: "user", actorId: userId, targetId: ensured.id, metadata: { termsVersion: CURRENT_TERMS_VERSION } });
     return NextResponse.json({ ok: true, termsVersion: CURRENT_TERMS_VERSION }, { status: 200 });
   } catch (err) {
     console.error("[api][host][accept-terms] error", err);

@@ -28,6 +28,7 @@ import {
 import { sendEmail } from "@/lib/email/sendEmail";
 import { renderEmailLayout } from "@/lib/email/templates/layout";
 import { calculateCandidatureScore, buildCandidatureTelegramMessage } from "@/lib/candidature/scoring";
+import { logAudit } from "@/lib/audit";
 
 export const runtime = "nodejs";
 
@@ -345,6 +346,17 @@ export async function POST(req: NextRequest) {
     } catch (dbErr) {
       // Duplicate or other DB error — still run scoring/email/Telegram below
       console.warn("[api][sitter-applications] db insert failed (duplicate?)", dbErr);
+    }
+
+    // Audit: consentements acceptés lors de la candidature
+    if (applicationId) {
+      void logAudit({
+        action: "consent.application",
+        actorType: "user",
+        targetId: applicationId,
+        targetType: "PILOT_SITTER_APPLICATION",
+        metadata: { consentInterview, consentPrivacy, ip },
+      });
     }
 
     // ---------------------------------------------------------------

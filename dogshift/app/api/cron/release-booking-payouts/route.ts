@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
@@ -221,6 +222,7 @@ export async function GET(req: NextRequest) {
             stripeTransferId: transfer.id,
             payoutReleasedAt: new Date(),
             sitterPayoutAmount: transferAmount,
+            payoutStatus: "PAID",
           },
           select: { id: true },
         });

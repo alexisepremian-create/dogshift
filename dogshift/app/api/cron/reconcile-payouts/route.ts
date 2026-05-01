@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Daily backstop that detects bookings whose service has ended but whose Stripe transfer
  * was never created. Each missed payout is logged as a critical error (caught by Sentry)
@@ -185,6 +186,7 @@ export async function GET(req: NextRequest) {
             stripeTransferId: transfer.id,
             payoutReleasedAt: new Date(),
             sitterPayoutAmount: transferAmount,
+            payoutStatus: "PAID",
           },
           select: { id: true },
         });
@@ -232,8 +234,48 @@ export async function GET(req: NextRequest) {
       }
     }
 
+    // Fix status mismatch: transfer was created (stripeTransferId set) but payoutStatus
+    // was never updated to PAID because of the missing field in the booking.update() call.
+    // This is safe to run repeatedly — only touches bookings that clearly had their
+    // transfer done but whose status field was not set correctly.
+    let statusFixed = 0;
+    try {
+      const mismatchedBookings = await (prisma as any).booking.findMany({
+        where: {
+          stripeTransferId: { not: null },
+          payoutReleasedAt: { not: null },
+          payoutStatus: "PENDING",
+          payoutMethod: "STRIPE",
+          canceledAt: null,
+          refundedAt: null,
+        },
+        select: { id: true, stripeTransferId: true },
+        take: 200,
+      });
+
+      for (const b of mismatchedBookings ?? []) {
+        await (prisma as any).booking.update({
+          where: { id: b.id },
+          data: { payoutStatus: "PAID" },
+          select: { id: true },
+        });
+        await recordBookingFinanceEvent({
+          bookingId: String(b.id),
+          eventType: "PAYOUT_STRIPE_CREATED",
+          message: "Correction statut payout: transfer existant non marque PAID (reconcile-payouts).",
+          payoutMethod: "STRIPE",
+          payoutStatus: "PAID",
+          stripeTransferId: typeof b.stripeTransferId === "string" ? b.stripeTransferId : null,
+          actorType: "SYSTEM",
+        });
+        statusFixed += 1;
+      }
+    } catch (err) {
+      console.error("[api][cron][reconcile-payouts] status-fix error", err);
+    }
+
     return NextResponse.json(
-      { ok: true, detected, fixed, fixFailed, missed, asOf: now.toISOString() },
+      { ok: true, detected, fixed, fixFailed, statusFixed, missed, asOf: now.toISOString() },
       { status: 200 }
     );
   } catch (err) {

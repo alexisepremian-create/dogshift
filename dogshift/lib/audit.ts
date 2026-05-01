@@ -29,7 +29,19 @@ export type AuditAction =
   // Platform
   | "platform.settings_change"
   // Communications
-  | "communications.email_sent";
+  | "communications.email_sent"
+  // ── Consentements & conformité (RGPD / nLPD) ──────────────────────────────
+  // Chaque acceptation/refus de consentement doit être tracé ici avec
+  // l'identifiant de l'utilisateur, la version du document et l'IP/UA.
+  | "consent.cookies"          // Bannière cookies — "all" ou "essential"
+  | "consent.cgu"              // Acceptation des CGU (version dans metadata)
+  | "consent.host_terms"       // Sitter acceptant les conditions d'hôte
+  | "consent.contract_amendment" // Sitter acceptant un avenant de contrat
+  | "consent.application"      // Candidat acceptant consentements candidature
+  | "consent.contract_signed"  // Signature électronique du contrat dogsitter
+  // ── Authentification ──────────────────────────────────────────────────────
+  | "auth.login"               // Connexion utilisateur (première ou nouvelle session)
+  | "auth.signup";             // Création de compte
 
 type LogAuditParams = {
   action: AuditAction;
@@ -67,6 +79,7 @@ export async function logAudit(params: LogAuditParams): Promise<void> {
 
   // 1. Persist to DB (never throws — caught below)
   try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- auditLog not in generated Prisma types yet
     await (prisma as any).auditLog.create({ data: entry });
   } catch (dbErr) {
     console.error("[audit] DB write failed", { action, dbErr });

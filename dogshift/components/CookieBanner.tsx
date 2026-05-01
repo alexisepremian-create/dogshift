@@ -16,7 +16,7 @@ export default function CookieBanner({ onConsent }: Props) {
   const [exiting, setExiting] = useState(false);
 
   useEffect(() => {
-    setMounted(true);
+    setMounted(true); // eslint-disable-line react-hooks/set-state-in-effect -- intentional: setMounted syncs SSR/CSR hydration state
     const existing = getConsentCookie();
     if (!existing) {
       // Small delay so it doesn't pop immediately on page load
@@ -30,6 +30,12 @@ export default function CookieBanner({ onConsent }: Props) {
     setConsentCookie(level);
     onConsent?.(level);
     setTimeout(() => setVisible(false), 400);
+    // Trace dans le journal juridique (best-effort, ne bloque pas l'UX)
+    void fetch("/api/audit/consent", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type: "cookies", level }),
+    }).catch(() => {});
   }
 
   if (!mounted || !visible) return null;
@@ -72,7 +78,7 @@ export default function CookieBanner({ onConsent }: Props) {
             DogShift utilise des cookies essentiels (connexion, réservations) et, avec votre accord,
             des cookies publicitaires{" "}
             <span className="font-medium text-slate-700">(Google Ads)</span>{" "}
-            pour mesurer l'efficacité de nos campagnes. Vos données ne sont jamais vendues.
+            pour mesurer l&apos;efficacité de nos campagnes. Vos données ne sont jamais vendues.
           </p>
 
           <div className="mt-4 flex flex-col gap-2 sm:flex-row">

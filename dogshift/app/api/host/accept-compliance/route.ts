@@ -5,6 +5,7 @@ import { ensureDbUserByClerkUserId } from "@/lib/auth/resolveDbUserId";
 import { getActiveContractAmendment, getHostContractAmendmentState } from "@/lib/contractAmendments";
 import { prisma } from "@/lib/prisma";
 import { CURRENT_TERMS_VERSION } from "@/lib/terms";
+import { logAudit } from "@/lib/audit";
 
 export const runtime = "nodejs";
 
@@ -15,6 +16,7 @@ export async function POST() {
       return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- clerkUserId not in generated Prisma types
     let dbUser = await (prisma as any).user.findUnique({
       where: { clerkUserId: userId },
       select: {
@@ -42,6 +44,7 @@ export async function POST() {
       if (!ensured?.id) {
         return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
       }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- clerkUserId not in generated Prisma types
       dbUser = await (prisma as any).user.findUnique({
         where: { id: ensured.id },
         select: {
@@ -78,6 +81,7 @@ export async function POST() {
       });
 
       if (amendment?.id && amendmentState.needsAcceptance) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic Prisma model
         await (tx as any).sitterContractAmendmentAcceptance.upsert({
           where: {
             amendmentId_sitterProfileId: {
@@ -102,6 +106,23 @@ export async function POST() {
         });
       }
     });
+
+    void logAudit({
+      action: "consent.host_terms",
+      actorType: "user",
+      actorId: userId,
+      targetId: dbUser.id,
+      metadata: { termsVersion: CURRENT_TERMS_VERSION },
+    });
+    if (amendment?.id && amendmentState.needsAcceptance) {
+      void logAudit({
+        action: "consent.contract_amendment",
+        actorType: "user",
+        actorId: userId,
+        targetId: dbUser.sitterProfile.id,
+        metadata: { amendmentVersion: amendment.version, amendmentId: amendment.id },
+      });
+    }
 
     return NextResponse.json(
       {
