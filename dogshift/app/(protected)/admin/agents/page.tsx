@@ -82,6 +82,18 @@ interface AgentDef {
   icon: string;
 }
 
+interface AgentConfigData {
+  id: string;
+  slug: string;
+  label: string;
+  description: string;
+  active: boolean;
+  cronSchedule: string | null;
+  parameters: unknown;
+  updatedAt: string;
+  createdAt: string;
+}
+
 // ─── Color config ─────────────────────────────────────────────────────────────
 
 const COLORS: Record<string, { icon: ElementType; color: string; bg: string }> = {
@@ -187,45 +199,53 @@ function AgentCircle({
   onClick,
   size = 50,
   status = "unknown",
+  active = true,
 }: {
   agent: AgentNode;
   isSelected: boolean;
   onClick: () => void;
   size?: number;
   status?: AgentHealthStatus;
+  active?: boolean;
 }) {
   const c = getColor(agent.id);
   const Icon = c.icon;
   const iconSize = size * 0.44;
 
   return (
-    <div className="flex flex-col items-center gap-2 cursor-pointer select-none" onClick={onClick}>
+    <div
+      className="flex flex-col items-center gap-2 cursor-pointer select-none"
+      style={{ opacity: active ? 1 : 0.45 }}
+      onClick={onClick}
+    >
       <div
         className="relative flex items-center justify-center rounded-full transition-transform duration-150 hover:scale-105"
         style={{
           width: size,
           height: size,
-          backgroundColor: isSelected ? c.color : c.bg,
-          boxShadow: isSelected
+          backgroundColor: active ? (isSelected ? c.color : c.bg) : "#e2e8f0",
+          boxShadow: isSelected && active
             ? `0 0 0 3px white, 0 0 0 5px ${c.color}50, 0 4px 16px ${c.color}30`
             : `0 2px 8px rgba(0,0,0,0.06)`,
+          filter: active ? undefined : "grayscale(1)",
         }}
       >
-        <Icon size={iconSize} style={{ color: isSelected ? "white" : c.color }} />
+        <Icon size={iconSize} style={{ color: active ? (isSelected ? "white" : c.color) : "#94a3b8" }} />
         {/* Health-status dot — always visible, color reflects real liveness */}
         <span
           className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-white"
           style={{
-            backgroundColor: STATUS_DOT_COLOR[status],
+            backgroundColor: active ? STATUS_DOT_COLOR[status] : "#94a3b8",
             animation: "agentPulse 2s ease-in-out infinite",
           }}
         />
       </div>
       <span
         className="text-sm font-medium tracking-tight"
-        style={{ color: isSelected ? c.color : "#475569" }}
+        style={{ color: active ? (isSelected ? c.color : "#475569") : "#94a3b8" }}
       >
         {agent.name.split(" ")[0]}
+        {!active && <span className="ml-1 text-[10px] text-gray-400">(off)</span>}
       </span>
     </div>
   );
@@ -327,6 +347,58 @@ function santeGlobale(rate: number | null): { color: string; label: string; bg: 
   return               { color: "#dc2626", label: "Dégradé",  bg: "#fef2f2" };
 }
 
+// ─── Cron helpers ─────────────────────────────────────────────────────────────
+
+function cronToHuman(cron: string): string {
+  const parts = cron.trim().split(/\s+/);
+  if (parts.length !== 5) return cron;
+  const [min, hour, dom, month, dow] = parts;
+  if (dom === "*" && month === "*" && dow === "*") {
+    if (min === "0" && hour?.startsWith("*/"))
+      return `Toutes les ${hour.slice(2)} heures`;
+    if (min?.startsWith("*/") && hour === "*")
+      return `Toutes les ${min.slice(2)} minutes`;
+    if (min === "*" && hour === "*") return "Toutes les minutes";
+    if (hour === "*") return `Toutes les heures à ${min}min`;
+    return `Tous les jours à ${hour}h${min !== "0" ? min : ""}`;
+  }
+  return cron;
+}
+
+function getNextExecutions(cron: string, count: number): Date[] {
+  const parts = cron.trim().split(/\s+/);
+  if (parts.length !== 5) return [];
+  const [minStr, hourStr] = parts;
+  const now = new Date();
+  const results: Date[] = [];
+
+  if (minStr === "0" && hourStr?.startsWith("*/")) {
+    const n = parseInt(hourStr.slice(2));
+    if (!n || n <= 0) return [];
+    const next = new Date(now);
+    next.setMinutes(0, 0, 0);
+    next.setHours(next.getHours() + n - (next.getHours() % n));
+    for (let i = 0; i < count; i++) {
+      results.push(new Date(next));
+      next.setHours(next.getHours() + n);
+    }
+    return results;
+  }
+  if (hourStr === "*" && minStr?.startsWith("*/")) {
+    const n = parseInt(minStr.slice(2));
+    if (!n || n <= 0) return [];
+    const next = new Date(now);
+    next.setSeconds(0, 0);
+    next.setMinutes(next.getMinutes() + n - (next.getMinutes() % n));
+    for (let i = 0; i < count; i++) {
+      results.push(new Date(next));
+      next.setMinutes(next.getMinutes() + n);
+    }
+    return results;
+  }
+  return [];
+}
+
 function AgentDrawer({
   agent,
   logs,
@@ -334,6 +406,8 @@ function AgentDrawer({
   onTestAction,
   testResult,
   status = "unknown",
+  initialConfig = null,
+  onConfigChange,
 }: {
   agent: AgentNode;
   logs: AgentLog[];
@@ -341,6 +415,8 @@ function AgentDrawer({
   onTestAction: (action: string) => void;
   testResult: string | null;
   status?: AgentHealthStatus;
+  initialConfig?: AgentConfigData | null;
+  onConfigChange?: (updated: AgentConfigData) => void;
 }) {
   const c = getColor(agent.id);
   const Icon = c.icon;
@@ -357,7 +433,6 @@ function AgentDrawer({
     setTimeout(onClose, 300);
   }
 
-  type DrawerTab = "vue" | "logs" | "stats" | "tester";
   const [tab, setTab] = useState<DrawerTab>("vue");
   const [isLive, setIsLive] = useState(false);
 
@@ -435,11 +510,94 @@ function AgentDrawer({
     }
   }
 
+  // ── Config tab ───────────────────────────────────────────────────────────
+  const [config, setConfig] = useState<AgentConfigData | null>(initialConfig);
+  const [configLoading, setConfigLoading] = useState(!initialConfig);
+  const [configSaving, setConfigSaving] = useState(false);
+  const [configError, setConfigError] = useState<string | null>(null);
+
+  // Description inline edit
+  const [editingDesc, setEditingDesc] = useState(false);
+  const [descDraft, setDescDraft] = useState(config?.description ?? "");
+
+  // Cron edit
+  const [editingCron, setEditingCron] = useState(false);
+  const [cronDraft, setCronDraft] = useState(config?.cronSchedule ?? "");
+
+  // Params JSON edit
+  const [paramsOpen, setParamsOpen] = useState(false);
+  const [paramsDraft, setParamsDraft] = useState(
+    config?.parameters ? JSON.stringify(config.parameters, null, 2) : "{}"
+  );
+  const [paramsError, setParamsError] = useState<string | null>(null);
+
+  // Execute result (quick action)
+  const [execResult, setExecResult] = useState<string | null>(null);
+  const [execLoading, setExecLoading] = useState(false);
+
+  // Fetch config on mount if not pre-loaded
+  useEffect(() => {
+    if (initialConfig) { setConfig(initialConfig); return; }
+    setConfigLoading(true);
+    fetch(`/api/admin/agents/${agent.id}/config`)
+      .then((r) => r.json())
+      .then((d: AgentConfigData) => {
+        setConfig(d);
+        setDescDraft(d.description);
+        setCronDraft(d.cronSchedule ?? "");
+        setParamsDraft(d.parameters ? JSON.stringify(d.parameters, null, 2) : "{}");
+      })
+      .catch(() => setConfigError("Impossible de charger la configuration"))
+      .finally(() => setConfigLoading(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [agent.id]);
+
+  async function patchConfig(patch: Partial<Pick<AgentConfigData, "description" | "active" | "cronSchedule" | "parameters">>) {
+    setConfigSaving(true);
+    setConfigError(null);
+    try {
+      const res = await fetch(`/api/admin/agents/${agent.id}/config`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(patch),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      const updated = (await res.json()) as AgentConfigData;
+      setConfig(updated);
+      onConfigChange?.(updated);
+    } catch (e) {
+      setConfigError((e as Error).message);
+    } finally {
+      setConfigSaving(false);
+    }
+  }
+
+  async function handleQuickExecute() {
+    setExecLoading(true);
+    setExecResult(null);
+    try {
+      const body = DEFAULT_BODIES[agent.id] ?? {};
+      const res = await fetch(`/api/admin/agents/${agent.id}/execute`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json() as { durationMs: number; response: unknown };
+      setExecResult(JSON.stringify(data.response, null, 2));
+    } catch (e) {
+      setExecResult(`Erreur: ${(e as Error).message}`);
+    } finally {
+      setExecLoading(false);
+    }
+  }
+
+  type DrawerTab = "vue" | "logs" | "stats" | "tester" | "config";
   const TABS: { id: DrawerTab; label: string }[] = [
     { id: "vue",    label: "Vue"    },
     { id: "logs",   label: "Logs"   },
     { id: "stats",  label: "Stats"  },
     { id: "tester", label: "Tester" },
+    { id: "config", label: "Config" },
   ];
 
   const sante = santeGlobale(stats?.successRate7d ?? null);
@@ -852,6 +1010,233 @@ function AgentDrawer({
               )}
             </div>
           )}
+
+          {/* ────────── TAB: CONFIG ────────── */}
+          {tab === "config" && (
+            <div className="space-y-5">
+              {configLoading ? (
+                <p className="text-xs text-gray-400 py-6 text-center">Chargement…</p>
+              ) : !config ? (
+                <p className="text-xs text-red-400 py-6 text-center">Impossible de charger la configuration.</p>
+              ) : (
+                <>
+                  {configError && (
+                    <div className="flex items-center gap-2 rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-xs text-red-600">
+                      <AlertCircle size={12} className="flex-shrink-0" />
+                      {configError}
+                    </div>
+                  )}
+
+                  {/* 1. Toggle actif / inactif */}
+                  <div className="rounded-xl border border-gray-100 p-4 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-semibold text-gray-800">Statut de l&apos;agent</p>
+                        <p className="text-xs text-gray-400 mt-0.5">
+                          {config.active ? "L&apos;agent est actif et traite les requêtes" : "L&apos;agent est désactivé — répond 503"}
+                        </p>
+                      </div>
+                      {/* Toggle switch */}
+                      <button
+                        role="switch"
+                        aria-checked={config.active}
+                        disabled={configSaving}
+                        onClick={() => void patchConfig({ active: !config.active })}
+                        className="relative flex-shrink-0 w-11 h-6 rounded-full transition-colors duration-200 focus:outline-none disabled:opacity-50"
+                        style={{ backgroundColor: config.active ? "#16a34a" : "#d1d5db" }}
+                      >
+                        <span
+                          className="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200"
+                          style={{ transform: config.active ? "translateX(20px)" : "translateX(0)" }}
+                        />
+                      </button>
+                    </div>
+                    {config.active === false && (
+                      <div className="flex items-start gap-1.5 text-[11px] text-amber-600 bg-amber-50 rounded-lg px-2.5 py-2 border border-amber-200">
+                        <AlertCircle size={11} className="flex-shrink-0 mt-0.5" />
+                        Désactiver cet agent peut impacter les flux en production
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 2. Description éditable */}
+                  <div className="rounded-xl border border-gray-100 p-4 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Description</p>
+                      {!editingDesc && (
+                        <button onClick={() => { setDescDraft(config.description); setEditingDesc(true); }} className="text-[11px] text-indigo-500 hover:text-indigo-700">Modifier</button>
+                      )}
+                    </div>
+                    {editingDesc ? (
+                      <div className="space-y-2">
+                        <textarea
+                          value={descDraft}
+                          onChange={(e) => setDescDraft(e.target.value)}
+                          rows={2}
+                          className="w-full text-xs bg-gray-50 border border-gray-200 rounded-lg p-2.5 text-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-300 resize-none"
+                          autoFocus
+                        />
+                        <div className="flex gap-2">
+                          <button
+                            disabled={configSaving}
+                            onClick={() => { void patchConfig({ description: descDraft }); setEditingDesc(false); }}
+                            className="px-3 py-1 rounded-lg text-xs font-medium text-white bg-indigo-600 hover:bg-indigo-700 transition disabled:opacity-50"
+                          >
+                            {configSaving ? "Enregistrement…" : "Enregistrer"}
+                          </button>
+                          <button onClick={() => setEditingDesc(false)} className="px-3 py-1 rounded-lg text-xs text-gray-500 hover:bg-gray-100 transition">Annuler</button>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-sm text-gray-700 leading-relaxed">{config.description}</p>
+                    )}
+                  </div>
+
+                  {/* 3. Cron schedule (only if agent has one) */}
+                  {(config.cronSchedule || editingCron) && (
+                    <div className="rounded-xl border border-gray-100 p-4 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Planification cron</p>
+                        {!editingCron && (
+                          <button onClick={() => { setCronDraft(config.cronSchedule ?? ""); setEditingCron(true); }} className="text-[11px] text-indigo-500 hover:text-indigo-700">Modifier</button>
+                        )}
+                      </div>
+                      {editingCron ? (
+                        <div className="space-y-2">
+                          <input
+                            type="text"
+                            value={cronDraft}
+                            onChange={(e) => setCronDraft(e.target.value)}
+                            placeholder="ex. 0 */2 * * *"
+                            className="w-full text-xs font-mono bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-300"
+                            autoFocus
+                          />
+                          {cronDraft && (
+                            <p className="text-[11px] text-gray-500">{cronToHuman(cronDraft)}</p>
+                          )}
+                          {cronDraft && getNextExecutions(cronDraft, 3).length > 0 && (
+                            <div className="space-y-0.5">
+                              <p className="text-[10px] text-gray-400 uppercase tracking-wider">Prochaines exécutions</p>
+                              {getNextExecutions(cronDraft, 3).map((d, i) => (
+                                <p key={i} className="text-[11px] text-gray-600 font-mono">
+                                  {d.toLocaleString("fr-CH", { dateStyle: "short", timeStyle: "short" })}
+                                </p>
+                              ))}
+                            </div>
+                          )}
+                          <div className="flex items-start gap-1.5 text-[11px] text-amber-600 bg-amber-50 rounded-lg px-2.5 py-2 border border-amber-200">
+                            <AlertCircle size={11} className="flex-shrink-0 mt-0.5" />
+                            Modifier vercel.json manuellement pour appliquer en production
+                          </div>
+                          <div className="flex gap-2">
+                            <button
+                              disabled={configSaving}
+                              onClick={() => { void patchConfig({ cronSchedule: cronDraft || null }); setEditingCron(false); }}
+                              className="px-3 py-1 rounded-lg text-xs font-medium text-white bg-indigo-600 hover:bg-indigo-700 transition disabled:opacity-50"
+                            >
+                              {configSaving ? "Enregistrement…" : "Enregistrer"}
+                            </button>
+                            <button onClick={() => setEditingCron(false)} className="px-3 py-1 rounded-lg text-xs text-gray-500 hover:bg-gray-100 transition">Annuler</button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="space-y-1">
+                          <p className="text-xs font-mono text-gray-700 bg-gray-50 rounded-lg px-3 py-1.5 border border-gray-100 inline-block">{config.cronSchedule}</p>
+                          <p className="text-[11px] text-gray-500">{cronToHuman(config.cronSchedule ?? "")}</p>
+                          {getNextExecutions(config.cronSchedule ?? "", 3).length > 0 && (
+                            <div className="space-y-0.5 mt-1">
+                              <p className="text-[10px] text-gray-400 uppercase tracking-wider">Prochaines</p>
+                              {getNextExecutions(config.cronSchedule ?? "", 3).map((d, i) => (
+                                <p key={i} className="text-[11px] text-gray-500 font-mono">
+                                  {d.toLocaleString("fr-CH", { dateStyle: "short", timeStyle: "short" })}
+                                </p>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* 4. Paramètres JSON avancés */}
+                  <div className="rounded-xl border border-gray-100 overflow-hidden">
+                    <button
+                      className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition text-left"
+                      onClick={() => setParamsOpen((o) => !o)}
+                    >
+                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Paramètres avancés</p>
+                      <span className="text-gray-400 text-xs">{paramsOpen ? "▲" : "▼"}</span>
+                    </button>
+                    {paramsOpen && (
+                      <div className="px-4 pb-4 space-y-2 border-t border-gray-100">
+                        <textarea
+                          value={paramsDraft}
+                          onChange={(e) => { setParamsDraft(e.target.value); setParamsError(null); }}
+                          rows={6}
+                          className="w-full mt-2 text-xs font-mono bg-gray-50 border border-gray-200 rounded-lg p-2.5 text-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-300 resize-none"
+                          spellCheck={false}
+                        />
+                        {paramsError && <p className="text-[11px] text-red-500">{paramsError}</p>}
+                        <button
+                          disabled={configSaving}
+                          onClick={() => {
+                            let parsed: unknown;
+                            try { parsed = JSON.parse(paramsDraft); } catch { setParamsError("JSON invalide"); return; }
+                            void patchConfig({ parameters: parsed });
+                          }}
+                          className="px-3 py-1 rounded-lg text-xs font-medium text-white bg-indigo-600 hover:bg-indigo-700 transition disabled:opacity-50"
+                        >
+                          {configSaving ? "Enregistrement…" : "Enregistrer"}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 5. Actions rapides */}
+                  <div className="rounded-xl border border-gray-100 p-4 space-y-3">
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Actions rapides</p>
+                    <div className="flex flex-col gap-2">
+                      <button
+                        disabled={execLoading}
+                        onClick={() => void handleQuickExecute()}
+                        className="w-full flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-semibold text-white transition-colors disabled:opacity-50"
+                        style={{ backgroundColor: execLoading ? "#6b7280" : "#4f46e5" }}
+                      >
+                        {execLoading ? (
+                          <><span className="h-3 w-3 animate-spin rounded-full border-2 border-white border-t-transparent" />Exécution…</>
+                        ) : (
+                          <><Zap size={12} />Exécuter maintenant</>
+                        )}
+                      </button>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => setTab("logs")}
+                          className="flex-1 py-1.5 rounded-lg text-xs text-gray-600 border border-gray-200 hover:bg-gray-50 transition"
+                        >
+                          Voir les logs
+                        </button>
+                        <button
+                          onClick={() => setTab("stats")}
+                          className="flex-1 py-1.5 rounded-lg text-xs text-gray-600 border border-gray-200 hover:bg-gray-50 transition"
+                        >
+                          Voir les stats
+                        </button>
+                      </div>
+                    </div>
+                    {execResult && (
+                      <pre className="text-[11px] font-mono bg-gray-50 border border-gray-100 rounded-lg p-2.5 max-h-36 overflow-auto whitespace-pre-wrap text-gray-700 mt-2">
+                        {execResult}
+                      </pre>
+                    )}
+                  </div>
+
+                  <p className="text-[10px] text-gray-300 text-center">
+                    Dernière modification : {new Date(config.updatedAt).toLocaleString("fr-CH", { dateStyle: "short", timeStyle: "medium" })}
+                  </p>
+                </>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -866,12 +1251,14 @@ function HierarchyCanvas({
   selectedId,
   onSelect,
   statuses,
+  configs,
 }: {
   zoom: number;
   pan: { x: number; y: number };
   selectedId: string | null;
   onSelect: (agent: AgentNode) => void;
   statuses: Record<string, AgentHealthStatus>;
+  configs: Record<string, AgentConfigData>;
 }) {
   // Centers (Y) for Bezier control points
   const maestroCY    = Y_MAESTRO            + MAESTRO_SIZE / 2;
@@ -945,6 +1332,7 @@ function HierarchyCanvas({
               onClick={() => onSelect(agent)}
               size={CHILD_SIZE}
               status={statuses[id] ?? "loading"}
+              active={configs[id]?.active !== false}
             />
           </div>
         );
@@ -958,6 +1346,7 @@ function HierarchyCanvas({
           onClick={() => onSelect(AGENT_MAP["maestro"]!)}
           size={MAESTRO_SIZE}
           status={statuses["maestro"] ?? "loading"}
+          active={configs["maestro"]?.active !== false}
         />
       </div>
 
@@ -973,6 +1362,7 @@ function HierarchyCanvas({
               onClick={() => onSelect(agent)}
               size={CHILD_SIZE}
               status={statuses[id] ?? "loading"}
+              active={configs[id]?.active !== false}
             />
           </div>
         );
@@ -990,6 +1380,7 @@ function HierarchyCanvas({
               onClick={() => onSelect(agent)}
               size={CHILD_SIZE}
               status={statuses[id] ?? "loading"}
+              active={configs[id]?.active !== false}
             />
           </div>
         );
@@ -1039,6 +1430,7 @@ const fullscreenStyles = `
 export default function AgentsDashboard() {
   const [loading, setLoading] = useState(true);
   const [agentStatuses, setAgentStatuses] = useState<Record<string, AgentHealthStatus>>(INITIAL_STATUSES);
+  const [agentConfigs, setAgentConfigs] = useState<Record<string, AgentConfigData>>({});
   const [selectedAgent, setSelectedAgent] = useState<AgentNode | null>(null);
   const [logs, setLogs] = useState<AgentLog[]>([]);
   const [testResult, setTestResult] = useState<string | null>(null);
@@ -1102,6 +1494,18 @@ export default function AgentsDashboard() {
     const interval = setInterval(() => void fetchStatuses(), 30_000);
     return () => clearInterval(interval);
   }, [fetchStatuses]);
+
+  // ── Config seed + load (once on mount) ─────────────────────────────────────
+  useEffect(() => {
+    fetch("/api/admin/agents/configs")
+      .then((r) => r.json())
+      .then((data: { configs: AgentConfigData[] }) => {
+        const map: Record<string, AgentConfigData> = {};
+        for (const c of data.configs) map[c.slug] = c;
+        setAgentConfigs(map);
+      })
+      .catch(() => {});
+  }, []);
 
   async function fetchLogs(agentId: string) {
     try {
@@ -1267,6 +1671,7 @@ export default function AgentsDashboard() {
           selectedId={selectedAgent?.id ?? null}
           onSelect={handleAgentClick}
           statuses={agentStatuses}
+          configs={agentConfigs}
         />
       </div>
 
@@ -1276,6 +1681,8 @@ export default function AgentsDashboard() {
           logs={logs}
           testResult={testResult}
           status={agentStatuses[selectedAgent.id] ?? "unknown"}
+          initialConfig={agentConfigs[selectedAgent.id] ?? null}
+          onConfigChange={(updated) => setAgentConfigs((prev) => ({ ...prev, [updated.slug]: updated }))}
           onClose={() => {
             setSelectedAgent(null);
             setTestResult(null);

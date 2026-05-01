@@ -921,3 +921,15 @@ model ScheduledEmail {
 
   @@index([sent, sendAfter])
 }
+
+model AgentConfig {
+  id           String   @id @default(cuid())
+  slug         String   @unique
+  label        String
+  description  String
+  active       Boolean  @default(true)
+  cronSchedule String?
+  parameters   Json     @default("{}")
+  updatedAt    DateTime @updatedAt
+  createdAt    DateTime @default(now())
+}

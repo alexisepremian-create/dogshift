@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
+import { checkAgentActive } from "@/lib/agent-guard";
 import { sendEmail } from "@/lib/email/sendEmail";
 import { renderEmailLayout } from "@/lib/email/templates/layout";
 
@@ -25,6 +26,9 @@ async function sendTelegram(text: string) {
 }
 
 export async function POST(req: NextRequest) {
+  const guard = await checkAgentActive("onboarding-owner");
+  if (guard) return guard;
+
   const start = Date.now();
   try {
     const body = await req.json();
