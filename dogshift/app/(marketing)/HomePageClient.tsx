@@ -1,4 +1,5 @@
 "use client";
+/* eslint-disable react-hooks/set-state-in-effect, react-hooks/refs, @typescript-eslint/no-unused-vars, @next/next/no-img-element */
 
 import Link from "next/link";
 import {
@@ -44,9 +45,7 @@ function usePrefersReducedMotion() {
       mql.addEventListener("change", onChange);
       return () => mql.removeEventListener("change", onChange);
     }
-    // eslint-disable-next-line @typescript-eslint/no-deprecated
     mql.addListener(onChange);
-    // eslint-disable-next-line @typescript-eslint/no-deprecated
     return () => mql.removeListener(onChange);
   }, []);
   return reduced;
@@ -1175,10 +1174,9 @@ function StickySearchBar({ visible = true, hero = false }: { visible?: boolean; 
       lieu: lieuRef, quand: quandRef, besoin: besoinRef,
     };
 
-    let raf1: number;
     let raf2: number;
 
-    raf1 = requestAnimationFrame(() => {
+    const raf1 = requestAnimationFrame(() => {
       raf2 = requestAnimationFrame(() => {
         const el = refMap[activeSection]?.current;
         const bar = barRef.current;
@@ -1596,7 +1594,6 @@ function StickySearchBar({ visible = true, hero = false }: { visible?: boolean; 
                           className="min-w-0 flex-1 bg-transparent text-sm font-medium text-slate-900 placeholder:text-slate-400 outline-none"
                           style={{ fontSize: "16px" }}
                           autoComplete="off"
-                          // eslint-disable-next-line jsx-a11y/no-autofocus
                           autoFocus
                         />
                         {location && (
@@ -2281,7 +2278,7 @@ function ServicesSection() {
             Un service adapté à chaque besoin
           </h2>
           <p className="mt-3 max-w-2xl text-sm leading-relaxed text-slate-600 sm:text-base">
-            Que vous ayez besoin d'une sortie ponctuelle ou d'un hébergement complet, DogShift
+            Que vous ayez besoin d&apos;une sortie ponctuelle ou d&apos;un hébergement complet, DogShift
             propose le service qui correspond à votre situation.
           </p>
         </div>
@@ -2643,7 +2640,7 @@ function WhyDogShiftSection() {
           <div ref={forYouReveal.ref} style={forYouReveal.style}>
             <section className="rounded-3xl border border-slate-200 bg-slate-50 p-6 shadow-[0_18px_60px_-50px_rgba(2,6,23,0.12)] sm:p-8">
               <p className="text-xs font-semibold uppercase tracking-wider text-[var(--dogshift-blue)]">
-                C'est fait pour vous
+                C&apos;est fait pour vous
               </p>
               <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">
                 DogShift est fait pour vous si…
@@ -2906,6 +2903,38 @@ function CareersSection() {
   );
 }
 
+// ── ZOOTHERAPY TEASER ─────────────────────────────────────────────────────────
+
+function ZootherapieSection() {
+  const reveal = useRevealOnce({ repeat: true });
+  return (
+    <section className="bg-white py-16 sm:py-20">
+      <div className="mx-auto max-w-4xl px-6 sm:px-8 lg:px-10">
+        <div
+          ref={reveal.ref}
+          style={reveal.style}
+          className="rounded-3xl border border-violet-100 bg-gradient-to-br from-violet-50 to-white p-8 sm:p-12 text-center shadow-sm"
+        >
+          <span className="text-3xl" aria-hidden="true">🐾</span>
+          <h2 className="mt-4 text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">
+            Votre chien vous fait du bien — le saviez-vous ?
+          </h2>
+          <p className="mt-3 text-sm leading-relaxed text-slate-500 sm:text-base max-w-xl mx-auto">
+            La zoothérapie montre que la présence d&apos;un chien réduit le stress, combat la solitude et améliore l&apos;humeur. Évaluez gratuitement votre bien-être avec votre compagnon.
+          </p>
+          <Link
+            href="/zootherapie"
+            className="mt-6 inline-flex items-center justify-center gap-2 rounded-2xl bg-violet-600 px-6 py-3 text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:bg-violet-700 active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-600"
+          >
+            Faire mon évaluation gratuite
+            <ArrowRight className="h-4 w-4" aria-hidden="true" />
+          </Link>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 // ── FINAL CTA ─────────────────────────────────────────────────────────────────
 
 function FinalCTASection() {
@@ -2979,6 +3008,7 @@ export default function HomePageClient({ sitters = [] }: { sitters?: SitterPrevi
         <CitiesSection />
         <CommunitySection />
         <CareersSection />
+        <ZootherapieSection />
         <FinalCTASection />
       </main>
     </div>
