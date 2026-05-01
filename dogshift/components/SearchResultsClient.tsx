@@ -9,6 +9,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   LOCATION_HUB_COORDS,
   LOCATION_HUB_RADIUS_KM,
+  PROXIMITY_RADIUS_KM,
   haversineKm,
   normalizeLocationText as normalize,
   resolveCoordsForPublishedSitterMap,
@@ -240,7 +241,8 @@ export default function SearchResultsClient() {
   );
   const [location, setLocation] = useState(initialLocation);
   const [dogSize, setDogSize] = useState<(typeof DOG_SIZE_OPTIONS)[number]>("");
-  const [sort, setSort] = useState<SortKey>("rating_desc");
+  const isProximitySearch = initialLocation.trim() === "À proximité";
+  const [sort, setSort] = useState<SortKey>(isProximitySearch ? "distance_asc" : "rating_desc");
   const [userGeoCoords] = useState<{ lat: number; lng: number } | null>(() => {
     const latStr = sp.get("lat");
     const lngStr = sp.get("lng");
@@ -281,7 +283,7 @@ export default function SearchResultsClient() {
       const matchesService = service ? sitter.services.some((s) => normalize(s) === normalize(service)) : true;
       const matchesLocation = normalizedLocation
         ? (isProximity && coords
-            ? distanceKm !== null && distanceKm <= LOCATION_HUB_RADIUS_KM
+            ? distanceKm !== null && distanceKm <= PROXIMITY_RADIUS_KM
             : normalize(sitter.city).startsWith(normalizedLocation) || normalize(sitter.postalCode).startsWith(normalizedLocation))
         : true;
       const matchesDogSize = dogSize ? sitter.dogSizes.some((s) => normalize(s) === normalize(dogSize)) : true;

@@ -14,6 +14,9 @@ export function normalizeLocationText(text: string) {
 /** Approximate hub for "search near this place" on the map (km radius). */
 export const LOCATION_HUB_RADIUS_KM = 34;
 
+/** Radius used for GPS "À proximité" searches — tight, same commune / city area. */
+export const PROXIMITY_RADIUS_KM = 10;
+
 const toRad = (deg: number) => (deg * Math.PI) / 180;
 
 export function haversineKm(a: { lat: number; lng: number }, b: { lat: number; lng: number }) {
