@@ -7,8 +7,8 @@ import { logAdminAudit } from "@/lib/audit";
 
 export const runtime = "nodejs";
 
-function isValidStatus(value: unknown): value is "PENDING" | "CONTACTED" | "ACCEPTED" | "ACTIVATED" | "REJECTED" {
-  return value === "PENDING" || value === "CONTACTED" || value === "ACCEPTED" || value === "ACTIVATED" || value === "REJECTED";
+function isValidStatus(value: unknown): value is "PENDING" | "CONTACTED" | "ACCEPTED" | "ACTIVATED" | "REJECTED" | "ARCHIVED" {
+  return value === "PENDING" || value === "CONTACTED" || value === "ACCEPTED" || value === "ACTIVATED" || value === "REJECTED" || value === "ARCHIVED";
 }
 
 export async function POST(req: NextRequest) {
@@ -18,6 +18,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, error: "FORBIDDEN" }, { status: 403 });
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic JSON shape; narrowed by isValidStatus below.
     const body = (await req.json().catch(() => null)) as any;
     const id = typeof body?.id === "string" ? body.id.trim() : "";
     const status = body?.status;
