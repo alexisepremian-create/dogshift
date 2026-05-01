@@ -1,26 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { Bone, Dog, Heart, MapPin, Calendar, Home } from "lucide-react";
-
 import BecomeSitterAccessForm from "@/components/BecomeSitterAccessForm";
 
 export default function DevenirDogsitterPage() {
   const [accessOpen, setAccessOpen] = useState(false);
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-white text-slate-900">
-      {/* Background brand icons. */}
-      <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
-        <Dog className="absolute right-8 top-32 h-48 w-48 rotate-12 text-[#2f4d6b]/20" strokeWidth={1.5} />
-        <Bone className="absolute bottom-32 left-8 h-36 w-36 -rotate-12 text-[#7969F0]/20" strokeWidth={1.5} />
-        <Heart className="absolute left-10 top-24 h-32 w-32 -rotate-12 text-[#7969F0]/[0.04]" strokeWidth={1.5} />
-        <MapPin className="absolute bottom-24 right-12 h-40 w-40 rotate-12 text-[#2f4d6b]/[0.04]" strokeWidth={1.5} />
-        <Calendar className="absolute left-[25%] top-20 h-20 w-20 -rotate-6 text-[#2f4d6b]/[0.04]" strokeWidth={1.5} />
-        <Home className="absolute bottom-20 right-[25%] h-24 w-24 rotate-6 text-[#7969F0]/[0.04]" strokeWidth={1.5} />
-      </div>
-
-      <section className="relative z-10 mx-auto max-w-4xl px-4 py-14 sm:px-6">
+    <main className="min-h-screen bg-white text-slate-900">
+      <section className="mx-auto max-w-4xl px-4 py-14 sm:px-6">
         <p className="text-xs font-semibold text-slate-600">Phase pilote</p>
         <h1 className="mt-4 text-balance text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl">
           DogShift recrute ses 20 premiers dog-sitters
