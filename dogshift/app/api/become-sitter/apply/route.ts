@@ -8,6 +8,7 @@ import { ensureDbUserByClerkUserId } from "@/lib/auth/resolveDbUserId";
 import { computeSitterProfileCompletion } from "@/lib/sitterCompletion";
 import { maxSitterLifecycleStatus, normalizeSitterLifecycleStatus } from "@/lib/sitterContract";
 import { CURRENT_TERMS_VERSION } from "@/lib/terms";
+import { sendTelegramMessage } from "@/lib/telegram/sendTelegramMessage";
 
 export const runtime = "nodejs";
 
@@ -219,27 +220,10 @@ export async function POST(req: NextRequest) {
       });
     });
 
-    // Best-effort n8n notification — never blocks the response.
-    void (async () => {
-      try {
-        const controller = new AbortController();
-        const t = setTimeout(() => controller.abort(), 5000);
-        await fetch("https://dogshift.app.n8n.cloud/webhook/sitter-registered", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            userId: ensured.id,
-            email: primaryEmail,
-            name: firstName || null,
-            city: city || null,
-            services: Array.isArray(services) ? services : [],
-          }),
-          signal: controller.signal,
-        }).finally(() => clearTimeout(t));
-      } catch (e) {
-        console.warn("[become-sitter][apply] n8n sitter-registered webhook failed", e);
-      }
-    })();
+    // Telegram admin notification — best-effort, never blocks the response.
+    void sendTelegramMessage(
+      `🐾 *Nouveau dogsitter inscrit !*\n👤 ${firstName || "Inconnu"}\n📍 ${city || "?"}\n📧 ${primaryEmail}\n🆔 ${ensured.id}\n🏠 Services : ${Array.isArray(services) ? services.join(", ") : "?"}`
+    ).catch((e) => console.warn("[become-sitter][apply] telegram notification failed", e));
 
     return NextResponse.json({ ok: true, sitterId, activated: true }, { status: 200 });
   } catch (err) {
