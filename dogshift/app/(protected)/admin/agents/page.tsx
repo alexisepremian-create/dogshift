@@ -54,6 +54,27 @@ interface AgentLog {
   createdAt: string;
 }
 
+interface ExtendedLog {
+  id: string;
+  actionType: string;
+  summary: string;
+  status: string;
+  durationMs: number | null;
+  createdAt: string;
+  details: unknown;
+}
+
+interface StatsData {
+  executions24h: number;
+  errors24h: number;
+  successRate7d: number | null;
+  avgDuration7d: number | null;
+  volumePerDay: { date: string; count: number }[];
+  peakHour: number | null;
+  total7d: number;
+  lastExecution: { createdAt: string; durationMs: number | null; status: string } | null;
+}
+
 interface AgentDef {
   id: string;
   name: string;
@@ -212,6 +233,68 @@ function AgentCircle({
 
 // ─── Detail modal ─────────────────────────────────────────────────────────────
 
+// ─── Modal helpers ────────────────────────────────────────────────────────────
+
+function timeAgo(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  if (diff < 60_000) return "à l'instant";
+  if (diff < 3_600_000) return `il y a ${Math.floor(diff / 60_000)}min`;
+  if (diff < 86_400_000) return `il y a ${Math.floor(diff / 3_600_000)}h`;
+  return `il y a ${Math.floor(diff / 86_400_000)}j`;
+}
+
+const AGENT_ROUTES: Record<string, string> = {
+  maestro:                  "/api/maestro",
+  "lead-magnet":            "/api/agents/lead-magnet",
+  "onboarding-owner":       "/api/agents/onboarding-owner",
+  "zootherapie-evaluation": "/api/agents/zootherapie-evaluation",
+  candidature:              "/api/agents/candidature-enriched",
+  candidature_classic:      "/api/agents/candidature",
+  candidature_ai:           "/api/agents/candidature-ai-review",
+  booking:                  "/api/agents/booking",
+  notifications:            "/api/agents/notification",
+  calendrier:               "/api/agents/calendrier",
+  contrat:                  "/api/agents/contrat",
+  activation:               "/api/agents/activation",
+};
+
+const DEFAULT_BODIES: Record<string, object> = {
+  maestro:                  { action: "lead_magnet_captured", email: "test@example.com" },
+  "lead-magnet":            { email: "test@example.com", prenom: "Test", source: "test" },
+  "onboarding-owner":       { email: "test@example.com", prenom: "Test", userId: "user_test" },
+  "zootherapie-evaluation": {
+    prenom: "Test",
+    email: "test@example.com",
+    reponses: { q1: "1 à 3h", q2: "Apaisé(e)", q3: "Toujours", q4: "Oui, beaucoup", q5: "Pet-sitter professionnel" },
+  },
+  candidature:              { nom: "Test User", email: "test@example.com", sitterId: "test-id" },
+  candidature_classic:      { nom: "Test", email: "test@example.com", ville: "Lausanne", experience: "3 ans" },
+  candidature_ai:           { nom: "Test", email: "test@example.com", ville: "Lausanne", experience: "3 ans", message: "Passionné par les animaux." },
+  booking:                  { userId: "user_test", sitterId: "sitter_test", startDate: "2026-06-01", serviceType: "PENSION" },
+};
+
+function BarChart({ data }: { data: { date: string; count: number }[] }) {
+  const max = Math.max(...data.map((d) => d.count), 1);
+  return (
+    <div className="flex items-end gap-1 h-20 w-full">
+      {data.map(({ date, count }) => (
+        <div key={date} className="flex flex-1 flex-col items-center gap-0.5 min-w-0">
+          <div
+            className="w-full rounded-t bg-indigo-400 transition-all"
+            style={{ height: `${Math.round((count / max) * 52)}px`, minHeight: count > 0 ? 3 : 0 }}
+            title={`${date}: ${count}`}
+          />
+          <span className="text-[9px] text-gray-400 truncate w-full text-center">
+            {date.slice(5)}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ─── Agent Modal ──────────────────────────────────────────────────────────────
+
 function AgentModal({
   agent,
   logs,
@@ -230,6 +313,94 @@ function AgentModal({
   const c = getColor(agent.id);
   const Icon = c.icon;
 
+  type ModalTab = "vue" | "logs" | "stats" | "tester";
+  const [tab, setTab] = useState<ModalTab>("vue");
+
+  // ── Stats (fetched once on mount, shared by Vue + Stats tabs) ──────────────
+  const [stats, setStats] = useState<StatsData | null>(null);
+  useEffect(() => {
+    fetch(`/api/admin/agents/${agent.id}/stats`)
+      .then((r) => r.json())
+      .then((d: StatsData) => setStats(d))
+      .catch(() => {});
+  }, [agent.id]);
+
+  // ── Logs tab ───────────────────────────────────────────────────────────────
+  const [modalLogs, setModalLogs] = useState<ExtendedLog[]>([]);
+  const [logsPage, setLogsPage] = useState(0);
+  const [logsHasMore, setLogsHasMore] = useState(false);
+  const [logsFilter, setLogsFilter] = useState<"all" | "error">("all");
+  const [logsLoading, setLogsLoading] = useState(false);
+  const [expandedLog, setExpandedLog] = useState<string | null>(null);
+
+  const fetchModalLogs = useCallback(
+    async (page: number, filter: "all" | "error", reset: boolean) => {
+      setLogsLoading(true);
+      try {
+        const res = await fetch(
+          `/api/admin/agents/${agent.id}/logs?page=${page}&filter=${filter}`
+        );
+        const data = (await res.json()) as { logs: ExtendedLog[]; hasMore: boolean };
+        setModalLogs((prev) => (reset ? data.logs : [...prev, ...data.logs]));
+        setLogsPage(page);
+        setLogsHasMore(data.hasMore);
+      } catch {
+        // silently ignore
+      } finally {
+        setLogsLoading(false);
+      }
+    },
+    [agent.id]
+  );
+
+  useEffect(() => {
+    if (tab !== "logs") return;
+    void fetchModalLogs(0, logsFilter, true);
+  }, [tab, logsFilter, fetchModalLogs]);
+
+  // ── Tester tab ─────────────────────────────────────────────────────────────
+  const [testerBody, setTesterBody] = useState(
+    JSON.stringify(DEFAULT_BODIES[agent.id] ?? {}, null, 2)
+  );
+  const [testerResult, setTesterResult] = useState<string | null>(null);
+  const [testerTime, setTesterTime] = useState<number | null>(null);
+  const [testerLoading, setTesterLoading] = useState(false);
+  const [testerIsError, setTesterIsError] = useState(false);
+
+  async function handleTesterRun() {
+    const route = AGENT_ROUTES[agent.id];
+    if (!route) { setTesterResult("Aucune route configurée pour cet agent."); return; }
+    let body: object = {};
+    try { body = JSON.parse(testerBody) as object; } catch { setTesterResult("JSON invalide."); return; }
+    setTesterLoading(true);
+    setTesterResult(null);
+    setTesterIsError(false);
+    const t0 = Date.now();
+    try {
+      const res = await fetch(route, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const json = await res.json();
+      setTesterResult(JSON.stringify(json, null, 2));
+      setTesterIsError(!res.ok);
+    } catch (e) {
+      setTesterResult(`Erreur réseau : ${(e as Error).message}`);
+      setTesterIsError(true);
+    } finally {
+      setTesterTime(Date.now() - t0);
+      setTesterLoading(false);
+    }
+  }
+
+  const TABS: { id: ModalTab; label: string }[] = [
+    { id: "vue",    label: "Vue" },
+    { id: "logs",   label: "Logs" },
+    { id: "stats",  label: "Stats" },
+    { id: "tester", label: "Tester" },
+  ];
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center" onClick={onClose}>
       <div className="absolute inset-0 bg-black/20 backdrop-blur-sm" />
@@ -237,6 +408,7 @@ function AgentModal({
         className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
+        {/* ── Header ── */}
         <div className="px-6 pt-6 pb-4 border-b border-gray-100">
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-4">
@@ -258,87 +430,317 @@ function AgentModal({
           <p className="text-sm text-gray-500 mt-3 leading-relaxed">{agent.description}</p>
         </div>
 
-        <div className="px-6 py-4 max-h-[50vh] overflow-y-auto space-y-4">
-          <div className="flex items-center gap-2 text-sm">
-            <span
-              className="w-2 h-2 rounded-full"
-              style={{ backgroundColor: STATUS_DOT_COLOR[status] }}
-            />
-            <span className="text-gray-600 font-medium">
-              {status === "online"  ? "En ligne"     :
-               status === "offline" ? "Hors ligne"   :
-               status === "loading" ? "Vérification…" :
-                                      "Inconnu"}
-            </span>
-            {agent.lastLog && (
-              <span className="text-gray-400 text-xs ml-auto flex items-center gap-1">
-                <Clock size={12} />
-                {new Date(agent.lastLog.createdAt).toLocaleString("fr-CH")}
-              </span>
-            )}
-          </div>
+        {/* ── Tab bar ── */}
+        <div className="flex gap-0.5 px-6 pt-3 pb-2 border-b border-gray-100 bg-gray-50/60">
+          {TABS.map(({ id, label }) => (
+            <button
+              key={id}
+              onClick={() => setTab(id)}
+              className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${
+                tab === id
+                  ? "bg-white text-gray-900 shadow-sm border border-gray-200"
+                  : "text-gray-500 hover:text-gray-700 hover:bg-white/60"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
 
-          {agent.actions && agent.actions.length > 0 && (
-            <div>
-              <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                <Zap size={12} /> Actions
-              </h4>
-              <div className="flex flex-wrap gap-1.5">
-                {agent.actions.map((action) => (
-                  <button
-                    key={action}
-                    onClick={() => onTestAction(action)}
-                    className="px-2.5 py-1 text-xs font-medium rounded-lg border transition-all"
-                    style={{ backgroundColor: c.bg, borderColor: `${c.color}30`, color: c.color }}
-                    onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = c.color + "20")}
-                    onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = c.bg)}
-                  >
-                    {action}
-                  </button>
-                ))}
+        {/* ── Tab content ── */}
+        <div className="px-6 py-4 max-h-[52vh] overflow-y-auto">
+
+          {/* ────────── TAB: VUE ────────── */}
+          {tab === "vue" && (
+            <div className="space-y-4">
+              {/* Status row */}
+              <div className="flex items-center gap-2 text-sm">
+                <span
+                  className="w-2 h-2 rounded-full flex-shrink-0"
+                  style={{ backgroundColor: STATUS_DOT_COLOR[status] }}
+                />
+                <span className="text-gray-600 font-medium">
+                  {status === "online"  ? "En ligne"      :
+                   status === "offline" ? "Hors ligne"    :
+                   status === "loading" ? "Vérification…" : "Inconnu"}
+                </span>
+                {stats?.lastExecution && (
+                  <span className="text-gray-400 text-xs ml-auto flex items-center gap-1">
+                    <Clock size={12} />
+                    {timeAgo(stats.lastExecution.createdAt)}
+                    {stats.lastExecution.durationMs != null && (
+                      <span className="ml-1 text-gray-300">· {stats.lastExecution.durationMs}ms</span>
+                    )}
+                  </span>
+                )}
+              </div>
+
+              {/* 24h counters */}
+              {stats && (
+                <div className="flex items-center gap-1.5 text-xs text-gray-500 bg-gray-50 rounded-lg px-3 py-2 border border-gray-100">
+                  <Activity size={11} className="text-gray-400" />
+                  <span>
+                    <span className="font-medium text-gray-700">{stats.executions24h}</span>
+                    {" "}exécutions aujourd&apos;hui
+                  </span>
+                  {stats.errors24h > 0 && (
+                    <>
+                      <span className="text-gray-300">·</span>
+                      <span className="text-red-500 font-medium">{stats.errors24h} erreur{stats.errors24h > 1 ? "s" : ""}</span>
+                    </>
+                  )}
+                </div>
+              )}
+
+              {/* Actions */}
+              {agent.actions && agent.actions.length > 0 && (
+                <div>
+                  <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                    <Zap size={12} /> Actions
+                  </h4>
+                  <div className="flex flex-wrap gap-1.5">
+                    {agent.actions.map((action) => (
+                      <button
+                        key={action}
+                        onClick={() => onTestAction(action)}
+                        className="px-2.5 py-1 text-xs font-medium rounded-lg border transition-all"
+                        style={{ backgroundColor: c.bg, borderColor: `${c.color}30`, color: c.color }}
+                        onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = c.color + "20")}
+                        onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = c.bg)}
+                      >
+                        {action}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Test result from parent onTestAction */}
+              {testResult && (
+                <div>
+                  <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Résultat</h4>
+                  <pre className="text-xs bg-gray-50 p-3 rounded-lg border border-gray-200 max-h-28 overflow-auto whitespace-pre-wrap font-mono text-gray-700">
+                    {testResult}
+                  </pre>
+                </div>
+              )}
+
+              {/* Recent activity (last 4) */}
+              <div>
+                <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                  <Activity size={12} /> Activité récente
+                </h4>
+                <div className="space-y-1.5">
+                  {logs.length === 0 ? (
+                    <p className="text-sm text-gray-400 italic">Aucune action pour l&apos;instant</p>
+                  ) : (
+                    logs.slice(0, 4).map((log, i) => (
+                      <div key={i} className="text-xs bg-gray-50 p-2.5 rounded-lg border border-gray-100">
+                        <div className="flex items-center gap-2">
+                          {log.status === "success" ? (
+                            <CheckCircle2 size={12} className="text-green-500" />
+                          ) : log.status === "error" ? (
+                            <AlertCircle size={12} className="text-red-500" />
+                          ) : (
+                            <Activity size={12} className="text-yellow-500" />
+                          )}
+                          <span className="font-medium text-gray-700">{log.actionType}</span>
+                          {log.durationMs && <span className="text-gray-400 ml-auto">{log.durationMs}ms</span>}
+                        </div>
+                        <p className="text-gray-600 mt-0.5 ml-6">{log.summary}</p>
+                        <p className="text-gray-400 mt-0.5 ml-6 text-[10px]">
+                          {timeAgo(log.createdAt)}
+                        </p>
+                      </div>
+                    ))
+                  )}
+                </div>
               </div>
             </div>
           )}
 
-          {testResult && (
-            <div>
-              <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Résultat</h4>
-              <pre className="text-xs bg-gray-50 p-3 rounded-lg border border-gray-200 max-h-28 overflow-auto whitespace-pre-wrap font-mono text-gray-700">
-                {testResult}
-              </pre>
+          {/* ────────── TAB: LOGS ────────── */}
+          {tab === "logs" && (
+            <div className="space-y-3">
+              {/* Filter toggle */}
+              <div className="flex gap-1">
+                {(["all", "error"] as const).map((f) => (
+                  <button
+                    key={f}
+                    onClick={() => setLogsFilter(f)}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${
+                      logsFilter === f
+                        ? "bg-gray-900 text-white"
+                        : "bg-gray-100 text-gray-500 hover:bg-gray-200"
+                    }`}
+                  >
+                    {f === "all" ? "Tous" : "Erreurs seulement"}
+                  </button>
+                ))}
+              </div>
+
+              {logsLoading && modalLogs.length === 0 ? (
+                <p className="text-xs text-gray-400 py-4 text-center">Chargement…</p>
+              ) : modalLogs.length === 0 ? (
+                <p className="text-xs text-gray-400 italic py-4 text-center">Aucun log trouvé</p>
+              ) : (
+                <div className="space-y-1.5">
+                  {modalLogs.map((log) => (
+                    <div key={log.id} className="text-xs bg-gray-50 rounded-lg border border-gray-100 overflow-hidden">
+                      <div className="flex items-center gap-2 p-2.5">
+                        <span
+                          className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+                          style={{ backgroundColor: log.status === "success" ? "#22c55e" : log.status === "error" ? "#ef4444" : "#eab308" }}
+                        />
+                        <span className="font-medium text-gray-700 truncate">{log.actionType}</span>
+                        <span className="text-gray-400 truncate flex-1">{log.summary}</span>
+                        <span className="text-gray-300 flex-shrink-0">{log.durationMs != null ? `${log.durationMs}ms` : ""}</span>
+                        <span className="text-gray-400 flex-shrink-0">{timeAgo(log.createdAt)}</span>
+                        {log.status === "error" && (
+                          <button
+                            onClick={() => setExpandedLog(expandedLog === log.id ? null : log.id)}
+                            className="flex-shrink-0 text-red-400 hover:text-red-600"
+                          >
+                            <Minus size={12} style={{ transform: expandedLog === log.id ? undefined : "rotate(45deg)" }} />
+                          </button>
+                        )}
+                      </div>
+                      {log.status === "error" && expandedLog === log.id && (
+                        <pre className="text-[10px] bg-red-50 text-red-700 p-2.5 border-t border-red-100 overflow-auto max-h-24 font-mono whitespace-pre-wrap">
+                          {log.details ? JSON.stringify(log.details, null, 2) : "Pas de détails"}
+                        </pre>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {logsHasMore && (
+                <button
+                  onClick={() => void fetchModalLogs(logsPage + 1, logsFilter, false)}
+                  disabled={logsLoading}
+                  className="w-full text-xs text-gray-500 hover:text-gray-700 py-2 border border-gray-200 rounded-lg hover:bg-gray-50 transition disabled:opacity-50"
+                >
+                  {logsLoading ? "Chargement…" : "Voir plus"}
+                </button>
+              )}
             </div>
           )}
 
-          <div>
-            <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-              <Activity size={12} /> Activité récente
-            </h4>
-            <div className="space-y-1.5">
-              {logs.length === 0 ? (
-                <p className="text-sm text-gray-400 italic">Aucune action pour l&apos;instant</p>
+          {/* ────────── TAB: STATS ────────── */}
+          {tab === "stats" && (
+            <div className="space-y-4">
+              {!stats ? (
+                <p className="text-xs text-gray-400 py-4 text-center">Chargement…</p>
               ) : (
-                logs.map((log, i) => (
-                  <div key={i} className="text-xs bg-gray-50 p-2.5 rounded-lg border border-gray-100">
-                    <div className="flex items-center gap-2">
-                      {log.status === "success" ? (
-                        <CheckCircle2 size={12} className="text-green-500" />
-                      ) : log.status === "error" ? (
-                        <AlertCircle size={12} className="text-red-500" />
-                      ) : (
-                        <Activity size={12} className="text-yellow-500" />
-                      )}
-                      <span className="font-medium text-gray-700">{log.actionType}</span>
-                      {log.durationMs && <span className="text-gray-400 ml-auto">{log.durationMs}ms</span>}
+                <>
+                  {/* Stat cards */}
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="bg-gray-50 rounded-xl border border-gray-100 p-3 text-center">
+                      <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-1">Succès 7j</p>
+                      <p className="text-xl font-bold text-gray-900">
+                        {stats.successRate7d != null ? `${stats.successRate7d}%` : "—"}
+                      </p>
                     </div>
-                    <p className="text-gray-600 mt-0.5 ml-6">{log.summary}</p>
-                    <p className="text-gray-400 mt-0.5 ml-6 text-[10px]">
-                      {new Date(log.createdAt).toLocaleString("fr-CH")}
-                    </p>
+                    <div className="bg-gray-50 rounded-xl border border-gray-100 p-3 text-center">
+                      <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-1">Moy. durée</p>
+                      <p className="text-xl font-bold text-gray-900">
+                        {stats.avgDuration7d != null ? `${stats.avgDuration7d}ms` : "—"}
+                      </p>
+                    </div>
+                    <div className="bg-gray-50 rounded-xl border border-gray-100 p-3 text-center">
+                      <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-1">Total 7j</p>
+                      <p className="text-xl font-bold text-gray-900">{stats.total7d}</p>
+                    </div>
                   </div>
-                ))
+
+                  {/* Volume per day chart */}
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                        Volume / jour
+                      </h4>
+                      {stats.peakHour != null && (
+                        <span className="text-[10px] bg-indigo-50 text-indigo-600 border border-indigo-100 rounded px-2 py-0.5">
+                          Pic {stats.peakHour}h–{stats.peakHour + 1}h
+                        </span>
+                      )}
+                    </div>
+                    {stats.volumePerDay.length > 0 ? (
+                      <BarChart data={stats.volumePerDay} />
+                    ) : (
+                      <p className="text-xs text-gray-400 italic">Pas de données</p>
+                    )}
+                  </div>
+                </>
               )}
             </div>
-          </div>
+          )}
+
+          {/* ────────── TAB: TESTER ────────── */}
+          {tab === "tester" && (
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1.5">
+                  Corps de la requête (JSON)
+                </label>
+                <textarea
+                  value={testerBody}
+                  onChange={(e) => setTesterBody(e.target.value)}
+                  rows={7}
+                  className="w-full text-xs font-mono bg-gray-50 border border-gray-200 rounded-lg p-3 text-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-300 resize-none"
+                  spellCheck={false}
+                />
+              </div>
+
+              <button
+                onClick={() => void handleTesterRun()}
+                disabled={testerLoading}
+                className="w-full flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-semibold text-white transition-colors disabled:opacity-50"
+                style={{ backgroundColor: testerLoading ? "#6b7280" : c.color }}
+              >
+                {testerLoading ? (
+                  <>
+                    <span className="h-3 w-3 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                    Exécution…
+                  </>
+                ) : (
+                  <>
+                    <Zap size={12} />
+                    Exécuter
+                  </>
+                )}
+              </button>
+
+              {testerResult && (
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className={`text-xs font-semibold uppercase tracking-wider ${testerIsError ? "text-red-500" : "text-green-600"}`}>
+                      {testerIsError ? "Erreur" : "Réponse"}
+                    </span>
+                    {testerTime != null && (
+                      <span className="text-[10px] text-gray-400 flex items-center gap-1">
+                        <Clock size={10} /> {testerTime}ms
+                      </span>
+                    )}
+                  </div>
+                  <pre className={`text-xs p-3 rounded-lg border overflow-auto max-h-36 whitespace-pre-wrap font-mono ${
+                    testerIsError
+                      ? "bg-red-50 text-red-700 border-red-200"
+                      : "bg-gray-50 text-gray-700 border-gray-200"
+                  }`}>
+                    {testerResult}
+                  </pre>
+                </div>
+              )}
+
+              {!AGENT_ROUTES[agent.id] && (
+                <p className="text-xs text-gray-400 italic text-center">
+                  Aucune route directe configurée pour cet agent.
+                </p>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>
