@@ -19,117 +19,6 @@ function nowId() {
   return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
-function normalize(s: string) {
-  return s
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/\p{Diacritic}/gu, "")
-    .replace(/['']/g, "'")
-    .trim();
-}
-
-const ABBREVS: [RegExp, string][] = [
-  // ── Combinaisons complètes en premier (ordre important) ──────────────────
-  [/\bt\s*ki\b/g, "t'es qui"],
-  [/\bt\s*qui\b/g, "t'es qui"],
-  [/\bt\s*koi\b/g, "t'es quoi"],
-  [/\bt\s*quoi\b/g, "t'es quoi"],
-  [/\bc\s*ki\b/g, "c'est qui"],
-  [/\bc\s*koi\b/g, "c'est quoi"],
-  [/\bc\s*quoi\b/g, "c'est quoi"],
-  [/\bc\s*qui\b/g, "c'est qui"],
-  [/\bkesk\b/g, "qu'est ce que"],
-  [/\bkeskon\b/g, "qu'est ce qu'on"],
-  // ── Lettres / syllabes seules ────────────────────────────────────────────
-  [/\bki\b/g, "qui"],
-  [/\bkoi\b/g, "quoi"],
-  // "c" seul uniquement (ni suivi d'une lettre, ni d'une apostrophe)
-  [/\bc(?!['\w])/g, "c'est"],
-  // "t" seul uniquement (ni suivi d'une lettre, ni d'une apostrophe)
-  [/\bt(?!['\w])/g, "t'es"],
-  [/\bpk\b/g, "pourquoi"],
-  [/\bpq\b/g, "pourquoi"],
-  [/\bpr\b/g, "pour"],
-  [/\bqd\b/g, "quand"],
-  [/\bdc\b/g, "donc"],
-  [/\bms\b/g, "mais"],
-  [/\bav\b/g, "avec"],
-  [/\bss\b/g, "sans"],
-  // ── Expressions & interjections ──────────────────────────────────────────
-  [/\bsvp\b/g, "s'il vous plait"],
-  [/\bstp\b/g, "s'il te plait"],
-  [/\btjr(s)?\b/g, "toujours"],
-  [/\bptet\b/g, "peut etre"],
-  [/\bptetre\b/g, "peut etre"],
-  [/\bqq\b/g, "quelque"],
-  [/\bqqch\b/g, "quelque chose"],
-  [/\bqn\b/g, "quelqu'un"],
-  [/\bvlm\b/g, "vraiment"],
-  [/\bvrmt\b/g, "vraiment"],
-  [/\bpls\b/g, "plusieurs"],
-  [/\bdsl\b/g, "désolé"],
-  [/\bamha\b/g, "a mon avis"],
-  [/\bama\b/g, "a mon avis"],
-  [/\bjsp\b/g, "je sais pas"],
-  // ── Salutations abrégées ─────────────────────────────────────────────────
-  [/\bbjr\b/g, "bonjour"],
-  [/\bbsr\b/g, "bonsoir"],
-  [/\bslt\b/g, "salut"],
-  [/\bcc\b/g, "coucou"],
-  [/\ba\+\+?\b/g, "a plus"],
-  [/\bap\b/g, "a plus"],
-];
-
-function expandAbbrevs(s: string): string {
-  let out = s;
-  for (const [pattern, replacement] of ABBREVS) {
-    out = out.replace(pattern, replacement);
-  }
-  return out;
-}
-
-function prepareInput(raw: string): string {
-  return expandAbbrevs(normalize(raw));
-}
-
-function levenshtein(a: string, b: string): number {
-  const m = a.length, n = b.length;
-  const dp: number[][] = Array.from({ length: m + 1 }, (_, i) =>
-    Array.from({ length: n + 1 }, (_, j) => (i === 0 ? j : j === 0 ? i : 0))
-  );
-  for (let i = 1; i <= m; i++)
-    for (let j = 1; j <= n; j++)
-      dp[i][j] = a[i - 1] === b[j - 1]
-        ? dp[i - 1][j - 1]
-        : 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]);
-  return dp[m][n];
-}
-
-function fuzzyWordMatch(word: string, keyword: string): boolean {
-  if (word.includes(keyword) || keyword.includes(word)) return true;
-  if (keyword.length <= 3) return word === keyword;
-  const maxDist = keyword.length <= 5 ? 1 : keyword.length <= 8 ? 2 : 3;
-  return levenshtein(word, keyword) <= maxDist;
-}
-
-function scoreMatch(input: string, keywords: string[]) {
-  const hay = prepareInput(input);
-  const words = hay.split(/\s+/);
-  let score = 0;
-  for (const kRaw of keywords) {
-    const k = normalize(kRaw);
-    if (hay.includes(k)) {
-      // Les phrases longues scorent proportionnellement plus
-      const wordCount = k.split(/\s+/).length;
-      score += wordCount * 2;
-      continue;
-    }
-    if (k.includes(" ")) continue;
-    if (words.some((w) => fuzzyWordMatch(w, k))) score += 1;
-  }
-  return score;
-}
-
 function DogRobotIcon({ className }: { className?: string }) {
   return (
     <svg
@@ -190,333 +79,6 @@ function DogRobotIcon({ className }: { className?: string }) {
 }
 
 export default function DogShiftBot() {
-  const faq = useMemo(
-    () =>
-      [
-        // ── Salutations ──────────────────────────────────────────────────────
-        {
-          keywords: [
-            "salut", "bonjour", "bonsoir", "hello", "hey", "coucou", "hi",
-            "yo", "wesh", "slt", "bjr", "bsr", "allo", "allô", "cc",
-            "bonne journee", "bonne soiree", "bonne matin",
-          ],
-          answer:
-            "Bonjour ! 👋 Ravi de vous accueillir sur DogShift. Qu'est-ce que je peux faire pour vous ?",
-        },
-        // ── Comment ça va ────────────────────────────────────────────────────
-        {
-          keywords: [
-            "ca va", "ça va", "comment ca va", "comment vas tu", "comment allez vous",
-            "ca roule", "ca baigne", "la forme", "cv", "t va", "tu vas bien",
-            "quoi de neuf", "quoi de 9", "koi de 9",
-          ],
-          answer:
-            "Très bien merci, je suis prêt à vous aider ! 😊 Posez-moi vos questions sur DogShift : services, réservation, tarifs, devenir sitter… Je suis là pour vous.",
-        },
-        // ── Tu fais quoi / Qui es-tu (bot) ──────────────────────────────────
-        {
-          keywords: [
-            "t'es qui", "tu es qui", "tes qui", "t ki", "t qui",
-            "tu fais quoi", "tfq", "t fais quoi", "tu fous quoi",
-            "c'est quoi toi", "t'es koi", "t es koi",
-            "tu peux faire quoi", "tu sais faire quoi", "tes capacites",
-            "tu connais quoi", "tu reponds a quoi", "t'es capable de quoi",
-            "tu es un bot", "t'es un bot", "t'es un robot", "t'es humain",
-            "tu es humain", "t'es une ia", "intelligence artificielle",
-            "tu es reel", "t'es reel", "tu existes",
-          ],
-          answer:
-            "Je suis DogShift Bot 🐾 — l'assistant virtuel de DogShift ! Je suis là pour répondre à toutes vos questions 24h/24 : services (Promenade, Garde, Pension), réservation, tarifs, phase pilote, sécurité, devenir dogsitter… Posez-moi n'importe quelle question !",
-        },
-        // ── Rires / Humour ───────────────────────────────────────────────────
-        {
-          keywords: [
-            "lol", "mdr", "ptdr", "xd", "haha", "hihi", "hehe", "😂", "🤣",
-            "trop drole", "trop marrant", "c'est drole", "hahaha", "lmao",
-          ],
-          answer:
-            "😄 Haha ! Je suis un bot, mais j'ai de l'humour ! Si vous avez une vraie question sur DogShift, je suis là. Sinon, bonne journée !",
-        },
-        // ── Fondateur / Équipe ───────────────────────────────────────────────
-        {
-          keywords: [
-            "fondateur", "createur", "créateur", "qui a cree", "qui a créé",
-            "qui a fait le site", "qui a lance", "qui a lancé", "qui est derriere",
-            "derriere dogshift", "derrière dogshift", "equipe dogshift", "équipe dogshift",
-            "qui dirige", "ceo", "patron", "boss", "chef du site", "team dogshift",
-            "qui gere le site", "qui a monte dogshift", "qui a monté dogshift",
-            "c'est qui le fondateur", "c'est qui le createur",
-            "c qui le fondateur", "c qui fondateur", "c qui le createur",
-          ],
-          answer:
-            "Bonne question… mais qui cherche trouve 🐾😏 Ce que je peux dire, c'est que DogShift est un projet indépendant, construit avec passion et exigence pour offrir la meilleure expérience de dogsitting en Suisse. La suite ? Elle se mérite !",
-        },
-        // ── Remerciements ────────────────────────────────────────────────────
-        {
-          keywords: [
-            "merci", "merci beaucoup", "thanks", "thank you", "super merci",
-            "parfait merci", "ok merci", "cool merci", "sympa merci",
-          ],
-          answer:
-            "Avec plaisir ! 😊 N'hésitez pas si vous avez d'autres questions. Bonne expérience sur DogShift !",
-        },
-        // ── Validation / Accord ──────────────────────────────────────────────
-        {
-          keywords: [
-            "ok", "okay", "d'accord", "daccord", "oui", "ouais", "ouep",
-            "parfait", "nickel", "top", "super", "genial", "excellent",
-            "c'est bon", "ca marche", "cool", "bien compris", "j'ai compris",
-          ],
-          answer:
-            "Super ! 👍 Si vous avez d'autres questions sur DogShift, n'hésitez pas — je suis là !",
-        },
-        // ── Phase pilote ─────────────────────────────────────────────────────
-        {
-          keywords: [
-            "phase pilote", "pilote", "pilot", "beta", "lancement", "en cours de lancement",
-            "pas encore disponible", "bientot disponible", "bientôt", "quand ca ouvre",
-            "quand vous ouvrez", "c'est ouvert", "c'est disponible", "deja ouvert",
-            "déjà ouvert", "c'est lance", "c'est lancé", "disponible quand",
-            "liste attente", "liste d'attente", "m'inscrire pour le lancement",
-            "comment ca marche phase", "comment ça marche phase",
-          ],
-          answer:
-            "DogShift est actuellement en phase pilote 🚀 La plateforme est active sur la Riviera (entre Lausanne et Montreux), avec un nombre volontairement limité de dogsitters sélectionnés avec soin. L'expansion vers Genève, Nyon, Morges et d'autres villes est en cours progressivement.",
-        },
-        {
-          keywords: [
-            "commission", "combien vous prenez", "frais plateforme", "frais dogshift",
-            "pourcentage", "part dogshift", "frais service", "frais supplementaire",
-            "zero commission", "0 commission", "gratuit pour sitter",
-          ],
-          answer:
-            "Durant la phase pilote, DogShift applique 0% de commission : les dogsitters conservent 100% du montant des réservations (hors frais Stripe). C'est l'un des avantages d'être parmi les premiers sitters à rejoindre la plateforme.",
-        },
-        {
-          keywords: [
-            "tarif encadre", "tarifs encadrés", "grille tarifaire", "fourchette sitter",
-            "combien sitter gagne", "combien le sitter gagne", "prix minimum", "prix maximum",
-            "tarif minimum", "tarif maximum", "entre combien", "tarif pilote",
-          ],
-          answer:
-            "En phase pilote, les tarifs sont encadrés pour garantir la qualité et la cohérence : Promenade entre CHF 15 et 25, Garde à domicile entre CHF 18 et 30. Chaque sitter fixe son tarif dans cette fourchette selon son expérience.",
-        },
-        {
-          keywords: [
-            "selection sitter", "sélection sitter", "comment sitter est selectionne",
-            "comment sitter est choisi", "criterees sitter", "critères sitter",
-            "verifie comment", "processus selection", "rigoureux", "processus candidature",
-            "casier judiciaire", "background check sitter", "qui peut devenir sitter",
-          ],
-          answer:
-            "Les dogsitters DogShift sont sélectionnés manuellement avec exigence : vérification du profil, expérience avec les animaux, casier judiciaire vierge et entretien. Le nombre de sitters est volontairement limité pour garantir un niveau de qualité élevé dès le lancement.",
-        },
-        {
-          keywords: [
-            "contribuer", "soutenir", "don", "financement", "investir", "investissement",
-            "contribuer lancement", "soutenir lancement", "aider dogshift",
-            "participer lancement", "crowdfunding", "financement participatif",
-          ],
-          answer:
-            "DogShift est construit de manière indépendante et responsable. Si vous souhaitez soutenir le lancement de la plateforme, vous pouvez contribuer volontairement via le bouton « Contribuer au lancement » en bas du site. Merci pour votre confiance !",
-        },
-        // ── Qu'est-ce que DogShift ───────────────────────────────────────────
-        {
-          keywords: [
-            "c'est quoi", "cest quoi", "qu'est ce", "quest ce", "comment ca marche",
-            "comment fonctionne", "dogshift", "plateforme", "site", "application",
-            "appli", "service", "principe", "kesako", "kesakeuf",
-          ],
-          answer:
-            "DogShift est une plateforme premium de dogsitting en Suisse. Elle met en relation les propriétaires de chiens avec des dogsitters vérifiés pour 3 services : Promenade, Garde à domicile et Pension chez le sitter. Vous comparez les profils, les avis et réservez en ligne.",
-        },
-        // ── Promenade ───────────────────────────────────────────────────────
-        {
-          keywords: [
-            "promenade", "promener", "balade", "balader", "sortie", "sortir",
-            "marche", "tour", "walk", "durée promenade", "temps promenade",
-            "combien de temps promenade", "promennade", "promenad",
-          ],
-          answer:
-            "La Promenade : un sitter qualifié vient chez vous chercher votre chien et le promène (durée et fréquence définies selon l'annonce). Idéal pour les journées chargées ou les propriétaires peu disponibles.",
-        },
-        // ── Garde à domicile ────────────────────────────────────────────────
-        {
-          keywords: [
-            "garde", "visite", "a domicile", "chez moi", "passage", "check in",
-            "check", "surveiller", "surveille", "garder chez moi",
-            "sitter vient", "sitter passe", "sans hebergement", "sans nuit",
-          ],
-          answer:
-            "La Garde / Visite à domicile : le sitter se déplace chez vous pour nourrir, sortir et s'occuper de votre chien, sans hébergement. Parfait pour les courtes absences ou la journée.",
-        },
-        // ── Pension ─────────────────────────────────────────────────────────
-        {
-          keywords: [
-            "pension", "hebergement", "nuit", "nuits", "chez le sitter",
-            "accueil", "accueilli", "famille", "dormir", "week end",
-            "week-end", "vacances", "voyage", "partir", "absent",
-            "logement", "loger", "pention", "penscion",
-          ],
-          answer:
-            "La Pension (hébergement) : votre chien est accueilli directement chez le sitter — souvent dans un cadre familial et chaleureux. Idéal pour les week-ends, vacances ou déplacements prolongés.",
-        },
-        // ── Tarifs / Prix ───────────────────────────────────────────────────
-        {
-          keywords: [
-            "prix", "tarif", "tarifs", "combien", "cout", "coute", "coût",
-            "cher", "payer", "paiement", "budget", "facturation", "facture",
-            "gratuit", "abordable", "fourchette", "grille", "plage de prix",
-            "combien ca coute", "combien ca coûte", "combien coute",
-            "comment payer", "comment je paie", "comment regler",
-            "quel est le tarif", "c'est combien",
-          ],
-          answer:
-            "Les tarifs varient selon le service, la durée et le sitter. Sur DogShift, chaque profil affiche clairement ses prix : vous pouvez comparer et choisir selon votre budget avant de réserver. Aucun frais caché.",
-        },
-        // ── Réservation ─────────────────────────────────────────────────────
-        {
-          keywords: [
-            "reserver", "reservation", "reserevation",
-            "comment reserver", "comment on reserve", "comment je reserve",
-            "comment faire une reservation", "comment booker",
-            "etapes reservation", "demarche reservation",
-            "disponibilite", "creneaux", "créneau", "calendrier reservation",
-            "trouver un sitter", "chercher sitter", "selectionner sitter",
-            "book", "booker",
-          ],
-          answer:
-            "Pour réserver sur DogShift : 1) Choisissez votre service (Promenade, Garde ou Pension) + votre ville. 2) Parcourez les profils disponibles et comparez les avis. 3) Contactez le sitter et confirmez les détails. 4) Réservez en ligne en toute sécurité.",
-        },
-        // ── Compte / Inscription ─────────────────────────────────────────────
-        {
-          keywords: [
-            "creer compte", "créer compte", "mon compte",
-            "comment creer mon compte", "comment s'inscrire", "comment s inscrire",
-            "comment se connecter", "comment je m'inscris",
-            "inscription", "inscrire", "connexion", "connecter",
-            "login", "mot de passe", "email", "register", "enregistrer",
-            "s'inscrire", "sincrire", "m'inscrire",
-          ],
-          answer:
-            "Pour créer votre compte DogShift : cliquez sur « S'inscrire » en haut de la page. L'inscription est rapide et gratuite. Vous pouvez ensuite compléter votre profil et effectuer vos réservations.",
-        },
-        // ── Annulation / Modification ────────────────────────────────────────
-        {
-          keywords: [
-            "annulation", "annuler", "annule", "annulaion",
-            "comment annuler", "comment modifier ma reservation",
-            "comment changer ma reservation", "comment reporter",
-            "modifier reservation", "changer reservation",
-            "report", "reporter", "repousser", "decaler",
-            "remboursement annulation", "politique annulation",
-          ],
-          answer:
-            "Annulation ou modification : les conditions dépendent du sitter et du service choisi. Consultez la politique d'annulation sur la fiche du sitter. En cas de besoin urgent, contactez le sitter directement via la messagerie DogShift.",
-        },
-        // ── Sécurité / Confiance ─────────────────────────────────────────────
-        {
-          keywords: [
-            "securite", "securise", "confiance", "fiable", "fiabilite",
-            "avis", "note", "notation", "verification", "verifier",
-            "verifie", "certifie", "certifié", "references", "reference",
-            "background check", "controle", "vetting", "assurance",
-            "garantie", "protege", "sécurisé", "credible", "credibilite",
-          ],
-          answer:
-            "Sur DogShift, chaque sitter dispose d'un profil avec avis clients vérifiés, expériences et photos. Vous pouvez échanger avec le sitter avant la garde pour évaluer votre compatibilité. Les profils vérifiés sont mis en avant pour votre sérénité.",
-        },
-        // ── Chien / Races / Tailles ──────────────────────────────────────────
-        {
-          keywords: [
-            "race", "races", "taille", "grand chien", "petit chien",
-            "gros chien", "chiot", "vieux chien", "vieille chien",
-            "senior", "berger", "labrador", "bulldog", "golden",
-            "accepted", "accepté", "accepte", "toutes races",
-            "chien handicapé", "handicape",
-          ],
-          answer:
-            "La plupart des sitters DogShift acceptent toutes les races et tailles. Certains ont des préférences (précisées sur leur profil). En cas de doute, consultez la fiche du sitter ou contactez-le directement avant de réserver.",
-        },
-        // ── Besoins spéciaux / Médicaments ───────────────────────────────────
-        {
-          keywords: [
-            "medicament", "médicament", "traitement", "allergie", "allergique",
-            "regime", "régime", "special", "spécial", "besoin particulier",
-            "malade", "maladie", "vieillissant", "diabete", "diabétique",
-            "soin", "soins", "veterinaire", "vétérinaire",
-          ],
-          answer:
-            "Si votre chien a des besoins particuliers (médicaments, régime, soins), précisez-le dans votre demande et échangez avec le sitter avant la réservation. Certains sitters sont spécialement formés pour les animaux à besoins spécifiques.",
-        },
-        // ── Problème pendant la garde ────────────────────────────────────────
-        {
-          keywords: [
-            "probleme pendant", "accident", "blessure", "blessé", "urgence",
-            "veterinaire urgence", "que faire si", "perdu", "fugue", "fugué",
-            "disparu", "chien disparu", "incident", "que se passe",
-            "que se passe-t-il", "en cas de", "souci", "soucis",
-          ],
-          answer:
-            "En cas d'incident pendant la garde, le sitter doit vous contacter immédiatement via la messagerie DogShift. En cas d'urgence vétérinaire, il se rend chez le vétérinaire le plus proche. Pensez à communiquer au sitter les coordonnées de votre vétérinaire habituel.",
-        },
-        // ── Zone géographique ────────────────────────────────────────────────
-        {
-          keywords: [
-            "ville", "villes", "region", "région", "disponible ou", "disponible dans",
-            "disponible a", "disponible en", "paris", "lyon", "marseille",
-            "bordeaux", "toulouse", "nantes", "zone", "zones", "partout",
-            "dans ma ville", "disponible chez moi", "couverture", "suisse",
-          ],
-          answer:
-            "DogShift couvre les principales villes suisses (Lausanne, Genève, Zurich, Berne, Bâle…). Entrez votre ville dans la recherche pour voir les sitters disponibles près de chez vous. De nouvelles villes sont ajoutées régulièrement.",
-        },
-        // ── Urgence / Dernière minute ────────────────────────────────────────
-        {
-          keywords: [
-            "urgent", "urgence", "derniere minute", "dernier minute",
-            "aujourd'hui", "aujourd hui", "ce soir", "demain",
-            "tres rapide", "rapide", "immédiat", "immediat", "vite",
-            "dispo maintenant", "maintenant",
-          ],
-          answer:
-            "Besoin d'un sitter en urgence ? Filtrez par disponibilité dans la recherche — certains sitters acceptent les réservations de dernière minute. Contactez-les directement via la messagerie pour une réponse rapide.",
-        },
-        // ── Devenir dogsitter ────────────────────────────────────────────────
-        {
-          keywords: [
-            "devenir dogsitter", "devenir sitter",
-            "comment on devient dogsitter", "comment devenir dogsitter",
-            "comment devenir sitter", "comment je deviens dogsitter",
-            "comment m'inscrire comme sitter", "comment proposer mes services",
-            "comment candidater", "comment postuler", "comment rejoindre dogshift",
-            "je veux devenir dogsitter", "je voudrais devenir dogsitter",
-            "je souhaite devenir dogsitter", "je veux etre sitter",
-            "dogsitter", "dog sitter",
-            "proposer mes services", "rejoindre", "m'inscrire comme sitter",
-            "sitter moi meme", "travailler", "gagner argent",
-            "revenus complementaires", "side job", "candidater", "postuler",
-            "commencer a garder", "inscription sitter", "profil sitter",
-            "creer profil sitter", "candidature sitter",
-          ],
-          answer:
-            "Devenir dogsitter DogShift : c'est gratuit et rapide ! Cliquez sur « Postuler maintenant », créez votre profil sitter, définissez vos services, tarifs et disponibilités. Vous recevrez ensuite des demandes de propriétaires près de chez vous.",
-        },
-        // ── Support / Bug ────────────────────────────────────────────────────
-        {
-          keywords: [
-            "contact", "contacter", "support", "aide", "bug", "probleme",
-            "erreur", "marche pas", "fonctionne pas", "bloque", "bloqué",
-            "signaler", "rapport", "message d'erreur", "page blanche",
-            "ne charge pas", "chargement", "lent",
-          ],
-          answer:
-            "Besoin d'aide technique ? Décrivez le problème (page concernée, message d'erreur, action effectuée) et je vous aide. Pour contacter l'équipe DogShift directement, utilisez le formulaire de contact disponible en bas du site.",
-        },
-      ],
-    []
-  );
-
   const initialBotMessage: ChatMessage = useMemo(
     () => ({
       id: nowId(),
@@ -532,6 +94,11 @@ export default function DogShiftBot() {
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([initialBotMessage]);
   const [dismissed, setDismissed] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
+
+  // Tracks emails already captured to avoid duplicate lead-magnet calls
+  const capturedEmails = useRef<Set<string>>(new Set());
 
   // ── Snap aux 4 coins (mobile : drag touch avec suivi visuel) ──────────────
   type Corner = "br" | "bl" | "tr" | "tl";
@@ -585,6 +152,7 @@ export default function DogShiftBot() {
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
 
+  // Load history from localStorage on mount
   useEffect(() => {
     try {
       const raw = window.localStorage.getItem(STORAGE_KEY);
@@ -596,11 +164,30 @@ export default function DogShiftBot() {
     }
   }, []);
 
+  // Persist history to localStorage on every change
   useEffect(() => {
     try {
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ messages }));
     } catch {
       // ignore
+    }
+  }, [messages]);
+
+  // Lead magnet interception — detect LEADMAGNET:[email] in bot messages and
+  // silently call the lead-magnet agent. Runs on render (messages change).
+  useEffect(() => {
+    for (const msg of messages) {
+      if (msg.role !== "bot") continue;
+      const match = /^LEADMAGNET:(.+)$/m.exec(msg.text);
+      if (!match) continue;
+      const email = match[1].trim();
+      if (capturedEmails.current.has(email)) continue;
+      capturedEmails.current.add(email);
+      fetch("/api/agents/lead-magnet", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, source: "chatbot" }),
+      }).catch(() => {});
     }
   }, [messages]);
 
@@ -617,32 +204,57 @@ export default function DogShiftBot() {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages, open]);
 
-  function getBotReply(userText: string) {
-    const scored = faq
-      .map((item) => ({ item, score: scoreMatch(userText, [...item.keywords]) }))
-      .sort((a, b) => b.score - a.score);
-
-    if (scored[0]?.score > 0) return scored[0].item.answer;
-
-    return (
-      "Je n'ai pas bien compris votre question 🙏 Je peux vous renseigner sur : les services (Promenade, Garde, Pension), la réservation, les tarifs, la sécurité, votre compte, devenir dogsitter, ou les disponibilités. Reformulez et je ferai de mon mieux !"
-    );
-  }
-
-  function send() {
+  async function send() {
     const text = input.trim();
-    if (!text) return;
+    if (!text || isLoading) return;
 
     const userMsg: ChatMessage = { id: nowId(), role: "user", text, ts: Date.now() };
-    const botMsg: ChatMessage = {
-      id: nowId(),
-      role: "bot",
-      text: getBotReply(text),
-      ts: Date.now() + 1,
-    };
+    const botId = nowId();
+    const botMsg: ChatMessage = { id: botId, role: "bot", text: "", ts: Date.now() + 1 };
 
     setMessages((prev) => [...prev, userMsg, botMsg]);
     setInput("");
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      // Convert internal 'bot' role to 'assistant' and strip any LEADMAGNET lines
+      // from history before sending to the API
+      const apiMessages = [...messages, userMsg]
+        .filter((m) => m.text.trim())
+        .map((m) => ({
+          role: m.role === "bot" ? ("assistant" as const) : ("user" as const),
+          content: m.text.replace(/^LEADMAGNET:.+$/m, "").trim(),
+        }));
+
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages: apiMessages }),
+      });
+
+      if (!response.ok) throw new Error(`Erreur ${response.status}`);
+      if (!response.body) throw new Error("Pas de réponse");
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let accumulated = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        accumulated += decoder.decode(value, { stream: true });
+        setMessages((prev) =>
+          prev.map((m) => (m.id === botId ? { ...m, text: accumulated } : m))
+        );
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error("Streaming error"));
+      // Remove the empty bot placeholder so it doesn't render as blank
+      setMessages((prev) => prev.filter((m) => m.id !== botId || m.text));
+    } finally {
+      setIsLoading(false);
+    }
   }
 
   if (dismissed) return null;
@@ -693,6 +305,12 @@ export default function DogShiftBot() {
             <div className="flex flex-col gap-2">
               {messages.map((m) => {
                 const isUser = m.role === "user";
+                // Strip LEADMAGNET tag before display; show "..." while streaming starts
+                const rawText = isUser
+                  ? m.text
+                  : m.text.replace(/^LEADMAGNET:.+$/m, "").trim();
+                const displayText = rawText || (isLoading ? "..." : null);
+                if (!displayText) return null;
                 return (
                   <div
                     key={m.id}
@@ -705,11 +323,18 @@ export default function DogShiftBot() {
                           : "max-w-[85%] rounded-2xl bg-white/80 px-3 py-2 text-sm font-medium text-slate-800 ring-1 ring-slate-200/60"
                       }
                     >
-                      {m.text}
+                      {displayText}
                     </div>
                   </div>
                 );
               })}
+              {error && (
+                <div className="flex justify-start">
+                  <div className="max-w-[85%] rounded-2xl bg-white/80 px-3 py-2 text-sm font-medium text-slate-800 ring-1 ring-slate-200/60">
+                    Désolé, une erreur est survenue. Réessayez dans un instant 🐾
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -726,12 +351,14 @@ export default function DogShiftBot() {
                   }
                 }}
                 placeholder="Posez votre question…"
+                disabled={isLoading}
                 className="w-full bg-transparent text-sm font-medium text-slate-900 placeholder:text-slate-400 outline-none"
                 aria-label="Message pour DogShift Bot"
               />
               <button
                 type="button"
                 onClick={send}
+                disabled={isLoading}
                 className="grid h-9 w-9 flex-none place-items-center rounded-2xl bg-[var(--dogshift-blue)] text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition hover:bg-[var(--dogshift-blue-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)]"
                 aria-label="Envoyer"
               >
