@@ -1,7 +1,9 @@
 "use client";
+/* eslint-disable react-hooks/set-state-in-effect */
 
 import Link from "next/link";
 import {
+  Heart,
   HelpCircle,
   House,
   LayoutDashboard,
@@ -15,7 +17,7 @@ import {
   X,
 } from "lucide-react";
 import { useUser } from "@clerk/nextjs";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import BrandLogo from "@/components/BrandLogo";
 import MobileSearchOverlay from "@/components/MobileSearchOverlay";
@@ -256,6 +258,7 @@ export default function SiteHeader() {
                     { href: "/devenir-dogsitter", icon: UserPlus, label: "Devenir dogsitter" },
                     { href: "/become-sitter/access", icon: LogIn, label: "Accès sitter" },
                     { href: "/shop", icon: ShoppingBag, label: "Boutique" },
+                    { href: "/zootherapie", icon: Heart, label: "Bien-être & zoothérapie" },
                     { href: "/help", icon: HelpCircle, label: "Centre d'aide" },
                   ] as { href: string; icon: React.ElementType; label: string }[]
                 ).map(({ href, icon: Icon, label }) => (

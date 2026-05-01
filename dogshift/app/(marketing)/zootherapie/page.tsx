@@ -113,37 +113,71 @@ export default function ZootherapiePage() {
           aria-hidden
           className="pointer-events-none absolute -top-32 -right-32 h-[500px] w-[500px] rounded-full bg-violet-100/40 blur-3xl"
         />
+
+        {/* PLACEMENT 1 — 2-column split on desktop */}
         <div className="mx-auto max-w-4xl px-4 sm:px-6 text-center relative">
-          {/* Badge */}
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-violet-100 px-3.5 py-1 text-xs font-semibold tracking-wide text-violet-700 mb-6">
-            🐾 Évaluation gratuite
-          </span>
+          <div className="md:grid md:grid-cols-2 md:gap-12 md:items-center md:text-left">
 
-          <h1 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-5xl leading-tight">
-            Évaluez votre bien-être
-            <br />
-            <span className="text-violet-600">avec votre chien</span>
-          </h1>
+            {/* Left column — all existing hero content */}
+            <div>
+              {/* Badge */}
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-violet-100 px-3.5 py-1 text-xs font-semibold tracking-wide text-violet-700 mb-6">
+                🐾 Évaluation gratuite
+              </span>
 
-          <p className="mt-5 text-base sm:text-lg text-slate-500 max-w-2xl mx-auto leading-relaxed">
-            Il vous regarde, vous attendit, vous accueille — sans condition, sans jugement.
-            Découvrez en quelques questions comment votre lien unique avec lui nourrit votre
-            équilibre intérieur, et recevez une évaluation personnalisée par notre IA spécialisée
-            en zoothérapie.
-          </p>
+              <h1 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-5xl leading-tight">
+                Évaluez votre bien-être
+                <br />
+                <span className="text-violet-600">avec votre chien</span>
+              </h1>
 
-          <div className="mt-8 flex justify-center">
-            <Image
-              src="/hero-illustration.svg"
-              alt="Un chien et son maître se promènent ensemble"
-              width={320}
-              height={220}
-              priority
-              className="opacity-80"
-            />
+              <p className="mt-5 text-base sm:text-lg text-slate-500 max-w-2xl mx-auto leading-relaxed">
+                Il vous regarde, vous attendit, vous accueille — sans condition, sans jugement.
+                Découvrez en quelques questions comment votre lien unique avec lui nourrit votre
+                équilibre intérieur, et recevez une évaluation personnalisée par notre IA spécialisée
+                en zoothérapie.
+              </p>
+
+              <div className="mt-8 flex justify-center">
+                <Image
+                  src="/hero-illustration.svg"
+                  alt="Un chien et son maître se promènent ensemble"
+                  width={320}
+                  height={220}
+                  priority
+                  className="opacity-80"
+                />
+              </div>
+            </div>
+
+            {/* Right column — zootherapie1.jpg (hidden on mobile) */}
+            <div className="hidden md:block">
+              <div className="relative min-h-[600px] rounded-2xl overflow-hidden shadow-xl">
+                <Image
+                  src="/images/zootherapie/zootherapie1.jpg"
+                  alt="Fillette avec un chiot blanc sous une lumière dorée et chaleureuse"
+                  fill
+                  priority
+                  className="object-cover object-center"
+                />
+              </div>
+            </div>
+
           </div>
         </div>
       </section>
+
+      {/* PLACEMENT 2 — Full-width zootherapie2 between hero and science */}
+      <div className="relative overflow-hidden h-[280px] md:h-[420px]">
+        <Image
+          src="/images/zootherapie/zootherapie2.jpg"
+          alt="Jeune femme serrant tendrement un golden retriever dans ses bras, les yeux fermés"
+          fill
+          priority
+          className="object-cover object-top"
+        />
+        <div aria-hidden className="absolute inset-0 bg-black/10" />
+      </div>
 
       {/* ── Educational content ──────────────────────────────────────────── */}
       <section className="bg-white py-14 sm:py-20">
@@ -166,12 +200,39 @@ export default function ZootherapiePage() {
               </div>
             ))}
           </div>
+
+          {/* PLACEMENT 3 — zootherapie4 editorial accent after science cards */}
+          <div className="mt-16 max-w-sm mx-auto">
+            <div className="relative h-[500px] rounded-3xl overflow-hidden shadow-2xl">
+              <Image
+                src="/images/zootherapie/zootherapie4.jpg"
+                alt="Gros plan extrême sur l'œil expressif d'un chien"
+                fill
+                className="object-cover object-center"
+              />
+            </div>
+            <p className="mt-4 text-center text-sm text-slate-400 italic">
+              Ce regard. Cette présence. Sans condition.
+            </p>
+          </div>
+
         </div>
       </section>
 
+      {/* PLACEMENT 4 — Full-width zootherapie3 before form section */}
+      <div className="relative overflow-hidden h-[240px] md:h-[380px]">
+        <Image
+          src="/images/zootherapie/zootherapie3.jpg"
+          alt="Homme détendu se reposant aux côtés de son golden retriever"
+          fill
+          className="object-cover"
+          style={{ objectPosition: "center 30%" }}
+        />
+      </div>
+
       {/* ── Evaluation form ───────────────────────────────────────────────── */}
       <section className="bg-slate-50 py-14 sm:py-20">
-        <div className="mx-auto max-w-2xl px-4 sm:px-6">
+        <div className="mx-auto max-w-4xl px-4 sm:px-6">
           <div className="text-center mb-10">
             <h2 className="text-2xl sm:text-3xl font-bold text-slate-900">
               Votre évaluation personnalisée
@@ -202,106 +263,124 @@ export default function ZootherapiePage() {
               </Link>
             </div>
           ) : (
-            <form
-              onSubmit={(e) => { void handleSubmit(e); }}
-              className="rounded-2xl border border-slate-200 bg-white p-6 sm:p-8 shadow-sm space-y-7"
-            >
-              {/* Prenom + email */}
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                    Prénom
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Votre prénom"
-                    value={prenom}
-                    onChange={(e) => setPrenom(e.target.value)}
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-100 transition"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                    Email
-                  </label>
-                  <input
-                    type="email"
-                    required
-                    placeholder="votre@email.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-100 transition"
-                  />
-                </div>
+            /* PLACEMENT 5 — 2-column split: zootherapie5 left + form right */
+            <div className="overflow-hidden rounded-2xl shadow-xl md:flex">
+
+              {/* Image column (hidden on mobile) */}
+              <div className="hidden md:block md:w-2/5 relative min-h-[500px]">
+                <Image
+                  src="/images/zootherapie/zootherapie5.jpg"
+                  alt="Jeune femme tenant tendrement un golden retriever contre elle"
+                  fill
+                  className="object-cover object-top rounded-l-2xl"
+                />
               </div>
 
-              {/* Questions */}
-              {QUESTIONS.map(({ id, label, options }) => (
-                <fieldset key={id}>
-                  <legend className="text-sm font-medium text-slate-800 mb-3 leading-snug">
-                    {label}
-                  </legend>
-                  <div className="flex flex-col gap-2">
-                    {options.map((opt) => {
-                      const checked = reponses[id] === opt;
-                      return (
-                        <label
-                          key={opt}
-                          className={`flex items-center gap-3 cursor-pointer rounded-xl border px-4 py-3 text-sm transition-colors ${
-                            checked
-                              ? "border-violet-400 bg-violet-50 text-violet-800 font-medium"
-                              : "border-slate-200 bg-slate-50 text-slate-700 hover:border-violet-200 hover:bg-violet-50/50"
-                          }`}
-                        >
-                          <input
-                            type="radio"
-                            name={id}
-                            value={opt}
-                            checked={checked}
-                            onChange={() =>
-                              setReponses((prev) => ({ ...prev, [id]: opt }))
-                            }
-                            className="accent-violet-600"
-                          />
-                          {opt}
-                        </label>
-                      );
-                    })}
+              {/* Form column */}
+              <div className="md:w-3/5">
+                <form
+                  onSubmit={(e) => { void handleSubmit(e); }}
+                  className="rounded-2xl border border-slate-200 bg-white p-6 sm:p-8 shadow-sm space-y-7"
+                >
+                  {/* Prenom + email */}
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                        Prénom
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="Votre prénom"
+                        value={prenom}
+                        onChange={(e) => setPrenom(e.target.value)}
+                        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-100 transition"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                        Email
+                      </label>
+                      <input
+                        type="email"
+                        required
+                        placeholder="votre@email.com"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-100 transition"
+                      />
+                    </div>
                   </div>
-                </fieldset>
-              ))}
 
-              {/* Error */}
-              {status === "error" && (
-                <p className="text-sm text-rose-600 text-center">
-                  Une erreur est survenue. Veuillez réessayer.
-                </p>
-              )}
+                  {/* Questions */}
+                  {QUESTIONS.map(({ id, label, options }) => (
+                    <fieldset key={id}>
+                      <legend className="text-sm font-medium text-slate-800 mb-3 leading-snug">
+                        {label}
+                      </legend>
+                      <div className="flex flex-col gap-2">
+                        {options.map((opt) => {
+                          const checked = reponses[id] === opt;
+                          return (
+                            <label
+                              key={opt}
+                              className={`flex items-center gap-3 cursor-pointer rounded-xl border px-4 py-3 text-sm transition-colors ${
+                                checked
+                                  ? "border-violet-400 bg-violet-50 text-violet-800 font-medium"
+                                  : "border-slate-200 bg-slate-50 text-slate-700 hover:border-violet-200 hover:bg-violet-50/50"
+                              }`}
+                            >
+                              <input
+                                type="radio"
+                                name={id}
+                                value={opt}
+                                checked={checked}
+                                onChange={() =>
+                                  setReponses((prev) => ({ ...prev, [id]: opt }))
+                                }
+                                className="accent-violet-600"
+                              />
+                              {opt}
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </fieldset>
+                  ))}
 
-              {/* Submit */}
-              <button
-                type="submit"
-                disabled={!allAnswered || status === "loading"}
-                className="w-full rounded-xl bg-violet-600 py-3 text-sm font-semibold text-white shadow-sm hover:bg-violet-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
-              >
-                {status === "loading" ? (
-                  <>
-                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                    Analyse en cours…
-                  </>
-                ) : (
-                  <>
-                    Recevoir mon évaluation personnalisée
-                    <ArrowRight className="h-4 w-4" />
-                  </>
-                )}
-              </button>
+                  {/* Error */}
+                  {status === "error" && (
+                    <p className="text-sm text-rose-600 text-center">
+                      Une erreur est survenue. Veuillez réessayer.
+                    </p>
+                  )}
 
-              <p className="text-center text-xs text-slate-400">
-                Vos données sont traitées avec soin et ne sont jamais revendues.
-              </p>
-            </form>
+                  {/* Submit */}
+                  <button
+                    type="submit"
+                    disabled={!allAnswered || status === "loading"}
+                    className="w-full rounded-xl bg-violet-600 py-3 text-sm font-semibold text-white shadow-sm hover:bg-violet-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+                  >
+                    {status === "loading" ? (
+                      <>
+                        <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                        Analyse en cours…
+                      </>
+                    ) : (
+                      <>
+                        Recevoir mon évaluation personnalisée
+                        <ArrowRight className="h-4 w-4" />
+                      </>
+                    )}
+                  </button>
+
+                  <p className="text-center text-xs text-slate-400">
+                    Vos données sont traitées avec soin et ne sont jamais revendues.
+                  </p>
+                </form>
+              </div>
+
+            </div>
           )}
         </div>
       </section>
