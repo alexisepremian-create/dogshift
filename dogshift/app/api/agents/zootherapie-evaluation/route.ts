@@ -3,6 +3,7 @@ import { generateText } from "ai";
 import { anthropic } from "@ai-sdk/anthropic";
 
 import { prisma } from "@/lib/prisma";
+import { checkAgentActive } from "@/lib/agent-guard";
 import { sendEmail } from "@/lib/email/sendEmail";
 import { renderEmailLayout } from "@/lib/email/templates/layout";
 
@@ -59,6 +60,9 @@ function buildUserPrompt(prenom: string, reponses: Record<string, string>): stri
 }
 
 export async function POST(req: NextRequest) {
+  const guard = await checkAgentActive("zootherapie-evaluation");
+  if (guard) return guard;
+
   const start = Date.now();
 
   try {
