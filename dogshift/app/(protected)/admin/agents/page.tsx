@@ -231,9 +231,7 @@ function AgentCircle({
   );
 }
 
-// ─── Detail modal ─────────────────────────────────────────────────────────────
-
-// ─── Modal helpers ────────────────────────────────────────────────────────────
+// ─── Drawer helpers ───────────────────────────────────────────────────────────
 
 function timeAgo(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
@@ -273,6 +271,33 @@ const DEFAULT_BODIES: Record<string, object> = {
   booking:                  { userId: "user_test", sitterId: "sitter_test", startDate: "2026-06-01", serviceType: "PENSION" },
 };
 
+function Sparkline({ data }: { data: { date: string; count: number }[] }) {
+  const values = data.map((d) => d.count);
+  const max = Math.max(...values, 1);
+  const W = 260;
+  const H = 36;
+  const pts = values
+    .map((v, i) => {
+      const x = values.length < 2 ? W / 2 : (i / (values.length - 1)) * W;
+      const y = H - (v / max) * (H - 4);
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    })
+    .join(" ");
+  const areaPoints = `0,${H} ${pts} ${W},${H}`;
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ height: H }} preserveAspectRatio="none">
+      <defs>
+        <linearGradient id="sparkGrad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#6366f1" stopOpacity="0.25" />
+          <stop offset="100%" stopColor="#6366f1" stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <polygon points={areaPoints} fill="url(#sparkGrad)" />
+      <polyline points={pts} fill="none" stroke="#6366f1" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 function BarChart({ data }: { data: { date: string; count: number }[] }) {
   const max = Math.max(...data.map((d) => d.count), 1);
   return (
@@ -293,9 +318,16 @@ function BarChart({ data }: { data: { date: string; count: number }[] }) {
   );
 }
 
-// ─── Agent Modal ──────────────────────────────────────────────────────────────
+// ─── Agent Drawer ─────────────────────────────────────────────────────────────
 
-function AgentModal({
+function santeGlobale(rate: number | null): { color: string; label: string; bg: string } {
+  if (rate == null) return { color: "#9ca3af", label: "Inconnu",  bg: "#f3f4f6" };
+  if (rate >= 95)   return { color: "#16a34a", label: "Excellent", bg: "#f0fdf4" };
+  if (rate >= 80)   return { color: "#f59e0b", label: "Correct",   bg: "#fffbeb" };
+  return               { color: "#dc2626", label: "Dégradé",  bg: "#fef2f2" };
+}
+
+function AgentDrawer({
   agent,
   logs,
   onClose,
@@ -313,10 +345,23 @@ function AgentModal({
   const c = getColor(agent.id);
   const Icon = c.icon;
 
-  type ModalTab = "vue" | "logs" | "stats" | "tester";
-  const [tab, setTab] = useState<ModalTab>("vue");
+  // ── Slide-in animation ────────────────────────────────────────────────────
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setVisible(true));
+    return () => cancelAnimationFrame(id);
+  }, []);
 
-  // ── Stats (fetched once on mount, shared by Vue + Stats tabs) ──────────────
+  function handleClose() {
+    setVisible(false);
+    setTimeout(onClose, 300);
+  }
+
+  type DrawerTab = "vue" | "logs" | "stats" | "tester";
+  const [tab, setTab] = useState<DrawerTab>("vue");
+  const [isLive, setIsLive] = useState(false);
+
+  // ── Stats ─────────────────────────────────────────────────────────────────
   const [stats, setStats] = useState<StatsData | null>(null);
   useEffect(() => {
     fetch(`/api/admin/agents/${agent.id}/stats`)
@@ -325,7 +370,7 @@ function AgentModal({
       .catch(() => {});
   }, [agent.id]);
 
-  // ── Logs tab ───────────────────────────────────────────────────────────────
+  // ── Logs tab ──────────────────────────────────────────────────────────────
   const [modalLogs, setModalLogs] = useState<ExtendedLog[]>([]);
   const [logsPage, setLogsPage] = useState(0);
   const [logsHasMore, setLogsHasMore] = useState(false);
@@ -337,9 +382,7 @@ function AgentModal({
     async (page: number, filter: "all" | "error", reset: boolean) => {
       setLogsLoading(true);
       try {
-        const res = await fetch(
-          `/api/admin/agents/${agent.id}/logs?page=${page}&filter=${filter}`
-        );
+        const res = await fetch(`/api/admin/agents/${agent.id}/logs?page=${page}&filter=${filter}`);
         const data = (await res.json()) as { logs: ExtendedLog[]; hasMore: boolean };
         setModalLogs((prev) => (reset ? data.logs : [...prev, ...data.logs]));
         setLogsPage(page);
@@ -353,15 +396,17 @@ function AgentModal({
     [agent.id]
   );
 
+  // Initial load + live 5 s polling when Logs tab is active
   useEffect(() => {
-    if (tab !== "logs") return;
+    if (tab !== "logs") { setIsLive(false); return; }
     void fetchModalLogs(0, logsFilter, true);
+    setIsLive(true);
+    const interval = setInterval(() => void fetchModalLogs(0, logsFilter, true), 5_000);
+    return () => { clearInterval(interval); setIsLive(false); };
   }, [tab, logsFilter, fetchModalLogs]);
 
-  // ── Tester tab ─────────────────────────────────────────────────────────────
-  const [testerBody, setTesterBody] = useState(
-    JSON.stringify(DEFAULT_BODIES[agent.id] ?? {}, null, 2)
-  );
+  // ── Tester tab ────────────────────────────────────────────────────────────
+  const [testerBody, setTesterBody] = useState(JSON.stringify(DEFAULT_BODIES[agent.id] ?? {}, null, 2));
   const [testerResult, setTesterResult] = useState<string | null>(null);
   const [testerTime, setTesterTime] = useState<number | null>(null);
   const [testerLoading, setTesterLoading] = useState(false);
@@ -377,11 +422,7 @@ function AgentModal({
     setTesterIsError(false);
     const t0 = Date.now();
     try {
-      const res = await fetch(route, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
+      const res = await fetch(route, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
       const json = await res.json();
       setTesterResult(JSON.stringify(json, null, 2));
       setTesterIsError(!res.ok);
@@ -394,75 +435,96 @@ function AgentModal({
     }
   }
 
-  const TABS: { id: ModalTab; label: string }[] = [
-    { id: "vue",    label: "Vue" },
-    { id: "logs",   label: "Logs" },
-    { id: "stats",  label: "Stats" },
+  const TABS: { id: DrawerTab; label: string }[] = [
+    { id: "vue",    label: "Vue"    },
+    { id: "logs",   label: "Logs"   },
+    { id: "stats",  label: "Stats"  },
     { id: "tester", label: "Tester" },
   ];
 
+  const sante = santeGlobale(stats?.successRate7d ?? null);
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center" onClick={onClose}>
-      <div className="absolute inset-0 bg-black/20 backdrop-blur-sm" />
+    <div className="fixed inset-0 z-50 flex justify-end" style={{ pointerEvents: "none" }}>
+      {/* ── Backdrop ── */}
       <div
-        className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden"
-        onClick={(e) => e.stopPropagation()}
+        className="absolute inset-0 transition-opacity duration-300"
+        style={{
+          pointerEvents: "auto",
+          backgroundColor: visible ? "rgba(0,0,0,0.22)" : "rgba(0,0,0,0)",
+          backdropFilter: visible ? "blur(2px)" : "none",
+        }}
+        onClick={handleClose}
+      />
+
+      {/* ── Drawer panel ── */}
+      <div
+        className="relative flex flex-col bg-white shadow-2xl w-full md:w-[480px] transition-transform duration-300 ease-out"
+        style={{
+          pointerEvents: "auto",
+          transform: visible ? "translateX(0)" : "translateX(100%)",
+          height: "100dvh",
+        }}
       >
-        {/* ── Header ── */}
-        <div className="px-6 pt-6 pb-4 border-b border-gray-100">
-          <div className="flex items-start justify-between">
-            <div className="flex items-center gap-4">
+        {/* Header */}
+        <div className="flex-shrink-0 px-5 pt-5 pb-4 border-b border-gray-100">
+          <div className="flex items-start justify-between mb-2">
+            <div className="flex items-center gap-3 min-w-0">
               <div
-                className="flex items-center justify-center rounded-full"
-                style={{ width: 48, height: 48, backgroundColor: c.bg }}
+                className="flex items-center justify-center rounded-full flex-shrink-0"
+                style={{ width: 44, height: 44, backgroundColor: c.bg }}
               >
-                <Icon size={22} style={{ color: c.color }} />
+                <Icon size={20} style={{ color: c.color }} />
               </div>
-              <div>
-                <h2 className="text-lg font-semibold text-gray-900">{agent.name}</h2>
-                <p className="text-xs text-gray-400 font-mono mt-0.5">{agent.id}</p>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <h2 className="text-base font-semibold text-gray-900 truncate">{agent.name}</h2>
+                  <span
+                    className="w-2 h-2 rounded-full flex-shrink-0"
+                    style={{ backgroundColor: STATUS_DOT_COLOR[status], animation: "agentPulse 2s ease-in-out infinite" }}
+                  />
+                </div>
+                <p className="text-[11px] text-gray-400 font-mono mt-0.5 truncate">{agent.id}</p>
               </div>
             </div>
-            <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100 transition">
+            <button onClick={handleClose} className="p-1.5 rounded-lg hover:bg-gray-100 transition flex-shrink-0 ml-2">
               <X size={18} className="text-gray-400" />
             </button>
           </div>
-          <p className="text-sm text-gray-500 mt-3 leading-relaxed">{agent.description}</p>
+          <p className="text-xs text-gray-500 leading-relaxed">{agent.description}</p>
         </div>
 
-        {/* ── Tab bar ── */}
-        <div className="flex gap-0.5 px-6 pt-3 pb-2 border-b border-gray-100 bg-gray-50/60">
+        {/* Tab bar */}
+        <div className="flex-shrink-0 flex gap-0.5 px-5 pt-2.5 pb-2 border-b border-gray-100 bg-gray-50/50">
           {TABS.map(({ id, label }) => (
             <button
               key={id}
               onClick={() => setTab(id)}
-              className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
                 tab === id
                   ? "bg-white text-gray-900 shadow-sm border border-gray-200"
                   : "text-gray-500 hover:text-gray-700 hover:bg-white/60"
               }`}
             >
               {label}
+              {id === "logs" && isLive && (
+                <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" title="En direct" />
+              )}
             </button>
           ))}
         </div>
 
-        {/* ── Tab content ── */}
-        <div className="px-6 py-4 max-h-[52vh] overflow-y-auto">
+        {/* Tab content — fills remaining height, scrollable */}
+        <div className="flex-1 min-h-0 overflow-y-auto px-5 py-4">
 
           {/* ────────── TAB: VUE ────────── */}
           {tab === "vue" && (
             <div className="space-y-4">
               {/* Status row */}
               <div className="flex items-center gap-2 text-sm">
-                <span
-                  className="w-2 h-2 rounded-full flex-shrink-0"
-                  style={{ backgroundColor: STATUS_DOT_COLOR[status] }}
-                />
+                <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: STATUS_DOT_COLOR[status] }} />
                 <span className="text-gray-600 font-medium">
-                  {status === "online"  ? "En ligne"      :
-                   status === "offline" ? "Hors ligne"    :
-                   status === "loading" ? "Vérification…" : "Inconnu"}
+                  {status === "online" ? "En ligne" : status === "offline" ? "Hors ligne" : status === "loading" ? "Vérification…" : "Inconnu"}
                 </span>
                 {stats?.lastExecution && (
                   <span className="text-gray-400 text-xs ml-auto flex items-center gap-1">
@@ -480,8 +542,7 @@ function AgentModal({
                 <div className="flex items-center gap-1.5 text-xs text-gray-500 bg-gray-50 rounded-lg px-3 py-2 border border-gray-100">
                   <Activity size={11} className="text-gray-400" />
                   <span>
-                    <span className="font-medium text-gray-700">{stats.executions24h}</span>
-                    {" "}exécutions aujourd&apos;hui
+                    <span className="font-medium text-gray-700">{stats.executions24h}</span>{" "}exécutions aujourd&apos;hui
                   </span>
                   {stats.errors24h > 0 && (
                     <>
@@ -519,13 +580,13 @@ function AgentModal({
               {testResult && (
                 <div>
                   <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Résultat</h4>
-                  <pre className="text-xs bg-gray-50 p-3 rounded-lg border border-gray-200 max-h-28 overflow-auto whitespace-pre-wrap font-mono text-gray-700">
+                  <pre className="text-xs bg-gray-50 p-3 rounded-lg border border-gray-200 max-h-32 overflow-auto whitespace-pre-wrap font-mono text-gray-700">
                     {testResult}
                   </pre>
                 </div>
               )}
 
-              {/* Recent activity (last 4) */}
+              {/* Recent activity (last 4 from parent-passed logs) */}
               <div>
                 <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
                   <Activity size={12} /> Activité récente
@@ -548,9 +609,7 @@ function AgentModal({
                           {log.durationMs && <span className="text-gray-400 ml-auto">{log.durationMs}ms</span>}
                         </div>
                         <p className="text-gray-600 mt-0.5 ml-6">{log.summary}</p>
-                        <p className="text-gray-400 mt-0.5 ml-6 text-[10px]">
-                          {timeAgo(log.createdAt)}
-                        </p>
+                        <p className="text-gray-400 mt-0.5 ml-6 text-[10px]">{timeAgo(log.createdAt)}</p>
                       </div>
                     ))
                   )}
@@ -559,59 +618,93 @@ function AgentModal({
             </div>
           )}
 
-          {/* ────────── TAB: LOGS ────────── */}
+          {/* ────────── TAB: LOGS — n8n-style timeline ────────── */}
           {tab === "logs" && (
             <div className="space-y-3">
-              {/* Filter toggle */}
-              <div className="flex gap-1">
+              {/* Header row: filter + live indicator */}
+              <div className="flex items-center gap-2">
                 {(["all", "error"] as const).map((f) => (
                   <button
                     key={f}
-                    onClick={() => setLogsFilter(f)}
+                    onClick={() => { setLogsFilter(f); setLogsPage(0); }}
                     className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${
-                      logsFilter === f
-                        ? "bg-gray-900 text-white"
-                        : "bg-gray-100 text-gray-500 hover:bg-gray-200"
+                      logsFilter === f ? "bg-gray-900 text-white" : "bg-gray-100 text-gray-500 hover:bg-gray-200"
                     }`}
                   >
-                    {f === "all" ? "Tous" : "Erreurs seulement"}
+                    {f === "all" ? "Tous" : "Erreurs"}
                   </button>
                 ))}
+                {isLive && (
+                  <span className="ml-auto flex items-center gap-1.5 text-[11px] text-green-600 font-medium">
+                    <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                    En direct
+                  </span>
+                )}
               </div>
 
               {logsLoading && modalLogs.length === 0 ? (
-                <p className="text-xs text-gray-400 py-4 text-center">Chargement…</p>
+                <p className="text-xs text-gray-400 py-6 text-center">Chargement…</p>
               ) : modalLogs.length === 0 ? (
-                <p className="text-xs text-gray-400 italic py-4 text-center">Aucun log trouvé</p>
+                <p className="text-xs text-gray-400 italic py-6 text-center">Aucun log trouvé</p>
               ) : (
-                <div className="space-y-1.5">
-                  {modalLogs.map((log) => (
-                    <div key={log.id} className="text-xs bg-gray-50 rounded-lg border border-gray-100 overflow-hidden">
-                      <div className="flex items-center gap-2 p-2.5">
-                        <span
-                          className="w-1.5 h-1.5 rounded-full flex-shrink-0"
-                          style={{ backgroundColor: log.status === "success" ? "#22c55e" : log.status === "error" ? "#ef4444" : "#eab308" }}
+                <div className="relative">
+                  {/* Vertical timeline spine */}
+                  <div className="absolute left-[11px] top-0 bottom-0 w-px bg-gray-100" />
+
+                  {modalLogs.map((log) => {
+                    const dotColor = log.status === "success" ? "#22c55e" : log.status === "error" ? "#ef4444" : "#eab308";
+                    const isExpanded = expandedLog === log.id;
+                    return (
+                      <div key={log.id} className="relative pl-8 pb-3">
+                        {/* Timeline dot */}
+                        <div
+                          className="absolute left-1.5 top-3 w-2.5 h-2.5 rounded-full border-2 border-white z-10"
+                          style={{ backgroundColor: dotColor }}
                         />
-                        <span className="font-medium text-gray-700 truncate">{log.actionType}</span>
-                        <span className="text-gray-400 truncate flex-1">{log.summary}</span>
-                        <span className="text-gray-300 flex-shrink-0">{log.durationMs != null ? `${log.durationMs}ms` : ""}</span>
-                        <span className="text-gray-400 flex-shrink-0">{timeAgo(log.createdAt)}</span>
-                        {log.status === "error" && (
-                          <button
-                            onClick={() => setExpandedLog(expandedLog === log.id ? null : log.id)}
-                            className="flex-shrink-0 text-red-400 hover:text-red-600"
-                          >
-                            <Minus size={12} style={{ transform: expandedLog === log.id ? undefined : "rotate(45deg)" }} />
-                          </button>
+                        {/* Row card */}
+                        <button
+                          className="w-full text-left rounded-lg border border-gray-100 bg-gray-50 hover:bg-gray-100 transition-colors px-3 py-2"
+                          onClick={() => setExpandedLog(isExpanded ? null : log.id)}
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-semibold text-gray-800 truncate flex-1">{log.actionType}</span>
+                            <div className="flex items-center gap-1.5 flex-shrink-0">
+                              {log.durationMs != null && (
+                                <span className="text-[10px] bg-white border border-gray-200 rounded px-1.5 py-0.5 text-gray-500 font-mono">
+                                  {log.durationMs}ms
+                                </span>
+                              )}
+                              <span className="text-[10px] text-gray-400">{timeAgo(log.createdAt)}</span>
+                            </div>
+                          </div>
+                          <p className="text-[11px] text-gray-400 mt-0.5 truncate">
+                            {log.summary.length > 60 ? log.summary.slice(0, 60) + "…" : log.summary}
+                          </p>
+                        </button>
+
+                        {/* Expanded detail panel */}
+                        {isExpanded && (
+                          <div className="mt-1.5 rounded-lg border border-gray-200 bg-white overflow-hidden text-[11px]">
+                            <div className="px-3 py-1.5 bg-gray-50 border-b border-gray-100 flex items-center gap-2">
+                              <span className="font-semibold text-[10px] text-gray-500 uppercase tracking-wider">Détails d&apos;exécution</span>
+                            </div>
+                            <pre className="px-3 py-2.5 overflow-auto max-h-52 font-mono text-gray-700 whitespace-pre-wrap text-[11px]">
+                              {log.details ? JSON.stringify(log.details, null, 2) : "— aucun détail —"}
+                            </pre>
+                            <div className="px-3 py-1.5 bg-gray-50 border-t border-gray-100 flex items-center gap-3 text-[10px] text-gray-500">
+                              <span>Durée : {log.durationMs != null ? `${log.durationMs}ms` : "—"}</span>
+                              <span className="text-gray-300">·</span>
+                              <span style={{ color: dotColor }}>
+                                {log.status === "success" ? "✓ Succès" : log.status === "error" ? "✗ Erreur" : "~ Inconnu"}
+                              </span>
+                              <span className="text-gray-300">·</span>
+                              <span>{new Date(log.createdAt).toLocaleString("fr-CH", { dateStyle: "short", timeStyle: "medium" })}</span>
+                            </div>
+                          </div>
                         )}
                       </div>
-                      {log.status === "error" && expandedLog === log.id && (
-                        <pre className="text-[10px] bg-red-50 text-red-700 p-2.5 border-t border-red-100 overflow-auto max-h-24 font-mono whitespace-pre-wrap">
-                          {log.details ? JSON.stringify(log.details, null, 2) : "Pas de détails"}
-                        </pre>
-                      )}
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
 
@@ -629,11 +722,25 @@ function AgentModal({
 
           {/* ────────── TAB: STATS ────────── */}
           {tab === "stats" && (
-            <div className="space-y-4">
+            <div className="space-y-5">
               {!stats ? (
-                <p className="text-xs text-gray-400 py-4 text-center">Chargement…</p>
+                <p className="text-xs text-gray-400 py-6 text-center">Chargement…</p>
               ) : (
                 <>
+                  {/* Santé globale */}
+                  <div
+                    className="flex items-center gap-3 rounded-xl border px-4 py-3"
+                    style={{ backgroundColor: sante.bg, borderColor: sante.color + "30" }}
+                  >
+                    <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: sante.color }} />
+                    <div>
+                      <p className="text-xs font-semibold" style={{ color: sante.color }}>Santé globale : {sante.label}</p>
+                      <p className="text-[10px] text-gray-500 mt-0.5">
+                        {stats.successRate7d != null ? `${stats.successRate7d}% de succès sur 7 jours` : "Aucune donnée disponible"}
+                      </p>
+                    </div>
+                  </div>
+
                   {/* Stat cards */}
                   <div className="grid grid-cols-3 gap-2">
                     <div className="bg-gray-50 rounded-xl border border-gray-100 p-3 text-center">
@@ -654,24 +761,38 @@ function AgentModal({
                     </div>
                   </div>
 
-                  {/* Volume per day chart */}
+                  {/* Sparkline */}
                   <div>
                     <div className="flex items-center justify-between mb-2">
-                      <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                        Volume / jour
-                      </h4>
+                      <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Activité 7 jours</h4>
                       {stats.peakHour != null && (
                         <span className="text-[10px] bg-indigo-50 text-indigo-600 border border-indigo-100 rounded px-2 py-0.5">
                           Pic {stats.peakHour}h–{stats.peakHour + 1}h
                         </span>
                       )}
                     </div>
-                    {stats.volumePerDay.length > 0 ? (
-                      <BarChart data={stats.volumePerDay} />
+                    {stats.volumePerDay.length > 1 ? (
+                      <div className="rounded-xl border border-gray-100 bg-gray-50 px-3 pt-3 pb-1 overflow-hidden">
+                        <Sparkline data={stats.volumePerDay} />
+                        <div className="flex justify-between mt-1">
+                          <span className="text-[9px] text-gray-300">{stats.volumePerDay[0]?.date.slice(5)}</span>
+                          <span className="text-[9px] text-gray-300">{stats.volumePerDay[stats.volumePerDay.length - 1]?.date.slice(5)}</span>
+                        </div>
+                      </div>
+                    ) : stats.volumePerDay.length === 1 ? (
+                      <p className="text-xs text-gray-400 italic">1 jour de données — pas assez pour tracer</p>
                     ) : (
                       <p className="text-xs text-gray-400 italic">Pas de données</p>
                     )}
                   </div>
+
+                  {/* Bar chart (daily breakdown) */}
+                  {stats.volumePerDay.length > 0 && (
+                    <div>
+                      <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Volume / jour</h4>
+                      <BarChart data={stats.volumePerDay} />
+                    </div>
+                  )}
                 </>
               )}
             </div>
@@ -687,7 +808,7 @@ function AgentModal({
                 <textarea
                   value={testerBody}
                   onChange={(e) => setTesterBody(e.target.value)}
-                  rows={7}
+                  rows={9}
                   className="w-full text-xs font-mono bg-gray-50 border border-gray-200 rounded-lg p-3 text-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-300 resize-none"
                   spellCheck={false}
                 />
@@ -696,19 +817,13 @@ function AgentModal({
               <button
                 onClick={() => void handleTesterRun()}
                 disabled={testerLoading}
-                className="w-full flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-semibold text-white transition-colors disabled:opacity-50"
+                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg text-xs font-semibold text-white transition-colors disabled:opacity-50"
                 style={{ backgroundColor: testerLoading ? "#6b7280" : c.color }}
               >
                 {testerLoading ? (
-                  <>
-                    <span className="h-3 w-3 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                    Exécution…
-                  </>
+                  <><span className="h-3 w-3 animate-spin rounded-full border-2 border-white border-t-transparent" />Exécution…</>
                 ) : (
-                  <>
-                    <Zap size={12} />
-                    Exécuter
-                  </>
+                  <><Zap size={12} />Exécuter</>
                 )}
               </button>
 
@@ -724,10 +839,8 @@ function AgentModal({
                       </span>
                     )}
                   </div>
-                  <pre className={`text-xs p-3 rounded-lg border overflow-auto max-h-36 whitespace-pre-wrap font-mono ${
-                    testerIsError
-                      ? "bg-red-50 text-red-700 border-red-200"
-                      : "bg-gray-50 text-gray-700 border-gray-200"
+                  <pre className={`text-xs p-3 rounded-lg border overflow-auto max-h-52 whitespace-pre-wrap font-mono ${
+                    testerIsError ? "bg-red-50 text-red-700 border-red-200" : "bg-gray-50 text-gray-700 border-gray-200"
                   }`}>
                     {testerResult}
                   </pre>
@@ -735,9 +848,7 @@ function AgentModal({
               )}
 
               {!AGENT_ROUTES[agent.id] && (
-                <p className="text-xs text-gray-400 italic text-center">
-                  Aucune route directe configurée pour cet agent.
-                </p>
+                <p className="text-xs text-gray-400 italic text-center">Aucune route directe configurée pour cet agent.</p>
               )}
             </div>
           )}
@@ -917,6 +1028,10 @@ const fullscreenStyles = `
     0%, 100% { opacity: 1; transform: scale(1); }
     50%       { opacity: 0.6; transform: scale(0.85); }
   }
+  @media (min-width: 768px) {
+    .drawer-canvas-shift  { transition: right 300ms ease-out; }
+    .drawer-canvas-shift.drawer-open { right: 480px !important; }
+  }
 `;
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
@@ -1063,7 +1178,7 @@ export default function AgentsDashboard() {
 
       {/* Toolbar */}
       <div
-        className="fixed z-40 flex items-center justify-between px-5 py-2.5 bg-white/90 backdrop-blur-md border-b border-slate-100 shadow-sm"
+        className={`fixed z-40 flex items-center justify-between px-5 py-2.5 bg-white/90 backdrop-blur-md border-b border-slate-100 shadow-sm drawer-canvas-shift${selectedAgent ? " drawer-open" : ""}`}
         style={{ left: SIDEBAR_WIDTH, right: 0, top: 0 }}
       >
         <div className="flex items-center gap-3">
@@ -1112,7 +1227,7 @@ export default function AgentsDashboard() {
       {/* Infinite canvas */}
       <div
         ref={canvasRef}
-        className="absolute inset-0 overflow-hidden"
+        className={`absolute inset-0 overflow-hidden drawer-canvas-shift${selectedAgent ? " drawer-open" : ""}`}
         style={{
           top: 0,
           left: SIDEBAR_WIDTH,
@@ -1156,7 +1271,7 @@ export default function AgentsDashboard() {
       </div>
 
       {selectedAgent && (
-        <AgentModal
+        <AgentDrawer
           agent={selectedAgent}
           logs={logs}
           testResult={testResult}
