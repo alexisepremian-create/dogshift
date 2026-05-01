@@ -136,8 +136,6 @@ export default function ZootherapiePage() {
   }
 
   // Reveal refs
-  const heroReveal   = useReveal(0);
-  const imageReveal  = useReveal(0.05);
   const scienceReveal = useReveal(0.08);
   const splitReveal  = useReveal(0.08);
   const formReveal   = useReveal(0.06);
@@ -153,12 +151,7 @@ export default function ZootherapiePage() {
           className="pointer-events-none absolute -top-24 -right-24 h-[420px] w-[420px] rounded-full bg-violet-100/50 blur-3xl"
         />
 
-        <div
-          ref={heroReveal.ref}
-          className={`mx-auto max-w-5xl px-4 sm:px-6 relative transition-all duration-700 ease-out ${
-            heroReveal.shown ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"
-          }`}
-        >
+        <div className="mx-auto max-w-5xl px-4 sm:px-6 relative">
           <div className="md:grid md:grid-cols-2 md:gap-14 md:items-center">
 
             {/* Left — text */}
@@ -199,6 +192,7 @@ export default function ZootherapiePage() {
                   alt="Fillette avec un chiot blanc sous une lumière dorée"
                   fill
                   priority
+                  sizes="(max-width: 768px) 0px, 50vw"
                   className="object-cover object-center"
                 />
                 {/* Subtle gradient at bottom */}
@@ -211,17 +205,13 @@ export default function ZootherapiePage() {
       </section>
 
       {/* ── Editorial full-width image break ─────────────────────────────── */}
-      <div
-        ref={imageReveal.ref}
-        className={`relative overflow-hidden h-[420px] md:h-[540px] transition-all duration-1000 ease-out ${
-          imageReveal.shown ? "opacity-100" : "opacity-0"
-        }`}
-      >
+      <div className="relative overflow-hidden h-[420px] md:h-[540px]">
         <Image
           src="/images/zootherapie/zootherapie2.jpg"
           alt="Jeune femme serrant tendrement un golden retriever dans ses bras"
           fill
           priority
+          sizes="100vw"
           className="object-cover"
           style={{ objectPosition: "center 65%" }}
         />
@@ -303,6 +293,8 @@ export default function ZootherapiePage() {
                 src="/images/zootherapie/zootherapie3.jpg"
                 alt="Homme détendu se reposant aux côtés de son golden retriever"
                 fill
+                loading="eager"
+                sizes="(max-width: 768px) 100vw, 40vw"
                 className="object-cover object-center rounded-t-2xl md:rounded-l-2xl md:rounded-tr-none"
               />
             </div>

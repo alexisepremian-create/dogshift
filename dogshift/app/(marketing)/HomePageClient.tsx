@@ -2148,12 +2148,12 @@ function SitterCarousel({
         ref={scrollRef}
         className="flex gap-4 overflow-x-auto scroll-smooth px-6 pb-4 scroll-pl-6 sm:gap-5 sm:px-8 sm:scroll-pl-8 lg:px-10 lg:scroll-pl-10 [-webkit-overflow-scrolling:touch] [scroll-snap-type:x_mandatory] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
-        {sitters.map((sitter) => (
+        {sitters.map((sitter, index) => (
           <div
             key={sitter.sitterId}
             className="w-[155px] shrink-0 [scroll-snap-align:start] sm:w-[210px]"
           >
-            <SitterCard sitter={sitter} />
+            <SitterCard sitter={sitter} priority={index < 4} />
           </div>
         ))}
 
