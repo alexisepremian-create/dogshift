@@ -383,7 +383,27 @@ export async function POST(req: NextRequest) {
       applicationId: applicationId ?? undefined,
     });
 
-    // 2. Log
+    // 2. Mise à jour du statut en DB (PENDING → ACCEPTED / CONTACTED / REJECTED)
+    if (applicationId) {
+      try {
+        const nextStatus =
+          scoreResult.decision === "HIGH" ? "ACCEPTED" :
+          scoreResult.decision === "REVIEW" ? "CONTACTED" :
+          "REJECTED";
+        const db = prisma as unknown as {
+          pilotSitterApplication: { update: (args: unknown) => Promise<{ id: string }> };
+        };
+        await db.pilotSitterApplication.update({
+          where: { id: applicationId },
+          data: { status: nextStatus },
+          select: { id: true },
+        });
+      } catch (err) {
+        console.warn("[api][sitter-applications] status update failed", err);
+      }
+    }
+
+    // 3. Log
     if (applicationId) {
       try {
         await prisma.agentLog.create({
@@ -402,7 +422,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 3. Telegram
+    // 4. Telegram
     const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || "";
     const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID || "977094430";
     if (TELEGRAM_BOT_TOKEN) {
@@ -418,7 +438,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 4. Email candidat — contenu adapté à la décision du scoring
+    // 5. Email candidat — contenu adapté à la décision du scoring
     //    HIGH  → lien Cal.com pour réserver un entretien directement
     //    REVIEW → "on analyse, retour sous 5 jours ouvrables"
     //    LOW   → refus poli avec invitation à repostuler plus tard

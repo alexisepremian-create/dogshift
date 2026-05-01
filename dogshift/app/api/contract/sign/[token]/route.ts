@@ -2,7 +2,15 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
+import { render } from "@react-email/render";
+
 import { prisma } from "@/lib/prisma";
+import { sendEmail } from "@/lib/email/sendEmail";
+import {
+  ActivationCodeEmail,
+  activationCodeEmailPlainText,
+  activationCodeEmailSubject,
+} from "@/lib/email/templates/activationCodeEmail";
 import {
   computeActivationCodeExpiresAt,
   generateUniqueActivationCode,
@@ -26,24 +34,17 @@ import {
   SITTER_CONTRACT_TITLE,
 } from "@/lib/sitterContract";
 
-const N8N_CONTRACT_SIGNED_WEBHOOK_URL =
-  "https://dogshift.app.n8n.cloud/webhook/contract-signed";
-/** Hard cap on the webhook fetch so a slow n8n never stalls the sitter's response. */
-const N8N_CONTRACT_SIGNED_WEBHOOK_TIMEOUT_MS = 5000;
-
 /**
  * Best-effort: generate a fresh activation code for the signed sitter and
  * persist it on the SitterProfile (same shape as POST /api/host/activation-code/issue).
  *
- * Returns the plaintext code so the caller can forward it to n8n. Returns null
- * on any failure — callers MUST treat that as "skip the webhook" and log, never
- * as a signing failure. The contract is already persisted by the time this
- * runs, so an activation-code bug is a recoverable support issue, not a broken
- * signing flow.
+ * Returns the code + expiry so the caller can send the activation email directly.
+ * Returns null on any failure — callers MUST treat that as non-fatal and log.
+ * The contract is already persisted by the time this runs.
  */
 async function issueActivationCodeForSignedSitter(args: {
   sitterProfileId: string;
-}): Promise<string | null> {
+}): Promise<{ rawCode: string; expiresAt: Date } | null> {
   try {
     const { rawCode, hash } = await generateUniqueActivationCode(prisma, {
       excludeSitterProfileId: args.sitterProfileId,
@@ -60,7 +61,7 @@ async function issueActivationCodeForSignedSitter(args: {
       },
       select: { id: true },
     });
-    return rawCode;
+    return { rawCode, expiresAt };
   } catch (err) {
     console.error("[contract-sign][activation-code] issue failed", {
       sitterProfileId: args.sitterProfileId,
@@ -71,56 +72,38 @@ async function issueActivationCodeForSignedSitter(args: {
 }
 
 /**
- * Fire the n8n "contract-signed" webhook with sitter details so n8n can
- * both send the activation email AND provide enough context for Telegram
- * notifications built inside the n8n workflow.
- *
- * Fully guarded: a timeout, an HTTP error, or a transport failure must never
- * bubble up to the signing response — n8n is the dispatcher for the activation
- * email but the contract signature itself remains authoritative regardless.
+ * Sends the "contrat signé — voici ton code d'activation" email directly,
+ * without going through n8n. Best-effort: never throws to the caller.
  */
-async function notifyN8nContractSigned(params: {
-  userId: string;
+async function sendActivationCodeEmailDirect(params: {
+  email: string;
+  firstName: string;
   activationCode: string;
-  name: string | null;
-  email: string | null;
+  expiresAt: Date;
+  baseUrl: string;
 }): Promise<void> {
-  const controller = new AbortController();
-  const timeout = setTimeout(
-    () => controller.abort(),
-    N8N_CONTRACT_SIGNED_WEBHOOK_TIMEOUT_MS,
-  );
   try {
-    const res = await fetch(N8N_CONTRACT_SIGNED_WEBHOOK_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        userId: params.userId,
+    const subject = activationCodeEmailSubject();
+    const text = activationCodeEmailPlainText({
+      firstName: params.firstName,
+      activationCode: params.activationCode,
+      expiresAt: params.expiresAt,
+      baseUrl: params.baseUrl,
+    });
+    const html = await render(
+      ActivationCodeEmail({
+        baseUrl: params.baseUrl,
+        firstName: params.firstName,
         activationCode: params.activationCode,
-        name: params.name ?? null,
-        email: params.email ?? null,
+        expiresAt: params.expiresAt,
       }),
-      signal: controller.signal,
-    });
-    if (!res.ok) {
-      console.error("[contract-sign][n8n] webhook non-2xx", {
-        status: res.status,
-        userId: params.userId,
-      });
-      return;
-    }
-    console.info("[contract-sign][n8n] webhook ok", {
-      status: res.status,
-      userId: params.userId,
-    });
+    );
+    await sendEmail({ to: params.email, subject, text, html });
+    console.info("[contract-sign][email] activation code sent", { to: params.email });
   } catch (err) {
-    console.error("[contract-sign][n8n] webhook failed", {
-      userId: params.userId,
+    console.error("[contract-sign][email] activation code send failed", {
       message: err instanceof Error ? err.message : String(err),
-      aborted: controller.signal.aborted,
     });
-  } finally {
-    clearTimeout(timeout);
   }
 }
 
@@ -483,25 +466,32 @@ export async function POST(req: NextRequest, context: { params: Promise<{ token:
         : null) ?? access.profile.user?.name ?? null;
     const sitterEmail = access.profile.user?.email ?? null;
 
-    if (activationCode) {
-      await notifyN8nContractSigned({
-        userId: access.profile.userId,
-        activationCode,
-        name: sitterName,
+    const baseUrl = (process.env.NEXT_PUBLIC_APP_URL ?? "https://www.dogshift.ch").replace(/\/$/, "");
+
+    if (activationCode && sitterEmail) {
+      // Send activation email directly — no n8n intermediary
+      const firstName = sitterName?.split(" ")[0] ?? "";
+      await sendActivationCodeEmailDirect({
         email: sitterEmail,
+        firstName,
+        activationCode: activationCode.rawCode,
+        expiresAt: activationCode.expiresAt,
+        baseUrl,
       });
     } else {
-      console.warn("[contract-sign][n8n] skipping webhook: no activation code", {
+      console.warn("[contract-sign] skipping activation email: no code or no email", {
         sitterProfileId: access.profile.id,
-        userId: access.profile.userId,
+        hasCode: Boolean(activationCode),
+        hasEmail: Boolean(sitterEmail),
       });
     }
 
-    // Best-effort Telegram admin notification — never blocks the signing response.
+    // Telegram admin notification
     const namePart = sitterName ? `\n👤 ${sitterName}` : "";
     const emailPart = sitterEmail ? `\n📧 ${sitterEmail}` : "";
+    const codePart = activationCode ? `\n🔑 Code: ${activationCode.rawCode}` : "";
     await sendTelegramMessage(
-      `✍️ Contrat signé !${namePart}${emailPart}\n🆔 ${access.profile.userId}`,
+      `✍️ *Contrat signé !*${namePart}${emailPart}${codePart}\n🆔 ${access.profile.userId}`,
     );
 
     return NextResponse.json(
