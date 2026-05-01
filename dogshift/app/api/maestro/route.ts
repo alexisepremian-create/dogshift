@@ -234,12 +234,17 @@ export async function POST(req: NextRequest) {
     const durationMs = Date.now() - start;
 
     // Logger
+    const errorDetail = !response.ok
+      ? (typeof data?.error === "string" ? data.error : `HTTP ${response.status}`)
+      : null;
     await prisma.agentLog.create({
       data: {
         agentName: "maestro",
         actionType: `call_${action}`,
-        summary: `Action "${action}" exécutée en ${durationMs}ms`,
-        details: { action, params, durationMs },
+        summary: response.ok
+          ? `Action "${action}" réussie en ${durationMs}ms`
+          : `Action "${action}" échouée — ${errorDetail} (${durationMs}ms)`,
+        details: { action, params, durationMs, httpStatus: response.status, response: data },
         targetId: data?.bookingId || data?.sitterId || data?.applicationId || null,
         durationMs,
         status: response.ok ? "success" : "error",
