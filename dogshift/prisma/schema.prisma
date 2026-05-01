@@ -278,7 +278,9 @@ model PilotSitterApplication {
   @@index([status, createdAt])
   @@index([email, createdAt])
   @@index([city, status])
-  @@unique([email, idempotencyKey])
+  // No unique constraint on email — every submission creates a new row.
+  // Prisma v6 changed NULL handling in @@unique (NULLS NOT DISTINCT) which
+  // was blocking re-submissions from the same email when idempotencyKey=null.
 }
 
 model AdminNote {
