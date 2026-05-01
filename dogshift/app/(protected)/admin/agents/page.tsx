@@ -76,8 +76,9 @@ const COLORS: Record<string, { icon: ElementType; color: string; bg: string }> =
   notifications:       { icon: BellRing,      color: "#dc2626", bg: "#fef2f2" },
   candidature_classic: { icon: Calculator,    color: "#475569", bg: "#f8fafc" },
   candidature_ai:      { icon: Brain,         color: "#d97706", bg: "#fffbeb" },
-  "lead-magnet":       { icon: Mail,          color: "#db2777", bg: "#fdf2f8" },
-  "onboarding-owner":  { icon: UserPlus,      color: "#0284c7", bg: "#f0f9ff" },
+  "lead-magnet":              { icon: Mail,          color: "#db2777", bg: "#fdf2f8" },
+  "onboarding-owner":         { icon: UserPlus,      color: "#0284c7", bg: "#f0f9ff" },
+  "zootherapie-evaluation":   { icon: Sparkles,      color: "#7c3aed", bg: "#f5f3ff" },
 };
 
 const DEFAULT_COLOR = { icon: Bot, color: "#64748b", bg: "rgba(100,116,139,0.12)" };
@@ -99,7 +100,7 @@ const Y_MAESTRO_CHILDREN   = 460;
 const Y_CANDIDATURE_CHILDREN = 640;
 
 // X centers for each row
-const FREE_CX        = [-420, -300, -180, -60, 60, 180, 300, 420] as const;
+const FREE_CX        = [-400, -300, -200, -100, 0, 100, 200, 300, 400] as const;
 const MAESTRO_CX     = 0;
 const MAESTRO_CHILDREN_CX = [-200, 0, 200] as const;
 const CANDIDATURE_CX = 0; // candidature is index 1 of MAESTRO_CHILDREN → cx=0
@@ -116,7 +117,8 @@ const AGENTS: AgentDef[] = [
   { id: "activation",         name: "Activation",    description: "Onboarding pet-sitters",             icon: "UserCheck" },
   { id: "assistant",          name: "Assistant IA",  description: "Support utilisateur",                icon: "Sparkles" },
   { id: "lead-magnet",        name: "Lead Magnet",   description: "Capture emails & guide dogsitter",   icon: "Mail" },
-  { id: "onboarding-owner",   name: "Onboarding",    description: "Accueil des nouveaux propriétaires", icon: "UserPlus" },
+  { id: "onboarding-owner",        name: "Onboarding",    description: "Accueil des nouveaux propriétaires", icon: "UserPlus" },
+  { id: "zootherapie-evaluation",  name: "Zoothérapie",   description: "Évaluation bien-être IA par Claude", icon: "Sparkles" },
   { id: "booking",            name: "Booking",       description: "Gestion des réservations",           icon: "CalendarCheck" },
   { id: "candidature",        name: "Candidature",   description: "Wrapper enrichi (score + IA)",       icon: "SearchCheck" },
   { id: "notifications",      name: "Notifications", description: "Système de communication",           icon: "BellRing" },
@@ -125,7 +127,7 @@ const AGENTS: AgentDef[] = [
 ];
 
 // Zone membership
-const FREE_AGENTS          = ["auth", "reservations", "calendrier", "contrat", "activation", "assistant", "lead-magnet", "onboarding-owner"] as const;
+const FREE_AGENTS          = ["auth", "reservations", "calendrier", "contrat", "activation", "assistant", "lead-magnet", "onboarding-owner", "zootherapie-evaluation"] as const;
 const MAESTRO_CHILDREN     = ["booking", "candidature", "notifications"] as const;
 const CANDIDATURE_CHILDREN = ["candidature_classic", "candidature_ai"] as const;
 
