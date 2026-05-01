@@ -25,8 +25,15 @@ import {
   normalizeSwissPhone,
 } from "@/lib/sitterApplication/options";
 
+import { render } from "@react-email/render";
+
 import { sendEmail } from "@/lib/email/sendEmail";
-import { renderEmailLayout } from "@/lib/email/templates/layout";
+import {
+  ApplicationStatusEmail,
+  applicationStatusEmailSubject,
+  applicationStatusEmailPlainText,
+} from "@/lib/email/templates/applicationStatusEmail";
+import { sendInterviewEmail } from "@/lib/sitterApplication/sendInterviewEmail";
 import { calculateCandidatureScore, buildCandidatureTelegramMessage } from "@/lib/candidature/scoring";
 import { logAudit } from "@/lib/audit";
 
@@ -411,31 +418,36 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 4. Confirmation email
+    // 4. Email candidat — contenu adapté à la décision du scoring
+    //    HIGH  → lien Cal.com pour réserver un entretien directement
+    //    REVIEW → "on analyse, retour sous 5 jours ouvrables"
+    //    LOW   → refus poli avec invitation à repostuler plus tard
     const baseUrl = (process.env.NEXT_PUBLIC_APP_URL ?? process.env.NEXT_PUBLIC_BASE_URL ?? "https://www.dogshift.ch").replace(/\/$/, "");
+    const calcomUrl = (process.env.NEXT_PUBLIC_CALCOM_INTERVIEW_URL ?? "https://cal.com/dogshift/entretien-dogshift").trim();
     try {
-      const { html } = renderEmailLayout({
-        title: `Candidature reçue, ${firstName} !`,
-        subtitle: "Nous avons bien reçu ta candidature pour devenir dog-sitter DogShift.",
-        summaryTitle: "Prochaines étapes",
-        summaryRows: [
-          { label: "1. Analyse", value: "Nous analysons ton profil avec soin. Cette étape prend généralement 2 à 5 jours ouvrés." },
-          { label: "2. Contact", value: "Si ton profil correspond à nos critères, nous te contactons pour un mini entretien de validation." },
-          { label: "3. Activation", value: "Une fois validé, ton profil est activé et tu peux commencer à recevoir des demandes de garde." },
-        ],
-        ctaLabel: "Voir ma candidature →",
-        ctaUrl: baseUrl,
-        footerText: "Tu reçois cet email car tu as postulé pour devenir dog-sitter sur dogshift.ch. DogShift • support@dogshift.ch",
-        footerLinks: [{ label: "dogshift.ch", url: baseUrl }],
-      });
-      await sendEmail({
-        to: email,
-        subject: "Ta candidature DogShift a bien été reçue",
-        text: `Bonjour ${firstName},\n\nNous avons bien reçu ta candidature pour devenir dog-sitter DogShift.\n\nNous l'analysons avec soin et te recontactons sous 2 à 5 jours ouvrés si ton profil correspond à nos critères.\n\n— L'équipe DogShift\nhttps://www.dogshift.ch`,
-        html,
-      });
+      if (scoreResult.decision === "HIGH") {
+        // sendInterviewEmail: renders + sends the HIGH template, and records
+        // acceptedEmailSentAt on the DB row if applicationId is present.
+        await sendInterviewEmail({
+          firstName,
+          lastName,
+          email,
+          calendlyLink: calcomUrl,
+          baseUrl,
+          applicationId: applicationId ?? null,
+          source: "agent",
+        });
+      } else {
+        const status = scoreResult.decision === "REVIEW" ? "REVIEW" : "LOW";
+        const subject = applicationStatusEmailSubject(status);
+        const text = applicationStatusEmailPlainText({ firstName, lastName, status });
+        const html = await render(
+          ApplicationStatusEmail({ baseUrl, firstName, lastName, status })
+        );
+        await sendEmail({ to: email, subject, text, html });
+      }
     } catch (err) {
-      console.warn("[api][sitter-applications] confirmation email failed", err);
+      console.warn("[api][sitter-applications] status email failed", err);
     }
 
     return NextResponse.json({ ok: true, id: applicationId, score: scoreResult.score, decision: scoreResult.decision }, { status: 200 });
