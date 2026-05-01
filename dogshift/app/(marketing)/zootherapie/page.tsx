@@ -340,8 +340,8 @@ export default function ZootherapiePage() {
               Votre évaluation personnalisée
             </h2>
             <p className="mt-3 text-slate-500 text-sm sm:text-base">
-              Répondez aux 5 questions ci-dessous. Claude, notre IA spécialisée, analyse vos
-              réponses et vous envoie une évaluation sur mesure par email.
+              Répondez aux 5 questions ci-dessous. Notre IA spécialisée analyse vos réponses
+              et vous envoie une évaluation sur mesure par email.
             </p>
           </div>
 
