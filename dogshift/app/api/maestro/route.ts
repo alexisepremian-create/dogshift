@@ -76,6 +76,10 @@ const AGENT_REGISTRY: Record<string, AgentRoute> = {
     url: `${BASE_URL}/api/agents/onboarding-owner`,
     method: "POST",
   },
+  relance_owner: {
+    url: `${BASE_URL}/api/agents/relance-owner`,
+    method: "POST",
+  },
 };
 
 // ─── Arbre des agents pour le frontend ───
@@ -167,6 +171,14 @@ export const AGENTS_TREE = {
       description: "Onboarding des nouveaux propriétaires : email de bienvenue + suivi J+3",
       status: "online",
       actions: ["owner_registered"],
+    },
+    {
+      id: "relance-owner",
+      name: "Relance Owner Agent",
+      emoji: "💌",
+      description: "Relance les propriétaires qui ont échangé avec un sitter sans réserver (email personnalisé par Claude)",
+      status: "online",
+      actions: ["relance_owner"],
     },
   ],
 };
