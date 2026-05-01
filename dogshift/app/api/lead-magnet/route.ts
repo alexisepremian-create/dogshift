@@ -47,7 +47,11 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ ok: true });
   } catch (err) {
-    reportApiError(err, { route: "POST /api/lead-magnet" });
+    reportApiError({
+      kind: "internal_error",
+      route: "POST /api/lead-magnet",
+      extra: { message: err instanceof Error ? err.message : String(err) },
+    });
     return NextResponse.json({ error: "Server error." }, { status: 500 });
   }
 }
