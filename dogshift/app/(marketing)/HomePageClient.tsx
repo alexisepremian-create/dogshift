@@ -1281,23 +1281,11 @@ function StickySearchBar({ visible = true, hero = false }: { visible?: boolean; 
     setCalTab("flexible");
   }
 
-  async function requestProximity() {
+  function requestProximity() {
     setGeoError("");
     if (!navigator.geolocation) {
       setGeoError("Géolocalisation non supportée par votre navigateur.");
       return;
-    }
-    // Check permission state before asking — avoid silent failures
-    if (navigator.permissions) {
-      try {
-        const perm = await navigator.permissions.query({ name: "geolocation" });
-        if (perm.state === "denied") {
-          setGeoError("Accès refusé. Autorisez la localisation pour dogshift.ch dans les réglages de votre navigateur.");
-          return;
-        }
-      } catch {
-        // permissions API not available, proceed normally
-      }
     }
     setGeoLoading(true);
     navigator.geolocation.getCurrentPosition(
@@ -1312,14 +1300,14 @@ function StickySearchBar({ visible = true, hero = false }: { visible?: boolean; 
       (err) => {
         setGeoLoading(false);
         if (err.code === 1) {
-          setGeoError("Accès refusé. Autorisez la localisation dans les réglages de votre navigateur.");
+          setGeoError("Accès refusé. Autorisez la localisation pour dogshift.ch dans les réglages du navigateur.");
         } else if (err.code === 3) {
           setGeoError("Délai dépassé. Réessayez ou entrez une ville manuellement.");
         } else {
           setGeoError("Position indisponible. Entrez une ville manuellement.");
         }
       },
-      { timeout: 12000, maximumAge: 60_000 },
+      { timeout: 12000, maximumAge: 60_000, enableHighAccuracy: false },
     );
   }
 
@@ -1675,7 +1663,7 @@ function StickySearchBar({ visible = true, hero = false }: { visible?: boolean; 
                               disabled={label === "À proximité" && geoLoading}
                               onClick={() => {
                                 if (label === "À proximité") {
-                                  void requestProximity();
+                                  requestProximity();
                                 } else {
                                   setLocation(label);
                                   setLocationError("");
