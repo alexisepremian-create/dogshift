@@ -1280,10 +1280,22 @@ function StickySearchBar({ visible = true, hero = false }: { visible?: boolean; 
     setCalTab("flexible");
   }
 
-  function requestProximity() {
+  async function requestProximity() {
     if (!navigator.geolocation) {
       setLocationError("Géolocalisation non supportée par votre navigateur.");
       return;
+    }
+    // Check permission state before asking — avoid silent failures
+    if (navigator.permissions) {
+      try {
+        const perm = await navigator.permissions.query({ name: "geolocation" });
+        if (perm.state === "denied") {
+          setLocationError("Autorisez dogshift.ch à accéder à votre position dans les paramètres de votre navigateur.");
+          return;
+        }
+      } catch {
+        // permissions API not available, proceed normally
+      }
     }
     setGeoLoading(true);
     setLocationError("");
@@ -1296,11 +1308,17 @@ function StickySearchBar({ visible = true, hero = false }: { visible?: boolean; 
         setLocationError("");
         setActiveSection("quand");
       },
-      () => {
+      (err) => {
         setGeoLoading(false);
-        setLocationError("Activez la géolocalisation pour utiliser cette option.");
+        if (err.code === 1) {
+          setLocationError("Accès à la position refusé. Autorisez-le dans les paramètres de votre navigateur.");
+        } else if (err.code === 3) {
+          setLocationError("Localisation trop longue. Réessayez ou entrez une ville manuellement.");
+        } else {
+          setLocationError("Impossible de déterminer votre position. Entrez une ville manuellement.");
+        }
       },
-      { timeout: 8000, maximumAge: 60_000 },
+      { timeout: 12000, maximumAge: 60_000 },
     );
   }
 
