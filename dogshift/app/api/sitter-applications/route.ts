@@ -25,11 +25,9 @@ import {
   normalizeSwissPhone,
 } from "@/lib/sitterApplication/options";
 
-import {
-  buildApplicationScoringPayload,
-} from "@/lib/integrations/triggerApplicationScoring";
 import { sendEmail } from "@/lib/email/sendEmail";
 import { renderEmailLayout } from "@/lib/email/templates/layout";
+import { calculateCandidatureScore, buildCandidatureTelegramMessage } from "@/lib/candidature/scoring";
 
 export const runtime = "nodejs";
 
@@ -371,8 +369,15 @@ export async function POST(req: NextRequest) {
       select: { id: true, email: true, firstName: true },
     });
 
-    const scoringPayload = buildApplicationScoringPayload({
-      applicationId: created.id,
+    // ---------------------------------------------------------------
+    // Inline processing — no HTTP self-calls (unreliable on Vercel).
+    // All operations run synchronously before the response is sent.
+    // ---------------------------------------------------------------
+
+    const scoringStart = performance.now();
+
+    // 1. Score the application
+    const scoreResult = calculateCandidatureScore({
       firstName,
       lastName,
       email,
@@ -381,72 +386,77 @@ export async function POST(req: NextRequest) {
       cityOther,
       npa,
       linkAnimalProfession,
-      linkAnimalProfessionOther,
       gardeExperienceLevel,
-      experienceText,
-      motivationText,
+      experience: experienceText,
+      motivation: motivationText,
       availabilityStructured: availabilityStructured ?? null,
       gardeTypes,
       dogSizes,
-      housingType,
       hasCarLicense,
+      applicationId: created.id,
     });
 
-    // Fire-and-forget: trigger the autonomous candidature-enriched agent
-    // (scoring + AI review + Telegram). Never blocks the response.
-    void (async () => {
+    // 2. Log scoring result
+    try {
+      await prisma.agentLog.create({
+        data: {
+          agentName: "candidature",
+          actionType: "apply",
+          summary: `Candidature ${firstName} ${lastName} → ${scoreResult.decision} (${scoreResult.score}/100)`,
+          details: { email, decision: scoreResult.decision, score: scoreResult.score },
+          targetId: created.id,
+          durationMs: Math.round(performance.now() - scoringStart),
+          status: "success",
+        },
+      });
+    } catch (err) {
+      console.warn("[api][sitter-applications] agent log failed", err);
+    }
+
+    // 3. Telegram notification (always send, not only for HIGH/REVIEW)
+    const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || "";
+    const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID || "977094430";
+    if (TELEGRAM_BOT_TOKEN) {
       try {
-        const baseUrl = (process.env.NEXT_PUBLIC_APP_URL ?? process.env.NEXT_PUBLIC_BASE_URL ?? "").replace(/\/$/, "");
-        const agentUrl = baseUrl
-          ? `${baseUrl}/api/agents/candidature-enriched`
-          : null;
-        if (!agentUrl) {
-          console.warn("[api][sitter-applications] NEXT_PUBLIC_APP_URL not set, skipping agent");
-          return;
-        }
-        const res = await fetch(agentUrl, {
+        const msg = buildCandidatureTelegramMessage({ firstName, lastName, city, email, result: scoreResult });
+        await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(scoringPayload),
-        });
-        if (!res.ok) {
-          console.warn("[api][sitter-applications] candidature-enriched agent returned", res.status);
-        }
-      } catch (err) {
-        console.warn("[api][sitter-applications] candidature-enriched agent call failed", err);
-      }
-    })();
-
-    // Send confirmation email to the candidate
-    void (async () => {
-      try {
-        const baseUrl = (process.env.NEXT_PUBLIC_APP_URL ?? process.env.NEXT_PUBLIC_BASE_URL ?? "https://www.dogshift.ch").replace(/\/$/, "");
-        const { html } = renderEmailLayout({
-          title: `Candidature reçue, ${firstName} !`,
-          subtitle: "Nous avons bien reçu ta candidature pour devenir dog-sitter DogShift.",
-          summaryTitle: "Prochaines étapes",
-          summaryRows: [
-            { label: "1. Analyse", value: "Nous analysons ton profil avec soin. Cette étape prend généralement 2 à 5 jours ouvrés." },
-            { label: "2. Contact", value: "Si ton profil correspond à nos critères, nous te contactons pour un mini entretien de validation." },
-            { label: "3. Activation", value: "Une fois validé, ton profil est activé et tu peux commencer à recevoir des demandes de garde." },
-          ],
-          ctaLabel: "Voir ma candidature →",
-          ctaUrl: baseUrl,
-          footerText: "Tu reçois cet email car tu as postulé pour devenir dog-sitter sur dogshift.ch. DogShift • support@dogshift.ch",
-          footerLinks: [{ label: "dogshift.ch", url: baseUrl }],
-        });
-        await sendEmail({
-          to: email,
-          subject: "Ta candidature DogShift a bien été reçue",
-          text: `Bonjour ${firstName},\n\nNous avons bien reçu ta candidature pour devenir dog-sitter DogShift.\n\nNous l'analysons avec soin et te recontactons sous 2 à 5 jours ouvrés si ton profil correspond à nos critères.\n\n— L'équipe DogShift\nhttps://www.dogshift.ch`,
-          html,
+          body: JSON.stringify({ chat_id: TELEGRAM_CHAT_ID, text: msg, parse_mode: "Markdown" }),
         });
       } catch (err) {
-        console.warn("[api][sitter-applications] confirmation email failed", err);
+        console.warn("[api][sitter-applications] telegram failed", err);
       }
-    })();
+    }
 
-    return NextResponse.json({ ok: true, id: created.id }, { status: 200 });
+    // 4. Confirmation email to candidate
+    const baseUrl = (process.env.NEXT_PUBLIC_APP_URL ?? process.env.NEXT_PUBLIC_BASE_URL ?? "https://www.dogshift.ch").replace(/\/$/, "");
+    try {
+      const { html } = renderEmailLayout({
+        title: `Candidature reçue, ${firstName} !`,
+        subtitle: "Nous avons bien reçu ta candidature pour devenir dog-sitter DogShift.",
+        summaryTitle: "Prochaines étapes",
+        summaryRows: [
+          { label: "1. Analyse", value: "Nous analysons ton profil avec soin. Cette étape prend généralement 2 à 5 jours ouvrés." },
+          { label: "2. Contact", value: "Si ton profil correspond à nos critères, nous te contactons pour un mini entretien de validation." },
+          { label: "3. Activation", value: "Une fois validé, ton profil est activé et tu peux commencer à recevoir des demandes de garde." },
+        ],
+        ctaLabel: "Voir ma candidature →",
+        ctaUrl: baseUrl,
+        footerText: "Tu reçois cet email car tu as postulé pour devenir dog-sitter sur dogshift.ch. DogShift • support@dogshift.ch",
+        footerLinks: [{ label: "dogshift.ch", url: baseUrl }],
+      });
+      await sendEmail({
+        to: email,
+        subject: "Ta candidature DogShift a bien été reçue",
+        text: `Bonjour ${firstName},\n\nNous avons bien reçu ta candidature pour devenir dog-sitter DogShift.\n\nNous l'analysons avec soin et te recontactons sous 2 à 5 jours ouvrés si ton profil correspond à nos critères.\n\n— L'équipe DogShift\nhttps://www.dogshift.ch`,
+        html,
+      });
+    } catch (err) {
+      console.warn("[api][sitter-applications] confirmation email failed", err);
+    }
+
+    return NextResponse.json({ ok: true, id: created.id, score: scoreResult.score, decision: scoreResult.decision }, { status: 200 });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : "";
     if (msg.toLowerCase().includes("unique") || msg.toLowerCase().includes("constraint")) {
