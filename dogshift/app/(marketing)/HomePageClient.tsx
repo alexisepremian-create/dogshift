@@ -1077,6 +1077,9 @@ function StickySearchBar({ visible = true, hero = false }: { visible?: boolean; 
   const [service, setService] = useState<ServiceKey>("Promenade");
   const [location, setLocation] = useState("");
   const [locationError, setLocationError] = useState("");
+  const [geoLat, setGeoLat] = useState<number | null>(null);
+  const [geoLng, setGeoLng] = useState<number | null>(null);
+  const [geoLoading, setGeoLoading] = useState(false);
   const [calTab, setCalTab] = useState<"dates" | "flexible">("dates");
   const [dogSize, setDogSize] = useState<DogSizeKey | null>(null);
 
@@ -1277,14 +1280,48 @@ function StickySearchBar({ visible = true, hero = false }: { visible?: boolean; 
     setCalTab("flexible");
   }
 
+  function requestProximity() {
+    if (!navigator.geolocation) {
+      setLocationError("Géolocalisation non supportée par votre navigateur.");
+      return;
+    }
+    setGeoLoading(true);
+    setLocationError("");
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setGeoLat(pos.coords.latitude);
+        setGeoLng(pos.coords.longitude);
+        setLocation("À proximité");
+        setGeoLoading(false);
+        setLocationError("");
+        setActiveSection("quand");
+      },
+      () => {
+        setGeoLoading(false);
+        setLocationError("Activez la géolocalisation pour utiliser cette option.");
+      },
+      { timeout: 8000, maximumAge: 60_000 },
+    );
+  }
+
   function handleSearch() {
     if (!location.trim()) {
       setLocationError("Indiquez une ville avant de rechercher.");
       setActiveSection("lieu");
       return;
     }
+    const isProximity = location.trim() === "À proximité";
+    if (isProximity && (geoLat === null || geoLng === null)) {
+      setLocationError("Activez la géolocalisation pour utiliser À proximité.");
+      setActiveSection("lieu");
+      return;
+    }
     setLocationError("");
     const p = new URLSearchParams({ service, location: location.trim() });
+    if (isProximity && geoLat !== null && geoLng !== null) {
+      p.set("lat", String(geoLat));
+      p.set("lng", String(geoLng));
+    }
     if (isHourlyPanel) {
       if (calTab === "dates") {
         if (startDate) p.set("date", startDate);
@@ -1589,7 +1626,7 @@ function StickySearchBar({ visible = true, hero = false }: { visible?: boolean; 
                         <Search className="h-3.5 w-3.5 shrink-0 text-slate-400" aria-hidden="true" />
                         <input
                           value={location}
-                            onChange={(e) => { setLocation(e.target.value); setLocationError(""); }}
+                            onChange={(e) => { setLocation(e.target.value); setLocationError(""); setGeoLat(null); setGeoLng(null); }}
                           placeholder="Lausanne, Genève, Montreux…"
                           className="min-w-0 flex-1 bg-transparent text-sm font-medium text-slate-900 placeholder:text-slate-400 outline-none"
                           style={{ fontSize: "16px" }}
@@ -1616,15 +1653,28 @@ function StickySearchBar({ visible = true, hero = false }: { visible?: boolean; 
                           <button
                             key={label}
                             type="button"
-                            onClick={() => { setLocation(label); setLocationError(""); setActiveSection("quand"); }}
-                            className="flex w-full items-center gap-2.5 rounded-xl px-2 py-2 text-left transition-colors duration-100 hover:bg-slate-50"
+                            disabled={label === "À proximité" && geoLoading}
+                            onClick={() => {
+                              if (label === "À proximité") {
+                                requestProximity();
+                              } else {
+                                setLocation(label);
+                                setLocationError("");
+                                setActiveSection("quand");
+                              }
+                            }}
+                            className="flex w-full items-center gap-2.5 rounded-xl px-2 py-2 text-left transition-colors duration-100 hover:bg-slate-50 disabled:opacity-60"
                           >
                             <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-100">
-                              <Icon className="h-3 w-3 text-slate-500" aria-hidden="true" />
+                              {label === "À proximité" && geoLoading
+                                ? <span className="h-3 w-3 animate-spin rounded-full border-2 border-slate-300 border-t-slate-600" />
+                                : <Icon className="h-3 w-3 text-slate-500" aria-hidden="true" />}
                             </span>
                             <div className="min-w-0">
                               <p className="text-sm font-semibold text-slate-900">{label}</p>
-                              <p className="text-[11px] text-slate-400">{sublabel}</p>
+                              <p className="text-[11px] text-slate-400">
+                                {label === "À proximité" && geoLoading ? "Localisation en cours…" : sublabel}
+                              </p>
                             </div>
                           </button>
                         ))}

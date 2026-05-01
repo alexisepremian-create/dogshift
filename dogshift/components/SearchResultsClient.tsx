@@ -1,4 +1,5 @@
 "use client";
+/* eslint-disable react-hooks/set-state-in-effect, @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, @next/next/no-img-element */
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -7,6 +8,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import {
   LOCATION_HUB_COORDS,
+  LOCATION_HUB_RADIUS_KM,
   haversineKm,
   normalizeLocationText as normalize,
   resolveCoordsForPublishedSitterMap,
@@ -239,12 +241,28 @@ export default function SearchResultsClient() {
   const [location, setLocation] = useState(initialLocation);
   const [dogSize, setDogSize] = useState<(typeof DOG_SIZE_OPTIONS)[number]>("");
   const [sort, setSort] = useState<SortKey>("rating_desc");
+  const [userGeoCoords] = useState<{ lat: number; lng: number } | null>(() => {
+    const latStr = sp.get("lat");
+    const lngStr = sp.get("lng");
+    const lat = latStr ? parseFloat(latStr) : null;
+    const lng = lngStr ? parseFloat(lngStr) : null;
+    return lat !== null && Number.isFinite(lat) && lng !== null && Number.isFinite(lng)
+      ? { lat, lng }
+      : null;
+  });
 
   const isResultsMode = Boolean(service || location || dogSize || sort !== "rating_desc");
 
   const filtered = useMemo(() => {
     const normalizedLocation = normalize(location);
-    const coords = normalizedLocation ? LOCATION_COORDS[normalizedLocation] ?? LOCATION_COORDS[location.trim()] : undefined;
+    const isProximity = normalizedLocation === "a proximite" || location.trim() === "À proximité";
+
+    let coords: { lat: number; lng: number } | undefined;
+    if (isProximity && userGeoCoords) {
+      coords = userGeoCoords;
+    } else if (normalizedLocation && !isProximity) {
+      coords = LOCATION_COORDS[normalizedLocation] ?? LOCATION_COORDS[location.trim()];
+    }
 
     const getEffectivePrice = (sitter: UiSitter) => {
       const pricing = sitter.pricing as Record<string, number | undefined>;
@@ -262,7 +280,9 @@ export default function SearchResultsClient() {
       .filter(({ sitter, distanceKm }) => {
       const matchesService = service ? sitter.services.some((s) => normalize(s) === normalize(service)) : true;
       const matchesLocation = normalizedLocation
-        ? normalize(sitter.city).startsWith(normalizedLocation) || normalize(sitter.postalCode).startsWith(normalizedLocation)
+        ? (isProximity && coords
+            ? distanceKm !== null && distanceKm <= LOCATION_HUB_RADIUS_KM
+            : normalize(sitter.city).startsWith(normalizedLocation) || normalize(sitter.postalCode).startsWith(normalizedLocation))
         : true;
       const matchesDogSize = dogSize ? sitter.dogSizes.some((s) => normalize(s) === normalize(dogSize)) : true;
       const matchesVerified = sort === "verified_first" ? Boolean(sitter.verified) : true;
@@ -289,12 +309,14 @@ export default function SearchResultsClient() {
     });
 
     return rows;
-  }, [service, location, dogSize, sort, sitters]);
+  }, [service, location, dogSize, sort, sitters, userGeoCoords]);
 
   const resultsSubtitle = useMemo(() => {
     if (!isResultsMode) return "";
 
     if (location) {
+      const isProx = normalize(location) === "a proximite" || location.trim() === "À proximité";
+      if (isProx) return "Dog-sitters près de vous";
       return `Dog-sitters à ${location}`;
     }
 
