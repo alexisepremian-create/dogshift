@@ -396,12 +396,12 @@ export async function POST(req: NextRequest) {
     // (scoring + AI review + Telegram). Never blocks the response.
     void (async () => {
       try {
-        const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL ?? "").replace(/\/$/, "");
+        const baseUrl = (process.env.NEXT_PUBLIC_APP_URL ?? process.env.NEXT_PUBLIC_BASE_URL ?? "").replace(/\/$/, "");
         const agentUrl = baseUrl
           ? `${baseUrl}/api/agents/candidature-enriched`
           : null;
         if (!agentUrl) {
-          console.warn("[api][sitter-applications] NEXT_PUBLIC_BASE_URL not set, skipping agent");
+          console.warn("[api][sitter-applications] NEXT_PUBLIC_APP_URL not set, skipping agent");
           return;
         }
         const res = await fetch(agentUrl, {
@@ -420,7 +420,7 @@ export async function POST(req: NextRequest) {
     // Send confirmation email to the candidate
     void (async () => {
       try {
-        const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL ?? "https://www.dogshift.ch").replace(/\/$/, "");
+        const baseUrl = (process.env.NEXT_PUBLIC_APP_URL ?? process.env.NEXT_PUBLIC_BASE_URL ?? "https://www.dogshift.ch").replace(/\/$/, "");
         const { html } = renderEmailLayout({
           title: `Candidature reçue, ${firstName} !`,
           subtitle: "Nous avons bien reçu ta candidature pour devenir dog-sitter DogShift.",
