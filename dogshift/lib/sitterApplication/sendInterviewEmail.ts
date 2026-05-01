@@ -24,7 +24,7 @@ import { prisma } from "@/lib/prisma";
  * and keep going so we never hide a successful delivery behind a tracking
  * glitch.
  */
-export type InterviewEmailSource = "n8n" | "admin";
+export type InterviewEmailSource = "n8n" | "admin" | "agent";
 
 export type SendInterviewEmailParams = {
   firstName: string;
