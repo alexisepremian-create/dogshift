@@ -76,6 +76,10 @@ const AGENT_REGISTRY: Record<string, AgentRoute> = {
     url: `${BASE_URL}/api/agents/onboarding-owner`,
     method: "POST",
   },
+  zootherapie_evaluation: {
+    url: `${BASE_URL}/api/agents/zootherapie-evaluation`,
+    method: "POST",
+  },
   relance_owner: {
     url: `${BASE_URL}/api/agents/relance-owner`,
     method: "POST",
@@ -179,6 +183,14 @@ export const AGENTS_TREE = {
       description: "Relance les propriétaires qui ont échangé avec un sitter sans réserver (email personnalisé par Claude)",
       status: "online",
       actions: ["relance_owner"],
+    },
+    {
+      id: "zootherapie-evaluation",
+      name: "Zoothérapie Evaluation",
+      emoji: "🧘",
+      description: "Génère une évaluation bien-être personnalisée via Claude et envoie par email",
+      status: "online",
+      actions: ["zootherapie_evaluation"],
     },
   ],
 };
