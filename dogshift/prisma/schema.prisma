@@ -82,6 +82,7 @@ enum SitterApplicationStatus {
   ACCEPTED
   ACTIVATED
   REJECTED
+  ARCHIVED
 }
 
 enum SitterLifecycleStatus {

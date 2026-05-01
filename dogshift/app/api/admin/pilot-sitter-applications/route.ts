@@ -72,7 +72,10 @@ export async function GET(req: NextRequest) {
       };
     };
 
+    // ?archived=1 to fetch only archived items; otherwise exclude them
+    const showArchived = req.nextUrl.searchParams.get("archived") === "1";
     const items = await db.pilotSitterApplication.findMany({
+      where: showArchived ? { status: "ARCHIVED" } : { status: { not: "ARCHIVED" } } as unknown as Record<string, unknown>,
       orderBy: { createdAt: "desc" },
     });
 
