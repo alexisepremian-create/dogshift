@@ -8,6 +8,7 @@ import {
   generateUniqueActivationCode,
 } from "@/lib/sitterActivationCode";
 import { sendTelegramMessage } from "@/lib/telegram/sendTelegramMessage";
+import { logAudit } from "@/lib/audit";
 import {
   buildSignedContractSnapshot,
   canAccessContractPage,
@@ -455,6 +456,15 @@ export async function POST(req: NextRequest, context: { params: Promise<{ token:
         contractAccessTokenUsedAt: signedAt,
       },
       select: { id: true },
+    });
+
+    void logAudit({
+      action: "consent.contract_signed",
+      actorType: "user",
+      actorId: access.profile.userId ?? null,
+      targetId: access.profile.id,
+      targetType: "SITTER_PROFILE",
+      metadata: { contractVersion: access.accessVersion, sitterId: access.profile.sitterId },
     });
 
     // Post-signature side effects: issue a fresh activation code on the same

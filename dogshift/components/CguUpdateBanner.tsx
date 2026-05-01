@@ -54,6 +54,12 @@ export default function CguUpdateBanner() {
     setAccepting(true);
     try {
       await user.update({ unsafeMetadata: { ...user.unsafeMetadata, cguVersion: CGU_VERSION } });
+      // Trace dans le journal juridique (best-effort)
+      void fetch("/api/audit/consent", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: "cgu", version: CGU_VERSION }),
+      }).catch(() => {});
       setVisible(false);
     } catch {
       setVisible(false);
