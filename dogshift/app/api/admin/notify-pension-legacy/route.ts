@@ -4,19 +4,17 @@
  * Admin-only. Delete after use.
  */
 
-import { auth } from "@clerk/nextjs/server";
-import { NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
+import { checkAdminAccess } from "@/lib/adminAuth";
 import { prisma } from "@/lib/prisma";
 import { sendEmail } from "@/lib/email/sendEmail";
 import { renderEmailLayout } from "@/lib/email/templates/layout";
 
 const APP_URL = (process.env.NEXT_PUBLIC_APP_URL ?? "https://www.dogshift.ch").replace(/\/$/, "");
 
-const ADMIN_IDS = (process.env.ADMIN_USER_IDS ?? "").split(",").map((s) => s.trim()).filter(Boolean);
-
-export async function GET() {
-  const { userId } = await auth();
-  if (!userId || !ADMIN_IDS.includes(userId)) {
+export async function GET(req: NextRequest) {
+  const access = await checkAdminAccess(req);
+  if (!access.isAdmin) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
