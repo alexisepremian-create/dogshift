@@ -69,6 +69,7 @@ export default function HostProfileEditPage() {
   const [pensionPhotoKeys, setPensionPhotoKeys] = useState<string[]>([]);
   const [pensionExifData, setPensionExifData] = useState<Record<string, unknown>[]>([]);
   const [pensionSubmitting, setPensionSubmitting] = useState(false);
+  const [pensionResetting, setPensionResetting] = useState(false);
   const [pensionUploadingCount, setPensionUploadingCount] = useState(0);
   const [pensionError, setPensionError] = useState<string | null>(null);
   const pensionPhotoInputRef = useRef<HTMLInputElement>(null);
@@ -225,6 +226,21 @@ export default function HostProfileEditPage() {
       setPensionExifData([]);
     } finally {
       setPensionSubmitting(false);
+    }
+  }
+
+  async function resetPensionVerification() {
+    setPensionResetting(true);
+    try {
+      const res = await fetch("/api/host/pension-verification/reset", { method: "POST" });
+      const data = await res.json();
+      if (!res.ok || !data.ok) return;
+      setPensionVerifStatus("not_submitted");
+      setPensionPhotoKeys([]);
+      setPensionExifData([]);
+      setPensionError(null);
+    } finally {
+      setPensionResetting(false);
     }
   }
 
@@ -685,11 +701,21 @@ export default function HostProfileEditPage() {
                         </div>
                       </div>
                     ) : pensionVerifStatus === "pending" || pensionVerifStatus === "ai_reviewing" ? (
-                      <div className="flex items-center gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4">
-                        <Clock className="h-5 w-5 shrink-0 text-amber-600" />
-                        <div>
-                          <p className="text-sm font-semibold text-amber-900">Vérification en cours</p>
-                          <p className="text-xs text-amber-700 mt-0.5">Notre système analyse vos photos. Vous recevrez un e-mail de confirmation sous peu.</p>
+                      <div className="rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4">
+                        <div className="flex items-center gap-3">
+                          <Clock className="h-5 w-5 shrink-0 text-amber-600" />
+                          <div className="flex-1">
+                            <p className="text-sm font-semibold text-amber-900">Vérification en cours</p>
+                            <p className="text-xs text-amber-700 mt-0.5">Notre système analyse vos photos. Vous recevrez un e-mail de confirmation sous peu.</p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => void resetPensionVerification()}
+                            disabled={pensionResetting}
+                            className="shrink-0 text-xs text-amber-700 underline hover:text-amber-900 disabled:opacity-50"
+                          >
+                            {pensionResetting ? "Réinitialisation…" : "Réessayer"}
+                          </button>
                         </div>
                       </div>
                     ) : (
@@ -779,9 +805,12 @@ export default function HostProfileEditPage() {
                       </div>
                     )}
                   </div>
-                  <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-5">
-                    <p className="text-sm font-semibold text-slate-900">Pension (détails)</p>
-                    <div className="mt-4 grid gap-4 sm:grid-cols-2">
+
+                  {/* Pension boarding details — always visible, used by the AI for coherence check */}
+                  <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-5">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-4">Détails du logement</p>
+                    <p className="text-xs text-slate-500 mb-4 -mt-2">Ces informations sont transmises à notre système de vérification pour valider la cohérence avec vos photos. Enregistrez le profil avant de soumettre les photos.</p>
+                    <div className="grid gap-4 sm:grid-cols-2">
                       <div>
                         <label className="block text-sm font-medium text-slate-700" htmlFor="host_housing">
                           Type de logement
