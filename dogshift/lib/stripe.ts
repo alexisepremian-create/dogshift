@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import Stripe from "stripe";
 
 let stripeSingleton: Stripe | null = null;
@@ -9,7 +10,7 @@ export function getStripe(): Stripe {
     throw new Error("Missing STRIPE_SECRET_KEY");
   }
   stripeSingleton = new Stripe(key, {
-    apiVersion: "2025-12-15.clover",
+    apiVersion: "2026-04-22.dahlia",
   });
   return stripeSingleton;
 }

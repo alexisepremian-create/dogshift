@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { auth, currentUser } from "@clerk/nextjs/server";
@@ -82,7 +83,7 @@ export async function GET(req: NextRequest) {
     let nextPayoutArrivalDate: string | null = null;
     if (status === "ENABLED") {
       try {
-        const b = (await stripe.balance.retrieve({ stripeAccount: accountId })) as any;
+        const b = (await stripe.balance.retrieve({}, { stripeAccount: accountId })) as any;
         const available = Array.isArray(b?.available) ? b.available : [];
         const pending = Array.isArray(b?.pending) ? b.pending : [];
         const sum = (items: any[]) =>

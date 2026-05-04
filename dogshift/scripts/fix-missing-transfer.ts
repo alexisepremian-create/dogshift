@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * One-off script to create the missing Stripe transfer for a specific booking.
  *
@@ -19,7 +20,7 @@ import { PrismaClient } from "@prisma/client";
 
 const DRY_RUN = process.env.DRY_RUN !== "false";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY ?? "", { apiVersion: "2025-12-15.clover" });
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY ?? "", { apiVersion: "2026-04-22.dahlia" });
 const prisma = new PrismaClient();
 
 const BOOKING_ID = "cmny8es5o0001l104nc7lwk7m";
