@@ -124,19 +124,12 @@ Analyse ces ${imageContents.length} photos du logement d'un sitter qui veut acti
 MÉTADONNÉES EXIF DES PHOTOS :
 ${exifSummary}
 
-Note : si les EXIF sont absents ou si les photos semblent issues d'internet (logiciel de retouche, absence totale de données appareil), pénalise le critère "coherenceDeclaration" (-1 à -2 points).
-
 CRITÈRES D'ÉVALUATION (score 0-5 par critère) :
 1. Espace suffisant : le chien aura de la place pour se déplacer, pas d'encombrement excessif
 2. Hygiène : logement visiblement propre, pas de saleté apparente
 3. Sécurité : absence d'éléments dangereux visibles (câbles traînants, produits chimiques accessibles, hauteurs non sécurisées, balcons sans barrières pour un chien)
 4. Adéquat pour un chien : présence d'espaces confortables, lumière naturelle, pas d'environnement hostile
-5. Cohérence : les photos sont réalistes et correspondent à un vrai logement habité (EXIF cohérents = +1)
-
-SEUIL D'APPROBATION :
-- score >= 75 → approuvé automatiquement
-- score 50-74 → en attente de révision manuelle admin
-- score < 50 → refusé automatiquement
+5. Cohérence : les photos sont réalistes et correspondent à un vrai logement habité
 
 Sois objectif et bienveillant mais rigoureux sur la sécurité.`,
             },
@@ -146,10 +139,21 @@ Sois objectif et bienveillant mais rigoureux sur la sécurité.`,
       ],
     });
 
+    // Hard EXIF rule: if no photo has a device Make/Model, force manual review
+    // regardless of AI score — a real phone photo almost always has Make+Model.
+    const hasAnyDeviceExif = exifData.some(
+      (e) => (typeof e.Make === "string" && e.Make.trim()) || (typeof e.Model === "string" && e.Model.trim())
+    );
+    const noExifOverride = exifData.length > 0 && !hasAnyDeviceExif;
+
     const finalStatus =
-      analyse.score >= 75 ? "approved" :
-      analyse.score >= 50 ? "ai_needs_review" :
-      "ai_rejected";
+      noExifOverride
+        ? "ai_needs_review" // force admin review when all photos lack device EXIF
+        : analyse.score >= 75
+        ? "approved"
+        : analyse.score >= 50
+        ? "ai_needs_review"
+        : "ai_rejected";
 
     await db.sitterProfile.update({
       where: { id: profile.id },
@@ -157,7 +161,7 @@ Sois objectif et bienveillant mais rigoureux sur la sécurité.`,
         pensionVerifStatus: finalStatus,
         pensionAiScore: analyse.score,
         pensionAiVerdict: analyse.verdict,
-        pensionAiReasoning: analyse,
+        pensionAiReasoning: { ...analyse, noExifOverride },
         pensionAiReviewedAt: new Date(),
         pensionPhotoReviewedAt: new Date(),
       },
