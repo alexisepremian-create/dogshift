@@ -266,7 +266,7 @@ export default function DogsPage() {
             </div>
             <div>
               <p className="text-sm font-medium text-slate-900">Photo de profil</p>
-              <p className="text-xs text-slate-500">JPG, PNG ou WebP · max 8 Mo</p>
+              <p className="text-xs text-slate-500">JPG, PNG ou WebP · max 20 Mo</p>
               {form.photoUrl && (
                 <button
                   type="button"

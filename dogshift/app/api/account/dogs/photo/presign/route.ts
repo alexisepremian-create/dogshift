@@ -7,7 +7,7 @@ import { resolveDbUserId } from "@/lib/auth/resolveDbUserId";
 
 export const runtime = "nodejs";
 
-const MAX_BYTES = 8 * 1024 * 1024; // 8 MB
+const MAX_BYTES = 20 * 1024 * 1024; // 20 MB
 const ALLOWED_MIMES = new Set(["image/jpeg", "image/png", "image/webp"]);
 
 function extForMime(mime: string) {
