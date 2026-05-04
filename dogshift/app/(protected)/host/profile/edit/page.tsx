@@ -5,7 +5,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Info, Pencil } from "lucide-react";
+import { Info, Pencil, ShieldCheck, Clock, Camera, AlertTriangle, CheckCircle, XCircle, Upload } from "lucide-react";
 
 import { useHostUser } from "@/components/HostUserProvider";
 import { isActivatedStatus } from "@/lib/sitterContract";
@@ -67,6 +67,7 @@ export default function HostProfileEditPage() {
   const [pensionVerifStatus, setPensionVerifStatus] = useState<string>("not_submitted");
   const [hasPension, setHasPension] = useState(false);
   const [pensionPhotoKeys, setPensionPhotoKeys] = useState<string[]>([]);
+  const [pensionExifData, setPensionExifData] = useState<Record<string, unknown>[]>([]);
   const [pensionSubmitting, setPensionSubmitting] = useState(false);
   const [pensionUploadingCount, setPensionUploadingCount] = useState(0);
   const [pensionError, setPensionError] = useState<string | null>(null);
@@ -175,6 +176,17 @@ export default function HostProfileEditPage() {
     setPensionError(null);
     for (const file of toUpload) {
       try {
+        // Extract EXIF metadata before upload
+        let exif: Record<string, unknown> = {};
+        try {
+          const { default: exifr } = await import("exifr");
+          const raw = await exifr.parse(file, {
+            pick: ["Make", "Model", "DateTimeOriginal", "CreateDate", "GPSLatitude", "GPSLongitude", "Software", "Orientation"],
+          });
+          if (raw && typeof raw === "object") exif = raw as Record<string, unknown>;
+        } catch { /* EXIF unavailable, continue */ }
+        setPensionExifData((prev) => [...prev, exif]);
+
         const presignRes = await fetch("/api/host/pension-verification/presign", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -204,12 +216,13 @@ export default function HostProfileEditPage() {
       const res = await fetch("/api/host/pension-verification/submit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ photoKeys: pensionPhotoKeys }),
+        body: JSON.stringify({ photoKeys: pensionPhotoKeys, exifData: pensionExifData }),
       });
       const data = await res.json();
       if (!res.ok || !data.ok) { setPensionError(data.error ?? "Erreur serveur."); return; }
       setPensionVerifStatus("pending");
       setPensionPhotoKeys([]);
+      setPensionExifData([]);
     } finally {
       setPensionSubmitting(false);
     }
@@ -661,71 +674,108 @@ export default function HostProfileEditPage() {
 
                 {hasPension ? (
                   <>
-                  {/* Pension verification banner */}
-                  <div className={`mt-4 rounded-2xl border p-4 ${
-                    pensionVerifStatus === "approved" ? "border-emerald-200 bg-emerald-50" :
-                    pensionVerifStatus === "pending" || pensionVerifStatus === "ai_reviewing" ? "border-amber-200 bg-amber-50" :
-                    pensionVerifStatus === "ai_rejected" || pensionVerifStatus === "rejected" ? "border-rose-200 bg-rose-50" :
-                    "border-blue-200 bg-blue-50"
-                  }`}>
+                  {/* Pension verification card */}
+                  <div className="mt-6">
                     {pensionVerifStatus === "approved" ? (
-                      <div className="flex items-center gap-2">
-                        <span className="text-emerald-700 text-lg">✓</span>
-                        <p className="text-sm font-semibold text-emerald-800">Logement vérifié — Pension activée</p>
+                      <div className="flex items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-4">
+                        <CheckCircle className="h-5 w-5 shrink-0 text-emerald-600" />
+                        <div>
+                          <p className="text-sm font-semibold text-emerald-900">Logement vérifié</p>
+                          <p className="text-xs text-emerald-700 mt-0.5">Le service Pension est actif sur votre profil public.</p>
+                        </div>
                       </div>
                     ) : pensionVerifStatus === "pending" || pensionVerifStatus === "ai_reviewing" ? (
-                      <div>
-                        <p className="text-sm font-semibold text-amber-800">Vérification en cours…</p>
-                        <p className="mt-1 text-xs text-amber-700">Notre IA analyse vos photos. Vous recevrez une notification sous peu.</p>
+                      <div className="flex items-center gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4">
+                        <Clock className="h-5 w-5 shrink-0 text-amber-600" />
+                        <div>
+                          <p className="text-sm font-semibold text-amber-900">Vérification en cours</p>
+                          <p className="text-xs text-amber-700 mt-0.5">Notre système analyse vos photos. Vous recevrez un e-mail de confirmation sous peu.</p>
+                        </div>
                       </div>
                     ) : (
-                      <div>
-                        <p className="text-sm font-semibold text-blue-900">
-                          {pensionVerifStatus === "ai_rejected" || pensionVerifStatus === "rejected"
-                            ? "⚠ Vérification refusée — Soumettez de nouvelles photos"
-                            : "📸 Vérification du logement requise"}
-                        </p>
-                        <p className="mt-1 text-xs text-blue-800">
-                          Pour activer la Pension, envoyez 3 à 6 photos de votre logement (salon, chambre/espace nuit, cuisine, extérieur si disponible).
-                          Notre IA les analysera automatiquement.
-                        </p>
-                        {pensionPhotoKeys.length > 0 && (
-                          <p className="mt-2 text-xs font-medium text-blue-900">{pensionPhotoKeys.length} photo(s) sélectionnée(s)</p>
-                        )}
-                        {pensionError && <p className="mt-2 text-xs font-medium text-rose-600">{pensionError}</p>}
-                        <div className="mt-3 flex flex-wrap gap-2">
-                          <button
-                            type="button"
-                            onClick={() => pensionPhotoInputRef.current?.click()}
-                            disabled={pensionUploadingCount > 0 || pensionPhotoKeys.length >= 8}
-                            className="inline-flex items-center gap-1.5 rounded-xl border border-blue-200 bg-white px-3 py-1.5 text-xs font-semibold text-blue-700 transition hover:bg-blue-50 disabled:opacity-50"
-                          >
-                            {pensionUploadingCount > 0 ? `Upload en cours (${pensionUploadingCount})…` : "📷 Ajouter des photos"}
-                          </button>
-                          {pensionPhotoKeys.length >= 3 && (
+                      <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+                        {/* Header */}
+                        <div className={`flex items-center gap-3 px-5 py-4 ${pensionVerifStatus === "ai_rejected" || pensionVerifStatus === "rejected" ? "border-b border-rose-100 bg-rose-50" : "border-b border-slate-100 bg-slate-50"}`}>
+                          {pensionVerifStatus === "ai_rejected" || pensionVerifStatus === "rejected" ? (
+                            <XCircle className="h-5 w-5 shrink-0 text-rose-600" />
+                          ) : (
+                            <ShieldCheck className="h-5 w-5 shrink-0 text-[var(--dogshift-blue)]" />
+                          )}
+                          <div>
+                            <p className={`text-sm font-semibold ${pensionVerifStatus === "ai_rejected" || pensionVerifStatus === "rejected" ? "text-rose-900" : "text-slate-900"}`}>
+                              {pensionVerifStatus === "ai_rejected" || pensionVerifStatus === "rejected"
+                                ? "Photos refusées — Soumettez de nouvelles photos"
+                                : "Vérification du logement requise"}
+                            </p>
+                            <p className={`text-xs mt-0.5 ${pensionVerifStatus === "ai_rejected" || pensionVerifStatus === "rejected" ? "text-rose-700" : "text-slate-500"}`}>
+                              {pensionVerifStatus === "ai_rejected" || pensionVerifStatus === "rejected"
+                                ? "Vos photos n&apos;ont pas satisfait les critères. Consultez les conseils ci-dessous."
+                                : "Requis pour activer la Pension sur votre profil public."}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Instructions */}
+                        <div className="px-5 py-4 border-b border-slate-100">
+                          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-3">Photos requises (3 minimum, 8 maximum)</p>
+                          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                            {["Salon / séjour", "Chambre / espace nuit", "Cuisine", "Extérieur (si dispo)"].map((label) => (
+                              <div key={label} className="flex items-center gap-1.5 text-xs text-slate-600">
+                                <Camera className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+                                {label}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Upload zone */}
+                        <div className="px-5 py-4">
+                          {pensionPhotoKeys.length > 0 && (
+                            <div className="mb-3 flex items-center gap-2 rounded-xl bg-slate-50 border border-slate-200 px-3 py-2">
+                              <CheckCircle className="h-4 w-4 text-emerald-500 shrink-0" />
+                              <span className="text-xs font-medium text-slate-700">{pensionPhotoKeys.length} photo{pensionPhotoKeys.length > 1 ? "s" : ""} prête{pensionPhotoKeys.length > 1 ? "s" : ""} pour l&apos;envoi</span>
+                              <button type="button" onClick={() => { setPensionPhotoKeys([]); setPensionExifData([]); }} className="ml-auto text-xs text-slate-400 hover:text-slate-600 transition">
+                                Effacer
+                              </button>
+                            </div>
+                          )}
+                          {pensionError && (
+                            <div className="mb-3 flex items-center gap-2 rounded-xl bg-rose-50 border border-rose-200 px-3 py-2">
+                              <AlertTriangle className="h-4 w-4 text-rose-500 shrink-0" />
+                              <span className="text-xs font-medium text-rose-700">{pensionError}</span>
+                            </div>
+                          )}
+                          <div className="flex flex-wrap gap-2">
                             <button
                               type="button"
-                              onClick={() => void submitPensionVerification()}
-                              disabled={pensionSubmitting}
-                              className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-blue-700 disabled:opacity-50"
+                              onClick={() => pensionPhotoInputRef.current?.click()}
+                              disabled={pensionUploadingCount > 0 || pensionPhotoKeys.length >= 8}
+                              className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:opacity-50"
                             >
-                              {pensionSubmitting ? "Envoi…" : "Soumettre pour vérification"}
+                              <Upload className="h-3.5 w-3.5" />
+                              {pensionUploadingCount > 0 ? `Chargement (${pensionUploadingCount})…` : "Sélectionner des photos"}
                             </button>
-                          )}
-                          {pensionPhotoKeys.length > 0 && (
-                            <button type="button" onClick={() => setPensionPhotoKeys([])} className="text-xs text-slate-500 hover:text-slate-700">
-                              Vider
-                            </button>
-                          )}
+                            {pensionPhotoKeys.length >= 3 && (
+                              <button
+                                type="button"
+                                onClick={() => void submitPensionVerification()}
+                                disabled={pensionSubmitting}
+                                className="inline-flex items-center gap-2 rounded-xl bg-[var(--dogshift-blue)] px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:opacity-90 disabled:opacity-50"
+                              >
+                                <ShieldCheck className="h-3.5 w-3.5" />
+                                {pensionSubmitting ? "Envoi en cours…" : "Soumettre pour vérification"}
+                              </button>
+                            )}
+                          </div>
+                          <input
+                            ref={pensionPhotoInputRef}
+                            type="file"
+                            accept="image/jpeg,image/png,image/webp"
+                            multiple
+                            className="hidden"
+                            onChange={(e) => void handlePensionPhotoAdd(e)}
+                          />
                         </div>
-                        <input
-                          ref={pensionPhotoInputRef}
-                          type="file"
-                          accept="image/jpeg,image/png,image/webp"
-                          multiple
-                          className="hidden"
-                          onChange={(e) => void handlePensionPhotoAdd(e)}
-                        />
                       </div>
                     )}
                   </div>
