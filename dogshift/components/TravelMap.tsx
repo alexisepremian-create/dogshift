@@ -20,6 +20,26 @@ function formatFee(feeCents: number) {
 
 type MapGl = typeof import("react-map-gl/maplibre");
 
+/** Fetch driving route from OSRM and return GeoJSON coordinates. */
+async function fetchDrivingRoute(
+  fromLng: number,
+  fromLat: number,
+  toLng: number,
+  toLat: number,
+): Promise<[number, number][] | null> {
+  try {
+    const url = `https://router.project-osrm.org/route/v1/driving/${fromLng},${fromLat};${toLng},${toLat}?overview=full&geometries=geojson`;
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const data = (await res.json()) as {
+      routes?: Array<{ geometry?: { coordinates?: [number, number][] } }>;
+    };
+    return data.routes?.[0]?.geometry?.coordinates ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export function TravelMap({
   sitterLat,
   sitterLng,
@@ -34,7 +54,9 @@ export function TravelMap({
   const [mapLibre, setMapLibre] = useState<{ default: unknown } | null>(null);
   const mapRef = useRef<import("react-map-gl/maplibre").MapRef | null>(null);
   const [mapLoaded, setMapLoaded] = useState(false);
+  const [routeCoords, setRouteCoords] = useState<[number, number][] | null>(null);
 
+  // Load map libraries
   useEffect(() => {
     let cancelled = false;
     void (async () => {
@@ -53,23 +75,46 @@ export function TravelMap({
     return () => { cancelled = true; };
   }, []);
 
+  // Fetch driving route from OSRM
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const coords = await fetchDrivingRoute(sitterLng, sitterLat, ownerLng, ownerLat);
+      if (!cancelled) setRouteCoords(coords);
+    })();
+    return () => { cancelled = true; };
+  }, [sitterLat, sitterLng, ownerLat, ownerLng]);
+
+  // Update route source when coords arrive after map is already loaded
+  useEffect(() => {
+    if (!mapLoaded || !routeCoords) return;
+    const map = mapRef.current?.getMap() as import("maplibre-gl").Map | undefined;
+    if (!map) return;
+    const src = map.getSource("travel-route") as import("maplibre-gl").GeoJSONSource | undefined;
+    if (!src) return;
+    src.setData({
+      type: "Feature",
+      geometry: { type: "LineString", coordinates: routeCoords },
+      properties: {},
+    });
+  }, [routeCoords, mapLoaded]);
+
   const onMapLoad = useCallback(() => {
     const map = mapRef.current?.getMap() as import("maplibre-gl").Map | undefined;
     if (!map) return;
 
-    // Dashed route line
+    // Route line — straight line first, replaced with real route when OSRM responds
+    const initialCoords: [number, number][] = routeCoords ?? [
+      [sitterLng, sitterLat],
+      [ownerLng, ownerLat],
+    ];
+
     if (!map.getSource("travel-route")) {
       map.addSource("travel-route", {
         type: "geojson",
         data: {
           type: "Feature",
-          geometry: {
-            type: "LineString",
-            coordinates: [
-              [sitterLng, sitterLat],
-              [ownerLng, ownerLat],
-            ],
-          },
+          geometry: { type: "LineString", coordinates: initialCoords },
           properties: {},
         },
       });
@@ -81,19 +126,22 @@ export function TravelMap({
         paint: {
           "line-color": "#4F46E5",
           "line-width": 3,
-          "line-dasharray": [2, 2],
         },
       });
     }
 
-    // Fit both markers in view
-    const bounds: [[number, number], [number, number]] = [
-      [Math.min(sitterLng, ownerLng) - 0.01, Math.min(sitterLat, ownerLat) - 0.01],
-      [Math.max(sitterLng, ownerLng) + 0.01, Math.max(sitterLat, ownerLat) + 0.01],
-    ];
-    map.fitBounds(bounds, { padding: 40, duration: 0 });
+    // Fit both markers with generous padding and capped zoom
+    const padH = 70;
+    const padV = 55;
+    map.fitBounds(
+      [
+        [Math.min(sitterLng, ownerLng), Math.min(sitterLat, ownerLat)],
+        [Math.max(sitterLng, ownerLng), Math.max(sitterLat, ownerLat)],
+      ],
+      { padding: { top: padV, bottom: padV, left: padH, right: padH }, maxZoom: 14, duration: 0 },
+    );
     setMapLoaded(true);
-  }, [ownerLat, ownerLng, sitterLat, sitterLng]);
+  }, [ownerLat, ownerLng, sitterLat, sitterLng, routeCoords]);
 
   const centerLng = (sitterLng + ownerLng) / 2;
   const centerLat = (sitterLat + ownerLat) / 2;
@@ -116,17 +164,13 @@ export function TravelMap({
             style={{ width: "100%", height: "100%" }}
             attributionControl={false}
           >
-            {/* Sitter marker (indigo) */}
+            {/* Sitter marker — small indigo dot */}
             <mapGl.Marker longitude={sitterLng} latitude={sitterLat} anchor="center">
-              <div className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-white bg-indigo-600 text-xs font-bold text-white shadow">
-                S
-              </div>
+              <div className="h-4 w-4 rounded-full border-2 border-white bg-indigo-600 shadow-md" />
             </mapGl.Marker>
-            {/* Owner marker (emerald) */}
+            {/* Owner marker — small emerald dot */}
             <mapGl.Marker longitude={ownerLng} latitude={ownerLat} anchor="center">
-              <div className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-white bg-emerald-600 text-xs font-bold text-white shadow">
-                M
-              </div>
+              <div className="h-4 w-4 rounded-full border-2 border-white bg-emerald-500 shadow-md" />
             </mapGl.Marker>
           </mapGl.Map>
         ) : (
@@ -143,7 +187,7 @@ export function TravelMap({
               Sitter
             </div>
             <div className="flex items-center gap-1.5 rounded-lg bg-white/90 px-2 py-1 text-xs font-medium text-slate-700 shadow backdrop-blur-sm">
-              <span className="inline-block h-3 w-3 rounded-full bg-emerald-600" />
+              <span className="inline-block h-3 w-3 rounded-full bg-emerald-500" />
               Vous
             </div>
           </div>
