@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/purity */
 "use client";
 
 import { useState, useEffect, useRef } from "react";
@@ -50,7 +51,7 @@ type Props = {
   ready?: boolean;
   /** Called when the overlay is fully dismissed (after fade-out) */
   onDone?: () => void;
-  /** Minimum ms before the loader can start dismissing (default 1800) */
+  /** Minimum ms before the loader can start dismissing (default 800) */
   minDuration?: number;
   /** If true, skip fade-out — overlay stays visible (for page navigations) */
   persist?: boolean;
