@@ -64,6 +64,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         sitterId: true,
         bookingId: true,
         owner: { select: { id: true, name: true, image: true } },
+        selectedDog: { select: { id: true, name: true, breed: true } },
       },
     });
 
@@ -98,6 +99,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
           id: String(conversation.id),
           owner: { id: String(conversation.ownerId), name: ownerName, avatarUrl },
           bookingId: typeof conversation.bookingId === "string" ? conversation.bookingId : null,
+          selectedDog: conversation.selectedDog
+            ? { id: String(conversation.selectedDog.id), name: String(conversation.selectedDog.name), breed: conversation.selectedDog.breed ?? null }
+            : null,
         },
         messages: messages.map((m: any) => ({
           id: String(m.id),

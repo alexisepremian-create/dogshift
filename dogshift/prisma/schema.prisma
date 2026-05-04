@@ -692,15 +692,19 @@ model Conversation {
   sitterId  String
   bookingId String?
 
+  /// Dog selected by the owner as the subject of this conversation.
+  dogProfileId String?
+
   lastMessageAt      DateTime?
   lastMessagePreview String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  owner   User     @relation("OwnerConversations", fields: [ownerId], references: [id], onDelete: Cascade)
-  sitter  User     @relation("SitterConversations", fields: [sitterId], references: [sitterId], onDelete: Restrict)
-  booking Booking? @relation("BookingConversations", fields: [bookingId], references: [id], onDelete: SetNull)
+  owner      User       @relation("OwnerConversations", fields: [ownerId], references: [id], onDelete: Cascade)
+  sitter     User       @relation("SitterConversations", fields: [sitterId], references: [sitterId], onDelete: Restrict)
+  booking    Booking?   @relation("BookingConversations", fields: [bookingId], references: [id], onDelete: SetNull)
+  selectedDog DogProfile? @relation(fields: [dogProfileId], references: [id], onDelete: SetNull)
 
   messages Message[]
 
@@ -917,6 +921,7 @@ model AgentTask {
 }
 
 /// Dog profile belonging to an owner. One owner can have multiple dogs.
+/// conversations field: conversations where this dog was selected as the subject.
 model DogProfile {
   id     String @id @default(cuid())
   userId String
@@ -937,7 +942,8 @@ model DogProfile {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  conversations Conversation[]
 
   @@index([userId])
 }
