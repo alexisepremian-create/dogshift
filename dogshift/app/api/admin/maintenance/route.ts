@@ -16,7 +16,7 @@ export async function GET() {
     });
     return NextResponse.json({ logs });
   } catch (err) {
-    reportApiError(err, { route: "GET /api/admin/maintenance" });
+    reportApiError(err);
     return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
 }

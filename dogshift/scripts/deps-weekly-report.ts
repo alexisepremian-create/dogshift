@@ -127,8 +127,8 @@ ACTION: [specific action needed, or "None — nightly agent will handle" if it's
 `);
 
     const riskMatch = assessment.match(/RISK:\s*(low|medium|high)/i);
-    const summaryMatch = assessment.match(/SUMMARY:\s*(.+?)(?:\n|ACTION:)/s);
-    const actionMatch = assessment.match(/ACTION:\s*(.+)/s);
+    const summaryMatch = assessment.match(/SUMMARY:\s*([\s\S]+?)(?:\n(?=ACTION:)|$)/);
+    const actionMatch = assessment.match(/ACTION:\s*([\s\S]+)/);
 
     const risk = riskMatch?.[1]?.toLowerCase() ?? "unknown";
     const summary = summaryMatch?.[1]?.trim() ?? assessment.slice(0, 200);

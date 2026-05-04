@@ -26,14 +26,14 @@ export async function POST(req: Request) {
         agentName: "deps-agent",
         actionType: body.type ?? "nightly_update",
         summary: body.summary ?? "Dependency agent run",
-        details: { packages: body.packages, durationMs: body.durationMs },
+        details: JSON.parse(JSON.stringify({ packages: body.packages ?? [], durationMs: body.durationMs ?? 0 })) as Record<string, unknown>,
         status: body.status ?? "success",
       },
     });
 
     return NextResponse.json({ ok: true });
   } catch (err) {
-    reportApiError(err, { route: "POST /api/admin/maintenance/report" });
+    reportApiError(err);
     return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
 }
