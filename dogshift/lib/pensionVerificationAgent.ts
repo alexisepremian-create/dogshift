@@ -11,7 +11,6 @@ import { prisma } from "@/lib/prisma";
 import { presignGetObject } from "@/lib/r2";
 import { sendEmail } from "@/lib/email/sendEmail";
 import { renderEmailLayout } from "@/lib/email/templates/layout";
-import { sendTelegramMessage } from "@/lib/telegram/sendTelegramMessage";
 
 const APP_URL = (process.env.NEXT_PUBLIC_APP_URL ?? "https://www.dogshift.ch").replace(/\/$/, "");
 
@@ -125,12 +124,19 @@ Analyse ces ${imageContents.length} photos du logement d'un sitter qui veut acti
 MÉTADONNÉES EXIF DES PHOTOS :
 ${exifSummary}
 
+Note : si les EXIF sont absents ou si les photos semblent issues d'internet (logiciel de retouche, absence totale de données appareil), pénalise le critère "coherenceDeclaration" (-1 à -2 points).
+
 CRITÈRES D'ÉVALUATION (score 0-5 par critère) :
 1. Espace suffisant : le chien aura de la place pour se déplacer, pas d'encombrement excessif
 2. Hygiène : logement visiblement propre, pas de saleté apparente
 3. Sécurité : absence d'éléments dangereux visibles (câbles traînants, produits chimiques accessibles, hauteurs non sécurisées, balcons sans barrières pour un chien)
 4. Adéquat pour un chien : présence d'espaces confortables, lumière naturelle, pas d'environnement hostile
-5. Cohérence : les photos sont réalistes et correspondent à un vrai logement habité
+5. Cohérence : les photos sont réalistes et correspondent à un vrai logement habité (EXIF cohérents = +1)
+
+SEUIL D'APPROBATION :
+- score >= 75 → approuvé automatiquement
+- score 50-74 → en attente de révision manuelle admin
+- score < 50 → refusé automatiquement
 
 Sois objectif et bienveillant mais rigoureux sur la sécurité.`,
             },
@@ -140,21 +146,10 @@ Sois objectif et bienveillant mais rigoureux sur la sécurité.`,
       ],
     });
 
-    // Hard EXIF rule: if no photo has a device Make/Model, force manual review
-    // regardless of AI score — a real phone photo almost always has Make+Model.
-    const hasAnyDeviceExif = exifData.some(
-      (e) => (typeof e.Make === "string" && e.Make.trim()) || (typeof e.Model === "string" && e.Model.trim())
-    );
-    const noExifOverride = exifData.length > 0 && !hasAnyDeviceExif;
-
     const finalStatus =
-      noExifOverride
-        ? "ai_needs_review" // force admin review when all photos lack device EXIF
-        : analyse.score >= 75
-        ? "approved"
-        : analyse.score >= 50
-        ? "ai_needs_review"
-        : "ai_rejected";
+      analyse.score >= 75 ? "approved" :
+      analyse.score >= 50 ? "ai_needs_review" :
+      "ai_rejected";
 
     await db.sitterProfile.update({
       where: { id: profile.id },
@@ -162,7 +157,7 @@ Sois objectif et bienveillant mais rigoureux sur la sécurité.`,
         pensionVerifStatus: finalStatus,
         pensionAiScore: analyse.score,
         pensionAiVerdict: analyse.verdict,
-        pensionAiReasoning: { ...analyse, noExifOverride },
+        pensionAiReasoning: analyse,
         pensionAiReviewedAt: new Date(),
         pensionPhotoReviewedAt: new Date(),
       },
@@ -171,16 +166,6 @@ Sois objectif et bienveillant mais rigoureux sur la sécurité.`,
     // Send result email to sitter
     if (sitterEmail) {
       await sendPensionResultEmail({ sitterEmail, sitterName, finalStatus, score: analyse.score });
-    }
-
-    // Telegram alert for cases requiring manual admin review
-    if (finalStatus === "ai_needs_review") {
-      const reason = noExifOverride
-        ? "Aucune photo n'a de métadonnée EXIF appareil — vérification manuelle obligatoire."
-        : `Score IA : ${analyse.score}/100 (zone 50–74, révision requise).`;
-      await sendTelegramMessage(
-        `[DogShift] Vérification Pension — révision manuelle requise\n\nSitter : ${sitterName || sitterId}\nScore IA : ${analyse.score}/100\n${reason}\n\nRevoir : ${APP_URL}/admin/pension-verifications`
-      );
     }
 
     console.log("[pensionVerificationAgent] done", { sitterId, finalStatus, score: analyse.score });
