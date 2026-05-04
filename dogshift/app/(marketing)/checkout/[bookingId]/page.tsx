@@ -178,6 +178,7 @@ function CheckoutForm({
   PaymentElement,
   useStripe,
   useElements,
+  noCard = false,
 }: {
   bookingId: string;
   cancellationPolicyVariant: CancellationPolicyVariant;
@@ -185,6 +186,7 @@ function CheckoutForm({
   PaymentElement: any;
   useStripe: () => StripeInstance | null;
   useElements: () => StripeElements | null;
+  noCard?: boolean;
 }) {
   const stripe = useStripe();
   const elements = useElements();
@@ -306,8 +308,8 @@ function CheckoutForm({
     []
   );
 
-  return (
-    <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)] sm:p-5 sm:p-8">
+  const inner = (
+    <>
       <div className="flex items-start justify-between gap-6">
         <div>
           <h2 className="text-lg font-semibold tracking-tight text-slate-900">Paiement sécurisé</h2>
@@ -393,6 +395,13 @@ function CheckoutForm({
         {submitting ? "Paiement…" : "Payer"}
       </button>
       <p className="mt-3 text-xs text-slate-500">Aucun débit imprévu. Le total affiché inclut les frais de paiement estimés.</p>
+    </>
+  );
+
+  if (noCard) return inner;
+  return (
+    <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)] sm:p-8">
+      {inner}
     </div>
   );
 }
