@@ -731,9 +731,12 @@ const stripeReact = await import("@stripe/react-stripe-js");
               </div>
             </div>
           ) : booking && clientSecret ? (
-            <div className="mt-7 grid gap-6 lg:grid-cols-2">
-              <div className="lg:sticky lg:top-5 sm:p-8 lg:self-start">
-                <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)] sm:p-5 sm:p-8">
+            <div className="mt-7">
+              {/* Unified card: Récapitulatif (left) + Paiement sécurisé (right) */}
+              <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)] lg:flex lg:items-stretch">
+
+                {/* LEFT — Récapitulatif */}
+                <div className="p-6 sm:p-8 lg:w-[44%] lg:border-r lg:border-slate-200">
                   <h2 className="text-lg font-semibold tracking-tight text-slate-900">Récapitulatif</h2>
                   <p className="mt-1 text-sm text-slate-600">Vérifie les détails avant de payer.</p>
 
@@ -773,7 +776,7 @@ const stripeReact = await import("@stripe/react-stripe-js");
                     </div>
                   ) : null}
 
-                  <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-5">
+                  <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-5">
                     <SummaryRow label="Sous-total" value={formatCents(booking.amount - (booking.travelFeeAmount ?? 0))} />
                     {booking.travelFeeAmount ? (
                       <>
@@ -798,33 +801,39 @@ const stripeReact = await import("@stripe/react-stripe-js");
                     </div>
                     <p className="mt-2 text-xs text-slate-500">Devise: CHF</p>
                   </div>
+
+                  <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                    <p className="text-sm font-semibold text-slate-900">Support</p>
+                    <p className="mt-1 text-sm text-slate-600">Besoin d&apos;aide ? Contacte-nous.</p>
+                    <p className="mt-2 text-sm font-semibold text-slate-900">support@dogshift.ch</p>
+                  </div>
                 </div>
 
-                <div className="mt-6 rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)]">
-                  <p className="text-sm font-semibold text-slate-900">Support</p>
-                  <p className="mt-2 text-sm text-slate-600">Besoin d’aide ? Écris-nous et on te répond rapidement.</p>
-                  <p className="mt-3 text-sm font-semibold text-slate-900">support@dogshift.ch</p>
-                  <p className="mt-1 text-xs text-slate-500">(ou via ton espace “Mon compte”)</p>
+                {/* Mobile divider */}
+                <div className="h-px w-full bg-slate-200 lg:hidden" />
+
+                {/* RIGHT — Paiement sécurisé */}
+                <div className="flex-1 p-6 sm:p-8">
+                  {canRender ? (
+                    <ElementsComp stripe={stripeUi!.stripePromise} options={stripeElementsOptions!}>
+                      <CheckoutForm
+                        bookingId={booking.id}
+                        cancellationPolicyVariant={checkoutCancellationVariant}
+                        ExpressCheckoutElement={ExpressCheckoutElementComp}
+                        PaymentElement={PaymentElementComp}
+                        useStripe={useStripeHook}
+                        useElements={useElementsHook}
+                        noCard
+                      />
+                    </ElementsComp>
+                  ) : (
+                    <div>
+                      <p className="text-sm font-semibold text-slate-900">Stripe</p>
+                      <p className="mt-2 text-sm text-rose-600">{stripeUiError ?? "Impossible de charger Stripe."}</p>
+                    </div>
+                  )}
                 </div>
               </div>
-
-              {canRender ? (
-                <ElementsComp stripe={stripeUi!.stripePromise} options={stripeElementsOptions!}>
-                  <CheckoutForm
-                    bookingId={booking.id}
-                    cancellationPolicyVariant={checkoutCancellationVariant}
-                    ExpressCheckoutElement={ExpressCheckoutElementComp}
-                    PaymentElement={PaymentElementComp}
-                    useStripe={useStripeHook}
-                    useElements={useElementsHook}
-                  />
-                </ElementsComp>
-              ) : (
-                <div className="rounded-3xl border border-slate-200 bg-white p-5 sm:p-8 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)]">
-                  <p className="text-sm font-semibold text-slate-900">Stripe</p>
-                  <p className="mt-2 text-sm text-rose-600">{stripeUiError ?? "Impossible de charger Stripe."}</p>
-                </div>
-              )}
             </div>
           ) : null}
         </div>
