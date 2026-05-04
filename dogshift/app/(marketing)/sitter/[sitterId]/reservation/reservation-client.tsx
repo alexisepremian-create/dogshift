@@ -818,7 +818,7 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
   const [ownerNpa, setOwnerNpa] = useState("");
   const [ownerCity, setOwnerCity] = useState("");
   const [geocodingAddress, setGeocodingAddress] = useState(false);
-  const [travelPreview, setTravelPreview] = useState<{ distanceKm: number; feeCents: number; feeChf: number } | null>(null);
+  const [travelPreview, setTravelPreview] = useState<{ distanceKm: number; feeCents: number; feeChf: number; ownerLat: number; ownerLng: number } | null>(null);
   const [travelError, setTravelError] = useState<string | null>(null);
 
   const [submitting, setSubmitting] = useState(false);
@@ -897,7 +897,7 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
 
           const feeChf = Math.round(distanceKm * TRAVEL_RATE_CHF_PER_KM * 100) / 100;
           const feeCents = Math.round(feeChf * 100);
-          setTravelPreview({ distanceKm, feeCents, feeChf });
+          setTravelPreview({ distanceKm, feeCents, feeChf, ownerLat, ownerLng });
           setTravelError(null);
         } catch {
           // silent — user will see error at submit
@@ -1749,6 +1749,8 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
         message: message.trim() || null,
         locationMode,
         ownerAddress: locationMode === "AT_OWNER" ? ownerAddressCombined : null,
+        ownerLat: locationMode === "AT_OWNER" && travelPreview ? travelPreview.ownerLat : null,
+        ownerLng: locationMode === "AT_OWNER" && travelPreview ? travelPreview.ownerLng : null,
       };
 
       if (unit === "DAILY") {
