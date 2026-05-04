@@ -1,0 +1,2 @@
+ALTER TABLE "DogProfile" ADD COLUMN IF NOT EXISTS "photoUrl" TEXT;
+ALTER TABLE "DogProfile" ADD COLUMN IF NOT EXISTS "sitterInstructions" TEXT;

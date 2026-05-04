@@ -2,10 +2,11 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
-import { MessageCircle, RefreshCw } from "lucide-react";
+import { ChevronDown, Dog, MessageCircle, Plus, RefreshCw, X } from "lucide-react";
+import { publicDogPhotoPath } from "@/lib/dogPhotoMedia";
 
 type ConversationListItem = {
   id: string;
@@ -18,10 +19,26 @@ type ConversationListItem = {
   unreadCount: number;
 };
 
+type SelectedDog = {
+  id: string;
+  name: string;
+  breed: string | null;
+  birthYear: number | null;
+  weightKg: number | null;
+  medications: string | null;
+  allergies: string | null;
+  vetContact: string | null;
+  behaviorNotes: string | null;
+  feedingNotes: string | null;
+  sitterInstructions: string | null;
+  photoUrl: string | null;
+};
+
 type ConversationHeader = {
   id: string;
   sitter: { sitterId: string; name: string; avatarUrl: string | null };
   bookingId: string | null;
+  selectedDog: SelectedDog | null;
 };
 
 type MessageItem = {
@@ -31,6 +48,8 @@ type MessageItem = {
   createdAt: string;
   readAt: string | null;
 };
+
+type DogPickerItem = { id: string; name: string; breed: string | null; photoUrl: string | null };
 
 function avatarIsSafe(src: string) {
   const trimmed = src.trim();
@@ -67,6 +86,34 @@ function formatDateOnly(iso: string) {
   return new Intl.DateTimeFormat("fr-CH", { day: "numeric", month: "short", year: "numeric" }).format(dt);
 }
 
+const DOG_COLORS = [
+  "bg-violet-500", "bg-blue-500", "bg-emerald-500", "bg-amber-500", "bg-rose-500", "bg-indigo-500",
+];
+function dogColor(id: string) {
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
+  return DOG_COLORS[h % DOG_COLORS.length];
+}
+
+function DogAvatar({ dog, size = 28 }: { dog: { id: string; name: string; photoUrl?: string | null }; size?: number }) {
+  const src = dog.photoUrl ? publicDogPhotoPath(dog.photoUrl) : null;
+  if (src) {
+    return (
+      <div className="relative shrink-0 overflow-hidden rounded-full" style={{ width: size, height: size }}>
+        <Image src={src} alt={dog.name} fill className="object-cover" sizes={`${size}px`} />
+      </div>
+    );
+  }
+  return (
+    <div
+      className={`flex shrink-0 items-center justify-center rounded-full text-white font-semibold ${dogColor(dog.id)}`}
+      style={{ width: size, height: size, fontSize: size * 0.4 }}
+    >
+      {initialForName(dog.name)}
+    </div>
+  );
+}
+
 export default function AccountMessagesPage() {
   const { isLoaded, isSignedIn } = useUser();
   const router = useRouter();
@@ -85,12 +132,30 @@ export default function AccountMessagesPage() {
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
 
+  // Dog selector state
+  const [dogs, setDogs] = useState<DogPickerItem[]>([]);
+  const [dogPickerOpen, setDogPickerOpen] = useState(false);
+  const [settingDog, setSettingDog] = useState(false);
+  const [dogProfileOpen, setDogProfileOpen] = useState(false);
+  const dogPickerRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     if (!isLoaded) return;
     if (!isSignedIn) {
       router.replace("/login");
     }
   }, [isLoaded, isSignedIn, router]);
+
+  // Close dog picker on outside click
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (dogPickerRef.current && !dogPickerRef.current.contains(e.target as Node)) {
+        setDogPickerOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
 
   async function loadConversations() {
     setLoading(true);
@@ -103,21 +168,6 @@ export default function AccountMessagesPage() {
           setError("Connexion requise (401). ");
           return;
         }
-        if (res.status === 403 || payload.error === "FORBIDDEN") {
-          setError("Accès refusé (403).");
-          setConversations([]);
-          return;
-        }
-        if (res.status === 404 || payload.error === "NOT_FOUND") {
-          setError("Introuvable (404).");
-          setConversations([]);
-          return;
-        }
-        if (res.status >= 500) {
-          setError("Erreur serveur (500). ");
-          setConversations([]);
-          return;
-        }
         setError("Impossible de charger tes messages.");
         setConversations([]);
         return;
@@ -128,6 +178,16 @@ export default function AccountMessagesPage() {
       setConversations([]);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function loadDogs() {
+    try {
+      const res = await fetch("/api/account/dogs");
+      const data = (await res.json()) as { dogs?: DogPickerItem[] };
+      setDogs(data.dogs ?? []);
+    } catch {
+      setDogs([]);
     }
   }
 
@@ -150,14 +210,12 @@ export default function AccountMessagesPage() {
         if (res.status === 401 || payload.error === "UNAUTHORIZED") setThreadError("Connexion requise (401). ");
         else if (res.status === 403 || payload.error === "FORBIDDEN") setThreadError("Accès refusé (403).");
         else if (res.status === 404 || payload.error === "NOT_FOUND") setThreadError("Introuvable (404).");
-        else if (res.status >= 500) setThreadError("Erreur serveur (500). ");
         else setThreadError("Conversation introuvable.");
         return;
       }
       setThreadHeader(payload.conversation);
       setMessages(Array.isArray(payload.messages) ? payload.messages : []);
       setViewerId(typeof payload.viewerId === "string" && payload.viewerId.trim() ? payload.viewerId.trim() : null);
-
       setConversations((prev) => prev.map((c) => (c.id === conversationId ? { ...c, unreadCount: 0 } : c)));
     } catch {
       setThreadHeader(null);
@@ -166,6 +224,25 @@ export default function AccountMessagesPage() {
       setThreadError("Impossible de charger la conversation.");
     } finally {
       setThreadLoading(false);
+    }
+  }
+
+  async function selectDog(dogId: string | null) {
+    if (!selectedId) return;
+    setSettingDog(true);
+    setDogPickerOpen(false);
+    try {
+      const res = await fetch(`/api/account/messages/conversations/${encodeURIComponent(selectedId)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ dogProfileId: dogId }),
+      });
+      const data = (await res.json()) as { ok?: boolean; selectedDog?: SelectedDog | null };
+      if (res.ok && data.ok) {
+        setThreadHeader((prev) => prev ? { ...prev, selectedDog: data.selectedDog ?? null } : prev);
+      }
+    } finally {
+      setSettingDog(false);
     }
   }
 
@@ -179,7 +256,8 @@ export default function AccountMessagesPage() {
   useEffect(() => {
     if (!isLoaded || !isSignedIn) return;
     void loadConversations();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    void loadDogs();
+     
   }, [isLoaded, isSignedIn]);
 
   const rows = useMemo(() => {
@@ -215,7 +293,6 @@ export default function AccountMessagesPage() {
       setThreadError(null);
       return;
     }
-
     if (selectedId && !rows.some((c) => c.id === selectedId)) {
       setSelectedId(null);
       setThreadHeader(null);
@@ -247,7 +324,7 @@ export default function AccountMessagesPage() {
           setThreadError("Connexion requise (401). ");
           return;
         }
-        setThreadError(`Impossible d’envoyer le message (${payload.error ?? res.status}).`);
+        setThreadError(`Impossible d'envoyer le message (${payload.error ?? res.status}).`);
         return;
       }
       setText("");
@@ -255,16 +332,10 @@ export default function AccountMessagesPage() {
       setConversations((prev) =>
         prev.map((c) =>
           c.id === selectedId
-            ? {
-                ...c,
-                lastMessageAt: payload.message!.createdAt,
-                lastMessagePreview: payload.message!.body,
-              }
+            ? { ...c, lastMessageAt: payload.message!.createdAt, lastMessagePreview: payload.message!.body }
             : c
         )
       );
-    } catch {
-      setThreadError("Impossible d’envoyer le message.");
     } finally {
       setSending(false);
     }
@@ -275,18 +346,14 @@ export default function AccountMessagesPage() {
     return (
       <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)] sm:p-8">
         <p className="text-sm font-semibold text-slate-900">Connexion requise (401).</p>
-        <p className="mt-2 text-sm text-slate-600">Connecte-toi pour accéder à tes messages.</p>
-        <div className="mt-5">
-          <Link
-            href="/login"
-            className="inline-flex items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-6 py-3 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition hover:bg-[var(--dogshift-blue-hover)]"
-          >
-            Se connecter
-          </Link>
-        </div>
+        <Link href="/login" className="mt-4 inline-flex items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[var(--dogshift-blue-hover)]">
+          Se connecter
+        </Link>
       </div>
     );
   }
+
+  const selectedDog = threadHeader?.selectedDog ?? null;
 
   return (
     <div className="flex h-[calc(100vh-80px)] flex-col bg-white -mx-4 -mt-4 sm:mx-0 sm:mt-0 sm:rounded-3xl sm:border sm:border-slate-200 sm:shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)]" data-testid="account-messages-page">
@@ -294,18 +361,11 @@ export default function AccountMessagesPage() {
         <div className="rounded-3xl border border-rose-200 bg-rose-50 p-6 text-sm font-medium text-rose-900 sm:p-8">
           <p>{error}</p>
           {error.includes("401") ? (
-            <Link
-              href="/login"
-              className="mt-4 inline-flex items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-6 py-3 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition hover:bg-[var(--dogshift-blue-hover)]"
-            >
+            <Link href="/login" className="mt-4 inline-flex items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[var(--dogshift-blue-hover)]">
               Se connecter
             </Link>
           ) : (
-            <button
-              type="button"
-              onClick={() => void loadConversations()}
-              className="mt-4 inline-flex items-center justify-center rounded-2xl border border-rose-200 bg-white px-5 py-3 text-sm font-semibold text-rose-900 shadow-sm transition hover:bg-rose-50"
-            >
+            <button type="button" onClick={() => void loadConversations()} className="mt-4 inline-flex items-center justify-center rounded-2xl border border-rose-200 bg-white px-5 py-3 text-sm font-semibold text-rose-900 shadow-sm transition hover:bg-rose-50">
               Réessayer
             </button>
           )}
@@ -315,17 +375,13 @@ export default function AccountMessagesPage() {
       {loading ? (
         <div className="rounded-3xl border border-slate-200 bg-white p-6 sm:p-8">
           <p className="text-sm font-semibold text-slate-900">Chargement…</p>
-          <p className="mt-2 text-sm text-slate-600">Nous récupérons tes conversations.</p>
         </div>
       ) : rows.length === 0 ? (
         <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)] sm:p-8">
           <p className="text-sm font-semibold text-slate-900">Aucune conversation</p>
           <p className="mt-2 text-sm text-slate-600">Quand tu contactes un dogsitter, la conversation apparaîtra ici.</p>
           <div className="mt-5">
-            <Link
-              href="/search"
-              className="inline-flex items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-6 py-3 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition hover:bg-[var(--dogshift-blue-hover)]"
-            >
+            <Link href="/search" className="inline-flex items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[var(--dogshift-blue-hover)]">
               Trouver un sitter
             </Link>
           </div>
@@ -333,6 +389,7 @@ export default function AccountMessagesPage() {
       ) : (
         <div className="flex-1 min-h-0 relative">
           <div className="grid h-full gap-0 lg:grid-cols-[360px_1fr]">
+            {/* Conversation list */}
             <section
               className={
                 "h-full flex-col p-4 sm:p-6 " +
@@ -340,6 +397,12 @@ export default function AccountMessagesPage() {
                 "lg:border-r lg:border-slate-200"
               }
             >
+              <div className="mb-4 flex items-center justify-between">
+                <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">Conversations</span>
+                <button type="button" onClick={() => void refreshAll()} className="rounded-lg p-1.5 text-slate-400 transition hover:text-slate-700" aria-label="Actualiser">
+                  <RefreshCw className="h-4 w-4" />
+                </button>
+              </div>
               <div className="min-h-0 flex-1 space-y-2 overflow-y-auto">
                 {rows.map((c) => {
                   const subtitle = c.booking?.service
@@ -397,6 +460,7 @@ export default function AccountMessagesPage() {
               </div>
             </section>
 
+            {/* Thread */}
             <section className={"h-full min-h-0 flex-col p-0 lg:p-6 lg:border-l lg:border-t-0 " + (selectedId ? "flex" : "hidden lg:flex")}>
               {threadError ? (
                 <div className="rounded-2xl border border-rose-200 bg-rose-50 p-5">
@@ -404,23 +468,24 @@ export default function AccountMessagesPage() {
                 </div>
               ) : !selectedId ? (
                 <div className="flex h-full flex-col rounded-2xl border border-slate-200 bg-slate-50 p-5">
-                  <p className="text-sm font-semibold text-slate-900">Sélectionne une conversation</p>
-                  <p className="mt-1 text-sm text-slate-600">Clique sur une conversation à gauche pour l’ouvrir.</p>
+                  <MessageCircle className="h-8 w-8 text-slate-300" />
+                  <p className="mt-3 text-sm font-semibold text-slate-900">Sélectionne une conversation</p>
+                  <p className="mt-1 text-sm text-slate-600">Clique sur une conversation à gauche pour l&apos;ouvrir.</p>
                 </div>
               ) : threadLoading || !threadHeader ? (
                 <div className="flex h-full flex-col rounded-2xl border border-slate-200 bg-slate-50 p-5">
                   <p className="text-sm font-semibold text-slate-900">Chargement…</p>
-                  <p className="mt-1 text-sm text-slate-600">Nous récupérons la conversation.</p>
                 </div>
               ) : (
                 <div className="flex h-full min-h-0 flex-col bg-white">
+                  {/* Header */}
                   <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-5 py-4">
                     <div className="flex items-center gap-3 min-w-0">
                       <button
                         type="button"
                         onClick={() => setSelectedId(null)}
                         className="lg:hidden -ml-2 p-2 text-[var(--dogshift-blue)] transition hover:text-[var(--dogshift-blue-hover)]"
-                        aria-label="Retour aux conversations"
+                        aria-label="Retour"
                       >
                         <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                           <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
@@ -428,13 +493,7 @@ export default function AccountMessagesPage() {
                       </button>
                       <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-full bg-slate-100">
                         {threadHeader.sitter.avatarUrl && avatarIsSafe(threadHeader.sitter.avatarUrl) ? (
-                          <Image
-                            src={threadHeader.sitter.avatarUrl}
-                            alt={threadHeader.sitter.name}
-                            fill
-                            className="object-cover"
-                            sizes="40px"
-                          />
+                          <Image src={threadHeader.sitter.avatarUrl} alt={threadHeader.sitter.name} fill className="object-cover" sizes="40px" />
                         ) : (
                           <div className="flex h-full w-full items-center justify-center text-sm font-semibold text-slate-600">
                             {initialForName(threadHeader.sitter.name)}
@@ -445,13 +504,88 @@ export default function AccountMessagesPage() {
                         <p className="truncate text-sm font-semibold text-slate-900">{threadHeader.sitter.name}</p>
                       </div>
                     </div>
+
+                    {/* Dog selector */}
+                    <div className="flex items-center gap-2" ref={dogPickerRef}>
+                      {selectedDog ? (
+                        <button
+                          type="button"
+                          onClick={() => setDogProfileOpen(true)}
+                          className="flex items-center gap-1.5 rounded-2xl border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-100"
+                        >
+                          <DogAvatar dog={selectedDog} size={20} />
+                          <span className="max-w-[80px] truncate">{selectedDog.name}</span>
+                        </button>
+                      ) : null}
+
+                      <div className="relative">
+                        <button
+                          type="button"
+                          onClick={() => setDogPickerOpen((o) => !o)}
+                          disabled={settingDog}
+                          className="flex items-center gap-1 rounded-2xl border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-50 disabled:opacity-50"
+                          aria-label="Choisir un chien"
+                        >
+                          <Dog className="h-3.5 w-3.5" />
+                          <ChevronDown className="h-3 w-3" />
+                        </button>
+
+                        {dogPickerOpen && (
+                          <div className="absolute right-0 top-full z-50 mt-1 w-56 rounded-2xl border border-slate-200 bg-white py-1.5 shadow-xl">
+                            {dogs.length === 0 ? (
+                              <div className="px-3 py-2">
+                                <p className="text-xs text-slate-500">Aucun chien enregistré.</p>
+                                <Link href="/account/dogs" className="mt-1.5 inline-flex items-center gap-1 text-xs font-semibold text-[var(--dogshift-blue)] hover:underline">
+                                  <Plus className="h-3 w-3" />
+                                  Ajouter un chien
+                                </Link>
+                              </div>
+                            ) : (
+                              <>
+                                <p className="px-3 pb-1 pt-0.5 text-[10px] font-semibold uppercase tracking-wider text-slate-400">Chien concerné</p>
+                                {dogs.map((dog) => (
+                                  <button
+                                    key={dog.id}
+                                    type="button"
+                                    onClick={() => void selectDog(dog.id)}
+                                    className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition hover:bg-slate-50 ${selectedDog?.id === dog.id ? "font-semibold text-[var(--dogshift-blue)]" : "text-slate-900"}`}
+                                  >
+                                    <DogAvatar dog={dog} size={24} />
+                                    <span className="flex-1 truncate">{dog.name}</span>
+                                    {selectedDog?.id === dog.id && <span className="text-[var(--dogshift-blue)]">✓</span>}
+                                  </button>
+                                ))}
+                                {selectedDog && (
+                                  <button
+                                    type="button"
+                                    onClick={() => void selectDog(null)}
+                                    className="flex w-full items-center gap-2 border-t border-slate-100 px-3 py-2 text-xs text-slate-500 transition hover:bg-slate-50"
+                                  >
+                                    <X className="h-3 w-3" />
+                                    Retirer le chien
+                                  </button>
+                                )}
+                                <Link
+                                  href="/account/dogs"
+                                  className="flex items-center gap-1.5 border-t border-slate-100 px-3 py-2 text-xs font-medium text-[var(--dogshift-blue)] hover:bg-slate-50"
+                                >
+                                  <Plus className="h-3 w-3" />
+                                  Gérer mes chiens
+                                </Link>
+                              </>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </div>
 
+                  {/* Messages */}
                   <div className="flex min-h-0 flex-1 flex-col p-5">
                     <div className="min-h-0 flex-1 space-y-3 overflow-y-auto">
                       {messages.length === 0 ? (
                         <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                          <p className="text-sm text-slate-600">Aucun message pour l’instant.</p>
+                          <p className="text-sm text-slate-600">Aucun message pour l&apos;instant.</p>
                         </div>
                       ) : (
                         messages.map((m) => {
@@ -489,10 +623,9 @@ export default function AccountMessagesPage() {
                           disabled={!canSend}
                           onClick={(e) => {
                             e.preventDefault();
-                            e.stopPropagation();
                             void send();
                           }}
-                          className="mb-[2px] flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--dogshift-blue)] text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition hover:bg-[var(--dogshift-blue-hover)] disabled:cursor-not-allowed disabled:opacity-50"
+                          className="mb-[2px] flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--dogshift-blue)] text-white shadow-sm transition hover:bg-[var(--dogshift-blue-hover)] disabled:cursor-not-allowed disabled:opacity-50"
                           aria-label="Envoyer"
                         >
                           {sending ? (
@@ -509,6 +642,65 @@ export default function AccountMessagesPage() {
                 </div>
               )}
             </section>
+          </div>
+        </div>
+      )}
+
+      {/* Dog profile modal */}
+      {dogProfileOpen && selectedDog && (
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4 sm:items-center"
+          onClick={() => setDogProfileOpen(false)}
+        >
+          <div
+            className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-4 flex items-start justify-between">
+              <div className="flex items-center gap-3">
+                <DogAvatar dog={selectedDog} size={52} />
+                <div>
+                  <p className="text-base font-bold text-slate-900">{selectedDog.name}</p>
+                  <p className="text-sm text-slate-500">
+                    {[selectedDog.breed, selectedDog.birthYear ? `né en ${selectedDog.birthYear}` : null, selectedDog.weightKg ? `${selectedDog.weightKg} kg` : null]
+                      .filter(Boolean).join(" · ") || "—"}
+                  </p>
+                </div>
+              </div>
+              <button type="button" onClick={() => setDogProfileOpen(false)} className="rounded-lg p-1.5 text-slate-400 hover:text-slate-700">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="space-y-2.5 text-sm">
+              {selectedDog.allergies && (
+                <div><span className="font-semibold text-slate-700">Allergies : </span><span className="text-slate-600">{selectedDog.allergies}</span></div>
+              )}
+              {selectedDog.medications && (
+                <div><span className="font-semibold text-slate-700">Médicaments : </span><span className="text-slate-600">{selectedDog.medications}</span></div>
+              )}
+              {selectedDog.behaviorNotes && (
+                <div><span className="font-semibold text-slate-700">Comportement : </span><span className="text-slate-600">{selectedDog.behaviorNotes}</span></div>
+              )}
+              {selectedDog.feedingNotes && (
+                <div><span className="font-semibold text-slate-700">Alimentation : </span><span className="text-slate-600">{selectedDog.feedingNotes}</span></div>
+              )}
+              {selectedDog.vetContact && (
+                <div><span className="font-semibold text-slate-700">Vétérinaire : </span><span className="text-slate-600">{selectedDog.vetContact}</span></div>
+              )}
+              {selectedDog.sitterInstructions && (
+                <div className="rounded-2xl bg-amber-50 p-3">
+                  <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-amber-700">Instructions</p>
+                  <p className="text-slate-700">{selectedDog.sitterInstructions}</p>
+                </div>
+              )}
+            </div>
+            <Link
+              href="/account/dogs"
+              className="mt-5 flex w-full items-center justify-center rounded-2xl border border-slate-200 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+              onClick={() => setDogProfileOpen(false)}
+            >
+              Modifier le profil
+            </Link>
           </div>
         </div>
       )}
