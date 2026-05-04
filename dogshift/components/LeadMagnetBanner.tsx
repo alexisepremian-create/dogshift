@@ -2,7 +2,10 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useUser } from "@clerk/nextjs";
+import { usePathname } from "next/navigation";
 import { X, Gift, ArrowRight, CheckCircle2 } from "lucide-react";
+
+const PAYMENT_FLOW_PATHS = ["/checkout", "/paiement", "/reservation"];
 
 const DISMISSED_KEY = "ds_lead_magnet_dismissed";
 const SHOW_DELAY_MS = 3_500;
@@ -19,6 +22,7 @@ type Status = "idle" | "loading" | "success" | "error";
  */
 export default function LeadMagnetBanner() {
   const { isLoaded, isSignedIn } = useUser();
+  const pathname = usePathname();
   const [visible, setVisible] = useState(false);
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<Status>("idle");
@@ -80,7 +84,8 @@ export default function LeadMagnetBanner() {
     }
   }
 
-  if (!visible) return null;
+  const onPaymentFlow = PAYMENT_FLOW_PATHS.some((p) => pathname?.startsWith(p));
+  if (!visible || onPaymentFlow) return null;
 
   return (
     /* Overlay */
