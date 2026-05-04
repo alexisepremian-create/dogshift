@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
@@ -40,6 +41,7 @@ type SitterDetail = {
   trustBadgeEligible: boolean;
   lat: number | null;
   lng: number | null;
+  hasAddress: boolean;
   countReviews: number;
   averageRating: number | null;
   reviews: SitterReviewItem[];
@@ -188,6 +190,7 @@ export async function GET(
       trustBadgeEligible: false,
       lat: typeof sitterProfile.lat === "number" && Number.isFinite(sitterProfile.lat) ? sitterProfile.lat : null,
       lng: typeof sitterProfile.lng === "number" && Number.isFinite(sitterProfile.lng) ? sitterProfile.lng : null,
+      hasAddress: typeof sitterProfile.lat === "number" && Number.isFinite(sitterProfile.lat) && typeof sitterProfile.lng === "number" && Number.isFinite(sitterProfile.lng),
       countReviews: 0,
       averageRating: null,
       reviews: [],

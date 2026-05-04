@@ -1,10 +1,15 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-unused-vars */
 "use client";
 
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { AlertTriangle, Info } from "lucide-react";
+
+const TravelMap = dynamic(() => import("@/components/TravelMap").then((m) => ({ default: m.TravelMap })), { ssr: false });
 
 import { useMaintenance } from "@/components/platform/MaintenanceProvider";
 import {
@@ -30,6 +35,12 @@ type BookingDto = {
   service?: string;
   startDate?: string;
   endDate?: string;
+  locationMode?: string | null;
+  travelDistanceKm?: number | null;
+  travelFeeAmount?: number | null;
+  ownerLat?: number | null;
+  ownerLng?: number | null;
+  ownerAddress?: string | null;
 };
 
 type StripeElements = any;
@@ -407,6 +418,8 @@ export default function CheckoutBookingPage() {
   const [error, setError] = useState<string | null>(null);
   const [paymentFeeAmount, setPaymentFeeAmount] = useState<number>(0);
   const [totalOwnerAmount, setTotalOwnerAmount] = useState<number>(0);
+  const [sitterLat, setSitterLat] = useState<number | null>(null);
+  const [sitterLng, setSitterLng] = useState<number | null>(null);
 
   useEffect(() => {
     let canceled = false;
@@ -474,6 +487,20 @@ const stripeReact = await import("@stripe/react-stripe-js");
         }
 
         setBooking(payload.booking);
+
+        // Fetch sitter coordinates for travel map
+        if (payload.booking.locationMode === "AT_OWNER" && payload.booking.sitterId) {
+          try {
+            const sitterRes = await fetch(`/api/sitters/${encodeURIComponent(payload.booking.sitterId)}`, { cache: "no-store" });
+            const sitterPayload = (await sitterRes.json()) as { ok?: boolean; sitter?: { lat?: number | null; lng?: number | null } };
+            if (sitterPayload.ok && sitterPayload.sitter) {
+              if (typeof sitterPayload.sitter.lat === "number") setSitterLat(sitterPayload.sitter.lat);
+              if (typeof sitterPayload.sitter.lng === "number") setSitterLng(sitterPayload.sitter.lng);
+            }
+          } catch {
+            // non-blocking
+          }
+        }
 
         const piRes = await fetch("/api/stripe/payment-intent", {
           method: "POST",
@@ -717,8 +744,34 @@ const stripeReact = await import("@stripe/react-stripe-js");
                     )}
                   </div>
 
+                  {booking.locationMode === "AT_OWNER" &&
+                    booking.ownerLat &&
+                    booking.ownerLng &&
+                    sitterLat &&
+                    sitterLng &&
+                    booking.travelDistanceKm &&
+                    booking.travelFeeAmount ? (
+                    <div className="mt-5">
+                      <TravelMap
+                        sitterLat={sitterLat}
+                        sitterLng={sitterLng}
+                        ownerLat={booking.ownerLat}
+                        ownerLng={booking.ownerLng}
+                        distanceKm={booking.travelDistanceKm}
+                        feeCents={booking.travelFeeAmount}
+                        compact
+                      />
+                    </div>
+                  ) : null}
+
                   <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-5">
-                    <SummaryRow label="Sous-total" value={formatCents(booking.amount)} />
+                    <SummaryRow label="Sous-total" value={formatCents(booking.amount - (booking.travelFeeAmount ?? 0))} />
+                    {booking.travelFeeAmount ? (
+                      <>
+                        <div className="mt-2" />
+                        <SummaryRow label="Frais de déplacement" value={formatCents(booking.travelFeeAmount)} />
+                      </>
+                    ) : null}
                     <div className="mt-2" />
                     <SummaryRow
                       label={

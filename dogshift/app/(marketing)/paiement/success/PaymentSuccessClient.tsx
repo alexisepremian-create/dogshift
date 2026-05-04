@@ -1,9 +1,13 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 "use client";
 
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
 import { estimateStripePaymentFeeCents } from "@/lib/stripe/paymentFeeEstimate";
+
+const TravelMap = dynamic(() => import("@/components/TravelMap").then((m) => ({ default: m.TravelMap })), { ssr: false });
 
 type BookingStatus = "DRAFT" | "PENDING_PAYMENT" | "PENDING_ACCEPTANCE" | "PAID" | "CONFIRMED" | "PAYMENT_FAILED" | "CANCELLED";
 
@@ -13,6 +17,13 @@ type BookingDto = {
   amount: number;
   currency: string;
   createdAt: string;
+  sitterId?: string;
+  locationMode?: string | null;
+  travelDistanceKm?: number | null;
+  travelFeeAmount?: number | null;
+  ownerLat?: number | null;
+  ownerLng?: number | null;
+  ownerAddress?: string | null;
 };
 
 const PRIMARY_BTN =
@@ -73,6 +84,8 @@ export default function PaymentSuccessClient({ bookingId }: { bookingId: string 
   const [error, setError] = useState<string | null>(null);
   const [finalizing, setFinalizing] = useState(true);
   const [timedOut, setTimedOut] = useState(false);
+  const [sitterLat, setSitterLat] = useState<number | null>(null);
+  const [sitterLng, setSitterLng] = useState<number | null>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -138,6 +151,20 @@ export default function PaymentSuccessClient({ bookingId }: { bookingId: string 
 
         const nextBooking = payload.booking;
         setBooking(nextBooking);
+
+        // Fetch sitter lat/lng for travel map if AT_OWNER booking
+        if (nextBooking.locationMode === "AT_OWNER" && nextBooking.sitterId) {
+          void fetch(`/api/sitters/${encodeURIComponent(nextBooking.sitterId)}`, { cache: "no-store" })
+            .then((r) => r.json() as Promise<{ ok?: boolean; sitter?: { lat?: number | null; lng?: number | null } }>)
+            .then((p) => {
+              if (p.ok && p.sitter) {
+                if (typeof p.sitter.lat === "number") setSitterLat(p.sitter.lat);
+                if (typeof p.sitter.lng === "number") setSitterLng(p.sitter.lng);
+              }
+            })
+            .catch(() => undefined);
+        }
+
         setError(null);
         setTimedOut(false);
         setLoading(false);
@@ -288,6 +315,26 @@ export default function PaymentSuccessClient({ bookingId }: { bookingId: string 
             <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)] sm:p-10">
               <h2 className="text-lg font-semibold tracking-tight text-slate-900">Détails</h2>
 
+              {booking?.locationMode === "AT_OWNER" &&
+                booking.ownerLat &&
+                booking.ownerLng &&
+                sitterLat &&
+                sitterLng &&
+                booking.travelDistanceKm &&
+                booking.travelFeeAmount ? (
+                <div className="mt-5">
+                  <TravelMap
+                    sitterLat={sitterLat}
+                    sitterLng={sitterLng}
+                    ownerLat={booking.ownerLat}
+                    ownerLng={booking.ownerLng}
+                    distanceKm={booking.travelDistanceKm}
+                    feeCents={booking.travelFeeAmount}
+                    compact
+                  />
+                </div>
+              ) : null}
+
               <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-5">
                 <p className="text-sm text-slate-600">Total payé</p>
                 <p className="mt-1 text-xl font-semibold tracking-tight text-slate-900">
@@ -298,8 +345,14 @@ export default function PaymentSuccessClient({ bookingId }: { bookingId: string 
                   <div className="mt-4 space-y-2 text-sm">
                     <div className="flex items-center justify-between text-slate-700">
                       <span>Sous-total</span>
-                      <span className="font-medium">{formatCents(paymentBreakdown.subtotal)}</span>
+                      <span className="font-medium">{formatCents(paymentBreakdown.subtotal - (booking?.travelFeeAmount ?? 0))}</span>
                     </div>
+                    {booking?.travelFeeAmount ? (
+                      <div className="flex items-center justify-between text-slate-700">
+                        <span>Frais de déplacement</span>
+                        <span className="font-medium">{formatCents(booking.travelFeeAmount)}</span>
+                      </div>
+                    ) : null}
                     <div className="flex items-center justify-between text-slate-700">
                       <span>Frais de paiement</span>
                       <span className="font-medium">{formatCents(paymentBreakdown.fee)}</span>

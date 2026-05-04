@@ -10,6 +10,7 @@ import { PilotSitterApplicationConfirmationEmail } from "@/lib/email/templates/p
 import { renderLeadMagnetEmail } from "@/lib/email/templates/leadMagnetEmail";
 import { renderZootherapieEmail } from "@/lib/email/templates/zootherapieEmail";
 import { renderEmailLayout } from "@/lib/email/templates/layout";
+import { buildTravelMapUrl } from "@/lib/travel/staticMap";
 
 export const runtime = "nodejs";
 
@@ -20,9 +21,58 @@ const MOCK_BOOKING_ROWS = [
   { label: "Service", value: "Promenade (1h)" },
   { label: "Début", value: "lun. 06 mai 2026, 10:00" },
   { label: "Fin", value: "lun. 06 mai 2026, 11:00" },
-  { label: "Montant", value: "35.00 CHF" },
+  { label: "Total", value: "44.50 CHF" },
   { label: "Référence", value: "bk_preview_demo_2026" },
 ];
+
+const MOCK_TRAVEL_BOOKING_ROWS = [
+  { label: "Service", value: "Promenade (1h)" },
+  { label: "Début", value: "lun. 06 mai 2026, 10:00" },
+  { label: "Fin", value: "lun. 06 mai 2026, 11:00" },
+  { label: "Sous-total service", value: "35.00 CHF" },
+  { label: "Frais de déplacement", value: "9.50 CHF" },
+  { label: "Total", value: "44.50 CHF" },
+  { label: "Référence", value: "bk_preview_demo_2026" },
+];
+
+// Mock coordinates: sitter near Lausanne centre, owner near Pully (~4.8 km)
+const MOCK_SITTER = { lat: 46.519, lng: 6.6323 };
+const MOCK_OWNER = { lat: 46.5094, lng: 6.6627 };
+
+function buildMockTravelMapHtml(): string {
+  const mapUrl = buildTravelMapUrl({
+    sitterLat: MOCK_SITTER.lat,
+    sitterLng: MOCK_SITTER.lng,
+    ownerLat: MOCK_OWNER.lat,
+    ownerLng: MOCK_OWNER.lng,
+  });
+  if (!mapUrl) return "";
+  return `
+    <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;margin-top:16px;">
+      <tr>
+        <td style="border-radius:12px;overflow:hidden;border:1px solid #e0e7ff;">
+          <img
+            src="${mapUrl}"
+            alt="Carte du trajet"
+            width="516"
+            style="display:block;width:100%;max-width:516px;height:auto;border-radius:12px 12px 0 0;"
+          />
+          <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;background:#f5f3ff;border-top:1px solid #e0e7ff;">
+            <tr>
+              <td style="padding:10px 14px;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#374151;">
+                <span style="color:#4f46e5;font-weight:700;">&#x1F4CD; 4.8 km</span>
+                &nbsp;&nbsp;•&nbsp;&nbsp;
+                <span style="color:#059669;font-weight:700;">Frais : CHF 9.50</span>
+                &nbsp;&nbsp;•&nbsp;&nbsp;
+                <span style="color:#6b7280;">Le sitter se déplace chez vous</span>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  `;
+}
 
 export async function GET(req: NextRequest) {
   const admin = await getRequestAdminAccess(req);
@@ -200,7 +250,8 @@ export async function GET(req: NextRequest) {
         logoUrl: LOGO_URL,
         title: "Réservation confirmée",
         subtitle: "Ta réservation a été confirmée.",
-        summaryRows: MOCK_BOOKING_ROWS,
+        summaryRows: MOCK_TRAVEL_BOOKING_ROWS,
+        extraHtml: buildMockTravelMapHtml(),
         ctaLabel: "Voir la réservation",
         ctaUrl: `${BASE_URL}/account/bookings`,
       }).html;
@@ -213,7 +264,8 @@ export async function GET(req: NextRequest) {
         logoUrl: LOGO_URL,
         title: "Paiement reçu",
         subtitle: "Le paiement a bien été reçu.",
-        summaryRows: MOCK_BOOKING_ROWS,
+        summaryRows: MOCK_TRAVEL_BOOKING_ROWS,
+        extraHtml: buildMockTravelMapHtml(),
         ctaLabel: "Voir la réservation",
         ctaUrl: `${BASE_URL}/account/bookings`,
       }).html;

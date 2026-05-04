@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
@@ -11,6 +13,8 @@ import { zodParse } from "@/lib/validators/common";
 import { createBookingSchema } from "@/lib/validators/bookings";
 import { logAudit } from "@/lib/audit";
 import { recordBookingFinanceEvent } from "@/lib/financeEvents";
+import { geocodeAddress } from "@/lib/travel/geocode";
+import { computeTravelFee } from "@/lib/travel/distance";
 
 export const runtime = "nodejs";
 
@@ -22,6 +26,8 @@ type CreateBookingBody = {
   startAt?: unknown; // ISO datetime
   endAt?: unknown; // ISO datetime
   message?: unknown;
+  locationMode?: unknown; // "AT_OWNER" | "AT_SITTER"
+  ownerAddress?: unknown; // required when locationMode === "AT_OWNER"
 };
 
 type StayRule = {
@@ -255,9 +261,12 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    const locationMode = typeof body?.locationMode === "string" && body.locationMode === "AT_OWNER" ? "AT_OWNER" : "AT_SITTER";
+    const ownerAddress = typeof body?.ownerAddress === "string" ? body.ownerAddress.trim() : null;
+
     const sitterProfile = await (prisma as any).sitterProfile.findFirst({
       where: { sitterId, published: true },
-      select: { sitterId: true, pricing: true },
+      select: { sitterId: true, pricing: true, lat: true, lng: true, address: true },
     });
 
     if (!sitterProfile?.sitterId) {
@@ -426,6 +435,64 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Travel fee computation (only when owner requests sitter to come to them).
+    let travelFeeAmount: number | null = null;
+    let travelDistanceKm: number | null = null;
+    let ownerLat: number | null = null;
+    let ownerLng: number | null = null;
+    let resolvedOwnerAddress: string | null = null;
+
+    if (locationMode === "AT_OWNER") {
+      if (!sitterProfile.lat || !sitterProfile.lng) {
+        return NextResponse.json(
+          { ok: false, error: "SITTER_NO_ADDRESS", message: "Ce sitter n'a pas renseigné son adresse. L'option \"Chez moi\" n'est pas disponible." },
+          { status: 400 }
+        );
+      }
+      if (!ownerAddress) {
+        return NextResponse.json(
+          { ok: false, error: "OWNER_ADDRESS_REQUIRED", message: "Veuillez renseigner votre adresse pour activer les frais de déplacement." },
+          { status: 400 }
+        );
+      }
+
+      const ownerCoords = await geocodeAddress(ownerAddress);
+      if (!ownerCoords) {
+        return NextResponse.json(
+          { ok: false, error: "GEOCODE_FAILED", message: "Impossible de localiser votre adresse. Vérifiez qu'elle est correcte." },
+          { status: 400 }
+        );
+      }
+
+      ownerLat = ownerCoords.lat;
+      ownerLng = ownerCoords.lng;
+      resolvedOwnerAddress = ownerCoords.label;
+
+      const travelResult = computeTravelFee(sitterProfile.lat, sitterProfile.lng, ownerLat, ownerLng);
+      if (!travelResult.ok) {
+        if (travelResult.reason === "OUT_OF_RANGE") {
+          const km = travelResult.distanceKm?.toFixed(1) ?? "?";
+          return NextResponse.json(
+            {
+              ok: false,
+              error: "DISTANCE_TOO_FAR",
+              message: `Ce sitter ne se déplace pas jusqu'à votre adresse (${km} km, maximum 15 km).`,
+              distanceKm: travelResult.distanceKm,
+            },
+            { status: 400 }
+          );
+        }
+        return NextResponse.json(
+          { ok: false, error: "TRAVEL_FEE_ERROR", message: "Impossible de calculer les frais de déplacement." },
+          { status: 400 }
+        );
+      }
+
+      travelFeeAmount = travelResult.feeCents;
+      travelDistanceKm = travelResult.distanceKm;
+      totalChf = totalChf + travelResult.feeChf;
+    }
+
     const amount = toCents(totalChf);
 
     if (!Number.isFinite(amount) || amount < 100) {
@@ -446,6 +513,12 @@ export async function POST(req: NextRequest) {
         amount,
         currency: "chf",
         platformFeeAmount,
+        locationMode,
+        travelDistanceKm,
+        travelFeeAmount,
+        ownerLat,
+        ownerLng,
+        ownerAddress: resolvedOwnerAddress,
       },
       select: { id: true },
     });
