@@ -9,16 +9,17 @@ import OwnerSidebar from "@/components/OwnerSidebar";
 import { useOwnerDashboardNavItems } from "@/components/dashboardNavItems";
 
 /** Primary tabs in the bottom bar (max 4 + « Plus »), owner-specific labels */
-const PRIMARY_NAV_KEYS = ["dashboard", "bookings", "messages", "settings"] as const;
+const PRIMARY_NAV_KEYS = ["dashboard", "bookings", "messages", "dogs"] as const;
 
-const MORE_NAV_KEYS = ["wallet"] as const;
+const MORE_NAV_KEYS = ["wallet", "settings"] as const;
 
 const BOTTOM_NAV_LABELS: Record<string, string> = {
   dashboard: "Accueil",
   bookings: "Réservations",
   messages: "Messages",
-  settings: "Paramètres",
+  dogs: "Chiens",
   wallet: "Portefeuille",
+  settings: "Paramètres",
 };
 
 export default function OwnerDashboardShell({ children }: { children: React.ReactNode }) {

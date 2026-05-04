@@ -823,7 +823,8 @@ function SmartSearchBar({ onSearch }: { onSearch?: () => void } = {}) {
   }
   const [arrivalDate, setArrivalDate] = useState("");
   const [departureDate, setDepartureDate] = useState("");
-  const [nbDogs, setNbDogs] = useState(1);
+  const [dogCounts, setDogCounts] = useState<Record<string, number>>({ petit: 0, moyen: 0, grand: 0 });
+  const totalDogs = Object.values(dogCounts).reduce((s, n) => s + n, 0);
   const [error, setError] = useState("");
   const [hoveredField, setHoveredField] = useState<string | null>(null);
 
@@ -834,15 +835,15 @@ function SmartSearchBar({ onSearch }: { onSearch?: () => void } = {}) {
     }
     const p = new URLSearchParams({ service, location: location.trim() });
     if (service === "Pension") {
-      // Pension: daily range — arrival / departure
       if (arrivalDate) p.set("arrival", arrivalDate);
       if (departureDate) p.set("departure", departureDate);
     } else {
-      // Promenade + Garde: hourly — single date + duration
       if (date) p.set("date", date);
       if (duration) p.set("duration", duration);
     }
-    if (nbDogs > 1) p.set("dogs", String(nbDogs));
+    if (dogCounts.petit > 0) p.set("dogs_petit", String(dogCounts.petit));
+    if (dogCounts.moyen > 0) p.set("dogs_moyen", String(dogCounts.moyen));
+    if (dogCounts.grand > 0) p.set("dogs_grand", String(dogCounts.grand));
     onSearch?.();
     router.push(`/search?${p.toString()}`);
   }
@@ -961,31 +962,32 @@ function SmartSearchBar({ onSearch }: { onSearch?: () => void } = {}) {
         <div className={`hidden md:block w-px shrink-0 self-stretch my-2 bg-slate-200 transition-opacity duration-150 ${hoveredField === "duree" || hoveredField === "arrivee" || hoveredField === "chiens" ? "opacity-0" : ""}`} aria-hidden="true" />
         <div className="h-px bg-slate-100 mx-2 md:hidden" aria-hidden="true" />
 
-        {/* Nb chiens */}
+        {/* Chiens par taille (compact) */}
         <div
-          className="flex flex-col justify-center rounded-xl px-4 py-3 transition-colors duration-150 hover:bg-slate-100/60 md:w-32"
+          className="flex flex-col justify-center rounded-xl px-4 py-3 transition-colors duration-150 hover:bg-slate-100/60 md:min-w-[140px]"
           onMouseEnter={() => setHoveredField("chiens")}
           onMouseLeave={() => setHoveredField(null)}
         >
-          <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">Chiens</span>
-          <div className="mt-1.5 flex items-center gap-2.5">
-            <button
-              type="button"
-              onClick={() => setNbDogs(Math.max(1, nbDogs - 1))}
-              className="flex h-6 w-6 items-center justify-center rounded-full border border-slate-200 text-sm leading-none text-slate-600 transition-colors hover:border-slate-300 hover:bg-white active:scale-95"
-              aria-label="Moins"
-            >
-              −
-            </button>
-            <span className="min-w-[1.5rem] text-center text-[15px] font-medium text-slate-900">{nbDogs}</span>
-            <button
-              type="button"
-              onClick={() => setNbDogs(Math.min(4, nbDogs + 1))}
-              className="flex h-6 w-6 items-center justify-center rounded-full border border-slate-200 text-sm leading-none text-slate-600 transition-colors hover:border-slate-300 hover:bg-white active:scale-95"
-              aria-label="Plus"
-            >
-              +
-            </button>
+          <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">
+            Chiens{totalDogs > 0 ? ` (${totalDogs})` : ""}
+          </span>
+          <div className="mt-1.5 flex items-center gap-3">
+            {(["petit", "moyen", "grand"] as const).map((key) => {
+              const label = key === "petit" ? "S" : key === "moyen" ? "M" : "L";
+              const count = dogCounts[key] ?? 0;
+              return (
+                <div key={key} className="flex items-center gap-1">
+                  <span className="text-[10px] font-semibold text-slate-400">{label}</span>
+                  <button type="button" onClick={() => setDogCounts((c) => ({ ...c, [key]: Math.max(0, (c[key] ?? 0) - 1) }))}
+                    disabled={count <= 0}
+                    className="flex h-5 w-5 items-center justify-center rounded-full border border-slate-200 text-xs text-slate-500 transition hover:bg-white disabled:opacity-30" aria-label={`Moins ${key}`}>−</button>
+                  <span className={`min-w-[1rem] text-center text-[13px] font-semibold ${count > 0 ? "text-slate-900" : "text-slate-300"}`}>{count}</span>
+                  <button type="button" onClick={() => setDogCounts((c) => ({ ...c, [key]: Math.min(4, (c[key] ?? 0) + 1) }))}
+                    disabled={count >= 4}
+                    className="flex h-5 w-5 items-center justify-center rounded-full border border-slate-200 text-xs text-slate-500 transition hover:bg-white disabled:opacity-30" aria-label={`Plus ${key}`}>+</button>
+                </div>
+              );
+            })}
           </div>
         </div>
 
@@ -1083,7 +1085,7 @@ function StickySearchBar({ visible = true, hero = false }: { visible?: boolean; 
   const [geoLoading, setGeoLoading] = useState(false);
   const [geoError, setGeoError] = useState("");
   const [calTab, setCalTab] = useState<"dates" | "flexible">("dates");
-  const [dogSize, setDogSize] = useState<DogSizeKey | null>(null);
+  // dogSize removed — replaced by per-size dogCounts
 
   // ── Dates ──
   const [startDate, setStartDate] = useState<string | null>(null);
@@ -1103,7 +1105,8 @@ function StickySearchBar({ visible = true, hero = false }: { visible?: boolean; 
   const canGoPrev = !(calYear === today.getFullYear() && calMonth === today.getMonth());
 
   // ── Besoin ──
-  const [nbDogs, setNbDogs] = useState(1);
+  const [dogCounts, setDogCounts] = useState<Record<string, number>>({ petit: 0, moyen: 0, grand: 0 });
+  const totalDogs = Object.values(dogCounts).reduce((s, n) => s + n, 0);
   const [duration, setDuration] = useState("1h");
 
   // ── Derived ──
@@ -1119,10 +1122,11 @@ function StickySearchBar({ visible = true, hero = false }: { visible?: boolean; 
   const dateDisplay = startDate
     ? (endDate ? `${formatDateShort(startDate)} – ${formatDateShort(endDate)}` : formatDateShort(startDate))
     : null;
-  const dogSizeLabel = dogSize ? DOG_SIZES.find((d) => d.key === dogSize)?.label : null;
+  const dogPartsDisplay = (["petit", "moyen", "grand"] as const)
+    .filter((k) => (dogCounts[k] ?? 0) > 0)
+    .map((k) => `${dogCounts[k]} ${k === "petit" ? "Petit" : k === "moyen" ? "Moyen" : "Grand"}${(dogCounts[k] ?? 0) > 1 ? "s" : ""}`);
   const besoinDisplay = [
-    `${nbDogs} chien${nbDogs > 1 ? "s" : ""}`,
-    dogSizeLabel,
+    totalDogs > 0 ? dogPartsDisplay.join(" · ") : "1 chien",
     isHourly ? durationOptions.find((d) => d.value === duration)?.label : null,
   ].filter(Boolean).join(" · ");
 
@@ -1349,7 +1353,9 @@ function StickySearchBar({ visible = true, hero = false }: { visible?: boolean; 
         if (flexMonths.size > 0) p.set("flexMonths", [...flexMonths].join(","));
       }
     }
-    if (nbDogs > 1) p.set("dogs", String(nbDogs));
+    if ((dogCounts.petit ?? 0) > 0) p.set("dogs_petit", String(dogCounts.petit));
+    if ((dogCounts.moyen ?? 0) > 0) p.set("dogs_moyen", String(dogCounts.moyen));
+    if ((dogCounts.grand ?? 0) > 0) p.set("dogs_grand", String(dogCounts.grand));
     setActiveSection(null);
     router.push(`/search?${p.toString()}`);
   }
@@ -1863,52 +1869,54 @@ function StickySearchBar({ visible = true, hero = false }: { visible?: boolean; 
                         </div>
                       )}
 
-                      {/* Chiens — nombre (inline) */}
-                      <div className="mb-3 flex items-center justify-between">
-                        <p className={sectionLabel}>Chiens</p>
-                        <div className="flex items-center gap-2">
-                          <button type="button" onClick={() => setNbDogs(Math.max(1, nbDogs - 1))} aria-label="Moins"
-                            disabled={nbDogs <= 1}
-                            className="flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 text-sm text-slate-600 transition-all duration-200 hover:border-slate-300 hover:bg-slate-50 active:scale-95 disabled:opacity-30">
-                            −
-                          </button>
-                          <span className="min-w-[1.5rem] text-center text-sm font-semibold text-slate-900">{nbDogs}</span>
-                          <button type="button" onClick={() => setNbDogs(Math.min(4, nbDogs + 1))} aria-label="Plus"
-                            disabled={nbDogs >= 4}
-                            className="flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 text-sm text-slate-600 transition-all duration-200 hover:border-slate-300 hover:bg-slate-50 active:scale-95 disabled:opacity-30">
-                            +
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Taille du chien — icônes silhouette premium */}
+                      {/* Chiens par taille — per-size counters */}
                       <div>
-                        <p className={sectionLabel}>Taille du chien</p>
+                        <p className={sectionLabel}>
+                          Chiens{totalDogs > 0 ? ` (${totalDogs} au total)` : ""}
+                        </p>
                         <div className="grid grid-cols-3 gap-2">
                           {DOG_SIZES.map(({ key, label, sub, Icon, iconCls }) => {
-                            const active = dogSize === key;
+                            const count = dogCounts[key] ?? 0;
+                            const active = count > 0;
                             return (
-                              <button
+                              <div
                                 key={key}
-                                type="button"
-                                onClick={() => setDogSize(active ? null : key)}
                                 className={[
-                                  "group flex flex-col items-center gap-1.5 rounded-2xl border px-2 py-3 transition-all duration-300",
+                                  "flex flex-col items-center gap-1.5 rounded-2xl border px-2 py-3 transition-all duration-300",
                                   active
                                     ? "border-slate-800 bg-white shadow-[0_4px_16px_-4px_rgba(2,6,23,0.14)] ring-2 ring-slate-800/10"
-                                    : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/80 hover:shadow-sm",
+                                    : "border-slate-200 bg-white",
                                 ].join(" ")}
                               >
-                                <Icon
-                                  className={`${iconCls} transition-colors duration-250 ${active ? "text-slate-800" : "text-slate-300 group-hover:text-slate-500"}`}
-                                />
+                                <Icon className={`${iconCls} transition-colors duration-250 ${active ? "text-slate-800" : "text-slate-300"}`} />
                                 <div className="text-center leading-snug">
-                                  <p className={`text-[11px] font-semibold tracking-wide transition-colors duration-200 ${active ? "text-slate-900" : "text-slate-600"}`}>
-                                    {label}
-                                  </p>
+                                  <p className={`text-[11px] font-semibold tracking-wide ${active ? "text-slate-900" : "text-slate-600"}`}>{label}</p>
                                   <p className="text-[10px] text-slate-400">{sub}</p>
                                 </div>
-                              </button>
+                                <div className="flex items-center gap-1.5">
+                                  <button
+                                    type="button"
+                                    aria-label={`Moins ${label}`}
+                                    disabled={count <= 0}
+                                    onClick={() => setDogCounts((c) => ({ ...c, [key]: Math.max(0, (c[key] ?? 0) - 1) }))}
+                                    className="flex h-6 w-6 items-center justify-center rounded-full border border-slate-200 text-xs text-slate-600 transition hover:bg-slate-50 active:scale-95 disabled:opacity-30"
+                                  >
+                                    −
+                                  </button>
+                                  <span className={`min-w-[1.25rem] text-center text-sm font-bold ${active ? "text-slate-900" : "text-slate-300"}`}>
+                                    {count}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    aria-label={`Plus ${label}`}
+                                    disabled={count >= 4}
+                                    onClick={() => setDogCounts((c) => ({ ...c, [key]: Math.min(4, (c[key] ?? 0) + 1) }))}
+                                    className="flex h-6 w-6 items-center justify-center rounded-full border border-slate-200 text-xs text-slate-600 transition hover:bg-slate-50 active:scale-95 disabled:opacity-30"
+                                  >
+                                    +
+                                  </button>
+                                </div>
+                              </div>
                             );
                           })}
                         </div>
