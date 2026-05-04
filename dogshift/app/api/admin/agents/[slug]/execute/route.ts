@@ -22,6 +22,7 @@ const SLUG_TO_PATH: Record<string, string> = {
   activation:               "/api/agents/activation",
   availability:             "/api/agents/availability",
   supervision:              "/api/agents/supervision",
+  "pension-verification":   "/api/agents/pension-verification",
 };
 
 export async function POST(

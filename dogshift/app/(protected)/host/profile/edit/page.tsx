@@ -64,6 +64,13 @@ export default function HostProfileEditPage() {
   const [presentationTipsOpen, setPresentationTipsOpen] = useState(false);
   const presentationTipsRef = useRef<HTMLDivElement | null>(null);
 
+  const [pensionVerifStatus, setPensionVerifStatus] = useState<string>("not_submitted");
+  const [pensionPhotoKeys, setPensionPhotoKeys] = useState<string[]>([]);
+  const [pensionSubmitting, setPensionSubmitting] = useState(false);
+  const [pensionUploadingCount, setPensionUploadingCount] = useState(0);
+  const [pensionError, setPensionError] = useState<string | null>(null);
+  const pensionPhotoInputRef = useRef<HTMLInputElement>(null);
+
   useEffect(() => {
     if (!presentationTipsOpen) return;
     const onKeyDown = (e: KeyboardEvent) => {
@@ -103,6 +110,7 @@ export default function HostProfileEditPage() {
         // ignore
       }
     })();
+    void fetchPensionStatus();
     return () => {
       canceled = true;
     };
@@ -145,6 +153,65 @@ export default function HostProfileEditPage() {
     window.addEventListener("hashchange", onHashChange);
     return () => window.removeEventListener("hashchange", onHashChange);
   }, []);
+
+  async function fetchPensionStatus() {
+    try {
+      const res = await fetch("/api/host/pension-verification");
+      const data = await res.json();
+      if (data.ok) {
+        setPensionVerifStatus(data.status ?? "not_submitted");
+      }
+    } catch { /* ignore */ }
+  }
+
+  async function handlePensionPhotoAdd(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? []);
+    if (!files.length) return;
+    const remaining = 8 - pensionPhotoKeys.length;
+    const toUpload = files.slice(0, remaining);
+    setPensionUploadingCount(toUpload.length);
+    setPensionError(null);
+    for (const file of toUpload) {
+      try {
+        const presignRes = await fetch("/api/host/pension-verification/presign", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ contentType: file.type, sizeBytes: file.size }),
+        });
+        const presignData = await presignRes.json();
+        if (!presignData.ok || !presignData.uploadUrl) {
+          setPensionError("Erreur upload. Réessaie.");
+          setPensionUploadingCount((prev) => Math.max(0, prev - 1));
+          continue;
+        }
+        await fetch(presignData.uploadUrl, { method: "PUT", headers: { "Content-Type": file.type }, body: file });
+        setPensionPhotoKeys((prev) => [...prev, presignData.key]);
+      } catch {
+        setPensionError("Erreur upload.");
+      }
+      setPensionUploadingCount((prev) => Math.max(0, prev - 1));
+    }
+    if (pensionPhotoInputRef.current) pensionPhotoInputRef.current.value = "";
+  }
+
+  async function submitPensionVerification() {
+    if (pensionPhotoKeys.length < 3) { setPensionError("Minimum 3 photos requises."); return; }
+    setPensionSubmitting(true);
+    setPensionError(null);
+    try {
+      const res = await fetch("/api/host/pension-verification/submit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ photoKeys: pensionPhotoKeys }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) { setPensionError(data.error ?? "Erreur serveur."); return; }
+      setPensionVerifStatus("pending");
+      setPensionPhotoKeys([]);
+    } finally {
+      setPensionSubmitting(false);
+    }
+  }
 
   async function uploadHostAvatar(file: File) {
     if (!sitterId) return;
@@ -591,6 +658,75 @@ export default function HostProfileEditPage() {
                 </div>
 
                 {profile.services.Pension ? (
+                  <>
+                  {/* Pension verification banner */}
+                  <div className={`mt-4 rounded-2xl border p-4 ${
+                    pensionVerifStatus === "approved" ? "border-emerald-200 bg-emerald-50" :
+                    pensionVerifStatus === "pending" || pensionVerifStatus === "ai_reviewing" ? "border-amber-200 bg-amber-50" :
+                    pensionVerifStatus === "ai_rejected" || pensionVerifStatus === "rejected" ? "border-rose-200 bg-rose-50" :
+                    "border-blue-200 bg-blue-50"
+                  }`}>
+                    {pensionVerifStatus === "approved" ? (
+                      <div className="flex items-center gap-2">
+                        <span className="text-emerald-700 text-lg">✓</span>
+                        <p className="text-sm font-semibold text-emerald-800">Logement vérifié — Pension activée</p>
+                      </div>
+                    ) : pensionVerifStatus === "pending" || pensionVerifStatus === "ai_reviewing" ? (
+                      <div>
+                        <p className="text-sm font-semibold text-amber-800">Vérification en cours…</p>
+                        <p className="mt-1 text-xs text-amber-700">Notre IA analyse vos photos. Vous recevrez une notification sous peu.</p>
+                      </div>
+                    ) : (
+                      <div>
+                        <p className="text-sm font-semibold text-blue-900">
+                          {pensionVerifStatus === "ai_rejected" || pensionVerifStatus === "rejected"
+                            ? "⚠ Vérification refusée — Soumettez de nouvelles photos"
+                            : "📸 Vérification du logement requise"}
+                        </p>
+                        <p className="mt-1 text-xs text-blue-800">
+                          Pour activer la Pension, envoyez 3 à 6 photos de votre logement (salon, chambre/espace nuit, cuisine, extérieur si disponible).
+                          Notre IA les analysera automatiquement.
+                        </p>
+                        {pensionPhotoKeys.length > 0 && (
+                          <p className="mt-2 text-xs font-medium text-blue-900">{pensionPhotoKeys.length} photo(s) sélectionnée(s)</p>
+                        )}
+                        {pensionError && <p className="mt-2 text-xs font-medium text-rose-600">{pensionError}</p>}
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          <button
+                            type="button"
+                            onClick={() => pensionPhotoInputRef.current?.click()}
+                            disabled={pensionUploadingCount > 0 || pensionPhotoKeys.length >= 8}
+                            className="inline-flex items-center gap-1.5 rounded-xl border border-blue-200 bg-white px-3 py-1.5 text-xs font-semibold text-blue-700 transition hover:bg-blue-50 disabled:opacity-50"
+                          >
+                            {pensionUploadingCount > 0 ? `Upload en cours (${pensionUploadingCount})…` : "📷 Ajouter des photos"}
+                          </button>
+                          {pensionPhotoKeys.length >= 3 && (
+                            <button
+                              type="button"
+                              onClick={() => void submitPensionVerification()}
+                              disabled={pensionSubmitting}
+                              className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-blue-700 disabled:opacity-50"
+                            >
+                              {pensionSubmitting ? "Envoi…" : "Soumettre pour vérification"}
+                            </button>
+                          )}
+                          {pensionPhotoKeys.length > 0 && (
+                            <button type="button" onClick={() => setPensionPhotoKeys([])} className="text-xs text-slate-500 hover:text-slate-700">
+                              Vider
+                            </button>
+                          )}
+                        </div>
+                        <input
+                          ref={pensionPhotoInputRef}
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp"
+                          multiple
+                          className="hidden"
+                          onChange={(e) => void handlePensionPhotoAdd(e)}
+                        />
+                      </div>
+                    )}
+                  </div>
                   <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-5">
                     <p className="text-sm font-semibold text-slate-900">Pension (détails)</p>
                     <div className="mt-4 grid gap-4 sm:grid-cols-2">
@@ -673,6 +809,7 @@ export default function HostProfileEditPage() {
                       </label>
                     </div>
                   </div>
+                  </>
                 ) : null}
               </div>
 
