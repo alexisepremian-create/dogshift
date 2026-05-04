@@ -814,7 +814,9 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
   const [message, setMessage] = useState("");
 
   const [locationMode, setLocationMode] = useState<"AT_SITTER" | "AT_OWNER">("AT_SITTER");
-  const [ownerAddress, setOwnerAddress] = useState("");
+  const [ownerStreet, setOwnerStreet] = useState("");
+  const [ownerNpa, setOwnerNpa] = useState("");
+  const [ownerCity, setOwnerCity] = useState("");
   const [geocodingAddress, setGeocodingAddress] = useState(false);
   const [travelPreview, setTravelPreview] = useState<{ distanceKm: number; feeCents: number; feeChf: number } | null>(null);
   const [travelError, setTravelError] = useState<string | null>(null);
@@ -835,13 +837,23 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
   const [durationSlotMap, setDurationSlotMap] = useState<Record<number, HourlySlot[]>>({});
   const [durationSlotsLoading, setDurationSlotsLoading] = useState(false);
 
+  // Combined address for geocoding (street + NPA + city)
+  const ownerAddressCombined = [ownerStreet.trim(), [ownerNpa.trim(), ownerCity.trim()].filter(Boolean).join(" ")]
+    .filter(Boolean)
+    .join(", ");
+
   // Geocode owner address and compute travel preview
   useEffect(() => {
-    if (locationMode !== "AT_OWNER" || !ownerAddress.trim() || !sitter.hasAddress) {
+    const hasAllFields = ownerStreet.trim() && ownerNpa.trim() && ownerCity.trim();
+    if (locationMode !== "AT_OWNER" || !hasAllFields || !sitter.hasAddress) {
       setTravelPreview(null);
       setTravelError(null);
       return;
     }
+
+    const combined = [ownerStreet.trim(), [ownerNpa.trim(), ownerCity.trim()].filter(Boolean).join(" ")]
+      .filter(Boolean)
+      .join(", ");
 
     const timer = setTimeout(() => {
       let cancelled = false;
@@ -854,7 +866,7 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
           const apiKey = process.env.NEXT_PUBLIC_MAPTILER_KEY ?? "";
           if (!apiKey) return;
 
-          const q = encodeURIComponent(ownerAddress.trim());
+          const q = encodeURIComponent(combined);
           const res = await fetch(
             `https://api.maptiler.com/geocoding/${q}.json?key=${apiKey}&language=fr&country=ch&limit=1`
           );
@@ -898,7 +910,7 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
     }, 700);
 
     return () => clearTimeout(timer);
-  }, [locationMode, ownerAddress, sitter.hasAddress, sitter.lat, sitter.lng]);
+  }, [locationMode, ownerStreet, ownerNpa, ownerCity, sitter.hasAddress, sitter.lat, sitter.lng]);
 
   const todayIso = useMemo(() => todayZurichIsoDate(), []);
   const now = useMemo(() => new Date(), [dateStart]);
@@ -1542,7 +1554,7 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
     if (maintenanceMode) return false;
     if (!selectedService || !unit) return false;
     if (locationMode === "AT_OWNER") {
-      if (!ownerAddress.trim()) return false;
+      if (!ownerStreet.trim() || !ownerNpa.trim() || !ownerCity.trim()) return false;
       if (travelError) return false;
       if (geocodingAddress) return false;
       if (!travelPreview) return false;
@@ -1556,7 +1568,9 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
     geocodingAddress,
     locationMode,
     maintenanceMode,
-    ownerAddress,
+    ownerStreet,
+    ownerNpa,
+    ownerCity,
     selectedHourlySlot,
     selectedService,
     selectedUnitPrice,
@@ -1734,7 +1748,7 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
         service: selectedService,
         message: message.trim() || null,
         locationMode,
-        ownerAddress: locationMode === "AT_OWNER" ? ownerAddress.trim() : null,
+        ownerAddress: locationMode === "AT_OWNER" ? ownerAddressCombined : null,
       };
 
       if (unit === "DAILY") {
@@ -2049,30 +2063,52 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
               </div>
 
               {locationMode === "AT_OWNER" && (
-                <div className="mt-4">
-                  <label className="block text-xs font-semibold text-slate-600" htmlFor="owner_address">
-                    Votre adresse
-                  </label>
-                  <div className="relative mt-2">
+                <div className="mt-4 space-y-2">
+                  <p className="text-xs font-semibold text-slate-600">Votre adresse</p>
+
+                  {/* Rue + numéro */}
+                  <input
+                    id="owner_street"
+                    value={ownerStreet}
+                    onChange={(e) => setOwnerStreet(e.target.value)}
+                    placeholder="Rue et numéro — ex. Rue du Rhône 12"
+                    autoComplete="address-line1"
+                    className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition focus:border-[var(--dogshift-blue)] focus:ring-4 focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_85%)]"
+                  />
+
+                  {/* NPA + Ville côte à côte */}
+                  <div className="flex gap-2">
                     <input
-                      id="owner_address"
-                      value={ownerAddress}
-                      onChange={(e) => setOwnerAddress(e.target.value)}
-                      placeholder="ex. Rue du Rhône 12, 1204 Genève"
-                      autoComplete="street-address"
-                      className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition focus:border-[var(--dogshift-blue)] focus:ring-4 focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_85%)]"
+                      id="owner_npa"
+                      value={ownerNpa}
+                      onChange={(e) => setOwnerNpa(e.target.value)}
+                      placeholder="NPA — ex. 1204"
+                      autoComplete="postal-code"
+                      maxLength={10}
+                      className="w-28 shrink-0 rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition focus:border-[var(--dogshift-blue)] focus:ring-4 focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_85%)]"
                     />
-                    {geocodingAddress && (
-                      <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-indigo-500 border-t-transparent" />
-                      </div>
-                    )}
+                    <div className="relative flex-1">
+                      <input
+                        id="owner_city"
+                        value={ownerCity}
+                        onChange={(e) => setOwnerCity(e.target.value)}
+                        placeholder="Ville — ex. Genève"
+                        autoComplete="address-level2"
+                        className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition focus:border-[var(--dogshift-blue)] focus:ring-4 focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_85%)]"
+                      />
+                      {geocodingAddress && (
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                          <div className="h-4 w-4 animate-spin rounded-full border-2 border-indigo-500 border-t-transparent" />
+                        </div>
+                      )}
+                    </div>
                   </div>
+
                   {travelError && (
-                    <p className="mt-2 text-sm font-medium text-rose-600">{travelError}</p>
+                    <p className="text-sm font-medium text-rose-600">{travelError}</p>
                   )}
                   {travelPreview && !travelError && (
-                    <p className="mt-2 text-sm text-emerald-700">
+                    <p className="text-sm text-emerald-700">
                       ✓ {travelPreview.distanceKm.toFixed(1)} km · frais de déplacement :{" "}
                       <span className="font-semibold">CHF {travelPreview.feeChf.toFixed(2)}</span>
                     </p>
