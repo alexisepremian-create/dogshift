@@ -4,6 +4,7 @@ import type { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { resolveDbUserId } from "@/lib/auth/resolveDbUserId";
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
 const db = prisma as any;
 
 export const runtime = "nodejs";
@@ -44,7 +45,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         lastMessagePreview: true,
         createdAt: true,
         updatedAt: true,
-        selectedDog: { select: { id: true, name: true, breed: true } },
+        selectedDog: { select: { id: true, name: true, breed: true, birthYear: true, weightKg: true, medications: true, allergies: true, vetContact: true, behaviorNotes: true, feedingNotes: true, sitterInstructions: true, photoUrl: true } },
         sitter: {
           select: {
             sitterId: true,
@@ -97,10 +98,23 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
           sitter: { sitterId: String(conversation.sitterId), name: sitterName, avatarUrl },
           bookingId: typeof conversation.bookingId === "string" ? conversation.bookingId : null,
           selectedDog: conversation.selectedDog
-            ? { id: String(conversation.selectedDog.id), name: String(conversation.selectedDog.name), breed: conversation.selectedDog.breed ?? null }
+            ? {
+                id: String(conversation.selectedDog.id),
+                name: String(conversation.selectedDog.name),
+                breed: conversation.selectedDog.breed ?? null,
+                birthYear: conversation.selectedDog.birthYear ?? null,
+                weightKg: conversation.selectedDog.weightKg ?? null,
+                medications: conversation.selectedDog.medications ?? null,
+                allergies: conversation.selectedDog.allergies ?? null,
+                vetContact: conversation.selectedDog.vetContact ?? null,
+                behaviorNotes: conversation.selectedDog.behaviorNotes ?? null,
+                feedingNotes: conversation.selectedDog.feedingNotes ?? null,
+                sitterInstructions: conversation.selectedDog.sitterInstructions ?? null,
+                photoUrl: conversation.selectedDog.photoUrl ?? null,
+              }
             : null,
         },
-        messages: messages.map((m: any) => ({
+        messages: (messages as any[]).map((m) => ({
           id: String(m.id),
           senderId: String(m.senderId),
           body: String(m.body ?? ""),

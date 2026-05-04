@@ -21,6 +21,8 @@ const dogSchema = z.object({
   vetContact: z.string().max(200).optional().nullable(),
   behaviorNotes: z.string().max(1000).optional().nullable(),
   feedingNotes: z.string().max(500).optional().nullable(),
+  sitterInstructions: z.string().max(2000).optional().nullable(),
+  photoUrl: z.string().max(500).optional().nullable(),
   isDefault: z.boolean().optional(),
 });
 

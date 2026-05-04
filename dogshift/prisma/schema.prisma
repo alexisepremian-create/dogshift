@@ -931,11 +931,14 @@ model DogProfile {
   birthYear     Int?
   weightKg      Float?
 
-  medications   String?
-  allergies     String?
-  vetContact    String?
-  behaviorNotes String?
-  feedingNotes  String?
+  medications          String?
+  allergies            String?
+  vetContact           String?
+  behaviorNotes        String?
+  feedingNotes         String?
+  sitterInstructions   String?
+
+  photoUrl  String?
 
   isDefault Boolean @default(false)
 

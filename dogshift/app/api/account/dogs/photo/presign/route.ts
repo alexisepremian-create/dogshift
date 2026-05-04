@@ -1,0 +1,47 @@
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+import { v4 as uuidv4 } from "uuid";
+
+import { presignPutObject } from "@/lib/r2";
+import { resolveDbUserId } from "@/lib/auth/resolveDbUserId";
+
+export const runtime = "nodejs";
+
+const MAX_BYTES = 8 * 1024 * 1024; // 8 MB
+const ALLOWED_MIMES = new Set(["image/jpeg", "image/png", "image/webp"]);
+
+function extForMime(mime: string) {
+  if (mime === "image/jpeg") return "jpg";
+  if (mime === "image/png") return "png";
+  if (mime === "image/webp") return "webp";
+  return "";
+}
+
+export async function POST(req: NextRequest) {
+  try {
+    const userId = await resolveDbUserId(req);
+    if (!userId) return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
+
+    const body = (await req.json().catch(() => null)) as null | { contentType?: string; sizeBytes?: number };
+    const contentType = typeof body?.contentType === "string" ? body.contentType.trim() : "";
+
+    if (!contentType || !ALLOWED_MIMES.has(contentType)) {
+      return NextResponse.json({ ok: false, error: "UNSUPPORTED_FILE_TYPE" }, { status: 400 });
+    }
+
+    const sizeBytes = typeof body?.sizeBytes === "number" ? body.sizeBytes : null;
+    if (sizeBytes && (sizeBytes <= 0 || sizeBytes > MAX_BYTES)) {
+      return NextResponse.json({ ok: false, error: "FILE_TOO_LARGE" }, { status: 400 });
+    }
+
+    const ext = extForMime(contentType);
+    const key = `dog-photos/${userId}/${uuidv4()}.${ext}`;
+
+    const { url, expiresIn } = await presignPutObject({ key, contentType, expiresInSeconds: 120 });
+
+    return NextResponse.json({ ok: true, key, uploadUrl: url, expiresIn, maxBytes: MAX_BYTES });
+  } catch (err) {
+    console.error("[api][account][dogs][photo][presign]", err);
+    return NextResponse.json({ ok: false, error: "INTERNAL_ERROR" }, { status: 500 });
+  }
+}
