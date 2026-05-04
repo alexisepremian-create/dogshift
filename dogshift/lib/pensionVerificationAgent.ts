@@ -61,7 +61,11 @@ export async function runPensionVerificationAgent(params: {
   try {
     const profile = await db.sitterProfile.findFirst({
       where: { sitterId },
-      select: { id: true, pensionPhotoUrls: true },
+      select: {
+        id: true,
+        pensionPhotoUrls: true,
+        user: { select: { hostProfileJson: true } },
+      },
     });
 
     if (!profile) {
@@ -109,6 +113,24 @@ export async function runPensionVerificationAgent(params: {
 
     const exifSummary = buildExifSummary(exifData);
 
+    // Extract boarding details from hostProfileJson for coherence check
+    let boardingContext = "Non renseigné.";
+    try {
+      const raw = typeof profile.user?.hostProfileJson === "string" ? profile.user.hostProfileJson : null;
+      if (raw) {
+        const parsed = JSON.parse(raw) as Record<string, unknown>;
+        const bd = parsed?.boardingDetails as Record<string, unknown> | undefined;
+        if (bd) {
+          const parts: string[] = [];
+          if (bd.housingType) parts.push(`Type : ${bd.housingType}`);
+          if (bd.hasGarden) parts.push("Jardin : oui");
+          if (bd.hasOtherPets) parts.push("Autres animaux : oui");
+          if (bd.notes) parts.push(`Notes : ${bd.notes}`);
+          if (parts.length) boardingContext = parts.join(" | ");
+        }
+      }
+    } catch { /* ignore */ }
+
     const { object: analyse } = await generateObject({
       model: anthropic("claude-opus-4-5"),
       schema: PensionVerifSchema,
@@ -124,6 +146,11 @@ Analyse ces ${imageContents.length} photos du logement d'un sitter qui veut acti
 
 MÉTADONNÉES EXIF DES PHOTOS :
 ${exifSummary}
+
+LOGEMENT DÉCLARÉ PAR LE SITTER :
+${boardingContext}
+
+Vérifie que les photos correspondent bien à ce qui est déclaré (ex: si "Maison" est déclaré mais les photos montrent clairement un appartement en hauteur, pénalise la cohérence).
 
 CRITÈRES D'ÉVALUATION (score 0-5 par critère) :
 1. Espace suffisant : le chien aura de la place pour se déplacer, pas d'encombrement excessif
