@@ -15,6 +15,9 @@ export async function GET(req: NextRequest) {
     const profile = await db.sitterProfile.findUnique({
       where: { userId },
       select: {
+        sitterId: true,
+        services: true,
+        pricing: true,
         pensionVerifStatus: true,
         pensionPhotoUrls: true,
         pensionPhotoSubmittedAt: true,
@@ -27,8 +30,28 @@ export async function GET(req: NextRequest) {
 
     if (!profile) return NextResponse.json({ ok: false, error: "NOT_FOUND" }, { status: 404 });
 
+    // Check if Pension is enabled via ServiceConfig (modern), pricing fallback, or legacy services JSON
+    const serviceConfigs: { serviceType: string; enabled: boolean }[] = await prisma.serviceConfig.findMany({
+      where: { sitterId: profile.sitterId },
+      select: { serviceType: true, enabled: true },
+    });
+
+    let hasPension = false;
+    if (serviceConfigs.length > 0) {
+      hasPension = serviceConfigs.some((c) => c.serviceType === "PENSION" && c.enabled);
+    } else {
+      // Fallback: pricing or legacy services JSON
+      const pricing = profile.pricing as Record<string, unknown> | null;
+      const services = profile.services;
+      hasPension =
+        (pricing && typeof pricing.Pension === "number" && pricing.Pension > 0) ||
+        (Array.isArray(services) && services.includes("Pension")) ||
+        (services && typeof services === "object" && !Array.isArray(services) && Boolean((services as Record<string, unknown>).Pension));
+    }
+
     return NextResponse.json({
       ok: true,
+      hasPension,
       status: profile.pensionVerifStatus ?? "not_submitted",
       photoCount: Array.isArray(profile.pensionPhotoUrls) ? profile.pensionPhotoUrls.length : 0,
       submittedAt: profile.pensionPhotoSubmittedAt ?? null,
