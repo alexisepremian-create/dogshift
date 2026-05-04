@@ -11,6 +11,7 @@ import { prisma } from "@/lib/prisma";
 import { presignGetObject } from "@/lib/r2";
 import { sendEmail } from "@/lib/email/sendEmail";
 import { renderEmailLayout } from "@/lib/email/templates/layout";
+import { sendTelegramMessage } from "@/lib/telegram/sendTelegramMessage";
 
 const APP_URL = (process.env.NEXT_PUBLIC_APP_URL ?? "https://www.dogshift.ch").replace(/\/$/, "");
 
@@ -170,6 +171,16 @@ Sois objectif et bienveillant mais rigoureux sur la sécurité.`,
     // Send result email to sitter
     if (sitterEmail) {
       await sendPensionResultEmail({ sitterEmail, sitterName, finalStatus, score: analyse.score });
+    }
+
+    // Telegram alert for cases requiring manual admin review
+    if (finalStatus === "ai_needs_review") {
+      const reason = noExifOverride
+        ? "Aucune photo n'a de métadonnée EXIF appareil — vérification manuelle obligatoire."
+        : `Score IA : ${analyse.score}/100 (zone 50–74, révision requise).`;
+      await sendTelegramMessage(
+        `[DogShift] Vérification Pension — révision manuelle requise\n\nSitter : ${sitterName || sitterId}\nScore IA : ${analyse.score}/100\n${reason}\n\nRevoir : ${APP_URL}/admin/pension-verifications`
+      );
     }
 
     console.log("[pensionVerificationAgent] done", { sitterId, finalStatus, score: analyse.score });
