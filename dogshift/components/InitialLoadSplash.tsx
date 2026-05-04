@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 "use client";
 
 import { useEffect, useState } from "react";
@@ -30,5 +31,7 @@ export default function InitialLoadSplash() {
 
   if (done) return null;
 
-  return <PageLoader ready={pageReady} onDone={() => setDone(true)} />;
+  // Animation SVG: last element appears at 2.2 s — ensure it fully renders
+  // before dismissal regardless of page-load speed.
+  return <PageLoader ready={pageReady} onDone={() => setDone(true)} minDuration={2400} />;
 }
