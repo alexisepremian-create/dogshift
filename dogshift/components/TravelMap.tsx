@@ -20,7 +20,7 @@ function formatFee(feeCents: number) {
 
 type MapGl = typeof import("react-map-gl/maplibre");
 
-/** Fetch driving route from OSRM and return GeoJSON coordinates. */
+/** Fetch driving route via our server-side proxy (bypasses CSP). */
 async function fetchDrivingRoute(
   fromLng: number,
   fromLat: number,
@@ -28,13 +28,11 @@ async function fetchDrivingRoute(
   toLat: number,
 ): Promise<[number, number][] | null> {
   try {
-    const url = `https://router.project-osrm.org/route/v1/driving/${fromLng},${fromLat};${toLng},${toLat}?overview=full&geometries=geojson`;
+    const url = `/api/route?fromLng=${fromLng}&fromLat=${fromLat}&toLng=${toLng}&toLat=${toLat}`;
     const res = await fetch(url);
     if (!res.ok) return null;
-    const data = (await res.json()) as {
-      routes?: Array<{ geometry?: { coordinates?: [number, number][] } }>;
-    };
-    return data.routes?.[0]?.geometry?.coordinates ?? null;
+    const data = (await res.json()) as { coordinates?: [number, number][] };
+    return data.coordinates ?? null;
   } catch {
     return null;
   }
