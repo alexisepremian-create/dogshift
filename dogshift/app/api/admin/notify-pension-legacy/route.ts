@@ -18,6 +18,12 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
+  // Optional ?emails=a@x.com,b@x.com to restrict sending to specific addresses
+  const filterEmails = (req.nextUrl.searchParams.get("emails") ?? "")
+    .split(",")
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
+
   const sitters = await prisma.$queryRaw<
     { sitterId: string; displayName: string | null; email: string | null }[]
   >`
@@ -28,9 +34,13 @@ export async function GET(req: NextRequest) {
     ORDER BY sp."displayName"
   `;
 
+  const filtered = filterEmails.length > 0
+    ? sitters.filter((s) => s.email && filterEmails.includes(s.email.toLowerCase()))
+    : sitters;
+
   const results: { email: string; status: "sent" | "failed" | "skipped"; error?: string }[] = [];
 
-  for (const sitter of sitters) {
+  for (const sitter of filtered) {
     const email = sitter.email;
     const firstName = (sitter.displayName ?? "").split(" ")[0] || "Bonjour";
 
@@ -38,6 +48,9 @@ export async function GET(req: NextRequest) {
       results.push({ email: "(none)", status: "skipped" });
       continue;
     }
+
+    // Small delay to avoid Resend rate limiting
+    await new Promise((r) => setTimeout(r, 400));
 
     const { html } = renderEmailLayout({
       title: "Nouvelle vérification requise pour activer la Pension",
@@ -86,5 +99,5 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  return NextResponse.json({ ok: true, count: sitters.length, results });
+  return NextResponse.json({ ok: true, count: filtered.length, results });
 }
