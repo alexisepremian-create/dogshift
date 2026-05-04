@@ -153,11 +153,28 @@ const CATEGORIES: EmailCategory[] = [
     ],
   },
   {
-    id: "messages",
-    label: "Messagerie",
+    id: "onboarding",
+    label: "Onboarding & Relances",
     icon: MessageSquare,
     color: "text-indigo-600",
     templates: [
+      {
+        id: "welcome-owner",
+        label: "Bienvenue propriétaire",
+        description: "Envoyé automatiquement à la première connexion d'un nouveau propriétaire",
+      },
+      {
+        id: "review-request",
+        label: "Demande d'avis",
+        description: "Cron J+1/J+2 après la fin d'une réservation — invite le propriétaire à noter son sitter",
+      },
+      {
+        id: "relance-owner",
+        label: "Relance propriétaire ✨ IA",
+        description: "Généré par Claude — personnalisé selon le propriétaire et le sitter avec qui il a échangé sans réserver",
+        badge: "IA",
+        badgeColor: "bg-violet-100 text-violet-700",
+      },
       {
         id: "new-message",
         label: "Nouveau message",
