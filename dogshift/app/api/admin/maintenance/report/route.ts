@@ -21,19 +21,23 @@ export async function POST(req: Request) {
       summary?: string;
     };
 
+     
+    const details = JSON.parse(JSON.stringify({ packages: body.packages ?? [], durationMs: body.durationMs ?? 0 }));
+
     await prisma.agentLog.create({
       data: {
         agentName: "deps-agent",
         actionType: body.type ?? "nightly_update",
         summary: body.summary ?? "Dependency agent run",
-        details: JSON.parse(JSON.stringify({ packages: body.packages ?? [], durationMs: body.durationMs ?? 0 })) as Record<string, unknown>,
+         
+        details,
         status: body.status ?? "success",
       },
     });
 
     return NextResponse.json({ ok: true });
   } catch (err) {
-    reportApiError(err);
+    reportApiError({ kind: "internal_error", route: "POST /api/admin/maintenance/report", extra: { message: err instanceof Error ? err.message : String(err) } });
     return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
 }

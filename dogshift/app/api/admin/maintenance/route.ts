@@ -16,7 +16,7 @@ export async function GET() {
     });
     return NextResponse.json({ logs });
   } catch (err) {
-    reportApiError(err);
+    reportApiError({ kind: "internal_error", route: "GET /api/admin/maintenance", extra: { message: err instanceof Error ? err.message : String(err) } });
     return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
 }
