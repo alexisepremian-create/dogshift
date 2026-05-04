@@ -26,6 +26,8 @@ import {
   SearchCheck,
   Mail,
   UserPlus,
+  Package,
+  ScanSearch,
 } from "lucide-react";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -112,6 +114,8 @@ const COLORS: Record<string, { icon: ElementType; color: string; bg: string }> =
   "lead-magnet":              { icon: Mail,          color: "#db2777", bg: "#fdf2f8" },
   "onboarding-owner":         { icon: UserPlus,      color: "#0284c7", bg: "#f0f9ff" },
   "zootherapie-evaluation":   { icon: Sparkles,      color: "#7c3aed", bg: "#f5f3ff" },
+  "deps-agent":               { icon: Package,       color: "#0e7490", bg: "#ecfeff" },
+  "deps-weekly":              { icon: ScanSearch,    color: "#6d28d9", bg: "#f5f3ff" },
 };
 
 const DEFAULT_COLOR = { icon: Bot, color: "#64748b", bg: "rgba(100,116,139,0.12)" };
@@ -133,7 +137,7 @@ const Y_MAESTRO_CHILDREN   = 460;
 const Y_CANDIDATURE_CHILDREN = 640;
 
 // X centers for each row
-const FREE_CX        = [-400, -300, -200, -100, 0, 100, 200, 300, 400] as const;
+const FREE_CX        = [-500, -400, -300, -200, -100, 0, 100, 200, 300, 400, 500] as const;
 const MAESTRO_CX     = 0;
 const MAESTRO_CHILDREN_CX = [-200, 0, 200] as const;
 const CANDIDATURE_CX = 0; // candidature is index 1 of MAESTRO_CHILDREN → cx=0
@@ -157,10 +161,12 @@ const AGENTS: AgentDef[] = [
   { id: "notifications",      name: "Notifications", description: "Système de communication",           icon: "BellRing" },
   { id: "candidature_classic",name: "Score classique",description: "Algorithme par règles",             icon: "Calculator" },
   { id: "candidature_ai",     name: "Analyse IA",    description: "Claude qualitatif",                  icon: "Brain" },
+  { id: "deps-agent",         name: "Deps Nightly",  description: "MAJ autonome des dépendances — npm outdated → branche → tsc → Claude fix → PR auto-merge", icon: "Package" },
+  { id: "deps-weekly",        name: "Deep Scan",     description: "Rapport hebdo lundi 07h — release notes Clerk/Stripe/Next.js/Prisma analysées par Claude",  icon: "ScanSearch" },
 ];
 
 // Zone membership
-const FREE_AGENTS          = ["auth", "reservations", "calendrier", "contrat", "activation", "assistant", "lead-magnet", "onboarding-owner", "zootherapie-evaluation"] as const;
+const FREE_AGENTS          = ["auth", "reservations", "calendrier", "contrat", "activation", "assistant", "lead-magnet", "onboarding-owner", "zootherapie-evaluation", "deps-agent", "deps-weekly"] as const;
 const MAESTRO_CHILDREN     = ["booking", "candidature", "notifications"] as const;
 const CANDIDATURE_CHILDREN = ["candidature_classic", "candidature_ai"] as const;
 
@@ -1451,7 +1457,7 @@ export default function AgentsDashboard() {
 
   const centerTree = useCallback((canvasEl: HTMLDivElement) => {
     const { width: cw, height: ch } = canvasEl.getBoundingClientRect();
-    const treeW = FREE_CX[FREE_CX.length - 1] * 2 + CHILD_SIZE + 80; // ~780px
+    const treeW = FREE_CX[FREE_CX.length - 1] * 2 + CHILD_SIZE + 80; // ~1080px with 11 agents
     const treeH = Y_CANDIDATURE_CHILDREN + CHILD_SIZE + 80;           // ~776px
     const fitZoom = Math.min((cw - 80) / treeW, (ch - 80) / treeH, 1.2);
     const z = Math.max(0.3, Math.min(fitZoom, 1.5));
