@@ -7,6 +7,8 @@ const ALLOWED_SERVICES = ["Pension", "Garde", "Promenade"] as const;
 const travelFields = z.object({
   locationMode: z.enum(["AT_OWNER", "AT_SITTER"]).optional().nullable(),
   ownerAddress: z.string().max(500).optional().nullable(),
+  ownerLat: z.number().optional().nullable(),
+  ownerLng: z.number().optional().nullable(),
 });
 
 const dailyBookingBody = z.object({

@@ -28,6 +28,8 @@ type CreateBookingBody = {
   message?: unknown;
   locationMode?: unknown; // "AT_OWNER" | "AT_SITTER"
   ownerAddress?: unknown; // required when locationMode === "AT_OWNER"
+  ownerLat?: unknown; // client-geocoded latitude
+  ownerLng?: unknown; // client-geocoded longitude
 };
 
 type StayRule = {
@@ -263,6 +265,9 @@ export async function POST(req: NextRequest) {
 
     const locationMode = typeof body?.locationMode === "string" && body.locationMode === "AT_OWNER" ? "AT_OWNER" : "AT_SITTER";
     const ownerAddress = typeof body?.ownerAddress === "string" ? body.ownerAddress.trim() : null;
+    // Client-geocoded coordinates sent from the reservation form (avoids server-side re-geocoding)
+    const clientOwnerLat = typeof body?.ownerLat === "number" && Number.isFinite(body.ownerLat) ? (body.ownerLat as number) : null;
+    const clientOwnerLng = typeof body?.ownerLng === "number" && Number.isFinite(body.ownerLng) ? (body.ownerLng as number) : null;
 
     const sitterProfile = await (prisma as any).sitterProfile.findFirst({
       where: { sitterId, published: true },
@@ -456,17 +461,24 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      const ownerCoords = await geocodeAddress(ownerAddress);
-      if (!ownerCoords) {
-        return NextResponse.json(
-          { ok: false, error: "GEOCODE_FAILED", message: "Impossible de localiser votre adresse. Vérifiez qu'elle est correcte." },
-          { status: 400 }
-        );
+      // Use client-geocoded coordinates if provided (avoids server-side geocoding failures).
+      // Fall back to server-side geocoding only if client didn't send coords.
+      if (clientOwnerLat !== null && clientOwnerLng !== null) {
+        ownerLat = clientOwnerLat;
+        ownerLng = clientOwnerLng;
+        resolvedOwnerAddress = ownerAddress;
+      } else {
+        const ownerCoords = await geocodeAddress(ownerAddress);
+        if (!ownerCoords) {
+          return NextResponse.json(
+            { ok: false, error: "GEOCODE_FAILED", message: "Impossible de localiser votre adresse. Vérifiez qu'elle est correcte." },
+            { status: 400 }
+          );
+        }
+        ownerLat = ownerCoords.lat;
+        ownerLng = ownerCoords.lng;
+        resolvedOwnerAddress = ownerCoords.label;
       }
-
-      ownerLat = ownerCoords.lat;
-      ownerLng = ownerCoords.lng;
-      resolvedOwnerAddress = ownerCoords.label;
 
       const travelResult = computeTravelFee(sitterProfile.lat, sitterProfile.lng, ownerLat, ownerLng);
       if (!travelResult.ok) {
