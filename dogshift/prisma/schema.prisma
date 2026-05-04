@@ -356,6 +356,18 @@ model SitterProfile {
   verificationReviewedAt  DateTime?
   verificationNotes       String?
 
+  /// Pension home photo verification
+  /// Status: not_submitted | pending | ai_reviewing | ai_approved | ai_rejected | approved | rejected | legacy_pending
+  pensionVerifStatus      String    @default("not_submitted")
+  pensionPhotoUrls        Json?
+  pensionPhotoSubmittedAt DateTime?
+  pensionPhotoReviewedAt  DateTime?
+  pensionAiScore          Float?
+  pensionAiVerdict        String?
+  pensionAiReasoning      Json?
+  pensionAiReviewedAt     DateTime?
+  pensionAdminNotes       String?
+
   verificationAccessLogs VerificationAccessLog[]
   contractAmendmentAcceptances SitterContractAmendmentAcceptance[]
 
@@ -377,6 +389,7 @@ model SitterProfile {
   @@index([city])
   @@index([postalCode])
   @@index([verificationStatus])
+  @@index([pensionVerifStatus])
 }
 
 model VerificationAccessLog {

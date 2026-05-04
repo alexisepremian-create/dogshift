@@ -22,6 +22,7 @@ const ALL_SEEDS: { slug: string; label: string; description: string; cronSchedul
   { slug: "relance-owner",          label: "Relance Owner",      description: "Email de relance comportementale owners" },
   { slug: "zootherapie-evaluation", label: "Zoothérapie",        description: "Évaluation bien-être personnalisée" },
   { slug: "cron-relance-owners",    label: "Cron Relance",       description: "Surveillance owners sans réservation", cronSchedule: "0 */2 * * *" },
+  { slug: "pension-verification",   label: "Pension Vérification", description: "Analyse IA des photos de logement pour l'activation de la Pension" },
 ];
 
 export async function GET(req: NextRequest) {
