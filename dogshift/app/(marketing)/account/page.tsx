@@ -10,8 +10,10 @@ import {
   ChevronRight,
   Clock3,
   CreditCard,
+  Dog,
   Hourglass,
   MessageCircle,
+  Plus,
   Settings,
 } from "lucide-react";
 
@@ -84,7 +86,7 @@ export default async function AccountDashboardPage({
     status: { in: ["PENDING_PAYMENT", "DRAFT", "PENDING_ACCEPTANCE", "PAID", "CONFIRMED"] },
   };
 
-  const [total, pendingPayment, pendingAcceptance, confirmed, unreadMessages, stalePaymentCount, nextBooking] = await Promise.all([
+  const [total, pendingPayment, pendingAcceptance, confirmed, unreadMessages, stalePaymentCount, nextBooking, dogCount] = await Promise.all([
     prisma.booking.count({ where: activeHistoryWhere }),
     prisma.booking.count({ where: { userId: uid, archivedAt: null, status: { in: ["PENDING_PAYMENT", "DRAFT"] } } }),
     prisma.booking.count({ where: { userId: uid, archivedAt: null, status: { in: ["PENDING_ACCEPTANCE", "PAID"] } } }),
@@ -126,6 +128,7 @@ export default async function AccountDashboardPage({
         },
       },
     }),
+    (prisma as any).dogProfile.count({ where: { userId: uid } }),
   ]);
 
   const hasUrgent = pendingAcceptance > 0 || unreadMessages > 0 || stalePaymentCount > 0;
@@ -286,6 +289,16 @@ export default async function AccountDashboardPage({
               <ChevronRight className="h-4 w-4 text-slate-400 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
             </Link>
             <Link
+              href="/account/dogs"
+              className={`${quickLinkBase} border-slate-200 bg-white text-slate-900 hover:bg-slate-50`}
+            >
+              <span className="inline-flex items-center gap-3">
+                <Dog className="h-4 w-4 text-slate-500" aria-hidden="true" />
+                Mes chiens
+              </span>
+              <ChevronRight className="h-4 w-4 text-slate-400 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+            </Link>
+            <Link
               href="/account/settings"
               className={`${quickLinkBase} border-slate-200 bg-white text-slate-900 hover:bg-slate-50`}
             >
@@ -297,6 +310,40 @@ export default async function AccountDashboardPage({
             </Link>
           </div>
         </div>
+      </div>
+
+      {/* Dogs section */}
+      <div className={contentCardBase}>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h2 className="text-lg font-semibold text-slate-900">
+              {dogCount === 0 ? "Mes chiens" : `Mes chiens (${dogCount})`}
+            </h2>
+            <p className="mt-1 text-sm text-slate-600">
+              Infos médicales, comportement et alimentation — visibles par vos dogsitters.
+            </p>
+          </div>
+          <Link
+            href="/account/dogs"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
+          >
+            {dogCount === 0 ? <><Plus className="h-3.5 w-3.5" />Ajouter</> : <><ChevronRight className="h-3.5 w-3.5" />Gérer</>}
+          </Link>
+        </div>
+        {dogCount === 0 && (
+          <div className="mt-4 rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-5 text-center">
+            <Dog className="mx-auto h-8 w-8 text-slate-300" />
+            <p className="mt-2 text-sm font-medium text-slate-700">Aucun chien enregistré</p>
+            <p className="mt-1 text-xs text-slate-500">Ajoutez votre chien pour que les sitters aient toutes les infos dès le départ.</p>
+            <Link
+              href="/account/dogs"
+              className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-[var(--dogshift-blue)] px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-[var(--dogshift-blue-hover)]"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              Ajouter mon chien
+            </Link>
+          </div>
+        )}
       </div>
 
       {hasUrgent ? (

@@ -140,6 +140,7 @@ model User {
 
   bookings       Booking[] @relation("UserBookings")
   sitterBookings Booking[] @relation("SitterBookings")
+  dogProfiles    DogProfile[]
 
   ownerConversations  Conversation[] @relation("OwnerConversations")
   sitterConversations Conversation[] @relation("SitterConversations")
@@ -363,6 +364,9 @@ model SitterProfile {
   stripeOnboardingCompletedAt   DateTime?
 
   lastMinuteEnabled Boolean @default(false)
+
+  /// Max dogs accepted per size: { "Petit": 2, "Moyen": 1, "Grand": 0 }
+  maxDogsBySize Json?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -910,6 +914,32 @@ model AgentTask {
   @@index([agentName, status, scheduledAt])
   @@index([status, scheduledAt])
   @@index([createdAt])
+}
+
+/// Dog profile belonging to an owner. One owner can have multiple dogs.
+model DogProfile {
+  id     String @id @default(cuid())
+  userId String
+
+  name          String
+  breed         String?
+  birthYear     Int?
+  weightKg      Float?
+
+  medications   String?
+  allergies     String?
+  vetContact    String?
+  behaviorNotes String?
+  feedingNotes  String?
+
+  isDefault Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model LeadMagnet {

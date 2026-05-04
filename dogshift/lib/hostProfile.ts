@@ -28,6 +28,12 @@ export type HostProfileV1 = {
   services: Record<ServiceType, boolean>;
   pricing: Partial<Record<ServiceType, number>>;
   dogSizes: Record<DogSize, boolean>;
+  /**
+   * Max dogs accepted per size. Keys match DogSize ("Petit", "Moyen", "Grand").
+   * A value of 0 means not accepted. Takes precedence over dogSizes (boolean).
+   * When set, dogSizes is derived: dogSizes[size] = maxDogsBySize[size] > 0.
+   */
+  maxDogsBySize?: Record<DogSize, number>;
   cancellationFlexible: boolean;
   boardingDetails?: HostBoardingDetails;
   verificationStatus: HostVerificationStatus;
@@ -109,11 +115,23 @@ export function loadHostProfileFromStorage(sitterId: string): HostProfileV1 | nu
     Pension: Boolean(servicesRaw.Pension),
   };
 
-  const dogSizes: Record<DogSize, boolean> = {
-    Petit: Boolean(dogSizesRaw.Petit),
-    Moyen: Boolean(dogSizesRaw.Moyen),
-    Grand: Boolean(dogSizesRaw.Grand),
-  };
+  const maxDogsBySizeRaw =
+    p.maxDogsBySize && typeof p.maxDogsBySize === "object"
+      ? (p.maxDogsBySize as Record<string, unknown>)
+      : null;
+
+  const maxDogsBySize: Record<DogSize, number> | undefined = maxDogsBySizeRaw
+    ? {
+        Petit: typeof maxDogsBySizeRaw.Petit === "number" ? Math.max(0, Math.floor(maxDogsBySizeRaw.Petit)) : 0,
+        Moyen: typeof maxDogsBySizeRaw.Moyen === "number" ? Math.max(0, Math.floor(maxDogsBySizeRaw.Moyen)) : 0,
+        Grand: typeof maxDogsBySizeRaw.Grand === "number" ? Math.max(0, Math.floor(maxDogsBySizeRaw.Grand)) : 0,
+      }
+    : undefined;
+
+  // dogSizes derived from maxDogsBySize when available, else use raw boolean
+  const dogSizes: Record<DogSize, boolean> = maxDogsBySize
+    ? { Petit: maxDogsBySize.Petit > 0, Moyen: maxDogsBySize.Moyen > 0, Grand: maxDogsBySize.Grand > 0 }
+    : { Petit: Boolean(dogSizesRaw.Petit), Moyen: Boolean(dogSizesRaw.Moyen), Grand: Boolean(dogSizesRaw.Grand) };
 
   const pricingRaw = p.pricing && typeof p.pricing === "object" ? (p.pricing as Record<string, unknown>) : {};
   const pricing: Partial<Record<ServiceType, number>> = {
@@ -150,6 +168,7 @@ export function loadHostProfileFromStorage(sitterId: string): HostProfileV1 | nu
     services,
     pricing,
     dogSizes,
+    maxDogsBySize,
     cancellationFlexible: typeof p.cancellationFlexible === "boolean" ? p.cancellationFlexible : true,
     boardingDetails,
     verificationStatus,

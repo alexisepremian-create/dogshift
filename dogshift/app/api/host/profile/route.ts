@@ -321,6 +321,8 @@ export async function POST(req: NextRequest) {
     const dogSizesObjRaw = (b as Record<string, unknown>)?.dogSizes;
     const dogSizesObj = dogSizesObjRaw && typeof dogSizesObjRaw === "object" ? (dogSizesObjRaw as Record<string, unknown>) : {};
     const enabledDogSizes = Object.keys(dogSizesObj).filter((k) => Boolean(dogSizesObj[k]));
+    const maxDogsBySizeRaw = (b as Record<string, unknown>)?.maxDogsBySize;
+    const maxDogsBySizeObj = maxDogsBySizeRaw && typeof maxDogsBySizeRaw === "object" ? (maxDogsBySizeRaw as Record<string, unknown>) : null;
 
     const avatarDataUrl = typeof (b as Record<string, unknown>)?.avatarDataUrl === "string" ? String((b as Record<string, unknown>).avatarDataUrl).trim() : "";
     let resolvedAvatarForColumn: string | null = null;
@@ -482,6 +484,7 @@ export async function POST(req: NextRequest) {
     if (Array.isArray(enabledServices) && enabledServices.length > 0) updateData.services = enabledServices as Prisma.InputJsonValue;
     if (pricingObj && typeof pricingObj === "object" && Object.keys(pricingObj).length > 0) updateData.pricing = pricingObj as Prisma.InputJsonValue;
     if (Array.isArray(enabledDogSizes) && enabledDogSizes.length > 0) updateData.dogSizes = enabledDogSizes as Prisma.InputJsonValue;
+    if (maxDogsBySizeObj) updateData.maxDogsBySize = maxDogsBySizeObj as Prisma.InputJsonValue;
 
     if (finalLat != null && finalLng != null) {
       updateData.lat = finalLat;
@@ -507,6 +510,7 @@ export async function POST(req: NextRequest) {
         services: enabledServices as Prisma.InputJsonValue,
         pricing: pricingObj as Prisma.InputJsonValue,
         dogSizes: enabledDogSizes as Prisma.InputJsonValue,
+        maxDogsBySize: maxDogsBySizeObj as Prisma.InputJsonValue,
         profileCompletion: completion,
       },
       update: updateData,

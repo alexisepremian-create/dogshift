@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
-import { LayoutDashboard, MessageSquare, Pencil, User, CalendarDays, Settings, Wallet, SlidersHorizontal } from "lucide-react";
+import { LayoutDashboard, MessageSquare, Pencil, User, CalendarDays, Settings, Wallet, SlidersHorizontal, Dog } from "lucide-react";
 
 import { useHostUser } from "@/components/HostUserProvider";
 
@@ -149,6 +149,7 @@ export function useOwnerDashboardNavItems() {
     if (pathname?.startsWith("/account/bookings")) return "bookings";
     if (pathname?.startsWith("/account/messages")) return "messages";
     if (pathname?.startsWith("/account/wallet")) return "wallet";
+    if (pathname?.startsWith("/account/dogs")) return "dogs";
     if (pathname?.startsWith("/account/settings")) return "settings";
     return "dashboard";
   }, [pathname]);
@@ -180,6 +181,15 @@ export function useOwnerDashboardNavItems() {
         href: "/account/messages",
         icon: <MessageSquare className="h-5 w-5" aria-hidden="true" />,
         active: activeKey === "messages",
+        prefetch: false,
+      },
+      {
+        key: "dogs",
+        label: "Mes chiens",
+        description: "Profils et infos de vos chiens.",
+        href: "/account/dogs",
+        icon: <Dog className="h-5 w-5" aria-hidden="true" />,
+        active: activeKey === "dogs",
         prefetch: false,
       },
       {

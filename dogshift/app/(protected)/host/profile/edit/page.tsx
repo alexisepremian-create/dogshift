@@ -528,27 +528,66 @@ export default function HostProfileEditPage() {
               </div>
 
               <div id="dogSizes" className="scroll-mt-24 border-t border-slate-200 p-6 sm:p-8">
-                <h2 className="text-base font-semibold text-slate-900">Taille de chien acceptée</h2>
-                <div className="mt-4 flex flex-wrap gap-2">
-                  {(Object.keys(DOG_SIZE_LABELS) as DogSize[]).map((size) => (
-                    <button
-                      key={size}
-                      type="button"
-                      onClick={() =>
-                        setProfile((p) => ({
-                          ...p,
-                          dogSizes: { ...p.dogSizes, [size]: !p.dogSizes[size] },
-                        }))
-                      }
-                      className={
-                        profile.dogSizes[size]
-                          ? "rounded-full border border-[var(--dogshift-blue)] bg-[color-mix(in_srgb,var(--dogshift-blue),white_92%)] px-4 py-2 text-xs font-semibold text-[var(--dogshift-blue)]"
-                          : "rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-900 hover:bg-slate-50"
-                      }
-                    >
-                      {DOG_SIZE_LABELS[size]}
-                    </button>
-                  ))}
+                <h2 className="text-base font-semibold text-slate-900">Chiens acceptés par taille</h2>
+                <p className="mt-1 text-sm text-slate-500">
+                  Indiquez combien de chiens vous acceptez par taille (0 = taille non acceptée).
+                </p>
+                <div className="mt-4 grid grid-cols-3 gap-3">
+                  {(Object.keys(DOG_SIZE_LABELS) as DogSize[]).map((size) => {
+                    const current = profile.maxDogsBySize?.[size] ?? (profile.dogSizes[size] ? 1 : 0);
+                    const subLabel = size === "Petit" ? "< 10 kg" : size === "Moyen" ? "10–25 kg" : "> 25 kg";
+                    const active = current > 0;
+                    return (
+                      <div
+                        key={size}
+                        className={`flex flex-col items-center gap-2 rounded-2xl border p-4 transition ${
+                          active
+                            ? "border-[var(--dogshift-blue)] bg-[color-mix(in_srgb,var(--dogshift-blue),white_94%)]"
+                            : "border-slate-200 bg-white"
+                        }`}
+                      >
+                        <p className={`text-sm font-semibold ${active ? "text-[var(--dogshift-blue)]" : "text-slate-700"}`}>{DOG_SIZE_LABELS[size]}</p>
+                        <p className="text-xs text-slate-400">{subLabel}</p>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            aria-label={`Diminuer ${size}`}
+                            disabled={current <= 0}
+                            onClick={() => {
+                              const next = Math.max(0, current - 1);
+                              setProfile((p) => ({
+                                ...p,
+                                maxDogsBySize: { Petit: 0, Moyen: 0, Grand: 0, ...p.maxDogsBySize, [size]: next },
+                                dogSizes: { ...p.dogSizes, [size]: next > 0 },
+                              }));
+                            }}
+                            className="flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 text-sm text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 disabled:opacity-30"
+                          >
+                            −
+                          </button>
+                          <span className={`min-w-[1.5rem] text-center text-base font-bold ${active ? "text-[var(--dogshift-blue)]" : "text-slate-400"}`}>
+                            {current}
+                          </span>
+                          <button
+                            type="button"
+                            aria-label={`Augmenter ${size}`}
+                            disabled={current >= 5}
+                            onClick={() => {
+                              const next = Math.min(5, current + 1);
+                              setProfile((p) => ({
+                                ...p,
+                                maxDogsBySize: { Petit: 0, Moyen: 0, Grand: 0, ...p.maxDogsBySize, [size]: next },
+                                dogSizes: { ...p.dogSizes, [size]: next > 0 },
+                              }));
+                            }}
+                            className="flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 text-sm text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 disabled:opacity-30"
+                          >
+                            +
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
 
                 {profile.services.Pension ? (

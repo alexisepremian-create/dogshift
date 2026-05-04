@@ -47,6 +47,7 @@ type SitterCard = {
   pricePerDay: number;
   services: string[];
   dogSizes: string[];
+  maxDogsBySize?: Record<string, number>;
   availableDates: string[];
   pricing: PricingMap;
   bio: string;
@@ -455,8 +456,17 @@ function SitterPublicProfileContent({
     const pricePerDay = pension ?? (hourlyCandidates.length ? Math.min(...hourlyCandidates) : 0);
 
     const dogSizesRaw = profile.dogSizes && typeof profile.dogSizes === "object" ? profile.dogSizes : {};
+    const maxDogsBySizeRaw =
+      profile.maxDogsBySize && typeof profile.maxDogsBySize === "object"
+        ? (profile.maxDogsBySize as Record<string, unknown>)
+        : null;
+    const maxDogsBySize = maxDogsBySizeRaw
+      ? Object.fromEntries(
+          DOG_SIZE_ORDER.map((s) => [s, typeof maxDogsBySizeRaw[s] === "number" ? (maxDogsBySizeRaw[s] as number) : 0])
+        )
+      : undefined;
     const enabledDogSizes = DOG_SIZE_ORDER.filter((size) =>
-      Boolean((dogSizesRaw as Record<string, unknown>)[size])
+      maxDogsBySize ? (maxDogsBySize[size] ?? 0) > 0 : Boolean((dogSizesRaw as Record<string, unknown>)[size])
     );
 
     const bd = profile.boardingDetails;
@@ -479,6 +489,7 @@ function SitterPublicProfileContent({
       pricePerDay,
       services: enabledServices ?? [],
       dogSizes: enabledDogSizes,
+      maxDogsBySize,
       availableDates: [],
       pricing: safePricingMap(pricing),
       bio: profile.bio ?? "",
@@ -2355,23 +2366,29 @@ function SitterPublicProfileContent({
                       </div>
                       {dogSizeBadges.length > 0 ? (
                         <div className="mt-4 border-t border-slate-200/70 pt-3.5 text-left">
-                          <p className="text-sm text-slate-600">Tailles acceptées</p>
+                          <p className="text-sm text-slate-600">Chiens acceptés</p>
                           <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-[13px] font-medium leading-none text-slate-700">
-                            {dogSizeBadges.map((size) => (
-                              <span key={size} className="inline-flex items-center gap-1.5 whitespace-nowrap">
-                                <DogSizeIcon
-                                  size={size}
-                                  className={
-                                    size === "Petit"
-                                      ? "h-5 w-5 text-[var(--dogshift-blue)]"
-                                      : size === "Moyen"
-                                        ? "h-[22px] w-[22px] text-[var(--dogshift-blue)]"
-                                        : "h-6 w-6 text-[var(--dogshift-blue)]"
-                                  }
-                                />
-                                <span>{size}</span>
-                              </span>
-                            ))}
+                            {dogSizeBadges.map((size) => {
+                              const maxForSize = sitter.maxDogsBySize?.[size];
+                              return (
+                                <span key={size} className="inline-flex items-center gap-1.5 whitespace-nowrap">
+                                  <DogSizeIcon
+                                    size={size}
+                                    className={
+                                      size === "Petit"
+                                        ? "h-5 w-5 text-[var(--dogshift-blue)]"
+                                        : size === "Moyen"
+                                          ? "h-[22px] w-[22px] text-[var(--dogshift-blue)]"
+                                          : "h-6 w-6 text-[var(--dogshift-blue)]"
+                                    }
+                                  />
+                                  <span>
+                                    {size}
+                                    {maxForSize && maxForSize > 0 ? ` (max. ${maxForSize})` : ""}
+                                  </span>
+                                </span>
+                              );
+                            })}
                           </div>
                         </div>
                       ) : null}
