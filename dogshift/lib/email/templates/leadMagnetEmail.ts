@@ -141,7 +141,7 @@ export function renderLeadMagnetEmail(params: { baseUrl: string }) {
                       Le conseil DogShift
                     </div>
                     <div style="font-family:Georgia,'Times New Roman',serif;font-size:15px;line-height:24px;color:#1e1b4b;">
-                      Un sitter DogShift est vérifié manuellement, assuré, et formé aux urgences vétérinaires. Confiez Max à quelqu&apos;un en qui vous pouvez vraiment avoir confiance.
+                      Un sitter DogShift est vérifié manuellement, assuré, et formé aux urgences vétérinaires. Confiez votre chien à quelqu&apos;un en qui vous pouvez vraiment avoir confiance.
                     </div>
                   </td>
                 </tr>
@@ -163,7 +163,7 @@ export function renderLeadMagnetEmail(params: { baseUrl: string }) {
                         Parce qu&apos;il le mérite.
                       </div>
                       <div style="font-family:Georgia,'Times New Roman',serif;font-size:22px;font-weight:700;line-height:30px;color:#ffffff;max-width:340px;">
-                        Confier, c&apos;est aussi<br />faire confiance.
+                        Votre chien mérite<br />quelqu&apos;un de confiance.
                       </div>
                       <div style="font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:20px;color:#ddd6fe;margin-top:10px;max-width:340px;">
                         Chaque sitter DogShift est sélectionné avec soin — pour que vous partiez l&apos;esprit tranquille.

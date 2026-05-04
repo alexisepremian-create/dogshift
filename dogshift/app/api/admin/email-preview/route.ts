@@ -11,6 +11,11 @@ import { renderLeadMagnetEmail } from "@/lib/email/templates/leadMagnetEmail";
 import { renderZootherapieEmail } from "@/lib/email/templates/zootherapieEmail";
 import { renderEmailLayout } from "@/lib/email/templates/layout";
 import { buildTravelMapUrl } from "@/lib/travel/staticMap";
+import {
+  renderNurturingStep1,
+  renderNurturingStep2,
+  renderNurturingStep3,
+} from "@/lib/email/templates/leadNurturingEmail";
 
 export const runtime = "nodejs";
 
@@ -387,6 +392,24 @@ export async function GET(req: NextRequest) {
         ctaUrl: `${BASE_URL}/account/bookings/bk_preview_demo_2026/review`,
         footerText: "Votre avis aide la communauté DogShift.",
       }).html;
+      break;
+    }
+
+    case "nurturing-step1": {
+      subject = "Avez-vous eu le temps de lire votre guide ? 🐾";
+      html = renderNurturingStep1({ baseUrl: BASE_URL, prenom: "Sophie" }).html;
+      break;
+    }
+
+    case "nurturing-step2": {
+      subject = "Ce que disent les autres propriétaires de DogShift";
+      html = renderNurturingStep2({ baseUrl: BASE_URL, prenom: "Sophie" }).html;
+      break;
+    }
+
+    case "nurturing-step3": {
+      subject = "Votre chien mérite le meilleur sitter 🐾";
+      html = renderNurturingStep3({ baseUrl: BASE_URL, prenom: "Sophie" }).html;
       break;
     }
 

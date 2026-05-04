@@ -85,6 +85,27 @@ const CATEGORIES: EmailCategory[] = [
         description: "Email automatique envoyé après capture du lead magnet sur le site",
       },
       {
+        id: "nurturing-step1",
+        label: "Nurturing J+1 — Rappel guide",
+        description: "Séquence nurturing : envoyé 1 jour après la capture, rappel du guide + sitters",
+        badge: "J+1",
+        badgeColor: "bg-violet-100 text-violet-700",
+      },
+      {
+        id: "nurturing-step2",
+        label: "Nurturing J+3 — Preuve sociale",
+        description: "Séquence nurturing : envoyé 3 jours après la capture, avis clients + comment ça marche",
+        badge: "J+3",
+        badgeColor: "bg-violet-100 text-violet-700",
+      },
+      {
+        id: "nurturing-step3",
+        label: "Nurturing J+7 — Dernier email",
+        description: "Séquence nurturing : envoyé 7 jours après la capture, services + CTA fort",
+        badge: "J+7",
+        badgeColor: "bg-violet-100 text-violet-700",
+      },
+      {
         id: "zootherapie",
         label: "Évaluation zoothérapie",
         description: "Rapport bien-être personnalisé généré par l'agent IA zoothérapie",
