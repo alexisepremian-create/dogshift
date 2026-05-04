@@ -913,11 +913,17 @@ model AgentTask {
 }
 
 model LeadMagnet {
-  id         String   @id @default(cuid())
-  email      String   @unique
-  prenom     String?
-  source     String   @default("homepage_banner")
-  capturedAt DateTime @default(now())
+  id               String    @id @default(cuid())
+  email            String    @unique
+  prenom           String?
+  source           String    @default("homepage_banner")
+  capturedAt       DateTime  @default(now())
+  nurturingStep    Int       @default(0)
+  lastNurturingAt  DateTime?
+  unsubscribed     Boolean   @default(false)
+
+  @@index([nurturingStep, capturedAt])
+  @@index([nurturingStep, lastNurturingAt])
 }
 
 model ScheduledEmail {
