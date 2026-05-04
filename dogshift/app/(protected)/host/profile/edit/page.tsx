@@ -65,6 +65,7 @@ export default function HostProfileEditPage() {
   const presentationTipsRef = useRef<HTMLDivElement | null>(null);
 
   const [pensionVerifStatus, setPensionVerifStatus] = useState<string>("not_submitted");
+  const [hasPension, setHasPension] = useState(false);
   const [pensionPhotoKeys, setPensionPhotoKeys] = useState<string[]>([]);
   const [pensionSubmitting, setPensionSubmitting] = useState(false);
   const [pensionUploadingCount, setPensionUploadingCount] = useState(0);
@@ -160,6 +161,7 @@ export default function HostProfileEditPage() {
       const data = await res.json();
       if (data.ok) {
         setPensionVerifStatus(data.status ?? "not_submitted");
+        setHasPension(Boolean(data.hasPension));
       }
     } catch { /* ignore */ }
   }
@@ -657,7 +659,7 @@ export default function HostProfileEditPage() {
                   })}
                 </div>
 
-                {profile.services.Pension ? (
+                {hasPension ? (
                   <>
                   {/* Pension verification banner */}
                   <div className={`mt-4 rounded-2xl border p-4 ${
