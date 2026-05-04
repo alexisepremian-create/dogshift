@@ -1,8 +1,10 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import type { NextRequest } from "next/server";
 
 import { prisma } from "@/lib/prisma";
 import { sendEmail } from "@/lib/email/sendEmail";
 import { renderEmailLayout, type EmailSummaryRow } from "@/lib/email/templates/layout";
+import { buildTravelMapUrl } from "@/lib/travel/staticMap";
 import {
   hasNotificationAlreadySent,
   markNotificationSent,
@@ -118,26 +120,135 @@ function formatDateTime(value: unknown) {
   }
 }
 
-async function resolveBookingSummaryRows(bookingId: string): Promise<EmailSummaryRow[]> {
+type TravelEmailData = {
+  mapUrl: string;
+  distanceKm: number;
+  feeCents: number;
+} | null;
+
+async function resolveBookingEmailData(bookingId: string): Promise<{
+  rows: EmailSummaryRow[];
+  travel: TravelEmailData;
+}> {
   const booking = await (prisma as any).booking.findUnique({
     where: { id: bookingId },
-    select: { id: true, service: true, startDate: true, endDate: true, amount: true, currency: true },
+    select: {
+      id: true,
+      service: true,
+      startDate: true,
+      endDate: true,
+      amount: true,
+      currency: true,
+      sitterId: true,
+      locationMode: true,
+      travelDistanceKm: true,
+      travelFeeAmount: true,
+      ownerLat: true,
+      ownerLng: true,
+    },
   });
-  if (!booking) return [{ label: "Référence", value: bookingId }];
+
+  if (!booking) return { rows: [{ label: "Référence", value: bookingId }], travel: null };
 
   const rows: EmailSummaryRow[] = [];
   const service = typeof booking.service === "string" && booking.service.trim() ? booking.service.trim() : "";
   const start = formatDateTime(booking.startDate);
   const end = formatDateTime(booking.endDate);
-  const amount = formatMoney(booking.amount, booking.currency);
+  const currency = typeof booking.currency === "string" ? booking.currency : "CHF";
+
+  const travelFee =
+    typeof booking.travelFeeAmount === "number" && Number.isFinite(booking.travelFeeAmount)
+      ? booking.travelFeeAmount
+      : 0;
+  const serviceSubtotal =
+    typeof booking.amount === "number" && Number.isFinite(booking.amount) ? booking.amount - travelFee : null;
+  const totalAmount = typeof booking.amount === "number" && Number.isFinite(booking.amount) ? booking.amount : null;
 
   if (service) rows.push({ label: "Service", value: service });
   if (start) rows.push({ label: "Début", value: start });
   if (end) rows.push({ label: "Fin", value: end });
-  if (amount) rows.push({ label: "Montant", value: amount });
+
+  if (booking.locationMode === "AT_OWNER" && travelFee > 0 && serviceSubtotal !== null) {
+    rows.push({ label: "Sous-total service", value: formatMoney(serviceSubtotal, currency) });
+    rows.push({ label: "Frais de déplacement", value: formatMoney(travelFee, currency) });
+  }
+  if (totalAmount !== null) rows.push({ label: "Total", value: formatMoney(totalAmount, currency) });
   rows.push({ label: "Référence", value: String(booking.id) });
 
+  // Build static map if travel booking with both sets of coordinates
+  let travel: TravelEmailData = null;
+  if (
+    booking.locationMode === "AT_OWNER" &&
+    typeof booking.ownerLat === "number" &&
+    typeof booking.ownerLng === "number" &&
+    booking.sitterId
+  ) {
+    try {
+      const sitterProfile = await (prisma as any).sitterProfile.findUnique({
+        where: { sitterId: booking.sitterId },
+        select: { lat: true, lng: true },
+      });
+      if (
+        sitterProfile &&
+        typeof sitterProfile.lat === "number" &&
+        typeof sitterProfile.lng === "number"
+      ) {
+        const mapUrl = buildTravelMapUrl({
+          sitterLat: sitterProfile.lat,
+          sitterLng: sitterProfile.lng,
+          ownerLat: booking.ownerLat,
+          ownerLng: booking.ownerLng,
+        });
+        const distanceKm =
+          typeof booking.travelDistanceKm === "number" && Number.isFinite(booking.travelDistanceKm)
+            ? booking.travelDistanceKm
+            : 0;
+        if (mapUrl) {
+          travel = { mapUrl, distanceKm, feeCents: travelFee };
+        }
+      }
+    } catch {
+      // non-critical — email sends without map
+    }
+  }
+
+  return { rows, travel };
+}
+
+async function resolveBookingSummaryRows(bookingId: string): Promise<EmailSummaryRow[]> {
+  const { rows } = await resolveBookingEmailData(bookingId);
   return rows;
+}
+
+function buildTravelMapExtraHtml(travel: TravelEmailData): string {
+  if (!travel?.mapUrl) return "";
+  const distStr = travel.distanceKm.toFixed(1);
+  const feeStr = `CHF ${(travel.feeCents / 100).toFixed(2)}`;
+  return `
+    <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;margin-top:16px;">
+      <tr>
+        <td style="border-radius:12px;overflow:hidden;border:1px solid #e0e7ff;">
+          <img
+            src="${travel.mapUrl}"
+            alt="Carte du trajet"
+            width="516"
+            style="display:block;width:100%;max-width:516px;height:auto;border-radius:12px 12px 0 0;"
+          />
+          <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;background:#f5f3ff;border-top:1px solid #e0e7ff;">
+            <tr>
+              <td style="padding:10px 14px;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#374151;">
+                <span style="color:#4f46e5;font-weight:700;">&#x1F4CD; ${distStr} km</span>
+                &nbsp;&nbsp;•&nbsp;&nbsp;
+                <span style="color:#059669;font-weight:700;">Frais : ${feeStr}</span>
+                &nbsp;&nbsp;•&nbsp;&nbsp;
+                <span style="color:#6b7280;">Le sitter se déplace chez vous</span>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  `;
 }
 
 export type NotificationPayload =
@@ -221,96 +332,173 @@ export async function sendNotificationEmail(params: {
       case "newMessage": {
         const url = baseUrl ? `${baseUrl}/account/messages?conversationId=${encodeURIComponent(payload.conversationId)}` : "";
         return (
-          `Bonjour,\n\n` +
-          `Vous avez reçu un nouveau message sur DogShift.\n\n` +
-          (url ? `Voir la conversation : ${url}\n\n` : "") +
-          `— DogShift\n`
+          `Bonjour,
+
+` +
+          `Vous avez reçu un nouveau message sur DogShift.
+
+` +
+          (url ? `Voir la conversation : ${url}
+
+` : "") +
+          `— DogShift
+`
         );
       }
       case "bookingRequest": {
         const url = bookingUrl(payload.bookingId, "host");
         return (
-          `Bonjour,\n\n` +
-          `Tu as reçu une nouvelle demande de réservation.\n\n` +
-          (url ? `Voir la demande : ${url}\n\n` : "") +
-          `— DogShift\n`
+          `Bonjour,
+
+` +
+          `Tu as reçu une nouvelle demande de réservation.
+
+` +
+          (url ? `Voir la demande : ${url}
+
+` : "") +
+          `— DogShift
+`
         );
       }
       case "bookingConfirmed": {
         const url = bookingUrl(payload.bookingId, "account");
         return (
-          `Bonjour,\n\n` +
-          `Ta réservation a été confirmée.\n\n` +
-          (url ? `Voir la réservation : ${url}\n\n` : "") +
-          `— DogShift\n`
+          `Bonjour,
+
+` +
+          `Ta réservation a été confirmée.
+
+` +
+          (url ? `Voir la réservation : ${url}
+
+` : "") +
+          `— DogShift
+`
         );
       }
       case "paymentReceived": {
         const url = bookingUrl(payload.bookingId, "account");
         return (
-          `Bonjour,\n\n` +
-          `Le paiement a bien été reçu.\n\n` +
-          (url ? `Voir les détails : ${url}\n\n` : "") +
-          `— DogShift\n`
+          `Bonjour,
+
+` +
+          `Le paiement a bien été reçu.
+
+` +
+          (url ? `Voir les détails : ${url}
+
+` : "") +
+          `— DogShift
+`
         );
       }
       case "bookingReminder": {
         const url = bookingUrl(payload.bookingId, "account");
         return (
-          `Bonjour,\n\n` +
-          `Petit rappel : une réservation approche (${payload.startsAtIso}).\n\n` +
-          (url ? `Voir la réservation : ${url}\n\n` : "") +
-          `— DogShift\n`
+          `Bonjour,
+
+` +
+          `Petit rappel : une réservation approche (${payload.startsAtIso}).
+
+` +
+          (url ? `Voir la réservation : ${url}
+
+` : "") +
+          `— DogShift
+`
         );
       }
       case "bookingCancelled": {
         const url = bookingUrl(payload.bookingId, payload.dashboard);
         return (
-          `Bonjour,\n\n` +
-          `Une réservation a été annulée.\n\n` +
-          (url ? `Voir la réservation : ${url}\n\n` : "") +
-          `— DogShift\n`
+          `Bonjour,
+
+` +
+          `Une réservation a été annulée.
+
+` +
+          (url ? `Voir la réservation : ${url}
+
+` : "") +
+          `— DogShift
+`
         );
       }
       case "bookingRefunded": {
         const url = bookingUrl(payload.bookingId, payload.dashboard);
         if (payload.dashboard === "host") {
           return (
-            `Bonjour,\n\n` +
-            `Une réservation a été annulée.\n` +
-            `Le remboursement du propriétaire a été traité conformément aux conditions applicables.\n\n` +
-            (url ? `Voir les détails de la réservation : ${url}\n\n` : "") +
-            `— DogShift\n`
+            `Bonjour,
+
+` +
+            `Une réservation a été annulée.
+` +
+            `Le remboursement du propriétaire a été traité conformément aux conditions applicables.
+
+` +
+            (url ? `Voir les détails de la réservation : ${url}
+
+` : "") +
+            `— DogShift
+`
           );
         }
         return (
-          `Bonjour,\n\n` +
-          `Un remboursement a été effectué pour une réservation.\n\n` +
-          (url ? `Voir la réservation : ${url}\n\n` : "") +
-          `— DogShift\n`
+          `Bonjour,
+
+` +
+          `Un remboursement a été effectué pour une réservation.
+
+` +
+          (url ? `Voir la réservation : ${url}
+
+` : "") +
+          `— DogShift
+`
         );
       }
       case "bookingAutoExpiredRefunded": {
         const url = bookingUrl(payload.bookingId, "account");
         return (
-          `Bonjour,\n\n` +
-          `La réservation n’a pas été acceptée à temps par le dogsitter.\n` +
-          `Comme le début du service approche à moins de ${payload.deadlineHours}h, la réservation a été annulée automatiquement et le remboursement a été déclenché.\n\n` +
-          (url ? `Voir la réservation : ${url}\n\n` : "") +
-          `— DogShift\n`
+          `Bonjour,
+
+` +
+          `La réservation n’a pas été acceptée à temps par le dogsitter.
+` +
+          `Comme le début du service approche à moins de ${payload.deadlineHours}h, la réservation a été annulée automatiquement et le remboursement a été déclenché.
+
+` +
+          (url ? `Voir la réservation : ${url}
+
+` : "") +
+          `— DogShift
+`
         );
       }
       case "bookingRefundFailed": {
         const url = bookingUrl(payload.bookingId, payload.dashboard);
         return (
-          `Bonjour,\n\n` +
-          `Le remboursement d’une réservation a échoué.\n\n` +
-          (url ? `Voir la réservation : ${url}\n\n` : "") +
-          `— DogShift\n`
+          `Bonjour,
+
+` +
+          `Le remboursement d’une réservation a échoué.
+
+` +
+          (url ? `Voir la réservation : ${url}
+
+` : "") +
+          `— DogShift
+`
         );
       }
       default:
-        return `Bonjour,\n\nNotification DogShift.\n\n— DogShift\n`;
+        return `Bonjour,
+
+Notification DogShift.
+
+— DogShift
+`;
     }
   })();
 
@@ -357,24 +545,26 @@ export async function sendNotificationEmail(params: {
       }
       case "bookingConfirmed": {
         const url = bookingUrl(payload.bookingId, "account");
-        const rows = await resolveBookingSummaryRows(payload.bookingId);
+        const { rows, travel } = await resolveBookingEmailData(payload.bookingId);
         return renderEmailLayout({
           logoUrl,
           title: "Réservation confirmée",
           subtitle: "Ta réservation a été confirmée.",
           summaryRows: rows,
+          extraHtml: buildTravelMapExtraHtml(travel),
           ctaLabel: url ? "Voir la réservation" : undefined,
           ctaUrl: url || undefined,
         }).html;
       }
       case "paymentReceived": {
         const url = bookingUrl(payload.bookingId, "account");
-        const rows = await resolveBookingSummaryRows(payload.bookingId);
+        const { rows, travel } = await resolveBookingEmailData(payload.bookingId);
         return renderEmailLayout({
           logoUrl,
           title: "Paiement reçu",
           subtitle: "Le paiement a bien été reçu.",
           summaryRows: rows,
+          extraHtml: buildTravelMapExtraHtml(travel),
           ctaLabel: url ? "Voir la réservation" : undefined,
           ctaUrl: url || undefined,
         }).html;

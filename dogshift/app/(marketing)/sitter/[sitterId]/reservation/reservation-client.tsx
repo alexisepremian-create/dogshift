@@ -1,9 +1,13 @@
+ 
+/* eslint-disable @next/next/no-img-element */
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable react-hooks/exhaustive-deps */
 "use client";
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Calendar, ChevronLeft, ChevronRight } from "lucide-react";
+import { Calendar, ChevronLeft, ChevronRight, Home, MapPin } from "lucide-react";
 
 import { useMaintenance } from "@/components/platform/MaintenanceProvider";
 import { maintenanceBookingUserMessage } from "@/lib/platform/maintenanceConstants";
@@ -60,6 +64,18 @@ type DayStatusRow = {
   pensionStatus: ServiceDayStatus;
 };
 
+const TRAVEL_RATE_CHF_PER_KM = 0.66;
+const MAX_TRAVEL_RADIUS_KM = 15;
+
+function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number) {
+  const R = 6371;
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(a));
+}
+
 type SitterDto = {
   sitterId: string;
   name: string;
@@ -69,6 +85,9 @@ type SitterDto = {
   avatarUrl: string;
   services: string[];
   pricing: Record<string, unknown>;
+  lat?: number | null;
+  lng?: number | null;
+  hasAddress?: boolean;
 };
 
 const PRIMARY_BTN =
@@ -794,6 +813,12 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
   const [durationHours, setDurationHours] = useState<number | null>(null);
   const [message, setMessage] = useState("");
 
+  const [locationMode, setLocationMode] = useState<"AT_SITTER" | "AT_OWNER">("AT_SITTER");
+  const [ownerAddress, setOwnerAddress] = useState("");
+  const [geocodingAddress, setGeocodingAddress] = useState(false);
+  const [travelPreview, setTravelPreview] = useState<{ distanceKm: number; feeCents: number; feeChf: number } | null>(null);
+  const [travelError, setTravelError] = useState<string | null>(null);
+
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedDateDayStatus, setSelectedDateDayStatus] = useState<DayStatusRow | null>(null);
@@ -809,6 +834,71 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
   const [lastMinuteEnabled, setLastMinuteEnabled] = useState<boolean | null>(null);
   const [durationSlotMap, setDurationSlotMap] = useState<Record<number, HourlySlot[]>>({});
   const [durationSlotsLoading, setDurationSlotsLoading] = useState(false);
+
+  // Geocode owner address and compute travel preview
+  useEffect(() => {
+    if (locationMode !== "AT_OWNER" || !ownerAddress.trim() || !sitter.hasAddress) {
+      setTravelPreview(null);
+      setTravelError(null);
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      let cancelled = false;
+      setGeocodingAddress(true);
+      setTravelPreview(null);
+      setTravelError(null);
+
+      void (async () => {
+        try {
+          const apiKey = process.env.NEXT_PUBLIC_MAPTILER_KEY ?? "";
+          if (!apiKey) return;
+
+          const q = encodeURIComponent(ownerAddress.trim());
+          const res = await fetch(
+            `https://api.maptiler.com/geocoding/${q}.json?key=${apiKey}&language=fr&country=ch&limit=1`
+          );
+          if (cancelled) return;
+          if (!res.ok) return;
+
+          const data = (await res.json()) as {
+            features?: Array<{ geometry?: { coordinates?: [number, number] } }>;
+          };
+          const feature = data.features?.[0];
+          if (!feature?.geometry?.coordinates) return;
+          const [ownerLng, ownerLat] = feature.geometry.coordinates;
+
+          if (!Number.isFinite(ownerLat) || !Number.isFinite(ownerLng)) return;
+          if (cancelled) return;
+
+          if (!sitter.lat || !sitter.lng) return;
+
+          const distanceKm = haversineKm(sitter.lat, sitter.lng, ownerLat, ownerLng);
+
+          if (distanceKm > MAX_TRAVEL_RADIUS_KM) {
+            setTravelError(
+              `Ce sitter ne se déplace pas jusqu'à votre adresse (${distanceKm.toFixed(1)} km, max. 15 km).`
+            );
+            setTravelPreview(null);
+            return;
+          }
+
+          const feeChf = Math.round(distanceKm * TRAVEL_RATE_CHF_PER_KM * 100) / 100;
+          const feeCents = Math.round(feeChf * 100);
+          setTravelPreview({ distanceKm, feeCents, feeChf });
+          setTravelError(null);
+        } catch {
+          // silent — user will see error at submit
+        } finally {
+          if (!cancelled) setGeocodingAddress(false);
+        }
+      })();
+
+      return () => { cancelled = true; };
+    }, 700);
+
+    return () => clearTimeout(timer);
+  }, [locationMode, ownerAddress, sitter.hasAddress, sitter.lat, sitter.lng]);
 
   const todayIso = useMemo(() => todayZurichIsoDate(), []);
   const now = useMemo(() => new Date(), [dateStart]);
@@ -1025,17 +1115,28 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
   const summary = useMemo(() => {
     if (!selectedService || !unit || !selectedUnitPrice) return null;
 
+    let subtotal: number;
+    let quantityLabel: string;
+    let unitLabel: string;
+
     if (unit === "DAILY") {
       if (!dateStart || !dateEnd) return null;
       const days = daysBetweenInclusive(dateStart, dateEnd);
-      const subtotal = selectedUnitPrice * days;
-      return { unit, quantityLabel: `${days} jour${days > 1 ? "s" : ""}`, unitLabel: "CHF / jour", subtotal };
+      subtotal = selectedUnitPrice * days;
+      quantityLabel = `${days} jour${days > 1 ? "s" : ""}`;
+      unitLabel = "CHF / jour";
+    } else {
+      if (!durationHours) return null;
+      subtotal = selectedUnitPrice * durationHours;
+      quantityLabel = `${durationHours} h`;
+      unitLabel = "CHF / heure";
     }
 
-    if (!durationHours) return null;
-    const subtotal = selectedUnitPrice * durationHours;
-    return { unit, quantityLabel: `${durationHours} h`, unitLabel: "CHF / heure", subtotal };
-  }, [dateEnd, dateStart, durationHours, selectedService, selectedUnitPrice, unit]);
+    const travelFeeChf = locationMode === "AT_OWNER" && travelPreview ? travelPreview.feeChf : 0;
+    const total = subtotal + travelFeeChf;
+
+    return { unit, quantityLabel, unitLabel, subtotal, travelFeeChf, total };
+  }, [dateEnd, dateStart, durationHours, locationMode, selectedService, selectedUnitPrice, travelPreview, unit]);
 
   const getCalendarDayStatus = useMemo(() => {
     return (iso: string): ServiceDayStatus => {
@@ -1440,17 +1541,28 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
   const canSubmit = useMemo(() => {
     if (maintenanceMode) return false;
     if (!selectedService || !unit) return false;
+    if (locationMode === "AT_OWNER") {
+      if (!ownerAddress.trim()) return false;
+      if (travelError) return false;
+      if (geocodingAddress) return false;
+      if (!travelPreview) return false;
+    }
     if (unit === "DAILY") return Boolean(dateStart && dateEnd && selectedUnitPrice);
     return Boolean(dateStart && startTime && durationHours && selectedUnitPrice && selectedHourlySlot);
   }, [
     dateEnd,
     dateStart,
     durationHours,
+    geocodingAddress,
+    locationMode,
     maintenanceMode,
+    ownerAddress,
     selectedHourlySlot,
     selectedService,
     selectedUnitPrice,
     startTime,
+    travelError,
+    travelPreview,
     unit,
   ]);
 
@@ -1621,6 +1733,8 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
         sitterId: sitter.sitterId,
         service: selectedService,
         message: message.trim() || null,
+        locationMode,
+        ownerAddress: locationMode === "AT_OWNER" ? ownerAddress.trim() : null,
       };
 
       if (unit === "DAILY") {
@@ -1885,6 +1999,88 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
               </div>
             ) : null}
 
+            {/* Lieu de garde */}
+            <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.12)] sm:p-8">
+              <p className="text-sm font-semibold text-slate-900">Lieu de garde</p>
+              <p className="mt-1 text-sm text-slate-600">Où se déroulera la prestation ?</p>
+
+              <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={locationMode === "AT_SITTER"}
+                  onClick={() => { setLocationMode("AT_SITTER"); setTravelPreview(null); setTravelError(null); }}
+                  className={
+                    locationMode === "AT_SITTER"
+                      ? "flex items-center gap-3 rounded-2xl border border-[var(--dogshift-blue)] bg-[color-mix(in_srgb,var(--dogshift-blue),white_92%)] px-4 py-3 text-left text-sm font-semibold text-[var(--dogshift-blue)]"
+                      : "flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left text-sm font-semibold text-slate-900 transition hover:bg-slate-50"
+                  }
+                >
+                  <MapPin className="h-5 w-5 shrink-0" aria-hidden="true" />
+                  <div>
+                    <p>Chez le sitter</p>
+                    <p className="text-xs font-normal opacity-70">Vous vous déplacez — sans frais</p>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={locationMode === "AT_OWNER"}
+                  disabled={!sitter.hasAddress}
+                  onClick={() => { if (sitter.hasAddress) setLocationMode("AT_OWNER"); }}
+                  title={!sitter.hasAddress ? "Ce sitter n'a pas encore renseigné son adresse" : undefined}
+                  className={
+                    locationMode === "AT_OWNER"
+                      ? "flex items-center gap-3 rounded-2xl border border-[var(--dogshift-blue)] bg-[color-mix(in_srgb,var(--dogshift-blue),white_92%)] px-4 py-3 text-left text-sm font-semibold text-[var(--dogshift-blue)]"
+                      : sitter.hasAddress
+                        ? "flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left text-sm font-semibold text-slate-900 transition hover:bg-slate-50"
+                        : "flex cursor-not-allowed items-center gap-3 rounded-2xl border border-slate-200 bg-slate-100 px-4 py-3 text-left text-sm font-semibold text-slate-400"
+                  }
+                >
+                  <Home className="h-5 w-5 shrink-0" aria-hidden="true" />
+                  <div>
+                    <p>Chez moi</p>
+                    <p className="text-xs font-normal opacity-70">
+                      {sitter.hasAddress ? `${TRAVEL_RATE_CHF_PER_KM} CHF/km · max. ${MAX_TRAVEL_RADIUS_KM} km` : "Adresse du sitter manquante"}
+                    </p>
+                  </div>
+                </button>
+              </div>
+
+              {locationMode === "AT_OWNER" && (
+                <div className="mt-4">
+                  <label className="block text-xs font-semibold text-slate-600" htmlFor="owner_address">
+                    Votre adresse
+                  </label>
+                  <div className="relative mt-2">
+                    <input
+                      id="owner_address"
+                      value={ownerAddress}
+                      onChange={(e) => setOwnerAddress(e.target.value)}
+                      placeholder="ex. Rue du Rhône 12, 1204 Genève"
+                      autoComplete="street-address"
+                      className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition focus:border-[var(--dogshift-blue)] focus:ring-4 focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_85%)]"
+                    />
+                    {geocodingAddress && (
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-indigo-500 border-t-transparent" />
+                      </div>
+                    )}
+                  </div>
+                  {travelError && (
+                    <p className="mt-2 text-sm font-medium text-rose-600">{travelError}</p>
+                  )}
+                  {travelPreview && !travelError && (
+                    <p className="mt-2 text-sm text-emerald-700">
+                      ✓ {travelPreview.distanceKm.toFixed(1)} km · frais de déplacement :{" "}
+                      <span className="font-semibold">CHF {travelPreview.feeChf.toFixed(2)}</span>
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+
             <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.12)] sm:p-8">
               <p className="text-sm font-semibold text-slate-900">Message (optionnel)</p>
               <textarea
@@ -1914,13 +2110,29 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
                   <p className="text-slate-600">Unité</p>
                   <p className="text-right font-semibold text-slate-900">{summary?.unitLabel ?? "—"}</p>
                 </div>
-                <div className="mt-4 border-t border-slate-200 pt-4">
+                <div className="mt-4 border-t border-slate-200 pt-4 space-y-2">
                   <div className="flex items-start justify-between gap-6 text-sm">
                     <p className="text-slate-600">Sous-total</p>
                     <p className="text-right font-semibold text-slate-900">
-                      {summary ? `CHF ${summary.subtotal.toFixed(0)}` : "—"}
+                      {summary ? `CHF ${summary.subtotal.toFixed(2)}` : "—"}
                     </p>
                   </div>
+                  {summary && summary.travelFeeChf > 0 ? (
+                    <div className="flex items-start justify-between gap-6 text-sm">
+                      <p className="text-slate-600">Déplacement</p>
+                      <p className="text-right font-semibold text-slate-900">
+                        CHF {summary.travelFeeChf.toFixed(2)}
+                      </p>
+                    </div>
+                  ) : null}
+                  {summary && summary.travelFeeChf > 0 ? (
+                    <div className="flex items-start justify-between gap-6 border-t border-slate-200 pt-2 text-sm">
+                      <p className="font-semibold text-slate-900">Total</p>
+                      <p className="text-right font-semibold text-slate-900">
+                        CHF {summary.total.toFixed(2)}
+                      </p>
+                    </div>
+                  ) : null}
                 </div>
               </div>
 
@@ -1958,7 +2170,7 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
       <div className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white p-4 pb-safe shadow-[0_-8px_30px_-15px_rgba(0,0,0,0.1)] lg:hidden">
         <div className="mx-auto flex max-w-5xl items-center justify-between gap-4">
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold text-slate-900">Total : CHF {summary ? summary.subtotal.toFixed(0) : "—"}</p>
+            <p className="truncate text-sm font-semibold text-slate-900">Total : CHF {summary ? summary.total.toFixed(2) : "—"}</p>
             <p className="truncate text-xs text-slate-600">
               {summary?.quantityLabel || "Service à définir"}
             </p>

@@ -19,6 +19,8 @@ export type HostProfileV1 = {
   firstName: string;
   city: string;
   postalCode: string;
+  /** Full street address for travel-to-owner bookings. Geocoded server-side to lat/lng. */
+  address?: string;
   /** Served avatar path after R2 upload (same-origin). Prefer over large avatarDataUrl. */
   avatarUrl?: string;
   avatarDataUrl?: string;
@@ -141,6 +143,7 @@ export function loadHostProfileFromStorage(sitterId: string): HostProfileV1 | nu
     firstName: typeof p.firstName === "string" ? p.firstName : "",
     city: typeof p.city === "string" ? p.city : "",
     postalCode: typeof p.postalCode === "string" ? p.postalCode : "",
+    address: typeof p.address === "string" && p.address.trim() ? p.address.trim() : undefined,
     avatarUrl: typeof p.avatarUrl === "string" && p.avatarUrl.trim() ? p.avatarUrl.trim() : undefined,
     avatarDataUrl,
     bio: typeof p.bio === "string" ? p.bio : "",

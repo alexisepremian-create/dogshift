@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { auth, currentUser } from "@clerk/nextjs/server";
@@ -335,6 +336,7 @@ export async function POST(req: NextRequest) {
     const city = typeof (b as Record<string, unknown>)?.city === "string" ? String((b as Record<string, unknown>).city).trim() : null;
     const postalCode = typeof (b as Record<string, unknown>)?.postalCode === "string" ? String((b as Record<string, unknown>).postalCode).trim() : null;
     const bio = typeof (b as Record<string, unknown>)?.bio === "string" ? String((b as Record<string, unknown>).bio).trim() : null;
+    const address = typeof (b as Record<string, unknown>)?.address === "string" ? String((b as Record<string, unknown>).address).trim() : null;
 
     const latRaw = (b as Record<string, unknown>)?.lat;
     const lngRaw = (b as Record<string, unknown>)?.lng;
@@ -427,6 +429,16 @@ export async function POST(req: NextRequest) {
     let finalLat: number | null = latProvided;
     let finalLng: number | null = lngProvided;
 
+    // Geocode from address (precise) first, then fall back to city/postalCode.
+    if (address) {
+      const { geocodeAddress } = await import("@/lib/travel/geocode");
+      const coords = await geocodeAddress(address);
+      if (coords) {
+        finalLat = coords.lat;
+        finalLng = coords.lng;
+      }
+    }
+
     if (finalLat == null || finalLng == null) {
       if (willPublish && city && postalCode) {
         const existingCoords = await prisma.sitterProfile.findUnique({
@@ -465,6 +477,7 @@ export async function POST(req: NextRequest) {
     if (city) updateData.city = city;
     if (postalCode) updateData.postalCode = postalCode;
     if (bio) updateData.bio = bio;
+    if (address) updateData.address = address;
     if (resolvedAvatarForColumn) updateData.avatarUrl = resolvedAvatarForColumn;
     if (Array.isArray(enabledServices) && enabledServices.length > 0) updateData.services = enabledServices as Prisma.InputJsonValue;
     if (pricingObj && typeof pricingObj === "object" && Object.keys(pricingObj).length > 0) updateData.pricing = pricingObj as Prisma.InputJsonValue;
@@ -487,6 +500,7 @@ export async function POST(req: NextRequest) {
         city,
         postalCode,
         bio,
+        address,
         avatarUrl: resolvedAvatarForColumn,
         lat: finalLat,
         lng: finalLng,

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { notFound } from "next/navigation";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { cookies } from "next/headers";
@@ -57,6 +58,8 @@ export default async function ReservationPage({
       avatarUrl: true,
       services: true,
       pricing: true,
+      lat: true,
+      lng: true,
       user: { select: { name: true, image: true } },
     },
   });
@@ -64,7 +67,7 @@ export default async function ReservationPage({
   if (!sitterProfile) notFound();
 
   const pricing = sitterProfile.pricing && typeof sitterProfile.pricing === "object" ? (sitterProfile.pricing as Record<string, unknown>) : {};
-  const rawServices = Array.isArray(sitterProfile.services) ? sitterProfile.services.filter((s): s is string => typeof s === "string") : [];
+  const rawServices = Array.isArray(sitterProfile.services) ? (sitterProfile.services as unknown[]).filter((s): s is string => typeof s === "string") : [];
   const allowedServiceLabels = new Set(["Promenade", "Garde", "Pension"]);
   const pricedServices = Object.entries(pricing)
     .filter(
@@ -73,6 +76,9 @@ export default async function ReservationPage({
     )
     .map(([key]) => key);
   const services = Array.from(new Set([...rawServices, ...pricedServices])).filter((service) => allowedServiceLabels.has(service));
+
+  const sitterLat = typeof sitterProfile.lat === "number" && Number.isFinite(sitterProfile.lat) ? sitterProfile.lat : null;
+  const sitterLng = typeof sitterProfile.lng === "number" && Number.isFinite(sitterProfile.lng) ? sitterProfile.lng : null;
 
   const sitter = {
     sitterId: sitterProfile.sitterId,
@@ -83,6 +89,9 @@ export default async function ReservationPage({
     avatarUrl: sitterProfile.avatarUrl ?? sitterProfile.user?.image ?? "",
     services,
     pricing,
+    lat: sitterLat,
+    lng: sitterLng,
+    hasAddress: sitterLat != null && sitterLng != null,
   };
 
   return <ReservationClient sitter={sitter} />;

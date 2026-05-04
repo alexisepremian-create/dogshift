@@ -319,6 +319,7 @@ model SitterProfile {
 
   lat Float?
   lng Float?
+  address String?
 
   services Json?
   pricing  Json?
@@ -493,6 +494,13 @@ model Booking {
 
   stripeRefundId String?
   refundedAt     DateTime?
+
+  locationMode     String?
+  travelDistanceKm Float?
+  travelFeeAmount  Int?
+  ownerLat         Float?
+  ownerLng         Float?
+  ownerAddress     String?
 
   reviewRequestEmailSentAt DateTime?
 

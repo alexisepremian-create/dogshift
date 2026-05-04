@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-unused-vars */
 "use client";
 
 import Link from "next/link";
@@ -385,6 +387,23 @@ export default function HostProfileEditPage() {
                     </div>
                     <p className="mt-2 text-xs text-slate-500">Visible sur ton profil public.</p>
                   </div>
+                </div>
+
+                <div className="mt-4">
+                  <label className="block text-sm font-medium text-slate-700" htmlFor="host_address">
+                    Adresse complète (confidentielle)
+                  </label>
+                  <input
+                    id="host_address"
+                    value={profile.address ?? ""}
+                    onChange={(e) => setProfile((p) => ({ ...p, address: e.target.value }))}
+                    className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition focus:border-[var(--dogshift-blue)] focus:ring-4 focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_85%)]"
+                    placeholder="ex. Rue du Rhône 12, 1204 Genève"
+                    autoComplete="street-address"
+                  />
+                  <p className="mt-2 text-xs text-slate-500">
+                    Renseigne ton adresse pour activer l&apos;option &laquo;&nbsp;Le sitter se déplace chez moi&nbsp;&raquo; lors des réservations. Elle n&apos;est jamais partagée publiquement.
+                  </p>
                 </div>
 
                 <div id="photo" className="scroll-mt-24 mt-5">

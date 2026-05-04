@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
@@ -39,6 +40,12 @@ export async function GET(
         platformFeeAmount: true,
         stripeSessionId: true,
         stripePaymentIntentId: true,
+        locationMode: true,
+        travelDistanceKm: true,
+        travelFeeAmount: true,
+        ownerLat: true,
+        ownerLng: true,
+        ownerAddress: true,
         createdAt: true,
         updatedAt: true,
       },

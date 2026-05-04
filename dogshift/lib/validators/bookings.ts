@@ -1,7 +1,13 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { z } from "zod";
 import { isoDateString, isoDatetimeString } from "./common";
 
 const ALLOWED_SERVICES = ["Pension", "Garde", "Promenade"] as const;
+
+const travelFields = z.object({
+  locationMode: z.enum(["AT_OWNER", "AT_SITTER"]).optional().nullable(),
+  ownerAddress: z.string().max(500).optional().nullable(),
+});
 
 const dailyBookingBody = z.object({
   sitterId: z.string().min(1, "sitterId is required"),
@@ -9,7 +15,7 @@ const dailyBookingBody = z.object({
   startDate: isoDateString,
   endDate: isoDateString,
   message: z.string().max(2000).optional().nullable(),
-});
+}).merge(travelFields);
 
 const hourlyBookingBody = z.object({
   sitterId: z.string().min(1, "sitterId is required"),
@@ -17,7 +23,7 @@ const hourlyBookingBody = z.object({
   startAt: isoDatetimeString,
   endAt: isoDatetimeString,
   message: z.string().max(2000).optional().nullable(),
-});
+}).merge(travelFields);
 
 /**
  * Union schema: validates a booking creation body.

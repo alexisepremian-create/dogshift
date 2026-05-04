@@ -24,6 +24,8 @@ export function renderEmailLayout(params: {
   subtitle?: string;
   summaryTitle?: string;
   summaryRows?: EmailSummaryRow[];
+  /** Raw HTML injected between the summary table and the CTA button (e.g. a static map image). */
+  extraHtml?: string;
   ctaLabel?: string;
   ctaUrl?: string;
   secondaryLinkLabel?: string;
@@ -167,6 +169,7 @@ export function renderEmailLayout(params: {
                 ${subtitleHtml}
                 <div style="height:16px;line-height:16px;font-size:16px;">&nbsp;</div>
                 ${summaryHtml}
+                ${params.extraHtml ?? ""}
                 ${ctaHtml}
               </td>
             </tr>
