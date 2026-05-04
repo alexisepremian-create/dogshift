@@ -4,11 +4,21 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 
+type SelectedDog = { id: string; name: string; breed: string | null };
+
 type ConversationHeader = {
   id: string;
   owner: { id: string; name: string; avatarUrl: string | null };
   bookingId: string | null;
+  selectedDog: SelectedDog | null;
 };
+
+function dogColor(name: string) {
+  const colors = ["bg-violet-500", "bg-blue-500", "bg-emerald-500", "bg-amber-500", "bg-rose-500", "bg-indigo-500"];
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
+  return colors[h % colors.length];
+}
 
 type MessageItem = {
   id: string;
@@ -194,6 +204,17 @@ export default function HostMessageThreadPage() {
                 <p className="truncate text-sm font-semibold text-slate-900">{header.owner.name}</p>
               </div>
             </div>
+
+            {/* Selected dog badge (read-only on sitter side) */}
+            {header.selectedDog && (
+              <div className="inline-flex shrink-0 items-center gap-1.5 rounded-2xl border border-[var(--dogshift-blue)]/20 bg-[color-mix(in_srgb,var(--dogshift-blue),white_93%)] px-3 py-1.5 text-xs font-semibold text-[var(--dogshift-blue)]">
+                <span className={`inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white ${dogColor(header.selectedDog.name)}`}>
+                  {header.selectedDog.name.slice(0, 1).toUpperCase()}
+                </span>
+                <span>{header.selectedDog.name}</span>
+                {header.selectedDog.breed && <span className="opacity-70">· {header.selectedDog.breed}</span>}
+              </div>
+            )}
           </div>
 
           <div className="flex min-h-0 flex-1 flex-col p-6">

@@ -4,6 +4,8 @@ import type { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { resolveDbUserId } from "@/lib/auth/resolveDbUserId";
 
+const db = prisma as any;
+
 export const runtime = "nodejs";
 
 function isMigrationMissingError(err: unknown) {
@@ -30,17 +32,19 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       return NextResponse.json({ ok: false, error: "INVALID_ID" }, { status: 400 });
     }
 
-    const conversation = await (prisma as any).conversation.findUnique({
+    const conversation = await db.conversation.findUnique({
       where: { id: conversationId },
       select: {
         id: true,
         ownerId: true,
         sitterId: true,
         bookingId: true,
+        dogProfileId: true,
         lastMessageAt: true,
         lastMessagePreview: true,
         createdAt: true,
         updatedAt: true,
+        selectedDog: { select: { id: true, name: true, breed: true } },
         sitter: {
           select: {
             sitterId: true,
@@ -60,12 +64,12 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       return NextResponse.json({ ok: false, error: "FORBIDDEN" }, { status: 403 });
     }
 
-    await (prisma as any).message.updateMany({
+    await db.message.updateMany({
       where: { conversationId, senderId: { not: ownerId }, readAt: null },
       data: { readAt: new Date() },
     });
 
-    const messages = await (prisma as any).message.findMany({
+    const messages = await db.message.findMany({
       where: { conversationId },
       orderBy: { createdAt: "asc" },
       take: 30,
@@ -92,6 +96,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
           id: String(conversation.id),
           sitter: { sitterId: String(conversation.sitterId), name: sitterName, avatarUrl },
           bookingId: typeof conversation.bookingId === "string" ? conversation.bookingId : null,
+          selectedDog: conversation.selectedDog
+            ? { id: String(conversation.selectedDog.id), name: String(conversation.selectedDog.name), breed: conversation.selectedDog.breed ?? null }
+            : null,
         },
         messages: messages.map((m: any) => ({
           id: String(m.id),
@@ -112,6 +119,47 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     }
     if (process.env.NODE_ENV !== "production") {
       console.error("[api][account][messages][conversations][id][GET] error", err);
+    }
+    return NextResponse.json({ ok: false, error: "INTERNAL_ERROR" }, { status: 500 });
+  }
+}
+
+/** PATCH — owner sets (or clears) the selected dog for this conversation */
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const ownerId = await resolveDbUserId(req);
+    if (!ownerId) return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
+
+    const { id: conversationId } = await params;
+    if (!conversationId) return NextResponse.json({ ok: false, error: "INVALID_ID" }, { status: 400 });
+
+    const body = (await req.json()) as { dogProfileId?: string | null };
+
+    // Verify conversation belongs to this owner
+    const conversation = await db.conversation.findUnique({
+      where: { id: conversationId },
+      select: { ownerId: true },
+    });
+    if (!conversation) return NextResponse.json({ ok: false, error: "NOT_FOUND" }, { status: 404 });
+    if (conversation.ownerId !== ownerId) return NextResponse.json({ ok: false, error: "FORBIDDEN" }, { status: 403 });
+
+    // If setting a dog, verify it belongs to this owner
+    const dogProfileId = body.dogProfileId ?? null;
+    if (dogProfileId) {
+      const dog = await db.dogProfile.findFirst({ where: { id: dogProfileId, userId: ownerId } });
+      if (!dog) return NextResponse.json({ ok: false, error: "DOG_NOT_FOUND" }, { status: 404 });
+    }
+
+    const updated = await db.conversation.update({
+      where: { id: conversationId },
+      data: { dogProfileId },
+      select: { id: true, dogProfileId: true, selectedDog: { select: { id: true, name: true, breed: true } } },
+    });
+
+    return NextResponse.json({ ok: true, selectedDog: updated.selectedDog ?? null });
+  } catch (err) {
+    if (process.env.NODE_ENV !== "production") {
+      console.error("[api][account][messages][conversations][id][PATCH] error", err);
     }
     return NextResponse.json({ ok: false, error: "INTERNAL_ERROR" }, { status: 500 });
   }

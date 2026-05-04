@@ -5,11 +5,15 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
+import { ChevronDown, Dog, X } from "lucide-react";
+
+type SelectedDog = { id: string; name: string; breed: string | null };
 
 type ConversationHeader = {
   id: string;
   sitter: { sitterId: string; name: string; avatarUrl: string | null };
   bookingId: string | null;
+  selectedDog: SelectedDog | null;
 };
 
 type MessageItem = {
@@ -49,6 +53,14 @@ function formatDateTime(value: string) {
   }).format(dt);
 }
 
+// Stable color for a dog avatar (based on name)
+function dogColor(name: string) {
+  const colors = ["bg-violet-500", "bg-blue-500", "bg-emerald-500", "bg-amber-500", "bg-rose-500", "bg-indigo-500"];
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
+  return colors[h % colors.length];
+}
+
 export default function AccountMessageThreadPage() {
   const params = useParams<{ id: string }>();
   const { isLoaded, isSignedIn } = useUser();
@@ -63,6 +75,12 @@ export default function AccountMessageThreadPage() {
 
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
+
+  // Dog selector state
+  const [dogs, setDogs] = useState<SelectedDog[]>([]);
+  const [dogPickerOpen, setDogPickerOpen] = useState(false);
+  const [selectedDog, setSelectedDog] = useState<SelectedDog | null>(null);
+  const [settingDog, setSettingDog] = useState(false);
 
   useEffect(() => {
     // noop
@@ -101,6 +119,7 @@ export default function AccountMessageThreadPage() {
         return;
       }
       setHeader(payload.conversation);
+      setSelectedDog(payload.conversation?.selectedDog ?? null);
       setMessages(Array.isArray(payload.messages) ? payload.messages : []);
       setViewerId(typeof payload.viewerId === "string" && payload.viewerId.trim() ? payload.viewerId.trim() : null);
     } catch {
@@ -116,8 +135,29 @@ export default function AccountMessageThreadPage() {
   useEffect(() => {
     if (!isLoaded || !isSignedIn) return;
     void loadThread();
+    // load dogs for selector
+    fetch("/api/account/dogs")
+      .then((r) => r.json())
+      .then((d: { dogs?: SelectedDog[] }) => setDogs(d.dogs ?? []))
+      .catch(() => {/* ignore */});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [conversationId, isLoaded, isSignedIn]);
+
+  async function selectDog(dog: SelectedDog | null) {
+    if (settingDog) return;
+    setSettingDog(true);
+    try {
+      const res = await fetch(`/api/account/messages/conversations/${encodeURIComponent(conversationId)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ dogProfileId: dog?.id ?? null }),
+      });
+      if (res.ok) setSelectedDog(dog);
+    } finally {
+      setSettingDog(false);
+      setDogPickerOpen(false);
+    }
+  }
 
   const canSend = text.trim().length > 0 && !sending;
 
@@ -183,7 +223,13 @@ export default function AccountMessageThreadPage() {
   if (!isLoaded || !isSignedIn) return null;
 
   return (
-    <div ref={threadRef} className="flex h-full flex-col">
+    <div ref={threadRef} className="flex h-full flex-col" onClick={(e) => {
+      // Close dog picker on outside click
+      if (dogPickerOpen && !(e.target as Element).closest("[data-dog-picker]")) {
+        setDogPickerOpen(false);
+      }
+    }}>
+      {/* Conversation header */}
       <div className="flex items-center gap-3 border-b border-slate-200 pb-4 mb-4">
         <Link
           href="/account/messages"
@@ -194,8 +240,85 @@ export default function AccountMessageThreadPage() {
             <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
           </svg>
         </Link>
-        <div className="min-w-0">
+
+        <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-semibold text-slate-900">{header?.sitter?.name ?? "Conversation"}</p>
+        </div>
+
+        {/* Dog selector */}
+        <div className="relative shrink-0" data-dog-picker="true">
+          <button
+            type="button"
+            onClick={() => setDogPickerOpen((o) => !o)}
+            className={`inline-flex items-center gap-1.5 rounded-2xl border px-3 py-1.5 text-xs font-semibold transition ${
+              selectedDog
+                ? "border-[var(--dogshift-blue)]/30 bg-[color-mix(in_srgb,var(--dogshift-blue),white_92%)] text-[var(--dogshift-blue)]"
+                : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+            }`}
+          >
+            {selectedDog ? (
+              <>
+                <span className={`inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white ${dogColor(selectedDog.name)}`}>
+                  {selectedDog.name.slice(0, 1).toUpperCase()}
+                </span>
+                <span className="max-w-[80px] truncate">{selectedDog.name}</span>
+              </>
+            ) : (
+              <>
+                <Dog className="h-3.5 w-3.5" />
+                <span>Mon chien</span>
+              </>
+            )}
+            <ChevronDown className="h-3 w-3 opacity-60" />
+          </button>
+
+          {/* Dropdown picker */}
+          {dogPickerOpen && (
+            <div className="absolute right-0 top-full z-50 mt-1.5 min-w-[180px] rounded-2xl border border-slate-200 bg-white p-1.5 shadow-[0_8px_32px_-8px_rgba(2,6,23,0.18)]">
+              {dogs.length === 0 ? (
+                <Link
+                  href="/account/dogs"
+                  className="block rounded-xl px-3 py-2 text-xs text-slate-600 hover:bg-slate-50"
+                  onClick={() => setDogPickerOpen(false)}
+                >
+                  Ajouter un chien →
+                </Link>
+              ) : (
+                <>
+                  {dogs.map((dog) => (
+                    <button
+                      key={dog.id}
+                      type="button"
+                      onClick={() => void selectDog(dog)}
+                      disabled={settingDog}
+                      className={`flex w-full items-center gap-2 rounded-xl px-3 py-2 text-xs font-medium transition ${
+                        selectedDog?.id === dog.id
+                          ? "bg-[color-mix(in_srgb,var(--dogshift-blue),white_90%)] text-[var(--dogshift-blue)]"
+                          : "text-slate-800 hover:bg-slate-50"
+                      }`}
+                    >
+                      <span className={`inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-bold text-white ${dogColor(dog.name)}`}>
+                        {dog.name.slice(0, 1).toUpperCase()}
+                      </span>
+                      <span className="truncate">{dog.name}</span>
+                      {dog.breed ? <span className="text-slate-400 truncate">· {dog.breed}</span> : null}
+                    </button>
+                  ))}
+                  {selectedDog && (
+                    <button
+                      type="button"
+                      onClick={() => void selectDog(null)}
+                      disabled={settingDog}
+                      className="mt-1 flex w-full items-center gap-2 rounded-xl border-t border-slate-100 px-3 pt-2 pb-1.5 text-xs text-slate-500 hover:text-slate-800"
+                    >
+                      <X className="h-3 w-3" />
+                      Retirer le chien
+                    </button>
+                  )}
+                </>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
