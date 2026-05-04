@@ -9,6 +9,8 @@ import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { AlertTriangle, Info } from "lucide-react";
 
+import PageLoader from "@/components/ui/PageLoader";
+
 const TravelMap = dynamic(() => import("@/components/TravelMap").then((m) => ({ default: m.TravelMap })), { ssr: false });
 
 import { useMaintenance } from "@/components/platform/MaintenanceProvider";
@@ -706,17 +708,7 @@ const stripeReact = await import("@stripe/react-stripe-js");
           </div>
 
           {loading ? (
-            <div className="mt-6 grid gap-6 lg:grid-cols-2">
-              <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)] sm:p-5 sm:p-8">
-                <div className="h-5 w-40 rounded bg-slate-100" />
-                <div className="mt-4 h-20 w-full rounded-2xl bg-slate-50" />
-                <div className="mt-3 h-20 w-full rounded-2xl bg-slate-50" />
-              </div>
-              <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)] sm:p-5 sm:p-8">
-                <div className="h-5 w-40 rounded bg-slate-100" />
-                <div className="mt-4 h-40 w-full rounded-2xl bg-slate-50" />
-              </div>
-            </div>
+            <PageLoader static />
           ) : error ? (
             <div className="mt-6 rounded-3xl border border-slate-200 bg-white p-5 sm:p-8 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)]">
               <p className="text-sm font-semibold text-slate-900">Impossible d’afficher le checkout</p>

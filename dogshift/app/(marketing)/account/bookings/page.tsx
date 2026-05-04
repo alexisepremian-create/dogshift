@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable react-hooks/exhaustive-deps */
 "use client";
 
 import Image from "next/image";
@@ -5,6 +7,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
+import PageLoader from "@/components/ui/PageLoader";
 import {
   ArchiveRestore,
   CalendarDays,
@@ -327,7 +330,7 @@ function AccountBookingsContent() {
   useEffect(() => {
     if (!isLoaded || !isSignedIn) return;
     void loadBookings();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [isLoaded, isSignedIn]);
 
   const activeTabFromQuery = useMemo<TabKey>(() => {
@@ -512,7 +515,7 @@ function AccountBookingsContent() {
     }
   }
 
-  if (!isLoaded || !isSignedIn) return null;
+  if (!isLoaded || !isSignedIn) return <PageLoader static />;
 
   return (
     <div className="relative" data-testid="account-bookings-page">

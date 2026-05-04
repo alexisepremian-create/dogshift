@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useUser } from "@clerk/nextjs";
+import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { X, FileText } from "lucide-react";
 
@@ -11,8 +12,16 @@ import { CGU_VERSION } from "@/lib/cguVersion";
 // actuelle des CGU. La version acceptée est stockée dans unsafeMetadata Clerk.
 // Le banner se positionne AVANT le SiteHeader dans le DOM et ajuste la CSS
 // variable --ds-maintenance-banner-height dont le header dépend pour son top offset.
+const PAYMENT_FLOW_PATHS = ["/checkout", "/paiement", "/reservation"];
+
+function isPaymentFlow(pathname: string | null) {
+  if (!pathname) return false;
+  return PAYMENT_FLOW_PATHS.some((p) => pathname.startsWith(p));
+}
+
 export default function CguUpdateBanner() {
   const { isSignedIn, user } = useUser();
+  const pathname = usePathname();
   const [visible, setVisible] = useState(false);
   const [accepting, setAccepting] = useState(false);
   const bannerRef = useRef<HTMLDivElement>(null);
@@ -68,7 +77,7 @@ export default function CguUpdateBanner() {
     }
   }
 
-  if (!visible) return null;
+  if (!visible || isPaymentFlow(pathname)) return null;
 
   return (
     <div
