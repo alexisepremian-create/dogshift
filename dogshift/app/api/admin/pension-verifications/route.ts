@@ -14,7 +14,7 @@ export async function GET(req: NextRequest) {
     const db = prisma as any;
     const rows = await db.sitterProfile.findMany({
       where: {
-        pensionVerifStatus: { in: ["pending", "ai_reviewing", "ai_approved", "ai_rejected", "approved", "rejected", "legacy_pending"] },
+        pensionVerifStatus: { in: ["pending", "ai_reviewing", "ai_needs_review", "ai_approved", "ai_rejected", "approved", "rejected", "legacy_pending"] },
       },
       orderBy: { pensionPhotoSubmittedAt: "desc" },
       select: {
