@@ -211,7 +211,7 @@ export async function GET(req: NextRequest) {
               to: email,
               subject: "Votre compte DogShift a été suspendu",
               text: `Bonjour ${name},\n\nVotre compte a été suspendu pour inactivité. Contactez support@dogshift.ch pour le réactiver.`,
-              html: buildSuspendedEmail(name),
+              html: buildSuspendedEmail(name).html,
             }).catch((e) => console.error("[inactivity-check] suspend email failed", e));
           }
           await sendTelegramMessage(
@@ -235,7 +235,7 @@ export async function GET(req: NextRequest) {
               to: email,
               subject: "🚨 Dernier avertissement — suspension imminente — DogShift",
               text: `Bonjour ${name},\n\nDernier avertissement : votre compte sera suspendu dans ${WARNING2_TO_SUSPEND_DAYS} jours si vous n'ajoutez pas de disponibilités.`,
-              html: buildWarning2Email(name, WARNING2_TO_SUSPEND_DAYS),
+              html: buildWarning2Email(name, WARNING2_TO_SUSPEND_DAYS).html,
             }).catch((e) => console.error("[inactivity-check] warning2 email failed", e));
           }
           results.warning2++;
@@ -256,7 +256,7 @@ export async function GET(req: NextRequest) {
               to: email,
               subject: "⚠️ Votre compte sera suspendu — ajoutez vos disponibilités — DogShift",
               text: `Bonjour ${name},\n\nAvertissement : votre compte sera suspendu dans ${WARNING1_TO_WARNING2_DAYS} jours si vous n'ajoutez pas de disponibilités.`,
-              html: buildWarning1Email(name, WARNING1_TO_WARNING2_DAYS),
+              html: buildWarning1Email(name, WARNING1_TO_WARNING2_DAYS).html,
             }).catch((e) => console.error("[inactivity-check] warning1 email failed", e));
           }
           results.warning1++;
@@ -275,7 +275,7 @@ export async function GET(req: NextRequest) {
             to: email,
             subject: "Ajoutez vos disponibilités pour recevoir des réservations — DogShift",
             text: `Bonjour ${name},\n\nVotre profil est publié mais aucune disponibilité n'est renseignée. Connectez-vous pour en ajouter : ${APP_URL}/host/availability`,
-            html: buildNudgeEmail(name),
+              html: buildNudgeEmail(name).html,
           }).catch((e) => console.error("[inactivity-check] nudge email failed", e));
         }
         results.nudge++;
