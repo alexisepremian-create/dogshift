@@ -9,6 +9,7 @@ import {
   Mail,
   MessageSquare,
   Megaphone,
+  SendHorizonal,
   Sparkles,
   Users,
   CalendarDays,
@@ -228,6 +229,7 @@ export default function AdminEmailsPage() {
   const [openCategories, setOpenCategories] = useState<Record<string, boolean>>(
     Object.fromEntries(CATEGORIES.map((c) => [c.id, true])),
   );
+  const [testState, setTestState] = useState<"idle" | "sending" | "sent" | "error">("idle");
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   async function loadPreview(templateId: string) {
@@ -236,6 +238,7 @@ export default function AdminEmailsPage() {
     setLoading(true);
     setPreviewHtml(null);
     setPreviewSubject("");
+    setTestState("idle");
     try {
       const res = await fetch(`/api/admin/email-preview?template=${encodeURIComponent(templateId)}`);
       const data = await res.json();
@@ -260,6 +263,23 @@ export default function AdminEmailsPage() {
       }
     }
   }, [previewHtml]);
+
+  async function sendTestEmail() {
+    if (!selected || testState === "sending") return;
+    setTestState("sending");
+    try {
+      const res = await fetch("/api/admin/email-preview", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ template: selected }),
+      });
+      const data = await res.json();
+      setTestState(data.ok ? "sent" : "error");
+    } catch {
+      setTestState("error");
+    }
+    setTimeout(() => setTestState("idle"), 3000);
+  }
 
   function toggleCategory(id: string) {
     setOpenCategories((prev) => ({ ...prev, [id]: !prev[id] }));
@@ -391,6 +411,33 @@ export default function AdminEmailsPage() {
                   </span>
                 )}
               </div>
+              <button
+                type="button"
+                onClick={() => void sendTestEmail()}
+                disabled={!previewHtml || testState === "sending"}
+                className={`flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-40 ${
+                  testState === "sent"
+                    ? "bg-emerald-100 text-emerald-700"
+                    : testState === "error"
+                      ? "bg-red-100 text-red-600"
+                      : "bg-[#2f4d6b]/10 text-[#2f4d6b] hover:bg-[#2f4d6b]/20"
+                }`}
+              >
+                {testState === "sending" ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : testState === "sent" ? (
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                ) : (
+                  <SendHorizonal className="h-3.5 w-3.5" />
+                )}
+                {testState === "sending"
+                  ? "Envoi…"
+                  : testState === "sent"
+                    ? "Envoyé ✓"
+                    : testState === "error"
+                      ? "Erreur"
+                      : "Envoyer test"}
+              </button>
             </div>
 
             {/* Preview body */}

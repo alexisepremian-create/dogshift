@@ -3,6 +3,7 @@ import type { NextRequest } from "next/server";
 import { render } from "@react-email/render";
 
 import { getRequestAdminAccess } from "@/lib/adminAuth";
+import { sendEmail } from "@/lib/email/sendEmail";
 import { ActivationCodeEmail } from "@/lib/email/templates/activationCodeEmail";
 import { ApplicationStatusEmail } from "@/lib/email/templates/applicationStatusEmail";
 import { CommunicationsEmail } from "@/lib/email/templates/communicationsEmail";
@@ -79,344 +80,334 @@ function buildMockTravelMapHtml(): string {
   `;
 }
 
-export async function GET(req: NextRequest) {
-  const admin = await getRequestAdminAccess(req);
-  if (!admin.isAdmin) {
-    return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
-  }
-
-  const { searchParams } = new URL(req.url);
-  const template = searchParams.get("template") ?? "";
-
-  let html = "";
-  let subject = "";
-
+async function renderTemplate(template: string): Promise<{ html: string; subject: string } | null> {
   switch (template) {
-    case "activation-code": {
-      subject = "Ton code d'activation DogShift";
-      html = await render(
-        ActivationCodeEmail({
+    case "activation-code":
+      return {
+        subject: "Ton code d'activation DogShift",
+        html: await render(
+          ActivationCodeEmail({
+            baseUrl: BASE_URL,
+            firstName: "Sophie",
+            activationCode: "DEMO-2026",
+            expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+          }),
+        ),
+      };
+
+    case "application-high":
+      return {
+        subject: "Ta candidature DogShift — bonne nouvelle 🎉",
+        html: await render(
+          ApplicationStatusEmail({
+            baseUrl: BASE_URL,
+            firstName: "Sophie",
+            lastName: "Martin",
+            status: "HIGH",
+            calendlyLink: "https://calendly.com/dogshift/entretien",
+          }),
+        ),
+      };
+
+    case "application-review":
+      return {
+        subject: "Ta candidature DogShift est à l'étude",
+        html: await render(
+          ApplicationStatusEmail({
+            baseUrl: BASE_URL,
+            firstName: "Sophie",
+            lastName: "Martin",
+            status: "REVIEW",
+          }),
+        ),
+      };
+
+    case "application-low":
+      return {
+        subject: "Ta candidature DogShift",
+        html: await render(
+          ApplicationStatusEmail({
+            baseUrl: BASE_URL,
+            firstName: "Sophie",
+            lastName: "Martin",
+            status: "LOW",
+          }),
+        ),
+      };
+
+    case "communications":
+      return {
+        subject: "Mise à jour de nos Conditions Générales d'Utilisation",
+        html: await render(
+          CommunicationsEmail({
+            baseUrl: BASE_URL,
+            firstName: "Sophie",
+            subject: "Mise à jour de nos Conditions Générales d'Utilisation",
+            customMessage:
+              "Nous avons clarifié les conditions relatives aux annulations et au traitement de vos données personnelles.\n\nCes nouvelles conditions entrent en vigueur le 1er juin 2026.",
+          }),
+        ),
+      };
+
+    case "pilot-confirmation":
+      return {
+        subject: "Candidature reçue — DogShift",
+        html: await render(
+          PilotSitterApplicationConfirmationEmail({
+            baseUrl: BASE_URL,
+            firstName: "Sophie",
+          }),
+        ),
+      };
+
+    case "lead-magnet":
+      return {
+        subject: "Votre guide gratuit est prêt 🐕",
+        html: renderLeadMagnetEmail({ baseUrl: BASE_URL }).html,
+      };
+
+    case "zootherapie":
+      return {
+        subject: "Votre évaluation bien-être personnalisée",
+        html: renderZootherapieEmail({
           baseUrl: BASE_URL,
-          firstName: "Sophie",
-          activationCode: "DEMO-2026",
-          expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-        }),
-      );
-      break;
-    }
+          prenom: "Sophie",
+          titre: "Votre chien vous ressemble plus que vous ne le pensez",
+          analyseRows: [
+            {
+              label: "Lien émotionnel",
+              value:
+                "La relation que vous décrivez avec Max révèle un attachement profond et sécurisant. Max a clairement trouvé en vous son point d'ancrage émotionnel.",
+            },
+            {
+              label: "↓",
+              value:
+                "Ce type de lien favorise la réduction du stress chez les deux parties — humain et animal.",
+            },
+            {
+              label: "Routine & structure",
+              value:
+                "Vos réponses indiquent une routine bien établie, ce que les chiens apprécient particulièrement pour leur équilibre.",
+            },
+            {
+              label: "↓",
+              value:
+                "Une promenade à heure fixe, même courte, a plus de valeur qu'une longue balade imprévisible.",
+            },
+            {
+              label: "Besoins de socialisation",
+              value:
+                "Max bénéficierait d'interactions régulières avec d'autres chiens pour enrichir son répertoire social.",
+            },
+          ],
+          conseil:
+            "Introduisez un rituel quotidien de 5 minutes de contact calme (caresses lentes, regard doux) en dehors des moments d'excitation. Cela renforce le lien et régule les émotions.",
+          conclusion:
+            "Votre attention et votre sensibilité envers Max sont de précieux atouts. Vous avez tous les fondements d'une relation épanouie — il s'agit maintenant de l'enrichir avec intention.",
+        }).html,
+      };
 
-    case "application-high": {
-      subject = "Ta candidature DogShift — bonne nouvelle 🎉";
-      html = await render(
-        ApplicationStatusEmail({
-          baseUrl: BASE_URL,
-          firstName: "Sophie",
-          lastName: "Martin",
-          status: "HIGH",
-          calendlyLink: "https://calendly.com/dogshift/entretien",
-        }),
-      );
-      break;
-    }
+    case "new-message":
+      return {
+        subject: "Nouveau message sur DogShift",
+        html: renderEmailLayout({
+          logoUrl: LOGO_URL,
+          title: "Nouveau message",
+          subtitle: "Vous avez reçu un nouveau message sur DogShift.",
+          summaryRows: [
+            { label: "De", value: "Marie Durand (Dog-sitter)" },
+            { label: "Conversation", value: "Réservation #bk_preview_demo_2026" },
+          ],
+          ctaLabel: "Voir la conversation",
+          ctaUrl: `${BASE_URL}/account/messages`,
+          secondaryLinkLabel: "Ouvrir DogShift",
+          secondaryLinkUrl: `${BASE_URL}/account`,
+          footerLinks: [{ label: "Gérer mes notifications", url: `${BASE_URL}/account/settings` }],
+        }).html,
+      };
 
-    case "application-review": {
-      subject = "Ta candidature DogShift est à l'étude";
-      html = await render(
-        ApplicationStatusEmail({
-          baseUrl: BASE_URL,
-          firstName: "Sophie",
-          lastName: "Martin",
-          status: "REVIEW",
-        }),
-      );
-      break;
-    }
+    case "booking-request":
+      return {
+        subject: "Nouvelle demande de réservation – DogShift",
+        html: renderEmailLayout({
+          logoUrl: LOGO_URL,
+          title: "Nouvelle demande de réservation",
+          subtitle: "Tu as reçu une nouvelle demande.",
+          summaryRows: MOCK_BOOKING_ROWS,
+          ctaLabel: "Voir la réservation",
+          ctaUrl: `${BASE_URL}/host/requests`,
+        }).html,
+      };
 
-    case "application-low": {
-      subject = "Ta candidature DogShift";
-      html = await render(
-        ApplicationStatusEmail({
-          baseUrl: BASE_URL,
-          firstName: "Sophie",
-          lastName: "Martin",
-          status: "LOW",
-        }),
-      );
-      break;
-    }
+    case "booking-confirmed":
+      return {
+        subject: "Réservation confirmée – DogShift",
+        html: renderEmailLayout({
+          logoUrl: LOGO_URL,
+          title: "Réservation confirmée",
+          subtitle: "Ta réservation a été confirmée.",
+          summaryRows: MOCK_TRAVEL_BOOKING_ROWS,
+          extraHtml: buildMockTravelMapHtml(),
+          ctaLabel: "Voir la réservation",
+          ctaUrl: `${BASE_URL}/account/bookings`,
+        }).html,
+      };
 
-    case "communications": {
-      subject = "Mise à jour de nos Conditions Générales d'Utilisation";
-      html = await render(
-        CommunicationsEmail({
-          baseUrl: BASE_URL,
-          firstName: "Sophie",
-          subject: "Mise à jour de nos Conditions Générales d'Utilisation",
-          customMessage:
-            "Nous avons clarifié les conditions relatives aux annulations et au traitement de vos données personnelles.\n\nCes nouvelles conditions entrent en vigueur le 1er juin 2026.",
-        }),
-      );
-      break;
-    }
+    case "payment-received":
+      return {
+        subject: "Paiement reçu – DogShift",
+        html: renderEmailLayout({
+          logoUrl: LOGO_URL,
+          title: "Paiement reçu",
+          subtitle: "Le paiement a bien été reçu.",
+          summaryRows: MOCK_TRAVEL_BOOKING_ROWS,
+          extraHtml: buildMockTravelMapHtml(),
+          ctaLabel: "Voir la réservation",
+          ctaUrl: `${BASE_URL}/account/bookings`,
+        }).html,
+      };
 
-    case "pilot-confirmation": {
-      subject = "Candidature reçue — DogShift";
-      html = await render(
-        PilotSitterApplicationConfirmationEmail({
-          baseUrl: BASE_URL,
-          firstName: "Sophie",
-        }),
-      );
-      break;
-    }
+    case "booking-reminder":
+      return {
+        subject: "Rappel de réservation – DogShift",
+        html: renderEmailLayout({
+          logoUrl: LOGO_URL,
+          title: "Rappel de réservation",
+          subtitle: "Une réservation approche.",
+          summaryRows: MOCK_BOOKING_ROWS,
+          ctaLabel: "Voir la réservation",
+          ctaUrl: `${BASE_URL}/account/bookings`,
+        }).html,
+      };
 
-    case "lead-magnet": {
-      subject = "Votre guide gratuit est prêt 🐕";
-      html = renderLeadMagnetEmail({ baseUrl: BASE_URL }).html;
-      break;
-    }
+    case "booking-cancelled":
+      return {
+        subject: "Réservation annulée – DogShift",
+        html: renderEmailLayout({
+          logoUrl: LOGO_URL,
+          title: "Réservation annulée",
+          subtitle: "Une réservation a été annulée.",
+          summaryRows: MOCK_BOOKING_ROWS,
+          ctaLabel: "Voir la réservation",
+          ctaUrl: `${BASE_URL}/account/bookings`,
+        }).html,
+      };
 
-    case "zootherapie": {
-      subject = "Votre évaluation bien-être personnalisée";
-      html = renderZootherapieEmail({
-        baseUrl: BASE_URL,
-        prenom: "Sophie",
-        titre: "Votre chien vous ressemble plus que vous ne le pensez",
-        analyseRows: [
-          {
-            label: "Lien émotionnel",
-            value:
-              "La relation que vous décrivez avec Max révèle un attachement profond et sécurisant. Max a clairement trouvé en vous son point d'ancrage émotionnel.",
-          },
-          {
-            label: "↓",
-            value:
-              "Ce type de lien favorise la réduction du stress chez les deux parties — humain et animal.",
-          },
-          {
-            label: "Routine & structure",
-            value:
-              "Vos réponses indiquent une routine bien établie, ce que les chiens apprécient particulièrement pour leur équilibre.",
-          },
-          {
-            label: "↓",
-            value:
-              "Une promenade à heure fixe, même courte, a plus de valeur qu'une longue balade imprévisible.",
-          },
-          {
-            label: "Besoins de socialisation",
-            value:
-              "Max bénéficierait d'interactions régulières avec d'autres chiens pour enrichir son répertoire social.",
-          },
-        ],
-        conseil:
-          "Introduisez un rituel quotidien de 5 minutes de contact calme (caresses lentes, regard doux) en dehors des moments d'excitation. Cela renforce le lien et régule les émotions.",
-        conclusion:
-          "Votre attention et votre sensibilité envers Max sont de précieux atouts. Vous avez tous les fondements d'une relation épanouie — il s'agit maintenant de l'enrichir avec intention.",
-      }).html;
-      break;
-    }
+    case "booking-refunded-owner":
+      return {
+        subject: "Remboursement effectué – DogShift",
+        html: renderEmailLayout({
+          logoUrl: LOGO_URL,
+          title: "Remboursement effectué",
+          subtitle: "Le remboursement a été effectué.",
+          summaryRows: MOCK_BOOKING_ROWS,
+          ctaLabel: "Voir la réservation",
+          ctaUrl: `${BASE_URL}/account/bookings`,
+        }).html,
+      };
 
-    case "new-message": {
-      subject = "Nouveau message sur DogShift";
-      html = renderEmailLayout({
-        logoUrl: LOGO_URL,
-        title: "Nouveau message",
-        subtitle: "Vous avez reçu un nouveau message sur DogShift.",
-        summaryRows: [
-          { label: "De", value: "Marie Durand (Dog-sitter)" },
-          { label: "Conversation", value: "Réservation #bk_preview_demo_2026" },
-        ],
-        ctaLabel: "Voir la conversation",
-        ctaUrl: `${BASE_URL}/account/messages`,
-        secondaryLinkLabel: "Ouvrir DogShift",
-        secondaryLinkUrl: `${BASE_URL}/account`,
-        footerLinks: [{ label: "Gérer mes notifications", url: `${BASE_URL}/account/settings` }],
-      }).html;
-      break;
-    }
+    case "booking-refunded-host":
+      return {
+        subject: "Réservation annulée – DogShift",
+        html: renderEmailLayout({
+          logoUrl: LOGO_URL,
+          title: "Réservation annulée",
+          subtitle:
+            "Une réservation a été annulée. Le remboursement du propriétaire a été traité conformément aux conditions applicables.",
+          summaryRows: MOCK_BOOKING_ROWS,
+          ctaLabel: "Voir la réservation",
+          ctaUrl: `${BASE_URL}/host/requests`,
+        }).html,
+      };
 
-    case "booking-request": {
-      subject = "Nouvelle demande de réservation – DogShift";
-      html = renderEmailLayout({
-        logoUrl: LOGO_URL,
-        title: "Nouvelle demande de réservation",
-        subtitle: "Tu as reçu une nouvelle demande.",
-        summaryRows: MOCK_BOOKING_ROWS,
-        ctaLabel: "Voir la réservation",
-        ctaUrl: `${BASE_URL}/host/requests`,
-      }).html;
-      break;
-    }
+    case "booking-expired":
+      return {
+        subject: "Réservation expirée et remboursée – DogShift",
+        html: renderEmailLayout({
+          logoUrl: LOGO_URL,
+          title: "Réservation expirée et remboursée",
+          subtitle:
+            "Le dogsitter n'a pas accepté à temps. La réservation a été annulée automatiquement et le remboursement a été déclenché avant J-24h.",
+          summaryRows: MOCK_BOOKING_ROWS,
+          ctaLabel: "Voir la réservation",
+          ctaUrl: `${BASE_URL}/account/bookings`,
+        }).html,
+      };
 
-    case "booking-confirmed": {
-      subject = "Réservation confirmée – DogShift";
-      html = renderEmailLayout({
-        logoUrl: LOGO_URL,
-        title: "Réservation confirmée",
-        subtitle: "Ta réservation a été confirmée.",
-        summaryRows: MOCK_TRAVEL_BOOKING_ROWS,
-        extraHtml: buildMockTravelMapHtml(),
-        ctaLabel: "Voir la réservation",
-        ctaUrl: `${BASE_URL}/account/bookings`,
-      }).html;
-      break;
-    }
+    case "booking-refund-failed":
+      return {
+        subject: "Remboursement impossible – DogShift",
+        html: renderEmailLayout({
+          logoUrl: LOGO_URL,
+          title: "Remboursement impossible",
+          subtitle: "Le remboursement a échoué. Notre équipe peut t'aider.",
+          summaryRows: MOCK_BOOKING_ROWS,
+          ctaLabel: "Voir la réservation",
+          ctaUrl: `${BASE_URL}/account/bookings`,
+        }).html,
+      };
 
-    case "payment-received": {
-      subject = "Paiement reçu – DogShift";
-      html = renderEmailLayout({
-        logoUrl: LOGO_URL,
-        title: "Paiement reçu",
-        subtitle: "Le paiement a bien été reçu.",
-        summaryRows: MOCK_TRAVEL_BOOKING_ROWS,
-        extraHtml: buildMockTravelMapHtml(),
-        ctaLabel: "Voir la réservation",
-        ctaUrl: `${BASE_URL}/account/bookings`,
-      }).html;
-      break;
-    }
+    case "welcome-owner":
+      return {
+        subject: "Bienvenue sur DogShift",
+        html: renderEmailLayout({
+          logoUrl: LOGO_URL,
+          title: "Bienvenue sur DogShift",
+          subtitle: "Trouvez le dog-sitter idéal pour votre compagnon en toute sérénité.",
+          summaryTitle: "Pourquoi choisir DogShift ?",
+          summaryRows: [
+            { label: "Sitters vérifiés", value: "Chaque sitter est sélectionné et vérifié manuellement par notre équipe" },
+            { label: "Réservation simple", value: "Choisissez vos dates, confirmez en 2 clics — aucune complication" },
+            { label: "Support réactif", value: "Notre équipe répond sous 24 h — Lausanne & Riviera vaudoise" },
+          ],
+          ctaLabel: "Trouver mon sitter →",
+          ctaUrl: `${BASE_URL}/search`,
+          footerText: "Vous recevez cet email car vous venez de créer un compte DogShift. DogShift • support@dogshift.ch",
+          footerLinks: [
+            { label: "dogshift.ch", url: BASE_URL },
+            { label: "support@dogshift.ch", url: "mailto:support@dogshift.ch" },
+          ],
+        }).html,
+      };
 
-    case "booking-reminder": {
-      subject = "Rappel de réservation – DogShift";
-      html = renderEmailLayout({
-        logoUrl: LOGO_URL,
-        title: "Rappel de réservation",
-        subtitle: "Une réservation approche.",
-        summaryRows: MOCK_BOOKING_ROWS,
-        ctaLabel: "Voir la réservation",
-        ctaUrl: `${BASE_URL}/account/bookings`,
-      }).html;
-      break;
-    }
+    case "review-request":
+      return {
+        subject: "Comment s'est passée votre réservation avec Marie ?",
+        html: renderEmailLayout({
+          logoUrl: LOGO_URL,
+          title: "Noter votre sitter",
+          subtitle: "Votre réservation avec Marie est maintenant terminée. Comment s'est-elle passée ?",
+          summaryTitle: "Résumé",
+          summaryRows: MOCK_BOOKING_ROWS,
+          ctaLabel: "Laisser un avis",
+          ctaUrl: `${BASE_URL}/account/bookings/bk_preview_demo_2026/review`,
+          footerText: "Votre avis aide la communauté DogShift.",
+        }).html,
+      };
 
-    case "booking-cancelled": {
-      subject = "Réservation annulée – DogShift";
-      html = renderEmailLayout({
-        logoUrl: LOGO_URL,
-        title: "Réservation annulée",
-        subtitle: "Une réservation a été annulée.",
-        summaryRows: MOCK_BOOKING_ROWS,
-        ctaLabel: "Voir la réservation",
-        ctaUrl: `${BASE_URL}/account/bookings`,
-      }).html;
-      break;
-    }
+    case "nurturing-step1":
+      return {
+        subject: "Avez-vous eu le temps de lire votre guide ? 🐾",
+        html: renderNurturingStep1({ baseUrl: BASE_URL, prenom: "Sophie" }).html,
+      };
 
-    case "booking-refunded-owner": {
-      subject = "Remboursement effectué – DogShift";
-      html = renderEmailLayout({
-        logoUrl: LOGO_URL,
-        title: "Remboursement effectué",
-        subtitle: "Le remboursement a été effectué.",
-        summaryRows: MOCK_BOOKING_ROWS,
-        ctaLabel: "Voir la réservation",
-        ctaUrl: `${BASE_URL}/account/bookings`,
-      }).html;
-      break;
-    }
+    case "nurturing-step2":
+      return {
+        subject: "Ce que disent les autres propriétaires de DogShift",
+        html: renderNurturingStep2({ baseUrl: BASE_URL, prenom: "Sophie" }).html,
+      };
 
-    case "booking-refunded-host": {
-      subject = "Réservation annulée – DogShift";
-      html = renderEmailLayout({
-        logoUrl: LOGO_URL,
-        title: "Réservation annulée",
-        subtitle:
-          "Une réservation a été annulée. Le remboursement du propriétaire a été traité conformément aux conditions applicables.",
-        summaryRows: MOCK_BOOKING_ROWS,
-        ctaLabel: "Voir la réservation",
-        ctaUrl: `${BASE_URL}/host/requests`,
-      }).html;
-      break;
-    }
+    case "nurturing-step3":
+      return {
+        subject: "Votre chien mérite le meilleur sitter 🐾",
+        html: renderNurturingStep3({ baseUrl: BASE_URL, prenom: "Sophie" }).html,
+      };
 
-    case "booking-expired": {
-      subject = "Réservation expirée et remboursée – DogShift";
-      html = renderEmailLayout({
-        logoUrl: LOGO_URL,
-        title: "Réservation expirée et remboursée",
-        subtitle:
-          "Le dogsitter n'a pas accepté à temps. La réservation a été annulée automatiquement et le remboursement a été déclenché avant J-24h.",
-        summaryRows: MOCK_BOOKING_ROWS,
-        ctaLabel: "Voir la réservation",
-        ctaUrl: `${BASE_URL}/account/bookings`,
-      }).html;
-      break;
-    }
-
-    case "booking-refund-failed": {
-      subject = "Remboursement impossible – DogShift";
-      html = renderEmailLayout({
-        logoUrl: LOGO_URL,
-        title: "Remboursement impossible",
-        subtitle: "Le remboursement a échoué. Notre équipe peut t'aider.",
-        summaryRows: MOCK_BOOKING_ROWS,
-        ctaLabel: "Voir la réservation",
-        ctaUrl: `${BASE_URL}/account/bookings`,
-      }).html;
-      break;
-    }
-
-    case "welcome-owner": {
-      subject = "Bienvenue sur DogShift";
-      html = renderEmailLayout({
-        logoUrl: LOGO_URL,
-        title: "Bienvenue sur DogShift",
-        subtitle: "Trouvez le dog-sitter idéal pour votre compagnon en toute sérénité.",
-        summaryTitle: "Pourquoi choisir DogShift ?",
-        summaryRows: [
-          { label: "Sitters vérifiés", value: "Chaque sitter est sélectionné et vérifié manuellement par notre équipe" },
-          { label: "Réservation simple", value: "Choisissez vos dates, confirmez en 2 clics — aucune complication" },
-          { label: "Support réactif", value: "Notre équipe répond sous 24 h — Lausanne & Riviera vaudoise" },
-        ],
-        ctaLabel: "Trouver mon sitter →",
-        ctaUrl: `${BASE_URL}/search`,
-        footerText: "Vous recevez cet email car vous venez de créer un compte DogShift. DogShift • support@dogshift.ch",
-        footerLinks: [
-          { label: "dogshift.ch", url: BASE_URL },
-          { label: "support@dogshift.ch", url: "mailto:support@dogshift.ch" },
-        ],
-      }).html;
-      break;
-    }
-
-    case "review-request": {
-      subject = "Comment s'est passée votre réservation avec Marie ?";
-      html = renderEmailLayout({
-        logoUrl: LOGO_URL,
-        title: "Noter votre sitter",
-        subtitle: "Votre réservation avec Marie est maintenant terminée. Comment s'est-elle passée ?",
-        summaryTitle: "Résumé",
-        summaryRows: MOCK_BOOKING_ROWS,
-        ctaLabel: "Laisser un avis",
-        ctaUrl: `${BASE_URL}/account/bookings/bk_preview_demo_2026/review`,
-        footerText: "Votre avis aide la communauté DogShift.",
-      }).html;
-      break;
-    }
-
-    case "nurturing-step1": {
-      subject = "Avez-vous eu le temps de lire votre guide ? 🐾";
-      html = renderNurturingStep1({ baseUrl: BASE_URL, prenom: "Sophie" }).html;
-      break;
-    }
-
-    case "nurturing-step2": {
-      subject = "Ce que disent les autres propriétaires de DogShift";
-      html = renderNurturingStep2({ baseUrl: BASE_URL, prenom: "Sophie" }).html;
-      break;
-    }
-
-    case "nurturing-step3": {
-      subject = "Votre chien mérite le meilleur sitter 🐾";
-      html = renderNurturingStep3({ baseUrl: BASE_URL, prenom: "Sophie" }).html;
-      break;
-    }
-
-    case "relance-owner": {
-      subject = "Sophie, votre chien mérite la meilleure attention 🐾";
-      // Relance emails are fully AI-generated by Claude — this is a representative mock.
-      html = `<!doctype html>
+    case "relance-owner":
+      return {
+        subject: "Sophie, votre chien mérite la meilleure attention 🐾",
+        // Relance emails are fully AI-generated by Claude — this is a representative mock.
+        html: `<!doctype html>
 <html lang="fr">
 <head>
   <meta charset="utf-8" />
@@ -487,13 +478,53 @@ export async function GET(req: NextRequest) {
     </tr>
   </table>
 </body>
-</html>`;
-      break;
-    }
+</html>`,
+      };
 
     default:
-      return NextResponse.json({ ok: false, error: "UNKNOWN_TEMPLATE" }, { status: 400 });
+      return null;
+  }
+}
+
+export async function GET(req: NextRequest) {
+  const admin = await getRequestAdminAccess(req);
+  if (!admin.isAdmin) {
+    return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
   }
 
-  return NextResponse.json({ ok: true, html, subject });
+  const { searchParams } = new URL(req.url);
+  const template = searchParams.get("template") ?? "";
+
+  const result = await renderTemplate(template);
+  if (!result) {
+    return NextResponse.json({ ok: false, error: "UNKNOWN_TEMPLATE" }, { status: 400 });
+  }
+
+  return NextResponse.json({ ok: true, html: result.html, subject: result.subject });
+}
+
+const TEST_EMAIL_RECIPIENT = "contact@dogshift.ch";
+
+export async function POST(req: NextRequest) {
+  const admin = await getRequestAdminAccess(req);
+  if (!admin.isAdmin) {
+    return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
+  }
+
+  const body = await req.json().catch(() => ({})) as { template?: string };
+  const template = typeof body.template === "string" ? body.template : "";
+
+  const result = await renderTemplate(template);
+  if (!result) {
+    return NextResponse.json({ ok: false, error: "UNKNOWN_TEMPLATE" }, { status: 400 });
+  }
+
+  await sendEmail({
+    to: TEST_EMAIL_RECIPIENT,
+    subject: `[TEST] ${result.subject}`,
+    text: `Ceci est un email de test pour le template "${template}". Consultez la version HTML.`,
+    html: result.html,
+  });
+
+  return NextResponse.json({ ok: true });
 }
