@@ -390,6 +390,9 @@ model SitterProfile {
   /// Max dogs accepted per size: { "Petit": 2, "Moyen": 1, "Grand": 0 }
   maxDogsBySize Json?
 
+  /// Global acceptance criteria: { "neuteredRequired": true, "maxDogs": 2 }
+  acceptanceCriteria Json?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -529,6 +532,11 @@ model Booking {
   ownerLng         Float?
   ownerAddress     String?
 
+  /// Dog profile selected by the owner at booking time
+  dogProfileId String?
+  /// Owner phone number shared with the sitter
+  ownerPhone   String?
+
   reviewRequestEmailSentAt DateTime?
 
   lastMinuteSmsSentAt DateTime?
@@ -541,6 +549,8 @@ model Booking {
   user   User @relation("UserBookings", fields: [userId], references: [id], onDelete: Cascade)
   sitter User @relation("SitterBookings", fields: [sitterId], references: [sitterId], onDelete: Restrict)
 
+  selectedDog DogProfile? @relation(fields: [dogProfileId], references: [id], onDelete: SetNull)
+
   conversations Conversation[] @relation("BookingConversations")
 
   review Review?
@@ -548,6 +558,7 @@ model Booking {
 
   @@index([userId])
   @@index([sitterId])
+  @@index([dogProfileId])
   @@index([stripeSessionId])
   @@index([stripePaymentIntentId])
 }
@@ -970,6 +981,7 @@ model DogProfile {
 
   user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   conversations Conversation[]
+  bookings      Booking[]
 
   @@index([userId])
 }

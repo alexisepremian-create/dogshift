@@ -90,6 +90,7 @@ type SitterDto = {
   lng?: number | null;
   hasAddress?: boolean;
   pensionAcceptedSizes?: string[];
+  acceptanceCriteria?: { neuteredRequired?: boolean; maxDogs?: number | null } | null;
 };
 
 const PRIMARY_BTN =
@@ -815,6 +816,7 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
   const [durationHours, setDurationHours] = useState<number | null>(null);
   const [message, setMessage] = useState("");
   const [dogSize, setDogSize] = useState<string | null>(null);
+  const [numberOfDogs, setNumberOfDogs] = useState<number>(1);
 
   const [locationMode, setLocationMode] = useState<"AT_SITTER" | "AT_OWNER">("AT_SITTER");
   const [ownerStreet, setOwnerStreet] = useState("");
@@ -1759,6 +1761,13 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
         }
       }
 
+      // Acceptance criteria validation
+      const criteria = sitter.acceptanceCriteria;
+      if (criteria?.maxDogs && numberOfDogs > criteria.maxDogs) {
+        setError(`Ce sitter accepte au maximum ${criteria.maxDogs} chien${criteria.maxDogs > 1 ? "s" : ""} simultanément.`);
+        return;
+      }
+
       const payload: Record<string, unknown> = {
         sitterId: sitter.sitterId,
         service: selectedService,
@@ -1768,6 +1777,7 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
         ownerLat: locationMode === "AT_OWNER" && travelPreview ? travelPreview.ownerLat : null,
         ownerLng: locationMode === "AT_OWNER" && travelPreview ? travelPreview.ownerLng : null,
         ...(dogSize ? { dogSize } : {}),
+        numberOfDogs,
       };
 
       if (unit === "DAILY") {
@@ -2135,6 +2145,47 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
                 </div>
               )}
             </div>
+
+            {/* Number of dogs picker — shown when sitter has a maxDogs limit */}
+            {sitter.acceptanceCriteria?.maxDogs != null && sitter.acceptanceCriteria.maxDogs > 0 && (
+              <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.12)] sm:p-8">
+                <p className="text-sm font-semibold text-slate-900">Nombre de chiens</p>
+                <p className="mt-1 text-xs text-slate-500">
+                  Ce sitter accepte au maximum {sitter.acceptanceCriteria.maxDogs} chien{sitter.acceptanceCriteria.maxDogs > 1 ? "s" : ""} simultanément.
+                </p>
+                {sitter.acceptanceCriteria.neuteredRequired && (
+                  <p className="mt-1 text-xs text-amber-600 font-medium">⚠️ Chiens castrés/stérilisés uniquement.</p>
+                )}
+                <div className="mt-4 flex items-center gap-4">
+                  <button
+                    type="button"
+                    aria-label="Diminuer"
+                    disabled={numberOfDogs <= 1}
+                    onClick={() => setNumberOfDogs((n) => Math.max(1, n - 1))}
+                    className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-600 transition hover:bg-slate-50 disabled:opacity-30"
+                  >
+                    −
+                  </button>
+                  <span className="min-w-[2rem] text-center text-lg font-bold text-slate-900">{numberOfDogs}</span>
+                  <button
+                    type="button"
+                    aria-label="Augmenter"
+                    disabled={numberOfDogs >= sitter.acceptanceCriteria.maxDogs}
+                    onClick={() => setNumberOfDogs((n) => Math.min(sitter.acceptanceCriteria!.maxDogs!, n + 1))}
+                    className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-600 transition hover:bg-slate-50 disabled:opacity-30"
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Neutered-only notice (when no maxDogs limit set) */}
+            {sitter.acceptanceCriteria?.neuteredRequired && !sitter.acceptanceCriteria?.maxDogs && (
+              <div className="rounded-3xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+                ⚠️ Ce sitter accepte uniquement les chiens castrés ou stérilisés.
+              </div>
+            )}
 
             {/* Dog size picker — shown for Pension only when sitter has pensionAcceptedSizes */}
             {selectedService === "Pension" && (sitter.pensionAcceptedSizes ?? []).length > 0 && (
