@@ -23,6 +23,7 @@ type BoardingDetails = {
   hasGarden?: boolean | null;
   hasOtherPets?: boolean | null;
   notes?: string | null;
+  pensionAcceptedSizes?: string[] | null;
 };
 
 type SitterDetail = {
@@ -118,6 +119,8 @@ export async function GET(
         pricing: true,
         dogSizes: true,
         maxDogsBySize: true,
+        pensionVerifStatus: true,
+        pensionAcceptedSizes: true,
         user: { select: { image: true, hostProfileJson: true } },
       },
     });
@@ -156,6 +159,23 @@ export async function GET(
       }
     } catch {
       // ignore malformed JSON
+    }
+
+    // Attach pension accepted sizes from DB (only if pension is approved)
+    const isPensionApproved = (sitterProfile as any).pensionVerifStatus === "approved"
+      || (sitterProfile as any).pensionVerifStatus === "ai_approved";
+    const rawAcceptedSizes = (sitterProfile as any).pensionAcceptedSizes;
+    const pensionAcceptedSizes: string[] | null =
+      isPensionApproved && Array.isArray(rawAcceptedSizes) && rawAcceptedSizes.length > 0
+        ? rawAcceptedSizes
+        : null;
+
+    if (pensionAcceptedSizes) {
+      if (boardingDetails) {
+        boardingDetails.pensionAcceptedSizes = pensionAcceptedSizes;
+      } else {
+        boardingDetails = { pensionAcceptedSizes };
+      }
     }
 
     const serviceConfigs = await (prisma as any).serviceConfig.findMany({

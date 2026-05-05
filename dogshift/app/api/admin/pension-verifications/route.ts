@@ -32,6 +32,8 @@ export async function GET(req: NextRequest) {
         pensionAiReasoning: true,
         pensionAiReviewedAt: true,
         pensionAdminNotes: true,
+        pensionAcceptedSizes: true,
+        boardingDetails: true,
         user: { select: { id: true, email: true, name: true } },
       },
     });
@@ -52,6 +54,19 @@ export async function GET(req: NextRequest) {
       aiReasoning: r.pensionAiReasoning ?? null,
       aiReviewedAt: r.pensionAiReviewedAt instanceof Date ? r.pensionAiReviewedAt.toISOString() : null,
       adminNotes: r.pensionAdminNotes ?? null,
+      pensionAcceptedSizes: Array.isArray(r.pensionAcceptedSizes) ? r.pensionAcceptedSizes : [],
+      housingType: (() => {
+        try {
+          const bd = typeof r.boardingDetails === "string" ? JSON.parse(r.boardingDetails) : r.boardingDetails;
+          return bd?.housingType ?? null;
+        } catch { return null; }
+      })(),
+      hasGarden: (() => {
+        try {
+          const bd = typeof r.boardingDetails === "string" ? JSON.parse(r.boardingDetails) : r.boardingDetails;
+          return typeof bd?.hasGarden === "boolean" ? bd.hasGarden : null;
+        } catch { return null; }
+      })(),
     }));
 
     return NextResponse.json({ ok: true, items });

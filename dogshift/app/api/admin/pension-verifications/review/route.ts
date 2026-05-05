@@ -17,11 +17,15 @@ export async function POST(req: NextRequest) {
       sitterId?: string;
       decision?: "approved" | "rejected";
       notes?: string;
+      pensionAcceptedSizes?: string[];
     };
 
     const sitterId = typeof body?.sitterId === "string" ? body.sitterId.trim() : "";
     const decision = body?.decision;
     const notes = typeof body?.notes === "string" ? body.notes.trim().slice(0, 2000) : null;
+    const pensionAcceptedSizes = Array.isArray(body?.pensionAcceptedSizes)
+      ? body.pensionAcceptedSizes.filter((s: unknown) => s === "Petit" || s === "Moyen" || s === "Grand")
+      : null;
 
     if (!sitterId || (decision !== "approved" && decision !== "rejected")) {
       return NextResponse.json({ ok: false, error: "INVALID_BODY" }, { status: 400 });
@@ -45,6 +49,9 @@ export async function POST(req: NextRequest) {
         pensionVerifStatus: decision,
         pensionPhotoReviewedAt: new Date(),
         pensionAdminNotes: notes,
+        ...(decision === "approved" && pensionAcceptedSizes !== null
+          ? { pensionAcceptedSizes }
+          : {}),
       },
     });
 

@@ -367,6 +367,8 @@ model SitterProfile {
   pensionAiReasoning      Json?
   pensionAiReviewedAt     DateTime?
   pensionAdminNotes       String?
+  /// Accepted dog sizes for Pension: ["Petit", "Moyen", "Grand"] — set by admin at approval time
+  pensionAcceptedSizes    Json?
 
   verificationAccessLogs VerificationAccessLog[]
   contractAmendmentAcceptances SitterContractAmendmentAcceptance[]

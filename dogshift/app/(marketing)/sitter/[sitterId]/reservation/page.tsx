@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { notFound } from "next/navigation";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { cookies } from "next/headers";
@@ -47,7 +48,7 @@ export default async function ReservationPage({
     }
   }
 
-  const sitterProfile = await prisma.sitterProfile.findFirst({
+  const sitterProfile = await (prisma as any).sitterProfile.findFirst({
     where: allowPreviewAccess ? { sitterId } : { sitterId, published: true },
     select: {
       sitterId: true,
@@ -60,6 +61,8 @@ export default async function ReservationPage({
       pricing: true,
       lat: true,
       lng: true,
+      pensionVerifStatus: true,
+      pensionAcceptedSizes: true,
       user: { select: { name: true, image: true } },
     },
   });
@@ -80,6 +83,11 @@ export default async function ReservationPage({
   const sitterLat = typeof sitterProfile.lat === "number" && Number.isFinite(sitterProfile.lat) ? sitterProfile.lat : null;
   const sitterLng = typeof sitterProfile.lng === "number" && Number.isFinite(sitterProfile.lng) ? sitterProfile.lng : null;
 
+  const isPensionApproved = sitterProfile.pensionVerifStatus === "approved" || sitterProfile.pensionVerifStatus === "ai_approved";
+  const pensionAcceptedSizes: string[] = isPensionApproved && Array.isArray(sitterProfile.pensionAcceptedSizes) && sitterProfile.pensionAcceptedSizes.length > 0
+    ? sitterProfile.pensionAcceptedSizes
+    : [];
+
   const sitter = {
     sitterId: sitterProfile.sitterId,
     name: sitterProfile.displayName ?? sitterProfile.user?.name ?? "Sitter",
@@ -92,6 +100,7 @@ export default async function ReservationPage({
     lat: sitterLat,
     lng: sitterLng,
     hasAddress: sitterLat != null && sitterLng != null,
+    pensionAcceptedSizes,
   };
 
   return <ReservationClient sitter={sitter} />;

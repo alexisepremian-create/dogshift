@@ -2,6 +2,7 @@
 /* eslint-disable @next/next/no-img-element */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable react-hooks/exhaustive-deps */
+ 
 "use client";
 
 import Link from "next/link";
@@ -88,6 +89,7 @@ type SitterDto = {
   lat?: number | null;
   lng?: number | null;
   hasAddress?: boolean;
+  pensionAcceptedSizes?: string[];
 };
 
 const PRIMARY_BTN =
@@ -812,6 +814,7 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
   const [startTime, setStartTime] = useState<string | null>(null);
   const [durationHours, setDurationHours] = useState<number | null>(null);
   const [message, setMessage] = useState("");
+  const [dogSize, setDogSize] = useState<string | null>(null);
 
   const [locationMode, setLocationMode] = useState<"AT_SITTER" | "AT_OWNER">("AT_SITTER");
   const [ownerStreet, setOwnerStreet] = useState("");
@@ -1743,6 +1746,19 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
         setDateEnd(dateStart);
       }
 
+      // Pension size validation
+      const pensionSizes = sitter.pensionAcceptedSizes ?? [];
+      if (selectedService === "Pension" && pensionSizes.length > 0) {
+        if (!dogSize) {
+          setError("Indiquez la taille de votre chien pour continuer.");
+          return;
+        }
+        if (!pensionSizes.includes(dogSize)) {
+          setError(`Ce sitter n'accepte pas les chiens de taille ${dogSize} en pension.`);
+          return;
+        }
+      }
+
       const payload: Record<string, unknown> = {
         sitterId: sitter.sitterId,
         service: selectedService,
@@ -1751,6 +1767,7 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
         ownerAddress: locationMode === "AT_OWNER" ? ownerAddressCombined : null,
         ownerLat: locationMode === "AT_OWNER" && travelPreview ? travelPreview.ownerLat : null,
         ownerLng: locationMode === "AT_OWNER" && travelPreview ? travelPreview.ownerLng : null,
+        ...(dogSize ? { dogSize } : {}),
       };
 
       if (unit === "DAILY") {
@@ -2118,6 +2135,32 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
                 </div>
               )}
             </div>
+
+            {/* Dog size picker — shown for Pension only when sitter has pensionAcceptedSizes */}
+            {selectedService === "Pension" && (sitter.pensionAcceptedSizes ?? []).length > 0 && (
+              <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.12)] sm:p-8">
+                <p className="text-sm font-semibold text-slate-900">
+                  Taille de votre chien <span className="text-rose-500">*</span>
+                </p>
+                <p className="mt-1 text-xs text-slate-500">Ce sitter accepte uniquement les chiens : {sitter.pensionAcceptedSizes!.join(", ")}.</p>
+                <div className="mt-4 flex flex-wrap gap-3">
+                  {sitter.pensionAcceptedSizes!.map((size) => (
+                    <button
+                      key={size}
+                      type="button"
+                      onClick={() => setDogSize(size)}
+                      className={`rounded-2xl border px-4 py-2 text-sm font-semibold transition ${
+                        dogSize === size
+                          ? "border-[var(--dogshift-blue)] bg-[color-mix(in_srgb,var(--dogshift-blue),transparent_90%)] text-[var(--dogshift-blue)]"
+                          : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                      }`}
+                    >
+                      {size}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.12)] sm:p-8">
               <p className="text-sm font-semibold text-slate-900">Message (optionnel)</p>
