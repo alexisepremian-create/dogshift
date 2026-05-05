@@ -16,6 +16,7 @@ const patchSchema = z.object({
   breed: z.string().max(80).optional().nullable(),
   birthYear: z.number().int().min(2000).max(2030).optional().nullable(),
   weightKg: z.number().positive().max(200).optional().nullable(),
+  neutered: z.boolean().optional().nullable(),
   medications: z.string().max(1000).optional().nullable(),
   allergies: z.string().max(500).optional().nullable(),
   vetContact: z.string().max(200).optional().nullable(),
