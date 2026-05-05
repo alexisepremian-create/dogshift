@@ -211,6 +211,7 @@ export default function HostProfileEditPage() {
 
   async function submitPensionVerification() {
     if (pensionPhotoKeys.length < 3) { setPensionError("Minimum 3 photos requises."); return; }
+    if (!profile.boardingDetails?.housingType) { setPensionError("Veuillez d'abord sélectionner le type de logement."); return; }
     setPensionSubmitting(true);
     setPensionError(null);
     try {
@@ -689,8 +690,6 @@ export default function HostProfileEditPage() {
                 </div>
 
                 {hasPension ? (
-                  <>
-                  {/* Pension verification card */}
                   <div className="mt-6">
                     {pensionVerifStatus === "approved" ? (
                       <div className="flex items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-4">
@@ -719,9 +718,10 @@ export default function HostProfileEditPage() {
                         </div>
                       </div>
                     ) : (
+                      /* Single unified card: housing details + photo upload */
                       <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
                         {/* Header */}
-                        <div className={`flex items-center gap-3 px-5 py-4 ${pensionVerifStatus === "ai_rejected" || pensionVerifStatus === "rejected" ? "border-b border-rose-100 bg-rose-50" : "border-b border-slate-100 bg-slate-50"}`}>
+                        <div className={`flex items-center gap-3 px-5 py-4 border-b ${pensionVerifStatus === "ai_rejected" || pensionVerifStatus === "rejected" ? "border-rose-100 bg-rose-50" : "border-slate-100 bg-slate-50"}`}>
                           {pensionVerifStatus === "ai_rejected" || pensionVerifStatus === "rejected" ? (
                             <XCircle className="h-5 w-5 shrink-0 text-rose-600" />
                           ) : (
@@ -735,16 +735,110 @@ export default function HostProfileEditPage() {
                             </p>
                             <p className={`text-xs mt-0.5 ${pensionVerifStatus === "ai_rejected" || pensionVerifStatus === "rejected" ? "text-rose-700" : "text-slate-500"}`}>
                               {pensionVerifStatus === "ai_rejected" || pensionVerifStatus === "rejected"
-                                ? "Vos photos n&apos;ont pas satisfait les critères. Consultez les conseils ci-dessous."
+                                ? "Vos photos n&apos;ont pas satisfait les critères. Complétez les informations et soumettez de nouvelles photos."
                                 : "Requis pour activer la Pension sur votre profil public."}
                             </p>
                           </div>
                         </div>
 
-                        {/* Instructions */}
-                        <div className="px-5 py-4 border-b border-slate-100">
+                        {/* Housing details — required before upload */}
+                        <div className="px-5 py-5 border-b border-slate-100">
+                          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-4">Détails du logement</p>
+                          <div className="grid gap-4 sm:grid-cols-2">
+                            <div>
+                              <label className="block text-sm font-medium text-slate-700" htmlFor="host_housing">
+                                Type de logement <span className="text-rose-500">*</span>
+                              </label>
+                              <div className="relative">
+                                <select
+                                  id="host_housing"
+                                  value={profile.boardingDetails?.housingType ?? ""}
+                                  onChange={(e) =>
+                                    setProfile((p) => ({
+                                      ...p,
+                                      boardingDetails: {
+                                        ...p.boardingDetails,
+                                        housingType: (e.target.value as "Appartement" | "Maison" | "") || undefined,
+                                      },
+                                    }))
+                                  }
+                                  className={`mt-2 w-full appearance-none rounded-2xl border px-4 py-3 pr-10 text-sm font-medium shadow-sm outline-none transition focus:ring-4 ${
+                                    !profile.boardingDetails?.housingType
+                                      ? "border-amber-400 bg-amber-50 text-slate-900 focus:border-amber-500 focus:ring-amber-100"
+                                      : "border-slate-300 bg-white text-slate-900 focus:border-[var(--dogshift-blue)] focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_85%)]"
+                                  }`}
+                                >
+                                  <option value="">Sélectionner</option>
+                                  <option value="Appartement">Appartement</option>
+                                  <option value="Maison">Maison</option>
+                                </select>
+                                <div className="pointer-events-none absolute right-4 top-[calc(50%+4px)] -translate-y-1/2 text-slate-400">
+                                  <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4" aria-hidden="true">
+                                    <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
+                                  </svg>
+                                </div>
+                              </div>
+                              {!profile.boardingDetails?.housingType && (
+                                <p className="mt-1.5 flex items-center gap-1 text-xs text-amber-700">
+                                  <AlertTriangle className="h-3 w-3 shrink-0" />
+                                  Requis pour soumettre vos photos
+                                </p>
+                              )}
+                            </div>
+
+                            <div>
+                              <label className="block text-sm font-medium text-slate-700" htmlFor="host_boarding_notes">
+                                Notes (optionnel)
+                              </label>
+                              <input
+                                id="host_boarding_notes"
+                                value={profile.boardingDetails?.notes ?? ""}
+                                onChange={(e) =>
+                                  setProfile((p) => ({
+                                    ...p,
+                                    boardingDetails: { ...p.boardingDetails, notes: e.target.value },
+                                  }))
+                                }
+                                className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition focus:border-[var(--dogshift-blue)] focus:ring-4 focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_85%)]"
+                                placeholder="ex. Jardin clos, parc à 5 min"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                            <label className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-900 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={Boolean(profile.boardingDetails?.hasGarden)}
+                                onChange={(e) =>
+                                  setProfile((p) => ({
+                                    ...p,
+                                    boardingDetails: { ...p.boardingDetails, hasGarden: e.target.checked },
+                                  }))
+                                }
+                              />
+                              Jardin
+                            </label>
+                            <label className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-900 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={Boolean(profile.boardingDetails?.hasOtherPets)}
+                                onChange={(e) =>
+                                  setProfile((p) => ({
+                                    ...p,
+                                    boardingDetails: { ...p.boardingDetails, hasOtherPets: e.target.checked },
+                                  }))
+                                }
+                              />
+                              Autres animaux
+                            </label>
+                          </div>
+                        </div>
+
+                        {/* Photo upload */}
+                        <div className="px-5 py-5">
                           <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-3">Photos requises (3 minimum, 8 maximum)</p>
-                          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 mb-4">
                             {["Salon / séjour", "Chambre / espace nuit", "Cuisine", "Extérieur (si dispo)"].map((label) => (
                               <div key={label} className="flex items-center gap-1.5 text-xs text-slate-600">
                                 <Camera className="h-3.5 w-3.5 shrink-0 text-slate-400" />
@@ -752,10 +846,7 @@ export default function HostProfileEditPage() {
                               </div>
                             ))}
                           </div>
-                        </div>
 
-                        {/* Upload zone */}
-                        <div className="px-5 py-4">
                           {pensionPhotoKeys.length > 0 && (
                             <div className="mb-3 flex items-center gap-2 rounded-xl bg-slate-50 border border-slate-200 px-3 py-2">
                               <CheckCircle className="h-4 w-4 text-emerald-500 shrink-0" />
@@ -771,6 +862,7 @@ export default function HostProfileEditPage() {
                               <span className="text-xs font-medium text-rose-700">{pensionError}</span>
                             </div>
                           )}
+
                           <div className="flex flex-wrap gap-2">
                             <button
                               type="button"
@@ -784,15 +876,28 @@ export default function HostProfileEditPage() {
                             {pensionPhotoKeys.length >= 3 && (
                               <button
                                 type="button"
-                                onClick={() => void submitPensionVerification()}
-                                disabled={pensionSubmitting}
-                                className="inline-flex items-center gap-2 rounded-xl bg-[var(--dogshift-blue)] px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:opacity-90 disabled:opacity-50"
+                                onClick={() => {
+                                  if (!profile.boardingDetails?.housingType) {
+                                    setPensionError("Veuillez d'abord sélectionner le type de logement.");
+                                    return;
+                                  }
+                                  void submitPensionVerification();
+                                }}
+                                disabled={pensionSubmitting || !profile.boardingDetails?.housingType}
+                                title={!profile.boardingDetails?.housingType ? "Sélectionnez d'abord le type de logement" : undefined}
+                                className="inline-flex items-center gap-2 rounded-xl bg-[var(--dogshift-blue)] px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
                               >
                                 <ShieldCheck className="h-3.5 w-3.5" />
                                 {pensionSubmitting ? "Envoi en cours…" : "Soumettre pour vérification"}
                               </button>
                             )}
                           </div>
+                          {pensionPhotoKeys.length >= 3 && !profile.boardingDetails?.housingType && (
+                            <p className="mt-2 flex items-center gap-1 text-xs text-amber-700">
+                              <AlertTriangle className="h-3 w-3 shrink-0" />
+                              Sélectionnez le type de logement pour pouvoir soumettre.
+                            </p>
+                          )}
                           <input
                             ref={pensionPhotoInputRef}
                             type="file"
@@ -805,92 +910,6 @@ export default function HostProfileEditPage() {
                       </div>
                     )}
                   </div>
-
-                  {/* Pension boarding details — always visible, used by the AI for coherence check */}
-                  <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-5">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-4">Détails du logement</p>
-                    <p className="text-xs text-slate-500 mb-4 -mt-2">Ces informations sont transmises à notre système de vérification pour valider la cohérence avec vos photos. Enregistrez le profil avant de soumettre les photos.</p>
-                    <div className="grid gap-4 sm:grid-cols-2">
-                      <div>
-                        <label className="block text-sm font-medium text-slate-700" htmlFor="host_housing">
-                          Type de logement
-                        </label>
-                        <div className="relative">
-                          <select
-                            id="host_housing"
-                            value={profile.boardingDetails?.housingType ?? ""}
-                            onChange={(e) =>
-                              setProfile((p) => ({
-                                ...p,
-                                boardingDetails: {
-                                  ...p.boardingDetails,
-                                  housingType: (e.target.value as "Appartement" | "Maison" | "") || undefined,
-                                },
-                              }))
-                            }
-                            className="mt-2 w-full appearance-none rounded-2xl border border-slate-300 bg-white px-4 py-3 pr-10 text-sm font-medium text-slate-900 shadow-sm outline-none transition focus:border-[var(--dogshift-blue)] focus:ring-4 focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_85%)]"
-                          >
-                            <option value="">Sélectionner</option>
-                            <option value="Appartement">Appartement</option>
-                            <option value="Maison">Maison</option>
-                          </select>
-                          <div className="pointer-events-none absolute right-4 top-[calc(50%+4px)] -translate-y-1/2 text-slate-400">
-                            <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4" aria-hidden="true">
-                              <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
-                            </svg>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-slate-700" htmlFor="host_boarding_notes">
-                          Notes (optionnel)
-                        </label>
-                        <input
-                          id="host_boarding_notes"
-                          value={profile.boardingDetails?.notes ?? ""}
-                          onChange={(e) =>
-                            setProfile((p) => ({
-                              ...p,
-                              boardingDetails: { ...p.boardingDetails, notes: e.target.value },
-                            }))
-                          }
-                          className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition focus:border-[var(--dogshift-blue)] focus:ring-4 focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_85%)]"
-                          placeholder="ex. Jardin clos, parc à 5 min"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                      <label className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-900">
-                        <input
-                          type="checkbox"
-                          checked={Boolean(profile.boardingDetails?.hasGarden)}
-                          onChange={(e) =>
-                            setProfile((p) => ({
-                              ...p,
-                              boardingDetails: { ...p.boardingDetails, hasGarden: e.target.checked },
-                            }))
-                          }
-                        />
-                        Jardin
-                      </label>
-                      <label className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-900">
-                        <input
-                          type="checkbox"
-                          checked={Boolean(profile.boardingDetails?.hasOtherPets)}
-                          onChange={(e) =>
-                            setProfile((p) => ({
-                              ...p,
-                              boardingDetails: { ...p.boardingDetails, hasOtherPets: e.target.checked },
-                            }))
-                          }
-                        />
-                        Autres animaux
-                      </label>
-                    </div>
-                  </div>
-                  </>
                 ) : null}
               </div>
 
