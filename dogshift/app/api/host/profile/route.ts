@@ -134,6 +134,8 @@ export async function GET(req: NextRequest) {
         activationCodeIssuedAt: true,
         stripeAccountStatus: true,
         avatarUrl: true,
+        maxDogsBySize: true,
+        acceptanceCriteria: true,
       },
     });
 
@@ -156,6 +158,9 @@ export async function GET(req: NextRequest) {
       ...(builtCompletionProfile && typeof builtCompletionProfile === "object" ? builtCompletionProfile : {}),
       stripeAccountStatus: typeof sitterProfile?.stripeAccountStatus === "string" ? sitterProfile.stripeAccountStatus : null,
     };
+    // Merge persisted DB-level fields that are not in hostProfileJson
+    if ((sitterProfile as any)?.maxDogsBySize) mergedProfile.maxDogsBySize = (sitterProfile as any).maxDogsBySize;
+    if ((sitterProfile as any)?.acceptanceCriteria) mergedProfile.acceptanceCriteria = (sitterProfile as any).acceptanceCriteria;
     if (isPersistedAvatarMediaPath(persistedAvatarUrl)) {
       mergedProfile.avatarUrl = persistedAvatarUrl;
       delete mergedProfile.avatarDataUrl;
@@ -323,6 +328,8 @@ export async function POST(req: NextRequest) {
     const enabledDogSizes = Object.keys(dogSizesObj).filter((k) => Boolean(dogSizesObj[k]));
     const maxDogsBySizeRaw = (b as Record<string, unknown>)?.maxDogsBySize;
     const maxDogsBySizeObj = maxDogsBySizeRaw && typeof maxDogsBySizeRaw === "object" ? (maxDogsBySizeRaw as Record<string, unknown>) : null;
+    const acceptanceCriteriaRaw = (b as Record<string, unknown>)?.acceptanceCriteria;
+    const acceptanceCriteriaObj = acceptanceCriteriaRaw && typeof acceptanceCriteriaRaw === "object" ? (acceptanceCriteriaRaw as Record<string, unknown>) : null;
 
     const avatarDataUrl = typeof (b as Record<string, unknown>)?.avatarDataUrl === "string" ? String((b as Record<string, unknown>).avatarDataUrl).trim() : "";
     let resolvedAvatarForColumn: string | null = null;
@@ -485,6 +492,7 @@ export async function POST(req: NextRequest) {
     if (pricingObj && typeof pricingObj === "object" && Object.keys(pricingObj).length > 0) updateData.pricing = pricingObj as Prisma.InputJsonValue;
     if (Array.isArray(enabledDogSizes) && enabledDogSizes.length > 0) updateData.dogSizes = enabledDogSizes as Prisma.InputJsonValue;
     if (maxDogsBySizeObj) updateData.maxDogsBySize = maxDogsBySizeObj as Prisma.InputJsonValue;
+    if (acceptanceCriteriaObj) updateData.acceptanceCriteria = acceptanceCriteriaObj as Prisma.InputJsonValue;
 
     if (finalLat != null && finalLng != null) {
       updateData.lat = finalLat;
@@ -511,6 +519,7 @@ export async function POST(req: NextRequest) {
         pricing: pricingObj as Prisma.InputJsonValue,
         dogSizes: enabledDogSizes as Prisma.InputJsonValue,
         maxDogsBySize: maxDogsBySizeObj as Prisma.InputJsonValue,
+        acceptanceCriteria: acceptanceCriteriaObj as Prisma.InputJsonValue,
         profileCompletion: completion,
       },
       update: updateData,

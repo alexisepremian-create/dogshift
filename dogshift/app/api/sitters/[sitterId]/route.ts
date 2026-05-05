@@ -37,6 +37,7 @@ type SitterDetail = {
   pricing: unknown;
   dogSizes: unknown;
   maxDogsBySize: unknown;
+  acceptanceCriteria?: { neuteredRequired?: boolean; maxDogs?: number | null } | null;
   boardingDetails: BoardingDetails | null;
   verified: boolean;
   lifecycleStatus: SitterLifecycleStatus;
@@ -119,6 +120,7 @@ export async function GET(
         pricing: true,
         dogSizes: true,
         maxDogsBySize: true,
+        acceptanceCriteria: true,
         pensionVerifStatus: true,
         pensionAcceptedSizes: true,
         user: { select: { image: true, hostProfileJson: true } },
@@ -207,6 +209,7 @@ export async function GET(
       pricing,
       dogSizes: sitterProfile.dogSizes ?? null,
       maxDogsBySize: (sitterProfile as any).maxDogsBySize ?? null,
+      acceptanceCriteria: (sitterProfile as any).acceptanceCriteria ?? null,
       boardingDetails,
       verified,
       lifecycleStatus,

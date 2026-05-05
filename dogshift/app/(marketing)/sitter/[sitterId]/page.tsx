@@ -55,6 +55,7 @@ type SitterCard = {
   services: string[];
   dogSizes: string[];
   maxDogsBySize?: Record<string, number>;
+  acceptanceCriteria?: { neuteredRequired?: boolean; maxDogs?: number | null } | null;
   availableDates: string[];
   pricing: PricingMap;
   bio: string;
@@ -498,6 +499,7 @@ function SitterPublicProfileContent({
       services: enabledServices ?? [],
       dogSizes: enabledDogSizes,
       maxDogsBySize,
+      acceptanceCriteria: (profile as { acceptanceCriteria?: { neuteredRequired?: boolean; maxDogs?: number | null } | null }).acceptanceCriteria ?? null,
       availableDates: [],
       pricing: safePricingMap(pricing),
       bio: profile.bio ?? "",
@@ -542,6 +544,7 @@ function SitterPublicProfileContent({
                 services: unknown;
                 pricing: unknown;
                 dogSizes: unknown;
+                acceptanceCriteria?: { neuteredRequired?: boolean; maxDogs?: number | null } | null;
                 boardingDetails?: {
                   housingType?: "Appartement" | "Maison" | null;
                   hasGarden?: boolean | null;
@@ -587,6 +590,9 @@ function SitterPublicProfileContent({
           pricePerDay,
           services,
           dogSizes: safeDogSizes(payload.sitter.dogSizes),
+          acceptanceCriteria: payload.sitter.acceptanceCriteria && typeof payload.sitter.acceptanceCriteria === "object"
+            ? (payload.sitter.acceptanceCriteria as { neuteredRequired?: boolean; maxDogs?: number | null })
+            : null,
           availableDates: [],
           pricing,
           bio: payload.sitter.bio ?? "",
@@ -2401,6 +2407,21 @@ function SitterPublicProfileContent({
                               );
                             })}
                           </div>
+                        </div>
+                      ) : null}
+                      {/* Acceptance criteria badges */}
+                      {(sitter.acceptanceCriteria?.neuteredRequired || sitter.acceptanceCriteria?.maxDogs) ? (
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          {sitter.acceptanceCriteria?.neuteredRequired && (
+                            <span className="inline-flex items-center gap-1 rounded-xl border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-800">
+                              ✂️ Castré/stérilisé requis
+                            </span>
+                          )}
+                          {sitter.acceptanceCriteria?.maxDogs ? (
+                            <span className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-700">
+                              🐶 Max. {sitter.acceptanceCriteria.maxDogs} chien{sitter.acceptanceCriteria.maxDogs > 1 ? "s" : ""}
+                            </span>
+                          ) : null}
                         </div>
                       ) : null}
                     </div>

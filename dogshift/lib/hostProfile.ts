@@ -34,6 +34,15 @@ export type HostProfileV1 = {
    * When set, dogSizes is derived: dogSizes[size] = maxDogsBySize[size] > 0.
    */
   maxDogsBySize?: Record<DogSize, number>;
+  /**
+   * Global acceptance criteria applied to all services.
+   * neuteredRequired: true = only accepts neutered/spayed dogs.
+   * maxDogs: max number of dogs the sitter accepts simultaneously (null = no limit).
+   */
+  acceptanceCriteria?: {
+    neuteredRequired?: boolean;
+    maxDogs?: number | null;
+  };
   cancellationFlexible: boolean;
   boardingDetails?: HostBoardingDetails;
   verificationStatus: HostVerificationStatus;

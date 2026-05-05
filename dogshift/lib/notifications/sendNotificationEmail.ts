@@ -126,9 +126,70 @@ type TravelEmailData = {
   feeCents: number;
 } | null;
 
+type DogProfileData = {
+  name: string;
+  breed?: string | null;
+  birthYear?: number | null;
+  weightKg?: number | null;
+  medications?: string | null;
+  allergies?: string | null;
+  vetContact?: string | null;
+  behaviorNotes?: string | null;
+  feedingNotes?: string | null;
+  sitterInstructions?: string | null;
+  photoUrl?: string | null;
+} | null;
+
+function buildDogProfileHtml(dog: DogProfileData): string {
+  if (!dog) return "";
+  const row = (label: string, value: string | null | undefined) => {
+    if (!value || !value.trim()) return "";
+    return `
+      <tr>
+        <td style="padding:6px 10px 6px 0;font-family:Arial,Helvetica,sans-serif;font-size:13px;font-weight:600;color:#374151;vertical-align:top;white-space:nowrap;">${label}</td>
+        <td style="padding:6px 0;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#374151;vertical-align:top;">${value.trim().replace(/\n/g, "<br/>")}</td>
+      </tr>`;
+  };
+
+  const age = dog.birthYear ? `${new Date().getFullYear() - dog.birthYear} ans (né en ${dog.birthYear})` : null;
+  const weight = dog.weightKg ? `${dog.weightKg} kg` : null;
+
+  const tableRows = [
+    row("Race", dog.breed),
+    row("Âge", age),
+    row("Poids", weight),
+    row("Médicaments", dog.medications),
+    row("Allergies", dog.allergies),
+    row("Vétérinaire", dog.vetContact),
+    row("Comportement", dog.behaviorNotes),
+    row("Alimentation", dog.feedingNotes),
+    row("Instructions", dog.sitterInstructions),
+  ].join("");
+
+  return `
+    <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;margin-top:16px;border-radius:12px;overflow:hidden;border:1px solid #e0e7ef;">
+      <tr>
+        <td colspan="2" style="padding:10px 14px;background:#f0f4f8;font-family:Arial,Helvetica,sans-serif;font-size:13px;font-weight:700;color:#1e3a5f;">
+          🐾 Fiche de ${dog.name}
+        </td>
+      </tr>
+      <tr>
+        <td colspan="2" style="padding:10px 14px 0;">
+          <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
+            ${tableRows || '<tr><td style="padding:6px 0;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#6b7280;">Aucune information supplémentaire.</td></tr>'}
+          </table>
+        </td>
+      </tr>
+      <tr><td colspan="2" style="height:10px;"></td></tr>
+    </table>`;
+}
+
 async function resolveBookingEmailData(bookingId: string): Promise<{
   rows: EmailSummaryRow[];
   travel: TravelEmailData;
+  dog: DogProfileData;
+  ownerPhone: string | null;
+  pickupAddress: string | null;
 }> {
   const booking = await (prisma as any).booking.findUnique({
     where: { id: bookingId },
@@ -145,10 +206,28 @@ async function resolveBookingEmailData(bookingId: string): Promise<{
       travelFeeAmount: true,
       ownerLat: true,
       ownerLng: true,
+      ownerAddress: true,
+      ownerPhone: true,
+      dogProfileId: true,
+      selectedDog: {
+        select: {
+          name: true,
+          breed: true,
+          birthYear: true,
+          weightKg: true,
+          medications: true,
+          allergies: true,
+          vetContact: true,
+          behaviorNotes: true,
+          feedingNotes: true,
+          sitterInstructions: true,
+          photoUrl: true,
+        },
+      },
     },
   });
 
-  if (!booking) return { rows: [{ label: "Référence", value: bookingId }], travel: null };
+  if (!booking) return { rows: [{ label: "Référence", value: bookingId }], travel: null, dog: null, ownerPhone: null, pickupAddress: null };
 
   const rows: EmailSummaryRow[] = [];
   const service = typeof booking.service === "string" && booking.service.trim() ? booking.service.trim() : "";
@@ -167,6 +246,12 @@ async function resolveBookingEmailData(bookingId: string): Promise<{
   if (service) rows.push({ label: "Service", value: service });
   if (start) rows.push({ label: "Début", value: start });
   if (end) rows.push({ label: "Fin", value: end });
+
+  const pickupAddress = booking.locationMode === "AT_OWNER" && typeof booking.ownerAddress === "string" && booking.ownerAddress.trim()
+    ? booking.ownerAddress.trim()
+    : null;
+
+  if (pickupAddress) rows.push({ label: "Lieu de prise en charge", value: pickupAddress });
 
   if (booking.locationMode === "AT_OWNER" && travelFee > 0 && serviceSubtotal !== null) {
     rows.push({ label: "Sous-total service", value: formatMoney(serviceSubtotal, currency) });
@@ -212,12 +297,30 @@ async function resolveBookingEmailData(bookingId: string): Promise<{
     }
   }
 
-  return { rows, travel };
+  const ownerPhone = typeof booking.ownerPhone === "string" && booking.ownerPhone.trim() ? booking.ownerPhone.trim() : null;
+  const dog: DogProfileData = booking.selectedDog ?? null;
+
+  return { rows, travel, dog, ownerPhone, pickupAddress };
 }
 
 async function resolveBookingSummaryRows(bookingId: string): Promise<EmailSummaryRow[]> {
   const { rows } = await resolveBookingEmailData(bookingId);
   return rows;
+}
+
+async function resolveBookingRequestEmailData(bookingId: string): Promise<{
+  rows: EmailSummaryRow[];
+  extraHtml: string;
+}> {
+  const { rows, travel, dog, ownerPhone } = await resolveBookingEmailData(bookingId);
+
+  // Add owner phone to summary rows for the sitter
+  const sitterRows: EmailSummaryRow[] = ownerPhone
+    ? [...rows.slice(0, -1), { label: "Tél. propriétaire", value: ownerPhone }, rows[rows.length - 1]!]
+    : rows;
+
+  const extraHtml = buildTravelMapExtraHtml(travel) + buildDogProfileHtml(dog);
+  return { rows: sitterRows, extraHtml };
 }
 
 function buildTravelMapExtraHtml(travel: TravelEmailData): string {
@@ -533,12 +636,13 @@ Notification DogShift.
       }
       case "bookingRequest": {
         const url = bookingUrl(payload.bookingId, "host");
-        const rows = await resolveBookingSummaryRows(payload.bookingId);
+        const { rows, extraHtml } = await resolveBookingRequestEmailData(payload.bookingId);
         return renderEmailLayout({
           logoUrl,
           title: "Nouvelle demande de réservation",
           subtitle: "Tu as reçu une nouvelle demande.",
           summaryRows: rows,
+          extraHtml: extraHtml || undefined,
           ctaLabel: url ? "Voir la réservation" : undefined,
           ctaUrl: url || undefined,
         }).html;

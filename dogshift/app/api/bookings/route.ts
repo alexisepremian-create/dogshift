@@ -30,6 +30,8 @@ type CreateBookingBody = {
   ownerAddress?: unknown; // required when locationMode === "AT_OWNER"
   ownerLat?: unknown; // client-geocoded latitude
   ownerLng?: unknown; // client-geocoded longitude
+  dogProfileId?: unknown;
+  ownerPhone?: unknown;
 };
 
 type StayRule = {
@@ -271,7 +273,7 @@ export async function POST(req: NextRequest) {
 
     const sitterProfile = await (prisma as any).sitterProfile.findFirst({
       where: { sitterId, published: true },
-      select: { sitterId: true, pricing: true, lat: true, lng: true, address: true, pensionVerifStatus: true, pensionAcceptedSizes: true },
+      select: { sitterId: true, pricing: true, lat: true, lng: true, address: true, pensionVerifStatus: true, pensionAcceptedSizes: true, acceptanceCriteria: true },
     });
 
     if (!sitterProfile?.sitterId) {
@@ -284,6 +286,42 @@ export async function POST(req: NextRequest) {
 
     if (unit === null) {
       return NextResponse.json({ ok: false, error: "SERVICE_NOT_AVAILABLE" }, { status: 400 });
+    }
+
+    // Validate acceptance criteria (neutered, max dogs) — applies to all services
+    const acceptanceCriteria = sitterProfile.acceptanceCriteria && typeof sitterProfile.acceptanceCriteria === "object"
+      ? (sitterProfile.acceptanceCriteria as { neuteredRequired?: boolean; maxDogs?: number | null })
+      : null;
+    if (acceptanceCriteria) {
+      const numberOfDogs = typeof (body as { numberOfDogs?: unknown }).numberOfDogs === "number"
+        ? (body as { numberOfDogs: number }).numberOfDogs
+        : 1;
+      if (acceptanceCriteria.maxDogs && numberOfDogs > acceptanceCriteria.maxDogs) {
+        return NextResponse.json({
+          ok: false,
+          error: "TOO_MANY_DOGS",
+          message: `Ce sitter accepte au maximum ${acceptanceCriteria.maxDogs} chien${acceptanceCriteria.maxDogs > 1 ? "s" : ""} simultanément.`,
+        }, { status: 400 });
+      }
+      // neuteredRequired: validated against dogProfile if dogProfileId is provided
+      if (acceptanceCriteria.neuteredRequired) {
+        const dogProfileId = typeof (body as { dogProfileId?: unknown }).dogProfileId === "string"
+          ? (body as { dogProfileId: string }).dogProfileId
+          : null;
+        if (dogProfileId) {
+          const dogProfile = await (prisma as any).dogProfile.findUnique({
+            where: { id: dogProfileId },
+            select: { neutered: true },
+          });
+          if (dogProfile && dogProfile.neutered === false) {
+            return NextResponse.json({
+              ok: false,
+              error: "DOG_NOT_NEUTERED",
+              message: "Ce sitter n'accepte que les chiens castrés ou stérilisés.",
+            }, { status: 400 });
+          }
+        }
+      }
     }
 
     // Validate dog size for Pension if the sitter has pensionAcceptedSizes
@@ -530,6 +568,20 @@ export async function POST(req: NextRequest) {
 
     const platformFeeAmount = Math.round(amount * DOGSHIFT_COMMISSION_RATE);
 
+    const dogProfileId = typeof body?.dogProfileId === "string" && body.dogProfileId.trim() ? body.dogProfileId.trim() : null;
+    const ownerPhone = typeof body?.ownerPhone === "string" && body.ownerPhone.trim() ? body.ownerPhone.trim() : null;
+
+    // Validate that the dog profile belongs to the current user if provided
+    if (dogProfileId) {
+      const dog = await (prisma as any).dogProfile.findFirst({
+        where: { id: dogProfileId, userId },
+        select: { id: true },
+      });
+      if (!dog) {
+        return NextResponse.json({ ok: false, error: "DOG_NOT_FOUND" }, { status: 400 });
+      }
+    }
+
     const booking = await (prisma as any).booking.create({
       data: {
         userId,
@@ -548,6 +600,8 @@ export async function POST(req: NextRequest) {
         ownerLat,
         ownerLng,
         ownerAddress: resolvedOwnerAddress,
+        dogProfileId,
+        ownerPhone,
       },
       select: { id: true },
     });

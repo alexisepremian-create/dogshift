@@ -913,6 +913,95 @@ export default function HostProfileEditPage() {
                 ) : null}
               </div>
 
+              {/* ── Critères d'acceptation ── */}
+              <div id="acceptanceCriteria" className="scroll-mt-24 border-t border-slate-200 p-6 sm:p-8">
+                <h2 className="text-base font-semibold text-slate-900">Critères d&apos;acceptation</h2>
+                <p className="mt-1 text-sm text-slate-500">
+                  Ces critères s&apos;appliquent à tous vos services. Les réservations non conformes seront bloquées.
+                </p>
+                <div className="mt-4 space-y-4">
+                  {/* Castration */}
+                  <div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-4">
+                    <div>
+                      <p className="text-sm font-semibold text-slate-900">Chien castré/stérilisé requis</p>
+                      <p className="mt-0.5 text-xs text-slate-500">Vous n&apos;acceptez que les chiens castrés ou stérilisés.</p>
+                    </div>
+                    <button
+                      type="button"
+                      aria-label="Castration requise"
+                      onClick={() =>
+                        setProfile((p) => ({
+                          ...p,
+                          acceptanceCriteria: {
+                            ...p.acceptanceCriteria,
+                            neuteredRequired: !p.acceptanceCriteria?.neuteredRequired,
+                          },
+                        }))
+                      }
+                      className={
+                        profile.acceptanceCriteria?.neuteredRequired
+                          ? "inline-flex h-8 w-14 items-center rounded-full bg-[var(--dogshift-blue)] p-1 transition"
+                          : "inline-flex h-8 w-14 items-center rounded-full bg-slate-200 p-1 transition"
+                      }
+                    >
+                      <span
+                        className={
+                          profile.acceptanceCriteria?.neuteredRequired
+                            ? "h-6 w-6 translate-x-6 rounded-full bg-white shadow-sm transition"
+                            : "h-6 w-6 translate-x-0 rounded-full bg-white shadow-sm transition"
+                        }
+                      />
+                    </button>
+                  </div>
+
+                  {/* Max chiens simultanés */}
+                  <div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-4">
+                    <div>
+                      <p className="text-sm font-semibold text-slate-900">Nombre maximum de chiens simultanés</p>
+                      <p className="mt-0.5 text-xs text-slate-500">0 = pas de limite.</p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <button
+                        type="button"
+                        aria-label="Diminuer"
+                        disabled={(profile.acceptanceCriteria?.maxDogs ?? 0) <= 0}
+                        onClick={() =>
+                          setProfile((p) => ({
+                            ...p,
+                            acceptanceCriteria: {
+                              ...p.acceptanceCriteria,
+                              maxDogs: Math.max(0, (p.acceptanceCriteria?.maxDogs ?? 0) - 1) || null,
+                            },
+                          }))
+                        }
+                        className="flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 text-sm text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 disabled:opacity-30"
+                      >
+                        −
+                      </button>
+                      <span className="min-w-[2rem] text-center text-base font-bold text-slate-900">
+                        {profile.acceptanceCriteria?.maxDogs ?? 0}
+                      </span>
+                      <button
+                        type="button"
+                        aria-label="Augmenter"
+                        onClick={() =>
+                          setProfile((p) => ({
+                            ...p,
+                            acceptanceCriteria: {
+                              ...p.acceptanceCriteria,
+                              maxDogs: (p.acceptanceCriteria?.maxDogs ?? 0) + 1,
+                            },
+                          }))
+                        }
+                        className="flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 text-sm text-slate-600 transition hover:border-slate-300 hover:bg-slate-50"
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               <div className="border-t border-slate-200 p-6 sm:p-8">
                 <div className="mb-5 flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 p-4">
                   <div>
