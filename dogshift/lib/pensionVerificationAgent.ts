@@ -17,16 +17,16 @@ const APP_URL = (process.env.NEXT_PUBLIC_APP_URL ?? "https://www.dogshift.ch").r
 
 const PensionVerifSchema = z.object({
   verdict: z.enum(["approved", "rejected"]).describe("Décision finale"),
-  score: z.number().min(0).max(100).describe("Score global de 0 à 100"),
+  score: z.number().describe("Score global de 0 à 100"),
   criteria: z.object({
-    espaceSuffisant: z.number().min(0).max(5).describe("Espace suffisant pour un chien (0-5)"),
-    hygiene: z.number().min(0).max(5).describe("Propreté et hygiène (0-5)"),
-    securite: z.number().min(0).max(5).describe("Absence de dangers visibles (0-5)"),
-    adequatChien: z.number().min(0).max(5).describe("Environnement adapté à un chien (0-5)"),
-    coherenceDeclaration: z.number().min(0).max(5).describe("Cohérence avec le type de logement déclaré (0-5)"),
+    espaceSuffisant: z.number().describe("Espace suffisant pour un chien, note de 0 à 5"),
+    hygiene: z.number().describe("Propreté et hygiène, note de 0 à 5"),
+    securite: z.number().describe("Absence de dangers visibles, note de 0 à 5"),
+    adequatChien: z.number().describe("Environnement adapté à un chien, note de 0 à 5"),
+    coherenceDeclaration: z.number().describe("Cohérence avec le type de logement déclaré, note de 0 à 5"),
   }),
-  forces: z.array(z.string()).max(3).describe("Points positifs observés"),
-  problemes: z.array(z.string()).max(5).describe("Problèmes ou points d'attention"),
+  forces: z.array(z.string()).describe("Points positifs observés, maximum 3"),
+  problemes: z.array(z.string()).describe("Problèmes ou points d'attention, maximum 5"),
   recommandation: z.string().describe("Recommandation détaillée pour l'admin"),
 });
 
