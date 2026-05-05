@@ -74,6 +74,15 @@ export default function HostProfileEditPage() {
   const [pensionError, setPensionError] = useState<string | null>(null);
   const pensionPhotoInputRef = useRef<HTMLInputElement>(null);
 
+  // Max-dogs OPAn certificate state
+  const [maxDogsCertStatus, setMaxDogsCertStatus] = useState<string>("not_submitted");
+  const [maxDogsCertUploading, setMaxDogsCertUploading] = useState(false);
+  const [maxDogsCertResetting, setMaxDogsCertResetting] = useState(false);
+  const [maxDogsCertError, setMaxDogsCertError] = useState<string | null>(null);
+  const [maxDogsCertSubmitting, setMaxDogsCertSubmitting] = useState(false);
+  const [maxDogsCertKey, setMaxDogsCertKey] = useState<string | null>(null);
+  const maxDogsCertInputRef = useRef<HTMLInputElement>(null);
+
   useEffect(() => {
     if (!presentationTipsOpen) return;
     const onKeyDown = (e: KeyboardEvent) => {
@@ -114,6 +123,7 @@ export default function HostProfileEditPage() {
       }
     })();
     void fetchPensionStatus();
+    void fetchMaxDogsCertStatus();
     return () => {
       canceled = true;
     };
@@ -166,6 +176,80 @@ export default function HostProfileEditPage() {
         setHasPension(Boolean(data.hasPension));
       }
     } catch { /* ignore */ }
+  }
+
+  async function fetchMaxDogsCertStatus() {
+    try {
+      const res = await fetch("/api/host/max-dogs-cert");
+      const data = await res.json();
+      if (data.ok) {
+        setMaxDogsCertStatus(data.status ?? "not_submitted");
+      }
+    } catch { /* ignore */ }
+  }
+
+  async function handleMaxDogsCertFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setMaxDogsCertError(null);
+    setMaxDogsCertUploading(true);
+    try {
+      const presignRes = await fetch("/api/host/max-dogs-cert/presign", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ contentType: file.type, sizeBytes: file.size }),
+      });
+      const presignData = await presignRes.json();
+      if (!presignRes.ok || !presignData.ok) {
+        setMaxDogsCertError("Impossible de préparer l'envoi. Réessayez.");
+        return;
+      }
+      await fetch(presignData.uploadUrl, { method: "PUT", body: file, headers: { "Content-Type": file.type } });
+      setMaxDogsCertKey(presignData.key);
+    } catch {
+      setMaxDogsCertError("Erreur lors de l'upload. Réessayez.");
+    } finally {
+      setMaxDogsCertUploading(false);
+      if (maxDogsCertInputRef.current) maxDogsCertInputRef.current.value = "";
+    }
+  }
+
+  async function submitMaxDogsCert() {
+    if (!maxDogsCertKey) { setMaxDogsCertError("Veuillez d'abord télécharger votre document."); return; }
+    setMaxDogsCertSubmitting(true);
+    setMaxDogsCertError(null);
+    try {
+      const res = await fetch("/api/host/max-dogs-cert/submit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ photoKey: maxDogsCertKey }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        setMaxDogsCertKey(null);
+        await fetchMaxDogsCertStatus();
+      } else {
+        setMaxDogsCertError("Erreur lors de la soumission. Réessayez.");
+      }
+    } catch {
+      setMaxDogsCertError("Erreur réseau. Réessayez.");
+    } finally {
+      setMaxDogsCertSubmitting(false);
+    }
+  }
+
+  async function resetMaxDogsCert() {
+    setMaxDogsCertResetting(true);
+    try {
+      const res = await fetch("/api/host/max-dogs-cert/reset", { method: "POST" });
+      const data = await res.json();
+      if (data.ok) {
+        setMaxDogsCertKey(null);
+        await fetchMaxDogsCertStatus();
+      }
+    } catch { /* ignore */ } finally {
+      setMaxDogsCertResetting(false);
+    }
   }
 
   async function handlePensionPhotoAdd(e: React.ChangeEvent<HTMLInputElement>) {
@@ -1000,6 +1084,105 @@ export default function HostProfileEditPage() {
                     </div>
                   </div>
                 </div>
+
+                {/* OPAn certificate required when maxDogs > 5 */}
+                {(profile.acceptanceCriteria?.maxDogs ?? 0) > 5 && (
+                  <div className="mt-5">
+                    {maxDogsCertStatus === "approved" ? (
+                      <div className="flex items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-4">
+                        <CheckCircle className="h-5 w-5 shrink-0 text-emerald-600" />
+                        <div>
+                          <p className="text-sm font-semibold text-emerald-900">Certificat OPAn validé</p>
+                          <p className="text-xs text-emerald-700 mt-0.5">Vous êtes autorisé(e) à accueillir plus de 5 chiens simultanément.</p>
+                        </div>
+                      </div>
+                    ) : maxDogsCertStatus === "pending" ? (
+                      <div className="rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4">
+                        <div className="flex items-center gap-3">
+                          <Clock className="h-5 w-5 shrink-0 text-amber-600" />
+                          <div className="flex-1">
+                            <p className="text-sm font-semibold text-amber-900">Document en cours de vérification</p>
+                            <p className="text-xs text-amber-700 mt-0.5">Notre équipe examine votre document. Réponse sous 24–48h ouvrées.</p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => void resetMaxDogsCert()}
+                            disabled={maxDogsCertResetting}
+                            className="shrink-0 text-xs text-amber-700 underline hover:text-amber-900 disabled:opacity-50"
+                          >
+                            {maxDogsCertResetting ? "…" : "Nouveau document"}
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+                        <div className={`flex items-center gap-3 px-5 py-4 border-b ${maxDogsCertStatus === "rejected" ? "border-rose-100 bg-rose-50" : "border-slate-100 bg-slate-50"}`}>
+                          <ShieldCheck className={`h-5 w-5 shrink-0 ${maxDogsCertStatus === "rejected" ? "text-rose-600" : "text-[var(--dogshift-blue)]"}`} />
+                          <div>
+                            <p className={`text-sm font-semibold ${maxDogsCertStatus === "rejected" ? "text-rose-900" : "text-slate-900"}`}>
+                              {maxDogsCertStatus === "rejected" ? "Document refusé — soumettez-en un nouveau" : "Certificat OPAn requis (art. 101 OPAn)"}
+                            </p>
+                            <p className={`text-xs mt-0.5 ${maxDogsCertStatus === "rejected" ? "text-rose-700" : "text-slate-500"}`}>
+                              La loi suisse exige une attestation FSIFP ou une autorisation cantonale pour garder plus de 5 chiens simultanément.
+                            </p>
+                          </div>
+                        </div>
+                        <div className="px-5 py-5">
+                          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-3">Document accepté</p>
+                          <div className="grid grid-cols-1 gap-1.5 mb-4 sm:grid-cols-2 text-xs text-slate-600">
+                            {["Attestation FSIFP (garde d'animaux de compagnie)", "Autorisation cantonale (SCAV/service vétérinaire)"].map((l) => (
+                              <div key={l} className="flex items-center gap-1.5">
+                                <CheckCircle className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+                                {l}
+                              </div>
+                            ))}
+                          </div>
+                          {maxDogsCertError && (
+                            <div className="mb-3 flex items-center gap-2 rounded-xl bg-rose-50 border border-rose-200 px-3 py-2">
+                              <AlertTriangle className="h-4 w-4 text-rose-500 shrink-0" />
+                              <span className="text-xs font-medium text-rose-700">{maxDogsCertError}</span>
+                            </div>
+                          )}
+                          {maxDogsCertKey ? (
+                            <div className="mb-3 flex items-center gap-2 rounded-xl bg-slate-50 border border-slate-200 px-3 py-2">
+                              <CheckCircle className="h-4 w-4 text-emerald-500 shrink-0" />
+                              <span className="text-xs font-medium text-slate-700">Document prêt pour envoi</span>
+                              <button type="button" onClick={() => setMaxDogsCertKey(null)} className="ml-auto text-xs text-slate-400 hover:text-slate-600">Effacer</button>
+                            </div>
+                          ) : null}
+                          <div className="flex flex-wrap gap-2">
+                            <button
+                              type="button"
+                              onClick={() => maxDogsCertInputRef.current?.click()}
+                              disabled={maxDogsCertUploading}
+                              className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:opacity-50"
+                            >
+                              <Upload className="h-3.5 w-3.5" />
+                              {maxDogsCertUploading ? "Upload…" : "Choisir un document"}
+                            </button>
+                            {maxDogsCertKey && (
+                              <button
+                                type="button"
+                                onClick={() => void submitMaxDogsCert()}
+                                disabled={maxDogsCertSubmitting}
+                                className="inline-flex items-center gap-1.5 rounded-xl bg-[var(--dogshift-blue)] px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-[var(--dogshift-blue-hover)] disabled:opacity-50"
+                              >
+                                {maxDogsCertSubmitting ? "Envoi…" : "Soumettre pour vérification"}
+                              </button>
+                            )}
+                          </div>
+                          <input
+                            ref={maxDogsCertInputRef}
+                            type="file"
+                            accept="image/jpeg,image/png,image/webp,application/pdf"
+                            className="hidden"
+                            onChange={(e) => void handleMaxDogsCertFileChange(e)}
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div className="border-t border-slate-200 p-6 sm:p-8">
