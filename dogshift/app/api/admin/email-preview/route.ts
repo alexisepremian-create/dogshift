@@ -481,6 +481,237 @@ async function renderTemplate(template: string): Promise<{ html: string; subject
 </html>`,
       };
 
+    // ── Vérification d'identité ──────────────────────────────────────────────
+    case "verification-identity-approved": {
+      const { html } = renderEmailLayout({
+        title: "Votre identité a été vérifiée — Bienvenue sur DogShift ✓",
+        extraHtml: `<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:22px;color:#374151;">
+          <p style="margin:0 0 12px 0;">Bonne nouvelle, Camille !</p>
+          <p style="margin:0 0 12px 0;">
+            Votre identité a été <strong style="color:#059669;">vérifiée avec succès</strong>.
+            Votre profil est maintenant éligible à la publication sur DogShift.
+          </p>
+          <p style="margin:0;color:#6b7280;font-size:13px;">
+            Pensez à compléter votre profil et à activer la publication depuis votre tableau de bord.
+          </p>
+        </div>`,
+        ctaLabel: "Voir mon profil",
+        ctaUrl: `${BASE_URL}/host/profile/edit`,
+        footerText: "DogShift · Dog-sitting premium en Suisse · support@dogshift.ch",
+      });
+      return { subject: "Votre identité a été vérifiée — Bienvenue sur DogShift ✓", html };
+    }
+
+    case "verification-identity-rejected": {
+      const { html } = renderEmailLayout({
+        title: "Vérification d'identité — Action requise",
+        extraHtml: `<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:22px;color:#374151;">
+          <p style="margin:0 0 12px 0;">Bonjour Camille,</p>
+          <p style="margin:0 0 16px 0;">
+            Malheureusement, nous n'avons pas pu valider votre demande de vérification d'identité.<br/>
+            <strong>Motif :</strong> Les documents soumis ne sont pas lisibles. Merci de resoumettre en photo nette.
+          </p>
+          <p style="margin:0 0 12px 0;">
+            Vous pouvez soumettre de nouveaux documents depuis votre profil.
+          </p>
+          <p style="margin:0;color:#6b7280;font-size:13px;">
+            En cas de question : <a href="mailto:support@dogshift.ch" style="color:#6b7280;">support@dogshift.ch</a>
+          </p>
+        </div>`,
+        ctaLabel: "Resoumettre mes documents",
+        ctaUrl: `${BASE_URL}/host/profile/edit`,
+        footerText: "DogShift · Dog-sitting premium en Suisse · support@dogshift.ch",
+      });
+      return { subject: "Vérification d'identité — Action requise", html };
+    }
+
+    // ── Vérification Pension ─────────────────────────────────────────────────
+    case "pension-submission-receipt": {
+      const { html } = renderEmailLayout({
+        title: "Vos photos ont bien été reçues — Vérification Pension",
+        extraHtml: `<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:22px;color:#374151;">
+          <p style="margin:0 0 12px 0;">Bonjour Camille,</p>
+          <p style="margin:0 0 12px 0;">
+            Nous avons bien reçu vos <strong>4 photos</strong> pour la vérification de votre logement.
+          </p>
+          <p style="margin:0 0 12px 0;">
+            Notre équipe va les examiner et vous envoyer une réponse dans les <strong>24–48 heures ouvrées</strong>.
+          </p>
+          <p style="margin:0;color:#6b7280;font-size:13px;">
+            En cas de question : <a href="mailto:support@dogshift.ch" style="color:#6b7280;">support@dogshift.ch</a>
+          </p>
+        </div>`,
+        ctaLabel: "Voir mon profil",
+        ctaUrl: `${BASE_URL}/host/profile/edit`,
+        footerText: "DogShift · Dog-sitting premium en Suisse · support@dogshift.ch",
+      });
+      return { subject: "Vos photos ont bien été reçues — Vérification Pension", html };
+    }
+
+    case "pension-approved": {
+      const { html } = renderEmailLayout({
+        title: "Votre logement est vérifié — Pension activée",
+        extraHtml: `<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:22px;color:#374151;">
+          <p style="margin:0 0 12px 0;">Bonne nouvelle, Camille !</p>
+          <p style="margin:0 0 12px 0;">
+            Votre logement a été analysé et répond à nos critères de qualité
+            <strong style="color:#059669;">(score 82/100)</strong>.
+            Le service <strong>Pension</strong> est maintenant actif sur votre profil public.
+          </p>
+          <p style="margin:0;color:#6b7280;font-size:13px;">
+            Les propriétaires peuvent désormais vous réserver pour une pension. Pensez à bien configurer vos disponibilités.
+          </p>
+        </div>`,
+        ctaLabel: "Voir mon profil",
+        ctaUrl: `${BASE_URL}/host/profile/edit`,
+        footerText: "DogShift · Dog-sitting premium en Suisse · support@dogshift.ch",
+      });
+      return { subject: "Votre logement est vérifié — Pension activée", html };
+    }
+
+    case "pension-needs-review": {
+      const { html } = renderEmailLayout({
+        title: "Vos photos sont en cours d'examen — Pension",
+        extraHtml: `<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:22px;color:#374151;">
+          <p style="margin:0 0 12px 0;">Bonjour Camille,</p>
+          <p style="margin:0 0 12px 0;">
+            Vos photos ont été analysées automatiquement <strong>(score 48/100)</strong>.
+            Elles nécessitent une vérification manuelle complémentaire par notre équipe.
+          </p>
+          <p style="margin:0 0 12px 0;">Vous recevrez une réponse définitive dans les 48 heures ouvrées.</p>
+          <p style="margin:0;color:#6b7280;font-size:13px;">
+            Si vous avez des questions : <a href="mailto:support@dogshift.ch" style="color:#6b7280;">support@dogshift.ch</a>
+          </p>
+        </div>`,
+        ctaLabel: "Voir mon profil",
+        ctaUrl: `${BASE_URL}/host/profile/edit`,
+        footerText: "DogShift · Dog-sitting premium en Suisse · support@dogshift.ch",
+      });
+      return { subject: "Vos photos sont en cours d'examen — Pension", html };
+    }
+
+    case "pension-rejected": {
+      const { html } = renderEmailLayout({
+        title: "Photos de vérification refusées — Pension",
+        extraHtml: `<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:22px;color:#374151;">
+          <p style="margin:0 0 12px 0;">Bonjour Camille,</p>
+          <p style="margin:0 0 16px 0;">
+            Malheureusement, vos photos n'ont pas atteint le niveau requis
+            <strong style="color:#dc2626;">(score 22/100, minimum requis : 50/100)</strong>.
+          </p>
+          <p style="margin:0 0 12px 0;"><strong>Conseils pour améliorer vos photos :</strong></p>
+          <ul style="margin:0 0 16px 0;padding-left:20px;font-size:14px;line-height:22px;">
+            <li style="margin-bottom:6px;">Photographiez les pièces principales (salon, chambre, cuisine)</li>
+            <li style="margin-bottom:6px;">Assurez-vous que le logement est bien éclairé et rangé</li>
+            <li style="margin-bottom:6px;">Montrez l'espace où le chien pourra dormir</li>
+            <li style="margin-bottom:6px;">Incluez une vue extérieure si vous avez un jardin ou une terrasse</li>
+          </ul>
+          <p style="margin:0;color:#6b7280;font-size:13px;">
+            Vous pouvez soumettre de nouvelles photos à tout moment depuis votre profil.
+          </p>
+        </div>`,
+        ctaLabel: "Resoumettre mes photos",
+        ctaUrl: `${BASE_URL}/host/profile/edit`,
+        footerText: "DogShift · Dog-sitting premium en Suisse · support@dogshift.ch",
+      });
+      return { subject: "Photos de vérification refusées — Pension", html };
+    }
+
+    // ── Inactivité sitter ────────────────────────────────────────────────────
+    case "inactivity-nudge": {
+      const { html } = renderEmailLayout({
+        title: "Ajoutez vos disponibilités pour être visible",
+        subtitle: "Bonjour Camille,",
+        ctaLabel: "Gérer mes disponibilités",
+        ctaUrl: `${BASE_URL}/host/availability`,
+        footerText: "Vous recevez cet e-mail car vous êtes dogsitter sur DogShift.",
+        extraHtml: `
+          <p style="color:#475569;font-size:15px;line-height:1.6;margin:16px 0">
+            Votre profil est publié mais vous n'avez pas encore renseigné vos disponibilités.
+            Sans disponibilités, les propriétaires ne peuvent pas vous réserver.
+          </p>
+          <p style="color:#475569;font-size:15px;line-height:1.6;margin:16px 0">
+            Prenez deux minutes pour indiquer vos créneaux disponibles — c'est rapide et ça fait toute la différence !
+          </p>
+        `,
+      });
+      return { subject: "Ajoutez vos disponibilités pour recevoir des réservations — DogShift", html };
+    }
+
+    case "inactivity-warning1": {
+      const { html } = renderEmailLayout({
+        title: "⚠️ Avertissement — votre compte sera suspendu",
+        subtitle: "Bonjour Camille,",
+        ctaLabel: "Ajouter mes disponibilités maintenant",
+        ctaUrl: `${BASE_URL}/host/availability`,
+        footerText: "Vous recevez cet e-mail car vous êtes dogsitter sur DogShift.",
+        extraHtml: `
+          <p style="color:#475569;font-size:15px;line-height:1.6;margin:16px 0">
+            Cela fait plusieurs jours que votre profil est publié sans aucune disponibilité renseignée.
+            Les propriétaires ne peuvent pas vous contacter ni vous réserver.
+          </p>
+          <p style="color:#b45309;font-size:15px;font-weight:600;line-height:1.6;margin:16px 0">
+            Si vous n'ajoutez pas de disponibilités dans les 3 prochains jours,
+            votre compte sera suspendu pour inactivité.
+          </p>
+          <p style="color:#475569;font-size:15px;line-height:1.6;margin:16px 0">
+            Si vous souhaitez mettre votre profil en pause temporairement, vous pouvez le désactiver
+            depuis vos paramètres — cela évite toute suspension automatique.
+          </p>
+        `,
+      });
+      return { subject: "⚠️ Votre compte sera suspendu — ajoutez vos disponibilités — DogShift", html };
+    }
+
+    case "inactivity-warning2": {
+      const { html } = renderEmailLayout({
+        title: "🚨 Dernier avertissement — suspension imminente",
+        subtitle: "Bonjour Camille,",
+        ctaLabel: "Ajouter mes disponibilités maintenant",
+        ctaUrl: `${BASE_URL}/host/availability`,
+        footerText: "Vous recevez cet e-mail car vous êtes dogsitter sur DogShift.",
+        extraHtml: `
+          <p style="color:#475569;font-size:15px;line-height:1.6;margin:16px 0">
+            C'est votre dernier avertissement. Votre profil est publié depuis plusieurs jours
+            sans aucune disponibilité, et les propriétaires ne peuvent pas vous réserver.
+          </p>
+          <p style="color:#dc2626;font-size:15px;font-weight:600;line-height:1.6;margin:16px 0">
+            Sans action de votre part dans les 2 prochains jours,
+            votre compte sera suspendu automatiquement pour inactivité.
+          </p>
+          <p style="color:#475569;font-size:15px;line-height:1.6;margin:16px 0">
+            En cas de suspension, vous devrez contacter notre support pour débloquer votre compte.
+          </p>
+        `,
+      });
+      return { subject: "🚨 Dernier avertissement — suspension imminente — DogShift", html };
+    }
+
+    case "inactivity-suspended": {
+      const { html } = renderEmailLayout({
+        title: "Votre compte a été suspendu",
+        subtitle: "Bonjour Camille,",
+        ctaLabel: "Contacter le support",
+        ctaUrl: "mailto:support@dogshift.ch",
+        footerText: "Vous recevez cet e-mail car vous êtes dogsitter sur DogShift.",
+        extraHtml: `
+          <p style="color:#475569;font-size:15px;line-height:1.6;margin:16px 0">
+            Votre compte dogsitter a été <strong>suspendu pour inactivité</strong> : votre profil
+            était publié depuis plusieurs jours sans aucune disponibilité renseignée.
+          </p>
+          <p style="color:#475569;font-size:15px;line-height:1.6;margin:16px 0">
+            Votre profil n'est plus visible dans les résultats de recherche.
+          </p>
+          <p style="color:#475569;font-size:15px;line-height:1.6;margin:16px 0">
+            Pour réactiver votre compte, contactez-nous à
+            <a href="mailto:support@dogshift.ch" style="color:#2563eb">support@dogshift.ch</a>
+            en précisant votre adresse e-mail et la raison de votre inactivité.
+          </p>
+        `,
+      });
+      return { subject: "Votre compte DogShift a été suspendu", html };
+    }
+
     default:
       return null;
   }

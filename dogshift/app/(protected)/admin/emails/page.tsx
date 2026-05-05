@@ -13,6 +13,9 @@ import {
   Sparkles,
   Users,
   CalendarDays,
+  ShieldCheck,
+  Home,
+  AlertTriangle,
 } from "lucide-react";
 import AdminShell from "@/components/admin/AdminShell";
 
@@ -214,6 +217,96 @@ const CATEGORIES: EmailCategory[] = [
         id: "communications",
         label: "Email groupé",
         description: "Template utilisé pour les envois massifs depuis /admin/communications",
+      },
+    ],
+  },
+  {
+    id: "verification-identity",
+    label: "Vérification d'identité",
+    icon: ShieldCheck,
+    color: "text-indigo-600",
+    templates: [
+      {
+        id: "verification-identity-approved",
+        label: "Identité approuvée ✅",
+        description: "Envoyé au sitter quand son identité est validée manuellement par l'admin",
+        badge: "Approuvé",
+        badgeColor: "bg-green-100 text-green-700",
+      },
+      {
+        id: "verification-identity-rejected",
+        label: "Identité refusée ❌",
+        description: "Envoyé au sitter quand sa vérification d'identité est rejetée (documents illisibles, etc.)",
+        badge: "Refusé",
+        badgeColor: "bg-red-100 text-red-700",
+      },
+    ],
+  },
+  {
+    id: "verification-pension",
+    label: "Vérification Pension",
+    icon: Home,
+    color: "text-orange-600",
+    templates: [
+      {
+        id: "pension-submission-receipt",
+        label: "Photos reçues 📷",
+        description: "Accusé de réception envoyé au sitter dès la soumission de ses photos",
+      },
+      {
+        id: "pension-approved",
+        label: "Pension approuvée ✅",
+        description: "Envoyé au sitter quand son logement est approuvé (score ≥ 50/100)",
+        badge: "Approuvé",
+        badgeColor: "bg-green-100 text-green-700",
+      },
+      {
+        id: "pension-needs-review",
+        label: "Vérification manuelle requise ⏳",
+        description: "Envoyé quand le score IA n'est pas assez élevé pour décision automatique",
+        badge: "En attente",
+        badgeColor: "bg-amber-100 text-amber-700",
+      },
+      {
+        id: "pension-rejected",
+        label: "Photos refusées ❌",
+        description: "Envoyé au sitter quand ses photos sont refusées, avec conseils d'amélioration",
+        badge: "Refusé",
+        badgeColor: "bg-red-100 text-red-700",
+      },
+    ],
+  },
+  {
+    id: "inactivity",
+    label: "Inactivité & Suspension",
+    icon: AlertTriangle,
+    color: "text-amber-600",
+    templates: [
+      {
+        id: "inactivity-nudge",
+        label: "Rappel disponibilités 📅",
+        description: "Envoyé J+0 : profil publié mais aucune disponibilité renseignée",
+      },
+      {
+        id: "inactivity-warning1",
+        label: "Avertissement 1 ⚠️",
+        description: "Envoyé J+4 : compte suspendu dans 3 jours si aucune action",
+        badge: "Warning 1",
+        badgeColor: "bg-amber-100 text-amber-700",
+      },
+      {
+        id: "inactivity-warning2",
+        label: "Dernier avertissement 🚨",
+        description: "Envoyé J+7 : suspension imminente dans 2 jours",
+        badge: "Warning 2",
+        badgeColor: "bg-orange-100 text-orange-700",
+      },
+      {
+        id: "inactivity-suspended",
+        label: "Compte suspendu 🔴",
+        description: "Envoyé J+9 : compte suspendu, contacter support@dogshift.ch pour réactiver",
+        badge: "Suspendu",
+        badgeColor: "bg-red-100 text-red-700",
       },
     ],
   },
