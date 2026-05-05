@@ -7,6 +7,7 @@ import { resolveDbUserId } from "@/lib/auth/resolveDbUserId";
 import { runPensionVerificationAgent } from "@/lib/pensionVerificationAgent";
 import { sendEmail } from "@/lib/email/sendEmail";
 import { renderEmailLayout } from "@/lib/email/templates/layout";
+import { sendTelegramMessage } from "@/lib/telegram/sendTelegramMessage";
 
 export const runtime = "nodejs";
 
@@ -53,19 +54,26 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // Send immediate receipt email so the sitter knows photos were received
+    const APP_URL = (process.env.NEXT_PUBLIC_APP_URL ?? "https://www.dogshift.ch").replace(/\/$/, "");
+    const sitterName = (profile.displayName ?? "").trim();
+    const firstName = sitterName.split(" ")[0] || "Bonjour";
+
+    // Telegram alert to admin on every new submission
+    await sendTelegramMessage(
+      `[DogShift] Nouvelle demande de vérification Pension\n\nSitter : ${sitterName || profile.sitterId}\n${photoKeys.length} photo(s) soumise(s)\n\nRevoir : ${APP_URL}/admin/verifications`
+    ).catch((e) => console.error("[pension-submit] telegram failed", e));
+
+    // Receipt email to sitter — "notre équipe vérifie"
     if (profile.user?.email) {
-      const firstName = (profile.displayName ?? "").split(" ")[0] || "Bonjour";
-      const APP_URL = (process.env.NEXT_PUBLIC_APP_URL ?? "https://www.dogshift.ch").replace(/\/$/, "");
       const subject = "Vos photos ont bien été reçues — Vérification Pension";
       const bodyHtml = `
         <p style="margin:0 0 12px 0;">Bonjour ${firstName},</p>
         <p style="margin:0 0 12px 0;">
-          Nous avons bien reçu vos <strong>${photoKeys.length} photo${photoKeys.length > 1 ? "s" : ""}</strong> pour la vérification de votre logement.
-          Notre système d'analyse va les examiner sous peu.
+          Nous avons bien reçu vos <strong>${photoKeys.length} photo${photoKeys.length > 1 ? "s" : ""}</strong>
+          pour la vérification de votre logement.
         </p>
         <p style="margin:0 0 12px 0;">
-          Vous recevrez un e-mail avec le résultat dès que l'analyse sera terminée (généralement en quelques minutes).
+          Notre équipe va les examiner et vous envoyer une réponse dans les <strong>24–48 heures ouvrées</strong>.
         </p>
         <p style="margin:0;color:#6b7280;font-size:13px;">
           En cas de question : <a href="mailto:support@dogshift.ch" style="color:#6b7280;">support@dogshift.ch</a>
@@ -82,7 +90,7 @@ export async function POST(req: NextRequest) {
         to: profile.user.email,
         subject,
         html,
-        text: `Bonjour ${firstName}, nous avons bien reçu vos ${photoKeys.length} photos. Résultat de l'analyse à venir par e-mail.`,
+        text: `Bonjour ${firstName}, nous avons bien reçu vos ${photoKeys.length} photos. Notre équipe va les examiner sous 24–48h ouvrées.`,
       }).catch((e) => console.error("[pension-submit] receipt email failed", e));
     }
 
