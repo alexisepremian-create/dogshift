@@ -982,6 +982,9 @@ model DogProfile {
 
   photoUrl  String?
 
+  /// Whether the dog is neutered/spayed — used to validate sitter acceptance criteria
+  neutered  Boolean?
+
   isDefault Boolean @default(false)
 
   createdAt DateTime @default(now())

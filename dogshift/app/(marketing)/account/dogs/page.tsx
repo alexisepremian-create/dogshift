@@ -13,6 +13,7 @@ type DogItem = {
   breed: string | null;
   birthYear: number | null;
   weightKg: number | null;
+  neutered: boolean | null;
   medications: string | null;
   allergies: string | null;
   vetContact: string | null;
@@ -28,6 +29,7 @@ const EMPTY_FORM = {
   breed: "",
   birthYear: "",
   weightKg: "",
+  neutered: null as boolean | null,
   medications: "",
   allergies: "",
   vetContact: "",
@@ -108,6 +110,7 @@ export default function DogsPage() {
       breed: dog.breed ?? "",
       birthYear: dog.birthYear ? String(dog.birthYear) : "",
       weightKg: dog.weightKg ? String(dog.weightKg) : "",
+      neutered: typeof dog.neutered === "boolean" ? dog.neutered : null,
       medications: dog.medications ?? "",
       allergies: dog.allergies ?? "",
       vetContact: dog.vetContact ?? "",
@@ -173,6 +176,7 @@ export default function DogsPage() {
       breed: form.breed.trim() || null,
       birthYear: form.birthYear ? parseInt(form.birthYear, 10) : null,
       weightKg: form.weightKg ? parseFloat(form.weightKg) : null,
+      neutered: form.neutered,
       medications: form.medications.trim() || null,
       allergies: form.allergies.trim() || null,
       vetContact: form.vetContact.trim() || null,
@@ -303,6 +307,28 @@ export default function DogsPage() {
               <label className={LABEL} htmlFor="dog-year">Année de naissance</label>
               <input id="dog-year" className={INPUT} type="number" min={2000} max={CURRENT_YEAR} value={form.birthYear} onChange={field("birthYear")} placeholder={String(CURRENT_YEAR - 3)} />
             </div>
+            {/* Castration / stérilisation */}
+            <div className="sm:col-span-2">
+              <p className={LABEL}>Castré / stérilisé</p>
+              <div className="mt-1 flex gap-2">
+                {([{ label: "Oui", value: true }, { label: "Non", value: false }, { label: "Ne sait pas", value: null }] as { label: string; value: boolean | null }[]).map(({ label, value }) => (
+                  <button
+                    key={label}
+                    type="button"
+                    onClick={() => setForm((f) => ({ ...f, neutered: value }))}
+                    className={`rounded-xl border px-4 py-2 text-sm font-semibold transition ${
+                      form.neutered === value
+                        ? "border-[var(--dogshift-blue)] bg-[color-mix(in_srgb,var(--dogshift-blue),white_90%)] text-[var(--dogshift-blue)]"
+                        : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <p className="mt-1 text-xs text-slate-400">Certains sitters n&apos;acceptent que les chiens castrés.</p>
+            </div>
+
             <div>
               <label className={LABEL} htmlFor="dog-vet">Contact vétérinaire</label>
               <input id="dog-vet" className={INPUT} value={form.vetContact} onChange={field("vetContact")} placeholder="Dr. Martin — 079 000 00 00" maxLength={200} />
@@ -411,6 +437,15 @@ export default function DogsPage() {
                       .filter(Boolean)
                       .join(" · ") || "Aucune info de base"}
                   </p>
+                  {typeof dog.neutered === "boolean" && (
+                    <span className={`mt-1 inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                      dog.neutered
+                        ? "bg-emerald-50 text-emerald-700"
+                        : "bg-slate-100 text-slate-600"
+                    }`}>
+                      {dog.neutered ? "✂️ Castré/stérilisé" : "Non castré"}
+                    </span>
+                  )}
                 </div>
               </div>
 
