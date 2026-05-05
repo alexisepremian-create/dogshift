@@ -547,6 +547,7 @@ function SitterPublicProfileContent({
                   hasGarden?: boolean | null;
                   hasOtherPets?: boolean | null;
                   notes?: string | null;
+                  pensionAcceptedSizes?: string[] | null;
                 } | null;
                 verified?: boolean;
                 trustBadgeEligible?: boolean;
