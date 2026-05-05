@@ -393,6 +393,14 @@ model SitterProfile {
   /// Global acceptance criteria: { "neuteredRequired": true, "maxDogs": 2 }
   acceptanceCriteria Json?
 
+  /// OPAn art.101 certificate for sitters accepting >5 dogs simultaneously
+  /// Status: null | "not_submitted" | "pending" | "approved" | "rejected"
+  maxDogsCertVerifStatus  String?
+  maxDogsCertPhotoKey     String?    /// R2 key of the uploaded document (FSIFP attestation or cantonal authorization)
+  maxDogsCertSubmittedAt  DateTime?
+  maxDogsCertReviewedAt   DateTime?
+  maxDogsCertAdminNotes   String?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
