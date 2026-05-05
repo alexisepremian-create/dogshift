@@ -699,13 +699,13 @@ export default function HostProfileEditPage() {
                           <p className="text-xs text-emerald-700 mt-0.5">Le service Pension est actif sur votre profil public.</p>
                         </div>
                       </div>
-                    ) : pensionVerifStatus === "pending" || pensionVerifStatus === "ai_reviewing" ? (
+                    ) : pensionVerifStatus === "pending" || pensionVerifStatus === "ai_reviewing" || pensionVerifStatus === "ai_needs_review" ? (
                       <div className="rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4">
                         <div className="flex items-center gap-3">
                           <Clock className="h-5 w-5 shrink-0 text-amber-600" />
                           <div className="flex-1">
                             <p className="text-sm font-semibold text-amber-900">Vérification en cours</p>
-                            <p className="text-xs text-amber-700 mt-0.5">Notre système analyse vos photos. Vous recevrez un e-mail de confirmation sous peu.</p>
+                            <p className="text-xs text-amber-700 mt-0.5">Notre équipe examine vos photos. Vous recevrez un e-mail de réponse dans les 24–48 heures ouvrées.</p>
                           </div>
                           <button
                             type="button"
