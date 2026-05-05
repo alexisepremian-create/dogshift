@@ -370,6 +370,14 @@ model SitterProfile {
   /// Accepted dog sizes for Pension: ["Petit", "Moyen", "Grand"] — set by admin at approval time
   pensionAcceptedSizes    Json?
 
+  /// Inactivity tracking for published sitters with no availability
+  /// Status: null (ok) | "nudge_sent" | "warning_1" | "warning_2" | "suspended"
+  inactivityStatus        String?
+  inactivityNudgeAt       DateTime?   /// When the first "add availability" email was sent
+  inactivityWarning1At    DateTime?   /// When warning 1 was sent (4-5 days after nudge)
+  inactivityWarning2At    DateTime?   /// When warning 2 was sent (3-4 days after warning 1)
+  inactivitySuspendedAt   DateTime?   /// When the account was suspended
+
   verificationAccessLogs VerificationAccessLog[]
   contractAmendmentAcceptances SitterContractAmendmentAcceptance[]
 

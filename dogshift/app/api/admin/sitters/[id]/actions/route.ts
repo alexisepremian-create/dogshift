@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { VerificationStatus } from "@prisma/client";
 import { render } from "@react-email/render";
 import { NextResponse } from "next/server";
@@ -67,13 +68,14 @@ function parseAction(value: unknown): ActionType | null {
   return null;
 }
 
-function actionAllowed(action: ActionType, published: boolean, verificationStatus: VerificationStatus, lifecycleStatus: string) {
+function actionAllowed(action: ActionType, published: boolean, verificationStatus: VerificationStatus, lifecycleStatus: string, inactivityStatus?: string | null) {
   if (action === "select") return lifecycleStatus === "application_received";
   if (action === "generate_contract_link") return true;
   if (action === "approve") return verificationStatus === VerificationStatus.pending || verificationStatus === VerificationStatus.rejected || verificationStatus === VerificationStatus.not_verified;
   if (action === "reject") return verificationStatus === VerificationStatus.pending || verificationStatus === VerificationStatus.approved;
   if (action === "suspend") return published && verificationStatus === VerificationStatus.approved;
-  if (action === "reactivate") return !published && verificationStatus === VerificationStatus.approved && lifecycleStatus === "activated";
+  // Reactivate is also allowed when suspended for inactivity (published=false due to auto-suspend)
+  if (action === "reactivate") return !published && verificationStatus === VerificationStatus.approved && lifecycleStatus === "activated" || (!published && inactivityStatus === "suspended");
   if (action === "publish") return !published && verificationStatus === VerificationStatus.approved && lifecycleStatus === "activated";
   if (action === "unpublish") return published;
   if (action === "activate") return lifecycleStatus === "contract_signed" && !published;
@@ -127,6 +129,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
             postalCode: true,
             lat: true,
             lng: true,
+            inactivityStatus: true,
           },
         },
       },
@@ -149,6 +152,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
             postalCode?: string | null;
             lat?: number | null;
             lng?: number | null;
+            inactivityStatus?: string | null;
           } | null;
         }
       | null;
@@ -162,7 +166,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     const lifecycleStatus = normalizeSitterLifecycleStatus(sitter.sitterProfile.lifecycleStatus, currentPublished);
     const isAlreadyActivated = hasReachedSitterLifecycleStatus(lifecycleStatus, "activated");
 
-    if (!actionAllowed(action, currentPublished, currentStatus, lifecycleStatus)) {
+    if (!actionAllowed(action, currentPublished, currentStatus, lifecycleStatus, sitter.sitterProfile.inactivityStatus)) {
       return NextResponse.json({ ok: false, error: "INVALID_STATE_TRANSITION" }, { status: 409 });
     }
 
@@ -175,14 +179,12 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       }
 
       const { rawCode, hash } = await generateUniqueActivationCode(
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         prisma as any,
         { excludeSitterProfileId: sitter.sitterProfile.id },
       );
       const issuedAt = new Date();
       const expiresAt = computeActivationCodeExpiresAt(issuedAt);
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await (prisma as any).sitterProfile.update({
         where: { id: sitter.sitterProfile.id },
         data: {
@@ -340,6 +342,12 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       data.published = true;
       data.publishedAt = currentPublished ? undefined : new Date();
       data.verificationNotes = notes ?? sitter.sitterProfile.verificationNotes ?? null;
+      // Clear inactivity suspension if the account was suspended for inactivity
+      data.inactivityStatus = null;
+      data.inactivityNudgeAt = null;
+      data.inactivityWarning1At = null;
+      data.inactivityWarning2At = null;
+      data.inactivitySuspendedAt = null;
     }
 
     if (action === "publish") {

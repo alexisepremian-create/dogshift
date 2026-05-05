@@ -1,5 +1,6 @@
 import { auth } from "@clerk/nextjs/server";
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { getHostContractAmendmentState, type HostContractAmendmentState } from "@/lib/contractAmendments";
 import { prisma } from "@/lib/prisma";
 import { ensureDbUserFromClerkAuth } from "@/lib/auth/resolveDbUserId";
