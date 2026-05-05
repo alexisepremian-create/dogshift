@@ -236,7 +236,7 @@ Sois objectif et bienveillant mais rigoureux sur la sécurité.`,
   }
 }
 
-async function sendPensionResultEmail(params: {
+export async function sendPensionResultEmail(params: {
   sitterEmail: string;
   sitterName: string;
   finalStatus: string;

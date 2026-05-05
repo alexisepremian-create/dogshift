@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { X } from "lucide-react";
+import { X, ChevronLeft, ChevronRight } from "lucide-react";
 
 type PensionVerifItem = {
   sitterProfileId: string;
@@ -99,7 +99,7 @@ export default function AdminPensionVerificationsClient() {
   const [presignedUrls, setPresignedUrls] = useState<Record<string, string>>({});
   const [presignLoading, setPresignLoading] = useState<Set<string>>(new Set());
   const [adminNotesInput, setAdminNotesInput] = useState<Record<string, string>>({});
-  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+  const [lightbox, setLightbox] = useState<{ urls: string[]; index: number } | null>(null);
 
   const fetchItems = useCallback(async () => {
     setLoading(true);
@@ -306,24 +306,31 @@ export default function AdminPensionVerificationsClient() {
                     <div className="mb-4">
                       <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Photos</p>
                       <div className="flex flex-wrap gap-3">
-                        {item.photoKeys.map((key) => (
-                          <button
-                            key={key}
-                            type="button"
-                            onClick={() => presignedUrls[key] ? setLightboxUrl(presignedUrls[key]) : undefined}
-                            className="h-28 w-28 overflow-hidden rounded-xl border border-slate-200 bg-slate-100 cursor-zoom-in hover:opacity-90 transition"
-                            title="Cliquer pour agrandir"
-                          >
-                            {presignedUrls[key] ? (
-                              // eslint-disable-next-line @next/next/no-img-element
-                              <img src={presignedUrls[key]} alt="Photo logement" className="h-full w-full object-cover" />
-                            ) : (
-                              <div className="flex h-full items-center justify-center text-xs text-slate-400">
-                                {presignLoading.has(key) ? "…" : "Erreur"}
-                              </div>
-                            )}
-                          </button>
-                        ))}
+                        {item.photoKeys.map((key, idx) => {
+                          const allUrls = item.photoKeys.map((k) => presignedUrls[k]).filter(Boolean);
+                          return (
+                            <button
+                              key={key}
+                              type="button"
+                              onClick={() => {
+                                if (presignedUrls[key] && allUrls.length > 0) {
+                                  setLightbox({ urls: allUrls, index: allUrls.indexOf(presignedUrls[key]) });
+                                }
+                              }}
+                              className="h-28 w-28 overflow-hidden rounded-xl border border-slate-200 bg-slate-100 cursor-zoom-in hover:opacity-90 transition"
+                              title={`Photo ${idx + 1} — cliquer pour agrandir`}
+                            >
+                              {presignedUrls[key] ? (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img src={presignedUrls[key]} alt={`Photo logement ${idx + 1}`} className="h-full w-full object-cover" />
+                              ) : (
+                                <div className="flex h-full items-center justify-center text-xs text-slate-400">
+                                  {presignLoading.has(key) ? "…" : "Erreur"}
+                                </div>
+                              )}
+                            </button>
+                          );
+                        })}
                       </div>
                     </div>
                   )}
@@ -393,26 +400,104 @@ export default function AdminPensionVerificationsClient() {
         </div>
       )}
 
-      {/* Lightbox */}
-      {lightboxUrl && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
-          onClick={() => setLightboxUrl(null)}
+      {/* Lightbox carousel */}
+      {lightbox && (
+        <LightboxCarousel
+          urls={lightbox.urls}
+          initialIndex={lightbox.index}
+          onClose={() => setLightbox(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+function LightboxCarousel({
+  urls,
+  initialIndex,
+  onClose,
+}: {
+  urls: string[];
+  initialIndex: number;
+  onClose: () => void;
+}) {
+  const [idx, setIdx] = useState(Math.max(0, Math.min(initialIndex, urls.length - 1)));
+
+  const prev = () => setIdx((i) => (i - 1 + urls.length) % urls.length);
+  const next = () => setIdx((i) => (i + 1) % urls.length);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+      if (e.key === "ArrowLeft") prev();
+      if (e.key === "ArrowRight") next();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [urls.length]);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/85"
+      onClick={onClose}
+    >
+      {/* Close */}
+      <button
+        type="button"
+        onClick={onClose}
+        className="absolute right-4 top-4 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/25 transition"
+      >
+        <X className="h-5 w-5" />
+      </button>
+
+      {/* Counter */}
+      <div className="absolute top-4 left-1/2 -translate-x-1/2 rounded-full bg-black/40 px-3 py-1 text-xs font-semibold text-white">
+        {idx + 1} / {urls.length}
+      </div>
+
+      {/* Prev arrow */}
+      {urls.length > 1 && (
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); prev(); }}
+          className="absolute left-4 top-1/2 -translate-y-1/2 flex h-11 w-11 items-center justify-center rounded-full bg-black/40 text-white hover:bg-black/60 transition"
         >
-          <button
-            type="button"
-            onClick={() => setLightboxUrl(null)}
-            className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition"
-          >
-            <X className="h-5 w-5" />
-          </button>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={lightboxUrl}
-            alt="Photo logement agrandie"
-            className="max-h-[90vh] max-w-[90vw] rounded-2xl object-contain shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          />
+          <ChevronLeft className="h-6 w-6" />
+        </button>
+      )}
+
+      {/* Image */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={urls[idx]}
+        alt={`Photo ${idx + 1}`}
+        className="max-h-[88vh] max-w-[88vw] rounded-2xl object-contain shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      />
+
+      {/* Next arrow */}
+      {urls.length > 1 && (
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); next(); }}
+          className="absolute right-4 top-1/2 -translate-y-1/2 flex h-11 w-11 items-center justify-center rounded-full bg-black/40 text-white hover:bg-black/60 transition"
+        >
+          <ChevronRight className="h-6 w-6" />
+        </button>
+      )}
+
+      {/* Dot indicators */}
+      {urls.length > 1 && (
+        <div className="absolute bottom-5 left-1/2 -translate-x-1/2 flex gap-2">
+          {urls.map((_, i) => (
+            <button
+              key={i}
+              type="button"
+              onClick={(e) => { e.stopPropagation(); setIdx(i); }}
+              className={`h-2 w-2 rounded-full transition ${i === idx ? "bg-white scale-125" : "bg-white/40 hover:bg-white/70"}`}
+            />
+          ))}
         </div>
       )}
     </div>

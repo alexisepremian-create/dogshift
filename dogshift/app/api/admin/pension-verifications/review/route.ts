@@ -3,6 +3,8 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getRequestAdminAccess } from "@/lib/adminAuth";
 import { prisma } from "@/lib/prisma";
+import { sendPensionResultEmail } from "@/lib/pensionVerificationAgent";
+import { sendTelegramMessage } from "@/lib/telegram/sendTelegramMessage";
 
 export const runtime = "nodejs";
 
@@ -28,7 +30,12 @@ export async function POST(req: NextRequest) {
     const db = prisma as any;
     const profile = await db.sitterProfile.findFirst({
       where: { sitterId },
-      select: { id: true },
+      select: {
+        id: true,
+        displayName: true,
+        pensionAiScore: true,
+        user: { select: { email: true, name: true } },
+      },
     });
     if (!profile) return NextResponse.json({ ok: false, error: "NOT_FOUND" }, { status: 404 });
 
@@ -40,6 +47,25 @@ export async function POST(req: NextRequest) {
         pensionAdminNotes: notes,
       },
     });
+
+    const sitterEmail = profile.user?.email ?? "";
+    const sitterName = (profile.displayName ?? profile.user?.name ?? "").trim();
+
+    // Send result email to sitter
+    if (sitterEmail) {
+      await sendPensionResultEmail({
+        sitterEmail,
+        sitterName,
+        finalStatus: decision,
+        score: typeof profile.pensionAiScore === "number" ? profile.pensionAiScore : 0,
+      }).catch((e) => console.error("[admin][pension-review] email failed", e));
+    }
+
+    // Telegram confirmation to admin
+    const emoji = decision === "approved" ? "✅" : "❌";
+    await sendTelegramMessage(
+      `[DogShift] ${emoji} Vérification Pension — décision manuelle\n\nSitter : ${sitterName || sitterId}\nDécision : ${decision === "approved" ? "Approuvé" : "Refusé"}${notes ? `\nNote : ${notes}` : ""}\n\nEmail envoyé à : ${sitterEmail || "—"}`
+    ).catch((e) => console.error("[admin][pension-review] telegram failed", e));
 
     return NextResponse.json({ ok: true });
   } catch (err) {

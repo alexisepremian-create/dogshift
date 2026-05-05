@@ -5,6 +5,9 @@ import { auth, currentUser } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
 import { ensureDbUserByClerkUserId } from "@/lib/auth/resolveDbUserId";
 import { headObject } from "@/lib/r2";
+import { sendEmail } from "@/lib/email/sendEmail";
+import { renderEmailLayout } from "@/lib/email/templates/layout";
+import { sendTelegramMessage } from "@/lib/telegram/sendTelegramMessage";
 
 export const runtime = "nodejs";
 
@@ -61,6 +64,7 @@ export async function POST(req: NextRequest) {
           | {
               id: string;
               sitterId: string;
+              displayName?: string | null;
               verificationStatus?: string | null;
             }
           | null
@@ -71,7 +75,7 @@ export async function POST(req: NextRequest) {
 
     const sitterProfile = await db.sitterProfile.findUnique({
       where: { userId: ensured.id },
-      select: { id: true, sitterId: true, verificationStatus: true },
+      select: { id: true, sitterId: true, displayName: true, verificationStatus: true },
     });
 
     if (!sitterProfile?.id || !sitterProfile?.sitterId) {
@@ -122,6 +126,41 @@ export async function POST(req: NextRequest) {
         verificationReviewedAt: null,
       },
     });
+
+    const APP_URL = (process.env.NEXT_PUBLIC_APP_URL ?? "https://www.dogshift.ch").replace(/\/$/, "");
+    const sitterName = (sitterProfile.displayName ?? clerkUser?.fullName ?? "").trim();
+    const firstName = sitterName.split(" ")[0] || "Bonjour";
+
+    // Telegram alert to admin
+    await sendTelegramMessage(
+      `[DogShift] Nouvelle demande de vérification d'identité\n\nSitter : ${sitterName || sitterProfile.sitterId}\nEmail : ${email}\n\nRevoir : ${APP_URL}/admin/verifications`
+    ).catch((e) => console.error("[verification-submit] telegram failed", e));
+
+    // Receipt email to sitter
+    const subject = "Votre demande de vérification a bien été reçue";
+    const bodyHtml = `
+      <p style="margin:0 0 12px 0;">Bonjour ${firstName},</p>
+      <p style="margin:0 0 12px 0;">
+        Nous avons bien reçu vos documents pour la vérification de votre identité.
+        Notre équipe va les examiner et vous envoyer une réponse dans les <strong>24–48 heures ouvrées</strong>.
+      </p>
+      <p style="margin:0;color:#6b7280;font-size:13px;">
+        En cas de question : <a href="mailto:support@dogshift.ch" style="color:#6b7280;">support@dogshift.ch</a>
+      </p>
+    `;
+    const { html } = renderEmailLayout({
+      title: subject,
+      extraHtml: `<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:22px;color:#374151;">${bodyHtml}</div>`,
+      ctaLabel: "Voir mon profil",
+      ctaUrl: `${APP_URL}/host/profile/edit`,
+      footerText: "DogShift · Dog-sitting premium en Suisse · support@dogshift.ch",
+    });
+    await sendEmail({
+      to: email,
+      subject,
+      html,
+      text: `Bonjour ${firstName}, nous avons bien reçu vos documents. Notre équipe va les examiner sous 24–48h ouvrées.`,
+    }).catch((e) => console.error("[verification-submit] receipt email failed", e));
 
     return NextResponse.json({ ok: true }, { status: 200 });
   } catch (err) {
