@@ -544,6 +544,7 @@ function SitterPublicProfileContent({
                 services: unknown;
                 pricing: unknown;
                 dogSizes: unknown;
+                acceptanceCriteria?: { neuteredRequired?: boolean; maxDogs?: number | null } | null;
                 boardingDetails?: {
                   housingType?: "Appartement" | "Maison" | null;
                   hasGarden?: boolean | null;
