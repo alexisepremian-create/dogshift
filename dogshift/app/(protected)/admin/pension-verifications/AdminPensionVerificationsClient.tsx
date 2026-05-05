@@ -13,35 +13,16 @@ type PensionVerifItem = {
   photoCount: number;
   photoKeys: string[];
   submittedAt: string | null;
-  reviewedAt: string | null;
-  aiScore: number | null;
-  aiVerdict: string | null;
-  aiReasoning: {
-    criteria?: {
-      espaceSuffisant?: number;
-      hygiene?: number;
-      securite?: number;
-      adequatChien?: number;
-      coherenceDeclaration?: number;
-    };
-    forces?: string[];
-    problemes?: string[];
-    recommandation?: string;
-  } | null;
-  aiReviewedAt: string | null;
   adminNotes: string | null;
 };
 
-type Tab = "all" | "legacy_pending" | "pending" | "ai_reviewing" | "ai_needs_review" | "ai_approved" | "ai_rejected" | "approved" | "rejected";
+type Tab = "all" | "legacy_pending" | "pending" | "ai_needs_review" | "approved" | "rejected";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "all", label: "Toutes" },
   { id: "legacy_pending", label: "Legacy en attente" },
   { id: "pending", label: "En attente" },
-  { id: "ai_reviewing", label: "IA en cours" },
-  { id: "ai_needs_review", label: "Révision manuelle" },
-  { id: "ai_approved", label: "IA Approuvé" },
-  { id: "ai_rejected", label: "IA Refusé" },
+  { id: "ai_needs_review", label: "À réviser" },
   { id: "approved", label: "Approuvé" },
   { id: "rejected", label: "Refusé" },
 ];
@@ -53,26 +34,18 @@ function statusBadge(status: string) {
     case "pending":
       return <span className="inline-flex items-center rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-semibold text-amber-700 ring-1 ring-amber-200">En attente</span>;
     case "ai_reviewing":
-      return <span className="inline-flex items-center rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-semibold text-blue-700 ring-1 ring-blue-200">IA en cours</span>;
+      return <span className="inline-flex items-center rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-semibold text-amber-700 ring-1 ring-amber-200">En attente</span>;
     case "ai_needs_review":
-      return <span className="inline-flex items-center rounded-full bg-purple-50 px-2.5 py-0.5 text-xs font-semibold text-purple-700 ring-1 ring-purple-200">Révision manuelle requise</span>;
+      return <span className="inline-flex items-center rounded-full bg-purple-50 px-2.5 py-0.5 text-xs font-semibold text-purple-700 ring-1 ring-purple-200">À réviser</span>;
     case "ai_approved":
-      return <span className="inline-flex items-center rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-200">Approuvé par IA</span>;
     case "approved":
       return <span className="inline-flex items-center rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-200">Approuvé ✓</span>;
     case "ai_rejected":
-      return <span className="inline-flex items-center rounded-full bg-orange-50 px-2.5 py-0.5 text-xs font-semibold text-orange-700 ring-1 ring-orange-200">Refusé par IA</span>;
     case "rejected":
       return <span className="inline-flex items-center rounded-full bg-red-50 px-2.5 py-0.5 text-xs font-semibold text-red-700 ring-1 ring-red-200">Refusé</span>;
     default:
       return <span className="inline-flex items-center rounded-full bg-slate-50 px-2.5 py-0.5 text-xs font-semibold text-slate-500 ring-1 ring-slate-200">{status}</span>;
   }
-}
-
-function scoreColor(score: number) {
-  if (score >= 70) return "text-emerald-700 font-bold";
-  if (score >= 50) return "text-orange-600 font-bold";
-  return "text-red-600 font-bold";
 }
 
 function formatDate(iso: string | null) {
@@ -118,17 +91,24 @@ export default function AdminPensionVerificationsClient() {
 
   useEffect(() => { void fetchItems(); }, [fetchItems]);
 
+  // Normalize legacy AI statuses into the simplified tabs
   const filtered = useMemo(() => {
     if (tab === "all") return items;
+    if (tab === "approved") return items.filter((i) => i.status === "approved" || i.status === "ai_approved");
+    if (tab === "rejected") return items.filter((i) => i.status === "rejected" || i.status === "ai_rejected");
+    if (tab === "pending") return items.filter((i) => i.status === "pending" || i.status === "ai_reviewing");
     return items.filter((i) => i.status === tab);
   }, [items, tab]);
 
   const counts = useMemo(() => {
-    const c: Record<string, number> = { all: items.length };
-    for (const t of TABS.slice(1)) {
-      c[t.id] = items.filter((i) => i.status === t.id).length;
-    }
-    return c;
+    return {
+      all: items.length,
+      legacy_pending: items.filter((i) => i.status === "legacy_pending").length,
+      pending: items.filter((i) => i.status === "pending" || i.status === "ai_reviewing").length,
+      ai_needs_review: items.filter((i) => i.status === "ai_needs_review").length,
+      approved: items.filter((i) => i.status === "approved" || i.status === "ai_approved").length,
+      rejected: items.filter((i) => i.status === "rejected" || i.status === "ai_rejected").length,
+    };
   }, [items]);
 
   async function loadPhotoUrl(key: string) {
@@ -174,26 +154,6 @@ export default function AdminPensionVerificationsClient() {
       const data = await res.json();
       if (!res.ok || !data.ok) {
         alert(`Erreur : ${data.error ?? "inconnue"}`);
-        return;
-      }
-      await fetchItems();
-    } finally {
-      setActionLoading(null);
-    }
-  }
-
-  async function handleAiReview(item: PensionVerifItem) {
-    if (actionLoading) return;
-    setActionLoading(item.sitterId + "ai");
-    try {
-      const res = await fetch("/api/admin/pension-verifications/ai-review", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sitterId: item.sitterId }),
-      });
-      const data = await res.json();
-      if (!res.ok || !data.ok) {
-        alert(`Erreur IA : ${data.error ?? "inconnue"}`);
         return;
       }
       await fetchItems();
@@ -256,33 +216,24 @@ export default function AdminPensionVerificationsClient() {
                   <p className="mt-0.5 text-xs text-slate-400">Sitter ID: {item.sitterId}</p>
                   <div className="mt-2 flex flex-wrap items-center gap-2">
                     {statusBadge(item.status)}
-                    {item.aiScore !== null && (
-                      <span className={`text-xs ${scoreColor(item.aiScore)}`}>Score IA: {item.aiScore}/100</span>
-                    )}
                     <span className="text-xs text-slate-400">{item.photoCount} photo(s)</span>
                     <span className="text-xs text-slate-400">Soumis: {formatDate(item.submittedAt)}</span>
                   </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => handleExpand(item.sitterProfileId, item.photoKeys)}
-                    className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100"
-                  >
-                    {expanded === item.sitterProfileId ? "Fermer" : "Détails"}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => void handleAiReview(item)}
-                    disabled={actionLoading === item.sitterId + "ai"}
-                    className="rounded-xl border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-100 disabled:opacity-50"
-                  >
-                    {actionLoading === item.sitterId + "ai" ? "IA…" : "Relancer IA"}
-                  </button>
+                  {item.photoCount > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => handleExpand(item.sitterProfileId, item.photoKeys)}
+                      className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100"
+                    >
+                      {expanded === item.sitterProfileId ? "Fermer" : "Voir photos"}
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={() => void handleReview(item, "approved")}
-                    disabled={!!actionLoading || item.status === "approved"}
+                    disabled={!!actionLoading || item.status === "approved" || item.status === "ai_approved"}
                     className="rounded-xl bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
                   >
                     {actionLoading === item.sitterId + "approved" ? "…" : "Approuver"}
@@ -290,7 +241,7 @@ export default function AdminPensionVerificationsClient() {
                   <button
                     type="button"
                     onClick={() => void handleReview(item, "rejected")}
-                    disabled={!!actionLoading || item.status === "rejected"}
+                    disabled={!!actionLoading || item.status === "rejected" || item.status === "ai_rejected"}
                     className="rounded-xl bg-red-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-700 disabled:opacity-50"
                   >
                     {actionLoading === item.sitterId + "rejected" ? "…" : "Refuser"}
@@ -304,7 +255,7 @@ export default function AdminPensionVerificationsClient() {
                   {/* Photos */}
                   {item.photoKeys.length > 0 && (
                     <div className="mb-4">
-                      <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Photos</p>
+                      <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Photos du logement</p>
                       <div className="flex flex-wrap gap-3">
                         {item.photoKeys.map((key, idx) => {
                           const allUrls = item.photoKeys.map((k) => presignedUrls[k]).filter(Boolean);
@@ -332,50 +283,6 @@ export default function AdminPensionVerificationsClient() {
                           );
                         })}
                       </div>
-                    </div>
-                  )}
-
-                  {/* AI Reasoning */}
-                  {item.aiReasoning && (
-                    <div className="mb-4">
-                      <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Analyse IA</p>
-                      {item.aiReasoning.criteria && (
-                        <div className="mb-3 grid grid-cols-2 gap-2 sm:grid-cols-5">
-                          {Object.entries(item.aiReasoning.criteria).map(([k, v]) => (
-                            <div key={k} className="rounded-xl bg-white p-2 text-center">
-                              <p className="text-[10px] text-slate-500">{k}</p>
-                              <p className={`text-lg font-bold ${typeof v === "number" && v >= 4 ? "text-emerald-600" : typeof v === "number" && v >= 3 ? "text-amber-600" : "text-red-600"}`}>{v}/5</p>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                      {item.aiReasoning.forces && item.aiReasoning.forces.length > 0 && (
-                        <div className="mb-2">
-                          <p className="text-xs font-medium text-emerald-700">Points positifs</p>
-                          <ul className="mt-1 list-inside list-disc space-y-0.5">
-                            {item.aiReasoning.forces.map((f, i) => (
-                              <li key={i} className="text-xs text-slate-700">{f}</li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-                      {item.aiReasoning.problemes && item.aiReasoning.problemes.length > 0 && (
-                        <div className="mb-2">
-                          <p className="text-xs font-medium text-red-700">Points d&apos;attention</p>
-                          <ul className="mt-1 list-inside list-disc space-y-0.5">
-                            {item.aiReasoning.problemes.map((p, i) => (
-                              <li key={i} className="text-xs text-slate-700">{p}</li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-                      {item.aiReasoning.recommandation && (
-                        <div>
-                          <p className="text-xs font-medium text-slate-700">Recommandation</p>
-                          <p className="mt-1 text-xs text-slate-600">{item.aiReasoning.recommandation}</p>
-                        </div>
-                      )}
-                      <p className="mt-2 text-xs text-slate-400">Analysé le {formatDate(item.aiReviewedAt)}</p>
                     </div>
                   )}
 
@@ -442,7 +349,6 @@ function LightboxCarousel({
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/85"
       onClick={onClose}
     >
-      {/* Close */}
       <button
         type="button"
         onClick={onClose}
@@ -451,12 +357,10 @@ function LightboxCarousel({
         <X className="h-5 w-5" />
       </button>
 
-      {/* Counter */}
       <div className="absolute top-4 left-1/2 -translate-x-1/2 rounded-full bg-black/40 px-3 py-1 text-xs font-semibold text-white">
         {idx + 1} / {urls.length}
       </div>
 
-      {/* Prev arrow */}
       {urls.length > 1 && (
         <button
           type="button"
@@ -467,7 +371,6 @@ function LightboxCarousel({
         </button>
       )}
 
-      {/* Image */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={urls[idx]}
@@ -476,7 +379,6 @@ function LightboxCarousel({
         onClick={(e) => e.stopPropagation()}
       />
 
-      {/* Next arrow */}
       {urls.length > 1 && (
         <button
           type="button"
@@ -487,7 +389,6 @@ function LightboxCarousel({
         </button>
       )}
 
-      {/* Dot indicators */}
       {urls.length > 1 && (
         <div className="absolute bottom-5 left-1/2 -translate-x-1/2 flex gap-2">
           {urls.map((_, i) => (
