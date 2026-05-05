@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { X } from "lucide-react";
 
 type PensionVerifItem = {
   sitterProfileId: string;
@@ -31,13 +32,14 @@ type PensionVerifItem = {
   adminNotes: string | null;
 };
 
-type Tab = "all" | "legacy_pending" | "pending" | "ai_reviewing" | "ai_approved" | "ai_rejected" | "approved" | "rejected";
+type Tab = "all" | "legacy_pending" | "pending" | "ai_reviewing" | "ai_needs_review" | "ai_approved" | "ai_rejected" | "approved" | "rejected";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "all", label: "Toutes" },
   { id: "legacy_pending", label: "Legacy en attente" },
   { id: "pending", label: "En attente" },
   { id: "ai_reviewing", label: "IA en cours" },
+  { id: "ai_needs_review", label: "Révision manuelle" },
   { id: "ai_approved", label: "IA Approuvé" },
   { id: "ai_rejected", label: "IA Refusé" },
   { id: "approved", label: "Approuvé" },
@@ -52,6 +54,8 @@ function statusBadge(status: string) {
       return <span className="inline-flex items-center rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-semibold text-amber-700 ring-1 ring-amber-200">En attente</span>;
     case "ai_reviewing":
       return <span className="inline-flex items-center rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-semibold text-blue-700 ring-1 ring-blue-200">IA en cours</span>;
+    case "ai_needs_review":
+      return <span className="inline-flex items-center rounded-full bg-purple-50 px-2.5 py-0.5 text-xs font-semibold text-purple-700 ring-1 ring-purple-200">Révision manuelle requise</span>;
     case "ai_approved":
       return <span className="inline-flex items-center rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-200">Approuvé par IA</span>;
     case "approved":
@@ -95,6 +99,7 @@ export default function AdminPensionVerificationsClient() {
   const [presignedUrls, setPresignedUrls] = useState<Record<string, string>>({});
   const [presignLoading, setPresignLoading] = useState<Set<string>>(new Set());
   const [adminNotesInput, setAdminNotesInput] = useState<Record<string, string>>({});
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
 
   const fetchItems = useCallback(async () => {
     setLoading(true);
@@ -302,7 +307,13 @@ export default function AdminPensionVerificationsClient() {
                       <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Photos</p>
                       <div className="flex flex-wrap gap-3">
                         {item.photoKeys.map((key) => (
-                          <div key={key} className="h-28 w-28 overflow-hidden rounded-xl border border-slate-200 bg-slate-100">
+                          <button
+                            key={key}
+                            type="button"
+                            onClick={() => presignedUrls[key] ? setLightboxUrl(presignedUrls[key]) : undefined}
+                            className="h-28 w-28 overflow-hidden rounded-xl border border-slate-200 bg-slate-100 cursor-zoom-in hover:opacity-90 transition"
+                            title="Cliquer pour agrandir"
+                          >
                             {presignedUrls[key] ? (
                               // eslint-disable-next-line @next/next/no-img-element
                               <img src={presignedUrls[key]} alt="Photo logement" className="h-full w-full object-cover" />
@@ -311,7 +322,7 @@ export default function AdminPensionVerificationsClient() {
                                 {presignLoading.has(key) ? "…" : "Erreur"}
                               </div>
                             )}
-                          </div>
+                          </button>
                         ))}
                       </div>
                     </div>
@@ -379,6 +390,29 @@ export default function AdminPensionVerificationsClient() {
               )}
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Lightbox */}
+      {lightboxUrl && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
+          onClick={() => setLightboxUrl(null)}
+        >
+          <button
+            type="button"
+            onClick={() => setLightboxUrl(null)}
+            className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition"
+          >
+            <X className="h-5 w-5" />
+          </button>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={lightboxUrl}
+            alt="Photo logement agrandie"
+            className="max-h-[90vh] max-w-[90vw] rounded-2xl object-contain shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          />
         </div>
       )}
     </div>
