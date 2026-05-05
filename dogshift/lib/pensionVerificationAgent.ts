@@ -105,9 +105,15 @@ export async function runPensionVerificationAgent(params: {
     if (imageContents.length === 0) {
       await db.sitterProfile.update({
         where: { id: profile.id },
-        data: { pensionVerifStatus: "pending" },
+        data: { pensionVerifStatus: "ai_needs_review" },
       });
-      console.error("[pensionVerificationAgent] no photos available", sitterId);
+      console.error("[pensionVerificationAgent] no photos available — forcing manual review", sitterId);
+      if (sitterEmail) {
+        await sendPensionResultEmail({ sitterEmail, sitterName, finalStatus: "ai_needs_review", score: 0 });
+      }
+      await sendTelegramMessage(
+        `[DogShift] Vérification Pension — révision manuelle requise\n\nSitter : ${sitterName || sitterId}\nRaison : Impossible de charger les photos depuis R2.\n\nRevoir : ${APP_URL}/admin/pension-verifications`
+      );
       return;
     }
 
@@ -132,7 +138,7 @@ export async function runPensionVerificationAgent(params: {
     } catch { /* ignore */ }
 
     const { object: analyse } = await generateObject({
-      model: anthropic("claude-opus-4-5"),
+      model: anthropic("claude-sonnet-4-5"),
       schema: PensionVerifSchema,
       messages: [
         {
@@ -213,10 +219,20 @@ Sois objectif et bienveillant mais rigoureux sur la sécurité.`,
     console.log("[pensionVerificationAgent] done", { sitterId, finalStatus, score: analyse.score });
   } catch (err) {
     console.error("[pensionVerificationAgent] error", sitterId, err);
-    await db.sitterProfile.update({
-      where: { sitterId },
-      data: { pensionVerifStatus: "pending" },
-    }).catch(() => {});
+    try {
+      await db.sitterProfile.update({
+        where: { sitterId },
+        data: { pensionVerifStatus: "ai_needs_review" },
+      });
+      if (sitterEmail) {
+        await sendPensionResultEmail({ sitterEmail, sitterName, finalStatus: "ai_needs_review", score: 0 });
+      }
+      await sendTelegramMessage(
+        `[DogShift] Vérification Pension — ERREUR AGENT\n\nSitter : ${sitterName || sitterId}\nErreur : ${String(err).slice(0, 200)}\n\nRevoir manuellement : ${APP_URL}/admin/pension-verifications`
+      );
+    } catch (fallbackErr) {
+      console.error("[pensionVerificationAgent] fallback also failed", sitterId, fallbackErr);
+    }
   }
 }
 
