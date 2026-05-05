@@ -17,6 +17,7 @@ const dailyBookingBody = z.object({
   startDate: isoDateString,
   endDate: isoDateString,
   message: z.string().max(2000).optional().nullable(),
+  dogSize: z.enum(["Petit", "Moyen", "Grand"]).optional().nullable(),
 }).merge(travelFields);
 
 const hourlyBookingBody = z.object({

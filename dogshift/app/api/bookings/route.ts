@@ -271,7 +271,7 @@ export async function POST(req: NextRequest) {
 
     const sitterProfile = await (prisma as any).sitterProfile.findFirst({
       where: { sitterId, published: true },
-      select: { sitterId: true, pricing: true, lat: true, lng: true, address: true },
+      select: { sitterId: true, pricing: true, lat: true, lng: true, address: true, pensionVerifStatus: true, pensionAcceptedSizes: true },
     });
 
     if (!sitterProfile?.sitterId) {
@@ -284,6 +284,23 @@ export async function POST(req: NextRequest) {
 
     if (unit === null) {
       return NextResponse.json({ ok: false, error: "SERVICE_NOT_AVAILABLE" }, { status: 400 });
+    }
+
+    // Validate dog size for Pension if the sitter has pensionAcceptedSizes
+    if (service === "Pension") {
+      const isPensionApproved = sitterProfile.pensionVerifStatus === "approved" || sitterProfile.pensionVerifStatus === "ai_approved";
+      const pensionAcceptedSizes = isPensionApproved && Array.isArray(sitterProfile.pensionAcceptedSizes) && sitterProfile.pensionAcceptedSizes.length > 0
+        ? sitterProfile.pensionAcceptedSizes as string[]
+        : null;
+      if (pensionAcceptedSizes) {
+        const dogSize = typeof (body as { dogSize?: unknown }).dogSize === "string" ? (body as { dogSize: string }).dogSize : null;
+        if (!dogSize) {
+          return NextResponse.json({ ok: false, error: "DOG_SIZE_REQUIRED", message: "Indiquez la taille de votre chien pour ce sitter." }, { status: 400 });
+        }
+        if (!pensionAcceptedSizes.includes(dogSize)) {
+          return NextResponse.json({ ok: false, error: "DOG_SIZE_NOT_ACCEPTED", message: `Ce sitter n'accepte pas les chiens de taille ${dogSize} en pension.` }, { status: 400 });
+        }
+      }
     }
 
     let totalChf: number | null = null;
