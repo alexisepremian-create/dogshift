@@ -30,6 +30,8 @@ type CreateBookingBody = {
   ownerAddress?: unknown; // required when locationMode === "AT_OWNER"
   ownerLat?: unknown; // client-geocoded latitude
   ownerLng?: unknown; // client-geocoded longitude
+  dogProfileId?: unknown;
+  ownerPhone?: unknown;
 };
 
 type StayRule = {
@@ -566,6 +568,20 @@ export async function POST(req: NextRequest) {
 
     const platformFeeAmount = Math.round(amount * DOGSHIFT_COMMISSION_RATE);
 
+    const dogProfileId = typeof body?.dogProfileId === "string" && body.dogProfileId.trim() ? body.dogProfileId.trim() : null;
+    const ownerPhone = typeof body?.ownerPhone === "string" && body.ownerPhone.trim() ? body.ownerPhone.trim() : null;
+
+    // Validate that the dog profile belongs to the current user if provided
+    if (dogProfileId) {
+      const dog = await (prisma as any).dogProfile.findFirst({
+        where: { id: dogProfileId, userId },
+        select: { id: true },
+      });
+      if (!dog) {
+        return NextResponse.json({ ok: false, error: "DOG_NOT_FOUND" }, { status: 400 });
+      }
+    }
+
     const booking = await (prisma as any).booking.create({
       data: {
         userId,
@@ -584,6 +600,8 @@ export async function POST(req: NextRequest) {
         ownerLat,
         ownerLng,
         ownerAddress: resolvedOwnerAddress,
+        dogProfileId,
+        ownerPhone,
       },
       select: { id: true },
     });

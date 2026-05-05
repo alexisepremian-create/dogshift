@@ -826,6 +826,11 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
   const [travelPreview, setTravelPreview] = useState<{ distanceKm: number; feeCents: number; feeChf: number; ownerLat: number; ownerLng: number } | null>(null);
   const [travelError, setTravelError] = useState<string | null>(null);
 
+  const [dogs, setDogs] = useState<Array<{ id: string; name: string; breed: string | null; weightKg: number | null; isDefault: boolean; photoUrl: string | null }>>([]);
+  const [dogsLoading, setDogsLoading] = useState(true);
+  const [selectedDogId, setSelectedDogId] = useState<string | null>(null);
+  const [ownerPhone, setOwnerPhone] = useState("");
+
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedDateDayStatus, setSelectedDateDayStatus] = useState<DayStatusRow | null>(null);
@@ -950,6 +955,20 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
       setDateEnd((prev) => prev || dateParam);
     }
   }, [searchParams, sitter.services]);
+
+  useEffect(() => {
+    fetch("/api/account/dogs")
+      .then((r) => r.json())
+      .then((data: { dogs?: Array<{ id: string; name: string; breed: string | null; weightKg: number | null; isDefault: boolean; photoUrl: string | null }> }) => {
+        if (Array.isArray(data.dogs)) {
+          setDogs(data.dogs);
+          const def = data.dogs.find((d) => d.isDefault) ?? (data.dogs.length === 1 ? data.dogs[0] : null);
+          if (def) setSelectedDogId(def.id);
+        }
+      })
+      .catch(() => {})
+      .finally(() => setDogsLoading(false));
+  }, []);
 
   const [shouldRenderHourlyDetails, setShouldRenderHourlyDetails] = useState(false);
   const [hourlyDetailsOpen, setHourlyDetailsOpen] = useState(false);
@@ -1778,6 +1797,8 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
         ownerLng: locationMode === "AT_OWNER" && travelPreview ? travelPreview.ownerLng : null,
         ...(dogSize ? { dogSize } : {}),
         numberOfDogs,
+        dogProfileId: selectedDogId ?? null,
+        ownerPhone: ownerPhone.trim() || null,
       };
 
       if (unit === "DAILY") {
@@ -2186,6 +2207,83 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
                 ⚠️ Ce sitter accepte uniquement les chiens castrés ou stérilisés.
               </div>
             )}
+
+            {/* Dog picker + phone */}
+            <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.12)] sm:p-8">
+              <p className="text-sm font-semibold text-slate-900">Votre chien</p>
+              <p className="mt-1 text-sm text-slate-500">Le sitter recevra la fiche complète de votre chien dans sa notification.</p>
+
+              {dogsLoading ? (
+                <div className="mt-4 flex items-center gap-2 text-sm text-slate-500">
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-[var(--dogshift-blue)] border-t-transparent" />
+                  Chargement…
+                </div>
+              ) : dogs.length === 0 ? (
+                <div className="mt-4 rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-5 py-4">
+                  <p className="text-sm text-slate-600">Vous n&apos;avez pas encore ajouté de chien.</p>
+                  <a
+                    href="/account/dogs"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-2 inline-block text-sm font-semibold text-[var(--dogshift-blue)] underline underline-offset-2"
+                  >
+                    Ajouter mon chien →
+                  </a>
+                </div>
+              ) : (
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {dogs.map((dog) => {
+                    const isSelected = selectedDogId === dog.id;
+                    return (
+                      <button
+                        key={dog.id}
+                        type="button"
+                        onClick={() => setSelectedDogId(isSelected ? null : dog.id)}
+                        className={`flex items-center gap-2.5 rounded-2xl border px-4 py-2.5 text-left text-sm transition ${
+                          isSelected
+                            ? "border-[var(--dogshift-blue)] bg-[color-mix(in_srgb,var(--dogshift-blue),white_92%)] text-[var(--dogshift-blue)]"
+                            : "border-slate-200 bg-white text-slate-800 hover:bg-slate-50"
+                        }`}
+                      >
+                        {dog.photoUrl ? (
+                           
+                          <img
+                            src={dog.photoUrl}
+                            alt={dog.name}
+                            className="h-8 w-8 rounded-xl object-cover ring-1 ring-slate-200"
+                          />
+                        ) : (
+                          <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-sm font-bold ${isSelected ? "bg-[var(--dogshift-blue)]/20 text-[var(--dogshift-blue)]" : "bg-slate-100 text-slate-500"}`}>
+                            {dog.name.charAt(0).toUpperCase()}
+                          </div>
+                        )}
+                        <div>
+                          <p className="font-semibold leading-tight">{dog.name}</p>
+                          {dog.breed || dog.weightKg ? (
+                            <p className="text-[11px] leading-tight opacity-70">
+                              {[dog.breed, dog.weightKg ? `${dog.weightKg} kg` : null].filter(Boolean).join(" · ")}
+                            </p>
+                          ) : null}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
+              <div className="mt-5">
+                <p className="text-sm font-semibold text-slate-900">Votre numéro de téléphone</p>
+                <p className="mt-0.5 text-xs text-slate-500">Partagé avec le sitter pour faciliter la coordination.</p>
+                <input
+                  type="tel"
+                  value={ownerPhone}
+                  onChange={(e) => setOwnerPhone(e.target.value)}
+                  placeholder="+41 79 123 45 67"
+                  autoComplete="tel"
+                  className="mt-3 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition focus:border-[var(--dogshift-blue)] focus:ring-4 focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_85%)]"
+                />
+              </div>
+            </div>
 
             {/* Dog size picker — shown for Pension only when sitter has pensionAcceptedSizes */}
             {selectedService === "Pension" && (sitter.pensionAcceptedSizes ?? []).length > 0 && (
