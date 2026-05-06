@@ -129,25 +129,139 @@ export function renderEmailLayout(params: {
       </table>`
     : `<a href="${esc(baseUrl)}" style="text-decoration:none;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,Helvetica,sans-serif;font-size:17px;font-weight:800;color:#ffffff;letter-spacing:-0.3px;">${esc(brandName)}</a>`;
 
-  // ── Summary table ───────────────────────────────────────────────────────────
+  // ── Summary block (Airbnb-inspired auto-grouping) ───────────────────────────
+  // Auto-detect booking-shaped data:
+  //   • "Service"                    → big section header
+  //   • "Début" + "Fin"              → grouped into a single date card
+  //   • "Lieu de prise en charge"    → standalone line with pin icon
+  //   • "Sous-total" / "Frais …"     → small price rows above the total
+  //   • "Total"                      → bold price line at the bottom of the
+  //                                     pricing block
+  //   • "Référence"                  → muted small line at the very bottom
+  // Other rows render as a clean compact label/value block (no separator
+  // lines — the user explicitly asked for cleaner spacing).
   const summaryHtml = rows.length
-    ? `<table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;margin-bottom:4px;">
-        <tr>
-          <td style="padding:0 0 12px 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,Helvetica,sans-serif;font-size:11px;font-weight:700;letter-spacing:0.07em;text-transform:uppercase;color:#64748b;" class="ds-row-label ds-summary-title">${summaryTitle}</td>
-        </tr>
-        ${rows
-          .map((r) => {
-            const label = esc(r.label);
-            const value = esc(r.value);
-            return `<tr>
-              <td style="padding:10px 0;border-top:1px solid #e2e8f0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,Helvetica,sans-serif;" class="ds-row-border">
-                <div style="font-size:11px;line-height:15px;color:#94a3b8;margin-bottom:2px;font-weight:500;" class="ds-row-label">${label}</div>
-                <div style="font-size:14px;line-height:20px;color:#0f172a;font-weight:500;" class="ds-row-value">${value}</div>
-              </td>
-            </tr>`;
-          })
-          .join("")}
-      </table>`
+    ? (() => {
+        const FF =
+          "-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,Helvetica,sans-serif";
+
+        let serviceRow: EmailSummaryRow | undefined;
+        let startRow: EmailSummaryRow | undefined;
+        let endRow: EmailSummaryRow | undefined;
+        let pickupRow: EmailSummaryRow | undefined;
+        let referenceRow: EmailSummaryRow | undefined;
+        const priceLines: EmailSummaryRow[] = [];
+        let totalRow: EmailSummaryRow | undefined;
+        const otherRows: EmailSummaryRow[] = [];
+
+        for (const r of rows) {
+          const lab = r.label.trim().toLowerCase();
+          if (lab === "service") serviceRow = r;
+          else if (lab === "début" || lab === "debut" || lab === "start") startRow = r;
+          else if (lab === "fin" || lab === "end") endRow = r;
+          else if (lab.startsWith("lieu") || lab === "adresse") pickupRow = r;
+          else if (lab === "total" || lab === "montant total") totalRow = r;
+          else if (lab.startsWith("sous-total") || lab.startsWith("frais")) priceLines.push(r);
+          else if (lab.startsWith("référence") || lab.startsWith("reference") || lab === "ref") referenceRow = r;
+          else otherRows.push(r);
+        }
+
+        // Try to merge Début/Fin into a single date card. The values arrive
+        // as already-localised strings like "lun. 06 mai 2026, 10:00" — we
+        // split on the last ", " to separate the day part from the time
+        // part. If both rows share the same day, we collapse to one date
+        // header + a "10:00 → 11:00" range. Multi-day bookings keep both
+        // dates in full.
+        const splitDateTime = (v: string): { day: string; time: string } => {
+          const idx = v.lastIndexOf(", ");
+          if (idx === -1) return { day: v, time: "" };
+          return { day: v.slice(0, idx).trim(), time: v.slice(idx + 2).trim() };
+        };
+
+        const dateCardHtml = (() => {
+          if (!startRow && !endRow) return "";
+          const a = startRow ? splitDateTime(startRow.value) : null;
+          const b = endRow ? splitDateTime(endRow.value) : null;
+          let label = "";
+          if (a && b) {
+            if (a.day === b.day) {
+              label = `${a.day}${a.time && b.time ? ` &middot; ${a.time} → ${b.time}` : ""}`;
+            } else {
+              label = `${a.day}${a.time ? ` ${a.time}` : ""} → ${b.day}${b.time ? ` ${b.time}` : ""}`;
+            }
+          } else if (a) {
+            label = `${a.day}${a.time ? ` &middot; ${a.time}` : ""}`;
+          } else if (b) {
+            label = `${b.day}${b.time ? ` &middot; ${b.time}` : ""}`;
+          }
+          if (!label) return "";
+          // SVG calendar icon as a data URI keeps the email self-contained.
+          const calendarSvg =
+            "<svg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%237c3aed' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><rect x='3' y='4' width='18' height='18' rx='2'/><line x1='16' y1='2' x2='16' y2='6'/><line x1='8' y1='2' x2='8' y2='6'/><line x1='3' y1='10' x2='21' y2='10'/></svg>";
+          return `<table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;margin-top:14px;background:#faf8ff;border:1px solid #ede9fe;border-radius:12px;">
+            <tr>
+              <td valign="middle" style="padding:14px 16px;width:32px;"><img src="data:image/svg+xml;utf8,${calendarSvg}" width="20" height="20" alt="" style="display:block;border:0;" /></td>
+              <td valign="middle" style="padding:14px 16px 14px 0;font-family:${FF};font-size:14px;line-height:20px;color:#0f172a;font-weight:600;">${esc(label).replace(/&amp;middot;/g, "&middot;")}</td>
+            </tr>
+          </table>`;
+        })();
+
+        const serviceHeaderHtml = serviceRow
+          ? `<div style="font-family:${FF};font-size:18px;line-height:26px;font-weight:700;color:#0f172a;margin:6px 0 0;">${esc(serviceRow.value)}</div>`
+          : "";
+
+        const pickupHtml = pickupRow
+          ? `<div style="margin-top:10px;font-family:${FF};font-size:13px;line-height:20px;color:#475569;">
+              <span style="color:#7c3aed;font-weight:700;">📍</span>&nbsp;${esc(pickupRow.value)}
+            </div>`
+          : "";
+
+        // ── Pricing block ────────────────────────────────────────────────
+        const renderPriceLine = (label: string, value: string, bold = false) => `
+          <tr>
+            <td style="padding:6px 0;font-family:${FF};font-size:14px;line-height:20px;color:${bold ? "#0f172a" : "#475569"};font-weight:${bold ? 700 : 400};">${label}</td>
+            <td align="right" style="padding:6px 0;font-family:${FF};font-size:14px;line-height:20px;color:#0f172a;font-weight:${bold ? 800 : 500};white-space:nowrap;">${value}</td>
+          </tr>`;
+        const pricingHtml =
+          priceLines.length || totalRow
+            ? `<table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;margin-top:18px;">
+                ${priceLines.map((r) => renderPriceLine(esc(r.label), esc(r.value))).join("")}
+                ${
+                  totalRow
+                    ? `<tr><td colspan="2" style="padding:10px 0 0;border-top:1px solid #e2e8f0;font-size:0;line-height:0;">&nbsp;</td></tr>${renderPriceLine(esc(totalRow.label), esc(totalRow.value), true)}`
+                    : ""
+                }
+              </table>`
+            : "";
+
+        // ── Other rows (non-booking emails: welcome, value props, etc.) ──
+        // Compact list, no horizontal separator lines — just spacing.
+        const otherRowsHtml = otherRows.length
+          ? `<table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;margin-top:14px;">
+              ${otherRows
+                .map(
+                  (r) => `<tr>
+                  <td style="padding:8px 0;font-family:${FF};">
+                    <div style="font-size:11px;line-height:15px;color:#94a3b8;margin-bottom:3px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;" class="ds-row-label">${esc(r.label)}</div>
+                    <div style="font-size:14px;line-height:20px;color:#0f172a;" class="ds-row-value">${esc(r.value)}</div>
+                  </td>
+                </tr>`,
+                )
+                .join("")}
+            </table>`
+          : "";
+
+        const referenceHtml = referenceRow
+          ? `<div style="margin-top:18px;font-family:${FF};font-size:11px;line-height:16px;color:#94a3b8;letter-spacing:0.02em;">${esc(referenceRow.label)} : <span style="color:#64748b;font-family:Menlo,Consolas,monospace;font-size:11px;">${esc(referenceRow.value)}</span></div>`
+          : "";
+
+        const showSummaryTitle = !serviceRow && !startRow && !endRow && !priceLines.length && !totalRow;
+        const titleHtml = showSummaryTitle
+          ? `<div style="font-family:${FF};font-size:11px;font-weight:700;letter-spacing:0.07em;text-transform:uppercase;color:#64748b;margin-bottom:4px;" class="ds-row-label ds-summary-title">${summaryTitle}</div>`
+          : "";
+
+        return `${titleHtml}${serviceHeaderHtml}${dateCardHtml}${pickupHtml}${otherRowsHtml}${pricingHtml}${referenceHtml}`;
+      })()
     : "";
 
   // ── CTA block ───────────────────────────────────────────────────────────────
