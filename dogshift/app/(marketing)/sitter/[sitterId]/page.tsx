@@ -99,7 +99,7 @@ function Tooltip({
   }, [open]);
 
   return (
-    <span className="relative inline-flex">
+    <span className="relative flex w-full">
       {children({
         triggerProps: {
           onMouseEnter: () => setOpen(true),
@@ -1476,7 +1476,7 @@ function SitterPublicProfileContent({
           </div>
         ) : (
           <div className="mt-3">
-            <div className="mt-5 grid grid-cols-7 gap-2 text-center text-[11px] font-semibold text-slate-500">
+            <div className="mt-5 grid grid-cols-7 gap-1 text-center text-[11px] font-semibold text-slate-500">
               <div>L</div>
               <div>M</div>
               <div>M</div>
@@ -1486,7 +1486,7 @@ function SitterPublicProfileContent({
               <div>D</div>
             </div>
 
-            <div className="mt-2 grid grid-cols-7 gap-2">
+            <div className="mt-2 grid grid-cols-7 gap-1">
               {Array.from({ length: monthMeta.mondayIndex }).map((_, i) => (
                 <div key={`pad-${i}`} />
               ))}
@@ -1507,7 +1507,7 @@ function SitterPublicProfileContent({
                   : slotsDate === dateIso;
                 const isInPensionRange = slotsServiceType === "PENSION" && Boolean(boardingStart && boardingEnd && dateIso > boardingStart && dateIso < boardingEnd);
 
-                let btnClass = "relative flex aspect-square w-full max-w-[48px] mx-auto flex-col items-center justify-center rounded-full text-sm sm:text-[15px] font-semibold transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2";
+                let btnClass = "relative flex aspect-square w-full flex-col items-center justify-center rounded-full text-sm sm:text-[15px] font-semibold transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2";
                 
                 if (isPast) {
                   btnClass += " text-slate-300 cursor-not-allowed opacity-40";
