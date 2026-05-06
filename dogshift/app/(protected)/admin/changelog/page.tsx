@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { ExternalLink, GitMerge, ChevronDown, ChevronUp } from "lucide-react";
 import { useState } from "react";
+import AdminShell from "@/components/admin/AdminShell";
 import { CHANGELOG, type ChangelogEntry } from "@/lib/changelog";
 
 const TYPE_CONFIG = {
@@ -127,6 +128,7 @@ export default function ChangelogPage() {
   const fixCount = CHANGELOG.filter((e) => e.type === "fix").length;
 
   return (
+    <AdminShell>
     <div className="mx-auto max-w-3xl px-4 py-8">
       {/* Header */}
       <div className="mb-8">
@@ -181,5 +183,6 @@ export default function ChangelogPage() {
         Mis à jour automatiquement à chaque merge sur <code className="font-mono">main</code>
       </p>
     </div>
+    </AdminShell>
   );
 }
