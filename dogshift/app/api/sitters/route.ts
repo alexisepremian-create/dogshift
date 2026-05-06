@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
@@ -20,6 +21,11 @@ type SitterListItem = {
   services: unknown;
   pricing: unknown;
   dogSizes: unknown;
+  capacityPlaces: number | null;
+  acceptsSmall: boolean | null;
+  acceptsMedium: boolean | null;
+  acceptsLarge: boolean | null;
+  neuteredRequired: boolean | null;
   averageRating: number | null;
   countReviews: number;
   updatedAt: string;
@@ -38,11 +44,17 @@ type DbRow = {
   services: unknown;
   pricing: unknown;
   dogSizes: unknown;
+  capacityPlaces?: number;
+  acceptsSmall?: boolean;
+  acceptsMedium?: boolean;
+  acceptsLarge?: boolean;
+  neuteredRequired?: boolean;
   updatedAt: Date;
   user: { name: string | null; image: string | null } | null;
 };
 
-export async function GET(_req: NextRequest) {
+export async function GET(req: NextRequest) {
+  void req;
   try {
     const db = prisma as unknown as { sitterProfile: { findMany: (args: unknown) => Promise<DbRow[]> } };
     const sitters = await db.sitterProfile.findMany({
@@ -61,6 +73,11 @@ export async function GET(_req: NextRequest) {
         services: true,
         pricing: true,
         dogSizes: true,
+        capacityPlaces: true,
+        acceptsSmall: true,
+        acceptsMedium: true,
+        acceptsLarge: true,
+        neuteredRequired: true,
         updatedAt: true,
         user: {
           select: {
@@ -129,6 +146,11 @@ export async function GET(_req: NextRequest) {
         }),
         pricing: s.pricing ?? null,
         dogSizes: s.dogSizes ?? null,
+        capacityPlaces: s.capacityPlaces ?? null,
+        acceptsSmall: s.acceptsSmall ?? null,
+        acceptsMedium: s.acceptsMedium ?? null,
+        acceptsLarge: s.acceptsLarge ?? null,
+        neuteredRequired: s.neuteredRequired ?? null,
         averageRating,
         countReviews,
         updatedAt: s.updatedAt.toISOString(),

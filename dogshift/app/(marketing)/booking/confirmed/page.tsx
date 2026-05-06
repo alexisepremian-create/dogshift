@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useState } from "react";
 
-import jsPDF from "jspdf";
 
 import {
   hasReviewForBooking,
@@ -72,8 +71,9 @@ function money(n: number) {
   return n.toFixed(2);
 }
 
-function downloadContractPdf(bookingId: string, snapshot: BookingSnapshot) {
-  const doc = new jsPDF({ unit: "pt", format: "a4" });
+async function downloadContractPdf(bookingId: string, snapshot: BookingSnapshot) {
+  const { default: JsPDF } = await import("jspdf");
+  const doc = new JsPDF({ unit: "pt", format: "a4" });
   const pageWidth = doc.internal.pageSize.getWidth();
   const marginX = 48;
   let y = 64;

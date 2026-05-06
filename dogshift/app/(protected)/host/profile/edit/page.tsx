@@ -19,12 +19,10 @@ import {
   saveHostProfileToStorage,
   type HostProfileV1,
 } from "@/lib/hostProfile";
-
-const DOG_SIZE_LABELS: Record<DogSize, string> = {
-  Petit: "Petit",
-  Moyen: "Moyen",
-  Grand: "Grand",
-};
+import { SizeAcceptanceToggle } from "@/components/capacity/SizeAcceptanceToggle";
+import { CapacitySlider } from "@/components/capacity/CapacitySlider";
+import { CapacityScenariosVisualizer } from "@/components/capacity/CapacityScenariosVisualizer";
+import { SizeWeightLegend } from "@/components/capacity/SizeWeightLegend";
 
 export default function HostProfileEditPage() {
   const host = useHostUser();
@@ -724,74 +722,164 @@ export default function HostProfileEditPage() {
                 Ces critères s&apos;appliquent à tous vos services. Les réservations qui ne les respectent pas seront automatiquement bloquées.
               </p>
 
-              {/* 3a — Tailles acceptées */}
+              {/* 3a — Tailles acceptées (toggle ON/OFF) */}
               <div id="dogSizes" className="scroll-mt-24 mt-6">
                 <h3 className="text-sm font-semibold text-slate-800">Tailles acceptées</h3>
                 <p className="mt-1 text-xs text-slate-500">
-                  Indiquez combien de chiens vous pouvez accueillir simultanément pour chaque taille. 0 = taille non acceptée.
+                  Sélectionnez les tailles de chiens que vous acceptez. Chaque taille occupe un nombre de places différent dans votre capacité.
                 </p>
-                <div className="mt-4 grid grid-cols-3 gap-3">
-                  {(Object.keys(DOG_SIZE_LABELS) as DogSize[]).map((size) => {
-                    const current = profile.maxDogsBySize?.[size] ?? (profile.dogSizes[size] ? 1 : 0);
-                    const subLabel = size === "Petit" ? "< 10 kg" : size === "Moyen" ? "10–25 kg" : "> 25 kg";
-                    const active = current > 0;
-                    return (
-                      <div
-                        key={size}
-                        className={`flex flex-col items-center gap-2 rounded-2xl border p-4 transition ${
-                          active
-                            ? "border-[var(--dogshift-blue)] bg-[color-mix(in_srgb,var(--dogshift-blue),white_94%)]"
-                            : "border-slate-200 bg-white"
-                        }`}
-                      >
-                        <p className={`text-sm font-semibold ${active ? "text-[var(--dogshift-blue)]" : "text-slate-700"}`}>{DOG_SIZE_LABELS[size]}</p>
-                        <p className="text-xs text-slate-400">{subLabel}</p>
-                        <div className="flex items-center gap-2">
-                          <button
-                            type="button"
-                            aria-label={`Diminuer ${size}`}
-                            disabled={current <= 0}
-                            onClick={() => {
-                              const next = Math.max(0, current - 1);
-                              setProfile((p) => ({
-                                ...p,
-                                maxDogsBySize: { Petit: 0, Moyen: 0, Grand: 0, ...p.maxDogsBySize, [size]: next },
-                                dogSizes: { ...p.dogSizes, [size]: next > 0 },
-                              }));
-                            }}
-                            className="flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 text-sm text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 disabled:opacity-30"
-                          >
-                            −
-                          </button>
-                          <span className={`min-w-[1.5rem] text-center text-base font-bold ${active ? "text-[var(--dogshift-blue)]" : "text-slate-400"}`}>
-                            {current}
-                          </span>
-                          <button
-                            type="button"
-                            aria-label={`Augmenter ${size}`}
-                            disabled={current >= 5}
-                            onClick={() => {
-                              const next = Math.min(5, current + 1);
-                              setProfile((p) => ({
-                                ...p,
-                                maxDogsBySize: { Petit: 0, Moyen: 0, Grand: 0, ...p.maxDogsBySize, [size]: next },
-                                dogSizes: { ...p.dogSizes, [size]: next > 0 },
-                              }));
-                            }}
-                            className="flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 text-sm text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 disabled:opacity-30"
-                          >
-                            +
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
+                <div className="mt-4">
+                  <SizeAcceptanceToggle
+                    accepted={{
+                      small: profile.acceptsSmall ?? profile.dogSizes.Petit,
+                      medium: profile.acceptsMedium ?? profile.dogSizes.Moyen,
+                      large: profile.acceptsLarge ?? profile.dogSizes.Grand,
+                    }}
+                    onChange={(next) =>
+                      setProfile((p) => ({
+                        ...p,
+                        acceptsSmall: next.small,
+                        acceptsMedium: next.medium,
+                        acceptsLarge: next.large,
+                        dogSizes: { Petit: next.small, Moyen: next.medium, Grand: next.large },
+                      }))
+                    }
+                  />
                 </div>
               </div>
 
               <div className="my-6 border-t border-slate-100" />
 
-              {/* 3b — Conditions sur le chien */}
+              {/* 3b — Capacité d'accueil simultanée */}
+              <div>
+                <h3 className="text-sm font-semibold text-slate-800">Capacité d&apos;accueil simultanée</h3>
+                <p className="mt-1 text-xs text-slate-500">
+                  Combien de chiens peux-tu accueillir en même temps ? Chaque taille de chien occupe un nombre de places différent dans ta capacité, selon l&apos;espace et l&apos;attention nécessaires.
+                </p>
+
+                <div className="mt-3 mb-5">
+                  <SizeWeightLegend />
+                </div>
+
+                <CapacitySlider
+                  value={profile.capacityPlaces ?? 3}
+                  onChange={(v) => setProfile((p) => ({ ...p, capacityPlaces: v }))}
+                />
+
+                <div className="mt-5">
+                  <CapacityScenariosVisualizer
+                    capacity={profile.capacityPlaces ?? 3}
+                    accepted={{
+                      small: profile.acceptsSmall ?? profile.dogSizes.Petit,
+                      medium: profile.acceptsMedium ?? profile.dogSizes.Moyen,
+                      large: profile.acceptsLarge ?? profile.dogSizes.Grand,
+                    }}
+                  />
+                </div>
+
+                {/* OPAn certificate required when equivalent maxDogs > 5 */}
+                {(profile.capacityPlaces ?? 3) > 5 && (
+                  <div className="mt-4">
+                    {maxDogsCertStatus === "approved" ? (
+                      <div className="flex items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-4">
+                        <CheckCircle className="h-5 w-5 shrink-0 text-emerald-600" />
+                        <div>
+                          <p className="text-sm font-semibold text-emerald-900">Certificat OPAn validé</p>
+                          <p className="text-xs text-emerald-700 mt-0.5">Vous êtes autorisé(e) à accueillir plus de 5 chiens simultanément.</p>
+                        </div>
+                      </div>
+                    ) : maxDogsCertStatus === "pending" ? (
+                      <div className="rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4">
+                        <div className="flex items-center gap-3">
+                          <Clock className="h-5 w-5 shrink-0 text-amber-600" />
+                          <div className="flex-1">
+                            <p className="text-sm font-semibold text-amber-900">Document en cours de vérification</p>
+                            <p className="text-xs text-amber-700 mt-0.5">Notre équipe examine votre document. Réponse sous 24–48h ouvrées.</p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => void resetMaxDogsCert()}
+                            disabled={maxDogsCertResetting}
+                            className="shrink-0 text-xs text-amber-700 underline hover:text-amber-900 disabled:opacity-50"
+                          >
+                            {maxDogsCertResetting ? "…" : "Nouveau document"}
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+                        <div className={`flex items-center gap-3 px-5 py-4 border-b ${maxDogsCertStatus === "rejected" ? "border-rose-100 bg-rose-50" : "border-slate-100 bg-slate-50"}`}>
+                          <ShieldCheck className={`h-5 w-5 shrink-0 ${maxDogsCertStatus === "rejected" ? "text-rose-600" : "text-[var(--dogshift-blue)]"}`} />
+                          <div>
+                            <p className={`text-sm font-semibold ${maxDogsCertStatus === "rejected" ? "text-rose-900" : "text-slate-900"}`}>
+                              {maxDogsCertStatus === "rejected" ? "Document refusé — soumettez-en un nouveau" : "Certificat OPAn requis (art. 101 OPAn)"}
+                            </p>
+                            <p className={`text-xs mt-0.5 ${maxDogsCertStatus === "rejected" ? "text-rose-700" : "text-slate-500"}`}>
+                              La loi suisse exige une attestation FSIFP ou une autorisation cantonale pour garder plus de 5 chiens simultanément.
+                            </p>
+                          </div>
+                        </div>
+                        <div className="px-5 py-5">
+                          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-3">Document accepté</p>
+                          <div className="grid grid-cols-1 gap-1.5 mb-4 sm:grid-cols-2 text-xs text-slate-600">
+                            {["Attestation FSIFP (garde d'animaux de compagnie)", "Autorisation cantonale (SCAV/service vétérinaire)"].map((l) => (
+                              <div key={l} className="flex items-center gap-1.5">
+                                <CheckCircle className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+                                {l}
+                              </div>
+                            ))}
+                          </div>
+                          {maxDogsCertError && (
+                            <div className="mb-3 flex items-center gap-2 rounded-xl bg-rose-50 border border-rose-200 px-3 py-2">
+                              <AlertTriangle className="h-4 w-4 text-rose-500 shrink-0" />
+                              <span className="text-xs font-medium text-rose-700">{maxDogsCertError}</span>
+                            </div>
+                          )}
+                          {maxDogsCertKey ? (
+                            <div className="mb-3 flex items-center gap-2 rounded-xl bg-slate-50 border border-slate-200 px-3 py-2">
+                              <CheckCircle className="h-4 w-4 text-emerald-500 shrink-0" />
+                              <span className="text-xs font-medium text-slate-700">Document prêt pour envoi</span>
+                              <button type="button" onClick={() => setMaxDogsCertKey(null)} className="ml-auto text-xs text-slate-400 hover:text-slate-600">Effacer</button>
+                            </div>
+                          ) : null}
+                          <div className="flex flex-wrap gap-2">
+                            <button
+                              type="button"
+                              onClick={() => maxDogsCertInputRef.current?.click()}
+                              disabled={maxDogsCertUploading}
+                              className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:opacity-50"
+                            >
+                              <Upload className="h-3.5 w-3.5" />
+                              {maxDogsCertUploading ? "Upload…" : "Choisir un document"}
+                            </button>
+                            {maxDogsCertKey && (
+                              <button
+                                type="button"
+                                onClick={() => void submitMaxDogsCert()}
+                                disabled={maxDogsCertSubmitting}
+                                className="inline-flex items-center gap-1.5 rounded-xl bg-[var(--dogshift-blue)] px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-[var(--dogshift-blue-hover)] disabled:opacity-50"
+                              >
+                                {maxDogsCertSubmitting ? "Envoi…" : "Soumettre pour vérification"}
+                              </button>
+                            )}
+                          </div>
+                          <input
+                            ref={maxDogsCertInputRef}
+                            type="file"
+                            accept="image/jpeg,image/png,image/webp,application/pdf"
+                            className="hidden"
+                            onChange={(e) => void handleMaxDogsCertFileChange(e)}
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <div className="my-6 border-t border-slate-100" />
+
+              {/* 3c — Conditions sur le chien */}
               <div>
                 <h3 className="text-sm font-semibold text-slate-800">Conditions sur le chien</h3>
                 <div className="mt-4 space-y-4">
@@ -806,182 +894,28 @@ export default function HostProfileEditPage() {
                       onClick={() =>
                         setProfile((p) => ({
                           ...p,
+                          neuteredRequired: !p.neuteredRequired,
                           acceptanceCriteria: {
                             ...p.acceptanceCriteria,
-                            neuteredRequired: !p.acceptanceCriteria?.neuteredRequired,
+                            neuteredRequired: !p.neuteredRequired,
                           },
                         }))
                       }
                       className={
-                        profile.acceptanceCriteria?.neuteredRequired
+                        profile.neuteredRequired
                           ? "inline-flex h-8 w-14 items-center rounded-full bg-[var(--dogshift-blue)] p-1 transition"
                           : "inline-flex h-8 w-14 items-center rounded-full bg-slate-200 p-1 transition"
                       }
                     >
                       <span
                         className={
-                          profile.acceptanceCriteria?.neuteredRequired
+                          profile.neuteredRequired
                             ? "h-6 w-6 translate-x-6 rounded-full bg-white shadow-sm transition"
                             : "h-6 w-6 translate-x-0 rounded-full bg-white shadow-sm transition"
                         }
                       />
                     </button>
                   </div>
-                </div>
-              </div>
-
-              <div className="my-6 border-t border-slate-100" />
-
-              {/* 3c — Capacité globale */}
-              <div>
-                <h3 className="text-sm font-semibold text-slate-800">Capacité globale</h3>
-                <p className="mt-1 text-xs text-slate-500">
-                  0 = pas de limite. Cette limite s&apos;applique en plus des limites par taille.
-                </p>
-                <div className="mt-4 space-y-4">
-                  <div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-4">
-                    <div>
-                      <p className="text-sm font-semibold text-slate-900">Nombre maximum de chiens simultanés (tous services confondus)</p>
-                      <p className="mt-0.5 text-xs text-slate-500">0 = pas de limite.</p>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <button
-                        type="button"
-                        aria-label="Diminuer"
-                        disabled={(profile.acceptanceCriteria?.maxDogs ?? 0) <= 0}
-                        onClick={() =>
-                          setProfile((p) => ({
-                            ...p,
-                            acceptanceCriteria: {
-                              ...p.acceptanceCriteria,
-                              maxDogs: Math.max(0, (p.acceptanceCriteria?.maxDogs ?? 0) - 1) || null,
-                            },
-                          }))
-                        }
-                        className="flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 text-sm text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 disabled:opacity-30"
-                      >
-                        −
-                      </button>
-                      <span className="min-w-[2rem] text-center text-base font-bold text-slate-900">
-                        {profile.acceptanceCriteria?.maxDogs ?? 0}
-                      </span>
-                      <button
-                        type="button"
-                        aria-label="Augmenter"
-                        onClick={() =>
-                          setProfile((p) => ({
-                            ...p,
-                            acceptanceCriteria: {
-                              ...p.acceptanceCriteria,
-                              maxDogs: (p.acceptanceCriteria?.maxDogs ?? 0) + 1,
-                            },
-                          }))
-                        }
-                        className="flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 text-sm text-slate-600 transition hover:border-slate-300 hover:bg-slate-50"
-                      >
-                        +
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* OPAn certificate required when maxDogs > 5 */}
-                  {(profile.acceptanceCriteria?.maxDogs ?? 0) > 5 && (
-                    <div>
-                      {maxDogsCertStatus === "approved" ? (
-                        <div className="flex items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-4">
-                          <CheckCircle className="h-5 w-5 shrink-0 text-emerald-600" />
-                          <div>
-                            <p className="text-sm font-semibold text-emerald-900">Certificat OPAn validé</p>
-                            <p className="text-xs text-emerald-700 mt-0.5">Vous êtes autorisé(e) à accueillir plus de 5 chiens simultanément.</p>
-                          </div>
-                        </div>
-                      ) : maxDogsCertStatus === "pending" ? (
-                        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4">
-                          <div className="flex items-center gap-3">
-                            <Clock className="h-5 w-5 shrink-0 text-amber-600" />
-                            <div className="flex-1">
-                              <p className="text-sm font-semibold text-amber-900">Document en cours de vérification</p>
-                              <p className="text-xs text-amber-700 mt-0.5">Notre équipe examine votre document. Réponse sous 24–48h ouvrées.</p>
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => void resetMaxDogsCert()}
-                              disabled={maxDogsCertResetting}
-                              className="shrink-0 text-xs text-amber-700 underline hover:text-amber-900 disabled:opacity-50"
-                            >
-                              {maxDogsCertResetting ? "…" : "Nouveau document"}
-                            </button>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-                          <div className={`flex items-center gap-3 px-5 py-4 border-b ${maxDogsCertStatus === "rejected" ? "border-rose-100 bg-rose-50" : "border-slate-100 bg-slate-50"}`}>
-                            <ShieldCheck className={`h-5 w-5 shrink-0 ${maxDogsCertStatus === "rejected" ? "text-rose-600" : "text-[var(--dogshift-blue)]"}`} />
-                            <div>
-                              <p className={`text-sm font-semibold ${maxDogsCertStatus === "rejected" ? "text-rose-900" : "text-slate-900"}`}>
-                                {maxDogsCertStatus === "rejected" ? "Document refusé — soumettez-en un nouveau" : "Certificat OPAn requis (art. 101 OPAn)"}
-                              </p>
-                              <p className={`text-xs mt-0.5 ${maxDogsCertStatus === "rejected" ? "text-rose-700" : "text-slate-500"}`}>
-                                La loi suisse exige une attestation FSIFP ou une autorisation cantonale pour garder plus de 5 chiens simultanément.
-                              </p>
-                            </div>
-                          </div>
-                          <div className="px-5 py-5">
-                            <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-3">Document accepté</p>
-                            <div className="grid grid-cols-1 gap-1.5 mb-4 sm:grid-cols-2 text-xs text-slate-600">
-                              {["Attestation FSIFP (garde d'animaux de compagnie)", "Autorisation cantonale (SCAV/service vétérinaire)"].map((l) => (
-                                <div key={l} className="flex items-center gap-1.5">
-                                  <CheckCircle className="h-3.5 w-3.5 shrink-0 text-slate-400" />
-                                  {l}
-                                </div>
-                              ))}
-                            </div>
-                            {maxDogsCertError && (
-                              <div className="mb-3 flex items-center gap-2 rounded-xl bg-rose-50 border border-rose-200 px-3 py-2">
-                                <AlertTriangle className="h-4 w-4 text-rose-500 shrink-0" />
-                                <span className="text-xs font-medium text-rose-700">{maxDogsCertError}</span>
-                              </div>
-                            )}
-                            {maxDogsCertKey ? (
-                              <div className="mb-3 flex items-center gap-2 rounded-xl bg-slate-50 border border-slate-200 px-3 py-2">
-                                <CheckCircle className="h-4 w-4 text-emerald-500 shrink-0" />
-                                <span className="text-xs font-medium text-slate-700">Document prêt pour envoi</span>
-                                <button type="button" onClick={() => setMaxDogsCertKey(null)} className="ml-auto text-xs text-slate-400 hover:text-slate-600">Effacer</button>
-                              </div>
-                            ) : null}
-                            <div className="flex flex-wrap gap-2">
-                              <button
-                                type="button"
-                                onClick={() => maxDogsCertInputRef.current?.click()}
-                                disabled={maxDogsCertUploading}
-                                className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:opacity-50"
-                              >
-                                <Upload className="h-3.5 w-3.5" />
-                                {maxDogsCertUploading ? "Upload…" : "Choisir un document"}
-                              </button>
-                              {maxDogsCertKey && (
-                                <button
-                                  type="button"
-                                  onClick={() => void submitMaxDogsCert()}
-                                  disabled={maxDogsCertSubmitting}
-                                  className="inline-flex items-center gap-1.5 rounded-xl bg-[var(--dogshift-blue)] px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-[var(--dogshift-blue-hover)] disabled:opacity-50"
-                                >
-                                  {maxDogsCertSubmitting ? "Envoi…" : "Soumettre pour vérification"}
-                                </button>
-                              )}
-                            </div>
-                            <input
-                              ref={maxDogsCertInputRef}
-                              type="file"
-                              accept="image/jpeg,image/png,image/webp,application/pdf"
-                              className="hidden"
-                              onChange={(e) => void handleMaxDogsCertFileChange(e)}
-                            />
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
                 </div>
               </div>
             </div>

@@ -10,8 +10,9 @@ import Link from "next/link";
 import { useParams, usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { User, Scissors, Dog, MapPin, Users, MessageSquare, Star, Info, ChevronLeft, ChevronRight, Calendar, Shield, CreditCard, MessageCircle } from "lucide-react";
+import { User, Scissors, Dog, MapPin, Users, MessageSquare, Star, Info, ChevronLeft, ChevronRight, Calendar as CalendarIcon, Shield, CreditCard, MessageCircle } from "lucide-react";
 import { SERVICE_COLORS, getServiceColors } from "@/lib/design/services";
+import SharedCalendar, { type DayAvailability } from "@/components/ui/Calendar";
 import { loadHostProfileFromStorage, type HostProfileV1 } from "@/lib/hostProfile";
 import HostDashboardShell from "@/components/HostDashboardShell";
 import { HostUserProvider, makeHostUserValuePreview } from "@/components/HostUserProvider";
@@ -56,6 +57,11 @@ type SitterCard = {
   dogSizes: string[];
   maxDogsBySize?: Record<string, number>;
   acceptanceCriteria?: { neuteredRequired?: boolean; maxDogs?: number | null } | null;
+  capacityPlaces?: number;
+  acceptsSmall?: boolean;
+  acceptsMedium?: boolean;
+  acceptsLarge?: boolean;
+  neuteredRequired?: boolean;
   availableDates: string[];
   pricing: PricingMap;
   bio: string;
@@ -473,6 +479,11 @@ function SitterPublicProfileContent({
       dogSizes: enabledDogSizes,
       maxDogsBySize,
       acceptanceCriteria: (profile as { acceptanceCriteria?: { neuteredRequired?: boolean; maxDogs?: number | null } | null }).acceptanceCriteria ?? null,
+      capacityPlaces: profile.capacityPlaces ?? 3,
+      acceptsSmall: profile.acceptsSmall,
+      acceptsMedium: profile.acceptsMedium,
+      acceptsLarge: profile.acceptsLarge,
+      neuteredRequired: profile.neuteredRequired,
       availableDates: [],
       pricing: safePricingMap(pricing),
       bio: profile.bio ?? "",
@@ -1476,154 +1487,76 @@ function SitterPublicProfileContent({
           </div>
         ) : (
           <div className="mt-3">
-            <div className="mt-5 grid grid-cols-7 gap-1 text-center text-[11px] font-semibold text-slate-500">
-              <div>L</div>
-              <div>M</div>
-              <div>M</div>
-              <div>J</div>
-              <div>V</div>
-              <div>S</div>
-              <div>D</div>
-            </div>
-
-            <div className="mt-2 grid grid-cols-7 gap-1">
-              {Array.from({ length: monthMeta.mondayIndex }).map((_, i) => (
-                <div key={`pad-${i}`} />
-              ))}
-              {Array.from({ length: monthMeta.daysInMonth }).map((_, i) => {
-                const day = i + 1;
-                const dateIso = `${String(monthMeta.year).padStart(4, "0")}-${String(monthMeta.month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-                const row = monthDaysByDate.get(dateIso);
-                const isPast = dateIso < todayIso;
-                const isToday = dateIso === todayIso;
-
-                const serviceTone = statusForSelectedService(row, slotsServiceType);
-                const servicePartial = partialForSelectedService(row, slotsServiceType);
-                const isSelectableForService = !isPast && (serviceTone === "AVAILABLE" || serviceTone === "ON_REQUEST" || servicePartial);
-                
-                const selectedServiceTone = getServiceColors(slotsServiceType);
-                const isCalendarSelected = slotsServiceType === "PENSION"
-                  ? Boolean(boardingStart && dateIso === boardingStart) || Boolean(boardingEnd && dateIso === boardingEnd)
-                  : slotsDate === dateIso;
-                const isInPensionRange = slotsServiceType === "PENSION" && Boolean(boardingStart && boardingEnd && dateIso > boardingStart && dateIso < boardingEnd);
-
-                let btnClass = "relative flex aspect-square w-full flex-col items-center justify-center rounded-full text-sm sm:text-[15px] font-semibold transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2";
-                
-                if (isPast) {
-                  btnClass += " text-slate-300 cursor-not-allowed opacity-40";
-                } else if (isCalendarSelected) {
-                  btnClass += ` ${selectedServiceTone.fill} text-white shadow-sm`;
-                } else if (isInPensionRange) {
-                  btnClass += ` ${selectedServiceTone.tint} ${selectedServiceTone.text}`;
-                } else if (isSelectableForService) {
-                  btnClass += " bg-white border border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-50";
-                } else {
-                  btnClass += " border border-dashed border-slate-200 bg-slate-50 text-slate-400";
-                }
-
-                if (isToday && !isCalendarSelected) {
-                  btnClass += " ring-2 ring-[var(--dogshift-blue)] ring-offset-1";
-                }
-
-                // Gather which services are available for the dots under the number
-                const availableDots = [];
-                if (!isPast && row) {
-                  if (slotsServiceType === "PROMENADE" && (row.promenadeStatus === "AVAILABLE" || row.promenadeStatus === "ON_REQUEST" || row.promenadePartial)) {
-                    availableDots.push(getServiceColors("PROMENADE").fill);
+            <SharedCalendar
+              variant="profile"
+              mode={slotsServiceType === "PENSION" ? "range" : "single"}
+              year={monthMeta.year}
+              month={monthMeta.month}
+              onMonthChange={(y: number, m: number) => setMonthCursor(new Date(Date.UTC(y, m, 1, 0, 0, 0, 0)))}
+              selectedStart={slotsServiceType === "PENSION" ? (boardingStart || null) : (slotsDate || null)}
+              selectedEnd={slotsServiceType === "PENSION" ? (boardingEnd || null) : null}
+              onDateSelect={(iso: string) => {
+                setPensionSelectionMessage(null);
+                if (slotsServiceType === "PENSION") {
+                  if (boardingStart === iso && boardingEnd === iso) {
+                    setBoardingStart("");
+                    setBoardingEnd("");
+                    setCalendarInfoDate(null);
+                    setDayDetailsOpen(false);
+                    return;
                   }
-                  if (slotsServiceType === "DOGSITTING" && (row.dogsittingStatus === "AVAILABLE" || row.dogsittingStatus === "ON_REQUEST" || row.dogsittingPartial)) {
-                    availableDots.push(getServiceColors("DOGSITTING").fill);
-                  }
-                  if (slotsServiceType === "PENSION" && (row.pensionStatus === "AVAILABLE" || row.pensionStatus === "ON_REQUEST" || row.pensionPartial)) {
-                    availableDots.push(getServiceColors("PENSION").fill);
-                  }
-                }
-
-                const ariaLabel = `${dateIso} — ${serviceUi.current.label}: ${serviceUi.statusLabel(serviceTone)}`;
-
-                return (
-                  <div key={dateIso} className="flex aspect-square items-center justify-center p-0.5">
-                    <button
-                      type="button"
-                      disabled={!isSelectableForService}
-                      onClick={() => {
-                        if (!isSelectableForService) return;
-                        setPensionSelectionMessage(null);
-                        if (slotsServiceType === "PENSION") {
-                          if (boardingStart === dateIso && boardingEnd === dateIso) {
-                            setBoardingStart("");
-                            setBoardingEnd("");
-                            setCalendarInfoDate(null);
-                            setDayDetailsOpen(false);
-                            return;
-                          }
-                          if (!boardingStart) {
-                            setBoardingStart(dateIso);
-                            setBoardingEnd(dateIso);
-                            setCalendarInfoDate(dateIso);
-                            setDayDetailsOpen(false);
-                          } else {
-                            if (boardingEnd && boardingEnd > boardingStart) {
-                              if (dateIso <= boardingStart) {
-                                setBoardingStart(dateIso);
-                                setBoardingEnd(dateIso);
-                                setCalendarInfoDate(dateIso);
-                                setDayDetailsOpen(false);
-                                return;
-                              }
-                              setBoardingEnd(dateIso);
-                              setCalendarInfoDate(dateIso);
-                              setDayDetailsOpen(false);
-                              return;
-                            }
-                            if (dateIso < boardingStart) {
-                              setBoardingStart(dateIso);
-                              setBoardingEnd(dateIso);
-                              setCalendarInfoDate(dateIso);
-                              setDayDetailsOpen(false);
-                              return;
-                            }
-                            if (dateIso === boardingStart) {
-                              setBoardingStart("");
-                              setBoardingEnd("");
-                              setCalendarInfoDate(null);
-                              setDayDetailsOpen(false);
-                              return;
-                            }
-                            setBoardingEnd(dateIso);
-                            setCalendarInfoDate(dateIso);
-                            setDayDetailsOpen(false);
-                          }
-                          return;
-                        }
-                        if (slotsDate === dateIso) {
-                          setSlotsDate("");
-                          setCalendarInfoDate(null);
-                          setDayDetailsOpen(false);
-                          return;
-                        }
-                        setSlotsDate(dateIso);
-                        setCalendarInfoDate(dateIso);
+                  if (!boardingStart) {
+                    setBoardingStart(iso);
+                    setBoardingEnd(iso);
+                    setCalendarInfoDate(iso);
+                    setDayDetailsOpen(false);
+                  } else {
+                    if (boardingEnd && boardingEnd > boardingStart) {
+                      if (iso <= boardingStart) {
+                        setBoardingStart(iso);
+                        setBoardingEnd(iso);
+                        setCalendarInfoDate(iso);
                         setDayDetailsOpen(false);
-                      }}
-                      className={btnClass}
-                      aria-label={ariaLabel}
-                      aria-pressed={isCalendarSelected}
-                    >
-                      <span className={availableDots.length > 0 && !isCalendarSelected && !isInPensionRange ? "-translate-y-1" : ""}>{day}</span>
-                      
-                      {availableDots.length > 0 && !isCalendarSelected && !isInPensionRange ? (
-                        <div className="absolute bottom-1.5 flex gap-1">
-                          {availableDots.map((dotColor, idx) => (
-                            <span key={idx} className={`h-1 w-1 rounded-full ${dotColor}`} />
-                          ))}
-                        </div>
-                      ) : null}
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
+                        return;
+                      }
+                      setBoardingEnd(iso);
+                      setCalendarInfoDate(iso);
+                      setDayDetailsOpen(false);
+                      return;
+                    }
+                    if (iso < boardingStart) {
+                      setBoardingStart(iso);
+                      setBoardingEnd(iso);
+                      setCalendarInfoDate(iso);
+                      setDayDetailsOpen(false);
+                      return;
+                    }
+                    if (iso === boardingStart) {
+                      setBoardingStart("");
+                      setBoardingEnd("");
+                      setCalendarInfoDate(null);
+                      setDayDetailsOpen(false);
+                      return;
+                    }
+                    setBoardingEnd(iso);
+                    setCalendarInfoDate(iso);
+                    setDayDetailsOpen(false);
+                  }
+                  return;
+                }
+                if (slotsDate === iso) {
+                  setSlotsDate("");
+                  setCalendarInfoDate(null);
+                  setDayDetailsOpen(false);
+                  return;
+                }
+                setSlotsDate(iso);
+                setCalendarInfoDate(iso);
+                setDayDetailsOpen(false);
+              }}
+              availability={monthDaysByDate as Map<string, DayAvailability>}
+              activeService={slotsServiceType}
+            />
 
             {slotsServiceType !== "PENSION" && bookingSelectionSummary ? (
               <div className="mt-3 rounded-2xl border border-slate-200 bg-white p-4">
@@ -2295,67 +2228,65 @@ function SitterPublicProfileContent({
 
         {showFullListing ? (
           <>
-            <div className="rounded-3xl border border-slate-200 bg-white shadow-[0_18px_60px_-40px_rgba(2,6,23,0.35)]">
-              <div className="grid gap-0 lg:grid-cols-[1fr_360px]">
-              <section className="p-6 sm:p-8">
-                  <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="flex items-center gap-5">
-                      <button
-                        type="button"
-                        onClick={() => setPhotoLightboxOpen(true)}
-                        className="shrink-0 cursor-zoom-in focus:outline-none"
-                        aria-label="Voir la photo en grand"
-                      >
-                        <img
-                          src={sitter.avatarUrl}
-                          alt={sitter.name}
-                          className="h-24 w-24 sm:h-32 sm:w-32 rounded-full object-cover ring-1 ring-slate-200 transition-opacity hover:opacity-90"
-                          loading="lazy"
-                          referrerPolicy="no-referrer"
-                        />
-                      </button>
-                      <div>
-                        <h1 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">{sitter.name}</h1>
-                        <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-slate-600">
-                          <MapPin className="h-4 w-4 text-slate-400" />
-                          <span>{sitter.city}, {sitter.postalCode}</span>
-                          <span className="text-slate-300">•</span>
-                          {reviewCountLabel === 0 ? (
-                            <span className="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
-                              Nouveau sur DogShift
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 font-medium text-slate-900">
-                              <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
-                              {ratingLabel} <span className="text-slate-500 underline decoration-slate-300 underline-offset-2">({reviewCountLabel} avis)</span>
-                            </span>
-                          )}
-                          {sitter.verified ? (
-                            <>
-                              <span className="text-slate-300">•</span>
-                              <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-800 shadow-sm">
-                                Vérifié
-                              </span>
-                            </>
-                          ) : null}
-                        </div>
+            <div className="grid gap-8 lg:grid-cols-[1fr_360px]">
+              <div>
+                  {/* Hero */}
+                  <div className="flex items-center gap-4 sm:gap-5">
+                    <button
+                      type="button"
+                      onClick={() => setPhotoLightboxOpen(true)}
+                      className="shrink-0 cursor-zoom-in focus:outline-none"
+                      aria-label="Voir la photo en grand"
+                    >
+                      <img
+                        src={sitter.avatarUrl}
+                        alt={sitter.name}
+                        className="h-20 w-20 sm:h-24 sm:w-24 lg:h-28 lg:w-28 rounded-full object-cover ring-1 ring-slate-200 transition-opacity hover:opacity-90"
+                        loading="lazy"
+                        referrerPolicy="no-referrer"
+                      />
+                    </button>
+                    <div className="min-w-0">
+                      <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl lg:text-4xl">{sitter.name}</h1>
+                      <div className="mt-1.5 flex items-center gap-1.5 text-sm text-slate-600">
+                        <MapPin className="h-4 w-4 shrink-0 text-slate-400" />
+                        <span>{sitter.city}, {sitter.postalCode}</span>
                       </div>
-                    </div>
-
-                    <div className="rounded-2xl border border-slate-200 bg-white px-6 py-5 shadow-sm shrink-0">
-                      <p className="text-sm font-medium text-slate-500">À partir de</p>
-                      <div className="mt-1 flex items-baseline gap-1.5 whitespace-nowrap text-slate-900">
-                        <span className="text-xl font-bold">CHF</span>
-                        <span className="text-3xl font-extrabold tracking-tight">{fromPricing?.price ?? sitter.pricePerDay}</span>
-                        <span className="text-sm font-medium text-slate-500">
-                          {fromPricing?.unit ??
-                            (typeof (sitter.pricing as unknown as Record<string, unknown> | null)?.Pension === "number" ? " / jour" : " / heure")}
-                        </span>
+                      <div className="mt-2 flex flex-wrap items-center gap-2">
+                        {reviewCountLabel === 0 ? (
+                          <span className="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
+                            Nouveau sur DogShift
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 text-sm font-medium text-slate-900">
+                            <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
+                            {ratingLabel} <span className="text-slate-500 underline decoration-slate-300 underline-offset-2">({reviewCountLabel} avis)</span>
+                          </span>
+                        )}
+                        {sitter.verified ? (
+                          <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-800">
+                            Vérifié
+                          </span>
+                        ) : null}
                       </div>
                     </div>
                   </div>
+
+                  {/* Mobile-only price band */}
+                  <div className="mt-4 rounded-2xl border border-slate-200 bg-white px-5 py-3.5 shadow-sm lg:hidden">
+                    <div className="flex items-baseline gap-1.5 text-slate-900">
+                      <span className="text-xs font-medium text-slate-500">À partir de</span>
+                      <span className="text-lg font-bold">CHF</span>
+                      <span className="text-2xl font-extrabold tracking-tight">{fromPricing?.price ?? sitter.pricePerDay}</span>
+                      <span className="text-sm font-medium text-slate-500">
+                        {fromPricing?.unit ??
+                          (typeof (sitter.pricing as unknown as Record<string, unknown> | null)?.Pension === "number" ? " / jour" : " / heure")}
+                      </span>
+                    </div>
+                  </div>
                   
-                  <div className="mt-8 flex flex-wrap items-center gap-3 border-y border-slate-100 py-4">
+                  {/* Characteristics chips */}
+                  <div className="mt-6 flex flex-wrap items-center gap-2 border-y border-slate-100 py-4">
                     {dogSizeBadges.map((size) => {
                       const maxForSize = sitter.maxDogsBySize?.[size];
                       return (
@@ -2367,7 +2298,7 @@ function SitterPublicProfileContent({
                       );
                     })}
                     {dogSizeBadges.length > 0 && (sitter.acceptanceCriteria?.neuteredRequired || sitter.acceptanceCriteria?.maxDogs) ? (
-                      <div className="h-5 w-[1px] bg-slate-200 hidden sm:block" />
+                      <div className="hidden h-5 w-px bg-slate-200 sm:block" />
                     ) : null}
                     {sitter.acceptanceCriteria?.neuteredRequired && (
                       <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[13px] font-medium text-slate-700 shadow-sm">
@@ -2383,456 +2314,331 @@ function SitterPublicProfileContent({
                     ) : null}
                   </div>
 
-                  <div className="mt-7 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-                      <h2 className="text-xl font-bold tracking-tight text-slate-900">Services & tarifs</h2>
-                      {sitter.services.length === 0 ? (
-                        <div className="mt-3 rounded-2xl border border-slate-200 bg-white p-4">
-                          <p className="text-sm font-semibold text-slate-900">Aucun service</p>
-                          <p className="mt-1 text-sm text-slate-600">Ce sitter n’a pas encore renseigné ses services.</p>
+                  <div className="mt-8">
+                  <h2 className="text-lg font-bold tracking-tight text-slate-900">Services & tarifs</h2>
+                  {sitter.services.length === 0 ? (
+                    <p className="mt-3 text-sm text-slate-500">Ce sitter n&apos;a pas encore renseigné ses services.</p>
+                  ) : (
+                    <div className="mt-3 divide-y divide-slate-100">
+                      {pricingRows.map((row) => {
+                        const hasPrice = typeof row.price === "number" && Number.isFinite(row.price) && row.price > 0;
+                        const slotServiceType = serviceLabelToSlotsType(row.service);
+                        const color = getServiceColors(slotServiceType);
+                        const selected = slotsServiceType === slotServiceType;
+                        return (
+                          <button
+                            key={row.service}
+                            type="button"
+                            role="tab"
+                            aria-checked={selected}
+                            onClick={() => setSlotsServiceType(slotServiceType)}
+                            className={[
+                              "flex w-full items-center justify-between py-3.5 text-left text-sm font-medium transition-colors",
+                              selected ? "text-slate-900" : "text-slate-600 hover:text-slate-900",
+                            ].join(" ")}
+                          >
+                            <span className="flex items-center gap-3">
+                              <span className={`h-2.5 w-2.5 rounded-full ${selected ? color.fill : "bg-slate-300"}`} aria-hidden="true" />
+                              <span className={selected ? "font-semibold" : ""}>{row.service}</span>
+                            </span>
+                            <span className={selected ? "font-bold text-slate-900" : "text-slate-500"}>
+                              {hasPrice ? (
+                                <>CHF {row.price} <span className="font-normal text-slate-400">{row.service === "Pension" ? "/ jour" : "/ heure"}</span></>
+                              ) : "Sur demande"}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                <div className="mt-8">
+                  <h2 className="text-lg font-bold tracking-tight text-slate-900">Agenda des disponibilités</h2>
+                  <p className="mt-1 text-sm text-slate-500">
+                    {slotsServiceType === "PENSION"
+                      ? "Sélectionne une date de début puis une date de fin."
+                      : "Sélectionne une date pour voir les créneaux disponibles."}
+                  </p>
+
+                  <div className="mt-5">
+                    <AvailabilityCalendar
+                      monthMeta={monthMeta}
+                      monthLoading={monthLoading}
+                      monthError={monthError}
+                      monthDaysByDate={monthDaysByDate}
+                      setMonthRetryKey={setMonthRetryKey}
+                      slotsServiceType={slotsServiceType}
+                      slotsDate={slotsDate}
+                      setSlotsDate={setSlotsDate}
+                      boardingStart={boardingStart}
+                      boardingEnd={boardingEnd}
+                      setBoardingStart={setBoardingStart}
+                      setBoardingEnd={setBoardingEnd}
+                      pensionSelectionMessage={pensionSelectionMessage}
+                      setPensionSelectionMessage={setPensionSelectionMessage}
+                      bookingSelectionSummary={bookingSelectionSummary}
+                      calendarInfoDate={calendarInfoDate}
+                      setCalendarInfoDate={setCalendarInfoDate}
+                      dayDetailsOpen={dayDetailsOpen}
+                      setDayDetailsOpen={setDayDetailsOpen}
+                      dayDetailsLoading={dayDetailsLoading}
+                      dayDetailsError={dayDetailsError}
+                      dayDetails={dayDetails}
+                      setDayDetailsRetryKey={setDayDetailsRetryKey}
+                      daySlots={daySlots}
+                      daySlotsSummary={daySlotsSummary}
+                      slotsLoading={slotsLoading}
+                      slotsError={slotsError}
+                      dbg={dbg}
+                      serviceUi={serviceUi}
+                      todayIso={todayIso}
+                    />
+                  </div>
+
+                  <div className="mt-4 flex flex-wrap gap-4 text-xs font-medium text-slate-500">
+                    <div className="flex items-center gap-1.5"><span className={`h-2 w-2 rounded-full ${getServiceColors("PROMENADE").fill}`} /><span>Promenade</span></div>
+                    <div className="flex items-center gap-1.5"><span className={`h-2 w-2 rounded-full ${getServiceColors("DOGSITTING").fill}`} /><span>Dogsitting</span></div>
+                    <div className="flex items-center gap-1.5"><span className={`h-2 w-2 rounded-full ${getServiceColors("PENSION").fill}`} /><span>Pension</span></div>
+                  </div>
+
+                  {bookingSelectionSummary ? (
+                    <p className="mt-3 text-sm font-medium text-slate-900">{bookingSelectionSummary}</p>
+                  ) : null}
+                  {pensionSelectionMessage ? (
+                    <p className="mt-1 text-sm font-medium text-amber-900">{pensionSelectionMessage}</p>
+                  ) : null}
+                </div>
+
+                <div className="mt-8">
+                  <h2 className="text-lg font-bold tracking-tight text-slate-900">Prochaines disponibilités</h2>
+                  {nextDaysLoading ? (
+                    <p className="mt-2 text-sm text-slate-500">Chargement…</p>
+                  ) : nextDaysError ? (
+                    <div className="mt-2">
+                      <p className="text-sm text-rose-700">{getAvailabilityLoadErrorMessage(nextDaysError)}</p>
+                      <button type="button" onClick={() => setNextDaysRetryKey((v) => v + 1)} className="mt-2 inline-flex h-9 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">Réessayer</button>
+                    </div>
+                  ) : nextAvail.length ? (
+                    <ul className="mt-3 grid gap-2">
+                      {nextAvail.map((d) => (
+                        <li key={d} className="flex items-center gap-2 text-sm text-slate-700 font-medium">
+                          <span className={`h-2 w-2 rounded-full ${getServiceColors(slotsServiceType).fill}`} />
+                          <span>{formatDateFr(d)}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <div className="mt-3">
+                      <p className="text-sm leading-relaxed text-slate-600">
+                        Aucune disponibilité publiée pour le moment. Contacte {sitter.name.split(" ")[0]} pour proposer tes dates — il/elle répond généralement sous 24h.
+                      </p>
+                      <button type="button" onClick={() => { if (disableSelfActions) return; actionsRef.current?.querySelector<HTMLButtonElement>('button[data-chat="1"]')?.click(); }} className="mt-2 text-sm font-semibold text-slate-900 underline decoration-slate-300 underline-offset-4 hover:decoration-slate-500 transition-colors">Envoyer un message</button>
+                    </div>
+                  )}
+                </div>
+
+                <div className="mt-8 rounded-2xl border border-slate-200 bg-white p-5 sm:p-6">
+                  <h2 className="text-lg font-bold tracking-tight text-slate-900">À propos de {sitter.name.split(" ")[0]}</h2>
+                  {sitter.bio && sitter.bio.trim().length >= 20 ? (
+                    <p className="mt-3 text-[15px] leading-relaxed text-slate-700 whitespace-pre-line">{sitter.bio}</p>
+                  ) : (
+                    <p className="mt-3 text-sm leading-relaxed text-slate-500 italic">Ce sitter n&apos;a pas encore complété sa présentation.</p>
+                  )}
+                </div>
+
+                {showBoardingDetails && boardingDetails ? (
+                  <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-5 sm:p-6">
+                    <h2 className="text-lg font-bold tracking-tight text-slate-900">Détails pension</h2>
+                    <dl className="mt-4 grid gap-x-6 gap-y-4 sm:grid-cols-2">
+                      {boardingDetails.housingType ? (
+                        <div>
+                          <dt className="text-xs font-semibold uppercase tracking-wider text-slate-500">Logement</dt>
+                          <dd className="mt-1.5 text-[15px] text-slate-900 font-medium">{boardingDetails.housingType}</dd>
+                        </div>
+                      ) : null}
+                      {typeof boardingDetails.hasGarden === "boolean" ? (
+                        <div>
+                          <dt className="text-xs font-semibold uppercase tracking-wider text-slate-500">Jardin</dt>
+                          <dd className="mt-1.5 text-[15px] text-slate-900 font-medium">{boardingDetails.hasGarden ? "Oui" : "Non"}</dd>
+                        </div>
+                      ) : null}
+                      {typeof boardingDetails.hasOtherPets === "boolean" ? (
+                        <div>
+                          <dt className="text-xs font-semibold uppercase tracking-wider text-slate-500">Autres animaux</dt>
+                          <dd className="mt-1.5 text-[15px] text-slate-900 font-medium">{boardingDetails.hasOtherPets ? "Oui" : "Non"}</dd>
+                        </div>
+                      ) : null}
+                      {boardingDetails.notes ? (
+                        <div className="sm:col-span-2">
+                          <dt className="text-xs font-semibold uppercase tracking-wider text-slate-500">Notes</dt>
+                          <dd className="mt-1.5 text-[15px] leading-relaxed text-slate-700 whitespace-pre-line">{boardingDetails.notes}</dd>
+                        </div>
+                      ) : null}
+                      {Array.isArray(boardingDetails.pensionAcceptedSizes) && boardingDetails.pensionAcceptedSizes.length > 0 ? (
+                        <div className="sm:col-span-2">
+                          <dt className="text-xs font-semibold uppercase tracking-wider text-slate-500">Tailles acceptées</dt>
+                          <dd className="mt-2 flex flex-wrap gap-2">
+                            {boardingDetails.pensionAcceptedSizes.map((size) => (
+                              <span key={size} className="inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1 text-[13px] font-medium text-slate-700">
+                                {size}
+                              </span>
+                            ))}
+                          </dd>
+                        </div>
+                      ) : null}
+                    </dl>
+                  </div>
+                ) : null}
+
+                <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-5 sm:p-6">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <h2 className="text-lg font-bold tracking-tight text-slate-900">Avis</h2>
+                    {visibleReviews.length > 0 && (
+                      <div className="flex items-center gap-2">
+                        <span className="inline-flex items-center gap-1 font-medium text-slate-900">
+                          <Star className="h-5 w-5 fill-amber-400 text-amber-400" />
+                          <span className="text-lg font-bold">{ratingLabel}</span>
+                        </span>
+                        <span className="text-sm font-medium text-slate-500">({reviewCountLabel} avis)</span>
+                      </div>
+                    )}
+                  </div>
+                  {visibleReviews.length === 0 ? (
+                    <div className="mt-6 flex flex-col items-center justify-center py-8 text-center">
+                      <MessageSquare className="h-8 w-8 text-slate-300" />
+                      <p className="mt-3 text-sm font-semibold text-slate-700">Aucun avis pour le moment</p>
+                      <p className="mt-1 text-sm text-slate-500">Sois le premier à laisser un retour après ta réservation.</p>
+                    </div>
+                  ) : (
+                    <div className="mt-5 grid gap-4">
+                      {visibleReviews.map((review) => (
+                        <article key={review.id} className="rounded-xl border border-slate-100 bg-slate-50 p-4">
+                          <div className="flex flex-wrap items-start justify-between gap-3">
+                            <div>
+                              <p className="text-sm font-semibold text-slate-900">{review.authorName}</p>
+                              <p className="mt-0.5 text-xs font-medium text-slate-500">{formatReviewDate(review.createdAt)}</p>
+                            </div>
+                            <span className="inline-flex items-center gap-1 rounded-full bg-white px-2.5 py-0.5 text-xs font-semibold text-slate-700 border border-slate-200">
+                              <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
+                              {formatRating(review.rating)}
+                            </span>
+                          </div>
+                          <p className="mt-2.5 text-sm leading-relaxed text-slate-700">
+                            {review.comment?.trim() ? review.comment.trim() : <span className="italic text-slate-500">Aucun commentaire ajouté.</span>}
+                          </p>
+                        </article>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <aside className="hidden lg:block">
+                <div className="sticky top-24">
+                  <div className="rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm mb-4">
+                    <p className="text-xs font-medium text-slate-500">À partir de</p>
+                    <div className="mt-0.5 flex items-baseline gap-1.5 text-slate-900">
+                      <span className="text-lg font-bold">CHF</span>
+                      <span className="text-2xl font-extrabold tracking-tight">{fromPricing?.price ?? sitter.pricePerDay}</span>
+                      <span className="text-sm font-medium text-slate-500">
+                        {fromPricing?.unit ?? (typeof (sitter.pricing as unknown as Record<string, unknown> | null)?.Pension === "number" ? " / jour" : " / heure")}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                    <div
+                      ref={actionsRef}
+                      onClickCapture={(e) => {
+                        if (process.env.NODE_ENV === "production") return;
+                        const t = e.target as HTMLElement | null;
+                        const ct = e.currentTarget as HTMLElement | null;
+                        console.log("[sitter][actions][capture]", { sitterId: id, disableSelfActions, target: t?.tagName, targetId: t?.id, targetClass: t?.className, currentTarget: ct?.tagName, currentTargetId: ct?.id, currentTargetClass: ct?.className });
+                      }}
+                    >
+                      {disableSelfActions ? (
+                        <div className="rounded-xl bg-slate-50 p-4 text-center">
+                          <p className="text-sm font-medium text-slate-600">C&apos;est ton profil public. Voici ce que voient tes clients.</p>
                         </div>
                       ) : (
-                        <div className="mt-3 grid gap-2">
-                          {pricingRows.map((row) => {
-                            const hasPrice = typeof row.price === "number" && Number.isFinite(row.price) && row.price > 0;
-                            const slotServiceType = serviceLabelToSlotsType(row.service);
-                            const color = getServiceColors(slotServiceType);
-                            const selected = slotsServiceType === slotServiceType;
-                            return (
+                        <>
+                          <Tooltip label={!canRequestBooking ? "Sélectionne une date pour activer la réservation" : ""}>
+                            {({ triggerProps }) => (
                               <button
-                                key={row.service}
+                                {...triggerProps}
                                 type="button"
-                                role="tab"
-                                aria-checked={selected}
-                                onClick={() => {
-                                  setSlotsServiceType(slotServiceType);
-                                }}
-                                className={
-                                  selected
-                                    ? `flex w-full items-center justify-between rounded-2xl border px-4 py-3 text-left text-sm font-semibold transition-colors ${color.activeBorder} ${color.tint}`
-                                    : "flex w-full items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left text-sm font-semibold text-slate-900 transition-colors hover:bg-slate-50 hover:border-slate-300"
-                                }
-                              >
-                                <span className="flex items-center gap-3">
-                                  <span
-                                    className={
-                                      selected
-                                        ? `inline-flex h-4 w-4 items-center justify-center rounded-full border-2 ${color.ring}`
-                                        : "inline-flex h-4 w-4 items-center justify-center rounded-full border-2 border-slate-300"
-                                    }
-                                    aria-hidden="true"
-                                  >
-                                    {selected ? <span className={`h-2 w-2 rounded-full ${color.fill}`} /> : null}
-                                  </span>
-                                  <span className={selected ? color.text : "text-slate-900"}>{row.service}</span>
-                                </span>
-                                <span className={selected ? `${color.text} text-right` : "text-slate-500 text-right"}>
-                                  {hasPrice ? (
-                                    <>
-                                      <span className="font-bold">CHF {row.price}</span>
-                                      <span className="font-normal opacity-80">{row.service === "Pension" ? " / jour" : " / heure"}</span>
-                                    </>
-                                  ) : "Prix sur demande"}
-                                </span>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      )}
-                  </div>
-
-                  <div className="mt-7 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-                      <h2 className="text-xl font-bold tracking-tight text-slate-900">Agenda des disponibilités</h2>
-                      
-                      <div className="mt-5 rounded-xl bg-slate-50 p-4 border border-slate-100 flex gap-3 text-sm text-slate-700">
-                        <Info className="h-5 w-5 text-slate-400 flex-shrink-0" />
-                        <div>
-                          {slotsServiceType === "PENSION" ? "Cliquez sur une date de début, puis sur une date de fin pour réserver une période." : "Cliquez sur une date pour voir les créneaux disponibles et réserver."}
-                        </div>
-                      </div>
-
-                      <div className="mt-6">
-                        <div className="flex items-center justify-between gap-3">
-                          <p className="text-lg font-bold capitalize text-slate-900">{monthMeta.monthLabel}</p>
-                          <div className="flex items-center gap-2">
-                            <button
-                              type="button"
-                              onClick={() => setMonthCursor((d) => new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() - 1, 1, 0, 0, 0, 0)))}
-                              className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 transition-colors hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-1"
-                              aria-label="Mois précédent"
-                            >
-                              <ChevronLeft className="h-5 w-5" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setMonthCursor((d) => new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1, 0, 0, 0, 0)))}
-                              className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 transition-colors hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-1"
-                              aria-label="Mois suivant"
-                            >
-                              <ChevronRight className="h-5 w-5" />
-                            </button>
-                          </div>
-                        </div>
-
-                        <AvailabilityCalendar
-                          monthMeta={monthMeta}
-                          monthLoading={monthLoading}
-                          monthError={monthError}
-                          monthDaysByDate={monthDaysByDate}
-                          setMonthRetryKey={setMonthRetryKey}
-                          slotsServiceType={slotsServiceType}
-                          slotsDate={slotsDate}
-                          setSlotsDate={setSlotsDate}
-                          boardingStart={boardingStart}
-                          boardingEnd={boardingEnd}
-                          setBoardingStart={setBoardingStart}
-                          setBoardingEnd={setBoardingEnd}
-                          pensionSelectionMessage={pensionSelectionMessage}
-                          setPensionSelectionMessage={setPensionSelectionMessage}
-                          bookingSelectionSummary={bookingSelectionSummary}
-                          calendarInfoDate={calendarInfoDate}
-                          setCalendarInfoDate={setCalendarInfoDate}
-                          dayDetailsOpen={dayDetailsOpen}
-                          setDayDetailsOpen={setDayDetailsOpen}
-                          dayDetailsLoading={dayDetailsLoading}
-                          dayDetailsError={dayDetailsError}
-                          dayDetails={dayDetails}
-                          setDayDetailsRetryKey={setDayDetailsRetryKey}
-                          daySlots={daySlots}
-                          daySlotsSummary={daySlotsSummary}
-                          slotsLoading={slotsLoading}
-                          slotsError={slotsError}
-                          dbg={dbg}
-                          serviceUi={serviceUi}
-                          todayIso={todayIso}
-                        />
-
-                        <div className="mt-4 flex flex-wrap gap-4 text-xs font-medium text-slate-500">
-                          <div className="flex items-center gap-1.5">
-                            <span className={`h-2 w-2 rounded-full ${getServiceColors("PROMENADE").fill}`} />
-                            <span>Promenade</span>
-                          </div>
-                          <div className="flex items-center gap-1.5">
-                            <span className={`h-2 w-2 rounded-full ${getServiceColors("DOGSITTING").fill}`} />
-                            <span>Dogsitting</span>
-                          </div>
-                          <div className="flex items-center gap-1.5">
-                            <span className={`h-2 w-2 rounded-full ${getServiceColors("PENSION").fill}`} />
-                            <span>Pension</span>
-                          </div>
-                        </div>
-
-                        <div className="mt-8">
-                          <h3 className="text-[15px] font-bold text-slate-900">Prochaines disponibilités</h3>
-                          {nextDaysLoading ? (
-                            <p className="mt-2 text-[15px] text-slate-600">Chargement…</p>
-                          ) : nextDaysError ? (
-                            <div className="mt-2">
-                              <p className="text-[15px] text-rose-700">{getAvailabilityLoadErrorMessage(nextDaysError)}</p>
-                              <button
-                                type="button"
-                                onClick={() => setNextDaysRetryKey((v) => v + 1)}
-                                className="mt-2 inline-flex h-9 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-                              >
-                                Réessayer
-                              </button>
-                            </div>
-                          ) : nextAvail.length ? (
-                            <ul className="mt-3 grid gap-2">
-                              {nextAvail.map((d) => (
-                                <li key={d} className="flex items-center gap-2 text-[15px] text-slate-700 font-medium">
-                                  <span className={`h-1.5 w-1.5 rounded-full ${getServiceColors(slotsServiceType).fill}`} />
-                                  <span>{formatDateFr(d)}</span>
-                                </li>
-                              ))}
-                            </ul>
-                          ) : (
-                            <div className="mt-3 rounded-xl bg-slate-50 border border-slate-100 p-4">
-                              <p className="text-[14px] leading-relaxed text-slate-600">
-                                Aucune disponibilité publiée pour le moment. Contactez {sitter.name.split(" ")[0]} pour proposer vos dates — {sitter.name.split(" ")[0]} répond généralement sous 24h.
-                              </p>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  if (disableSelfActions) return;
-                                  actionsRef.current?.querySelector<HTMLButtonElement>('button[data-chat="1"]')?.click();
-                                }}
-                                className="mt-3 inline-flex text-sm font-semibold text-slate-900 underline decoration-slate-300 underline-offset-4 hover:decoration-slate-400 transition-colors focus:outline-none focus:ring-2 focus:ring-slate-400 rounded-sm"
-                              >
-                                Envoyer un message
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                          </div>
-                        </div>
-
-                  <div className="mt-7 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-                    <h2 className="text-xl font-bold tracking-tight text-slate-900">À propos de {sitter.name.split(" ")[0]}</h2>
-                    {sitter.bio && sitter.bio.trim().length >= 20 ? (
-                      <p className="mt-4 text-[15px] leading-relaxed text-slate-700 whitespace-pre-line">{sitter.bio}</p>
-                    ) : (
-                      <p className="mt-4 text-[15px] leading-relaxed text-slate-500 italic">Ce sitter n&apos;a pas encore complété sa présentation.</p>
-                    )}
-                  </div>
-
-                  {showBoardingDetails && boardingDetails ? (
-                    <div className="mt-7 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-                      <h2 className="text-xl font-bold tracking-tight text-slate-900">Détails pension</h2>
-                      <dl className="mt-4 grid gap-x-6 gap-y-4 sm:grid-cols-2">
-                        {boardingDetails.housingType ? (
-                          <div>
-                            <dt className="text-xs font-semibold uppercase tracking-wider text-slate-500">Logement</dt>
-                            <dd className="mt-1.5 text-[15px] text-slate-900 font-medium">{boardingDetails.housingType}</dd>
-                          </div>
-                        ) : null}
-                        {typeof boardingDetails.hasGarden === "boolean" ? (
-                          <div>
-                            <dt className="text-xs font-semibold uppercase tracking-wider text-slate-500">Jardin</dt>
-                            <dd className="mt-1.5 text-[15px] text-slate-900 font-medium">{boardingDetails.hasGarden ? "Oui" : "Non"}</dd>
-                          </div>
-                        ) : null}
-                        {typeof boardingDetails.hasOtherPets === "boolean" ? (
-                          <div>
-                            <dt className="text-xs font-semibold uppercase tracking-wider text-slate-500">Autres animaux</dt>
-                            <dd className="mt-1.5 text-[15px] text-slate-900 font-medium">{boardingDetails.hasOtherPets ? "Oui" : "Non"}</dd>
-                          </div>
-                        ) : null}
-                        {boardingDetails.notes ? (
-                          <div className="sm:col-span-2">
-                            <dt className="text-xs font-semibold uppercase tracking-wider text-slate-500">Notes</dt>
-                            <dd className="mt-1.5 text-[15px] leading-relaxed text-slate-700 whitespace-pre-line">{boardingDetails.notes}</dd>
-                          </div>
-                        ) : null}
-                        {Array.isArray(boardingDetails.pensionAcceptedSizes) && boardingDetails.pensionAcceptedSizes.length > 0 ? (
-                          <div className="sm:col-span-2">
-                            <dt className="text-xs font-semibold uppercase tracking-wider text-slate-500">Tailles acceptées en pension</dt>
-                            <dd className="mt-2 flex flex-wrap gap-2">
-                              {boardingDetails.pensionAcceptedSizes.map((size) => (
-                                <span
-                                  key={size}
-                                  className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[13px] font-medium text-slate-700 shadow-sm"
-                                >
-                                  {size}
-                                </span>
-                              ))}
-                            </dd>
-                          </div>
-                        ) : null}
-                      </dl>
-                    </div>
-                  ) : null}
-
-                  <div className="mt-7 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                      <div>
-                        <h2 className="text-xl font-bold tracking-tight text-slate-900">Avis</h2>
-                      </div>
-                      {visibleReviews.length > 0 && (
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="inline-flex items-center gap-1 font-medium text-slate-900">
-                            <Star className="h-5 w-5 fill-amber-400 text-amber-400" />
-                            <span className="text-lg font-bold">{ratingLabel}</span>
-                          </span>
-                          <span className="text-sm font-medium text-slate-500">
-                            ({reviewCountLabel} avis)
-                          </span>
-                        </div>
-                      )}
-                    </div>
-
-                    {visibleReviews.length === 0 ? (
-                      <div className="mt-6 flex flex-col items-center justify-center rounded-2xl bg-slate-50 border border-slate-100 p-8 text-center">
-                        <MessageSquare className="h-10 w-10 text-slate-300" />
-                        <p className="mt-4 text-[15px] font-semibold text-slate-900">Aucun avis pour le moment</p>
-                        <p className="mt-1 text-sm text-slate-500">Sois le premier à laisser un retour après ta réservation.</p>
-                      </div>
-                    ) : (
-                      <div className="mt-6 grid gap-4">
-                        {visibleReviews.map((review) => (
-                          <article key={review.id} className="rounded-2xl border border-slate-100 bg-slate-50 p-5">
-                            <div className="flex flex-wrap items-start justify-between gap-3">
-                              <div>
-                                <p className="text-[15px] font-semibold text-slate-900">{review.authorName}</p>
-                                <p className="mt-0.5 text-sm font-medium text-slate-500">{formatReviewDate(review.createdAt)}</p>
-                              </div>
-                              <span className="inline-flex items-center gap-1 rounded-full bg-white px-3 py-1 text-[13px] font-semibold text-slate-700 shadow-sm border border-slate-200">
-                                <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
-                                {formatRating(review.rating)}
-                              </span>
-                            </div>
-                            <p className="mt-3 text-[15px] leading-relaxed text-slate-700">
-                              {review.comment?.trim() ? review.comment.trim() : <span className="italic text-slate-500">Aucun commentaire ajouté.</span>}
-                            </p>
-                          </article>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </section>
-
-                <aside className="border-t border-slate-200 p-6 sm:p-8 lg:border-l lg:border-t-0">
-                  <div className="sticky top-24">
-                  <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-                  <div
-                    ref={actionsRef}
-                    className="space-y-0"
-                    onClickCapture={(e) => {
-                      if (process.env.NODE_ENV === "production") return;
-                      const t = e.target as HTMLElement | null;
-                      const ct = e.currentTarget as HTMLElement | null;
-                      console.log("[sitter][actions][capture]", {
-                        sitterId: id,
-                        disableSelfActions,
-                        target: t?.tagName,
-                        targetId: t?.id,
-                        targetClass: t?.className,
-                        currentTarget: ct?.tagName,
-                        currentTargetId: ct?.id,
-                        currentTargetClass: ct?.className,
-                      });
-                    }}
-                  >
-                    {disableSelfActions ? (
-                      <div className="rounded-xl border border-slate-100 bg-slate-50 p-4 text-center">
-                        <p className="text-[14px] font-medium text-slate-700">C&apos;est votre profil public. Voici ce que voient vos clients.</p>
-                      </div>
-                    ) : (
-                      <>
-                        <Tooltip label={!canRequestBooking ? "Sélectionnez une date pour activer la réservation" : ""}>
-                          {({ triggerProps }) => (
-                            <button
-                              {...triggerProps}
-                              type="button"
-                              onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                if (maintenanceMode) {
-                                  setBookingCtaError(maintenanceBookingUserMessage(adminNote));
-                                  return;
-                                }
-                                if (!isLoaded) {
-                                  setBookingCtaError("Chargement de la session… Réessaie dans une seconde.");
-                                  return;
-                                }
-                                if (!isSignedIn) {
-                                  setBookingCtaError("Veuillez vous connecter pour demander une réservation.");
-                                  return;
-                                }
-                                if (!canRequestBooking) {
-                                  setBookingCtaError(
-                                    slotsServiceType === "PENSION"
-                                      ? "Sélectionnez une arrivée et une date de départ valides pour continuer."
-                                      : "Sélectionnez un service et une date dans l’agenda pour continuer."
-                                  );
-                                  return;
-                                }
-                                setBookingCtaError(null);
-                                void continueToReservation();
-                              }}
-                              disabled={!canRequestBooking || maintenanceMode}
-                              className="mb-3 flex w-full items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-6 py-3.5 text-[15px] font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition-colors hover:bg-[var(--dogshift-blue-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)] disabled:cursor-not-allowed disabled:opacity-60"
-                            >
-                              Demander une réservation
-                            </button>
-                          )}
-                        </Tooltip>
-
-                        <button
-                          type="button"
-                          disabled={startingChat}
-                          data-chat="1"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            if (startingChat) return;
-                            if (!isLoaded) {
-                              setChatError("Chargement de la session… Réessaie dans une seconde.");
-                              return;
-                            }
-                            if (!isSignedIn) {
-                              setChatError("Veuillez vous connecter pour envoyer un message.");
-                              return;
-                            }
-                            setStartingChat(true);
-                            setChatError(null);
-                            void (async () => {
-                              try {
-                                const res = await fetch("/api/messages/conversations", {
-                                  method: "POST",
-                                  headers: { "Content-Type": "application/json" },
-                                  body: JSON.stringify({ sitterId: id }),
-                                });
-                                const payload = await res.json() as { ok?: boolean; conversationId?: string; error?: string };
-                                const conversationId = typeof payload?.conversationId === "string" ? payload.conversationId : "";
-                                if (!res.ok || !payload.ok || !conversationId) {
-                                  if (res.status === 401 || payload.error === "UNAUTHORIZED") {
-                                    setChatError("Veuillez vous connecter pour envoyer un message.");
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  if (maintenanceMode) { setBookingCtaError(maintenanceBookingUserMessage(adminNote)); return; }
+                                  if (!isLoaded) { setBookingCtaError("Chargement de la session… Réessaie dans une seconde."); return; }
+                                  if (!isSignedIn) { setBookingCtaError("Veuillez vous connecter pour demander une réservation."); return; }
+                                  if (!canRequestBooking) {
+                                    setBookingCtaError(slotsServiceType === "PENSION" ? "Sélectionnez une arrivée et une date de départ valides pour continuer." : "Sélectionnez un service et une date dans l'agenda pour continuer.");
                                     return;
                                   }
-                                  setChatError(`Erreur serveur: ${payload.error ?? res.status}`);
-                                  return;
-                                }
-                                const target = `/account/messages/${encodeURIComponent(conversationId)}`;
-                                if (typeof window !== "undefined") {
-                                  window.location.assign(target);
-                                } else {
-                                  router.push(target);
-                                }
-                              } catch {
-                                setChatError("Erreur réseau. Réessaie.");
-                              } finally {
-                                setStartingChat(false);
-                              }
-                            })();
-                          }}
-                          className="mb-4 flex w-full items-center justify-center rounded-2xl border border-slate-200 bg-white px-6 py-3.5 text-[15px] font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 disabled:cursor-not-allowed disabled:opacity-60"
-                        >
-                          {startingChat ? "Ouverture…" : "Envoyer un message"}
-                        </button>
-
-                        <div className="mt-5 grid gap-3 border-t border-slate-100 pt-5">
-                          <div className="flex items-center gap-3">
-                            <Shield className="h-5 w-5 text-emerald-500" />
-                            <span className="text-[14px] text-slate-600">Sitter vérifié</span>
+                                  setBookingCtaError(null);
+                                  void continueToReservation();
+                                }}
+                                disabled={!canRequestBooking || maintenanceMode}
+                                className="mb-3 flex w-full items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-6 py-3 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition-colors hover:bg-[var(--dogshift-blue-hover)] disabled:cursor-not-allowed disabled:opacity-60"
+                              >
+                                Demander une réservation
+                              </button>
+                            )}
+                          </Tooltip>
+                          <button
+                            type="button"
+                            disabled={startingChat}
+                            data-chat="1"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              if (startingChat) return;
+                              if (!isLoaded) { setChatError("Chargement de la session… Réessaie dans une seconde."); return; }
+                              if (!isSignedIn) { setChatError("Veuillez vous connecter pour envoyer un message."); return; }
+                              setStartingChat(true);
+                              setChatError(null);
+                              void (async () => {
+                                try {
+                                  const res = await fetch("/api/messages/conversations", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sitterId: id }) });
+                                  const payload = await res.json() as { ok?: boolean; conversationId?: string; error?: string };
+                                  const conversationId = typeof payload?.conversationId === "string" ? payload.conversationId : "";
+                                  if (!res.ok || !payload.ok || !conversationId) {
+                                    if (res.status === 401 || payload.error === "UNAUTHORIZED") { setChatError("Veuillez vous connecter pour envoyer un message."); return; }
+                                    setChatError(`Erreur serveur: ${payload.error ?? res.status}`);
+                                    return;
+                                  }
+                                  const target = `/account/messages/${encodeURIComponent(conversationId)}`;
+                                  if (typeof window !== "undefined") { window.location.assign(target); } else { router.push(target); }
+                                } catch { setChatError("Erreur réseau. Réessaie."); } finally { setStartingChat(false); }
+                              })();
+                            }}
+                            className="mb-4 flex w-full items-center justify-center rounded-2xl border border-slate-200 bg-white px-6 py-3 text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            {startingChat ? "Ouverture…" : "Envoyer un message"}
+                          </button>
+                          <div className="grid gap-2.5 border-t border-slate-100 pt-4">
+                            <div className="flex items-center gap-2.5"><Shield className="h-4 w-4 text-emerald-500" /><span className="text-xs text-slate-600">Sitter vérifié</span></div>
+                            <div className="flex items-center gap-2.5"><CreditCard className="h-4 w-4 text-slate-400" /><span className="text-xs text-slate-600">Paiement sécurisé Stripe</span></div>
+                            <div className="flex items-center gap-2.5"><MessageCircle className="h-4 w-4 text-[var(--dogshift-blue)]" /><span className="text-xs text-slate-600">Support 7/7</span></div>
                           </div>
-                          <div className="flex items-center gap-3">
-                            <CreditCard className="h-5 w-5 text-slate-400" />
-                            <span className="text-[14px] text-slate-600">Paiement sécurisé Stripe</span>
-                          </div>
-                          <div className="flex items-center gap-3">
-                            <MessageCircle className="h-5 w-5 text-[var(--dogshift-blue)]" />
-                            <span className="text-[14px] text-slate-600">Support 7/7</span>
-                          </div>
+                        </>
+                      )}
+                      {chatError ? (
+                        <div className="mt-3 rounded-xl border border-rose-200 bg-rose-50 p-3">
+                          <p className="text-xs font-medium text-rose-900">{chatError}{" "}<Link href="/login" className="font-semibold underline underline-offset-2">Se connecter</Link></p>
                         </div>
-                      </>
-                    )}
-
-                    {chatError ? (
-                      <div className="mt-3 rounded-2xl border border-rose-200 bg-rose-50 p-4">
-                        <p className="text-sm font-medium text-rose-900">
-                          {chatError}{" "}
-                          <Link href="/login" className="font-semibold underline underline-offset-2">
-                            Se connecter
-                          </Link>
-                        </p>
-                      </div>
-                    ) : null}
-
-                    {bookingCtaError ? (
-                      <div className="mt-3 rounded-2xl border border-rose-200 bg-rose-50 p-4">
-                        <p className="text-sm font-medium text-rose-900">
-                          {bookingCtaError}{" "}
-                          <Link href="/login" className="font-semibold underline underline-offset-2">
-                            Se connecter
-                          </Link>
-                        </p>
-                      </div>
-                    ) : null}
+                      ) : null}
+                      {bookingCtaError ? (
+                        <div className="mt-3 rounded-xl border border-rose-200 bg-rose-50 p-3">
+                          <p className="text-xs font-medium text-rose-900">{bookingCtaError}{" "}<Link href="/login" className="font-semibold underline underline-offset-2">Se connecter</Link></p>
+                        </div>
+                      ) : null}
+                    </div>
                   </div>
-                  </div>
-                  </div>
-                </aside>
-              </div>
+                </div>
+              </aside>
             </div>
 
             {/* Mobile Sticky Booking Bar */}
@@ -2956,7 +2762,7 @@ function SitterPublicProfileContent({
           <HostDashboardShell>{content}</HostDashboardShell>
         </HostUserProvider>
       ) : (
-        <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6">{content}</main>
+        <main className="mx-auto max-w-6xl px-4 pt-4 pb-6 sm:px-6 sm:pt-6">{content}</main>
       )}
 
       {photoLightboxOpen && sitter?.avatarUrl ? (
