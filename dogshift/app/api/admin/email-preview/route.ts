@@ -285,6 +285,7 @@ async function renderTemplate(template: string): Promise<{ html: string; subject
         subject: "Nouvelle demande de réservation – DogShift",
         html: renderEmailLayout({
           logoUrl: LOGO_URL,
+          audience: "sitter",
           title: "Nouvelle demande de réservation",
           subtitle: "Tu as reçu une nouvelle demande.",
           summaryRows: MOCK_BOOKING_ROWS,
@@ -366,6 +367,7 @@ async function renderTemplate(template: string): Promise<{ html: string; subject
         subject: "Réservation annulée – DogShift",
         html: renderEmailLayout({
           logoUrl: LOGO_URL,
+          audience: "sitter",
           title: "Réservation annulée",
           subtitle:
             "Une réservation a été annulée. Le remboursement du propriétaire a été traité conformément aux conditions applicables.",
