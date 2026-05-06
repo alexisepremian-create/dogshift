@@ -28,17 +28,17 @@ export type HostProfileV1 = {
   services: Record<ServiceType, boolean>;
   pricing: Partial<Record<ServiceType, number>>;
   dogSizes: Record<DogSize, boolean>;
-  /**
-   * Max dogs accepted per size. Keys match DogSize ("Petit", "Moyen", "Grand").
-   * A value of 0 means not accepted. Takes precedence over dogSizes (boolean).
-   * When set, dogSizes is derived: dogSizes[size] = maxDogsBySize[size] > 0.
-   */
+  /** Weighted capacity: total "places" (small=1, medium=2, large=3). Range 1–15. */
+  capacityPlaces?: number;
+  /** Which dog sizes the sitter accepts (toggle ON/OFF). */
+  acceptsSmall?: boolean;
+  acceptsMedium?: boolean;
+  acceptsLarge?: boolean;
+  /** Require neutered/spayed dogs. */
+  neuteredRequired?: boolean;
+  /** @deprecated Use capacityPlaces + accepts* instead. */
   maxDogsBySize?: Record<DogSize, number>;
-  /**
-   * Global acceptance criteria applied to all services.
-   * neuteredRequired: true = only accepts neutered/spayed dogs.
-   * maxDogs: max number of dogs the sitter accepts simultaneously (null = no limit).
-   */
+  /** @deprecated Use neuteredRequired instead. */
   acceptanceCriteria?: {
     neuteredRequired?: boolean;
     maxDogs?: number | null;
@@ -81,6 +81,11 @@ export function getDefaultHostProfile(sitterId: string): HostProfileV1 {
     services: { ...DEFAULT_SERVICES },
     pricing: {},
     dogSizes: { ...DEFAULT_DOG_SIZES },
+    capacityPlaces: 3,
+    acceptsSmall: true,
+    acceptsMedium: true,
+    acceptsLarge: true,
+    neuteredRequired: false,
     cancellationFlexible: true,
     boardingDetails: undefined,
     verificationStatus: "unverified",
@@ -177,6 +182,17 @@ export function loadHostProfileFromStorage(sitterId: string): HostProfileV1 | nu
     services,
     pricing,
     dogSizes,
+    capacityPlaces: typeof p.capacityPlaces === "number" && Number.isFinite(p.capacityPlaces)
+      ? Math.min(15, Math.max(1, Math.floor(p.capacityPlaces)))
+      : maxDogsBySize
+        ? Math.min(15, Math.max(1, (maxDogsBySize.Petit ?? 0) * 1 + (maxDogsBySize.Moyen ?? 0) * 2 + (maxDogsBySize.Grand ?? 0) * 3))
+        : 3,
+    acceptsSmall: typeof p.acceptsSmall === "boolean" ? p.acceptsSmall : dogSizes.Petit,
+    acceptsMedium: typeof p.acceptsMedium === "boolean" ? p.acceptsMedium : dogSizes.Moyen,
+    acceptsLarge: typeof p.acceptsLarge === "boolean" ? p.acceptsLarge : dogSizes.Grand,
+    neuteredRequired: typeof p.neuteredRequired === "boolean"
+      ? p.neuteredRequired
+      : Boolean(p.acceptanceCriteria && typeof p.acceptanceCriteria === "object" && (p.acceptanceCriteria as Record<string, unknown>).neuteredRequired),
     maxDogsBySize,
     cancellationFlexible: typeof p.cancellationFlexible === "boolean" ? p.cancellationFlexible : true,
     boardingDetails,

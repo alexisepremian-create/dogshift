@@ -7,6 +7,9 @@ type HostLikeProfile = {
   services?: unknown;
   pricing?: unknown;
   dogSizes?: unknown;
+  acceptsSmall?: unknown;
+  acceptsMedium?: unknown;
+  acceptsLarge?: unknown;
   stripeAccountStatus?: unknown;
 };
 
@@ -100,8 +103,10 @@ export function computeSitterProfileCompletionDetails(profile: unknown): {
     ? enabledServices.every((svc) => typeof pricingRecord[svc] === "number" && Number.isFinite(pricingRecord[svc] as number))
     : false;
 
+  const hasNewAccepts = p.acceptsSmall === true || p.acceptsMedium === true || p.acceptsLarge === true;
   const dogSizeRecord = toRecord(p.dogSizes);
-  const dogSizes = Object.keys(dogSizeRecord).some((k) => Boolean(dogSizeRecord[k]));
+  const hasLegacyDogSizes = Object.keys(dogSizeRecord).some((k) => Boolean(dogSizeRecord[k]));
+  const dogSizes = hasNewAccepts || hasLegacyDogSizes;
 
   const stripeConnected = typeof p.stripeAccountStatus === "string" && p.stripeAccountStatus === "ENABLED";
 

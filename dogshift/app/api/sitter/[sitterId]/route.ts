@@ -17,8 +17,7 @@ export async function GET(
       return NextResponse.json({ ok: false, error: "INVALID_ID" }, { status: 400 });
     }
 
-    const db = prisma as unknown as { sitterProfile: any };
-    const sitterProfile = await db.sitterProfile.findFirst({
+    const sitterProfile = await prisma.sitterProfile.findFirst({
       where: {
         sitterId,
         published: true,
@@ -36,6 +35,13 @@ export async function GET(
         services: true,
         pricing: true,
         dogSizes: true,
+        capacityPlaces: true,
+        acceptsSmall: true,
+        acceptsMedium: true,
+        acceptsLarge: true,
+        neuteredRequired: true,
+        acceptanceCriteria: true,
+        maxDogsBySize: true,
         updatedAt: true,
         user: {
           select: {
@@ -67,12 +73,19 @@ export async function GET(
           postalCode: sitterProfile.postalCode ?? null,
           bio: sitterProfile.bio ?? null,
           avatarUrl: sitterProfile.avatarUrl ?? null,
-          verified: typeof (sitterProfile as any)?.verificationStatus === "string" ? (sitterProfile as any).verificationStatus === "approved" : false,
+          verified: sitterProfile.verificationStatus === "approved",
           lat: sitterProfile.lat ?? null,
           lng: sitterProfile.lng ?? null,
           services: sitterProfile.services ?? null,
           pricing: sitterProfile.pricing ?? null,
           dogSizes: sitterProfile.dogSizes ?? null,
+          capacityPlaces: sitterProfile.capacityPlaces ?? null,
+          acceptsSmall: sitterProfile.acceptsSmall ?? null,
+          acceptsMedium: sitterProfile.acceptsMedium ?? null,
+          acceptsLarge: sitterProfile.acceptsLarge ?? null,
+          neuteredRequired: sitterProfile.neuteredRequired ?? null,
+          acceptanceCriteria: sitterProfile.acceptanceCriteria ?? null,
+          maxDogsBySize: sitterProfile.maxDogsBySize ?? null,
           updatedAt: sitterProfile.updatedAt instanceof Date ? sitterProfile.updatedAt.toISOString() : sitterProfile.updatedAt,
         },
       },

@@ -387,10 +387,18 @@ model SitterProfile {
 
   lastMinuteEnabled Boolean @default(false)
 
-  /// Max dogs accepted per size: { "Petit": 2, "Moyen": 1, "Grand": 0 }
-  maxDogsBySize Json?
+  /// Weighted-places capacity model (replaces old per-size counters)
+  /// Total capacity in "places" (small=1, medium=2, large=3). Range: 1–15.
+  capacityPlaces  Int     @default(3)
+  acceptsSmall    Boolean @default(true)
+  acceptsMedium   Boolean @default(true)
+  acceptsLarge    Boolean @default(true)
+  /// Require neutered/spayed dogs
+  neuteredRequired Boolean @default(false)
 
-  /// Global acceptance criteria: { "neuteredRequired": true, "maxDogs": 2 }
+  /// @deprecated — kept for backward compat during migration. Use capacityPlaces + accepts* instead.
+  maxDogsBySize Json?
+  /// @deprecated — kept for backward compat during migration. Use neuteredRequired instead.
   acceptanceCriteria Json?
 
   /// OPAn art.101 certificate for sitters accepting >5 dogs simultaneously

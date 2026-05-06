@@ -13,6 +13,7 @@ import { zodParse } from "@/lib/validators/common";
 import { createBookingSchema } from "@/lib/validators/bookings";
 import { logAudit } from "@/lib/audit";
 import { recordBookingFinanceEvent } from "@/lib/financeEvents";
+import { isSizeAccepted, checkCapacityForBooking } from "@/lib/bookings/capacityCheck";
 import { geocodeAddress } from "@/lib/travel/geocode";
 import { computeTravelFee } from "@/lib/travel/distance";
 
@@ -273,7 +274,11 @@ export async function POST(req: NextRequest) {
 
     const sitterProfile = await (prisma as any).sitterProfile.findFirst({
       where: { sitterId, published: true },
-      select: { sitterId: true, pricing: true, lat: true, lng: true, address: true, pensionVerifStatus: true, pensionAcceptedSizes: true, acceptanceCriteria: true },
+      select: {
+        sitterId: true, pricing: true, lat: true, lng: true, address: true,
+        pensionVerifStatus: true, pensionAcceptedSizes: true, acceptanceCriteria: true,
+        capacityPlaces: true, acceptsSmall: true, acceptsMedium: true, acceptsLarge: true, neuteredRequired: true,
+      },
     });
 
     if (!sitterProfile?.sitterId) {
@@ -337,6 +342,40 @@ export async function POST(req: NextRequest) {
         }
         if (!pensionAcceptedSizes.includes(dogSize)) {
           return NextResponse.json({ ok: false, error: "DOG_SIZE_NOT_ACCEPTED", message: `Ce sitter n'accepte pas les chiens de taille ${dogSize} en pension.` }, { status: 400 });
+        }
+      }
+    }
+
+    // Weighted capacity check: verify dog size acceptance + available places
+    const bookingDogSize = typeof (body as { dogSize?: unknown }).dogSize === "string" ? (body as { dogSize: string }).dogSize : null;
+    if (
+      bookingDogSize &&
+      typeof sitterProfile.acceptsSmall === "boolean" &&
+      typeof sitterProfile.acceptsMedium === "boolean" &&
+      typeof sitterProfile.acceptsLarge === "boolean"
+    ) {
+      const { accepted, sizeKey } = isSizeAccepted(sitterProfile as { acceptsSmall: boolean; acceptsMedium: boolean; acceptsLarge: boolean }, bookingDogSize);
+      if (!accepted) {
+        return NextResponse.json({
+          ok: false,
+          error: "DOG_SIZE_NOT_ACCEPTED",
+          message: `Ce sitter n'accepte pas les chiens de taille « ${bookingDogSize} ».`,
+        }, { status: 400 });
+      }
+      if (sizeKey && typeof sitterProfile.capacityPlaces === "number" && hasDailyDates) {
+        const capCheck = await checkCapacityForBooking({
+          sitterId,
+          capacityPlaces: sitterProfile.capacityPlaces,
+          dogSizeKey: sizeKey,
+          startDate: startDate as string,
+          endDate: endDate as string,
+        });
+        if (!capCheck.ok) {
+          return NextResponse.json({
+            ok: false,
+            error: "CAPACITY_FULL",
+            message: "Ce sitter n'a plus assez de places disponibles sur cette période. Essaie une autre date ou un autre sitter.",
+          }, { status: 400 });
         }
       }
     }

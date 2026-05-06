@@ -33,6 +33,11 @@ export const hostProfileUpdateSchema = z
     services: z.record(z.string(), z.boolean()).optional(),
     pricing: z.record(z.string(), z.union([z.number().positive(), z.null()])).optional(),
     dogSizes: z.record(z.string(), z.boolean()).optional(),
+    capacityPlaces: z.number().int().min(1).max(15).optional(),
+    acceptsSmall: z.boolean().optional(),
+    acceptsMedium: z.boolean().optional(),
+    acceptsLarge: z.boolean().optional(),
+    neuteredRequired: z.boolean().optional(),
     /**
      * Legacy base64 data URL for avatar. New avatars use R2 upload + `avatarUrl` path,
      * but existing profiles may still roundtrip a large data URL here. The server
