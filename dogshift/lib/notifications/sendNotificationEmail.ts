@@ -138,7 +138,7 @@ function formatShortDate(value: unknown): string {
 
 function formatCents(cents: number | undefined, currency?: string): string {
   if (typeof cents !== "number" || !Number.isFinite(cents)) return "";
-  return `${"${(cents / 100).toFixed(2)} ${(currency || "CHF").toUpperCase()}"}`;
+  return `${(cents / 100).toFixed(2)} ${(currency || "CHF").toUpperCase()}`;
 }
 
 export function computeEligibleRefund(prestationStart: Date | null, cancellationTime: Date): boolean {

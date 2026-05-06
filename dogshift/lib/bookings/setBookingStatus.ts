@@ -3,7 +3,7 @@ import type { NextRequest } from "next/server";
 import { BookingStatus } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
-import { resolveBookingParticipants, sendNotificationEmail } from "@/lib/notifications/sendNotificationEmail";
+import { computeEligibleRefund, resolveBookingParticipants, sendNotificationEmail } from "@/lib/notifications/sendNotificationEmail";
 
 export async function setBookingStatus(
   bookingId: string,
@@ -13,15 +13,16 @@ export async function setBookingStatus(
     notificationContext?: {
       refundReason?: "auto_expired_unaccepted";
       deadlineHours?: number;
+      cancelledBy?: "owner" | "sitter" | "system";
     };
   }
 ) {
   const id = (bookingId || "").trim();
   if (!id) return { ok: false as const, error: "INVALID_BOOKING_ID" as const };
 
-  const booking = await (prisma as any).booking.findUnique({
+  const booking = await prisma.booking.findUnique({
     where: { id },
-    select: { id: true, status: true, startDate: true, endDate: true },
+    select: { id: true, status: true, startDate: true, endDate: true, amount: true, currency: true, sitterId: true },
   });
 
   if (!booking) return { ok: false as const, error: "NOT_FOUND" as const };
@@ -61,7 +62,7 @@ export async function setBookingStatus(
     return { ok: true as const, changed: false as const, previousStatus: currentStatus, nextStatus };
   }
 
-  const updated = await (prisma as any).booking.update({
+  const updated = await prisma.booking.update({
     where: { id },
     data: { status: nextStatus },
     select: { id: true, status: true },
@@ -135,7 +136,7 @@ export async function setBookingStatus(
       let sitterName: string | undefined;
       if (booking.sitterId) {
         try {
-          const sp = await (prisma as any).sitterProfile.findUnique({
+          const sp = await prisma.sitterProfile.findUnique({
             where: { sitterId: booking.sitterId },
             select: { displayName: true },
           });
