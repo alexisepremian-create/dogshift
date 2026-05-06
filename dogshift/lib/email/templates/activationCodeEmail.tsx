@@ -30,22 +30,6 @@ const ACCENT = "#2f4d6b";
 const ICON_CLOCK = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:inline-block;vertical-align:middle;margin-right:4px;"><circle cx="12" cy="12" r="9" stroke="#64748b" stroke-width="1.8"/><path d="M12 7v5l3 3" stroke="#64748b" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 const ICON_LOCK = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:inline-block;vertical-align:middle;margin-right:4px;"><rect x="5" y="11" width="14" height="10" rx="2" stroke="#64748b" stroke-width="1.8"/><path d="M8 11V7a4 4 0 018 0v4" stroke="#64748b" stroke-width="1.8" stroke-linecap="round"/></svg>`;
 
-const DARK_CSS = `
-@media (prefers-color-scheme: dark) {
-  body, .ds-outer { background-color: #0f172a !important; }
-  .ds-card { background-color: #1e293b !important; border-color: #334155 !important; }
-  .ds-title { color: #f1f5f9 !important; }
-  .ds-lead { color: #94a3b8 !important; }
-  .ds-code-box { background-color: #0f172a !important; border-color: #334155 !important; }
-  .ds-code-val { color: #93c5fd !important; }
-  .ds-highlight { background-color: #0f172a !important; border-color: #334155 !important; }
-  .ds-highlight-text { color: #94a3b8 !important; }
-  .ds-footer-text { color: #475569 !important; }
-  .ds-footer-link { color: #64748b !important; }
-  .ds-muted { color: #475569 !important; }
-  .ds-bottom { color: #334155 !important; }
-}`;
-
 export function ActivationCodeEmail(props: {
   baseUrl?: string;
   firstName: string;
@@ -65,9 +49,7 @@ export function ActivationCodeEmail(props: {
 
   return (
     <Html lang="fr">
-      <Head>
-        <style>{DARK_CSS}</style>
-      </Head>
+      <Head />
       <Preview>{previewText}</Preview>
       <Body className="ds-outer" style={s.body}>
         <Container style={s.container}>

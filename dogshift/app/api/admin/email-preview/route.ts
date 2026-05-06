@@ -162,7 +162,7 @@ async function renderTemplate(template: string): Promise<{ html: string; subject
 
     case "lead-magnet":
       return {
-        subject: "Votre guide gratuit est prêt 🐕",
+        subject: "Votre guide gratuit est prêt",
         html: renderLeadMagnetEmail({ baseUrl: BASE_URL }).html,
       };
 

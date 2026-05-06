@@ -14,19 +14,6 @@ import type { CSSProperties } from "react";
 
 const ACCENT = "#2f4d6b";
 
-const DARK_CSS = `
-@media (prefers-color-scheme: dark) {
-  body, .ds-outer { background-color: #0f172a !important; }
-  .ds-card { background-color: #1e293b !important; border-color: #334155 !important; }
-  .ds-title { color: #f1f5f9 !important; }
-  .ds-lead { color: #94a3b8 !important; }
-  .ds-msg-box { background-color: #0f172a !important; border-color: #334155 !important; border-left-color: #3b82f6 !important; }
-  .ds-msg-text { color: #94a3b8 !important; }
-  .ds-footer-text { color: #475569 !important; }
-  .ds-footer-link { color: #64748b !important; }
-  .ds-bottom { color: #334155 !important; }
-}`;
-
 export function CommunicationsEmail(props: {
   baseUrl: string;
   firstName: string;
@@ -41,9 +28,7 @@ export function CommunicationsEmail(props: {
 
   return (
     <Html lang="fr">
-      <Head>
-        <style>{DARK_CSS}</style>
-      </Head>
+      <Head />
       <Preview>{previewText}</Preview>
       <Body className="ds-outer" style={s.body}>
         <Container style={s.container}>
