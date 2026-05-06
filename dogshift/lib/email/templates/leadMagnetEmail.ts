@@ -93,13 +93,13 @@ export function renderLeadMagnetEmail(params: { baseUrl: string }) {
     }
   </style>
 </head>
-<body class="ds-bg" style="margin:0;padding:0;background:#f1f5f9;">
+<body class="ds-outer" style="margin:0;padding:0;background:#f1f5f9;">
   <!-- Preview text -->
   <div style="display:none;max-height:0;overflow:hidden;opacity:0;visibility:hidden;font-size:1px;line-height:1px;">
     Les 5 erreurs à éviter quand vous confiez votre chien — conseils d'experts DogShift.
   </div>
 
-  <table role="presentation" cellpadding="0" cellspacing="0" width="100%" class="ds-bg" style="border-collapse:collapse;background:#f1f5f9;">
+  <table role="presentation" cellpadding="0" cellspacing="0" width="100%" class="ds-outer" style="border-collapse:collapse;background:#f1f5f9;">
     <tr>
       <td align="center" style="padding:32px 12px;">
         <table role="presentation" cellpadding="0" cellspacing="0" width="560" style="border-collapse:collapse;width:560px;max-width:560px;">
@@ -230,7 +230,7 @@ export function renderLeadMagnetEmail(params: { baseUrl: string }) {
                     <a href="${siteUrl}/instagram" title="Instagram" style="text-decoration:none;display:block;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="2" y="2" width="20" height="20" rx="6" stroke="#94a3b8" stroke-width="1.8"/><circle cx="12" cy="12" r="4" stroke="#94a3b8" stroke-width="1.8"/><circle cx="17.5" cy="6.5" r="1" fill="#94a3b8"/></svg></a>
                   </td>
                   <td style="padding:0 6px;">
-                    <a href="https://linkedin.com/company/dogshift" title="LinkedIn" style="text-decoration:none;display:block;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="2" y="2" width="20" height="20" rx="4" stroke="#94a3b8" stroke-width="1.8"/><path d="M7 10v7M7 7v.01M11 17v-4a2 2 0 014 0v4M11 10v7" stroke="#94a3b8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+                    <a href="https://facebook.com/dogshift" title="Facebook" style="text-decoration:none;display:block;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z" stroke="#94a3b8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
                   </td>
                   <td style="padding:0 6px;">
                     <a href="${siteUrl}" title="DogShift" style="text-decoration:none;display:block;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="10" stroke="#94a3b8" stroke-width="1.8"/><path d="M12 2c-2.5 3-4 6-4 10s1.5 7 4 10M12 2c2.5 3 4 6 4 10s-1.5 7-4 10M2 12h20" stroke="#94a3b8" stroke-width="1.8" stroke-linecap="round"/></svg></a>

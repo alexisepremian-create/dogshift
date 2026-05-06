@@ -35,7 +35,7 @@ const ICONS = {
 // Social icon SVGs (sized for footer, monochrome)
 const SOCIAL = {
   instagram: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="2" y="2" width="20" height="20" rx="6" stroke="#94a3b8" stroke-width="1.8"/><circle cx="12" cy="12" r="4" stroke="#94a3b8" stroke-width="1.8"/><circle cx="17.5" cy="6.5" r="1" fill="#94a3b8"/></svg>`,
-  linkedin: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="2" y="2" width="20" height="20" rx="4" stroke="#94a3b8" stroke-width="1.8"/><path d="M7 10v7M7 7v.01M11 17v-4a2 2 0 014 0v4M11 10v7" stroke="#94a3b8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+  facebook: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z" stroke="#94a3b8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
   globe: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="10" stroke="#94a3b8" stroke-width="1.8"/><path d="M12 2c-2.5 3-4 6-4 10s1.5 7 4 10M12 2c2.5 3 4 6 4 10s-1.5 7-4 10M2 12h20" stroke="#94a3b8" stroke-width="1.8" stroke-linecap="round"/></svg>`,
 };
 
@@ -195,10 +195,10 @@ export function renderEmailLayout(params: {
     <table role="presentation" cellpadding="0" cellspacing="0" align="center" style="border-collapse:collapse;margin:12px auto 0;">
       <tr>
         <td style="padding:0 6px;">
-          <a href="${esc(baseUrl)}/instagram" title="Instagram" style="text-decoration:none;display:block;">${SOCIAL.instagram}</a>
+          <a href="https://instagram.com/dogshift" title="Instagram" style="text-decoration:none;display:block;">${SOCIAL.instagram}</a>
         </td>
         <td style="padding:0 6px;">
-          <a href="https://linkedin.com/company/dogshift" title="LinkedIn" style="text-decoration:none;display:block;">${SOCIAL.linkedin}</a>
+          <a href="https://facebook.com/dogshift" title="Facebook" style="text-decoration:none;display:block;">${SOCIAL.facebook}</a>
         </td>
         <td style="padding:0 6px;">
           <a href="${esc(baseUrl)}" title="DogShift" style="text-decoration:none;display:block;">${SOCIAL.globe}</a>
