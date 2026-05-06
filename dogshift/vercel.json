@@ -35,6 +35,14 @@
     {
       "path": "/api/cron/inactivity-check",
       "schedule": "0 10 * * *"
+    },
+    {
+      "path": "/api/cron/sitter-booking-reminders",
+      "schedule": "0 17 * * *"
+    },
+    {
+      "path": "/api/cron/sitter-monthly-recap",
+      "schedule": "0 9 1 * *"
     }
   ],
   "buildCommand": "npm run build",

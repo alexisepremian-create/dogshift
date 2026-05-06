@@ -85,7 +85,7 @@ export function renderEmailLayout(params: {
   footerText?: string;
   /** Base URL for absolute links, defaults to https://dogshift.ch */
   baseUrl?: string;
-  /** Hero gradient colour. Defaults to "purple". Use "amber" for warning emails. */
+  /** Hero gradient color: "purple" (default) or "amber" for alert-style emails */
   heroColor?: "purple" | "amber";
   /** @deprecated use title/subtitle — kept for backwards compatibility */
   accentColor?: string;
@@ -97,12 +97,11 @@ export function renderEmailLayout(params: {
   const logoUrl = params.logoUrl ?? "";
   const baseUrl = (params.baseUrl || "https://dogshift.ch").replace(/\/$/, "");
   const heroGradient = params.heroColor === "amber"
-    ? "linear-gradient(135deg,#d97706 0%,#f59e0b 55%,#fbbf24 100%)"
-    : "linear-gradient(135deg,#7c3aed 0%,#6366f1 55%,#818cf8 100%)";
+    ? "linear-gradient(135deg, #f59e0b 0%, #d97706 50%, #b45309 100%)"
+    : "linear-gradient(135deg, #6366f1 0%, #4f46e5 50%, #4338ca 100%)";
   const heroLabelBg = params.heroColor === "amber"
-    ? "rgba(255,255,255,0.22)"
+    ? "rgba(254,243,199,0.25)"
     : "rgba(255,255,255,0.18)";
-  // CTA button uses indigo to match the hero gradient; accentColor kept for compat
   const ctaBg = params.heroColor === "amber" ? "#d97706" : (params.accentColor || "#6366f1");
 
   const summaryTitle = esc(params.summaryTitle || "Résumé");

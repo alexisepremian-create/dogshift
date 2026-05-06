@@ -615,7 +615,138 @@ export type NotificationPayload =
   | { kind: "bookingCancelled"; bookingId: string; dashboard: "account" | "host"; eligibleRefund?: boolean; cancelledBy?: "owner" | "sitter" | "system"; sitterName?: string; amountCents?: number; currency?: string }
   | { kind: "bookingRefunded"; bookingId: string; dashboard: "account" | "host"; amountCents?: number; currency?: string; cardBrand?: string; cardLast4?: string; stripeRefundId?: string }
   | { kind: "bookingAutoExpiredRefunded"; bookingId: string; deadlineHours: number; amountCents?: number; currency?: string; cardBrand?: string; cardLast4?: string; stripeRefundId?: string }
-  | { kind: "bookingRefundFailed"; bookingId: string; dashboard: "account" | "host"; failureReason?: string; amountCents?: number; currency?: string };
+  | { kind: "bookingRefundFailed"; bookingId: string; dashboard: "account" | "host"; failureReason?: string; amountCents?: number; currency?: string }
+  | { kind: "sitterBookingConfirmed"; bookingId: string }
+  | { kind: "sitterBookingReminder"; bookingId: string; startsAtIso: string }
+  | { kind: "sitterPayoutReceived"; sitterUserId: string; amountCents: number; currency: string; bookingIds: string[] }
+  | { kind: "sitterBookingModified"; bookingId: string; oldStartDate?: string; oldEndDate?: string; oldAmountCents?: number; newAmountCents?: number }
+  | { kind: "sitterRefundTriggered"; bookingId: string; eligibleRefund: boolean; netAmountCents?: number; currency?: string }
+  | { kind: "sitterReviewReceived"; bookingId: string; rating: number; comment: string | null; ownerName: string }
+  | { kind: "sitterMonthlyRecap"; month: string; year: number; totalBookings: number; totalHours: number; netRevenueCents: number; currency: string; averageRating: number | null };
+
+// ── Sitter email helpers ──────────────────────────────────────────────────────
+
+const SITTER_FF = "-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,Helvetica,sans-serif";
+
+function buildSitterEarningsHtml(
+  grossCents: number,
+  commissionCents: number,
+  netCents: number,
+  currency: string,
+  estimatedPayoutDate?: string,
+): string {
+  const cur = currency.toUpperCase() || "CHF";
+  const line = (label: string, value: string, bold = false, color = "#475569") => `
+    <tr>
+      <td style="padding:6px 0;font-family:${SITTER_FF};font-size:14px;color:${color};font-weight:${bold ? 700 : 400};">${label}</td>
+      <td align="right" style="padding:6px 0;font-family:${SITTER_FF};font-size:14px;color:${bold ? "#0f172a" : "#475569"};font-weight:${bold ? 800 : 500};white-space:nowrap;">${value}</td>
+    </tr>`;
+
+  return `
+    <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;margin-top:20px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:0;">
+      <tr>
+        <td style="padding:18px 20px;">
+          <div style="font-family:${SITTER_FF};font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#15803d;margin-bottom:10px;">Tes gains</div>
+          <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
+            ${line("Montant brut", formatMoney(grossCents, cur))}
+            ${line("Commission DogShift", `- ${formatMoney(commissionCents, cur)}`, false, "#dc2626")}
+            <tr><td colspan="2" style="padding:8px 0 0;border-top:1px solid #bbf7d0;font-size:0;line-height:0;">&nbsp;</td></tr>
+            ${line("Montant net", formatMoney(netCents, cur), true, "#15803d")}
+          </table>
+          ${estimatedPayoutDate ? `<div style="margin-top:10px;font-family:${SITTER_FF};font-size:12px;color:#6b7280;">Virement estimé : ${estimatedPayoutDate}</div>` : ""}
+        </td>
+      </tr>
+    </table>`;
+}
+
+function buildOwnerContactHtml(ownerName: string, ownerPhone?: string | null): string {
+  const phoneLine = ownerPhone
+    ? `<div style="font-family:${SITTER_FF};font-size:13px;color:#475569;margin-top:4px;">📞 ${ownerPhone}</div>`
+    : "";
+  return `
+    <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;margin-top:18px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;">
+      <tr>
+        <td style="padding:14px 18px;">
+          <div style="font-family:${SITTER_FF};font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#64748b;margin-bottom:6px;">Propriétaire</div>
+          <div style="font-family:${SITTER_FF};font-size:15px;font-weight:700;color:#0f172a;">${ownerName}</div>
+          ${phoneLine}
+        </td>
+      </tr>
+    </table>`;
+}
+
+function buildSitterChecklistHtml(): string {
+  const items = [
+    "Vérifier le créneau et l'adresse",
+    "Charger le téléphone",
+    "Prévoir laisse de secours, sac à déjections, eau",
+    "Bien lire les notes du propriétaire",
+  ];
+  const checkIcon = `<span style="color:#10b981;font-weight:bold;font-size:14px;display:inline-block;width:20px;">✓</span>`;
+  return `
+    <div style="margin-top:24px;background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;padding:18px 20px;">
+      <h3 style="margin:0 0 14px;font-family:${SITTER_FF};font-size:14px;font-weight:700;color:#0f172a;text-transform:uppercase;letter-spacing:0.05em;">Ta checklist</h3>
+      <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
+        ${items.map(item => `
+          <tr>
+            <td valign="top" style="padding:4px 0;width:24px;">${checkIcon}</td>
+            <td valign="top" style="padding:4px 0;font-family:${SITTER_FF};font-size:14px;line-height:20px;color:#475569;">${item}</td>
+          </tr>
+        `).join("")}
+      </table>
+    </div>`;
+}
+
+function buildReviewDisplayHtml(rating: number, comment: string | null, ownerName: string): string {
+  const stars = Array.from({ length: 5 }, (_, i) =>
+    i < rating
+      ? `<span style="color:#eab308;font-size:22px;">★</span>`
+      : `<span style="color:#d1d5db;font-size:22px;">★</span>`
+  ).join("");
+
+  const commentHtml = comment
+    ? `<div style="margin-top:12px;padding:14px 16px;background:#f8fafc;border-radius:10px;border:1px solid #e2e8f0;">
+        <div style="font-family:${SITTER_FF};font-size:14px;line-height:22px;color:#374151;font-style:italic;">"${comment}"</div>
+        <div style="margin-top:8px;font-family:${SITTER_FF};font-size:12px;color:#94a3b8;">— ${ownerName}</div>
+      </div>`
+    : "";
+
+  return `
+    <div style="margin-top:20px;text-align:center;">
+      <div style="margin-bottom:8px;">${stars}</div>
+      <div style="font-family:${SITTER_FF};font-size:14px;color:#6b7280;">${rating}/5</div>
+    </div>
+    ${commentHtml}`;
+}
+
+function buildMonthlyStatsHtml(stats: {
+  totalBookings: number;
+  totalHours: number;
+  netRevenueCents: number;
+  currency: string;
+  averageRating: number | null;
+}): string {
+  const cur = stats.currency.toUpperCase() || "CHF";
+  const ratingStr = stats.averageRating !== null ? `★ ${stats.averageRating.toFixed(1)}` : "—";
+
+  const statCell = (label: string, value: string, accent = "#0f172a") => `
+    <td align="center" style="padding:12px 8px;">
+      <div style="font-family:${SITTER_FF};font-size:24px;font-weight:800;color:${accent};line-height:1.2;">${value}</div>
+      <div style="font-family:${SITTER_FF};font-size:11px;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:0.06em;margin-top:4px;">${label}</div>
+    </td>`;
+
+  return `
+    <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;margin-top:20px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;">
+      <tr>
+        ${statCell("Prestations", String(stats.totalBookings))}
+        ${statCell("Heures", String(stats.totalHours))}
+      </tr>
+      <tr>
+        ${statCell("Revenu net", formatMoney(stats.netRevenueCents, cur), "#15803d")}
+        ${statCell("Note moyenne", ratingStr, "#eab308")}
+      </tr>
+    </table>`;
+}
 
 async function resolveConversationLabel(conversationId: string) {
   try {
@@ -669,6 +800,20 @@ export async function sendNotificationEmail(params: {
         return "Réservation expirée et remboursée – DogShift";
       case "bookingRefundFailed":
         return "Action requise : remboursement impossible – DogShift";
+      case "sitterBookingConfirmed":
+        return "Ta prestation est confirmée 🐾 – DogShift";
+      case "sitterBookingReminder":
+        return "Rappel de prestation – DogShift";
+      case "sitterPayoutReceived":
+        return `${formatMoney(payload.amountCents, payload.currency)} reçus 💚 – DogShift`;
+      case "sitterBookingModified":
+        return "Réservation modifiée – DogShift";
+      case "sitterRefundTriggered":
+        return "Annulation de réservation – DogShift";
+      case "sitterReviewReceived":
+        return `${payload.ownerName} t'a laissé un avis ⭐ – DogShift`;
+      case "sitterMonthlyRecap":
+        return `Ton récap ${payload.month} – DogShift`;
       default:
         return "Notification – DogShift";
     }
@@ -794,6 +939,34 @@ export async function sendNotificationEmail(params: {
         const settingsUrl = baseUrl ? `${baseUrl}/account/settings` : "";
         const failedAmount = formatCents(payload.amountCents, payload.currency);
         return `Bonjour,\n\nNous n’avons pas pu te rembourser${failedAmount ? ` (${failedAmount})` : ""}.\nMets à jour tes informations de paiement ou contacte support@dogshift.ch.\n\n${settingsUrl ? `Mettre à jour mes informations : ${settingsUrl}\n\n` : ""}— DogShift\n`;
+      }
+      case "sitterBookingConfirmed": {
+        const url = bookingUrl(payload.bookingId, "host");
+        return `Bonjour,\n\nTa prestation est confirmée. Le propriétaire a confirmé la réservation.\n\n${url ? `Voir la réservation : ${url}\n\n` : ""}— DogShift\n`;
+      }
+      case "sitterBookingReminder": {
+        const url = bookingUrl(payload.bookingId, "host");
+        return `Bonjour,\n\nRappel : tu as une prestation demain.\n\n${url ? `Voir la réservation : ${url}\n\n` : ""}— DogShift\n`;
+      }
+      case "sitterPayoutReceived": {
+        const walletUrl = baseUrl ? `${baseUrl}/host/wallet` : "";
+        return `Bonjour,\n\n${formatMoney(payload.amountCents, payload.currency)} viennent d'arriver sur ton compte.\n\n${walletUrl ? `Voir mon portefeuille : ${walletUrl}\n\n` : ""}— DogShift\n`;
+      }
+      case "sitterBookingModified": {
+        const url = bookingUrl(payload.bookingId, "host");
+        return `Bonjour,\n\nUne réservation a été modifiée. Vérifie les détails.\n\n${url ? `Voir la réservation : ${url}\n\n` : ""}— DogShift\n`;
+      }
+      case "sitterRefundTriggered": {
+        const requestsUrl = baseUrl ? `${baseUrl}/host/requests` : "";
+        return `Bonjour,\n\nUne réservation a été annulée.\n\n${requestsUrl ? `Voir mes réservations : ${requestsUrl}\n\n` : ""}— DogShift\n`;
+      }
+      case "sitterReviewReceived": {
+        const profileUrl = baseUrl ? `${baseUrl}/host/profile` : "";
+        return `Bonjour,\n\n${payload.ownerName} vient de te laisser un avis (${payload.rating}/5).\n\n${profileUrl ? `Voir mes avis : ${profileUrl}\n\n` : ""}— DogShift\n`;
+      }
+      case "sitterMonthlyRecap": {
+        const hostUrl = baseUrl ? `${baseUrl}/host` : "";
+        return `Bonjour,\n\nVoici ton récap du mois de ${payload.month} ${payload.year}.\n\n${hostUrl ? `Voir mes statistiques : ${hostUrl}\n\n` : ""}— DogShift\n`;
       }
       default:
         return `Bonjour,
@@ -1033,6 +1206,283 @@ Notification DogShift.
           bannerImageUrl: "",
         }).html;
       }
+
+      // ── Sitter templates ────────────────────────────────────────────────
+
+      case "sitterBookingConfirmed": {
+        const url = bookingUrl(payload.bookingId, "host");
+        const { rows, travel, dog, sitter } = await resolveBookingEmailData(payload.bookingId);
+
+        const booking = await (prisma as any).booking.findUnique({
+          where: { id: payload.bookingId },
+          select: {
+            amount: true,
+            currency: true,
+            platformFeeAmount: true,
+            sitterPayoutAmount: true,
+            userId: true,
+          },
+        });
+        const grossCents = typeof booking?.amount === "number" ? booking.amount : 0;
+        const commissionCents = typeof booking?.platformFeeAmount === "number" ? booking.platformFeeAmount : 0;
+        const netCents = typeof booking?.sitterPayoutAmount === "number" && booking.sitterPayoutAmount > 0
+          ? booking.sitterPayoutAmount
+          : Math.max(0, grossCents - commissionCents);
+        const cur = typeof booking?.currency === "string" ? booking.currency : "CHF";
+
+        let ownerName = "le propriétaire";
+        if (booking?.userId) {
+          const ownerUser = await resolveUserEmail(String(booking.userId));
+          if (ownerUser?.name) ownerName = ownerUser.name;
+        }
+
+        const sitterRows: EmailSummaryRow[] = [
+          ...rows.filter(r => {
+            const lab = r.label.toLowerCase();
+            return lab === "service" || lab === "début" || lab === "fin" || lab === "référence";
+          }),
+          { label: "Propriétaire", value: ownerName },
+        ];
+        if (dog?.name) sitterRows.push({ label: "Chien", value: dog.name + (dog.breed ? ` (${dog.breed})` : "") });
+
+        const earningsHtml = buildSitterEarningsHtml(grossCents, commissionCents, netCents, cur);
+        const mapHtml = buildTravelMapExtraHtml(travel);
+        const dogHtml = buildDogProfileHtml(dog);
+
+        return renderEmailLayout({
+          logoUrl,
+          title: "Ta prestation est confirmée 🐾",
+          subtitle: "Le propriétaire a confirmé la réservation.",
+          summaryRows: sitterRows,
+          extraHtml: mapHtml + dogHtml + earningsHtml,
+          ctaLabel: url ? "Voir la réservation" : undefined,
+          ctaUrl: url || undefined,
+          secondaryLinkLabel: baseUrl ? "Contacter le propriétaire" : undefined,
+          secondaryLinkUrl: baseUrl ? `${baseUrl}/host/messages` : undefined,
+        }).html;
+      }
+
+      case "sitterBookingReminder": {
+        const url = bookingUrl(payload.bookingId, "host");
+        const { rows, travel, dog, ownerPhone, pickupAddress } = await resolveBookingEmailData(payload.bookingId);
+
+        const booking = await (prisma as any).booking.findUnique({
+          where: { id: payload.bookingId },
+          select: { userId: true },
+        });
+        let ownerName = "le propriétaire";
+        if (booking?.userId) {
+          const ownerUser = await resolveUserEmail(String(booking.userId));
+          if (ownerUser?.name) ownerName = ownerUser.name;
+        }
+
+        const dogName = dog?.name || "ton prochain client à 4 pattes";
+        const sitterReminderTitle = `Demain, ${dogName} t'attend 🐾`;
+
+        const sitterRows: EmailSummaryRow[] = rows.filter(r => {
+          const lab = r.label.toLowerCase();
+          return lab === "service" || lab === "début" || lab === "fin" || lab.startsWith("lieu");
+        });
+        if (pickupAddress && !sitterRows.some(r => r.label.toLowerCase().startsWith("lieu"))) {
+          sitterRows.push({ label: "Lieu de prise en charge", value: pickupAddress });
+        }
+
+        const contactHtml = buildOwnerContactHtml(ownerName, ownerPhone);
+        const mapHtml = buildTravelMapExtraHtml(travel);
+        const dogHtml = buildDogProfileHtml(dog);
+        const checklistHtml = buildSitterChecklistHtml();
+
+        return renderEmailLayout({
+          logoUrl,
+          title: sitterReminderTitle,
+          subtitle: "Tout est prêt pour la prestation.",
+          summaryRows: sitterRows,
+          extraHtml: contactHtml + mapHtml + dogHtml + checklistHtml,
+          ctaLabel: url ? "Voir la réservation" : undefined,
+          ctaUrl: url || undefined,
+        }).html;
+      }
+
+      case "sitterPayoutReceived": {
+        const walletUrl = baseUrl ? `${baseUrl}/host/wallet` : "";
+        const payoutCur = payload.currency.toUpperCase() || "CHF";
+        const amountDisplay = formatMoney(payload.amountCents, payoutCur);
+
+        const bookingListHtml = payload.bookingIds.length > 0
+          ? `<div style="margin-top:16px;">
+              <div style="font-family:${SITTER_FF};font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#64748b;margin-bottom:8px;">Réservations incluses</div>
+              ${payload.bookingIds.map(id => `<div style="font-family:${SITTER_FF};font-size:13px;color:#475569;padding:4px 0;">• Réservation #${id}</div>`).join("")}
+            </div>`
+          : "";
+
+        const amountBlock = `
+          <div style="margin-top:20px;text-align:center;padding:24px 0;">
+            <div style="font-family:${SITTER_FF};font-size:36px;font-weight:800;color:#15803d;">${amountDisplay}</div>
+            <div style="font-family:${SITTER_FF};font-size:13px;color:#6b7280;margin-top:8px;">Le virement apparaît sous 1–3 jours ouvrés</div>
+          </div>`;
+
+        return renderEmailLayout({
+          logoUrl,
+          title: `${amountDisplay} viennent d'arriver sur ton compte 💚`,
+          subtitle: "Ton travail a été récompensé.",
+          extraHtml: amountBlock + bookingListHtml,
+          ctaLabel: walletUrl ? "Voir mon portefeuille" : undefined,
+          ctaUrl: walletUrl || undefined,
+        }).html;
+      }
+
+      case "sitterBookingModified": {
+        const url = bookingUrl(payload.bookingId, "host");
+        const { rows } = await resolveBookingEmailData(payload.bookingId);
+
+        const booking = await (prisma as any).booking.findUnique({
+          where: { id: payload.bookingId },
+          select: { userId: true },
+        });
+        let ownerName = "le propriétaire";
+        if (booking?.userId) {
+          const ownerUser = await resolveUserEmail(String(booking.userId));
+          if (ownerUser?.name) ownerName = ownerUser.name;
+        }
+
+        let comparisonHtml = "";
+        if (payload.oldStartDate || payload.oldEndDate) {
+          const oldStart = payload.oldStartDate ? formatDateTime(payload.oldStartDate) : "";
+          const oldEnd = payload.oldEndDate ? formatDateTime(payload.oldEndDate) : "";
+          const newRows = rows.filter(r => {
+            const lab = r.label.toLowerCase();
+            return lab === "début" || lab === "fin";
+          });
+          const newStart = newRows.find(r => r.label.toLowerCase() === "début")?.value || "";
+          const newEnd = newRows.find(r => r.label.toLowerCase() === "fin")?.value || "";
+
+          const diffRow = (label: string, oldVal: string, newVal: string) => {
+            if (!oldVal && !newVal) return "";
+            return `
+              <tr>
+                <td style="padding:6px 0;font-family:${SITTER_FF};font-size:13px;font-weight:600;color:#64748b;white-space:nowrap;vertical-align:top;">${label}</td>
+                <td style="padding:6px 0 6px 12px;font-family:${SITTER_FF};font-size:13px;vertical-align:top;">
+                  ${oldVal ? `<span style="text-decoration:line-through;color:#94a3b8;">${oldVal}</span><br/>` : ""}
+                  <span style="color:#15803d;font-weight:600;">${newVal}</span>
+                </td>
+              </tr>`;
+          };
+
+          comparisonHtml = `
+            <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;margin-top:18px;background:#fefce8;border:1px solid #fde68a;border-radius:12px;">
+              <tr><td style="padding:18px 20px;">
+                <div style="font-family:${SITTER_FF};font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#92400e;margin-bottom:10px;">Modifications</div>
+                <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
+                  ${diffRow("Début", oldStart, newStart)}
+                  ${diffRow("Fin", oldEnd, newEnd)}
+                </table>
+              </td></tr>
+            </table>`;
+        }
+
+        let earningsImpactHtml = "";
+        if (typeof payload.oldAmountCents === "number" && typeof payload.newAmountCents === "number" && payload.oldAmountCents !== payload.newAmountCents) {
+          const diff = payload.newAmountCents - payload.oldAmountCents;
+          const sign = diff > 0 ? "+" : "";
+          const color = diff > 0 ? "#15803d" : "#dc2626";
+          earningsImpactHtml = `
+            <div style="margin-top:14px;font-family:${SITTER_FF};font-size:14px;color:${color};font-weight:600;text-align:center;">
+              Impact sur tes gains : ${sign}${formatMoney(diff, "CHF")}
+            </div>`;
+        }
+
+        return renderEmailLayout({
+          logoUrl,
+          title: `Ta réservation avec ${ownerName} a été modifiée`,
+          subtitle: "Vérifie les détails et confirme.",
+          summaryRows: rows,
+          extraHtml: comparisonHtml + earningsImpactHtml,
+          ctaLabel: url ? "Voir la réservation" : undefined,
+          ctaUrl: url || undefined,
+        }).html;
+      }
+
+      case "sitterRefundTriggered": {
+        const requestsUrl = baseUrl ? `${baseUrl}/host/requests` : "";
+        const { rows } = await resolveBookingEmailData(payload.bookingId);
+
+        const booking = await (prisma as any).booking.findUnique({
+          where: { id: payload.bookingId },
+          select: { startDate: true },
+        });
+        const startDateStr = booking?.startDate ? formatDateTime(booking.startDate) : "";
+
+        const refundCur = payload.currency?.toUpperCase() || "CHF";
+        let explanationHtml: string;
+        if (payload.eligibleRefund) {
+          explanationHtml = `
+            <div style="margin-top:20px;padding:18px 20px;background:#fef2f2;border:1px solid #fecaca;border-radius:12px;">
+              <div style="font-family:${SITTER_FF};font-size:14px;line-height:22px;color:#991b1b;">
+                La réservation a été annulée plus de 24h avant le début. Aucune rémunération n'est due pour cette prestation.
+              </div>
+            </div>`;
+        } else {
+          const netDisplay = typeof payload.netAmountCents === "number" ? formatMoney(payload.netAmountCents, refundCur) : "";
+          explanationHtml = `
+            <div style="margin-top:20px;padding:18px 20px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;">
+              <div style="font-family:${SITTER_FF};font-size:14px;line-height:22px;color:#166534;">
+                L'annulation étant tardive (moins de 24h avant le début), ta rémunération${netDisplay ? ` de <strong>${netDisplay}</strong>` : ""} reste acquise.
+              </div>
+            </div>`;
+        }
+
+        return renderEmailLayout({
+          logoUrl,
+          title: `La réservation du ${startDateStr || "—"} a été annulée`,
+          subtitle: "Voici ce que cela signifie pour toi.",
+          summaryRows: rows.filter(r => {
+            const lab = r.label.toLowerCase();
+            return lab === "service" || lab === "début" || lab === "fin" || lab === "référence";
+          }),
+          extraHtml: explanationHtml,
+          ctaLabel: requestsUrl ? "Voir mes réservations" : undefined,
+          ctaUrl: requestsUrl || undefined,
+        }).html;
+      }
+
+      case "sitterReviewReceived": {
+        const profileUrl = baseUrl ? `${baseUrl}/host/profile` : "";
+        const reviewSubtitle = payload.rating >= 4
+          ? "Continue comme ça !"
+          : "Chaque retour est une occasion de progresser.";
+
+        const reviewHtml = buildReviewDisplayHtml(payload.rating, payload.comment, payload.ownerName);
+
+        return renderEmailLayout({
+          logoUrl,
+          title: `${payload.ownerName} vient de te laisser un avis ⭐`,
+          subtitle: reviewSubtitle,
+          extraHtml: reviewHtml,
+          ctaLabel: profileUrl ? "Voir mes avis" : undefined,
+          ctaUrl: profileUrl || undefined,
+        }).html;
+      }
+
+      case "sitterMonthlyRecap": {
+        const hostUrl = baseUrl ? `${baseUrl}/host` : "";
+        const statsHtml = buildMonthlyStatsHtml({
+          totalBookings: payload.totalBookings,
+          totalHours: payload.totalHours,
+          netRevenueCents: payload.netRevenueCents,
+          currency: payload.currency,
+          averageRating: payload.averageRating,
+        });
+
+        return renderEmailLayout({
+          logoUrl,
+          title: `Ton mois de ${payload.month} en chiffres`,
+          subtitle: "Voici ton récap du mois écoulé.",
+          extraHtml: statsHtml,
+          ctaLabel: hostUrl ? "Voir mes statistiques" : undefined,
+          ctaUrl: hostUrl || undefined,
+        }).html;
+      }
+
       default:
         return renderEmailLayout({ logoUrl, title: "Notification", subtitle: "DogShift" }).html;
     }
