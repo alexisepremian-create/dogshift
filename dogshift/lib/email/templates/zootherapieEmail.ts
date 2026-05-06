@@ -86,10 +86,8 @@ export function renderZootherapieEmail(params: {
           <!-- Logo inside hero -->
               <table role="presentation" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin-bottom:24px;">
                 <tr>
-                  <td style="width:36px;height:36px;background-color:#ffffff;border-radius:18px;text-align:center;vertical-align:middle;padding:6px;">
-                    <a href="${siteUrl}" style="text-decoration:none;display:block;">
-                      <img src="${escapeHtml(logoUrl)}" width="24" height="24" alt="" style="display:block;border:0;outline:none;" />
-                    </a>
+                  <td align="center" valign="middle" style="width:36px;height:36px;background-color:#ffffff;border-radius:18px;padding:6px;">
+                    <img src="${escapeHtml(logoUrl)}" width="24" height="24" alt="" style="display:inline-block;vertical-align:middle;border:0;outline:none;" />
                   </td>
                   <td style="padding-left:10px;vertical-align:middle;">
                     <a href="${siteUrl}" style="text-decoration:none;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,Helvetica,sans-serif;font-size:17px;font-weight:800;color:#ffffff;letter-spacing:-0.3px;">DogShift</a>

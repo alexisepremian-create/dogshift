@@ -88,10 +88,8 @@ export function ApplicationStatusEmail(props: {
           <table role="presentation" cellPadding={0} cellSpacing={0} style={{ borderCollapse: "collapse", marginBottom: 24 }}>
             <tbody>
               <tr>
-                <td style={{ width: 36, height: 36, backgroundColor: "#ffffff", borderRadius: 18, textAlign: "center", verticalAlign: "middle", padding: 6 }}>
-                  <Link href={baseUrl} style={{ textDecoration: "none", display: "block" }}>
-                    <Img src={logoUrl} width={24} height={24} alt="" style={{ display: "block" }} />
-                  </Link>
+                <td align="center" valign="middle" style={{ width: 36, height: 36, backgroundColor: "#ffffff", borderRadius: 18, padding: 6 }}>
+                  <Img src={logoUrl} width={24} height={24} alt="" style={{ display: "inline-block", verticalAlign: "middle" }} />
                 </td>
                 <td style={{ paddingLeft: 10, verticalAlign: "middle" }}>
                   <Link href={baseUrl} style={{ textDecoration: "none" }}>
