@@ -15,17 +15,6 @@ const MIN_ZOOM = 6;
  * Helpers
  * ────────────────────────────────────────────────────────────────────────── */
 
-function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
-  const R = 6371;
-  const toRad = (d: number) => (d * Math.PI) / 180;
-  const dLat = toRad(lat2 - lat1);
-  const dLng = toRad(lng2 - lng1);
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
-  return 2 * R * Math.asin(Math.sqrt(a));
-}
-
 /** Mercator projection. Returns world-pixel coords at the given zoom level. */
 function lngLatToWorldPx(lng: number, lat: number, zoom: number): { x: number; y: number } {
   const n = TILE_SIZE * 2 ** zoom;
@@ -169,34 +158,32 @@ async function renderRealMap(args: {
   const by = ownerPx.y - cropOriginY;
   const cx = (ax + bx) / 2;
   const cy = Math.min(ay, by) - Math.abs(bx - ax) * 0.18;
-  const km = haversineKm(args.sitterLat, args.sitterLng, args.ownerLat, args.ownerLng);
-  const kmLabel = km < 10 ? km.toFixed(1) : Math.round(km).toString();
+
+  // Pin sizes are tuned for a canvas that is rendered at retina-2x and
+  // displayed at half the size in the email. Larger callers (4x scale)
+  // automatically scale up because we drive everything off `width`.
+  const scale = Math.max(1, Math.round(width / 560));
+  const haloR = 14 * scale;
+  const dotR = 9 * scale;
+  const haloStroke = 12 * scale;
+  const dashStroke = 5 * scale;
+  const dashPattern = `${2 * scale} ${14 * scale}`;
 
   const overlaySvg = `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
   <defs>
     <filter id="pinShadow" x="-50%" y="-50%" width="200%" height="200%">
-      <feDropShadow dx="0" dy="3" stdDeviation="3" flood-color="#1e1b4b" flood-opacity="0.35"/>
+      <feDropShadow dx="0" dy="${2 * scale}" stdDeviation="${2 * scale}" flood-color="#1e1b4b" flood-opacity="0.30"/>
     </filter>
   </defs>
   <path d="M ${ax} ${ay} Q ${cx} ${cy} ${bx} ${by}"
-        fill="none" stroke="#ffffff" stroke-width="6" stroke-linecap="round" opacity="0.9"/>
+        fill="none" stroke="#ffffff" stroke-width="${haloStroke}" stroke-linecap="round" opacity="0.85"/>
   <path d="M ${ax} ${ay} Q ${cx} ${cy} ${bx} ${by}"
-        fill="none" stroke="#7c3aed" stroke-width="3.5" stroke-linecap="round" stroke-dasharray="2 8"/>
-  <g transform="translate(${ax - 16},${ay - 40})" filter="url(#pinShadow)">
-    <path d="M16 0C7.16 0 0 7.16 0 16c0 12 16 24 16 24s16-12 16-24C32 7.16 24.84 0 16 0z" fill="#6366f1"/>
-    <circle cx="16" cy="16" r="6" fill="#ffffff"/>
-  </g>
-  <g transform="translate(${bx - 16},${by - 40})" filter="url(#pinShadow)">
-    <path d="M16 0C7.16 0 0 7.16 0 16c0 12 16 24 16 24s16-12 16-24C32 7.16 24.84 0 16 0z" fill="#7c3aed"/>
-    <circle cx="16" cy="16" r="6" fill="#ffffff"/>
-  </g>
-  <g transform="translate(${width / 2 - 60}, ${height - 56})">
-    <rect x="0" y="0" width="120" height="40" rx="20" fill="#ffffff" filter="url(#pinShadow)"/>
-    <text x="60" y="26" text-anchor="middle"
-          font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif"
-          font-size="16" font-weight="700" fill="#4f46e5">${kmLabel} km</text>
-  </g>
+        fill="none" stroke="#7c3aed" stroke-width="${dashStroke}" stroke-linecap="round" stroke-dasharray="${dashPattern}"/>
+  <circle cx="${ax}" cy="${ay}" r="${haloR}" fill="#ffffff" filter="url(#pinShadow)"/>
+  <circle cx="${ax}" cy="${ay}" r="${dotR}" fill="#6366f1"/>
+  <circle cx="${bx}" cy="${by}" r="${haloR}" fill="#ffffff" filter="url(#pinShadow)"/>
+  <circle cx="${bx}" cy="${by}" r="${dotR}" fill="#7c3aed"/>
 </svg>`;
 
   return sharp(baseMap)
@@ -209,13 +196,17 @@ async function renderRealMap(args: {
  * SVG fallback — used when MapTiler is unavailable / no key
  * ────────────────────────────────────────────────────────────────────────── */
 
-function buildFallbackSvg(width: number, height: number, distanceKm: number): string {
+function buildFallbackSvg(width: number, height: number): string {
   const w = width;
   const h = height;
-  const pinA = { x: w * 0.18, y: h * 0.62 };
-  const pinB = { x: w * 0.82, y: h * 0.38 };
+  const pinA = { x: w * 0.20, y: h * 0.62 };
+  const pinB = { x: w * 0.80, y: h * 0.38 };
   const cp = { x: (pinA.x + pinB.x) / 2, y: Math.min(pinA.y, pinB.y) - h * 0.18 };
-  const km = distanceKm < 10 ? distanceKm.toFixed(1) : Math.round(distanceKm).toString();
+  const scale = Math.max(1, Math.round(w / 560));
+  const haloR = 14 * scale;
+  const dotR = 9 * scale;
+  const dashStroke = 5 * scale;
+  const dashPattern = `${2 * scale} ${14 * scale}`;
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">
@@ -229,7 +220,7 @@ function buildFallbackSvg(width: number, height: number, distanceKm: number): st
       <stop offset="100%" stop-color="#c7d2fe" stop-opacity="0.4"/>
     </radialGradient>
     <filter id="pinShadow" x="-50%" y="-50%" width="200%" height="200%">
-      <feDropShadow dx="0" dy="3" stdDeviation="3" flood-color="#1e1b4b" flood-opacity="0.25"/>
+      <feDropShadow dx="0" dy="${2 * scale}" stdDeviation="${2 * scale}" flood-color="#1e1b4b" flood-opacity="0.25"/>
     </filter>
   </defs>
   <rect width="${w}" height="${h}" fill="url(#bg)"/>
@@ -239,27 +230,17 @@ function buildFallbackSvg(width: number, height: number, distanceKm: number): st
     ${Array.from({ length: 12 }, (_, i) => `<line x1="${(w / 12) * i}" y1="0" x2="${(w / 12) * i}" y2="${h}" />`).join("")}
   </g>
   <path d="M ${pinA.x} ${pinA.y} Q ${cp.x} ${cp.y} ${pinB.x} ${pinB.y}"
-        fill="none" stroke="#7c3aed" stroke-width="3" stroke-linecap="round"
-        stroke-dasharray="2 8"/>
-  <g transform="translate(${pinA.x - 16},${pinA.y - 40})" filter="url(#pinShadow)">
-    <path d="M16 0C7.16 0 0 7.16 0 16c0 12 16 24 16 24s16-12 16-24C32 7.16 24.84 0 16 0z" fill="#6366f1"/>
-    <circle cx="16" cy="16" r="6" fill="#ffffff"/>
-  </g>
-  <g transform="translate(${pinB.x - 16},${pinB.y - 40})" filter="url(#pinShadow)">
-    <path d="M16 0C7.16 0 0 7.16 0 16c0 12 16 24 16 24s16-12 16-24C32 7.16 24.84 0 16 0z" fill="#7c3aed"/>
-    <circle cx="16" cy="16" r="6" fill="#ffffff"/>
-  </g>
-  <g transform="translate(${w / 2 - 60}, ${h - 56})">
-    <rect x="0" y="0" width="120" height="40" rx="20" fill="#ffffff" filter="url(#pinShadow)"/>
-    <text x="60" y="26" text-anchor="middle"
-          font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif"
-          font-size="16" font-weight="700" fill="#4f46e5">${km} km</text>
-  </g>
+        fill="none" stroke="#7c3aed" stroke-width="${dashStroke}" stroke-linecap="round"
+        stroke-dasharray="${dashPattern}"/>
+  <circle cx="${pinA.x}" cy="${pinA.y}" r="${haloR}" fill="#ffffff" filter="url(#pinShadow)"/>
+  <circle cx="${pinA.x}" cy="${pinA.y}" r="${dotR}" fill="#6366f1"/>
+  <circle cx="${pinB.x}" cy="${pinB.y}" r="${haloR}" fill="#ffffff" filter="url(#pinShadow)"/>
+  <circle cx="${pinB.x}" cy="${pinB.y}" r="${dotR}" fill="#7c3aed"/>
 </svg>`;
 }
 
-async function renderFallbackPng(width: number, height: number, distanceKm: number): Promise<Buffer> {
-  const svg = buildFallbackSvg(width, height, distanceKm);
+async function renderFallbackPng(width: number, height: number): Promise<Buffer> {
+  const svg = buildFallbackSvg(width, height);
   return sharp(Buffer.from(svg)).png({ compressionLevel: 9 }).toBuffer();
 }
 
@@ -309,8 +290,6 @@ export async function GET(req: NextRequest) {
   const sitterLng = sitterLngStr ? Number(sitterLngStr) : minLng;
   const ownerLat = ownerLatStr ? Number(ownerLatStr) : maxLat;
   const ownerLng = ownerLngStr ? Number(ownerLngStr) : maxLng;
-  const distanceKm = haversineKm(sitterLat, sitterLng, ownerLat, ownerLng);
-
   const cacheHeaders = {
     "content-type": "image/png",
     "cache-control": "public, max-age=86400, s-maxage=86400, immutable",
@@ -343,7 +322,7 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const fallback = await renderFallbackPng(width, height, distanceKm);
+    const fallback = await renderFallbackPng(width, height);
     return new NextResponse(new Uint8Array(fallback), { headers: cacheHeaders });
   } catch (err) {
     console.error("[/api/email/map] fallback render failed", err);
