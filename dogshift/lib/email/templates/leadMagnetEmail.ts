@@ -109,8 +109,8 @@ export function renderLeadMagnetEmail(params: { baseUrl: string }) {
               <!-- Logo -->
               <table role="presentation" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin-bottom:24px;">
                 <tr>
-                  <td align="center" valign="middle" style="width:44px;height:44px;background-color:#ffffff;border-radius:22px;padding:7px;">
-                    <img src="${logoUrl}" width="30" height="30" alt="" style="display:inline-block;vertical-align:middle;border:0;outline:none;" />
+                  <td align="center" valign="middle" style="width:44px;height:44px;background-color:#ffffff;border-radius:22px;padding:2px;">
+                    <img src="${logoUrl}" width="40" height="40" alt="" style="display:inline-block;vertical-align:middle;border:0;outline:none;" />
                   </td>
                   <td style="padding-left:10px;vertical-align:middle;">
                     <a href="${siteUrl}" style="text-decoration:none;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,Helvetica,sans-serif;font-size:17px;font-weight:800;color:#ffffff;letter-spacing:-0.3px;">DogShift</a>
