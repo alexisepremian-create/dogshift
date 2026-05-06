@@ -33,8 +33,7 @@ export async function GET(req: NextRequest) {
         pensionAiReviewedAt: true,
         pensionAdminNotes: true,
         pensionAcceptedSizes: true,
-        boardingDetails: true,
-        user: { select: { id: true, email: true, name: true } },
+        user: { select: { id: true, email: true, name: true, hostProfileJson: true } },
       },
     });
 
@@ -57,14 +56,14 @@ export async function GET(req: NextRequest) {
       pensionAcceptedSizes: Array.isArray(r.pensionAcceptedSizes) ? r.pensionAcceptedSizes : [],
       housingType: (() => {
         try {
-          const bd = typeof r.boardingDetails === "string" ? JSON.parse(r.boardingDetails) : r.boardingDetails;
-          return bd?.housingType ?? null;
+          const hp = typeof r.user?.hostProfileJson === "string" ? JSON.parse(r.user.hostProfileJson) : r.user?.hostProfileJson;
+          return hp?.boardingDetails?.housingType ?? null;
         } catch { return null; }
       })(),
       hasGarden: (() => {
         try {
-          const bd = typeof r.boardingDetails === "string" ? JSON.parse(r.boardingDetails) : r.boardingDetails;
-          return typeof bd?.hasGarden === "boolean" ? bd.hasGarden : null;
+          const hp = typeof r.user?.hostProfileJson === "string" ? JSON.parse(r.user.hostProfileJson) : r.user?.hostProfileJson;
+          return typeof hp?.boardingDetails?.hasGarden === "boolean" ? hp.boardingDetails.hasGarden : null;
         } catch { return null; }
       })(),
     }));
