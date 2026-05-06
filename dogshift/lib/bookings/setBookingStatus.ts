@@ -3,7 +3,7 @@ import type { NextRequest } from "next/server";
 import { BookingStatus } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
-import { resolveBookingParticipants, sendNotificationEmail } from "@/lib/notifications/sendNotificationEmail";
+import { resolveBookingParticipants, sendNotificationEmail, computeEligibleRefund } from "@/lib/notifications/sendNotificationEmail";
 
 export async function setBookingStatus(
   bookingId: string,
@@ -13,6 +13,7 @@ export async function setBookingStatus(
     notificationContext?: {
       refundReason?: "auto_expired_unaccepted";
       deadlineHours?: number;
+      cancelledBy?: "owner" | "sitter" | "system";
     };
   }
 ) {
@@ -21,7 +22,7 @@ export async function setBookingStatus(
 
   const booking = await (prisma as any).booking.findUnique({
     where: { id },
-    select: { id: true, status: true, startDate: true, endDate: true },
+    select: { id: true, status: true, startDate: true, endDate: true, amount: true, currency: true, sitterId: true },
   });
 
   if (!booking) return { ok: false as const, error: "NOT_FOUND" as const };

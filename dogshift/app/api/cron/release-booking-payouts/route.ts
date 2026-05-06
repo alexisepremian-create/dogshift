@@ -8,6 +8,7 @@ import { prisma } from "@/lib/prisma";
 import { stripe } from "@/lib/stripe";
 import { syncBookingPaymentDetails } from "@/lib/stripe/bookingPayments";
 import { recordBookingFinanceEvent } from "@/lib/financeEvents";
+import { sendNotificationEmail } from "@/lib/notifications/sendNotificationEmail";
 
 export const runtime = "nodejs";
 
@@ -249,6 +250,31 @@ export async function GET(req: NextRequest) {
           stripePaymentIntentId: paymentIntentId,
           actorType: "SYSTEM",
         });
+
+        // Notify sitter about payout
+        try {
+          const sitterUser = await (prisma as any).user.findFirst({
+            where: { sitterId: String(booking.sitterId) },
+            select: { id: true },
+          });
+          if (sitterUser?.id) {
+            await sendNotificationEmail({
+              req,
+              recipientUserId: String(sitterUser.id),
+              key: "sitterPayoutReceived",
+              entityId: `payout:${bookingId}`,
+              payload: {
+                kind: "sitterPayoutReceived",
+                sitterUserId: String(sitterUser.id),
+                amountCents: transferAmount,
+                currency: String(booking.currency || "chf"),
+                bookingIds: [bookingId],
+              },
+            });
+          }
+        } catch (notifErr) {
+          console.error("[api][cron][release-booking-payouts] sitter notification failed", { bookingId, notifErr });
+        }
       } catch (err) {
         failed += 1;
         console.error("[api][cron][release-booking-payouts] booking failed", { bookingId, err });
