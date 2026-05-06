@@ -3,6 +3,7 @@ import {
   Button,
   Container,
   Head,
+  Hr,
   Html,
   Img,
   Link,
@@ -46,22 +47,42 @@ export function ActivationCodeEmail(props: {
 
   return (
     <Html lang="fr">
-      <Head />
+      <Head>
+  <meta name="color-scheme" content="light only" />
+  <meta name="supported-color-schemes" content="light only" />
+  <style type="text/css">{`
+    :root { color-scheme: light only !important; }
+    :root[data-ogsc] body, :root[data-ogsc] .ds-outer { background-color: #f1f5f9 !important; }
+    :root[data-ogsc] .ds-card { background-color: #ffffff !important; }
+    :root[data-ogsc] .ds-card td, :root[data-ogsc] .ds-card p,
+    :root[data-ogsc] .ds-card div, :root[data-ogsc] .ds-card span { color: #475569 !important; }
+    :root[data-ogsc] .ds-card strong, :root[data-ogsc] .ds-card b { color: #0f172a !important; }
+    u + .ds-outer .ds-card { background-color: #ffffff !important; }
+  `}</style>
+      </Head>
       <Preview>{previewText}</Preview>
       <Body className="ds-outer" style={s.body}>
         <Container style={s.container}>
           {/* Purple hero */}
           <Section style={s.hero}>
 
-          {/* Logo at top of hero — white circle */}
-          <div style={{ marginBottom: 24 }}>
-            <Link href={baseUrl} style={{ textDecoration: "none", display: "inline-flex", alignItems: "center", gap: "10px" }}>
-              <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 36, height: 36, borderRadius: "50%", background: "#ffffff", flexShrink: 0 }}>
-                <Img src={logoUrl} width={24} height={24} alt="" style={{ display: "block", width: 24, height: 24, border: 0 }} />
-              </span>
-              <Text style={{ margin: 0, fontSize: 17, fontWeight: 800, color: "#ffffff", letterSpacing: "-0.3px", display: "inline" }}>DogShift</Text>
-            </Link>
-          </div>
+          {/* Logo — table layout (flex not supported in Gmail) */}
+          <table role="presentation" cellPadding={0} cellSpacing={0} style={{ borderCollapse: "collapse", marginBottom: 24 }}>
+            <tbody>
+              <tr>
+                <td style={{ width: 36, height: 36, backgroundColor: "#ffffff", borderRadius: 18, textAlign: "center", verticalAlign: "middle", padding: 6 }}>
+                  <Link href={baseUrl} style={{ textDecoration: "none", display: "block" }}>
+                    <Img src={logoUrl} width={24} height={24} alt="" style={{ display: "block" }} />
+                  </Link>
+                </td>
+                <td style={{ paddingLeft: 10, verticalAlign: "middle" }}>
+                  <Link href={baseUrl} style={{ textDecoration: "none" }}>
+                    <Text style={{ margin: 0, fontSize: 17, fontWeight: 800, color: "#ffffff", letterSpacing: "-0.3px" }}>DogShift</Text>
+                  </Link>
+                </td>
+              </tr>
+            </tbody>
+          </table>
           <div style={s.heroLabel}>CODE D&apos;ACTIVATION</div>
             <Text style={s.heroTitle}>
               Contrat signé — voici ton code d&apos;activation
@@ -106,12 +127,16 @@ export function ActivationCodeEmail(props: {
 
           {/* Footer */}
           <Section style={s.footerSection}>
-            <div style={s.socialRow}>
-              <a href="https://instagram.com/dogshift" style={s.socialLink} dangerouslySetInnerHTML={{ __html: SVG_INSTAGRAM }} />
-              <a href="https://facebook.com/dogshift" style={s.socialLink} dangerouslySetInnerHTML={{ __html: SVG_FACEBOOK }} />
-              <a href={baseUrl} style={s.socialLink} dangerouslySetInnerHTML={{ __html: SVG_GLOBE }} />
-            </div>
-            <div style={s.divider} />
+            <table role="presentation" cellPadding={0} cellSpacing={0} align="center" style={{ borderCollapse: "collapse", margin: "0 auto 16px" }}>
+              <tbody>
+                <tr>
+                  <td style={{ padding: "0 8px" }}><a href="https://instagram.com/dogshift" style={s.socialLink} dangerouslySetInnerHTML={{ __html: SVG_INSTAGRAM }} /></td>
+                  <td style={{ padding: "0 8px" }}><a href="https://facebook.com/dogshift" style={s.socialLink} dangerouslySetInnerHTML={{ __html: SVG_FACEBOOK }} /></td>
+                  <td style={{ padding: "0 8px" }}><a href={baseUrl} style={s.socialLink} dangerouslySetInnerHTML={{ __html: SVG_GLOBE }} /></td>
+                </tr>
+              </tbody>
+            </table>
+            <Hr style={s.divider} />
             <Text style={s.footerText}>
               DogShift &middot; support@dogshift.ch &middot; Plateforme de dogsitting premium en Suisse
             </Text>
@@ -192,9 +217,8 @@ const s: Record<string, CSSProperties> = {
   muted: { margin: "16px 0 0", fontSize: 12, lineHeight: "18px", color: "#94a3b8", textAlign: "center" },
 
   footerSection: { padding: "24px 4px 0", textAlign: "center" },
-  socialRow: { display: "flex", justifyContent: "center", gap: 16, marginBottom: 16 },
   socialLink: { textDecoration: "none", display: "inline-block" },
-  divider: { height: 1, background: "#e2e8f0", margin: "0 0 12px" },
+  divider: { borderTop: "1px solid #e2e8f0", margin: "0 0 12px" },
   footerText: { margin: "0 0 4px", fontSize: 11, lineHeight: "17px", color: "#94a3b8", textAlign: "center" },
   footerLink: { color: "#94a3b8", textDecoration: "none" },
 };

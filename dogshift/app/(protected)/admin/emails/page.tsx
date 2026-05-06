@@ -363,8 +363,10 @@ export default function AdminEmailsPage() {
     .ds-card strong,.ds-card b{color:#e2e8f0!important}
     /* Preserve white text on coloured buttons */
     .ds-card a[style*="background"]{color:#ffffff!important}
-    /* Step number circles */
-    .ds-card span[style*="background:#ede9fe"],.ds-card span[style*="background: #ede9fe"]{background:#312e81!important;color:#a5b4fc!important}
+    /* Step number circles (span or div, #ede9fe or rgb equivalent) */
+    .ds-card span[style*="background:#ede9fe"],.ds-card span[style*="background: #ede9fe"],
+    .ds-card div[style*="background-color: rgb(237"],.ds-card div[style*="backgroundColor: rgb(237"],
+    .ds-card div[style*="#ede9fe"]{background-color:#312e81!important;color:#a5b4fc!important}
 
     /* ── Legacy class-based overrides (renderEmailLayout transactional emails) ── */
     .ds-title{color:#f1f5f9!important}

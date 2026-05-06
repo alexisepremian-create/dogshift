@@ -77,20 +77,19 @@ export function renderLeadMagnetEmail(params: { baseUrl: string }) {
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="x-apple-disable-message-reformatting" />
-  <meta name="color-scheme" content="light dark" />
-  <meta name="supported-color-schemes" content="light dark" />
+  <meta name="color-scheme" content="light only" />
+  <meta name="supported-color-schemes" content="light only" />
   <title>Votre guide gratuit est prêt</title>
-  <style>
-    @media (prefers-color-scheme: dark) {
-      body, .ds-bg { background-color: #0f172a !important; }
-      .ds-card { background-color: #1e293b !important; border-color: #334155 !important; }
-      .ds-card-bottom { background-color: #1e293b !important; border-color: #334155 !important; }
-      .ds-section-title { color: #a78bfa !important; border-bottom-color: #3730a3 !important; }
-      .ds-err-titre { color: #f1f5f9 !important; }
-      .ds-err-texte { color: #94a3b8 !important; }
-      .ds-conseil { background-color: #1e1b4b !important; border-left-color: #7c3aed !important; }
-      .ds-conseil-text { color: #c4b5fd !important; }
-    }
+  <style type="text/css">
+    /* Force light-only rendering */
+    :root { color-scheme: light only !important; }
+    /* Gmail dark mode override */
+    :root[data-ogsc] body, :root[data-ogsc] .ds-outer { background-color: #f1f5f9 !important; }
+    :root[data-ogsc] .ds-card { background-color: #ffffff !important; border-color: #e2e8f0 !important; }
+    :root[data-ogsc] .ds-card td, :root[data-ogsc] .ds-card p,
+    :root[data-ogsc] .ds-card div, :root[data-ogsc] .ds-card span { color: #475569 !important; }
+    :root[data-ogsc] .ds-card strong, :root[data-ogsc] .ds-card b { color: #0f172a !important; }
+    u + .ds-outer .ds-card { background-color: #ffffff !important; }
   </style>
 </head>
 <body class="ds-outer" style="margin:0;padding:0;background:#f1f5f9;">
@@ -108,14 +107,18 @@ export function renderLeadMagnetEmail(params: { baseUrl: string }) {
           <tr>
             <td style="border-radius:16px 16px 0 0;overflow:hidden;background:linear-gradient(135deg,#7c3aed 0%,#6366f1 55%,#818cf8 100%);padding:28px 36px 32px;">
               <!-- Logo -->
-              <div style="margin-bottom:24px;">
-                <a href="${siteUrl}" style="text-decoration:none;display:inline-flex;align-items:center;gap:10px;">
-                  <span style="display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:50%;background:#ffffff;flex-shrink:0;">
-                    <img src="${logoUrl}" width="24" height="24" alt="" style="display:block;border:0;width:24px;height:24px;" />
-                  </span>
-                  <span style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,Helvetica,sans-serif;font-size:17px;font-weight:800;color:#ffffff;letter-spacing:-0.3px;">DogShift</span>
-                </a>
-              </div>
+              <table role="presentation" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin-bottom:24px;">
+                <tr>
+                  <td style="width:36px;height:36px;background-color:#ffffff;border-radius:18px;text-align:center;vertical-align:middle;padding:6px;">
+                    <a href="${siteUrl}" style="text-decoration:none;display:block;">
+                      <img src="${logoUrl}" width="24" height="24" alt="" style="display:block;border:0;outline:none;" />
+                    </a>
+                  </td>
+                  <td style="padding-left:10px;vertical-align:middle;">
+                    <a href="${siteUrl}" style="text-decoration:none;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,Helvetica,sans-serif;font-size:17px;font-weight:800;color:#ffffff;letter-spacing:-0.3px;">DogShift</a>
+                  </td>
+                </tr>
+              </table>
               <div style="display:inline-block;background:rgba(255,255,255,0.18);color:rgba(255,255,255,0.95);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,Helvetica,sans-serif;font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;padding:4px 12px;border-radius:20px;margin-bottom:16px;">
                 Guide gratuit
               </div>
