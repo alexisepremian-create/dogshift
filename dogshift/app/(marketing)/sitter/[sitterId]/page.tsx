@@ -15,7 +15,6 @@ import { SERVICE_COLORS, getServiceColors } from "@/lib/design/services";
 import { loadHostProfileFromStorage, type HostProfileV1 } from "@/lib/hostProfile";
 import HostDashboardShell from "@/components/HostDashboardShell";
 import { HostUserProvider, makeHostUserValuePreview } from "@/components/HostUserProvider";
-import SunCornerGlow from "@/components/SunCornerGlow";
 import { DogSizeIcon } from "@/components/DogSizeIcon";
 import { appendHostMessage } from "@/lib/hostMessages";
 import { BUCKET_LABELS_FR, bucketDetailFr, mapReasonToBucket } from "@/lib/availability/reasonBuckets";
@@ -1508,7 +1507,7 @@ function SitterPublicProfileContent({
                   : slotsDate === dateIso;
                 const isInPensionRange = slotsServiceType === "PENSION" && Boolean(boardingStart && boardingEnd && dateIso > boardingStart && dateIso < boardingEnd);
 
-                let btnClass = "relative flex aspect-square w-full flex-col items-center justify-center rounded-full text-[15px] font-semibold transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2";
+                let btnClass = "relative flex aspect-square w-full max-w-[48px] mx-auto flex-col items-center justify-center rounded-full text-sm sm:text-[15px] font-semibold transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2";
                 
                 if (isPast) {
                   btnClass += " text-slate-300 cursor-not-allowed opacity-40";
@@ -2234,8 +2233,7 @@ function SitterPublicProfileContent({
     process.env.NODE_ENV !== "production" && dbgDogSizesParam ? ["Petit", "Moyen", "Grand"] : sitter.dogSizes;
 
   const content = (
-    <div className="relative grid gap-6 overflow-hidden" data-testid="sitter-public-profile">
-      {showHostChrome ? null : <SunCornerGlow variant="sitterPublicPreview" />}
+    <div className="relative grid gap-4 overflow-hidden" data-testid="sitter-public-profile">
       <div className="relative z-10">
         {canEvaluateFinalizeModal ? (
           <Modal
@@ -2732,7 +2730,7 @@ function SitterPublicProfileContent({
                                 void continueToReservation();
                               }}
                               disabled={!canRequestBooking || maintenanceMode}
-                              className="mb-3 inline-flex w-full items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-6 py-3.5 text-[15px] font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition-colors hover:bg-[var(--dogshift-blue-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)] disabled:cursor-not-allowed disabled:opacity-60"
+                              className="mb-3 flex w-full items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-6 py-3.5 text-[15px] font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition-colors hover:bg-[var(--dogshift-blue-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)] disabled:cursor-not-allowed disabled:opacity-60"
                             >
                               Demander une réservation
                             </button>
@@ -2787,7 +2785,7 @@ function SitterPublicProfileContent({
                               }
                             })();
                           }}
-                          className="mb-4 w-full rounded-2xl border border-slate-200 bg-white px-6 py-3.5 text-[15px] font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 disabled:cursor-not-allowed disabled:opacity-60"
+                          className="mb-4 flex w-full items-center justify-center rounded-2xl border border-slate-200 bg-white px-6 py-3.5 text-[15px] font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 disabled:cursor-not-allowed disabled:opacity-60"
                         >
                           {startingChat ? "Ouverture…" : "Envoyer un message"}
                         </button>

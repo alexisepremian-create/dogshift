@@ -266,7 +266,7 @@ export default function DogShiftBot() {
     position: "fixed",
     zIndex: 50,
     ...(isRight ? { right: 16 } : { left: 16 }),
-    ...(isBottom ? { bottom: 20 } : { top: 72 }),
+    ...(isBottom ? { bottom: 80 } : { top: 72 }),
   };
   const wrapStyle: React.CSSProperties = livePos
     ? { position: "fixed", top: livePos.y, left: livePos.x, right: "auto", bottom: "auto", zIndex: 50, opacity: 0.85 }
