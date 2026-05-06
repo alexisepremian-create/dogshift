@@ -313,35 +313,58 @@ async function renderTemplate(template: string): Promise<{ html: string; subject
       };
     }
 
-    case "booking-confirmed":
+    case "booking-confirmed": {
+      const FF = "-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,Helvetica,sans-serif";
       return {
         subject: "Réservation confirmée – DogShift",
         html: renderEmailLayout({
           logoUrl: LOGO_URL,
           title: "Réservation confirmée",
-          subtitle: "Ta réservation a été confirmée.",
+          subtitle: "Ta réservation a été confirmée. Voici les détails de ta prestation.",
           summaryRows: MOCK_TRAVEL_BOOKING_ROWS,
-          extraHtml: buildMockTravelMapHtml(),
+          extraHtml: buildMockTravelMapHtml() + `
+            <div style="margin-top:24px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:18px 20px;">
+              <div style="font-family:${FF};font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#64748b;margin-bottom:12px;">Prépare-toi pour le jour J</div>
+              <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
+                <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">📋</td><td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Prépare les affaires</strong> — laisse, harnais, sacs, friandises et tout ce dont le sitter aura besoin.</td></tr>
+                <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">💬</td><td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Contacte ton sitter</strong> — présente-lui les habitudes de ton chien et les consignes importantes.</td></tr>
+                <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">📍</td><td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Confirme le lieu</strong> — assure-toi que le point de rendez-vous est bien défini avec le sitter.</td></tr>
+              </table>
+            </div>`,
           ctaLabel: "Voir la réservation",
           ctaUrl: `${BASE_URL}/account/bookings`,
+          secondaryLinkLabel: "Contacter mon sitter",
+          secondaryLinkUrl: `${BASE_URL}/account/messages`,
         }).html,
       };
+    }
 
-    case "payment-received":
+    case "payment-received": {
+      const FF = "-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,Helvetica,sans-serif";
       return {
         subject: "Paiement reçu – DogShift",
         html: renderEmailLayout({
           logoUrl: LOGO_URL,
           title: "Paiement reçu",
-          subtitle: "Le paiement a bien été reçu.",
+          subtitle: "Le paiement a bien été reçu. Ta réservation est maintenant garantie.",
           summaryRows: MOCK_TRAVEL_BOOKING_ROWS,
-          extraHtml: buildMockTravelMapHtml(),
+          extraHtml: buildMockTravelMapHtml() + `
+            <div style="margin-top:24px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:18px 20px;">
+              <div style="font-family:${FF};font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#15803d;margin-bottom:12px;">Tout est en ordre</div>
+              <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
+                <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">✅</td><td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Paiement sécurisé</strong> — le montant est conservé en toute sécurité jusqu'à la prestation.</td></tr>
+                <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">🔒</td><td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Protection DogShift</strong> — en cas de problème, notre équipe est là pour t'aider.</td></tr>
+                <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">📄</td><td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Justificatif</strong> — tu retrouveras ton reçu dans l'espace "Mes réservations".</td></tr>
+              </table>
+            </div>`,
           ctaLabel: "Voir la réservation",
           ctaUrl: `${BASE_URL}/account/bookings`,
         }).html,
       };
+    }
 
-    case "booking-reminder":
+    case "booking-reminder": {
+      const FF = "-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,Helvetica,sans-serif";
       return {
         subject: "Demain, Max retrouve Camille 🐾 – DogShift",
         html: renderEmailLayout({
@@ -349,37 +372,72 @@ async function renderTemplate(template: string): Promise<{ html: string; subject
           title: "Demain, Max retrouve Camille 🐾",
           subtitle: "Tout est prêt pour la prestation. Voici un petit récap pour ne rien oublier.",
           summaryRows: MOCK_TRAVEL_BOOKING_ROWS,
-          extraHtml: buildMockReminderHtml(),
+          extraHtml: buildMockReminderHtml() + `
+            <div style="margin-top:24px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:18px 20px;">
+              <div style="font-family:${FF};font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#64748b;margin-bottom:12px;">Checklist du propriétaire</div>
+              <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
+                <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">🦴</td><td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Prépare le nécessaire</strong> — laisse, harnais, sacs, gamelle et éventuelles friandises.</td></tr>
+                <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">📝</td><td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Rappelle les consignes</strong> — allergies, médicaments, comportement en laisse ou avec d'autres chiens.</td></tr>
+                <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">📞</td><td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Garde ton téléphone à portée</strong> — le sitter pourra te contacter en cas de besoin.</td></tr>
+              </table>
+            </div>`,
           ctaLabel: "Voir la réservation",
           ctaUrl: `${BASE_URL}/account/bookings`,
         }).html,
       };
+    }
 
-    case "booking-cancelled":
+    case "booking-cancelled": {
+      const FF = "-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,Helvetica,sans-serif";
       return {
         subject: "Réservation annulée – DogShift",
         html: renderEmailLayout({
           logoUrl: LOGO_URL,
           title: "Réservation annulée",
-          subtitle: "Une réservation a été annulée.",
+          subtitle: "Ton annulation a bien été prise en compte.",
           summaryRows: MOCK_BOOKING_ROWS,
-          ctaLabel: "Voir la réservation",
-          ctaUrl: `${BASE_URL}/account/bookings`,
+          extraHtml: `
+            <div style="margin-top:24px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:18px 20px;">
+              <div style="font-family:${FF};font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#64748b;margin-bottom:12px;">Et maintenant ?</div>
+              <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
+                <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">💰</td><td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Remboursement</strong> — si tu es éligible, le remboursement sera traité automatiquement sous 5 à 10 jours ouvrés.</td></tr>
+                <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">🔍</td><td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Trouve un autre sitter</strong> — des dizaines de sitters vérifiés sont disponibles près de chez toi.</td></tr>
+                <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">💬</td><td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Besoin d'aide ?</strong> — notre équipe est disponible à support@dogshift.ch.</td></tr>
+              </table>
+            </div>`,
+          ctaLabel: "Trouver un autre sitter",
+          ctaUrl: `${BASE_URL}/sitters`,
+          secondaryLinkLabel: "Voir mes réservations",
+          secondaryLinkUrl: `${BASE_URL}/account/bookings`,
         }).html,
       };
+    }
 
-    case "booking-refunded-owner":
+    case "booking-refunded-owner": {
+      const FF = "-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,Helvetica,sans-serif";
       return {
         subject: "Remboursement effectué – DogShift",
         html: renderEmailLayout({
           logoUrl: LOGO_URL,
           title: "Remboursement effectué",
-          subtitle: "Le remboursement a été effectué.",
+          subtitle: "Tout est réglé de notre côté. Le montant sera crédité sur ton compte.",
           summaryRows: MOCK_BOOKING_ROWS,
-          ctaLabel: "Voir la réservation",
-          ctaUrl: `${BASE_URL}/account/bookings`,
+          extraHtml: `
+            <div style="margin-top:24px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:18px 20px;">
+              <div style="font-family:${FF};font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#15803d;margin-bottom:12px;">Détails du remboursement</div>
+              <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
+                <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">⏱</td><td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Délai estimé</strong> — 5 à 10 jours ouvrés selon ta banque.</td></tr>
+                <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">💳</td><td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Moyen de paiement</strong> — le remboursement sera crédité sur le moyen de paiement utilisé lors de la réservation.</td></tr>
+                <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">📧</td><td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Question ?</strong> — contacte-nous à support@dogshift.ch si le remboursement n'apparaît pas passé ce délai.</td></tr>
+              </table>
+            </div>`,
+          ctaLabel: "Trouver un nouveau sitter",
+          ctaUrl: `${BASE_URL}/sitters`,
+          secondaryLinkLabel: "Voir mes réservations",
+          secondaryLinkUrl: `${BASE_URL}/account/bookings`,
         }).html,
       };
+    }
 
     case "booking-refunded-host": {
       const FF = "-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,Helvetica,sans-serif";
@@ -414,32 +472,60 @@ async function renderTemplate(template: string): Promise<{ html: string; subject
       };
     }
 
-    case "booking-expired":
+    case "booking-expired": {
+      const FF = "-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,Helvetica,sans-serif";
       return {
         subject: "Réservation expirée et remboursée – DogShift",
         html: renderEmailLayout({
           logoUrl: LOGO_URL,
           title: "Réservation expirée et remboursée",
           subtitle:
-            "Le dogsitter n'a pas accepté à temps. La réservation a été annulée automatiquement et le remboursement a été déclenché avant J-24h.",
+            "Le dogsitter n'a pas accepté à temps. La réservation a été annulée automatiquement et le remboursement a été déclenché.",
           summaryRows: MOCK_BOOKING_ROWS,
-          ctaLabel: "Voir la réservation",
-          ctaUrl: `${BASE_URL}/account/bookings`,
+          extraHtml: `
+            <div style="margin-top:24px;background:#fefce8;border:1px solid #fde68a;border-radius:12px;padding:18px 20px;">
+              <div style="font-family:${FF};font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#92400e;margin-bottom:12px;">Pourquoi ça arrive</div>
+              <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
+                <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">⏰</td><td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#78350f;">Chaque sitter dispose d'un délai pour accepter les demandes. Ce délai a été dépassé, donc ta réservation a été annulée par sécurité.</td></tr>
+                <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">💰</td><td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#78350f;">Ton remboursement intégral est en cours — il apparaîtra sous 5 à 10 jours ouvrés.</td></tr>
+              </table>
+            </div>
+            <div style="margin-top:16px;padding:14px 18px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;">
+              <div style="font-family:${FF};font-size:13px;line-height:20px;color:#166534;">🐾 <strong>Bonne nouvelle</strong> — de nombreux sitters vérifiés sont disponibles près de chez toi. Réserve en quelques clics !</div>
+            </div>`,
+          ctaLabel: "Trouver un sitter disponible",
+          ctaUrl: `${BASE_URL}/sitters`,
+          secondaryLinkLabel: "Voir mes réservations",
+          secondaryLinkUrl: `${BASE_URL}/account/bookings`,
         }).html,
       };
+    }
 
-    case "booking-refund-failed":
+    case "booking-refund-failed": {
+      const FF = "-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,Helvetica,sans-serif";
       return {
         subject: "Remboursement impossible – DogShift",
         html: renderEmailLayout({
           logoUrl: LOGO_URL,
           title: "Remboursement impossible",
-          subtitle: "Le remboursement a échoué. Notre équipe peut t'aider.",
+          subtitle: "Le remboursement a échoué. Quelques actions peuvent résoudre le problème.",
           summaryRows: MOCK_BOOKING_ROWS,
-          ctaLabel: "Voir la réservation",
-          ctaUrl: `${BASE_URL}/account/bookings`,
+          extraHtml: `
+            <div style="margin-top:24px;background:#fef2f2;border:1px solid #fecaca;border-radius:12px;padding:18px 20px;">
+              <div style="font-family:${FF};font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#991b1b;margin-bottom:12px;">Actions recommandées</div>
+              <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
+                <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">💳</td><td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#7f1d1d;"><strong>Vérifie tes informations bancaires</strong> — assure-toi que ta carte ou ton IBAN est toujours valide.</td></tr>
+                <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">🔄</td><td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#7f1d1d;"><strong>Mets à jour tes infos</strong> — si ta carte a expiré, ajoute un nouveau moyen de paiement.</td></tr>
+                <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">📧</td><td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#7f1d1d;"><strong>Contacte-nous</strong> — si le problème persiste, écris à support@dogshift.ch avec ta référence de réservation.</td></tr>
+              </table>
+            </div>`,
+          ctaLabel: "Mettre à jour mes informations",
+          ctaUrl: `${BASE_URL}/account/settings`,
+          secondaryLinkLabel: "Contacter le support",
+          secondaryLinkUrl: "mailto:support@dogshift.ch",
         }).html,
       };
+    }
 
     case "welcome-owner":
       return {
@@ -464,7 +550,8 @@ async function renderTemplate(template: string): Promise<{ html: string; subject
         }).html,
       };
 
-    case "review-request":
+    case "review-request": {
+      const FF = "-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,Helvetica,sans-serif";
       return {
         subject: "Comment s'est passée votre réservation avec Marie ?",
         html: renderEmailLayout({
@@ -473,11 +560,21 @@ async function renderTemplate(template: string): Promise<{ html: string; subject
           subtitle: "Votre réservation avec Marie est maintenant terminée. Comment s'est-elle passée ?",
           summaryTitle: "Résumé",
           summaryRows: MOCK_BOOKING_ROWS,
+          extraHtml: `
+            <div style="margin-top:24px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:18px 20px;">
+              <div style="font-family:${FF};font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#64748b;margin-bottom:12px;">Pourquoi laisser un avis ?</div>
+              <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
+                <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">🌟</td><td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Aide la communauté</strong> — ton avis guide les autres propriétaires dans leur choix.</td></tr>
+                <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">🙏</td><td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Encourage ton sitter</strong> — un retour positif motive et valorise son travail.</td></tr>
+                <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">📈</td><td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Améliore le service</strong> — tes retours constructifs aident DogShift à s'améliorer.</td></tr>
+              </table>
+            </div>`,
           ctaLabel: "Laisser un avis",
           ctaUrl: `${BASE_URL}/account/bookings/bk_preview_demo_2026/review`,
           footerText: "Votre avis aide la communauté DogShift.",
         }).html,
       };
+    }
 
     case "nurturing-step1":
       return {

@@ -1044,25 +1044,45 @@ Notification DogShift.
       case "bookingConfirmed": {
         const url = bookingUrl(payload.bookingId, "account");
         const { rows, travel } = await resolveBookingEmailData(payload.bookingId);
+        const confirmedTipsHtml = `
+          <div style="margin-top:24px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:18px 20px;">
+            <div style="font-family:${CANCEL_FF};font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#64748b;margin-bottom:12px;">Prépare-toi pour le jour J</div>
+            <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
+              <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">📋</td><td style="padding:5px 0;font-family:${CANCEL_FF};font-size:14px;line-height:20px;color:#475569;"><strong>Prépare les affaires</strong> — laisse, harnais, sacs, friandises et tout ce dont le sitter aura besoin.</td></tr>
+              <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">💬</td><td style="padding:5px 0;font-family:${CANCEL_FF};font-size:14px;line-height:20px;color:#475569;"><strong>Contacte ton sitter</strong> — présente-lui les habitudes de ton chien et les consignes importantes.</td></tr>
+              <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">📍</td><td style="padding:5px 0;font-family:${CANCEL_FF};font-size:14px;line-height:20px;color:#475569;"><strong>Confirme le lieu</strong> — assure-toi que le point de rendez-vous est bien défini.</td></tr>
+            </table>
+          </div>`;
         return renderEmailLayout({
           logoUrl,
           title: "Réservation confirmée",
-          subtitle: "Ta réservation a été confirmée.",
+          subtitle: "Ta réservation a été confirmée. Voici les détails de ta prestation.",
           summaryRows: rows,
-          extraHtml: buildTravelMapExtraHtml(travel),
+          extraHtml: buildTravelMapExtraHtml(travel) + confirmedTipsHtml,
           ctaLabel: url ? "Voir la réservation" : undefined,
           ctaUrl: url || undefined,
+          secondaryLinkLabel: baseUrl ? "Contacter mon sitter" : undefined,
+          secondaryLinkUrl: baseUrl ? `${baseUrl}/account/messages` : undefined,
         }).html;
       }
       case "paymentReceived": {
         const url = bookingUrl(payload.bookingId, "account");
         const { rows, travel } = await resolveBookingEmailData(payload.bookingId);
+        const paymentTipsHtml = `
+          <div style="margin-top:24px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:18px 20px;">
+            <div style="font-family:${CANCEL_FF};font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#15803d;margin-bottom:12px;">Tout est en ordre</div>
+            <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
+              <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">✅</td><td style="padding:5px 0;font-family:${CANCEL_FF};font-size:14px;line-height:20px;color:#475569;"><strong>Paiement sécurisé</strong> — le montant est conservé en toute sécurité jusqu'à la prestation.</td></tr>
+              <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">🔒</td><td style="padding:5px 0;font-family:${CANCEL_FF};font-size:14px;line-height:20px;color:#475569;"><strong>Protection DogShift</strong> — en cas de problème, notre équipe est là pour t'aider.</td></tr>
+              <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">📄</td><td style="padding:5px 0;font-family:${CANCEL_FF};font-size:14px;line-height:20px;color:#475569;"><strong>Justificatif</strong> — tu retrouveras ton reçu dans l'espace "Mes réservations".</td></tr>
+            </table>
+          </div>`;
         return renderEmailLayout({
           logoUrl,
           title: "Paiement reçu",
-          subtitle: "Le paiement a bien été reçu.",
+          subtitle: "Le paiement a bien été reçu. Ta réservation est maintenant garantie.",
           summaryRows: rows,
-          extraHtml: buildTravelMapExtraHtml(travel),
+          extraHtml: buildTravelMapExtraHtml(travel) + paymentTipsHtml,
           ctaLabel: url ? "Voir la réservation" : undefined,
           ctaUrl: url || undefined,
         }).html;
@@ -1083,12 +1103,21 @@ Notification DogShift.
         const title = `${timePrefix}, ${dogName} retrouve ${sitterFirstName} 🐾`;
         const subtitle = "Tout est prêt pour la prestation. Voici un petit récap pour ne rien oublier.";
 
+        const ownerChecklistHtml = `
+          <div style="margin-top:24px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:18px 20px;">
+            <div style="font-family:${CANCEL_FF};font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#64748b;margin-bottom:12px;">Checklist du propriétaire</div>
+            <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
+              <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">🦴</td><td style="padding:5px 0;font-family:${CANCEL_FF};font-size:14px;line-height:20px;color:#475569;"><strong>Prépare le nécessaire</strong> — laisse, harnais, sacs, gamelle et éventuelles friandises.</td></tr>
+              <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">📝</td><td style="padding:5px 0;font-family:${CANCEL_FF};font-size:14px;line-height:20px;color:#475569;"><strong>Rappelle les consignes</strong> — allergies, médicaments, comportement en laisse ou avec d'autres chiens.</td></tr>
+              <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">📞</td><td style="padding:5px 0;font-family:${CANCEL_FF};font-size:14px;line-height:20px;color:#475569;"><strong>Garde ton téléphone à portée</strong> — le sitter pourra te contacter en cas de besoin.</td></tr>
+            </table>
+          </div>`;
         return renderEmailLayout({
           logoUrl,
           title,
           subtitle,
           summaryRows: rows,
-          extraHtml: buildReminderExtraHtml(sitter, travel, baseUrl || "", payload.bookingId),
+          extraHtml: buildReminderExtraHtml(sitter, travel, baseUrl || "", payload.bookingId) + ownerChecklistHtml,
           ctaLabel: url ? "Voir la réservation" : undefined,
           ctaUrl: url || undefined,
         }).html;
@@ -1134,12 +1163,20 @@ Notification DogShift.
           payload.currency,
         );
 
+        const cancelOwnerTipsHtml = `
+          <div style="margin-top:24px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:18px 20px;">
+            <div style="font-family:${CANCEL_FF};font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#64748b;margin-bottom:12px;">Et maintenant ?</div>
+            <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
+              <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">🔍</td><td style="padding:5px 0;font-family:${CANCEL_FF};font-size:14px;line-height:20px;color:#475569;"><strong>Trouve un autre sitter</strong> — des dizaines de sitters vérifiés sont disponibles près de chez toi.</td></tr>
+              <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">💬</td><td style="padding:5px 0;font-family:${CANCEL_FF};font-size:14px;line-height:20px;color:#475569;"><strong>Besoin d'aide ?</strong> — notre équipe est disponible à support@dogshift.ch.</td></tr>
+            </table>
+          </div>`;
         return renderEmailLayout({
           logoUrl,
           title: dateStr ? `Ta réservation du ${dateStr} a été annulée` : "Ta réservation a été annulée",
           subtitle: cancelSubtitle,
           summaryRows: rows,
-          extraHtml: policyHtml + buildSupportBlockHtml(),
+          extraHtml: policyHtml + buildSupportBlockHtml() + cancelOwnerTipsHtml,
           ctaLabel: baseUrl ? "Trouver un autre sitter" : undefined,
           ctaUrl: baseUrl ? `${baseUrl}/sitters` : undefined,
           secondaryLinkLabel: baseUrl ? "Voir mes réservations" : undefined,
@@ -1185,12 +1222,21 @@ Notification DogShift.
           stripeRefundId: payload.stripeRefundId,
         });
 
+        const refundOwnerTipsHtml = `
+          <div style="margin-top:24px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:18px 20px;">
+            <div style="font-family:${CANCEL_FF};font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#15803d;margin-bottom:12px;">Détails du remboursement</div>
+            <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
+              <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">⏱</td><td style="padding:5px 0;font-family:${CANCEL_FF};font-size:14px;line-height:20px;color:#475569;"><strong>Délai estimé</strong> — 5 à 10 jours ouvrés selon ta banque.</td></tr>
+              <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">💳</td><td style="padding:5px 0;font-family:${CANCEL_FF};font-size:14px;line-height:20px;color:#475569;"><strong>Moyen de paiement</strong> — le remboursement sera crédité sur le moyen utilisé lors de la réservation.</td></tr>
+              <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">📧</td><td style="padding:5px 0;font-family:${CANCEL_FF};font-size:14px;line-height:20px;color:#475569;"><strong>Question ?</strong> — contacte-nous à support@dogshift.ch si le remboursement n'apparaît pas passé ce délai.</td></tr>
+            </table>
+          </div>`;
         return renderEmailLayout({
           logoUrl,
           heroLabel: "REMBOURSEMENT",
           title: refundedAmount ? `Ton remboursement de ${refundedAmount} est en route` : "Ton remboursement est en route",
-          subtitle: "Tout est réglé de notre côté.",
-          extraHtml: refundInfoHtml + buildSupportBlockHtml(),
+          subtitle: "Tout est réglé de notre côté. Le montant sera crédité sur ton compte.",
+          extraHtml: refundInfoHtml + buildSupportBlockHtml() + refundOwnerTipsHtml,
           ctaLabel: baseUrl ? "Trouver un nouveau sitter" : undefined,
           ctaUrl: baseUrl ? `${baseUrl}/sitters` : undefined,
           secondaryLinkLabel: baseUrl ? "Voir mes réservations" : undefined,
@@ -1213,7 +1259,10 @@ Notification DogShift.
           heroLabel: "EXPIRATION AUTOMATIQUE",
           title: "Le sitter n’a pas répondu à temps",
           subtitle: "Ta réservation a été automatiquement annulée et remboursée.",
-          extraHtml: expiredExplanationHtml + expiredRefundHtml + buildSupportBlockHtml(),
+          extraHtml: expiredExplanationHtml + expiredRefundHtml + buildSupportBlockHtml() + `
+          <div style="margin-top:16px;padding:14px 18px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;">
+            <div style="font-family:${CANCEL_FF};font-size:13px;line-height:20px;color:#166534;">🐾 <strong>Bonne nouvelle</strong> — de nombreux sitters vérifiés sont disponibles près de chez toi. Réserve en quelques clics !</div>
+          </div>`,
           ctaLabel: baseUrl ? "Trouver un sitter disponible" : undefined,
           ctaUrl: baseUrl ? `${baseUrl}/sitters` : undefined,
           secondaryLinkLabel: baseUrl ? "Voir mes réservations" : undefined,
@@ -1245,7 +1294,15 @@ Notification DogShift.
           subtitle: "Quelques détails à mettre à jour pour finaliser ton remboursement.",
           extraHtml: (failedAmountDisplay
             ? `<div style="margin-top:16px;text-align:center;font-family:${CANCEL_FF};font-size:24px;font-weight:800;color:#d97706;">${failedAmountDisplay}</div>`
-            : "") + failedExplanationHtml + buildSupportBlockHtml(),
+            : "") + failedExplanationHtml + buildSupportBlockHtml() + `
+          <div style="margin-top:24px;background:#fef2f2;border:1px solid #fecaca;border-radius:12px;padding:18px 20px;">
+            <div style="font-family:${CANCEL_FF};font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#991b1b;margin-bottom:12px;">Actions recommandées</div>
+            <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
+              <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">💳</td><td style="padding:5px 0;font-family:${CANCEL_FF};font-size:14px;line-height:20px;color:#7f1d1d;"><strong>Vérifie tes informations bancaires</strong> — assure-toi que ta carte ou ton IBAN est toujours valide.</td></tr>
+              <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">🔄</td><td style="padding:5px 0;font-family:${CANCEL_FF};font-size:14px;line-height:20px;color:#7f1d1d;"><strong>Mets à jour tes infos</strong> — si ta carte a expiré, ajoute un nouveau moyen de paiement.</td></tr>
+              <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">📧</td><td style="padding:5px 0;font-family:${CANCEL_FF};font-size:14px;line-height:20px;color:#7f1d1d;"><strong>Contacte-nous</strong> — si le problème persiste, écris à support@dogshift.ch avec ta référence.</td></tr>
+            </table>
+          </div>`,
           ctaLabel: baseUrl ? "Mettre à jour mes informations" : undefined,
           ctaUrl: baseUrl ? `${baseUrl}/account/settings` : undefined,
           secondaryLinkLabel: "Contacter le support",
