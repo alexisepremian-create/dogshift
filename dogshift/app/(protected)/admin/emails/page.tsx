@@ -171,6 +171,52 @@ const CATEGORIES: EmailCategory[] = [
         description: "Notification au dog-sitter quand un propriétaire fait une demande",
       },
       {
+        id: "sitter-booking-confirmed",
+        label: "Réservation confirmée",
+        description: "Confirmation envoyée au sitter après acceptation + paiement du propriétaire",
+      },
+      {
+        id: "sitter-booking-reminder",
+        label: "Rappel de prestation",
+        description: "Rappel J-1 envoyé au sitter avant le début de la prestation",
+      },
+      {
+        id: "sitter-payout-received",
+        label: "Virement reçu",
+        description: "Notification de virement Stripe Connect reçu sur le compte du sitter",
+      },
+      {
+        id: "sitter-booking-modified",
+        label: "Réservation modifiée",
+        description: "Le propriétaire a modifié les dates ou détails de la réservation",
+      },
+      {
+        id: "sitter-refund-triggered-eligible",
+        label: "Annulation — remboursement éligible",
+        description: "Le propriétaire a annulé dans les délais → remboursement intégral déclenché",
+        badge: "Éligible",
+        badgeColor: "bg-emerald-100 text-emerald-700",
+      },
+      {
+        id: "sitter-refund-triggered-late",
+        label: "Annulation — hors délai",
+        description: "Le propriétaire a annulé hors délai → remboursement partiel ou nul",
+        badge: "Hors délai",
+        badgeColor: "bg-amber-100 text-amber-700",
+      },
+      {
+        id: "sitter-review-received",
+        label: "Nouvel avis reçu",
+        description: "Un propriétaire a laissé un avis après une prestation",
+      },
+      {
+        id: "sitter-monthly-recap",
+        label: "Récap mensuel",
+        description: "Résumé mensuel d'activité : prestations, revenus, avis",
+        badge: "Cron",
+        badgeColor: "bg-slate-100 text-slate-500",
+      },
+      {
         id: "booking-refunded-host",
         label: "Réservation annulée (vue sitter)",
         description: "Le propriétaire a annulé — remboursement traité",
