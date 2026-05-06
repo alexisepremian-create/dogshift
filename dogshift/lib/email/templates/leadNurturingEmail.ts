@@ -77,25 +77,25 @@ function buildBase(params: {
 
           <!-- LOGO -->
           <tr>
-            <td align="center" style="padding:0 0 20px 0;">
-              <a href="${siteUrl}" style="text-decoration:none;">
-                <img src="${logoUrl}" width="44" height="44" alt="DogShift"
-                  style="display:inline-block;border:0;width:44px;height:44px;border-radius:12px;vertical-align:middle;margin-right:10px;" />
-                <span style="font-family:Arial,Helvetica,sans-serif;font-size:20px;font-weight:800;color:#111827;vertical-align:middle;">DogShift</span>
+            <td align="center" style="padding:0 0 24px 0;text-align:center;">
+              <a href="${siteUrl}" style="text-decoration:none;display:inline-flex;align-items:center;gap:10px;">
+                <img src="${logoUrl}" width="36" height="36" alt=""
+                  style="display:block;border:0;width:36px;height:36px;border-radius:8px;" />
+                <span style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,Helvetica,sans-serif;font-size:18px;font-weight:800;color:#0f172a;letter-spacing:-0.4px;">DogShift</span>
               </a>
             </td>
           </tr>
 
           <!-- HERO -->
           <tr>
-            <td style="border-radius:16px 16px 0 0;overflow:hidden;background:linear-gradient(135deg,#4c1d95 0%,#7c3aed 60%,#8b5cf6 100%);padding:36px 32px 32px;">
-              <div style="font-family:Arial,Helvetica,sans-serif;font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#c4b5fd;margin-bottom:12px;">
+            <td style="border-radius:16px 16px 0 0;overflow:hidden;background:linear-gradient(135deg,#7c3aed 0%,#6366f1 55%,#818cf8 100%);padding:36px 36px 32px;">
+              <div style="display:inline-block;background:rgba(255,255,255,0.18);color:rgba(255,255,255,0.95);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,Helvetica,sans-serif;font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;padding:4px 12px;border-radius:20px;margin-bottom:16px;">
                 ${escapeHtml(heroLabel)}
               </div>
-              <div style="font-family:Georgia,'Times New Roman',serif;font-size:26px;font-weight:700;line-height:34px;color:#ffffff;margin-bottom:10px;">
+              <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,Helvetica,sans-serif;font-size:26px;font-weight:800;line-height:32px;color:#ffffff;letter-spacing:-0.4px;margin-bottom:12px;">
                 ${escapeHtml(heroTitle)}
               </div>
-              <div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:22px;color:#ddd6fe;">
+              <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,Helvetica,sans-serif;font-size:15px;line-height:22px;color:rgba(255,255,255,0.85);">
                 ${escapeHtml(heroSubtitle)}
               </div>
             </td>
@@ -156,13 +156,25 @@ function buildBase(params: {
 
           <!-- FOOTER -->
           <tr>
-            <td align="center" style="padding:20px 4px 0;font-family:Arial,Helvetica,sans-serif;font-size:11px;line-height:18px;color:#9ca3af;text-align:center;">
-              <center>
-                Vous recevez cet email car vous avez demandé notre guide gratuit sur
-                <a href="${siteUrl}" style="color:#9ca3af;">dogshift.ch</a>.
-                DogShift &bull; <a href="mailto:support@dogshift.ch" style="color:#9ca3af;">support@dogshift.ch</a>
-                &bull; <a href="${escapeHtml(`${base}/unsubscribe`)}" style="color:#9ca3af;">Se désabonner</a>
-              </center>
+            <td align="center" style="padding:24px 4px 0;text-align:center;">
+              <table role="presentation" cellpadding="0" cellspacing="0" align="center" style="border-collapse:collapse;margin:0 auto 16px;">
+                <tr>
+                  <td style="padding:0 6px;"><a href="https://instagram.com/dogshift" style="text-decoration:none;display:inline-block;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><rect x="2" y="2" width="20" height="20" rx="6" stroke="#94a3b8" stroke-width="1.8"/><circle cx="12" cy="12" r="4" stroke="#94a3b8" stroke-width="1.8"/><circle cx="17.5" cy="6.5" r="1" fill="#94a3b8"/></svg></a></td>
+                  <td style="padding:0 6px;"><a href="https://facebook.com/dogshift" style="text-decoration:none;display:inline-block;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z" stroke="#94a3b8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></a></td>
+                  <td style="padding:0 6px;"><a href="${siteUrl}" style="text-decoration:none;display:inline-block;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="#94a3b8" stroke-width="1.8"/><path d="M12 2c-2.5 3-4 6-4 10s1.5 7 4 10M12 2c2.5 3 4 6 4 10s-1.5 7-4 10M2 12h20" stroke="#94a3b8" stroke-width="1.8" stroke-linecap="round"/></svg></a></td>
+                </tr>
+              </table>
+              <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;margin:0 0 12px;"><tr><td height="1" style="background-color:#e2e8f0;font-size:0;line-height:0;">&nbsp;</td></tr></table>
+              <p style="margin:0 0 4px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,Helvetica,sans-serif;font-size:11px;line-height:17px;color:#94a3b8;text-align:center;">
+                DogShift &middot; support@dogshift.ch &middot; Plateforme de dogsitting premium en Suisse
+              </p>
+              <p style="margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,Helvetica,sans-serif;font-size:11px;line-height:17px;color:#94a3b8;text-align:center;">
+                <a href="${siteUrl}" style="color:#94a3b8;text-decoration:none;">dogshift.ch</a>
+                &nbsp;&middot;&nbsp;
+                <a href="mailto:support@dogshift.ch" style="color:#94a3b8;text-decoration:none;">support@dogshift.ch</a>
+                &nbsp;&middot;&nbsp;
+                <a href="${escapeHtml(`${base}/unsubscribe`)}" style="color:#94a3b8;text-decoration:underline;">Se d&eacute;sabonner</a>
+              </p>
             </td>
           </tr>
 

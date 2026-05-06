@@ -70,25 +70,25 @@ export function renderZootherapieEmail(params: {
 
           <!-- LOGO -->
           <tr>
-            <td align="center" style="padding:0 0 20px 0;">
-              <a href="${siteUrl}" style="text-decoration:none;">
-                <img src="${escapeHtml(logoUrl)}" width="44" height="44" alt="DogShift"
-                  style="display:inline-block;border:0;width:44px;height:44px;border-radius:12px;vertical-align:middle;margin-right:10px;" />
-                <span style="font-family:Arial,Helvetica,sans-serif;font-size:20px;font-weight:800;color:#111827;vertical-align:middle;">DogShift</span>
+            <td align="center" style="padding:0 0 24px 0;text-align:center;">
+              <a href="${siteUrl}" style="text-decoration:none;display:inline-flex;align-items:center;gap:10px;">
+                <img src="${escapeHtml(logoUrl)}" width="36" height="36" alt=""
+                  style="display:block;border:0;width:36px;height:36px;border-radius:8px;" />
+                <span style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,Helvetica,sans-serif;font-size:18px;font-weight:800;color:#0f172a;letter-spacing:-0.4px;">DogShift</span>
               </a>
             </td>
           </tr>
 
           <!-- HERO HEADER -->
           <tr>
-            <td style="border-radius:16px 16px 0 0;overflow:hidden;background:linear-gradient(135deg,#4c1d95 0%,#7c3aed 60%,#8b5cf6 100%);padding:36px 32px 32px;">
-              <div style="font-family:Arial,Helvetica,sans-serif;font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#c4b5fd;margin-bottom:12px;">
+            <td style="border-radius:16px 16px 0 0;overflow:hidden;background:linear-gradient(135deg,#7c3aed 0%,#6366f1 55%,#818cf8 100%);padding:36px 36px 32px;">
+              <div style="font-family:Arial,Helvetica,sans-serif;display:inline-block;background:rgba(255,255,255,0.18);color:rgba(255,255,255,0.95);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,Helvetica,sans-serif;font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;padding:4px 12px;border-radius:20px;margin-bottom:16px;">
                 Évaluation bien-être
               </div>
-              <div style="font-family:Georgia,'Times New Roman',serif;font-size:26px;font-weight:700;line-height:34px;color:#ffffff;margin-bottom:10px;">
+              <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,Helvetica,sans-serif;font-size:26px;font-weight:800;line-height:32px;color:#ffffff;letter-spacing:-0.4px;margin-bottom:12px;">
                 ${escapeHtml(titre)}
               </div>
-              <div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:22px;color:#ddd6fe;">
+              <div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:22px;color:rgba(255,255,255,0.85);">
                 Bonjour ${escapeHtml(prenom)}, voici votre évaluation personnalisée basée sur vos réponses.
               </div>
             </td>
@@ -150,7 +150,7 @@ export function renderZootherapieEmail(params: {
                       <div style="font-family:Georgia,'Times New Roman',serif;font-size:22px;font-weight:700;line-height:30px;color:#ffffff;max-width:340px;">
                         Sans condition.
                       </div>
-                      <div style="font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:20px;color:#ddd6fe;margin-top:10px;max-width:340px;">
+                      <div style="font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:20px;color:rgba(255,255,255,0.85);margin-top:10px;max-width:340px;">
                         Votre chien vous offre chaque jour quelque chose de rare — prenez-en soin ensemble.
                       </div>
                     </td>

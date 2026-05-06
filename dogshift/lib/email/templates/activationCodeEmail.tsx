@@ -24,11 +24,10 @@ export {
 } from "./activationCodeEmailContent";
 export type { ActivationCodeEmailParams } from "./activationCodeEmailContent";
 
-const ACCENT = "#2f4d6b";
-
-// Inline SVG icons — no emojis
-const ICON_CLOCK = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:inline-block;vertical-align:middle;margin-right:4px;"><circle cx="12" cy="12" r="9" stroke="#64748b" stroke-width="1.8"/><path d="M12 7v5l3 3" stroke="#64748b" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
-const ICON_LOCK = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:inline-block;vertical-align:middle;margin-right:4px;"><rect x="5" y="11" width="14" height="10" rx="2" stroke="#64748b" stroke-width="1.8"/><path d="M8 11V7a4 4 0 018 0v4" stroke="#64748b" stroke-width="1.8" stroke-linecap="round"/></svg>`;
+// ── Social SVGs (footer) ──────────────────────────────────────────────────────
+const SVG_INSTAGRAM = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><rect x="2" y="2" width="20" height="20" rx="6" stroke="#94a3b8" stroke-width="1.8"/><circle cx="12" cy="12" r="4" stroke="#94a3b8" stroke-width="1.8"/><circle cx="17.5" cy="6.5" r="1" fill="#94a3b8"/></svg>`;
+const SVG_FACEBOOK = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z" stroke="#94a3b8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+const SVG_GLOBE = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="#94a3b8" stroke-width="1.8"/><path d="M12 2c-2.5 3-4 6-4 10s1.5 7 4 10M12 2c2.5 3 4 6 4 10s-1.5 7-4 10M2 12h20" stroke="#94a3b8" stroke-width="1.8" stroke-linecap="round"/></svg>`;
 
 export function ActivationCodeEmail(props: {
   baseUrl?: string;
@@ -43,9 +42,7 @@ export function ActivationCodeEmail(props: {
   const activationCode = (props.activationCode || "").trim();
   const dashboardUrl = `${baseUrl}/become-sitter/access?code=${encodeURIComponent(activationCode)}`;
   const expiryLabel = formatActivationCodeExpiry(props.expiresAt);
-  const previewText = (
-    props.previewText || activationCodeEmailDefaultPreviewText()
-  ).trim();
+  const previewText = (props.previewText || activationCodeEmailDefaultPreviewText()).trim();
 
   return (
     <Html lang="fr">
@@ -56,144 +53,123 @@ export function ActivationCodeEmail(props: {
 
           {/* Logo */}
           <Section style={s.logoSection}>
-            <Link href={baseUrl} style={s.logoLink}>
-              <Img src={logoUrl} width={140} alt="DogShift" style={s.logo} />
+            <Link href={baseUrl} style={{ textDecoration: "none", display: "inline-flex", alignItems: "center", gap: "10px" }}>
+              <Img src={logoUrl} width={36} height={36} alt="" style={{ display: "block", borderRadius: 8 }} />
+              <Text style={s.brandName}>DogShift</Text>
             </Link>
           </Section>
 
-          {/* Main card */}
+          {/* Purple hero */}
+          <Section style={s.hero}>
+            <div style={s.heroLabel}>CODE D&apos;ACTIVATION</div>
+            <Text style={s.heroTitle}>
+              Contrat signé — voici ton code d&apos;activation
+            </Text>
+            <Text style={s.heroSubtitle}>
+              Félicitations{firstName ? ` ${firstName}` : ""}&nbsp;! Ton contrat est signé et ton compte dogsitter est prêt.
+            </Text>
+          </Section>
+
+          {/* White card */}
           <Section className="ds-card" style={s.card}>
-
-            {/* Accent top bar */}
-            <div style={s.accentBar} />
-
             <div style={s.cardBody}>
-              <Text className="ds-title" style={s.h1}>
-                Contrat signé — voici ton code d&apos;activation
-              </Text>
-              <Text className="ds-lead" style={s.lead}>
-                Félicitations {firstName ? `${firstName}\u00A0!` : "!"} Ton contrat est signé et ton compte dogsitter est prêt à être activé.
-              </Text>
-              <Text className="ds-lead" style={s.lead}>
-                Voici ton <strong>code d&apos;activation personnel</strong> :
+
+              <Text style={s.bodyText}>
+                Voici ton <strong>code d&apos;activation personnel</strong> — saisis-le dans ton dashboard pour activer ton profil.
               </Text>
 
               {/* Code box */}
-              <Section className="ds-code-box" style={s.codeBox}>
-                <Text className="ds-code-val" style={s.codeVal}>{activationCode}</Text>
-              </Section>
+              <div style={s.codeBox}>
+                <span style={s.codeVal}>{activationCode}</span>
+              </div>
 
-              <Text className="ds-lead" style={s.lead}>
-                Connecte-toi à ton dashboard et saisis ce code pour activer ton profil.
-              </Text>
-
-              <Section style={s.ctaRow}>
+              <Section style={{ textAlign: "center", padding: "20px 0 8px" }}>
                 <Button href={dashboardUrl} style={s.cta}>
                   Activer mon compte dogsitter
                 </Button>
               </Section>
 
               {expiryLabel ? (
-                <Section className="ds-highlight" style={s.highlight}>
-                  <Text className="ds-highlight-text" style={s.highlightText}>
-                    <span
-                      dangerouslySetInnerHTML={{ __html: ICON_CLOCK }}
-                    />
-                    {" "}
-                    Ce code est valable jusqu&apos;au{" "}
-                    <strong>{expiryLabel}</strong>. Passée cette date, contacte-nous pour un nouveau code.
+                <div style={s.highlight}>
+                  <Text style={s.highlightText}>
+                    Ce code est valable jusqu&apos;au <strong>{expiryLabel}</strong>. Passée cette date, contacte-nous pour un nouveau code.
                   </Text>
-                </Section>
+                </div>
               ) : null}
 
-              <Text className="ds-muted" style={s.muted}>
-                <span dangerouslySetInnerHTML={{ __html: ICON_LOCK }} />
-                {" "}
+              <Text style={s.muted}>
                 Code strictement personnel et à usage unique.
               </Text>
             </div>
           </Section>
 
           {/* Footer */}
-          <Text className="ds-footer-text" style={s.footerText}>
-            Besoin d&apos;aide ?{" "}
-            <Link href="mailto:support@dogshift.ch" className="ds-footer-link" style={s.footerLink}>
-              support@dogshift.ch
-            </Link>
-            {" "}·{" "}
-            <Link href={baseUrl} className="ds-footer-link" style={s.footerLink}>
-              dogshift.ch
-            </Link>
-          </Text>
-          <Text className="ds-bottom" style={s.bottomMuted}>
-            DogShift · Plateforme de dogsitting premium en Suisse · Ceci est un email automatique.
-          </Text>
+          <Section style={s.footerSection}>
+            <div style={s.socialRow}>
+              <a href="https://instagram.com/dogshift" style={s.socialLink} dangerouslySetInnerHTML={{ __html: SVG_INSTAGRAM }} />
+              <a href="https://facebook.com/dogshift" style={s.socialLink} dangerouslySetInnerHTML={{ __html: SVG_FACEBOOK }} />
+              <a href={baseUrl} style={s.socialLink} dangerouslySetInnerHTML={{ __html: SVG_GLOBE }} />
+            </div>
+            <div style={s.divider} />
+            <Text style={s.footerText}>
+              DogShift &middot; support@dogshift.ch &middot; Plateforme de dogsitting premium en Suisse
+            </Text>
+            <Text style={s.footerText}>
+              <Link href={baseUrl} style={s.footerLink}>dogshift.ch</Link>
+              &nbsp;&middot;&nbsp;
+              <Link href="mailto:support@dogshift.ch" style={s.footerLink}>support@dogshift.ch</Link>
+              &nbsp;&middot;&nbsp;
+              <Link href={`${baseUrl}/unsubscribe`} style={{ ...s.footerLink, textDecoration: "underline" }}>Se désabonner</Link>
+            </Text>
+          </Section>
+
         </Container>
       </Body>
     </Html>
   );
 }
 
-// ── Styles ─────────────────────────────────────────────────────────────────────
+// ── Styles ────────────────────────────────────────────────────────────────────
 
 const s: Record<string, CSSProperties> = {
-  body: {
-    margin: 0,
-    padding: 0,
-    backgroundColor: "#f1f5f9",
-    fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,Helvetica,sans-serif",
-    color: "#0f172a",
+  body: { margin: 0, padding: 0, backgroundColor: "#f1f5f9", fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,Helvetica,sans-serif" },
+  container: { margin: "0 auto", padding: "32px 12px 40px", width: "100%", maxWidth: 600 },
+
+  logoSection: { textAlign: "center", padding: "0 0 24px" },
+  brandName: { margin: 0, fontSize: 18, fontWeight: 800, color: "#0f172a", letterSpacing: "-0.4px", display: "inline" },
+
+  hero: {
+    background: "linear-gradient(135deg,#7c3aed 0%,#6366f1 55%,#818cf8 100%)",
+    borderRadius: "16px 16px 0 0",
+    padding: "36px 36px 32px",
   },
-  container: {
-    margin: "0 auto",
-    padding: "32px 12px 40px",
-    width: "100%",
-    maxWidth: 600,
-  },
-  logoSection: {
-    textAlign: "center",
-    padding: "0 0 20px",
-  },
-  logoLink: {
+  heroLabel: {
     display: "inline-block",
+    background: "rgba(255,255,255,0.18)",
+    color: "rgba(255,255,255,0.95)",
+    fontSize: 10,
+    fontWeight: 700,
+    letterSpacing: "0.12em",
+    textTransform: "uppercase" as const,
+    padding: "4px 12px",
+    borderRadius: 20,
+    marginBottom: 16,
   },
-  logo: {
-    display: "block",
-    margin: "0 auto",
-    height: "auto",
-  },
+  heroTitle: { margin: "0 0 12px", fontSize: 26, fontWeight: 800, lineHeight: "32px", color: "#ffffff", letterSpacing: "-0.4px" },
+  heroSubtitle: { margin: 0, fontSize: 15, lineHeight: "22px", color: "rgba(255,255,255,0.85)" },
+
   card: {
     backgroundColor: "#ffffff",
+    borderRadius: "0 0 16px 16px",
     border: "1px solid #e2e8f0",
-    borderRadius: 16,
-    overflow: "hidden",
-    boxShadow: "0 1px 3px rgba(0,0,0,0.06),0 4px 16px rgba(0,0,0,0.04)",
+    borderTop: "none",
+    boxShadow: "0 4px 24px rgba(0,0,0,0.07)",
   },
-  accentBar: {
-    height: 4,
-    backgroundColor: ACCENT,
-    fontSize: 0,
-    lineHeight: "0",
-  },
-  cardBody: {
-    padding: "32px 36px 36px",
-  },
-  h1: {
-    margin: "0 0 8px",
-    fontSize: 22,
-    fontWeight: 800,
-    lineHeight: "28px",
-    letterSpacing: "-0.3px",
-    color: "#0f172a",
-  },
-  lead: {
-    margin: "12px 0 0",
-    fontSize: 14,
-    lineHeight: "22px",
-    color: "#475569",
-  },
+  cardBody: { padding: "32px 36px 36px" },
+  bodyText: { margin: "0 0 20px", fontSize: 14, lineHeight: "22px", color: "#475569" },
+
   codeBox: {
-    margin: "20px 0 8px",
+    margin: "0 0 8px",
     padding: "20px 14px",
     backgroundColor: "#f8fafc",
     border: "1px solid #e2e8f0",
@@ -201,63 +177,23 @@ const s: Record<string, CSSProperties> = {
     textAlign: "center",
   },
   codeVal: {
-    margin: 0,
     fontFamily: "ui-monospace,SFMono-Regular,Menlo,Consolas,monospace",
-    fontSize: 26,
+    fontSize: 28,
     fontWeight: 800,
-    letterSpacing: "3px",
-    color: ACCENT,
+    letterSpacing: "4px",
+    color: "#6366f1",
   },
-  highlight: {
-    marginTop: 16,
-    padding: "12px 16px",
-    backgroundColor: "#f8fafc",
-    border: "1px solid #e2e8f0",
-    borderRadius: 10,
-    borderLeft: `3px solid ${ACCENT}`,
-  },
-  highlightText: {
-    margin: 0,
-    fontSize: 13,
-    lineHeight: "19px",
-    color: "#475569",
-  },
-  ctaRow: {
-    textAlign: "center",
-    padding: "20px 0 8px",
-  },
-  cta: {
-    backgroundColor: ACCENT,
-    color: "#ffffff",
-    fontSize: 14,
-    fontWeight: 700,
-    textDecoration: "none",
-    padding: "14px 28px",
-    borderRadius: 10,
-    display: "inline-block",
-  },
-  muted: {
-    margin: "16px 0 0",
-    fontSize: 12,
-    lineHeight: "18px",
-    color: "#94a3b8",
-  },
-  footerText: {
-    margin: "20px 0 0",
-    fontSize: 12,
-    lineHeight: "18px",
-    color: "#94a3b8",
-    textAlign: "center",
-  },
-  footerLink: {
-    color: "#64748b",
-    textDecoration: "none",
-  },
-  bottomMuted: {
-    margin: "8px 0 0",
-    fontSize: 11,
-    lineHeight: "16px",
-    color: "#cbd5e1",
-    textAlign: "center",
-  },
+
+  highlight: { marginTop: 16, padding: "12px 16px", backgroundColor: "#f5f3ff", borderRadius: 10, borderLeft: "3px solid #6366f1" },
+  highlightText: { margin: 0, fontSize: 13, lineHeight: "19px", color: "#475569" },
+
+  cta: { backgroundColor: "#6366f1", color: "#ffffff", fontSize: 14, fontWeight: 700, textDecoration: "none", padding: "14px 28px", borderRadius: 10, display: "inline-block" },
+  muted: { margin: "16px 0 0", fontSize: 12, lineHeight: "18px", color: "#94a3b8", textAlign: "center" },
+
+  footerSection: { padding: "24px 4px 0", textAlign: "center" },
+  socialRow: { display: "flex", justifyContent: "center", gap: 16, marginBottom: 16 },
+  socialLink: { textDecoration: "none", display: "inline-block" },
+  divider: { height: 1, background: "#e2e8f0", margin: "0 0 12px" },
+  footerText: { margin: "0 0 4px", fontSize: 11, lineHeight: "17px", color: "#94a3b8", textAlign: "center" },
+  footerLink: { color: "#94a3b8", textDecoration: "none" },
 };
