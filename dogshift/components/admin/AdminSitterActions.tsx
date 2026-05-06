@@ -5,7 +5,7 @@ import { useState } from "react";
 import { canGenerateContractAccessLink, lifecycleStatusLabel, type SitterLifecycleStatus } from "@/lib/sitterContract";
 
 type VerificationStatus = "not_verified" | "pending" | "approved" | "rejected";
-type ActionType = "select" | "generate_contract_link" | "approve" | "reject" | "suspend" | "reactivate" | "publish" | "unpublish" | "activate" | "send_activation_code";
+type ActionType = "select" | "generate_contract_link" | "approve" | "reject" | "suspend" | "reactivate" | "publish" | "unpublish" | "activate" | "send_activation_code" | "save_notes";
 
 type Props = {
   sitterUserId: string;
@@ -119,11 +119,13 @@ export default function AdminSitterActions({
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  async function runAction(action: ActionType) {
+  async function runAction(action: ActionType, notesOverride?: string) {
     if (loadingAction) return;
     setLoadingAction(action);
     setError(null);
     setSuccess(null);
+
+    const notesPayload = notesOverride !== undefined ? notesOverride : notes;
 
     try {
       const res = await fetch(`/api/admin/sitters/${sitterUserId}/actions`, {
@@ -131,7 +133,7 @@ export default function AdminSitterActions({
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ action, notes }),
+        body: JSON.stringify({ action, notes: notesPayload }),
       });
       // eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic JSON shape; narrowed by runtime checks below.
       const payload = (await res.json().catch(() => null)) as any;
@@ -148,7 +150,15 @@ export default function AdminSitterActions({
       setContractAccessTokenExpiresAt(typeof payload.profile.contractAccessTokenExpiresAt === "string" ? payload.profile.contractAccessTokenExpiresAt : null);
       setLatestContractAccessLink(typeof payload.contractAccessLink === "string" ? payload.contractAccessLink : null);
       setLatestContractAccessFingerprint(typeof payload.contractAccessTokenFingerprint === "string" ? payload.contractAccessTokenFingerprint : null);
-      setSuccess(action === "send_activation_code" ? "Code d'activation envoyé par email." : "Action enregistrée.");
+      setSuccess(
+        action === "send_activation_code"
+          ? "Code d'activation envoyé par email."
+          : action === "save_notes"
+            ? notesPayload.trim()
+              ? "Notes enregistrées."
+              : "Notes supprimées."
+            : "Action enregistrée.",
+      );
     } catch {
       setError("Impossible d’exécuter l’action admin.");
     } finally {
@@ -236,6 +246,27 @@ export default function AdminSitterActions({
             className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition focus:border-[var(--dogshift-blue)] focus:ring-2 focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_80%)]"
             placeholder="Motif, décision, contexte opérationnel…"
           />
+          <div className="mt-2 flex items-center gap-2">
+            <button
+              type="button"
+              disabled={loadingAction !== null}
+              onClick={() => void runAction("save_notes")}
+              className="inline-flex items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[var(--dogshift-blue-hover)] disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {loadingAction === "save_notes" ? "Enregistrement…" : "Enregistrer les notes"}
+            </button>
+            <button
+              type="button"
+              disabled={loadingAction !== null || notes.trim().length === 0}
+              onClick={() => {
+                setNotes("");
+                void runAction("save_notes", "");
+              }}
+              className="inline-flex items-center justify-center rounded-2xl border border-rose-300 bg-white px-4 py-2 text-sm font-semibold text-rose-600 shadow-sm transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              Supprimer les notes
+            </button>
+          </div>
         </div>
       ) : null}
 
