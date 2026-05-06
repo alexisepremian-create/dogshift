@@ -328,26 +328,24 @@ function buildTravelMapExtraHtml(travel: TravelEmailData): string {
   const distStr = travel.distanceKm.toFixed(1);
   const feeStr = `CHF ${(travel.feeCents / 100).toFixed(2)}`;
   return `
-    <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;margin-top:16px;">
+    <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;margin-top:18px;">
       <tr>
-        <td style="border-radius:12px;overflow:hidden;border:1px solid #e0e7ff;">
+        <td style="padding:0;">
           <img
             src="${travel.mapUrl}"
             alt="Carte du trajet"
             width="516"
-            style="display:block;width:100%;max-width:516px;height:auto;border-radius:12px 12px 0 0;"
+            style="display:block;width:100%;max-width:516px;height:auto;border-radius:12px;"
           />
-          <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;background:#f5f3ff;border-top:1px solid #e0e7ff;">
-            <tr>
-              <td style="padding:10px 14px;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#374151;">
-                <span style="color:#4f46e5;font-weight:700;">&#x1F4CD; ${distStr} km</span>
-                &nbsp;&nbsp;•&nbsp;&nbsp;
-                <span style="color:#059669;font-weight:700;">Frais : ${feeStr}</span>
-                &nbsp;&nbsp;•&nbsp;&nbsp;
-                <span style="color:#6b7280;">Le sitter se déplace chez vous</span>
-              </td>
-            </tr>
-          </table>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding:10px 0 0;text-align:center;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,Helvetica,sans-serif;font-size:13px;line-height:18px;color:#475569;">
+          <strong style="color:#4f46e5;">${distStr} km</strong>
+          &nbsp;·&nbsp;
+          <span style="color:#059669;font-weight:600;">Frais : ${feeStr}</span>
+          &nbsp;·&nbsp;
+          <span style="color:#94a3b8;">Le sitter se déplace chez vous</span>
         </td>
       </tr>
     </table>
