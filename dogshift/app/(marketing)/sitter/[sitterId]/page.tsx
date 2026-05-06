@@ -1529,9 +1529,15 @@ function SitterPublicProfileContent({
                 // Gather which services are available for the dots under the number
                 const availableDots = [];
                 if (!isPast && row) {
-                  if (row.promenadeStatus === "AVAILABLE" || row.promenadeStatus === "ON_REQUEST" || row.promenadePartial) availableDots.push(getServiceColors("PROMENADE").fill);
-                  if (row.dogsittingStatus === "AVAILABLE" || row.dogsittingStatus === "ON_REQUEST" || row.dogsittingPartial) availableDots.push(getServiceColors("DOGSITTING").fill);
-                  if (row.pensionStatus === "AVAILABLE" || row.pensionStatus === "ON_REQUEST" || row.pensionPartial) availableDots.push(getServiceColors("PENSION").fill);
+                  if (slotsServiceType === "PROMENADE" && (row.promenadeStatus === "AVAILABLE" || row.promenadeStatus === "ON_REQUEST" || row.promenadePartial)) {
+                    availableDots.push(getServiceColors("PROMENADE").fill);
+                  }
+                  if (slotsServiceType === "DOGSITTING" && (row.dogsittingStatus === "AVAILABLE" || row.dogsittingStatus === "ON_REQUEST" || row.dogsittingPartial)) {
+                    availableDots.push(getServiceColors("DOGSITTING").fill);
+                  }
+                  if (slotsServiceType === "PENSION" && (row.pensionStatus === "AVAILABLE" || row.pensionStatus === "ON_REQUEST" || row.pensionPartial)) {
+                    availableDots.push(getServiceColors("PENSION").fill);
+                  }
                 }
 
                 const ariaLabel = `${dateIso} — ${serviceUi.current.label}: ${serviceUi.statusLabel(serviceTone)}`;
@@ -1610,7 +1616,7 @@ function SitterPublicProfileContent({
                       {availableDots.length > 0 && !isCalendarSelected && !isInPensionRange ? (
                         <div className="absolute bottom-1.5 flex gap-1">
                           {availableDots.map((dotColor, idx) => (
-                            <span key={idx} className={`h-1.5 w-1.5 rounded-full ${dotColor}`} />
+                            <span key={idx} className={`h-1 w-1 rounded-full ${dotColor}`} />
                           ))}
                         </div>
                       ) : null}
