@@ -111,13 +111,13 @@ export function renderEmailLayout(params: {
       "DogShift \u00b7 support@dogshift.ch \u00b7 Plateforme de dogsitting premium en Suisse",
   );
 
-  // ── Logo block ──────────────────────────────────────────────────────────────
+  // ── Logo block (white text — lives inside the purple hero) ─────────────────
   const logoHtml = logoUrl
     ? `<a href="${esc(baseUrl)}" style="text-decoration:none;display:inline-flex;align-items:center;gap:10px;">
-        <img src="${esc(logoUrl)}" width="36" alt="" style="display:block;width:36px;height:36px;border:0;outline:none;border-radius:8px;" />
-        <span style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,Helvetica,sans-serif;font-size:18px;font-weight:800;color:#0f172a;letter-spacing:-0.4px;">${esc(brandName)}</span>
+        <img src="${esc(logoUrl)}" width="32" alt="" style="display:block;width:32px;height:32px;border:0;outline:none;border-radius:6px;" />
+        <span style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,Helvetica,sans-serif;font-size:17px;font-weight:800;color:#ffffff;letter-spacing:-0.3px;">${esc(brandName)}</span>
        </a>`
-    : `<a href="${esc(baseUrl)}" style="text-decoration:none;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,Helvetica,sans-serif;font-size:20px;font-weight:800;color:#0f172a;letter-spacing:-0.5px;">${esc(brandName)}</a>`;
+    : `<a href="${esc(baseUrl)}" style="text-decoration:none;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,Helvetica,sans-serif;font-size:17px;font-weight:800;color:#ffffff;letter-spacing:-0.3px;">${esc(brandName)}</a>`;
 
   // ── Summary table ───────────────────────────────────────────────────────────
   const summaryHtml = rows.length
@@ -220,19 +220,17 @@ export function renderEmailLayout(params: {
         <!-- Email container 600px -->
         <table role="presentation" cellpadding="0" cellspacing="0" width="600" style="border-collapse:collapse;width:600px;max-width:100%;">
 
-          <!-- ── LOGO ── -->
-          <tr>
-            <td align="center" style="padding:0 0 24px 0;text-align:center;">
-              ${logoHtml}
-            </td>
-          </tr>
-
-          <!-- ── PURPLE GRADIENT HERO ── -->
+          <!-- ── PURPLE GRADIENT HERO (logo + label + title + subtitle) ── -->
           <tr>
             <td style="border-radius:${hasBody ? "16px 16px 0 0" : "16px"};overflow:hidden;background:linear-gradient(135deg,#7c3aed 0%,#6366f1 55%,#818cf8 100%);">
               <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
                 <tr>
-                  <td style="padding:36px 36px 32px 36px;">
+                  <td style="padding:28px 36px 32px 36px;">
+
+                    <!-- Logo at top of hero -->
+                    <div style="margin-bottom:24px;">
+                      ${logoHtml}
+                    </div>
 
                     ${heroLabel ? `<div style="display:inline-block;background:rgba(255,255,255,0.18);color:rgba(255,255,255,0.95);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,Helvetica,sans-serif;font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;padding:4px 12px;border-radius:20px;margin-bottom:16px;">${heroLabel}</div>` : ""}
 
