@@ -349,48 +349,79 @@ export default function AdminEmailsPage() {
     }
   }
 
-  // CSS injected into the iframe to FORCE light mode (prevents OS dark mode from auto-applying)
-  const LIGHT_CSS = `<style id="ds-preview-scheme">html{color-scheme:light!important}</style>`;
-
-  // CSS injected into the iframe to FORCE dark mode visually
+  // CSS injected when dark mode is toggled ON
   const DARK_CSS = `<style id="ds-preview-scheme">
-    html { color-scheme: dark !important; }
-    body, .ds-outer { background-color: #0f172a !important; }
-    .ds-card, .ds-card-bottom { background-color: #1e293b !important; border-color: #334155 !important; }
-    .ds-title { color: #f1f5f9 !important; }
-    .ds-subtitle, .ds-lead { color: #94a3b8 !important; }
-    .ds-body-text { color: #cbd5e1 !important; }
-    .ds-summary-title { color: #e2e8f0 !important; }
-    .ds-row-border { border-top-color: #334155 !important; }
-    .ds-row-label { color: #64748b !important; }
-    .ds-row-value { color: #e2e8f0 !important; }
-    .ds-footer-outer { background-color: #0f172a !important; }
-    .ds-footer-text, .ds-bottom { color: #475569 !important; }
-    .ds-footer-link { color: #64748b !important; }
-    .ds-divider { background-color: #1e293b !important; }
-    .ds-highlight { background-color: #1e293b !important; border-left-color: #3b82f6 !important; }
-    .ds-highlight-text { color: #cbd5e1 !important; }
-    .ds-steps { background-color: #0f172a !important; border-color: #334155 !important; }
-    .ds-step-item { color: #94a3b8 !important; }
-    .ds-code-box { background-color: #0f172a !important; border-color: #334155 !important; }
-    .ds-code-val { color: #93c5fd !important; }
-    .ds-muted { color: #475569 !important; }
-    .ds-msg-box { background-color: #0f172a !important; border-color: #334155 !important; }
-    .ds-msg-text { color: #94a3b8 !important; }
-    .ds-section-title { color: #a78bfa !important; border-bottom-color: #3730a3 !important; }
-    .ds-err-titre { color: #f1f5f9 !important; }
-    .ds-err-texte { color: #94a3b8 !important; }
-    .ds-conseil { background-color: #1e1b4b !important; }
-    .ds-conseil-text { color: #c4b5fd !important; }
+    body,.ds-outer{background-color:#0f172a!important}
+    .ds-card,.ds-card-bottom{background-color:#1e293b!important;border-color:#334155!important}
+    .ds-title{color:#f1f5f9!important}
+    .ds-subtitle,.ds-lead{color:#94a3b8!important}
+    .ds-body-text{color:#cbd5e1!important}
+    .ds-summary-title{color:#e2e8f0!important}
+    .ds-row-border{border-top-color:#334155!important}
+    .ds-row-label{color:#64748b!important}
+    .ds-row-value{color:#e2e8f0!important}
+    .ds-footer-outer{background-color:#0f172a!important}
+    .ds-footer-text,.ds-bottom{color:#475569!important}
+    .ds-footer-link{color:#64748b!important}
+    .ds-divider{background-color:#1e293b!important}
+    .ds-highlight{background-color:#1e293b!important;border-left-color:#3b82f6!important}
+    .ds-highlight-text{color:#cbd5e1!important}
+    .ds-steps{background-color:#0f172a!important;border-color:#334155!important}
+    .ds-step-item{color:#94a3b8!important}
+    .ds-code-box{background-color:#0f172a!important;border-color:#334155!important}
+    .ds-code-val{color:#93c5fd!important}
+    .ds-muted{color:#475569!important}
+    .ds-msg-box{background-color:#0f172a!important;border-color:#334155!important}
+    .ds-msg-text{color:#94a3b8!important}
+    .ds-section-title{color:#a78bfa!important;border-bottom-color:#3730a3!important}
+    .ds-err-titre{color:#f1f5f9!important}
+    .ds-err-texte{color:#94a3b8!important}
+    .ds-conseil{background-color:#1e1b4b!important}
+    .ds-conseil-text{color:#c4b5fd!important}
   </style>`;
+
+  /**
+   * Remove all @media (prefers-color-scheme: dark) { ... } blocks from an HTML string.
+   * Works by counting brace depth — handles any nesting level.
+   * This is needed because color-scheme:light CSS does NOT suppress @media dark queries in Safari.
+   */
+  function stripDarkMediaQueries(html: string): string {
+    const marker = "prefers-color-scheme: dark";
+    let result = html;
+    let idx = result.toLowerCase().indexOf(marker.toLowerCase());
+    while (idx !== -1) {
+      // Walk backwards to find the @media keyword start
+      let start = idx;
+      while (start > 0 && result[start] !== "@") start--;
+      // Walk forward to find the opening brace
+      const openBrace = result.indexOf("{", idx);
+      if (openBrace === -1) break;
+      // Count braces to find the matching closing brace
+      let depth = 1;
+      let i = openBrace + 1;
+      while (i < result.length && depth > 0) {
+        if (result[i] === "{") depth++;
+        else if (result[i] === "}") depth--;
+        i++;
+      }
+      // Remove the entire @media block
+      result = result.slice(0, start) + result.slice(i);
+      idx = result.toLowerCase().indexOf(marker.toLowerCase());
+    }
+    return result;
+  }
 
   function writeHtmlToIframe(html: string, dark: boolean) {
     const doc = iframeRef.current?.contentDocument;
     if (!doc) return;
-    // Inject color-scheme override right after <head> so it wins over any @media in the email
-    const injected = html.replace(/(<head[^>]*>)/i, `$1${dark ? DARK_CSS : LIGHT_CSS}`);
+    // Always strip @media dark blocks from the HTML — prevents Safari auto-dark
+    let processed = stripDarkMediaQueries(html);
+    // In dark mode, inject our own overrides
+    if (dark) {
+      processed = processed.replace(/(<head[^>]*>)/i, `$1${DARK_CSS}`);
+    }
     doc.open();
-    doc.write(injected);
+    doc.write(processed);
     doc.close();
   }
 
