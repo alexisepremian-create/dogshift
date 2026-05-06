@@ -35,6 +35,10 @@ export function buildTravelMapUrl(params: {
     minLat,
     maxLng,
     maxLat,
+    sitterLat: sitterLat.toFixed(6),
+    sitterLng: sitterLng.toFixed(6),
+    ownerLat: ownerLat.toFixed(6),
+    ownerLng: ownerLng.toFixed(6),
     w: String(width),
     h: String(height),
   });

@@ -3,14 +3,18 @@ import { NextResponse } from "next/server";
 import sharp from "sharp";
 
 export const runtime = "nodejs";
-// Cache map images aggressively — coordinates rarely change for a given booking
+// Cache aggressively — coordinates rarely change for a given booking
 export const revalidate = 86400;
 
 const ALLOWED_REFERER = "https://www.dogshift.ch/";
+const TILE_SIZE = 256;
+const MAX_ZOOM = 15;
+const MIN_ZOOM = 6;
 
-/**
- * Compute the great-circle distance (km) between two coordinates using Haversine.
- */
+/* ──────────────────────────────────────────────────────────────────────────
+ * Helpers
+ * ────────────────────────────────────────────────────────────────────────── */
+
 function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
   const R = 6371;
   const toRad = (d: number) => (d * Math.PI) / 180;
@@ -22,11 +26,173 @@ function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): nu
   return 2 * R * Math.asin(Math.sqrt(a));
 }
 
+/** Mercator projection. Returns world-pixel coords at the given zoom level. */
+function lngLatToWorldPx(lng: number, lat: number, zoom: number): { x: number; y: number } {
+  const n = TILE_SIZE * 2 ** zoom;
+  const x = ((lng + 180) / 360) * n;
+  const sin = Math.sin((lat * Math.PI) / 180);
+  const y = (0.5 - Math.log((1 + sin) / (1 - sin)) / (4 * Math.PI)) * n;
+  return { x, y };
+}
+
 /**
- * Build a clean SVG fallback when MapTiler isn't available. Renders a
- * stylised trajectory card (gradient bg + two pins + curved dashed line +
- * distance pill) that always looks professional in emails.
+ * Pick the highest zoom level at which the bbox (with its padding) still
+ * fits inside the requested `width × height` viewport.
  */
+function pickZoom(
+  minLng: number,
+  minLat: number,
+  maxLng: number,
+  maxLat: number,
+  width: number,
+  height: number,
+): number {
+  for (let z = MAX_ZOOM; z >= MIN_ZOOM; z--) {
+    const a = lngLatToWorldPx(minLng, maxLat, z);
+    const b = lngLatToWorldPx(maxLng, minLat, z);
+    if (b.x - a.x <= width && b.y - a.y <= height) return z;
+  }
+  return MIN_ZOOM;
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+ * Real-map renderer (free MapTiler tile API + sharp compositing)
+ * ────────────────────────────────────────────────────────────────────────── */
+
+async function fetchTile(z: number, x: number, y: number, key: string): Promise<Buffer | null> {
+  const n = 2 ** z;
+  if (y < 0 || y >= n) return null;
+  const wrappedX = ((x % n) + n) % n;
+  const url = `https://api.maptiler.com/maps/streets-v2/${TILE_SIZE}/${z}/${wrappedX}/${y}.png?key=${key}`;
+  try {
+    const resp = await fetch(url, { headers: { Referer: ALLOWED_REFERER } });
+    if (!resp.ok) return null;
+    return Buffer.from(await resp.arrayBuffer());
+  } catch {
+    return null;
+  }
+}
+
+async function renderRealMap(args: {
+  minLng: number;
+  minLat: number;
+  maxLng: number;
+  maxLat: number;
+  sitterLat: number;
+  sitterLng: number;
+  ownerLat: number;
+  ownerLng: number;
+  width: number;
+  height: number;
+  key: string;
+}): Promise<Buffer | null> {
+  const { minLng, minLat, maxLng, maxLat, width, height, key } = args;
+
+  const zoom = pickZoom(minLng, minLat, maxLng, maxLat, width, height);
+
+  // Centre point in world pixels (Mercator) at this zoom level.
+  const centreLng = (minLng + maxLng) / 2;
+  const centreLat = (minLat + maxLat) / 2;
+  const centre = lngLatToWorldPx(centreLng, centreLat, zoom);
+
+  // Top-left of the canvas in world-pixel space.
+  const originX = centre.x - width / 2;
+  const originY = centre.y - height / 2;
+
+  const tileMinX = Math.floor(originX / TILE_SIZE);
+  const tileMinY = Math.floor(originY / TILE_SIZE);
+  const tileMaxX = Math.ceil((originX + width) / TILE_SIZE);
+  const tileMaxY = Math.ceil((originY + height) / TILE_SIZE);
+
+  const tilesNeeded: { x: number; y: number; px: number; py: number }[] = [];
+  for (let ty = tileMinY; ty < tileMaxY; ty++) {
+    for (let tx = tileMinX; tx < tileMaxX; tx++) {
+      tilesNeeded.push({
+        x: tx,
+        y: ty,
+        px: Math.round(tx * TILE_SIZE - originX),
+        py: Math.round(ty * TILE_SIZE - originY),
+      });
+    }
+  }
+
+  const tileBuffers = await Promise.all(
+    tilesNeeded.map(async (t) => {
+      const buf = await fetchTile(zoom, t.x, t.y, key);
+      if (!buf) return null;
+      return { ...t, buf };
+    }),
+  );
+  if (tileBuffers.some((t) => t === null)) return null;
+
+  // Composite all tiles onto a single canvas of the requested size.
+  const composites = (tileBuffers as Array<NonNullable<(typeof tileBuffers)[number]>>).map((t) => ({
+    input: t.buf,
+    left: t.px,
+    top: t.py,
+  }));
+
+  const baseMap = await sharp({
+    create: {
+      width,
+      height,
+      channels: 4,
+      background: { r: 238, g: 242, b: 255, alpha: 1 },
+    },
+  })
+    .composite(composites)
+    .png()
+    .toBuffer();
+
+  // Project the two pins back onto canvas coordinates so we can overlay them.
+  const sitterPx = lngLatToWorldPx(args.sitterLng, args.sitterLat, zoom);
+  const ownerPx = lngLatToWorldPx(args.ownerLng, args.ownerLat, zoom);
+  const ax = sitterPx.x - originX;
+  const ay = sitterPx.y - originY;
+  const bx = ownerPx.x - originX;
+  const by = ownerPx.y - originY;
+  const cx = (ax + bx) / 2;
+  const cy = Math.min(ay, by) - Math.abs(bx - ax) * 0.18;
+  const km = haversineKm(args.sitterLat, args.sitterLng, args.ownerLat, args.ownerLng);
+  const kmLabel = km < 10 ? km.toFixed(1) : Math.round(km).toString();
+
+  const overlaySvg = `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
+  <defs>
+    <filter id="pinShadow" x="-50%" y="-50%" width="200%" height="200%">
+      <feDropShadow dx="0" dy="3" stdDeviation="3" flood-color="#1e1b4b" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+  <path d="M ${ax} ${ay} Q ${cx} ${cy} ${bx} ${by}"
+        fill="none" stroke="#ffffff" stroke-width="6" stroke-linecap="round" opacity="0.9"/>
+  <path d="M ${ax} ${ay} Q ${cx} ${cy} ${bx} ${by}"
+        fill="none" stroke="#7c3aed" stroke-width="3.5" stroke-linecap="round" stroke-dasharray="2 8"/>
+  <g transform="translate(${ax - 16},${ay - 40})" filter="url(#pinShadow)">
+    <path d="M16 0C7.16 0 0 7.16 0 16c0 12 16 24 16 24s16-12 16-24C32 7.16 24.84 0 16 0z" fill="#6366f1"/>
+    <circle cx="16" cy="16" r="6" fill="#ffffff"/>
+  </g>
+  <g transform="translate(${bx - 16},${by - 40})" filter="url(#pinShadow)">
+    <path d="M16 0C7.16 0 0 7.16 0 16c0 12 16 24 16 24s16-12 16-24C32 7.16 24.84 0 16 0z" fill="#7c3aed"/>
+    <circle cx="16" cy="16" r="6" fill="#ffffff"/>
+  </g>
+  <g transform="translate(${width / 2 - 60}, ${height - 56})">
+    <rect x="0" y="0" width="120" height="40" rx="20" fill="#ffffff" filter="url(#pinShadow)"/>
+    <text x="60" y="26" text-anchor="middle"
+          font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif"
+          font-size="16" font-weight="700" fill="#4f46e5">${kmLabel} km</text>
+  </g>
+</svg>`;
+
+  return sharp(baseMap)
+    .composite([{ input: Buffer.from(overlaySvg), top: 0, left: 0 }])
+    .png({ compressionLevel: 9 })
+    .toBuffer();
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+ * SVG fallback — used when MapTiler is unavailable / no key
+ * ────────────────────────────────────────────────────────────────────────── */
+
 function buildFallbackSvg(width: number, height: number, distanceKm: number): string {
   const w = width;
   const h = height;
@@ -76,46 +242,58 @@ function buildFallbackSvg(width: number, height: number, distanceKm: number): st
 </svg>`;
 }
 
-async function renderFallbackPng(
-  width: number,
-  height: number,
-  distanceKm: number,
-): Promise<Buffer> {
+async function renderFallbackPng(width: number, height: number, distanceKm: number): Promise<Buffer> {
   const svg = buildFallbackSvg(width, height, distanceKm);
   return sharp(Buffer.from(svg)).png({ compressionLevel: 9 }).toBuffer();
 }
 
+/* ──────────────────────────────────────────────────────────────────────────
+ * Route handler
+ * ────────────────────────────────────────────────────────────────────────── */
+
 /**
- * Server-side proxy for the booking travel map.
+ * Server-side renderer for the booking travel map.
  *
- *   Strategy: try MapTiler Static Maps with a proper Referer (locked to
- *   *.dogshift.ch). If that succeeds (paid plan), stream the real map.
- *   Otherwise fall back to a stylised SVG trajectory card that always
- *   looks professional and contains the actual distance.
+ * Strategy:
+ *   1. Try to fetch MapTiler raster tiles (free Tiles API) and composite
+ *      them locally with sharp, then overlay two pins + a dashed route.
+ *      This produces the exact same map as the booking page on the
+ *      website but as a single PNG that any email client can render.
+ *   2. If anything fails (no key, tile fetch error, network), fall back
+ *      to a stylised SVG illustration so the email always shows something
+ *      clean.
  *
- *   Why we need a proxy at all: email clients (Gmail's image proxy,
- *   Apple Mail, Outlook) strip the Referer header, so a direct MapTiler
- *   URL embedded in an email is always rejected. By going through our
- *   own /api/email/map endpoint we control the upstream Referer.
+ * Why we proxy at all: the MapTiler key is locked to *.dogshift.ch via
+ * Referer; email clients (Gmail's image proxy, Apple Mail, Outlook) strip
+ * the Referer header so a direct MapTiler URL embedded in an email is
+ * rejected. By going through this endpoint we control the upstream
+ * Referer from the server side.
  */
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
-  const minLngStr = searchParams.get("minLng");
-  const minLatStr = searchParams.get("minLat");
-  const maxLngStr = searchParams.get("maxLng");
-  const maxLatStr = searchParams.get("maxLat");
+
+  const minLng = Number(searchParams.get("minLng"));
+  const minLat = Number(searchParams.get("minLat"));
+  const maxLng = Number(searchParams.get("maxLng"));
+  const maxLat = Number(searchParams.get("maxLat"));
   const width = Number(searchParams.get("w") ?? 560);
   const height = Number(searchParams.get("h") ?? 240);
+  const sitterLatStr = searchParams.get("sitterLat");
+  const sitterLngStr = searchParams.get("sitterLng");
+  const ownerLatStr = searchParams.get("ownerLat");
+  const ownerLngStr = searchParams.get("ownerLng");
 
-  if (!minLngStr || !minLatStr || !maxLngStr || !maxLatStr) {
-    return NextResponse.json({ error: "missing coords" }, { status: 400 });
+  if (![minLng, minLat, maxLng, maxLat].every(Number.isFinite)) {
+    return NextResponse.json({ error: "missing or invalid coords" }, { status: 400 });
   }
 
-  const minLng = Number(minLngStr);
-  const minLat = Number(minLatStr);
-  const maxLng = Number(maxLngStr);
-  const maxLat = Number(maxLatStr);
-  const distanceKm = haversineKm(minLat, minLng, maxLat, maxLng);
+  // Pin endpoints default to bbox corners when explicit pin coords aren't
+  // provided (e.g. legacy callers).
+  const sitterLat = sitterLatStr ? Number(sitterLatStr) : minLat;
+  const sitterLng = sitterLngStr ? Number(sitterLngStr) : minLng;
+  const ownerLat = ownerLatStr ? Number(ownerLatStr) : maxLat;
+  const ownerLng = ownerLngStr ? Number(ownerLngStr) : maxLng;
+  const distanceKm = haversineKm(sitterLat, sitterLng, ownerLat, ownerLng);
 
   const cacheHeaders = {
     "content-type": "image/png",
@@ -124,21 +302,24 @@ export async function GET(req: NextRequest) {
 
   const key = process.env.NEXT_PUBLIC_MAPTILER_KEY;
   if (key) {
-    const url =
-      `https://api.maptiler.com/maps/streets-v2/static/` +
-      `${minLngStr},${minLatStr},${maxLngStr},${maxLatStr}/${width}x${height}.png?key=${key}`;
-
-    try {
-      const resp = await fetch(url, { headers: { Referer: ALLOWED_REFERER } });
-      if (resp.ok) {
-        const buf = await resp.arrayBuffer();
-        return new NextResponse(buf, { headers: cacheHeaders });
-      }
-    } catch {
-      // fall through to SVG fallback
+    const real = await renderRealMap({
+      minLng,
+      minLat,
+      maxLng,
+      maxLat,
+      sitterLat,
+      sitterLng,
+      ownerLat,
+      ownerLng,
+      width,
+      height,
+      key,
+    });
+    if (real) {
+      return new NextResponse(new Uint8Array(real), { headers: cacheHeaders });
     }
   }
 
-  const png = await renderFallbackPng(width, height, distanceKm);
-  return new NextResponse(new Uint8Array(png), { headers: cacheHeaders });
+  const fallback = await renderFallbackPng(width, height, distanceKm);
+  return new NextResponse(new Uint8Array(fallback), { headers: cacheHeaders });
 }
