@@ -87,6 +87,8 @@ export function renderEmailLayout(params: {
   baseUrl?: string;
   /** Hero gradient color: "purple" (default) or "amber" for alert-style emails */
   heroColor?: "purple" | "amber";
+  /** Audience: "owner" (default) or "sitter" — changes the closing banner */
+  audience?: "owner" | "sitter";
   /** @deprecated use title/subtitle — kept for backwards compatibility */
   accentColor?: string;
 }) {
@@ -107,12 +109,13 @@ export function renderEmailLayout(params: {
   const summaryTitle = esc(params.summaryTitle || "Résumé");
   const rows = Array.isArray(params.summaryRows) ? params.summaryRows : [];
   const ctaUrl = params.ctaUrl ?? "";
-  // Default banner: hero image unless explicitly disabled (set bannerImageUrl to "")
+  // Default banner depends on audience
+  const isSitter = params.audience === "sitter";
   const bannerImageUrl = params.bannerImageUrl !== undefined
     ? params.bannerImageUrl
-    : `${baseUrl}/email-banners/banner-confiance.jpg`;
-  const bannerCtaUrl = params.bannerCtaUrl ?? `${baseUrl}/sitters`;
-  const bannerCtaLabel = params.bannerCtaLabel ?? "Voir les dog-sitters →";
+    : `${baseUrl}/email-banners/${isSitter ? "banner-hero" : "banner-confiance"}.jpg`;
+  const bannerCtaUrl = params.bannerCtaUrl ?? `${baseUrl}/${isSitter ? "host" : "sitters"}`;
+  const bannerCtaLabel = params.bannerCtaLabel ?? (isSitter ? "Aller vers mon espace →" : "Voir les dog-sitters →");
   const ctaLabel = params.ctaLabel ? esc(params.ctaLabel) : "";
   const secondaryLinkUrl = params.secondaryLinkUrl ?? "";
   const secondaryLinkLabel = params.secondaryLinkLabel ? esc(params.secondaryLinkLabel) : "";
@@ -415,8 +418,13 @@ export function renderEmailLayout(params: {
                     <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;position:absolute;top:0;left:0;width:100%;height:100%;">
                       <tr>
                         <td style="padding:28px 32px;vertical-align:middle;">
+                          ${isSitter ? `
+                          <div style="font-family:Georgia,'Times New Roman',serif;font-size:13px;font-weight:400;color:#c4b5fd;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:8px;">Chaque promenade compte.</div>
+                          <div style="font-family:Georgia,'Times New Roman',serif;font-size:22px;font-weight:700;line-height:30px;color:#ffffff;max-width:340px;">Prendre soin d&apos;un chien,<br />c&apos;est une vraie responsabilit&eacute;.</div>
+                          ` : `
                           <div style="font-family:Georgia,'Times New Roman',serif;font-size:13px;font-weight:400;color:#c4b5fd;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:8px;">Parce qu&apos;il le m&eacute;rite.</div>
                           <div style="font-family:Georgia,'Times New Roman',serif;font-size:22px;font-weight:700;line-height:30px;color:#ffffff;max-width:340px;">Votre chien m&eacute;rite<br />quelqu&apos;un de confiance.</div>
+                          `}
                         </td>
                       </tr>
                     </table>

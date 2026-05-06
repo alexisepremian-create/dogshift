@@ -642,16 +642,22 @@ function buildSitterEarningsHtml(
       <td align="right" style="padding:6px 0;font-family:${SITTER_FF};font-size:14px;color:${bold ? "#0f172a" : "#475569"};font-weight:${bold ? 800 : 500};white-space:nowrap;">${value}</td>
     </tr>`;
 
+  const hasCommission = commissionCents > 0;
+
   return `
     <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;margin-top:20px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:0;">
       <tr>
         <td style="padding:18px 20px;">
           <div style="font-family:${SITTER_FF};font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#15803d;margin-bottom:10px;">Tes gains</div>
           <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
-            ${line("Montant brut", formatMoney(grossCents, cur))}
-            ${line("Commission DogShift", `- ${formatMoney(commissionCents, cur)}`, false, "#dc2626")}
-            <tr><td colspan="2" style="padding:8px 0 0;border-top:1px solid #bbf7d0;font-size:0;line-height:0;">&nbsp;</td></tr>
-            ${line("Montant net", formatMoney(netCents, cur), true, "#15803d")}
+            ${hasCommission ? `
+              ${line("Montant brut", formatMoney(grossCents, cur))}
+              ${line("Commission DogShift", `- ${formatMoney(commissionCents, cur)}`, false, "#dc2626")}
+              <tr><td colspan="2" style="padding:8px 0 0;border-top:1px solid #bbf7d0;font-size:0;line-height:0;">&nbsp;</td></tr>
+              ${line("Montant net", formatMoney(netCents, cur), true, "#15803d")}
+            ` : `
+              ${line("Total", formatMoney(grossCents, cur), true, "#15803d")}
+            `}
           </table>
           ${estimatedPayoutDate ? `<div style="margin-top:10px;font-family:${SITTER_FF};font-size:12px;color:#6b7280;">Virement estimé : ${estimatedPayoutDate}</div>` : ""}
         </td>
@@ -1251,7 +1257,8 @@ Notification DogShift.
 
         return renderEmailLayout({
           logoUrl,
-          title: "Ta prestation est confirmée 🐾",
+          audience: "sitter",
+          title: "Réservation confirmée",
           subtitle: "Le propriétaire a confirmé la réservation.",
           summaryRows: sitterRows,
           extraHtml: mapHtml + dogHtml + earningsHtml,
@@ -1294,8 +1301,9 @@ Notification DogShift.
 
         return renderEmailLayout({
           logoUrl,
-          title: sitterReminderTitle,
-          subtitle: "Tout est prêt pour la prestation.",
+          audience: "sitter",
+          title: "Rappel de prestation",
+          subtitle: "Demain, tu as une prestation prévue. Voici un petit récap.",
           summaryRows: sitterRows,
           extraHtml: contactHtml + mapHtml + dogHtml + checklistHtml,
           ctaLabel: url ? "Voir la réservation" : undefined,
@@ -1323,8 +1331,9 @@ Notification DogShift.
 
         return renderEmailLayout({
           logoUrl,
-          title: `${amountDisplay} viennent d'arriver sur ton compte 💚`,
-          subtitle: "Ton travail a été récompensé.",
+          audience: "sitter",
+          title: "Virement reçu",
+          subtitle: "Le paiement a été transféré sur ton compte.",
           extraHtml: amountBlock + bookingListHtml,
           ctaLabel: walletUrl ? "Voir mon portefeuille" : undefined,
           ctaUrl: walletUrl || undefined,
@@ -1393,8 +1402,9 @@ Notification DogShift.
 
         return renderEmailLayout({
           logoUrl,
-          title: `Ta réservation avec ${ownerName} a été modifiée`,
-          subtitle: "Vérifie les détails et confirme.",
+          audience: "sitter",
+          title: "Réservation modifiée",
+          subtitle: "Le propriétaire a modifié les détails de la réservation.",
           summaryRows: rows,
           extraHtml: comparisonHtml + earningsImpactHtml,
           ctaLabel: url ? "Voir la réservation" : undefined,
@@ -1433,6 +1443,7 @@ Notification DogShift.
 
         return renderEmailLayout({
           logoUrl,
+          audience: "sitter",
           title: `La réservation du ${startDateStr || "—"} a été annulée`,
           subtitle: "Voici ce que cela signifie pour toi.",
           summaryRows: rows.filter(r => {
@@ -1455,6 +1466,7 @@ Notification DogShift.
 
         return renderEmailLayout({
           logoUrl,
+          audience: "sitter",
           title: `${payload.ownerName} vient de te laisser un avis ⭐`,
           subtitle: reviewSubtitle,
           extraHtml: reviewHtml,
@@ -1475,10 +1487,11 @@ Notification DogShift.
 
         return renderEmailLayout({
           logoUrl,
-          title: `Ton mois de ${payload.month} en chiffres`,
+          audience: "sitter",
+          title: `Récap du mois de ${payload.month}`,
           subtitle: "Voici ton récap du mois écoulé.",
           extraHtml: statsHtml,
-          ctaLabel: hostUrl ? "Voir mes statistiques" : undefined,
+          ctaLabel: hostUrl ? "Voir mon tableau de bord" : undefined,
           ctaUrl: hostUrl || undefined,
         }).html;
       }
