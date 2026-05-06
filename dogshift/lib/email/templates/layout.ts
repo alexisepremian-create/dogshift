@@ -111,10 +111,12 @@ export function renderEmailLayout(params: {
       "DogShift \u00b7 support@dogshift.ch \u00b7 Plateforme de dogsitting premium en Suisse",
   );
 
-  // ── Logo block (white text — lives inside the purple hero) ─────────────────
+  // ── Logo block (white circle + white text — lives inside the purple hero) ───
   const logoHtml = logoUrl
     ? `<a href="${esc(baseUrl)}" style="text-decoration:none;display:inline-flex;align-items:center;gap:10px;">
-        <img src="${esc(logoUrl)}" width="32" alt="" style="display:block;width:32px;height:32px;border:0;outline:none;border-radius:6px;" />
+        <span style="display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:50%;background:#ffffff;flex-shrink:0;">
+          <img src="${esc(logoUrl)}" width="24" alt="" style="display:block;width:24px;height:24px;border:0;outline:none;" />
+        </span>
         <span style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,Helvetica,sans-serif;font-size:17px;font-weight:800;color:#ffffff;letter-spacing:-0.3px;">${esc(brandName)}</span>
        </a>`
     : `<a href="${esc(baseUrl)}" style="text-decoration:none;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,Helvetica,sans-serif;font-size:17px;font-weight:800;color:#ffffff;letter-spacing:-0.3px;">${esc(brandName)}</a>`;
