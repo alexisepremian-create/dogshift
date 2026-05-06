@@ -359,10 +359,12 @@ export default function AdminEmailsPage() {
     .ds-card,.ds-card-bottom{background-color:#1e293b!important;border-color:#334155!important}
 
     /* ── Text inside the white card (broad override for inline-styled elements) ── */
-    .ds-card td,.ds-card p,.ds-card div{color:#94a3b8!important}
+    .ds-card td,.ds-card p,.ds-card div,.ds-card span{color:#94a3b8!important}
     .ds-card strong,.ds-card b{color:#e2e8f0!important}
     /* Preserve white text on coloured buttons */
     .ds-card a[style*="background"]{color:#ffffff!important}
+    /* Step number circles */
+    .ds-card span[style*="background:#ede9fe"],.ds-card span[style*="background: #ede9fe"]{background:#312e81!important;color:#a5b4fc!important}
 
     /* ── Legacy class-based overrides (renderEmailLayout transactional emails) ── */
     .ds-title{color:#f1f5f9!important}
@@ -424,18 +426,23 @@ export default function AdminEmailsPage() {
     return result;
   }
 
-  function writeHtmlToIframe(html: string, dark: boolean) {
+  function   writeHtmlToIframe(html: string, dark: boolean) {
     const doc = iframeRef.current?.contentDocument;
     if (!doc) return;
-    // Always strip @media dark blocks from the HTML — prevents Safari auto-dark
+    // Strip @media dark blocks — prevents Safari auto-dark
     let processed = stripDarkMediaQueries(html);
-    // In dark mode, inject our own overrides
     if (dark) {
       processed = processed.replace(/(<head[^>]*>)/i, `$1${DARK_CSS}`);
     }
     doc.open();
     doc.write(processed);
     doc.close();
+    // Auto-resize iframe to exact content height (no black void below)
+    setTimeout(() => {
+      if (iframeRef.current && doc.body) {
+        iframeRef.current.style.height = `${doc.body.scrollHeight + 32}px`;
+      }
+    }, 120);
   }
 
   useEffect(() => {
@@ -673,7 +680,8 @@ export default function AdminEmailsPage() {
                 <iframe
                   ref={iframeRef}
                   title="Aperçu email"
-                  className="h-full min-h-[600px] w-full border-0"
+                  className="w-full border-0"
+                  style={{ minHeight: 600 }}
                   sandbox="allow-same-origin"
                 />
               </div>

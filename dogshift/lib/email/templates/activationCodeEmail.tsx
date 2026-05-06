@@ -53,10 +53,12 @@ export function ActivationCodeEmail(props: {
           {/* Purple hero */}
           <Section style={s.hero}>
 
-          {/* Logo at top of hero */}
+          {/* Logo at top of hero — white circle */}
           <div style={{ marginBottom: 24 }}>
             <Link href={baseUrl} style={{ textDecoration: "none", display: "inline-flex", alignItems: "center", gap: "10px" }}>
-              <Img src={logoUrl} width={32} height={32} alt="" style={{ display: "block", borderRadius: 6, border: 0 }} />
+              <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 36, height: 36, borderRadius: "50%", background: "#ffffff", flexShrink: 0 }}>
+                <Img src={logoUrl} width={24} height={24} alt="" style={{ display: "block", width: 24, height: 24, border: 0 }} />
+              </span>
               <Text style={{ margin: 0, fontSize: 17, fontWeight: 800, color: "#ffffff", letterSpacing: "-0.3px", display: "inline" }}>DogShift</Text>
             </Link>
           </div>
