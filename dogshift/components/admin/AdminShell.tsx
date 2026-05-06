@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { BarChart3, Bot, CalendarDays, FileText, LayoutDashboard, LogOut, Mail, MailOpen, ReceiptText, Scale, ScrollText, Settings, ShieldAlert, ShieldCheck, ShieldPlus, Users, Wrench } from "lucide-react";
+import { BarChart3, Bot, CalendarDays, FileText, GitMerge, LayoutDashboard, LogOut, Mail, MailOpen, ReceiptText, Scale, ScrollText, Settings, ShieldAlert, ShieldCheck, ShieldPlus, Users, Wrench } from "lucide-react";
 import { type ReactNode, useState } from "react";
 
 const navItems = [
@@ -23,6 +23,7 @@ const navItems = [
   { href: "/admin/communications", label: "Communications", icon: Mail },
   { href: "/admin/emails", label: "Aperçu emails", icon: MailOpen },
   { href: "/admin/maintenance", label: "Santé technique", icon: Wrench },
+  { href: "/admin/changelog", label: "Changelog", icon: GitMerge },
 ];
 
 export default function AdminShell({ children }: { children: ReactNode }) {
