@@ -35,14 +35,6 @@ const ICONS = {
   arrow: `<svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:inline-block;vertical-align:middle;margin-left:4px;"><path d="M3 7h8M7 3l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
 };
 
-// ── Social icon SVGs ──────────────────────────────────────────────────────────
-
-const SOCIAL = {
-  instagram: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="2" y="2" width="20" height="20" rx="6" stroke="#94a3b8" stroke-width="1.8"/><circle cx="12" cy="12" r="4" stroke="#94a3b8" stroke-width="1.8"/><circle cx="17.5" cy="6.5" r="1" fill="#94a3b8"/></svg>`,
-  facebook: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z" stroke="#94a3b8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
-  globe: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="10" stroke="#94a3b8" stroke-width="1.8"/><path d="M12 2c-2.5 3-4 6-4 10s1.5 7 4 10M12 2c2.5 3 4 6 4 10s-1.5 7-4 10M2 12h20" stroke="#94a3b8" stroke-width="1.8" stroke-linecap="round"/></svg>`,
-};
-
 // ── Force light mode CSS (prevents Gmail/iOS auto-dark-mode) ─────────────────
 
 const DARK_MODE_CSS = `
@@ -83,6 +75,12 @@ export function renderEmailLayout(params: {
   ctaUrl?: string;
   secondaryLinkLabel?: string;
   secondaryLinkUrl?: string;
+  /** URL of the closing banner image (email-banners/banner-*.jpg) */
+  bannerImageUrl?: string;
+  /** CTA label shown under the banner image */
+  bannerCtaLabel?: string;
+  /** CTA URL for the banner button */
+  bannerCtaUrl?: string;
   footerLinks?: { label: string; url: string }[];
   footerText?: string;
   /** Base URL for absolute links, defaults to https://dogshift.ch */
@@ -102,6 +100,12 @@ export function renderEmailLayout(params: {
   const summaryTitle = esc(params.summaryTitle || "Résumé");
   const rows = Array.isArray(params.summaryRows) ? params.summaryRows : [];
   const ctaUrl = params.ctaUrl ?? "";
+  // Default banner: hero image unless explicitly disabled (set bannerImageUrl to "")
+  const bannerImageUrl = params.bannerImageUrl !== undefined
+    ? params.bannerImageUrl
+    : `${baseUrl}/email-banners/banner-hero.jpg`;
+  const bannerCtaUrl = params.bannerCtaUrl ?? `${baseUrl}/sitters`;
+  const bannerCtaLabel = params.bannerCtaLabel ?? "Voir les dog-sitters →";
   const ctaLabel = params.ctaLabel ? esc(params.ctaLabel) : "";
   const secondaryLinkUrl = params.secondaryLinkUrl ?? "";
   const secondaryLinkLabel = params.secondaryLinkLabel ? esc(params.secondaryLinkLabel) : "";
@@ -115,8 +119,8 @@ export function renderEmailLayout(params: {
   const logoHtml = logoUrl
     ? `<table role="presentation" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin-bottom:24px;">
         <tr>
-          <td align="center" valign="middle" style="width:36px;height:36px;background-color:#ffffff;border-radius:18px;padding:6px;">
-            <img src="${esc(logoUrl)}" width="24" height="24" alt="" style="display:inline-block;vertical-align:middle;border:0;outline:none;" />
+          <td align="center" valign="middle" style="width:44px;height:44px;background-color:#ffffff;border-radius:22px;padding:7px;">
+            <img src="${esc(logoUrl)}" width="30" height="30" alt="" style="display:inline-block;vertical-align:middle;border:0;outline:none;" />
           </td>
           <td style="padding-left:10px;vertical-align:middle;">
             <a href="${esc(baseUrl)}" style="text-decoration:none;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,Helvetica,sans-serif;font-size:17px;font-weight:800;color:#ffffff;letter-spacing:-0.3px;">${esc(brandName)}</a>
@@ -185,14 +189,20 @@ export function renderEmailLayout(params: {
   const socialHtml = `
     <table role="presentation" cellpadding="0" cellspacing="0" align="center" style="border-collapse:collapse;margin:12px auto 0;">
       <tr>
-        <td style="padding:0 6px;">
-          <a href="https://instagram.com/dogshift" title="Instagram" style="text-decoration:none;display:block;">${SOCIAL.instagram}</a>
+        <td style="padding:0 10px;">
+          <a href="https://instagram.com/dogshift" title="Instagram" style="text-decoration:none;display:inline-block;">
+            <img src="${esc(baseUrl)}/icons/instagram.png" width="32" height="32" alt="Instagram" style="display:block;border:0;outline:none;" />
+          </a>
         </td>
-        <td style="padding:0 6px;">
-          <a href="https://facebook.com/dogshift" title="Facebook" style="text-decoration:none;display:block;">${SOCIAL.facebook}</a>
+        <td style="padding:0 10px;">
+          <a href="https://facebook.com/dogshift" title="Facebook" style="text-decoration:none;display:inline-block;">
+            <img src="${esc(baseUrl)}/icons/facebook.png" width="32" height="32" alt="Facebook" style="display:block;border:0;outline:none;" />
+          </a>
         </td>
-        <td style="padding:0 6px;">
-          <a href="${esc(baseUrl)}" title="DogShift" style="text-decoration:none;display:block;">${SOCIAL.globe}</a>
+        <td style="padding:0 10px;">
+          <a href="${esc(baseUrl)}" title="DogShift" style="text-decoration:none;display:inline-block;">
+            <img src="${esc(baseUrl)}/icons/globe.png" width="32" height="32" alt="DogShift" style="display:block;border:0;outline:none;" />
+          </a>
         </td>
       </tr>
     </table>`;
@@ -267,6 +277,26 @@ export function renderEmailLayout(params: {
                     <!-- CTA -->
                     ${ctaHtml}
 
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          ` : ""}
+
+          <!-- ── CLOSING BANNER ── -->
+          ${bannerImageUrl ? `
+          <tr>
+            <td style="padding:20px 0 0;">
+              <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;border-radius:16px;overflow:hidden;background-color:#ffffff;border:1px solid #e2e8f0;box-shadow:0 4px 24px rgba(0,0,0,0.07);">
+                <tr>
+                  <td style="padding:0;line-height:0;font-size:0;">
+                    <img src="${esc(bannerImageUrl)}" width="600" alt="" style="display:block;width:100%;max-width:600px;border:0;border-radius:16px 16px 0 0;" />
+                  </td>
+                </tr>
+                <tr>
+                  <td style="background-color:#ffffff;padding:22px 36px 28px;text-align:center;border-radius:0 0 16px 16px;">
+                    <a href="${esc(bannerCtaUrl)}" style="display:inline-block;background-color:#6366f1;color:#ffffff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,Helvetica,sans-serif;font-size:14px;font-weight:700;text-decoration:none;padding:13px 28px;border-radius:10px;">${esc(bannerCtaLabel)}</a>
                   </td>
                 </tr>
               </table>
