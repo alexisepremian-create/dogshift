@@ -7,7 +7,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
-import PageLoader from "@/components/ui/PageLoader";
+import AccountPageSkeleton from "@/components/ui/AccountPageSkeleton";
 import {
   ArchiveRestore,
   CalendarDays,
@@ -515,7 +515,7 @@ function AccountBookingsContent() {
     }
   }
 
-  if (!isLoaded || !isSignedIn) return <PageLoader static />;
+  if (!isLoaded || !isSignedIn) return <AccountPageSkeleton />;
 
   return (
     <div className="relative" data-testid="account-bookings-page">
@@ -1070,7 +1070,7 @@ function AccountBookingsContent() {
 
 export default function AccountBookingsPage() {
   return (
-    <Suspense fallback={<div className="flex h-screen items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-4 border-slate-200 border-t-[var(--dogshift-blue)]"></div></div>}>
+    <Suspense fallback={<AccountPageSkeleton />}>
       <AccountBookingsContent />
     </Suspense>
   );

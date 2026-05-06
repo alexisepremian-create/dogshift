@@ -4,7 +4,7 @@ import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { useUser } from "@clerk/nextjs";
 import { Plus, Pencil, Trash2, Star, Dog, X, Check, Camera, Loader2 } from "lucide-react";
-import PageLoader from "@/components/ui/PageLoader";
+import AccountPageSkeleton from "@/components/ui/AccountPageSkeleton";
 import { publicDogPhotoPath } from "@/lib/dogPhotoMedia";
 
 type DogItem = {
@@ -218,7 +218,7 @@ export default function DogsPage() {
     await fetchDogs();
   }
 
-  if (!isLoaded || !isSignedIn) return <PageLoader static />;
+  if (!isLoaded || !isSignedIn) return <AccountPageSkeleton />;
 
   return (
     <div className="grid gap-6">
