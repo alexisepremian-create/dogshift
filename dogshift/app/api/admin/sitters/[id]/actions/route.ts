@@ -61,7 +61,8 @@ function parseAction(value: unknown): ActionType | null {
     value === "publish" ||
     value === "unpublish" ||
     value === "activate" ||
-    value === "send_activation_code"
+    value === "send_activation_code" ||
+    value === "save_notes"
   ) {
     return value;
   }
@@ -80,6 +81,7 @@ function actionAllowed(action: ActionType, published: boolean, verificationStatu
   if (action === "unpublish") return published;
   if (action === "activate") return lifecycleStatus === "contract_signed" && !published;
   if (action === "send_activation_code") return lifecycleStatus === "contract_signed" || lifecycleStatus === "activated";
+  if (action === "save_notes") return true;
   return true;
 }
 
@@ -387,6 +389,11 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       data.lifecycleStatus = "activated";
       data.activatedAt = new Date();
       data.verificationNotes = notes ?? sitter.sitterProfile.verificationNotes ?? null;
+    }
+
+    if (action === "save_notes") {
+      // null notes = clear; keep existing only when not explicitly overriding
+      data.verificationNotes = notes;
     }
 
     const updatedProfile = await (prisma as any).sitterProfile.update({
