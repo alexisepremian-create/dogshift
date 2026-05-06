@@ -351,8 +351,20 @@ export default function AdminEmailsPage() {
 
   // CSS injected when dark mode is toggled ON
   const DARK_CSS = `<style id="ds-preview-scheme">
+    /* ── Full-page dark background ── */
+    html{background-color:#0f172a!important}
     body,.ds-outer{background-color:#0f172a!important}
+
+    /* ── White card → dark card ── */
     .ds-card,.ds-card-bottom{background-color:#1e293b!important;border-color:#334155!important}
+
+    /* ── Text inside the white card (broad override for inline-styled elements) ── */
+    .ds-card td,.ds-card p,.ds-card div{color:#94a3b8!important}
+    .ds-card strong,.ds-card b{color:#e2e8f0!important}
+    /* Preserve white text on coloured buttons */
+    .ds-card a[style*="background"]{color:#ffffff!important}
+
+    /* ── Legacy class-based overrides (renderEmailLayout transactional emails) ── */
     .ds-title{color:#f1f5f9!important}
     .ds-subtitle,.ds-lead{color:#94a3b8!important}
     .ds-body-text{color:#cbd5e1!important}
@@ -360,19 +372,20 @@ export default function AdminEmailsPage() {
     .ds-row-border{border-top-color:#334155!important}
     .ds-row-label{color:#64748b!important}
     .ds-row-value{color:#e2e8f0!important}
+
+    /* ── Footer ── */
     .ds-footer-outer{background-color:#0f172a!important}
-    .ds-footer-text,.ds-bottom{color:#475569!important}
+    .ds-footer-text,.ds-bottom{color:#64748b!important}
     .ds-footer-link{color:#64748b!important}
-    .ds-divider{background-color:#1e293b!important}
-    .ds-highlight{background-color:#1e293b!important;border-left-color:#3b82f6!important}
+    .ds-divider{background-color:#334155!important}
+
+    /* ── Specific components ── */
+    .ds-highlight{background-color:#1e3a5f!important;border-left-color:#6366f1!important}
     .ds-highlight-text{color:#cbd5e1!important}
-    .ds-steps{background-color:#0f172a!important;border-color:#334155!important}
-    .ds-step-item{color:#94a3b8!important}
     .ds-code-box{background-color:#0f172a!important;border-color:#334155!important}
     .ds-code-val{color:#93c5fd!important}
-    .ds-muted{color:#475569!important}
-    .ds-msg-box{background-color:#0f172a!important;border-color:#334155!important}
-    .ds-msg-text{color:#94a3b8!important}
+    .ds-msg-box{background-color:#1e1b4b!important;border-color:#3730a3!important}
+    .ds-msg-text{color:#c4b5fd!important}
     .ds-section-title{color:#a78bfa!important;border-bottom-color:#3730a3!important}
     .ds-err-titre{color:#f1f5f9!important}
     .ds-err-texte{color:#94a3b8!important}

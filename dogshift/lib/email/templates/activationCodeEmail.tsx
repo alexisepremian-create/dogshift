@@ -50,18 +50,17 @@ export function ActivationCodeEmail(props: {
       <Preview>{previewText}</Preview>
       <Body className="ds-outer" style={s.body}>
         <Container style={s.container}>
-
-          {/* Logo */}
-          <Section style={s.logoSection}>
-            <Link href={baseUrl} style={{ textDecoration: "none", display: "inline-flex", alignItems: "center", gap: "10px" }}>
-              <Img src={logoUrl} width={36} height={36} alt="" style={{ display: "block", borderRadius: 8 }} />
-              <Text style={s.brandName}>DogShift</Text>
-            </Link>
-          </Section>
-
           {/* Purple hero */}
           <Section style={s.hero}>
-            <div style={s.heroLabel}>CODE D&apos;ACTIVATION</div>
+
+          {/* Logo at top of hero */}
+          <div style={{ marginBottom: 24 }}>
+            <Link href={baseUrl} style={{ textDecoration: "none", display: "inline-flex", alignItems: "center", gap: "10px" }}>
+              <Img src={logoUrl} width={32} height={32} alt="" style={{ display: "block", borderRadius: 6, border: 0 }} />
+              <Text style={{ margin: 0, fontSize: 17, fontWeight: 800, color: "#ffffff", letterSpacing: "-0.3px", display: "inline" }}>DogShift</Text>
+            </Link>
+          </div>
+          <div style={s.heroLabel}>CODE D&apos;ACTIVATION</div>
             <Text style={s.heroTitle}>
               Contrat signé — voici ton code d&apos;activation
             </Text>

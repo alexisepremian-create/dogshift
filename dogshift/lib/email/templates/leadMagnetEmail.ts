@@ -104,20 +104,17 @@ export function renderLeadMagnetEmail(params: { baseUrl: string }) {
       <td align="center" style="padding:32px 12px;">
         <table role="presentation" cellpadding="0" cellspacing="0" width="560" style="border-collapse:collapse;width:560px;max-width:560px;">
 
-          <!-- LOGO -->
+          <!-- HERO HEADER (logo inside) -->
           <tr>
-            <td align="center" style="padding:0 0 24px 0;text-align:center;">
-              <a href="${siteUrl}" style="text-decoration:none;display:inline-flex;align-items:center;gap:10px;">
-                <img src="${logoUrl}" width="36" height="36" alt=""
-                  style="display:block;border:0;width:36px;height:36px;border-radius:8px;" />
-                <span style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,Helvetica,sans-serif;font-size:18px;font-weight:800;color:#0f172a;letter-spacing:-0.4px;">DogShift</span>
-              </a>
-            </td>
-          </tr>
-
-          <!-- HERO HEADER -->
-          <tr>
-            <td style="border-radius:16px 16px 0 0;overflow:hidden;background:linear-gradient(135deg,#7c3aed 0%,#6366f1 55%,#818cf8 100%);padding:36px 36px 32px;">
+            <td style="border-radius:16px 16px 0 0;overflow:hidden;background:linear-gradient(135deg,#7c3aed 0%,#6366f1 55%,#818cf8 100%);padding:28px 36px 32px;">
+              <!-- Logo -->
+              <div style="margin-bottom:24px;">
+                <a href="${siteUrl}" style="text-decoration:none;display:inline-flex;align-items:center;gap:10px;">
+                  <img src="${logoUrl}" width="32" height="32" alt=""
+                    style="display:block;border:0;width:32px;height:32px;border-radius:6px;" />
+                  <span style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,Helvetica,sans-serif;font-size:17px;font-weight:800;color:#ffffff;letter-spacing:-0.3px;">DogShift</span>
+                </a>
+              </div>
               <div style="display:inline-block;background:rgba(255,255,255,0.18);color:rgba(255,255,255,0.95);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,Helvetica,sans-serif;font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;padding:4px 12px;border-radius:20px;margin-bottom:16px;">
                 Guide gratuit
               </div>
