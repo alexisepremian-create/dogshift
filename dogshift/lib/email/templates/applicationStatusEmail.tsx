@@ -23,7 +23,29 @@ export {
 } from "./applicationStatusEmailContent";
 export type { ApplicationStatusEmailStatus } from "./applicationStatusEmailContent";
 
-const ACCENT = "#2f4d6b";
+// ── Social SVGs (footer) ──────────────────────────────────────────────────────
+const SVG_INSTAGRAM = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><rect x="2" y="2" width="20" height="20" rx="6" stroke="#94a3b8" stroke-width="1.8"/><circle cx="12" cy="12" r="4" stroke="#94a3b8" stroke-width="1.8"/><circle cx="17.5" cy="6.5" r="1" fill="#94a3b8"/></svg>`;
+const SVG_FACEBOOK = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z" stroke="#94a3b8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+const SVG_GLOBE = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="#94a3b8" stroke-width="1.8"/><path d="M12 2c-2.5 3-4 6-4 10s1.5 7 4 10M12 2c2.5 3 4 6 4 10s-1.5 7-4 10M2 12h20" stroke="#94a3b8" stroke-width="1.8" stroke-linecap="round"/></svg>`;
+
+// ── Hero configs per status ───────────────────────────────────────────────────
+const HERO: Record<ApplicationStatusEmailStatus, { label: string; title: (name: string) => string; subtitle: string }> = {
+  HIGH: {
+    label: "PROFIL RETENU",
+    title: (name) => `Félicitations${name ? ` ${name}` : ""}\u00A0!`,
+    subtitle: "Ton profil correspond parfaitement à ce que nous cherchons pour la phase pilote DogShift.",
+  },
+  REVIEW: {
+    label: "EN COURS D'EXAMEN",
+    title: () => "Ta candidature est à l'étude",
+    subtitle: "Nous prenons le temps d'examiner ton profil en détail avant de te répondre.",
+  },
+  LOW: {
+    label: "MISE À JOUR",
+    title: () => "Merci pour ta candidature",
+    subtitle: "Merci pour l'intérêt que tu portes à DogShift.",
+  },
+};
 
 export function ApplicationStatusEmail(props: {
   baseUrl?: string;
@@ -37,9 +59,8 @@ export function ApplicationStatusEmail(props: {
   const logoUrl = `${baseUrl}/dogshift-logo.png`;
   const firstName = (props.firstName || "").trim();
   const calendlyLink = (props.calendlyLink || "").trim();
-  const previewText = (
-    props.previewText || applicationStatusEmailDefaultPreviewText(props.status)
-  ).trim();
+  const previewText = (props.previewText || applicationStatusEmailDefaultPreviewText(props.status)).trim();
+  const hero = HERO[props.status] || HERO.LOW;
 
   return (
     <Html lang="fr">
@@ -50,224 +71,156 @@ export function ApplicationStatusEmail(props: {
 
           {/* Logo */}
           <Section style={s.logoSection}>
-            <Link href={baseUrl} style={s.logoLink}>
-              <Img src={logoUrl} width={140} alt="DogShift" style={s.logo} />
+            <Link href={baseUrl} style={{ textDecoration: "none", display: "inline-flex", alignItems: "center", gap: "10px" }}>
+              <Img src={logoUrl} width={36} height={36} alt="" style={{ display: "block", borderRadius: 8 }} />
+              <Text style={s.brandName}>DogShift</Text>
             </Link>
           </Section>
 
-          {/* Main card */}
+          {/* Purple hero */}
+          <Section style={s.hero}>
+            <div style={s.heroLabel}>{hero.label}</div>
+            <Text style={s.heroTitle}>{hero.title(firstName)}</Text>
+            <Text style={s.heroSubtitle}>{hero.subtitle}</Text>
+          </Section>
+
+          {/* White card */}
           <Section className="ds-card" style={s.card}>
-            <div style={s.accentBar} />
             <div style={s.cardBody}>
               {props.status === "HIGH" ? (
-                <ApplicationStatusHigh firstName={firstName} calendlyLink={calendlyLink} />
+                <StatusHigh firstName={firstName} calendlyLink={calendlyLink} />
               ) : props.status === "REVIEW" ? (
-                <ApplicationStatusReview firstName={firstName} />
+                <StatusReview firstName={firstName} />
               ) : (
-                <ApplicationStatusLow firstName={firstName} />
+                <StatusLow firstName={firstName} />
               )}
             </div>
           </Section>
 
           {/* Footer */}
-          <Text className="ds-footer-text" style={s.footerText}>
-            Besoin d&apos;aide ?{" "}
-            <Link href="mailto:support@dogshift.ch" className="ds-footer-link" style={s.footerLink}>
-              support@dogshift.ch
-            </Link>
-            {" "}·{" "}
-            <Link href={baseUrl} className="ds-footer-link" style={s.footerLink}>
-              dogshift.ch
-            </Link>
-          </Text>
-          <Text className="ds-bottom" style={s.bottomMuted}>
-            DogShift · Plateforme de dogsitting premium en Suisse · Email automatique.
-          </Text>
+          <Section style={s.footerSection}>
+            <div style={s.socialRow}>
+              <a href="https://instagram.com/dogshift" style={s.socialLink} dangerouslySetInnerHTML={{ __html: SVG_INSTAGRAM }} />
+              <a href="https://facebook.com/dogshift" style={s.socialLink} dangerouslySetInnerHTML={{ __html: SVG_FACEBOOK }} />
+              <a href={baseUrl} style={s.socialLink} dangerouslySetInnerHTML={{ __html: SVG_GLOBE }} />
+            </div>
+            <div style={s.divider} />
+            <Text style={s.footerText}>
+              DogShift &middot; support@dogshift.ch &middot; Plateforme de dogsitting premium en Suisse
+            </Text>
+            <Text style={s.footerText}>
+              <Link href={baseUrl} style={s.footerLink}>dogshift.ch</Link>
+              &nbsp;&middot;&nbsp;
+              <Link href="mailto:support@dogshift.ch" style={s.footerLink}>support@dogshift.ch</Link>
+              &nbsp;&middot;&nbsp;
+              <Link href={`${baseUrl}/unsubscribe`} style={{ ...s.footerLink, textDecoration: "underline" }}>Se désabonner</Link>
+            </Text>
+          </Section>
+
         </Container>
       </Body>
     </Html>
   );
 }
 
-// ── Per-status sub-components ─────────────────────────────────────────────────
+// ── Per-status body content ───────────────────────────────────────────────────
 
-function ApplicationStatusHigh(props: { firstName: string; calendlyLink: string }) {
+function StatusHigh({ firstName, calendlyLink }: { firstName: string; calendlyLink: string }) {
   return (
     <>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
-        <span
-          className="ds-badge-green"
-          style={{
-            display: "inline-block",
-            background: "#dcfce7",
-            color: "#15803d",
-            fontSize: 11,
-            fontWeight: 700,
-            letterSpacing: "0.06em",
-            textTransform: "uppercase" as const,
-            padding: "3px 10px",
-            borderRadius: 20,
-          }}
-        >
-          Profil retenu
-        </span>
-      </div>
-      <Text className="ds-title" style={s.h1}>
-        Félicitations {props.firstName ? `${props.firstName} !` : "!"}
+      <Text style={s.bodyText}>
+        Bonne nouvelle{firstName ? ` ${firstName}` : ""}&nbsp;! Pour finaliser ta candidature, nous organisons un court entretien de{" "}
+        <strong>15 minutes</strong>. C&apos;est une étape <strong>obligatoire</strong> avant l&apos;activation de ton profil.
       </Text>
-      <Text className="ds-lead" style={s.lead}>
-        Bonne nouvelle : ton profil correspond parfaitement à ce que nous cherchons pour la phase pilote DogShift.
-      </Text>
-      <Text className="ds-lead" style={s.lead}>
-        Pour finaliser ta candidature, nous organisons un court entretien de{" "}
-        <strong>15 minutes</strong>. C&apos;est une étape{" "}
-        <strong>obligatoire</strong> avant l&apos;activation de ton profil.
-      </Text>
-
-      {props.calendlyLink ? (
-        <Section style={s.ctaRow}>
-          <Button href={props.calendlyLink} style={s.cta}>
-            Réserver mon entretien
-          </Button>
+      {calendlyLink ? (
+        <Section style={{ textAlign: "center", padding: "20px 0 8px" }}>
+          <Button href={calendlyLink} style={s.cta}>Réserver mon entretien</Button>
         </Section>
       ) : null}
-
-      <Text className="ds-muted" style={s.muted}>
-        Si le lien Calendly ne fonctionne pas, réponds directement à cet email et nous organiserons
-        un créneau avec toi manuellement.
+      <Text style={s.muted}>
+        Si le lien Calendly ne fonctionne pas, réponds directement à cet email et nous organiserons un créneau manuellement.
       </Text>
     </>
   );
 }
 
-function ApplicationStatusReview(props: { firstName: string }) {
+function StatusReview({ firstName }: { firstName: string }) {
   return (
     <>
-      <div style={{ marginBottom: 12 }}>
-        <span
-          className="ds-badge-amber"
-          style={{
-            display: "inline-block",
-            background: "#fef9c3",
-            color: "#a16207",
-            fontSize: 11,
-            fontWeight: 700,
-            letterSpacing: "0.06em",
-            textTransform: "uppercase" as const,
-            padding: "3px 10px",
-            borderRadius: 20,
-          }}
-        >
-          En cours d&apos;examen
-        </span>
-      </div>
-      <Text className="ds-title" style={s.h1}>
-        Ta candidature est à l&apos;étude
+      <Text style={s.bodyText}>
+        Bonjour{firstName ? ` ${firstName}` : ""}, merci beaucoup pour ta candidature DogShift. Ton profil est intéressant et nous souhaitons prendre le temps de l&apos;examiner en détail avec l&apos;équipe.
       </Text>
-      <Text className="ds-lead" style={s.lead}>
-        Bonjour{props.firstName ? ` ${props.firstName}` : ""}, merci beaucoup pour ta candidature DogShift.
-      </Text>
-      <Text className="ds-lead" style={s.lead}>
-        Ton profil est intéressant et nous souhaitons prendre le temps de l&apos;examiner en détail avec l&apos;équipe avant de te répondre.
-      </Text>
-
-      <Section className="ds-highlight" style={s.highlight}>
-        <Text className="ds-highlight-text" style={s.highlightText}>
-          Nous reviendrons vers toi <strong>sous 5 jours ouvrables</strong>, soit pour organiser
-          un entretien, soit avec un retour motivé.
+      <div style={s.highlight}>
+        <Text style={s.highlightText}>
+          Nous reviendrons vers toi <strong>sous 5 jours ouvrables</strong>, soit pour organiser un entretien, soit avec un retour motivé.
         </Text>
-      </Section>
-
-      <Text className="ds-muted" style={s.muted}>
-        Tu peux compléter ta candidature avec des éléments supplémentaires (références, expériences, photos) en répondant directement à cet email.
+      </div>
+      <Text style={s.muted}>
+        Tu peux compléter ta candidature avec des éléments supplémentaires en répondant directement à cet email.
       </Text>
     </>
   );
 }
 
-function ApplicationStatusLow(props: { firstName: string }) {
+function StatusLow({ firstName }: { firstName: string }) {
   return (
     <>
-      <Text className="ds-title" style={s.h1}>Merci pour ta candidature</Text>
-      <Text className="ds-lead" style={s.lead}>
-        Bonjour{props.firstName ? ` ${props.firstName}` : ""}, merci beaucoup pour l&apos;intérêt que tu portes à DogShift et pour le temps consacré à ta candidature.
+      <Text style={s.bodyText}>
+        Bonjour{firstName ? ` ${firstName}` : ""}, merci beaucoup pour l&apos;intérêt que tu portes à DogShift et pour le temps consacré à ta candidature.
       </Text>
-      <Text className="ds-lead" style={s.lead}>
-        Nous sommes actuellement en <strong>phase pilote</strong>, avec une sélection très restreinte de dog-sitters pour garantir un service de qualité. À ce stade, nous ne pourrons malheureusement pas retenir ta candidature.
+      <Text style={s.bodyText}>
+        Nous sommes actuellement en <strong>phase pilote</strong>, avec une sélection très restreinte de dog-sitters. À ce stade, nous ne pourrons malheureusement pas retenir ta candidature.
       </Text>
-      <Text className="ds-lead" style={s.lead}>
-        Rien n&apos;est définitif : à mesure que la plateforme grandit, nous rouvrirons les candidatures — n&apos;hésite pas à postuler à nouveau.
+      <Text style={s.muted}>
+        Rien n&apos;est définitif — à mesure que la plateforme grandit, nous rouvrirons les candidatures. Merci encore pour ta confiance&nbsp;!
       </Text>
-      <Text className="ds-muted" style={s.muted}>Merci encore pour ta confiance et à bientôt, peut-être !</Text>
     </>
   );
 }
 
-// ── Styles ─────────────────────────────────────────────────────────────────────
+// ── Styles ────────────────────────────────────────────────────────────────────
 
 const s: Record<string, CSSProperties> = {
-  body: {
-    margin: 0,
-    padding: 0,
-    backgroundColor: "#f1f5f9",
-    fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,Helvetica,sans-serif",
-    color: "#0f172a",
+  body: { margin: 0, padding: 0, backgroundColor: "#f1f5f9", fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,Helvetica,sans-serif" },
+  container: { margin: "0 auto", padding: "32px 12px 40px", width: "100%", maxWidth: 600 },
+
+  logoSection: { textAlign: "center", padding: "0 0 24px" },
+  brandName: { margin: 0, fontSize: 18, fontWeight: 800, color: "#0f172a", letterSpacing: "-0.4px", display: "inline" },
+
+  hero: {
+    background: "linear-gradient(135deg,#7c3aed 0%,#6366f1 55%,#818cf8 100%)",
+    borderRadius: "16px 16px 0 0",
+    padding: "36px 36px 32px",
   },
-  container: {
-    margin: "0 auto",
-    padding: "32px 12px 40px",
-    width: "100%",
-    maxWidth: 600,
-  },
-  logoSection: { textAlign: "center", padding: "0 0 20px" },
-  logoLink: { display: "inline-block" },
-  logo: { display: "block", margin: "0 auto", height: "auto" },
-  card: {
-    backgroundColor: "#ffffff",
-    border: "1px solid #e2e8f0",
-    borderRadius: 16,
-    overflow: "hidden",
-    boxShadow: "0 1px 3px rgba(0,0,0,0.06),0 4px 16px rgba(0,0,0,0.04)",
-  },
-  accentBar: { height: 4, backgroundColor: ACCENT, fontSize: 0, lineHeight: "0" },
-  cardBody: { padding: "32px 36px 36px" },
-  h1: {
-    margin: "0 0 8px",
-    fontSize: 22,
-    fontWeight: 800,
-    lineHeight: "28px",
-    letterSpacing: "-0.3px",
-    color: "#0f172a",
-  },
-  lead: { margin: "12px 0 0", fontSize: 14, lineHeight: "22px", color: "#475569" },
-  highlight: {
-    marginTop: 16,
-    padding: "12px 16px",
-    backgroundColor: "#f8fafc",
-    border: "1px solid #e2e8f0",
-    borderRadius: 10,
-    borderLeft: `3px solid ${ACCENT}`,
-  },
-  highlightText: { margin: 0, fontSize: 13, lineHeight: "19px", color: "#475569" },
-  ctaRow: { textAlign: "center", padding: "20px 0 8px" },
-  cta: {
-    backgroundColor: ACCENT,
-    color: "#ffffff",
-    fontSize: 14,
-    fontWeight: 700,
-    textDecoration: "none",
-    padding: "14px 28px",
-    borderRadius: 10,
+  heroLabel: {
     display: "inline-block",
+    background: "rgba(255,255,255,0.18)",
+    color: "rgba(255,255,255,0.95)",
+    fontSize: 10,
+    fontWeight: 700,
+    letterSpacing: "0.12em",
+    textTransform: "uppercase" as const,
+    padding: "4px 12px",
+    borderRadius: 20,
+    marginBottom: 16,
   },
+  heroTitle: { margin: "0 0 12px", fontSize: 26, fontWeight: 800, lineHeight: "32px", color: "#ffffff", letterSpacing: "-0.4px" },
+  heroSubtitle: { margin: 0, fontSize: 15, lineHeight: "22px", color: "rgba(255,255,255,0.85)" },
+
+  card: { backgroundColor: "#ffffff", borderRadius: "0 0 16px 16px", border: "1px solid #e2e8f0", borderTop: "none", boxShadow: "0 4px 24px rgba(0,0,0,0.07)" },
+  cardBody: { padding: "32px 36px 36px" },
+  bodyText: { margin: "0 0 12px", fontSize: 14, lineHeight: "22px", color: "#475569" },
+
+  highlight: { marginTop: 16, padding: "12px 16px", backgroundColor: "#f5f3ff", borderRadius: 10, borderLeft: "3px solid #6366f1" },
+  highlightText: { margin: 0, fontSize: 13, lineHeight: "19px", color: "#475569" },
+
+  cta: { backgroundColor: "#6366f1", color: "#ffffff", fontSize: 14, fontWeight: 700, textDecoration: "none", padding: "14px 28px", borderRadius: 10, display: "inline-block" },
   muted: { margin: "16px 0 0", fontSize: 12, lineHeight: "18px", color: "#94a3b8" },
-  footerText: {
-    margin: "20px 0 0",
-    fontSize: 12,
-    lineHeight: "18px",
-    color: "#94a3b8",
-    textAlign: "center",
-  },
-  footerLink: { color: "#64748b", textDecoration: "none" },
-  bottomMuted: { margin: "8px 0 0", fontSize: 11, lineHeight: "16px", color: "#cbd5e1", textAlign: "center" },
+
+  footerSection: { padding: "24px 4px 0", textAlign: "center" },
+  socialRow: { display: "flex", justifyContent: "center", gap: 16, marginBottom: 16 },
+  socialLink: { textDecoration: "none", display: "inline-block" },
+  divider: { height: 1, background: "#e2e8f0", margin: "0 0 12px" },
+  footerText: { margin: "0 0 4px", fontSize: 11, lineHeight: "17px", color: "#94a3b8", textAlign: "center" },
+  footerLink: { color: "#94a3b8", textDecoration: "none" },
 };
