@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
+import AdminListSkeleton from "@/components/admin/AdminListSkeleton";
+
 import AdminNotesPanel from "@/components/admin/AdminNotesPanel";
 import { formatSwissDateTimeCompact, formatSwissDateTimeHuman } from "@/lib/datetime/formatSwissDateTime";
 import type { SitterLifecycleStatus } from "@/lib/sitterContract";
@@ -786,7 +788,7 @@ export default function AdminSitterApplicationsClient({ adminCode }: { adminCode
       {success ? <p className="mt-4 text-sm font-medium text-emerald-700">{success}</p> : null}
 
       {loading ? (
-        <p className="mt-4 text-sm text-slate-600">Chargement…</p>
+        <AdminListSkeleton rows={5} />
       ) : items.length === 0 ? (
         <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-5">
           <p className="text-sm font-semibold text-slate-900">Aucune candidature</p>

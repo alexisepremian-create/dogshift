@@ -1,6 +1,9 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+
+import { AdminSimpleListSkeleton } from "@/components/admin/AdminListSkeleton";
 
 type AdminNoteTargetType = "USER" | "BOOKING" | "PILOT_SITTER_APPLICATION" | "SITTER_PROFILE";
 
@@ -44,7 +47,7 @@ export default function AdminNotesPanel({
   const [error, setError] = useState<string | null>(null);
   const [body, setBody] = useState("");
 
-  async function load() {
+  const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -66,11 +69,11 @@ export default function AdminNotesPanel({
     } finally {
       setLoading(false);
     }
-  }
+  }, [targetId, targetType]);
 
   useEffect(() => {
     void load();
-  }, [targetId, targetType]);
+  }, [load]);
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -146,7 +149,7 @@ export default function AdminNotesPanel({
       {error ? <p className="mt-4 text-sm font-medium text-rose-600">{error}</p> : null}
 
       {loading ? (
-        <p className="mt-5 text-sm text-slate-600">Chargement…</p>
+        <AdminSimpleListSkeleton rows={2} />
       ) : notes.length === 0 ? (
         <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4">
           <p className="text-sm text-slate-600">Aucune note interne pour le moment.</p>

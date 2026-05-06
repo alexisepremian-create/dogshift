@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 
+import { AdminSimpleListSkeleton } from "@/components/admin/AdminListSkeleton";
+
 type Amendment = {
   id: string;
   title: string;
@@ -264,7 +266,7 @@ export default function AdminContractAmendmentsClient() {
       <section className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
         <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.12)] sm:p-8">
           <h3 className="text-lg font-semibold tracking-tight text-slate-900">Historique des avenants</h3>
-          {loading ? <p className="mt-4 text-sm text-slate-600">Chargement…</p> : (
+          {loading ? <AdminSimpleListSkeleton rows={3} /> : (
             <div className="mt-5 grid gap-3">
               {amendments.map((item) => (
                 <div key={item.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">

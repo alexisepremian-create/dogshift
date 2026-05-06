@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 
+import { AdminSimpleListSkeleton } from "@/components/admin/AdminListSkeleton";
+
 import { useMaintenance } from "@/components/platform/MaintenanceProvider";
 
 function GeocodeSittersButton() {
@@ -123,7 +125,7 @@ export default function AdminMaintenanceSettingsClient() {
   }
 
   if (loading) {
-    return <p className="text-sm text-slate-600">Chargement…</p>;
+    return <AdminSimpleListSkeleton rows={3} />;
   }
 
   return (
