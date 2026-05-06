@@ -53,14 +53,14 @@ const CATEGORIES: EmailCategory[] = [
       },
       {
         id: "application-high",
-        label: "Candidature retenue ✅",
+        label: "Candidature retenue",
         description: "Profil retenu — invitation à réserver un entretien Calendly",
         badge: "HIGH",
         badgeColor: "bg-emerald-100 text-emerald-700",
       },
       {
         id: "application-review",
-        label: "Candidature en examen ⏱️",
+        label: "Candidature en examen",
         description: "Profil intéressant, examen en cours — réponse sous 5 jours",
         badge: "REVIEW",
         badgeColor: "bg-amber-100 text-amber-700",
@@ -197,7 +197,7 @@ const CATEGORIES: EmailCategory[] = [
       },
       {
         id: "relance-owner",
-        label: "Relance propriétaire ✨ IA",
+        label: "Relance propriétaire IA",
         description: "Généré par Claude — personnalisé selon le propriétaire et le sitter avec qui il a échangé sans réserver",
         badge: "IA",
         badgeColor: "bg-violet-100 text-violet-700",
@@ -230,14 +230,14 @@ const CATEGORIES: EmailCategory[] = [
     templates: [
       {
         id: "verification-identity-approved",
-        label: "Identité approuvée ✅",
+        label: "Identité approuvée",
         description: "Envoyé au sitter quand son identité est validée manuellement par l'admin",
         badge: "Approuvé",
         badgeColor: "bg-green-100 text-green-700",
       },
       {
         id: "verification-identity-rejected",
-        label: "Identité refusée ❌",
+        label: "Identité refusée",
         description: "Envoyé au sitter quand sa vérification d'identité est rejetée (documents illisibles, etc.)",
         badge: "Refusé",
         badgeColor: "bg-red-100 text-red-700",
@@ -252,26 +252,26 @@ const CATEGORIES: EmailCategory[] = [
     templates: [
       {
         id: "pension-submission-receipt",
-        label: "Photos reçues 📷",
+        label: "Photos reçues",
         description: "Accusé de réception envoyé au sitter dès la soumission de ses photos",
       },
       {
         id: "pension-approved",
-        label: "Pension approuvée ✅",
+        label: "Pension approuvée",
         description: "Envoyé au sitter quand son logement est approuvé (score ≥ 50/100)",
         badge: "Approuvé",
         badgeColor: "bg-green-100 text-green-700",
       },
       {
         id: "pension-needs-review",
-        label: "Vérification manuelle requise ⏳",
+        label: "Vérification manuelle requise",
         description: "Envoyé quand le score IA n'est pas assez élevé pour décision automatique",
         badge: "En attente",
         badgeColor: "bg-amber-100 text-amber-700",
       },
       {
         id: "pension-rejected",
-        label: "Photos refusées ❌",
+        label: "Photos refusées",
         description: "Envoyé au sitter quand ses photos sont refusées, avec conseils d'amélioration",
         badge: "Refusé",
         badgeColor: "bg-red-100 text-red-700",
@@ -286,26 +286,26 @@ const CATEGORIES: EmailCategory[] = [
     templates: [
       {
         id: "inactivity-nudge",
-        label: "Rappel disponibilités 📅",
+        label: "Rappel disponibilités",
         description: "Envoyé J+0 : profil publié mais aucune disponibilité renseignée",
       },
       {
         id: "inactivity-warning1",
-        label: "Avertissement 1 ⚠️",
+        label: "Avertissement 1",
         description: "Envoyé J+4 : compte suspendu dans 3 jours si aucune action",
         badge: "Warning 1",
         badgeColor: "bg-amber-100 text-amber-700",
       },
       {
         id: "inactivity-warning2",
-        label: "Dernier avertissement 🚨",
+        label: "Dernier avertissement",
         description: "Envoyé J+7 : suspension imminente dans 2 jours",
         badge: "Warning 2",
         badgeColor: "bg-orange-100 text-orange-700",
       },
       {
         id: "inactivity-suspended",
-        label: "Compte suspendu 🔴",
+        label: "Compte suspendu",
         description: "Envoyé J+9 : compte suspendu, contacter support@dogshift.ch pour réactiver",
         badge: "Suspendu",
         badgeColor: "bg-red-100 text-red-700",
@@ -349,79 +349,57 @@ export default function AdminEmailsPage() {
     }
   }
 
-  function applyDarkModeToIframe(dark: boolean) {
-    if (!iframeRef.current) return;
-    const doc = iframeRef.current.contentDocument;
+  // CSS injected into the iframe to FORCE light mode (prevents OS dark mode from auto-applying)
+  const LIGHT_CSS = `<style id="ds-preview-scheme">html{color-scheme:light!important}</style>`;
+
+  // CSS injected into the iframe to FORCE dark mode visually
+  const DARK_CSS = `<style id="ds-preview-scheme">
+    html { color-scheme: dark !important; }
+    body, .ds-outer { background-color: #0f172a !important; }
+    .ds-card, .ds-card-bottom { background-color: #1e293b !important; border-color: #334155 !important; }
+    .ds-title { color: #f1f5f9 !important; }
+    .ds-subtitle, .ds-lead { color: #94a3b8 !important; }
+    .ds-body-text { color: #cbd5e1 !important; }
+    .ds-summary-title { color: #e2e8f0 !important; }
+    .ds-row-border { border-top-color: #334155 !important; }
+    .ds-row-label { color: #64748b !important; }
+    .ds-row-value { color: #e2e8f0 !important; }
+    .ds-footer-outer { background-color: #0f172a !important; }
+    .ds-footer-text, .ds-bottom { color: #475569 !important; }
+    .ds-footer-link { color: #64748b !important; }
+    .ds-divider { background-color: #1e293b !important; }
+    .ds-highlight { background-color: #1e293b !important; border-left-color: #3b82f6 !important; }
+    .ds-highlight-text { color: #cbd5e1 !important; }
+    .ds-steps { background-color: #0f172a !important; border-color: #334155 !important; }
+    .ds-step-item { color: #94a3b8 !important; }
+    .ds-code-box { background-color: #0f172a !important; border-color: #334155 !important; }
+    .ds-code-val { color: #93c5fd !important; }
+    .ds-muted { color: #475569 !important; }
+    .ds-msg-box { background-color: #0f172a !important; border-color: #334155 !important; }
+    .ds-msg-text { color: #94a3b8 !important; }
+    .ds-section-title { color: #a78bfa !important; border-bottom-color: #3730a3 !important; }
+    .ds-err-titre { color: #f1f5f9 !important; }
+    .ds-err-texte { color: #94a3b8 !important; }
+    .ds-conseil { background-color: #1e1b4b !important; }
+    .ds-conseil-text { color: #c4b5fd !important; }
+  </style>`;
+
+  function writeHtmlToIframe(html: string, dark: boolean) {
+    const doc = iframeRef.current?.contentDocument;
     if (!doc) return;
-    const html = doc.documentElement;
-    if (dark) {
-      html.classList.add("ds-force-dark");
-      // Also inject color-scheme to trigger @media prefers-color-scheme: dark
-      let styleTag = doc.getElementById("ds-preview-dark") as HTMLStyleElement | null;
-      if (!styleTag) {
-        styleTag = doc.createElement("style");
-        styleTag.id = "ds-preview-dark";
-        doc.head?.appendChild(styleTag);
-      }
-      styleTag.textContent = `
-        html { color-scheme: dark; }
-        body, .ds-outer { background-color: #0f172a !important; }
-        .ds-card { background-color: #1e293b !important; border-color: #334155 !important; }
-        .ds-header { background-color: #1e293b !important; }
-        .ds-title, h1 { color: #f1f5f9 !important; }
-        .ds-subtitle, .ds-lead { color: #94a3b8 !important; }
-        .ds-body-text { color: #cbd5e1 !important; }
-        .ds-summary-title { color: #e2e8f0 !important; }
-        .ds-row-border { border-top-color: #334155 !important; }
-        .ds-row-label { color: #64748b !important; }
-        .ds-row-value { color: #e2e8f0 !important; }
-        .ds-footer-outer { background-color: #0f172a !important; }
-        .ds-footer-text, .ds-bottom { color: #475569 !important; }
-        .ds-footer-link { color: #64748b !important; }
-        .ds-divider { background-color: #1e293b !important; }
-        .ds-highlight { background-color: #1e293b !important; border-left-color: #3b82f6 !important; }
-        .ds-highlight-text { color: #cbd5e1 !important; }
-        .ds-steps { background-color: #0f172a !important; border-color: #334155 !important; }
-        .ds-step-item { color: #94a3b8 !important; }
-        .ds-code-box { background-color: #0f172a !important; border-color: #334155 !important; }
-        .ds-code-val { color: #93c5fd !important; }
-        .ds-muted { color: #475569 !important; }
-        .ds-msg-box { background-color: #0f172a !important; border-color: #334155 !important; }
-        .ds-msg-text { color: #94a3b8 !important; }
-        .ds-section-title { color: #a78bfa !important; border-bottom-color: #3730a3 !important; }
-        .ds-err-titre { color: #f1f5f9 !important; }
-        .ds-err-texte { color: #94a3b8 !important; }
-        .ds-conseil { background-color: #1e1b4b !important; }
-        .ds-conseil-text { color: #c4b5fd !important; }
-        .ds-card, .ds-card-bottom { background-color: #1e293b !important; border-color: #334155 !important; }
-      `;
-    } else {
-      html.classList.remove("ds-force-dark");
-      const styleTag = doc.getElementById("ds-preview-dark");
-      styleTag?.remove();
-    }
+    // Inject color-scheme override right after <head> so it wins over any @media in the email
+    const injected = html.replace(/(<head[^>]*>)/i, `$1${dark ? DARK_CSS : LIGHT_CSS}`);
+    doc.open();
+    doc.write(injected);
+    doc.close();
   }
 
   useEffect(() => {
-    if (iframeRef.current && previewHtml !== null) {
-      const doc = iframeRef.current.contentDocument;
-      if (doc) {
-        doc.open();
-        doc.write(previewHtml);
-        doc.close();
-        // Apply current dark mode preference after writing
-        applyDarkModeToIframe(darkMode);
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [previewHtml]);
-
-  useEffect(() => {
     if (previewHtml !== null) {
-      applyDarkModeToIframe(darkMode);
+      writeHtmlToIframe(previewHtml, darkMode);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [darkMode]);
+  }, [previewHtml, darkMode]);
 
   async function sendTestEmail() {
     if (!selected || testState === "sending") return;
@@ -647,7 +625,7 @@ export default function AdminEmailsPage() {
             )}
 
             {previewHtml !== null && !loading && (
-              <div className={`flex-1 overflow-hidden rounded-b-2xl transition-colors ${darkMode ? "bg-[#0f172a]" : "bg-white"}`}>
+              <div className="flex-1 overflow-hidden rounded-b-2xl">
                 <iframe
                   ref={iframeRef}
                   title="Aperçu email"
