@@ -18,7 +18,7 @@ import SunCornerGlow from "@/components/SunCornerGlow";
 import { DogSizeIcon } from "@/components/DogSizeIcon";
 import { appendHostMessage } from "@/lib/hostMessages";
 import { BUCKET_LABELS_FR, bucketDetailFr, mapReasonToBucket } from "@/lib/availability/reasonBuckets";
-import PageLoader from "@/components/ui/PageLoader";
+import AccountPageSkeleton from "@/components/ui/AccountPageSkeleton";
 import { useMaintenance } from "@/components/platform/MaintenanceProvider";
 import { maintenanceBookingUserMessage } from "@/lib/platform/maintenanceConstants";
 
@@ -2220,7 +2220,7 @@ function SitterPublicProfileContent({
 
   if (isLoading) {
     if (dbg) console.log("[ProfileContent] returning loader - profile is", sitter);
-    return <PageLoader label="Chargement…" />;
+    return <AccountPageSkeleton />;
   }
 
   if (dbg) console.log("[ProfileContent] render complete");

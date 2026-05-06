@@ -1,6 +1,5 @@
-import PageLoader from "@/components/ui/PageLoader";
+import AccountPageSkeleton from "@/components/ui/AccountPageSkeleton";
 
-// Fullscreen overlay while the sitter profile page loads — keeps footer hidden.
 export default function Loading() {
-  return <PageLoader static />;
+  return <AccountPageSkeleton />;
 }

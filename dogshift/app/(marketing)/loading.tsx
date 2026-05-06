@@ -1,5 +1,5 @@
-import PageLoader from "@/components/ui/PageLoader";
+import AccountPageSkeleton from "@/components/ui/AccountPageSkeleton";
 
 export default function Loading() {
-  return <PageLoader persist />;
+  return <AccountPageSkeleton />;
 }
