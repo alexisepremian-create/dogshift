@@ -85,10 +85,10 @@ export function renderEmailLayout(params: {
   footerText?: string;
   /** Base URL for absolute links, defaults to https://dogshift.ch */
   baseUrl?: string;
-  /** @deprecated use title/subtitle — kept for backwards compatibility */
-  accentColor?: string;
   /** Hero gradient color: "purple" (default) or "amber" for alert-style emails */
   heroColor?: "purple" | "amber";
+  /** @deprecated use title/subtitle — kept for backwards compatibility */
+  accentColor?: string;
 }) {
   const brandName = (params.brandName || "DogShift").trim() || "DogShift";
   const title = esc(params.title);
