@@ -10,7 +10,7 @@ import Link from "next/link";
 import { useParams, usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { User } from "lucide-react";
+import { User, Scissors, Dog } from "lucide-react";
 import { loadHostProfileFromStorage, type HostProfileV1 } from "@/lib/hostProfile";
 import HostDashboardShell from "@/components/HostDashboardShell";
 import { HostUserProvider, makeHostUserValuePreview } from "@/components/HostUserProvider";
@@ -2413,13 +2413,15 @@ function SitterPublicProfileContent({
                       {(sitter.acceptanceCriteria?.neuteredRequired || sitter.acceptanceCriteria?.maxDogs) ? (
                         <div className="mt-3 flex flex-wrap gap-2">
                           {sitter.acceptanceCriteria?.neuteredRequired && (
-                            <span className="inline-flex items-center gap-1 rounded-xl border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-800">
-                              ✂️ Castré/stérilisé requis
+                            <span className="inline-flex items-center gap-1.5 rounded-xl border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-800">
+                              <Scissors className="h-3.5 w-3.5 flex-shrink-0" />
+                              Castré/stérilisé requis
                             </span>
                           )}
                           {sitter.acceptanceCriteria?.maxDogs ? (
-                            <span className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-700">
-                              🐶 Max. {sitter.acceptanceCriteria.maxDogs} chien{sitter.acceptanceCriteria.maxDogs > 1 ? "s" : ""}
+                            <span className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--dogshift-blue)]/30 bg-[color-mix(in_srgb,var(--dogshift-blue),white_88%)] px-2.5 py-1 text-xs font-semibold text-[var(--dogshift-blue)]">
+                              <Dog className="h-3.5 w-3.5 flex-shrink-0" />
+                              Max. {sitter.acceptanceCriteria.maxDogs} chien{sitter.acceptanceCriteria.maxDogs > 1 ? "s" : ""}
                             </span>
                           ) : null}
                         </div>
