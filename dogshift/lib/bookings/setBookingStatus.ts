@@ -126,13 +126,30 @@ export async function setBookingStatus(
     }
 
     if (nextStatus === "CANCELLED") {
+      const startDate = booking.startDate ? new Date(booking.startDate) : null;
+      const eligibleRefund = computeEligibleRefund(startDate, new Date());
+      const cancelledBy = opts?.notificationContext?.cancelledBy || "owner";
+      const amountCents = typeof booking.amount === "number" ? booking.amount : undefined;
+      const currency = typeof booking.currency === "string" ? booking.currency : undefined;
+
+      let sitterName: string | undefined;
+      if (booking.sitterId) {
+        try {
+          const sp = await (prisma as any).sitterProfile.findUnique({
+            where: { sitterId: booking.sitterId },
+            select: { displayName: true },
+          });
+          sitterName = typeof sp?.displayName === "string" && sp.displayName.trim() ? sp.displayName.trim() : undefined;
+        } catch { /* non-critical */ }
+      }
+
       if (ownerId) {
         await sendNotificationEmail({
           req: opts?.req,
           recipientUserId: ownerId,
           key: "bookingCancelled",
           entityId: id,
-          payload: { kind: "bookingCancelled", bookingId: id, dashboard: "account" },
+          payload: { kind: "bookingCancelled", bookingId: id, dashboard: "account", eligibleRefund, cancelledBy, sitterName, amountCents, currency },
         });
       }
       if (sitterId) {
@@ -147,6 +164,8 @@ export async function setBookingStatus(
     }
 
     if (nextStatus === "REFUNDED") {
+      const refundAmountCents = typeof booking.amount === "number" ? booking.amount : undefined;
+      const refundCurrency = typeof booking.currency === "string" ? booking.currency : undefined;
       if (ownerId) {
         await sendNotificationEmail({
           req: opts?.req,
@@ -162,8 +181,10 @@ export async function setBookingStatus(
                   kind: "bookingAutoExpiredRefunded",
                   bookingId: id,
                   deadlineHours: opts?.notificationContext?.deadlineHours ?? 24,
+                  amountCents: refundAmountCents,
+                  currency: refundCurrency,
                 }
-              : { kind: "bookingRefunded", bookingId: id, dashboard: "account" },
+              : { kind: "bookingRefunded", bookingId: id, dashboard: "account", amountCents: refundAmountCents, currency: refundCurrency },
         });
       }
       if (sitterId) {
@@ -178,13 +199,15 @@ export async function setBookingStatus(
     }
 
     if (nextStatus === "REFUND_FAILED") {
+      const failAmountCents = typeof booking.amount === "number" ? booking.amount : undefined;
+      const failCurrency = typeof booking.currency === "string" ? booking.currency : undefined;
       if (ownerId) {
         await sendNotificationEmail({
           req: opts?.req,
           recipientUserId: ownerId,
           key: "bookingRefundFailed",
           entityId: id,
-          payload: { kind: "bookingRefundFailed", bookingId: id, dashboard: "account" },
+          payload: { kind: "bookingRefundFailed", bookingId: id, dashboard: "account", amountCents: failAmountCents, currency: failCurrency },
         });
       }
     }

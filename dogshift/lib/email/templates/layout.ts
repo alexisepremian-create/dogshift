@@ -85,6 +85,8 @@ export function renderEmailLayout(params: {
   footerText?: string;
   /** Base URL for absolute links, defaults to https://dogshift.ch */
   baseUrl?: string;
+  /** Hero gradient colour. Defaults to "purple". Use "amber" for warning emails. */
+  heroColor?: "purple" | "amber";
   /** @deprecated use title/subtitle — kept for backwards compatibility */
   accentColor?: string;
 }) {
@@ -94,8 +96,14 @@ export function renderEmailLayout(params: {
   const heroLabel = params.heroLabel ? esc(params.heroLabel) : "";
   const logoUrl = params.logoUrl ?? "";
   const baseUrl = (params.baseUrl || "https://dogshift.ch").replace(/\/$/, "");
+  const heroGradient = params.heroColor === "amber"
+    ? "linear-gradient(135deg,#d97706 0%,#f59e0b 55%,#fbbf24 100%)"
+    : "linear-gradient(135deg,#7c3aed 0%,#6366f1 55%,#818cf8 100%)";
+  const heroLabelBg = params.heroColor === "amber"
+    ? "rgba(255,255,255,0.22)"
+    : "rgba(255,255,255,0.18)";
   // CTA button uses indigo to match the hero gradient; accentColor kept for compat
-  const ctaBg = params.accentColor || "#6366f1";
+  const ctaBg = params.heroColor === "amber" ? "#d97706" : (params.accentColor || "#6366f1");
 
   const summaryTitle = esc(params.summaryTitle || "Résumé");
   const rows = Array.isArray(params.summaryRows) ? params.summaryRows : [];
@@ -351,7 +359,7 @@ export function renderEmailLayout(params: {
 
           <!-- ── PURPLE GRADIENT HERO (logo + label + title + subtitle) ── -->
           <tr>
-            <td style="border-radius:${hasBody ? "16px 16px 0 0" : "16px"};overflow:hidden;background:linear-gradient(135deg,#7c3aed 0%,#6366f1 55%,#818cf8 100%);">
+            <td style="border-radius:${hasBody ? "16px 16px 0 0" : "16px"};overflow:hidden;background:${heroGradient};">
               <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
                 <tr>
                   <td style="padding:28px 36px 32px 36px;">
@@ -361,7 +369,7 @@ export function renderEmailLayout(params: {
                       ${logoHtml}
                     </div>
 
-                    ${heroLabel ? `<div style="display:inline-block;background:rgba(255,255,255,0.18);color:rgba(255,255,255,0.95);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,Helvetica,sans-serif;font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;padding:4px 12px;border-radius:20px;margin-bottom:16px;">${heroLabel}</div>` : ""}
+                    ${heroLabel ? `<div style="display:inline-block;background:${heroLabelBg};color:rgba(255,255,255,0.95);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,Helvetica,sans-serif;font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;padding:4px 12px;border-radius:20px;margin-bottom:16px;">${heroLabel}</div>` : ""}
 
                     <h1 style="margin:0 0 12px 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,Helvetica,sans-serif;font-size:26px;font-weight:800;line-height:32px;color:#ffffff;letter-spacing:-0.4px;">${title}</h1>
 
