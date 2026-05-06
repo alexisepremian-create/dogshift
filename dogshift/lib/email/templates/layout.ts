@@ -103,7 +103,7 @@ export function renderEmailLayout(params: {
   // Default banner: hero image unless explicitly disabled (set bannerImageUrl to "")
   const bannerImageUrl = params.bannerImageUrl !== undefined
     ? params.bannerImageUrl
-    : `${baseUrl}/email-banners/banner-hero.jpg`;
+    : `${baseUrl}/email-banners/banner-confiance.jpg`;
   const bannerCtaUrl = params.bannerCtaUrl ?? `${baseUrl}/sitters`;
   const bannerCtaLabel = params.bannerCtaLabel ?? "Voir les dog-sitters →";
   const ctaLabel = params.ctaLabel ? esc(params.ctaLabel) : "";
@@ -288,15 +288,23 @@ export function renderEmailLayout(params: {
           ${bannerImageUrl ? `
           <tr>
             <td style="padding:20px 0 0;">
-              <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;border-radius:16px;overflow:hidden;background-color:#ffffff;border:1px solid #e2e8f0;box-shadow:0 4px 24px rgba(0,0,0,0.07);">
+              <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;border-radius:16px;overflow:hidden;">
                 <tr>
-                  <td style="padding:0;line-height:0;font-size:0;">
-                    <img src="${esc(bannerImageUrl)}" width="600" alt="" style="display:block;width:100%;max-width:600px;border:0;border-radius:16px 16px 0 0;" />
+                  <td style="padding:0;background:#1e1b4b;border-radius:16px 16px 0 0;overflow:hidden;position:relative;line-height:0;font-size:0;">
+                    <img src="${esc(bannerImageUrl)}" width="600" alt="" style="display:block;width:100%;max-width:600px;height:200px;object-fit:cover;object-position:center 35%;opacity:0.45;border:0;" />
+                    <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;position:absolute;top:0;left:0;width:100%;height:100%;">
+                      <tr>
+                        <td style="padding:28px 32px;vertical-align:middle;">
+                          <div style="font-family:Georgia,'Times New Roman',serif;font-size:13px;font-weight:400;color:#c4b5fd;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:8px;">Parce qu&apos;il le m&eacute;rite.</div>
+                          <div style="font-family:Georgia,'Times New Roman',serif;font-size:22px;font-weight:700;line-height:30px;color:#ffffff;max-width:340px;">Votre chien m&eacute;rite<br />quelqu&apos;un de confiance.</div>
+                        </td>
+                      </tr>
+                    </table>
                   </td>
                 </tr>
                 <tr>
-                  <td style="background-color:#ffffff;padding:22px 36px 28px;text-align:center;border-radius:0 0 16px 16px;">
-                    <a href="${esc(bannerCtaUrl)}" style="display:inline-block;background-color:#6366f1;color:#ffffff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,Helvetica,sans-serif;font-size:14px;font-weight:700;text-decoration:none;padding:13px 28px;border-radius:10px;">${esc(bannerCtaLabel)}</a>
+                  <td style="background:#ffffff;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 16px 16px;padding:24px 32px 28px;text-align:center;">
+                    <a href="${esc(bannerCtaUrl)}" style="display:inline-block;background:#7c3aed;color:#ffffff;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:700;text-decoration:none;padding:14px 28px;border-radius:12px;">${esc(bannerCtaLabel)}</a>
                   </td>
                 </tr>
               </table>

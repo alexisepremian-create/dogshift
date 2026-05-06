@@ -116,18 +116,37 @@ export function ApplicationStatusEmail(props: {
 
 
           {/* ── Closing banner ── */}
-          <table role="presentation" cellPadding={0} cellSpacing={0} width="100%" style={{ borderCollapse: "collapse", margin: "20px 0 0", borderRadius: 16, overflow: "hidden", backgroundColor: "#ffffff", border: "1px solid #e2e8f0", boxShadow: "0 4px 24px rgba(0,0,0,0.07)" }}>
+          
+          {/* ── Closing banner — "Parce qu'il le mérite" ── */}
+          <table role="presentation" cellPadding={0} cellSpacing={0} width="100%" style={{ borderCollapse: "collapse", margin: "20px 0 0", borderRadius: 16, overflow: "hidden" }}>
             <tbody>
               <tr>
-                <td style={{ padding: 0, lineHeight: "0px", fontSize: "0px" }}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={`${baseUrl}/email-banners/banner-hero.jpg`} width="600" alt="" style={{ display: "block", width: "100%", maxWidth: "600px", border: 0, borderRadius: "16px 16px 0 0" }} />
+                <td style={{ padding: 0, borderRadius: "16px 16px 0 0", overflow: "hidden", background: "#1e1b4b" }}>
+                  <div style={{ position: "relative" as const }}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={`${baseUrl}/email-banners/banner-confiance.jpg`} width="600" alt="" style={{ display: "block", width: "100%", maxWidth: "600px", height: "200px", objectFit: "cover" as const, objectPosition: "center 35%", opacity: 0.45, border: 0 }} />
+                    <table role="presentation" cellPadding={0} cellSpacing={0} width="100%" style={{ borderCollapse: "collapse", position: "absolute" as const, top: 0, left: 0, height: "200px" }}>
+                      <tbody>
+                        <tr>
+                          <td style={{ padding: "28px 32px", verticalAlign: "middle" }}>
+                            <div style={{ fontFamily: "Georgia,'Times New Roman',serif", fontSize: 13, color: "#c4b5fd", letterSpacing: "0.08em", textTransform: "uppercase" as const, marginBottom: 8 }}>
+                              Parce qu&apos;il le mérite.
+                            </div>
+                            <div style={{ fontFamily: "Georgia,'Times New Roman',serif", fontSize: 22, fontWeight: 700, lineHeight: "30px", color: "#ffffff", maxWidth: 340 }}>
+                              Votre chien mérite<br />quelqu&apos;un de confiance.
+                            </div>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
                 </td>
               </tr>
               <tr>
-                <td style={{ backgroundColor: "#ffffff", padding: "22px 36px 28px", textAlign: "center", borderRadius: "0 0 16px 16px" }}>
-                  <p style={{ margin: "0 0 14px", fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif", fontSize: 15, fontWeight: 700, color: "#0f172a" }}>Des dog-sitters vérifiés près de chez vous</p>
-                  <a href={`${baseUrl}/sitters`} style={{ backgroundColor: "#6366f1", color: "#ffffff", fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif", fontSize: 14, fontWeight: 700, textDecoration: "none", padding: "13px 28px", borderRadius: 10, display: "inline-block" }}>Explorer les sitters →</a>
+                <td style={{ background: "#ffffff", border: "1px solid #e5e7eb", borderTop: "none", borderRadius: "0 0 16px 16px", padding: "24px 32px 28px", textAlign: "center" }}>
+                  <a href={`${baseUrl}/sitters`} style={{ display: "inline-block", backgroundColor: "#7c3aed", color: "#ffffff", textDecoration: "none", fontFamily: "Arial,Helvetica,sans-serif", fontSize: 14, fontWeight: 700, lineHeight: "16px", padding: "14px 28px", borderRadius: "12px" }}>
+                    Voir les dog-sitters →
+                  </a>
                 </td>
               </tr>
             </tbody>

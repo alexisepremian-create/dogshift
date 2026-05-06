@@ -205,25 +205,7 @@ export function renderZootherapieEmail(params: {
           </tr>
 
           <!-- FOOTER -->
-          <!-- Banner -->
-          <tr>
-            <td style="padding:20px 0 0;">
-              <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;border-radius:16px;overflow:hidden;background-color:#ffffff;border:1px solid #e2e8f0;box-shadow:0 4px 24px rgba(0,0,0,0.07);">
-                <tr>
-                  <td style="padding:0;line-height:0;font-size:0;">
-                    <img src="${siteUrl}/email-banners/banner-zoo1.jpg" width="600" alt="" style="display:block;width:100%;max-width:600px;border:0;border-radius:16px 16px 0 0;" />
-                  </td>
-                </tr>
-                <tr>
-                  <td style="background-color:#ffffff;padding:22px 36px 28px;text-align:center;border-radius:0 0 16px 16px;">
-                    <p style="margin:0 0 14px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;font-size:15px;font-weight:700;color:#0f172a;">Des sitters de confiance pour votre chien</p>
-                    <a href="${siteUrl}/sitters" style="display:inline-block;background-color:#6366f1;color:#ffffff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;font-size:14px;font-weight:700;text-decoration:none;padding:13px 28px;border-radius:10px;">Voir les dog-sitters →</a>
-                  </td>
-                </tr>
-              </table>
-            </td>
-          </tr>
-
+        
           <!-- Footer -->
           <tr>
             <td align="center" style="padding:24px 4px 0;">

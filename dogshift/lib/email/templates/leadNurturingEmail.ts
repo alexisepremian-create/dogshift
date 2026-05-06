@@ -346,7 +346,7 @@ export function renderNurturingStep3(params: { baseUrl: string; prenom?: string 
             <tr>
               <td width="33%" style="padding:0 6px 0 0;vertical-align:top;">
                 <div style="background:#faf5ff;border-radius:10px;padding:14px;text-align:center;">
-                  <div style="font-size:22px;margin-bottom:6px;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 12c0-1 .5-2 1.5-2.5M12 5c1-1.5 3-2 4.5-1s2 3 1 4.5M5 16c-1 .5-2 1.5-2 3M21 16c1 .5 2 1.5 2 3M12 17c-3 0-5-2-5-4 0-1 1-2.5 2.5-3.5" stroke="#7c3aed" stroke-width="1.8" stroke-linecap="round"/></svg></div>
+                  <div style="font-size:22px;margin-bottom:6px;"><svg width="22" height="22" viewBox="0 0 24 24" fill="#7c3aed" xmlns="http://www.w3.org/2000/svg"><ellipse cx="9" cy="5.5" rx="2" ry="2.5"/><ellipse cx="15" cy="5.5" rx="2" ry="2.5"/><ellipse cx="5.5" cy="10.5" rx="1.8" ry="2.3"/><ellipse cx="18.5" cy="10.5" rx="1.8" ry="2.3"/><path d="M12 9.5c-3.5 0-6 2.5-6 5v.8c0 1 .5 2 1.5 2.5.8.4 1.5.2 2.1-.2.5-.3 1.3-.6 2.4-.6s1.9.3 2.4.6c.6.4 1.3.6 2.1.2 1-.5 1.5-1.5 1.5-2.5v-.8c0-2.5-2.5-5-6-5z"/></svg></div>
                   <div style="font-family:Arial,Helvetica,sans-serif;font-size:12px;font-weight:700;color:#6d28d9;">Promenade</div>
                   <div style="font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#6b7280;margin-top:3px;">1h ou 2h</div>
                 </div>
