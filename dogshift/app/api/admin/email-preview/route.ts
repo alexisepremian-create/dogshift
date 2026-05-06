@@ -742,6 +742,231 @@ async function renderTemplate(template: string): Promise<{ html: string; subject
       return { subject: "Dernier avertissement — suspension imminente — DogShift", html };
     }
 
+    // ── Sitter templates ──────────────────────────────────────────────────
+
+    case "sitter-booking-confirmed": {
+      const { html } = renderEmailLayout({
+        logoUrl: LOGO_URL,
+        title: "Ta prestation est confirmée 🐾",
+        subtitle: "Le propriétaire a confirmé la réservation.",
+        summaryRows: [
+          { label: "Service", value: "Promenade (1h)" },
+          { label: "Début", value: "lun. 06 mai 2026, 10:00" },
+          { label: "Fin", value: "lun. 06 mai 2026, 11:00" },
+          { label: "Référence", value: "bk_preview_demo_2026" },
+          { label: "Propriétaire", value: "Sophie Martin" },
+          { label: "Chien", value: "Max (Golden Retriever)" },
+        ],
+        extraHtml: buildMockTravelMapHtml() + `
+          <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;margin-top:20px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:0;">
+            <tr><td style="padding:18px 20px;">
+              <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,Helvetica,sans-serif;font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#15803d;margin-bottom:10px;">Tes gains</div>
+              <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
+                <tr><td style="padding:6px 0;font-size:14px;color:#475569;">Montant brut</td><td align="right" style="padding:6px 0;font-size:14px;font-weight:500;">44.50 CHF</td></tr>
+                <tr><td style="padding:6px 0;font-size:14px;color:#dc2626;">Commission DogShift</td><td align="right" style="padding:6px 0;font-size:14px;color:#dc2626;">- 6.68 CHF</td></tr>
+                <tr><td colspan="2" style="padding:8px 0 0;border-top:1px solid #bbf7d0;">&nbsp;</td></tr>
+                <tr><td style="padding:6px 0;font-size:14px;font-weight:700;color:#15803d;">Montant net</td><td align="right" style="padding:6px 0;font-size:14px;font-weight:800;color:#15803d;">37.82 CHF</td></tr>
+              </table>
+            </td></tr>
+          </table>`,
+        ctaLabel: "Voir la réservation",
+        ctaUrl: `${BASE_URL}/host/requests`,
+        secondaryLinkLabel: "Contacter le propriétaire",
+        secondaryLinkUrl: `${BASE_URL}/host/messages`,
+      });
+      return { subject: "Ta prestation est confirmée 🐾 – DogShift", html };
+    }
+
+    case "sitter-booking-reminder": {
+      const FF = "-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,Helvetica,sans-serif";
+      const ownerContactHtml = `
+        <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;margin-top:18px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;">
+          <tr><td style="padding:14px 18px;">
+            <div style="font-family:${FF};font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#64748b;margin-bottom:6px;">Propriétaire</div>
+            <div style="font-family:${FF};font-size:15px;font-weight:700;color:#0f172a;">Sophie Martin</div>
+            <div style="font-family:${FF};font-size:13px;color:#475569;margin-top:4px;">📞 +41 79 123 45 67</div>
+          </td></tr>
+        </table>`;
+      const checklistItems = ["Vérifier le créneau et l'adresse", "Charger le téléphone", "Prévoir laisse de secours, sac à déjections, eau", "Bien lire les notes du propriétaire"];
+      const checkIcon = `<span style="color:#10b981;font-weight:bold;font-size:14px;display:inline-block;width:20px;">✓</span>`;
+      const checklistHtml = `
+        <div style="margin-top:24px;background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;padding:18px 20px;">
+          <h3 style="margin:0 0 14px;font-family:${FF};font-size:14px;font-weight:700;color:#0f172a;text-transform:uppercase;letter-spacing:0.05em;">Ta checklist</h3>
+          <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
+            ${checklistItems.map(item => `<tr><td valign="top" style="padding:4px 0;width:24px;">${checkIcon}</td><td valign="top" style="padding:4px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;">${item}</td></tr>`).join("")}
+          </table>
+        </div>`;
+      const { html } = renderEmailLayout({
+        logoUrl: LOGO_URL,
+        title: "Demain, Max t'attend 🐾",
+        subtitle: "Tout est prêt pour la prestation.",
+        summaryRows: [
+          { label: "Service", value: "Promenade (1h)" },
+          { label: "Début", value: "lun. 06 mai 2026, 10:00" },
+          { label: "Fin", value: "lun. 06 mai 2026, 11:00" },
+          { label: "Lieu de prise en charge", value: "Rue de Bourg 12, 1003 Lausanne" },
+        ],
+        extraHtml: ownerContactHtml + buildMockTravelMapHtml() + checklistHtml,
+        ctaLabel: "Voir la réservation",
+        ctaUrl: `${BASE_URL}/host/requests`,
+      });
+      return { subject: "Rappel de prestation – DogShift", html };
+    }
+
+    case "sitter-payout-received": {
+      const FF = "-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,Helvetica,sans-serif";
+      const { html } = renderEmailLayout({
+        logoUrl: LOGO_URL,
+        title: "37.82 CHF viennent d'arriver sur ton compte 💚",
+        subtitle: "Ton travail a été récompensé.",
+        extraHtml: `
+          <div style="margin-top:20px;text-align:center;padding:24px 0;">
+            <div style="font-family:${FF};font-size:36px;font-weight:800;color:#15803d;">37.82 CHF</div>
+            <div style="font-family:${FF};font-size:13px;color:#6b7280;margin-top:8px;">Le virement apparaît sous 1–3 jours ouvrés</div>
+          </div>
+          <div style="margin-top:16px;">
+            <div style="font-family:${FF};font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#64748b;margin-bottom:8px;">Réservations incluses</div>
+            <div style="font-family:${FF};font-size:13px;color:#475569;padding:4px 0;">• Réservation #bk_preview_demo_2026</div>
+          </div>`,
+        ctaLabel: "Voir mon portefeuille",
+        ctaUrl: `${BASE_URL}/host/wallet`,
+      });
+      return { subject: "37.82 CHF reçus 💚 – DogShift", html };
+    }
+
+    case "sitter-booking-modified": {
+      const FF = "-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,Helvetica,sans-serif";
+      const { html } = renderEmailLayout({
+        logoUrl: LOGO_URL,
+        title: "Ta réservation avec Sophie a été modifiée",
+        subtitle: "Vérifie les détails et confirme.",
+        summaryRows: MOCK_BOOKING_ROWS,
+        extraHtml: `
+          <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;margin-top:18px;background:#fefce8;border:1px solid #fde68a;border-radius:12px;">
+            <tr><td style="padding:18px 20px;">
+              <div style="font-family:${FF};font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#92400e;margin-bottom:10px;">Modifications</div>
+              <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
+                <tr>
+                  <td style="padding:6px 0;font-family:${FF};font-size:13px;font-weight:600;color:#64748b;">Début</td>
+                  <td style="padding:6px 0 6px 12px;font-family:${FF};font-size:13px;">
+                    <span style="text-decoration:line-through;color:#94a3b8;">lun. 06 mai 2026, 10:00</span><br/>
+                    <span style="color:#15803d;font-weight:600;">mar. 07 mai 2026, 14:00</span>
+                  </td>
+                </tr>
+              </table>
+            </td></tr>
+          </table>
+          <div style="margin-top:14px;font-family:${FF};font-size:14px;color:#15803d;font-weight:600;text-align:center;">
+            Impact sur tes gains : +5.00 CHF
+          </div>`,
+        ctaLabel: "Voir la réservation",
+        ctaUrl: `${BASE_URL}/host/requests`,
+      });
+      return { subject: "Réservation modifiée – DogShift", html };
+    }
+
+    case "sitter-refund-triggered-eligible": {
+      const FF = "-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,Helvetica,sans-serif";
+      const { html } = renderEmailLayout({
+        logoUrl: LOGO_URL,
+        title: "La réservation du lun. 06 mai 2026 a été annulée",
+        subtitle: "Voici ce que cela signifie pour toi.",
+        summaryRows: [
+          { label: "Service", value: "Promenade (1h)" },
+          { label: "Début", value: "lun. 06 mai 2026, 10:00" },
+          { label: "Fin", value: "lun. 06 mai 2026, 11:00" },
+          { label: "Référence", value: "bk_preview_demo_2026" },
+        ],
+        extraHtml: `
+          <div style="margin-top:20px;padding:18px 20px;background:#fef2f2;border:1px solid #fecaca;border-radius:12px;">
+            <div style="font-family:${FF};font-size:14px;line-height:22px;color:#991b1b;">
+              La réservation a été annulée plus de 24h avant le début. Aucune rémunération n'est due pour cette prestation.
+            </div>
+          </div>`,
+        ctaLabel: "Voir mes réservations",
+        ctaUrl: `${BASE_URL}/host/requests`,
+      });
+      return { subject: "Annulation de réservation – DogShift", html };
+    }
+
+    case "sitter-refund-triggered-late": {
+      const FF = "-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,Helvetica,sans-serif";
+      const { html } = renderEmailLayout({
+        logoUrl: LOGO_URL,
+        title: "La réservation du lun. 06 mai 2026 a été annulée",
+        subtitle: "Voici ce que cela signifie pour toi.",
+        summaryRows: [
+          { label: "Service", value: "Promenade (1h)" },
+          { label: "Début", value: "lun. 06 mai 2026, 10:00" },
+          { label: "Fin", value: "lun. 06 mai 2026, 11:00" },
+          { label: "Référence", value: "bk_preview_demo_2026" },
+        ],
+        extraHtml: `
+          <div style="margin-top:20px;padding:18px 20px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;">
+            <div style="font-family:${FF};font-size:14px;line-height:22px;color:#166534;">
+              L'annulation étant tardive (moins de 24h avant le début), ta rémunération de <strong>37.82 CHF</strong> reste acquise.
+            </div>
+          </div>`,
+        ctaLabel: "Voir mes réservations",
+        ctaUrl: `${BASE_URL}/host/requests`,
+      });
+      return { subject: "Annulation de réservation – DogShift", html };
+    }
+
+    case "sitter-review-received": {
+      const FF = "-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,Helvetica,sans-serif";
+      const stars = Array.from({ length: 5 }, (_, i) =>
+        i < 4
+          ? `<span style="color:#eab308;font-size:22px;">★</span>`
+          : `<span style="color:#d1d5db;font-size:22px;">★</span>`
+      ).join("");
+      const { html } = renderEmailLayout({
+        logoUrl: LOGO_URL,
+        title: "Sophie vient de te laisser un avis ⭐",
+        subtitle: "Continue comme ça !",
+        extraHtml: `
+          <div style="margin-top:20px;text-align:center;">
+            <div style="margin-bottom:8px;">${stars}</div>
+            <div style="font-family:${FF};font-size:14px;color:#6b7280;">4/5</div>
+          </div>
+          <div style="margin-top:12px;padding:14px 16px;background:#f8fafc;border-radius:10px;border:1px solid #e2e8f0;">
+            <div style="font-family:${FF};font-size:14px;line-height:22px;color:#374151;font-style:italic;">"Camille est très douce avec Max, elle l'a promené avec beaucoup de soin. Je recommande !"</div>
+            <div style="margin-top:8px;font-family:${FF};font-size:12px;color:#94a3b8;">— Sophie Martin</div>
+          </div>`,
+        ctaLabel: "Voir mes avis",
+        ctaUrl: `${BASE_URL}/host/profile`,
+      });
+      return { subject: "Sophie t'a laissé un avis ⭐ – DogShift", html };
+    }
+
+    case "sitter-monthly-recap": {
+      const FF = "-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,Helvetica,sans-serif";
+      const statCell = (label: string, value: string, accent = "#0f172a") => `
+        <td align="center" style="padding:12px 8px;">
+          <div style="font-family:${FF};font-size:24px;font-weight:800;color:${accent};line-height:1.2;">${value}</div>
+          <div style="font-family:${FF};font-size:11px;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:0.06em;margin-top:4px;">${label}</div>
+        </td>`;
+      const { html } = renderEmailLayout({
+        logoUrl: LOGO_URL,
+        title: "Ton mois d'avril en chiffres",
+        subtitle: "Voici ton récap du mois écoulé.",
+        extraHtml: `
+          <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;margin-top:20px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;">
+            <tr>
+              ${statCell("Prestations", "8")}
+              ${statCell("Heures", "12")}
+            </tr>
+            <tr>
+              ${statCell("Revenu net", "302.56 CHF", "#15803d")}
+              ${statCell("Note moyenne", "★ 4.8", "#eab308")}
+            </tr>
+          </table>`,
+        ctaLabel: "Voir mes statistiques",
+        ctaUrl: `${BASE_URL}/host`,
+      });
+      return { subject: "Ton récap avril – DogShift", html };
+    }
+
     case "inactivity-suspended": {
       const { html } = renderEmailLayout({
         title: "Votre compte a été suspendu",

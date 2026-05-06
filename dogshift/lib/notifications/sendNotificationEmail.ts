@@ -121,6 +121,31 @@ function formatDateTime(value: unknown) {
   }
 }
 
+function formatShortDate(value: unknown): string {
+  const d = value instanceof Date ? value : value ? new Date(String(value)) : null;
+  if (!d || !Number.isFinite(d.getTime())) return "";
+  try {
+    return new Intl.DateTimeFormat("fr-CH", {
+      timeZone: "Europe/Zurich",
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    }).format(d);
+  } catch {
+    return d.toISOString().slice(0, 10);
+  }
+}
+
+function formatCents(cents: number | undefined, currency?: string): string {
+  if (typeof cents !== "number" || !Number.isFinite(cents)) return "";
+  return `${(cents / 100).toFixed(2)} ${(currency || "CHF").toUpperCase()}`;
+}
+
+export function computeEligibleRefund(prestationStart: Date | null, cancellationTime: Date): boolean {
+  if (!prestationStart) return true;
+  return (prestationStart.getTime() - cancellationTime.getTime()) > 24 * 60 * 60 * 1000;
+}
+
 type TravelEmailData = {
   mapUrl: string;
   distanceKm: number;
@@ -198,6 +223,9 @@ async function resolveBookingEmailData(bookingId: string): Promise<{
   ownerPhone: string | null;
   pickupAddress: string | null;
   sitter: SitterEmailData | null;
+  startDate: Date | null;
+  amountCents: number | null;
+  currency: string;
 }> {
   const booking = await (prisma as any).booking.findUnique({
     where: { id: bookingId },
@@ -235,7 +263,7 @@ async function resolveBookingEmailData(bookingId: string): Promise<{
     },
   });
 
-  if (!booking) return { rows: [{ label: "Référence", value: bookingId }], travel: null, dog: null, ownerPhone: null, pickupAddress: null, sitter: null };
+  if (!booking) return { rows: [{ label: "Référence", value: bookingId }], travel: null, dog: null, ownerPhone: null, pickupAddress: null, sitter: null, startDate: null, amountCents: null, currency: "CHF" };
 
   const rows: EmailSummaryRow[] = [];
   const service = typeof booking.service === "string" && booking.service.trim() ? booking.service.trim() : "";
@@ -314,7 +342,10 @@ async function resolveBookingEmailData(bookingId: string): Promise<{
   const ownerPhone = typeof booking.ownerPhone === "string" && booking.ownerPhone.trim() ? booking.ownerPhone.trim() : null;
   const dog: DogProfileData = booking.selectedDog ?? null;
 
-  return { rows, travel, dog, ownerPhone, pickupAddress, sitter };
+  const rawStartDate = booking.startDate instanceof Date ? booking.startDate : booking.startDate ? new Date(String(booking.startDate)) : null;
+  const rawAmountCents = typeof booking.amount === "number" && Number.isFinite(booking.amount) ? booking.amount : null;
+
+  return { rows, travel, dog, ownerPhone, pickupAddress, sitter, startDate: rawStartDate, amountCents: rawAmountCents, currency };
 }
 
 async function resolveBookingSummaryRows(bookingId: string): Promise<EmailSummaryRow[]> {
@@ -436,16 +467,286 @@ function buildTravelMapExtraHtml(travel: TravelEmailData): string {
   `;
 }
 
+// ── Cancellation / Refund email helpers ──────────────────────────────────────
+
+const CANCEL_FF = "-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,Helvetica,sans-serif";
+
+function buildCancellationPolicyHtml(
+  eligibleRefund: boolean,
+  amountCents: number | undefined,
+  sitterName: string | undefined,
+  currency?: string,
+): string {
+  const amount = formatCents(amountCents, currency);
+
+  if (eligibleRefund) {
+    return `
+      <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;margin-top:20px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;">
+        <tr>
+          <td style="padding:18px 24px;">
+            <div style="font-family:${CANCEL_FF};font-size:14px;line-height:22px;color:#15803d;font-weight:600;">
+              ✅ Tu seras remboursé(e) intégralement${amount ? ` de ${amount}` : ""}.
+            </div>
+            <div style="margin-top:6px;font-family:${CANCEL_FF};font-size:13px;line-height:20px;color:#475569;">
+              Le remboursement apparaîtra sur ton compte sous 5 à 10 jours ouvrés.
+            </div>
+          </td>
+        </tr>
+      </table>`;
+  }
+
+  return `
+    <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;margin-top:20px;background:#fefce8;border:1px solid #fde68a;border-radius:12px;">
+      <tr>
+        <td style="padding:18px 24px;">
+          <div style="font-family:${CANCEL_FF};font-size:14px;line-height:22px;color:#92400e;font-weight:600;">
+            ⚠️ Annulation à moins de 24h du début de la prestation
+          </div>
+          <div style="margin-top:6px;font-family:${CANCEL_FF};font-size:13px;line-height:20px;color:#475569;">
+            ${amount ? `Le montant de ${amount} reste acquis à ${sitterName || "le sitter"}.` : `Le montant reste acquis à ${sitterName || "le sitter"}.`}
+            Conformément à nos conditions générales, aucun remboursement n'est possible pour les annulations effectuées moins de 24 heures avant le début de la prestation.
+          </div>
+        </td>
+      </tr>
+    </table>`;
+}
+
+function buildRefundInfoHtml(params: {
+  amountCents?: number;
+  currency?: string;
+  cardBrand?: string;
+  cardLast4?: string;
+  stripeRefundId?: string;
+}): string {
+  const amount = formatCents(params.amountCents, params.currency);
+  const cardInfo = params.cardBrand && params.cardLast4
+    ? `${params.cardBrand} •••• ${params.cardLast4}`
+    : null;
+
+  return `
+    <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;margin-top:20px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;">
+      <tr>
+        <td style="padding:20px 24px;">
+          ${amount ? `<div style="font-family:${CANCEL_FF};font-size:28px;font-weight:800;color:#15803d;margin-bottom:8px;">${amount}</div>` : ""}
+          ${cardInfo ? `<div style="font-family:${CANCEL_FF};font-size:13px;color:#475569;margin-bottom:4px;">💳 ${cardInfo}</div>` : ""}
+          <div style="font-family:${CANCEL_FF};font-size:13px;color:#475569;margin-bottom:4px;">📅 Remboursement initié le ${formatShortDate(new Date())}</div>
+          <div style="font-family:${CANCEL_FF};font-size:13px;color:#475569;">⏱ Délai estimé : 5 à 10 jours ouvrés</div>
+          ${params.stripeRefundId ? `<div style="margin-top:8px;font-family:Menlo,Consolas,monospace;font-size:11px;color:#94a3b8;">Réf. ${params.stripeRefundId}</div>` : ""}
+        </td>
+      </tr>
+    </table>
+    <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;margin-top:12px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;">
+      <tr>
+        <td style="padding:14px 20px;">
+          <div style="font-family:${CANCEL_FF};font-size:13px;line-height:20px;color:#475569;">
+            🛡️ <strong style="color:#0f172a;">Paiement sécurisé</strong> — Ton remboursement est traité via Stripe, le même prestataire de paiement utilisé par des millions de sites.
+          </div>
+        </td>
+      </tr>
+    </table>`;
+}
+
+function buildAutoExpiredExplanationHtml(deadlineHours: number): string {
+  return `
+    <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;margin-top:20px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;">
+      <tr>
+        <td style="padding:18px 24px;">
+          <div style="font-family:${CANCEL_FF};font-size:14px;line-height:22px;color:#1e40af;font-weight:600;">
+            ℹ️ Que s'est-il passé ?
+          </div>
+          <div style="margin-top:6px;font-family:${CANCEL_FF};font-size:13px;line-height:20px;color:#475569;">
+            Chaque sitter dispose de ${deadlineHours}h pour accepter une demande de réservation.
+            Comme ce délai a été dépassé, ta réservation a été automatiquement annulée et ton remboursement déclenché.
+          </div>
+        </td>
+      </tr>
+    </table>`;
+}
+
+function buildRefundFailedExplanationHtml(failureReason?: string): string {
+  const reasonMap: Record<string, string> = {
+    expired_or_canceled_card: "La carte utilisée pour le paiement a expiré ou a été annulée.",
+    insufficient_funds: "Le remboursement n'a pas pu être crédité (fonds insuffisants ou compte clôturé).",
+    lost_card: "La carte utilisée a été déclarée perdue.",
+    stolen_card: "La carte utilisée a été déclarée volée.",
+    charge_for_pending_refund_disputed: "Un litige est en cours sur cette transaction.",
+  };
+  const readableReason = (failureReason && reasonMap[failureReason]) || failureReason
+    || "Une erreur technique est survenue lors du traitement de ton remboursement.";
+
+  return `
+    <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;margin-top:20px;background:#fefce8;border:1px solid #fde68a;border-radius:12px;">
+      <tr>
+        <td style="padding:18px 24px;">
+          <div style="font-family:${CANCEL_FF};font-size:14px;line-height:22px;color:#92400e;font-weight:600;">
+            ⚠️ Détail du problème
+          </div>
+          <div style="margin-top:6px;font-family:${CANCEL_FF};font-size:13px;line-height:20px;color:#475569;">
+            ${readableReason}
+          </div>
+          <div style="margin-top:10px;font-family:${CANCEL_FF};font-size:13px;line-height:20px;color:#475569;">
+            Mets à jour tes informations de paiement ou contacte notre équipe pour que nous puissions relancer le remboursement.
+          </div>
+        </td>
+      </tr>
+    </table>`;
+}
+
+function buildSupportBlockHtml(): string {
+  return `
+    <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;margin-top:24px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;">
+      <tr>
+        <td style="padding:16px 20px;text-align:center;">
+          <div style="font-family:${CANCEL_FF};font-size:13px;line-height:20px;color:#475569;">
+            Une question ? Notre équipe est là pour t'aider.<br/>
+            <a href="mailto:support@dogshift.ch" style="color:#6366f1;text-decoration:none;font-weight:600;">support@dogshift.ch</a>
+          </div>
+        </td>
+      </tr>
+    </table>`;
+}
+
 export type NotificationPayload =
   | { kind: "newMessage"; conversationId: string; messagePreview: string; fromName: string }
   | { kind: "bookingRequest"; bookingId: string }
   | { kind: "bookingConfirmed"; bookingId: string }
   | { kind: "paymentReceived"; bookingId: string }
   | { kind: "bookingReminder"; bookingId: string; startsAtIso: string }
-  | { kind: "bookingCancelled"; bookingId: string; dashboard: "account" | "host" }
-  | { kind: "bookingRefunded"; bookingId: string; dashboard: "account" | "host" }
-  | { kind: "bookingAutoExpiredRefunded"; bookingId: string; deadlineHours: number }
-  | { kind: "bookingRefundFailed"; bookingId: string; dashboard: "account" | "host" };
+  | { kind: "bookingCancelled"; bookingId: string; dashboard: "account" | "host"; eligibleRefund?: boolean; cancelledBy?: "owner" | "sitter" | "system"; sitterName?: string; amountCents?: number; currency?: string }
+  | { kind: "bookingRefunded"; bookingId: string; dashboard: "account" | "host"; amountCents?: number; currency?: string; cardBrand?: string; cardLast4?: string; stripeRefundId?: string }
+  | { kind: "bookingAutoExpiredRefunded"; bookingId: string; deadlineHours: number; amountCents?: number; currency?: string; cardBrand?: string; cardLast4?: string; stripeRefundId?: string }
+  | { kind: "bookingRefundFailed"; bookingId: string; dashboard: "account" | "host"; failureReason?: string; amountCents?: number; currency?: string }
+  | { kind: "sitterBookingConfirmed"; bookingId: string }
+  | { kind: "sitterBookingReminder"; bookingId: string; startsAtIso: string }
+  | { kind: "sitterPayoutReceived"; sitterUserId: string; amountCents: number; currency: string; bookingIds: string[] }
+  | { kind: "sitterBookingModified"; bookingId: string; oldStartDate?: string; oldEndDate?: string; oldAmountCents?: number; newAmountCents?: number }
+  | { kind: "sitterRefundTriggered"; bookingId: string; eligibleRefund: boolean; netAmountCents?: number; currency?: string }
+  | { kind: "sitterReviewReceived"; bookingId: string; rating: number; comment: string | null; ownerName: string }
+  | { kind: "sitterMonthlyRecap"; month: string; year: number; totalBookings: number; totalHours: number; netRevenueCents: number; currency: string; averageRating: number | null };
+
+// ── Sitter email helpers ──────────────────────────────────────────────────────
+
+const SITTER_FF = "-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,Helvetica,sans-serif";
+
+function buildSitterEarningsHtml(
+  grossCents: number,
+  commissionCents: number,
+  netCents: number,
+  currency: string,
+  estimatedPayoutDate?: string,
+): string {
+  const cur = currency.toUpperCase() || "CHF";
+  const line = (label: string, value: string, bold = false, color = "#475569") => `
+    <tr>
+      <td style="padding:6px 0;font-family:${SITTER_FF};font-size:14px;color:${color};font-weight:${bold ? 700 : 400};">${label}</td>
+      <td align="right" style="padding:6px 0;font-family:${SITTER_FF};font-size:14px;color:${bold ? "#0f172a" : "#475569"};font-weight:${bold ? 800 : 500};white-space:nowrap;">${value}</td>
+    </tr>`;
+
+  return `
+    <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;margin-top:20px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:0;">
+      <tr>
+        <td style="padding:18px 20px;">
+          <div style="font-family:${SITTER_FF};font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#15803d;margin-bottom:10px;">Tes gains</div>
+          <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
+            ${line("Montant brut", formatMoney(grossCents, cur))}
+            ${line("Commission DogShift", `- ${formatMoney(commissionCents, cur)}`, false, "#dc2626")}
+            <tr><td colspan="2" style="padding:8px 0 0;border-top:1px solid #bbf7d0;font-size:0;line-height:0;">&nbsp;</td></tr>
+            ${line("Montant net", formatMoney(netCents, cur), true, "#15803d")}
+          </table>
+          ${estimatedPayoutDate ? `<div style="margin-top:10px;font-family:${SITTER_FF};font-size:12px;color:#6b7280;">Virement estimé : ${estimatedPayoutDate}</div>` : ""}
+        </td>
+      </tr>
+    </table>`;
+}
+
+function buildOwnerContactHtml(ownerName: string, ownerPhone?: string | null): string {
+  const phoneLine = ownerPhone
+    ? `<div style="font-family:${SITTER_FF};font-size:13px;color:#475569;margin-top:4px;">📞 ${ownerPhone}</div>`
+    : "";
+  return `
+    <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;margin-top:18px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;">
+      <tr>
+        <td style="padding:14px 18px;">
+          <div style="font-family:${SITTER_FF};font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#64748b;margin-bottom:6px;">Propriétaire</div>
+          <div style="font-family:${SITTER_FF};font-size:15px;font-weight:700;color:#0f172a;">${ownerName}</div>
+          ${phoneLine}
+        </td>
+      </tr>
+    </table>`;
+}
+
+function buildSitterChecklistHtml(): string {
+  const items = [
+    "Vérifier le créneau et l'adresse",
+    "Charger le téléphone",
+    "Prévoir laisse de secours, sac à déjections, eau",
+    "Bien lire les notes du propriétaire",
+  ];
+  const checkIcon = `<span style="color:#10b981;font-weight:bold;font-size:14px;display:inline-block;width:20px;">✓</span>`;
+  return `
+    <div style="margin-top:24px;background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;padding:18px 20px;">
+      <h3 style="margin:0 0 14px;font-family:${SITTER_FF};font-size:14px;font-weight:700;color:#0f172a;text-transform:uppercase;letter-spacing:0.05em;">Ta checklist</h3>
+      <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
+        ${items.map(item => `
+          <tr>
+            <td valign="top" style="padding:4px 0;width:24px;">${checkIcon}</td>
+            <td valign="top" style="padding:4px 0;font-family:${SITTER_FF};font-size:14px;line-height:20px;color:#475569;">${item}</td>
+          </tr>
+        `).join("")}
+      </table>
+    </div>`;
+}
+
+function buildReviewDisplayHtml(rating: number, comment: string | null, ownerName: string): string {
+  const stars = Array.from({ length: 5 }, (_, i) =>
+    i < rating
+      ? `<span style="color:#eab308;font-size:22px;">★</span>`
+      : `<span style="color:#d1d5db;font-size:22px;">★</span>`
+  ).join("");
+
+  const commentHtml = comment
+    ? `<div style="margin-top:12px;padding:14px 16px;background:#f8fafc;border-radius:10px;border:1px solid #e2e8f0;">
+        <div style="font-family:${SITTER_FF};font-size:14px;line-height:22px;color:#374151;font-style:italic;">"${comment}"</div>
+        <div style="margin-top:8px;font-family:${SITTER_FF};font-size:12px;color:#94a3b8;">— ${ownerName}</div>
+      </div>`
+    : "";
+
+  return `
+    <div style="margin-top:20px;text-align:center;">
+      <div style="margin-bottom:8px;">${stars}</div>
+      <div style="font-family:${SITTER_FF};font-size:14px;color:#6b7280;">${rating}/5</div>
+    </div>
+    ${commentHtml}`;
+}
+
+function buildMonthlyStatsHtml(stats: {
+  totalBookings: number;
+  totalHours: number;
+  netRevenueCents: number;
+  currency: string;
+  averageRating: number | null;
+}): string {
+  const cur = stats.currency.toUpperCase() || "CHF";
+  const ratingStr = stats.averageRating !== null ? `★ ${stats.averageRating.toFixed(1)}` : "—";
+
+  const statCell = (label: string, value: string, accent = "#0f172a") => `
+    <td align="center" style="padding:12px 8px;">
+      <div style="font-family:${SITTER_FF};font-size:24px;font-weight:800;color:${accent};line-height:1.2;">${value}</div>
+      <div style="font-family:${SITTER_FF};font-size:11px;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:0.06em;margin-top:4px;">${label}</div>
+    </td>`;
+
+  return `
+    <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;margin-top:20px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;">
+      <tr>
+        ${statCell("Prestations", String(stats.totalBookings))}
+        ${statCell("Heures", String(stats.totalHours))}
+      </tr>
+      <tr>
+        ${statCell("Revenu net", formatMoney(stats.netRevenueCents, cur), "#15803d")}
+        ${statCell("Note moyenne", ratingStr, "#eab308")}
+      </tr>
+    </table>`;
+}
 
 async function resolveConversationLabel(conversationId: string) {
   try {
@@ -498,7 +799,21 @@ export async function sendNotificationEmail(params: {
       case "bookingAutoExpiredRefunded":
         return "Réservation expirée et remboursée – DogShift";
       case "bookingRefundFailed":
-        return "Remboursement impossible – DogShift";
+        return "Action requise : remboursement impossible – DogShift";
+      case "sitterBookingConfirmed":
+        return "Ta prestation est confirmée 🐾 – DogShift";
+      case "sitterBookingReminder":
+        return "Rappel de prestation – DogShift";
+      case "sitterPayoutReceived":
+        return `${formatMoney(payload.amountCents, payload.currency)} reçus 💚 – DogShift`;
+      case "sitterBookingModified":
+        return "Réservation modifiée – DogShift";
+      case "sitterRefundTriggered":
+        return "Annulation de réservation – DogShift";
+      case "sitterReviewReceived":
+        return `${payload.ownerName} t'a laissé un avis ⭐ – DogShift`;
+      case "sitterMonthlyRecap":
+        return `Ton récap ${payload.month} – DogShift`;
       default:
         return "Notification – DogShift";
     }
@@ -595,87 +910,63 @@ export async function sendNotificationEmail(params: {
         );
       }
       case "bookingCancelled": {
-        const url = bookingUrl(payload.bookingId, payload.dashboard);
-        return (
-          `Bonjour,
-
-` +
-          `Une réservation a été annulée.
-
-` +
-          (url ? `Voir la réservation : ${url}
-
-` : "") +
-          `— DogShift
-`
-        );
+        if (payload.dashboard === "host") {
+          const url = bookingUrl(payload.bookingId, "host");
+          return `Bonjour,\n\nUne réservation a été annulée.\n\n${url ? `Voir la réservation : ${url}\n\n` : ""}— DogShift\n`;
+        }
+        const cancelAmount = formatCents(payload.amountCents, payload.currency);
+        const refundLine = payload.eligibleRefund !== false
+          ? `Tu seras remboursé(e) intégralement${cancelAmount ? ` de ${cancelAmount}` : ""}. Le remboursement apparaîtra sous 5 à 10 jours ouvrés.`
+          : `Cette annulation a lieu à moins de 24h du début de la prestation.${cancelAmount ? ` Le montant de ${cancelAmount} reste acquis à ${payload.sitterName || "le sitter"}.` : ""}`;
+        const cancelSittersLink = baseUrl ? `${baseUrl}/sitters` : "";
+        return `Bonjour,\n\nTa réservation a été annulée.\n${refundLine}\n\n${cancelSittersLink ? `Trouver un autre sitter : ${cancelSittersLink}\n\n` : ""}— DogShift\n`;
       }
       case "bookingRefunded": {
-        const url = bookingUrl(payload.bookingId, payload.dashboard);
         if (payload.dashboard === "host") {
-          return (
-            `Bonjour,
-
-` +
-            `Une réservation a été annulée.
-` +
-            `Le remboursement du propriétaire a été traité conformément aux conditions applicables.
-
-` +
-            (url ? `Voir les détails de la réservation : ${url}
-
-` : "") +
-            `— DogShift
-`
-          );
+          const hostRefundUrl = bookingUrl(payload.bookingId, "host");
+          return `Bonjour,\n\nUne réservation a été annulée.\nLe remboursement du propriétaire a été traité conformément aux conditions applicables.\n\n${hostRefundUrl ? `Voir les détails de la réservation : ${hostRefundUrl}\n\n` : ""}— DogShift\n`;
         }
-        return (
-          `Bonjour,
-
-` +
-          `Un remboursement a été effectué pour une réservation.
-
-` +
-          (url ? `Voir la réservation : ${url}
-
-` : "") +
-          `— DogShift
-`
-        );
+        const refundAmount = formatCents(payload.amountCents, payload.currency);
+        const refundSittersUrl = baseUrl ? `${baseUrl}/sitters` : "";
+        return `Bonjour,\n\n${refundAmount ? `Ton remboursement de ${refundAmount} est en route.` : "Ton remboursement est en route."}\nTout est réglé de notre côté. Le montant apparaîtra sur ton compte sous 5 à 10 jours ouvrés.\n\n${refundSittersUrl ? `Trouver un nouveau sitter : ${refundSittersUrl}\n\n` : ""}— DogShift\n`;
       }
       case "bookingAutoExpiredRefunded": {
-        const url = bookingUrl(payload.bookingId, "account");
-        return (
-          `Bonjour,
-
-` +
-          `La réservation n’a pas été acceptée à temps par le dogsitter.
-` +
-          `Comme le début du service approche à moins de ${payload.deadlineHours}h, la réservation a été annulée automatiquement et le remboursement a été déclenché.
-
-` +
-          (url ? `Voir la réservation : ${url}
-
-` : "") +
-          `— DogShift
-`
-        );
+        const expiredSittersUrl = baseUrl ? `${baseUrl}/sitters` : "";
+        const expiredAmount = formatCents(payload.amountCents, payload.currency);
+        return `Bonjour,\n\nLe sitter n’a pas répondu à temps.\nTa réservation a été automatiquement annulée et remboursée.${expiredAmount ? ` (${expiredAmount})` : ""}\nChaque sitter dispose de ${payload.deadlineHours}h pour accepter une demande. Comme ce délai a été dépassé, ton remboursement a été déclenché.\n\n${expiredSittersUrl ? `Trouver un sitter disponible : ${expiredSittersUrl}\n\n` : ""}— DogShift\n`;
       }
       case "bookingRefundFailed": {
-        const url = bookingUrl(payload.bookingId, payload.dashboard);
-        return (
-          `Bonjour,
-
-` +
-          `Le remboursement d’une réservation a échoué.
-
-` +
-          (url ? `Voir la réservation : ${url}
-
-` : "") +
-          `— DogShift
-`
-        );
+        const settingsUrl = baseUrl ? `${baseUrl}/account/settings` : "";
+        const failedAmount = formatCents(payload.amountCents, payload.currency);
+        return `Bonjour,\n\nNous n’avons pas pu te rembourser${failedAmount ? ` (${failedAmount})` : ""}.\nMets à jour tes informations de paiement ou contacte support@dogshift.ch.\n\n${settingsUrl ? `Mettre à jour mes informations : ${settingsUrl}\n\n` : ""}— DogShift\n`;
+      }
+      case "sitterBookingConfirmed": {
+        const url = bookingUrl(payload.bookingId, "host");
+        return `Bonjour,\n\nTa prestation est confirmée. Le propriétaire a confirmé la réservation.\n\n${url ? `Voir la réservation : ${url}\n\n` : ""}— DogShift\n`;
+      }
+      case "sitterBookingReminder": {
+        const url = bookingUrl(payload.bookingId, "host");
+        return `Bonjour,\n\nRappel : tu as une prestation demain.\n\n${url ? `Voir la réservation : ${url}\n\n` : ""}— DogShift\n`;
+      }
+      case "sitterPayoutReceived": {
+        const walletUrl = baseUrl ? `${baseUrl}/host/wallet` : "";
+        return `Bonjour,\n\n${formatMoney(payload.amountCents, payload.currency)} viennent d'arriver sur ton compte.\n\n${walletUrl ? `Voir mon portefeuille : ${walletUrl}\n\n` : ""}— DogShift\n`;
+      }
+      case "sitterBookingModified": {
+        const url = bookingUrl(payload.bookingId, "host");
+        return `Bonjour,\n\nUne réservation a été modifiée. Vérifie les détails.\n\n${url ? `Voir la réservation : ${url}\n\n` : ""}— DogShift\n`;
+      }
+      case "sitterRefundTriggered": {
+        const requestsUrl = baseUrl ? `${baseUrl}/host/requests` : "";
+        return `Bonjour,\n\nUne réservation a été annulée.\n\n${requestsUrl ? `Voir mes réservations : ${requestsUrl}\n\n` : ""}— DogShift\n`;
+      }
+      case "sitterReviewReceived": {
+        const profileUrl = baseUrl ? `${baseUrl}/host/profile` : "";
+        return `Bonjour,\n\n${payload.ownerName} vient de te laisser un avis (${payload.rating}/5).\n\n${profileUrl ? `Voir mes avis : ${profileUrl}\n\n` : ""}— DogShift\n`;
+      }
+      case "sitterMonthlyRecap": {
+        const hostUrl = baseUrl ? `${baseUrl}/host` : "";
+        return `Bonjour,\n\nVoici ton récap du mois de ${payload.month} ${payload.year}.\n\n${hostUrl ? `Voir mes statistiques : ${hostUrl}\n\n` : ""}— DogShift\n`;
       }
       default:
         return `Bonjour,
@@ -782,55 +1073,416 @@ Notification DogShift.
         }).html;
       }
       case "bookingCancelled": {
-        const url = bookingUrl(payload.bookingId, payload.dashboard);
-        const rows = await resolveBookingSummaryRows(payload.bookingId);
+        if (payload.dashboard === "host") {
+          const hostUrl = bookingUrl(payload.bookingId, "host");
+          const hostRows = await resolveBookingSummaryRows(payload.bookingId);
+          return renderEmailLayout({
+            logoUrl,
+            title: "Réservation annulée",
+            subtitle: "Une réservation a été annulée.",
+            summaryRows: hostRows,
+            ctaLabel: hostUrl ? "Voir la réservation" : undefined,
+            ctaUrl: hostUrl || undefined,
+          }).html;
+        }
+        const { rows, sitter, startDate } = await resolveBookingEmailData(payload.bookingId);
+        const dateStr = formatShortDate(startDate);
+        const sitterDisplayName = payload.sitterName || sitter?.name || "le sitter";
+
+        const cancelledBySubtitle: Record<string, string> = {
+          sitter: `${sitterDisplayName} n’est plus disponible pour cette date.`,
+          owner: "Ton annulation a bien été prise en compte.",
+          system: "Cette réservation a été annulée par notre équipe.",
+        };
+        const cancelSubtitle = cancelledBySubtitle[payload.cancelledBy || "owner"] || cancelledBySubtitle.owner;
+
+        const policyHtml = buildCancellationPolicyHtml(
+          payload.eligibleRefund !== false,
+          payload.amountCents,
+          sitterDisplayName,
+          payload.currency,
+        );
+
         return renderEmailLayout({
           logoUrl,
-          title: "Réservation annulée",
-          subtitle: "Une réservation a été annulée.",
+          title: dateStr ? `Ta réservation du ${dateStr} a été annulée` : "Ta réservation a été annulée",
+          subtitle: cancelSubtitle,
           summaryRows: rows,
-          ctaLabel: url ? "Voir la réservation" : undefined,
-          ctaUrl: url || undefined,
+          extraHtml: policyHtml + buildSupportBlockHtml(),
+          ctaLabel: baseUrl ? "Trouver un autre sitter" : undefined,
+          ctaUrl: baseUrl ? `${baseUrl}/sitters` : undefined,
+          secondaryLinkLabel: baseUrl ? "Voir mes réservations" : undefined,
+          secondaryLinkUrl: baseUrl ? `${baseUrl}/account/bookings` : undefined,
+          bannerImageUrl: "",
         }).html;
       }
       case "bookingRefunded": {
-        const url = bookingUrl(payload.bookingId, payload.dashboard);
-        const rows = await resolveBookingSummaryRows(payload.bookingId);
+        if (payload.dashboard === "host") {
+          const hostRefUrl = bookingUrl(payload.bookingId, "host");
+          const hostRefRows = await resolveBookingSummaryRows(payload.bookingId);
+          return renderEmailLayout({
+            logoUrl,
+            title: "Réservation annulée",
+            subtitle: "Une réservation a été annulée. Le remboursement du propriétaire a été traité conformément aux conditions applicables.",
+            summaryRows: hostRefRows,
+            ctaLabel: hostRefUrl ? "Voir la réservation" : undefined,
+            ctaUrl: hostRefUrl || undefined,
+          }).html;
+        }
+        const refundedAmount = formatCents(payload.amountCents, payload.currency);
+        const refundInfoHtml = buildRefundInfoHtml({
+          amountCents: payload.amountCents,
+          currency: payload.currency,
+          cardBrand: payload.cardBrand,
+          cardLast4: payload.cardLast4,
+          stripeRefundId: payload.stripeRefundId,
+        });
+
         return renderEmailLayout({
           logoUrl,
-          title: payload.dashboard === "host" ? "Réservation annulée" : "Remboursement effectué",
-          subtitle: payload.dashboard === "host"
-            ? "Une réservation a été annulée. Le remboursement du propriétaire a été traité conformément aux conditions applicables."
-            : "Le remboursement a été effectué.",
-          summaryRows: rows,
-          ctaLabel: url ? "Voir la réservation" : undefined,
-          ctaUrl: url || undefined,
+          heroLabel: "REMBOURSEMENT",
+          title: refundedAmount ? `Ton remboursement de ${refundedAmount} est en route` : "Ton remboursement est en route",
+          subtitle: "Tout est réglé de notre côté.",
+          extraHtml: refundInfoHtml + buildSupportBlockHtml(),
+          ctaLabel: baseUrl ? "Trouver un nouveau sitter" : undefined,
+          ctaUrl: baseUrl ? `${baseUrl}/sitters` : undefined,
+          secondaryLinkLabel: baseUrl ? "Voir mes réservations" : undefined,
+          secondaryLinkUrl: baseUrl ? `${baseUrl}/account/bookings` : undefined,
+          bannerImageUrl: "",
         }).html;
       }
       case "bookingAutoExpiredRefunded": {
-        const url = bookingUrl(payload.bookingId, "account");
-        const rows = await resolveBookingSummaryRows(payload.bookingId);
+        const expiredExplanationHtml = buildAutoExpiredExplanationHtml(payload.deadlineHours);
+        const expiredRefundHtml = buildRefundInfoHtml({
+          amountCents: payload.amountCents,
+          currency: payload.currency,
+          cardBrand: payload.cardBrand,
+          cardLast4: payload.cardLast4,
+          stripeRefundId: payload.stripeRefundId,
+        });
+
         return renderEmailLayout({
           logoUrl,
-          title: "Réservation expirée et remboursée",
-          subtitle: `Le dogsitter n’a pas accepté à temps. La réservation a été annulée automatiquement et le remboursement a été déclenché avant J-${payload.deadlineHours}h.`,
-          summaryRows: rows,
-          ctaLabel: url ? "Voir la réservation" : undefined,
-          ctaUrl: url || undefined,
+          heroLabel: "EXPIRATION AUTOMATIQUE",
+          title: "Le sitter n’a pas répondu à temps",
+          subtitle: "Ta réservation a été automatiquement annulée et remboursée.",
+          extraHtml: expiredExplanationHtml + expiredRefundHtml + buildSupportBlockHtml(),
+          ctaLabel: baseUrl ? "Trouver un sitter disponible" : undefined,
+          ctaUrl: baseUrl ? `${baseUrl}/sitters` : undefined,
+          secondaryLinkLabel: baseUrl ? "Voir mes réservations" : undefined,
+          secondaryLinkUrl: baseUrl ? `${baseUrl}/account/bookings` : undefined,
+          bannerImageUrl: "",
         }).html;
       }
       case "bookingRefundFailed": {
-        const url = bookingUrl(payload.bookingId, payload.dashboard);
-        const rows = await resolveBookingSummaryRows(payload.bookingId);
+        if (payload.dashboard === "host") {
+          const hostFailUrl = bookingUrl(payload.bookingId, "host");
+          const hostFailRows = await resolveBookingSummaryRows(payload.bookingId);
+          return renderEmailLayout({
+            logoUrl,
+            title: "Remboursement impossible",
+            subtitle: "Le remboursement a échoué. Notre équipe peut t’aider.",
+            summaryRows: hostFailRows,
+            ctaLabel: hostFailUrl ? "Voir la réservation" : undefined,
+            ctaUrl: hostFailUrl || undefined,
+          }).html;
+        }
+        const failedExplanationHtml = buildRefundFailedExplanationHtml(payload.failureReason);
+        const failedAmountDisplay = formatCents(payload.amountCents, payload.currency);
+
         return renderEmailLayout({
           logoUrl,
-          title: "Remboursement impossible",
-          subtitle: "Le remboursement a échoué. Notre équipe peut t’aider.",
-          summaryRows: rows,
+          heroColor: "amber",
+          heroLabel: "ACTION REQUISE",
+          title: "Nous n’avons pas pu te rembourser",
+          subtitle: "Quelques détails à mettre à jour pour finaliser ton remboursement.",
+          extraHtml: (failedAmountDisplay
+            ? `<div style="margin-top:16px;text-align:center;font-family:${CANCEL_FF};font-size:24px;font-weight:800;color:#d97706;">${failedAmountDisplay}</div>`
+            : "") + failedExplanationHtml + buildSupportBlockHtml(),
+          ctaLabel: baseUrl ? "Mettre à jour mes informations" : undefined,
+          ctaUrl: baseUrl ? `${baseUrl}/account/settings` : undefined,
+          secondaryLinkLabel: "Contacter le support",
+          secondaryLinkUrl: "mailto:support@dogshift.ch",
+          bannerImageUrl: "",
+        }).html;
+      }
+
+      // ── Sitter templates ────────────────────────────────────────────────
+
+      case "sitterBookingConfirmed": {
+        const url = bookingUrl(payload.bookingId, "host");
+        const { rows, travel, dog, sitter } = await resolveBookingEmailData(payload.bookingId);
+
+        const booking = await (prisma as any).booking.findUnique({
+          where: { id: payload.bookingId },
+          select: {
+            amount: true,
+            currency: true,
+            platformFeeAmount: true,
+            sitterPayoutAmount: true,
+            userId: true,
+          },
+        });
+        const grossCents = typeof booking?.amount === "number" ? booking.amount : 0;
+        const commissionCents = typeof booking?.platformFeeAmount === "number" ? booking.platformFeeAmount : 0;
+        const netCents = typeof booking?.sitterPayoutAmount === "number" && booking.sitterPayoutAmount > 0
+          ? booking.sitterPayoutAmount
+          : Math.max(0, grossCents - commissionCents);
+        const cur = typeof booking?.currency === "string" ? booking.currency : "CHF";
+
+        let ownerName = "le propriétaire";
+        if (booking?.userId) {
+          const ownerUser = await resolveUserEmail(String(booking.userId));
+          if (ownerUser?.name) ownerName = ownerUser.name;
+        }
+
+        const sitterRows: EmailSummaryRow[] = [
+          ...rows.filter(r => {
+            const lab = r.label.toLowerCase();
+            return lab === "service" || lab === "début" || lab === "fin" || lab === "référence";
+          }),
+          { label: "Propriétaire", value: ownerName },
+        ];
+        if (dog?.name) sitterRows.push({ label: "Chien", value: dog.name + (dog.breed ? ` (${dog.breed})` : "") });
+
+        const earningsHtml = buildSitterEarningsHtml(grossCents, commissionCents, netCents, cur);
+        const mapHtml = buildTravelMapExtraHtml(travel);
+        const dogHtml = buildDogProfileHtml(dog);
+
+        return renderEmailLayout({
+          logoUrl,
+          title: "Ta prestation est confirmée 🐾",
+          subtitle: "Le propriétaire a confirmé la réservation.",
+          summaryRows: sitterRows,
+          extraHtml: mapHtml + dogHtml + earningsHtml,
+          ctaLabel: url ? "Voir la réservation" : undefined,
+          ctaUrl: url || undefined,
+          secondaryLinkLabel: baseUrl ? "Contacter le propriétaire" : undefined,
+          secondaryLinkUrl: baseUrl ? `${baseUrl}/host/messages` : undefined,
+        }).html;
+      }
+
+      case "sitterBookingReminder": {
+        const url = bookingUrl(payload.bookingId, "host");
+        const { rows, travel, dog, ownerPhone, pickupAddress } = await resolveBookingEmailData(payload.bookingId);
+
+        const booking = await (prisma as any).booking.findUnique({
+          where: { id: payload.bookingId },
+          select: { userId: true },
+        });
+        let ownerName = "le propriétaire";
+        if (booking?.userId) {
+          const ownerUser = await resolveUserEmail(String(booking.userId));
+          if (ownerUser?.name) ownerName = ownerUser.name;
+        }
+
+        const dogName = dog?.name || "ton prochain client à 4 pattes";
+        const sitterReminderTitle = `Demain, ${dogName} t'attend 🐾`;
+
+        const sitterRows: EmailSummaryRow[] = rows.filter(r => {
+          const lab = r.label.toLowerCase();
+          return lab === "service" || lab === "début" || lab === "fin" || lab.startsWith("lieu");
+        });
+        if (pickupAddress && !sitterRows.some(r => r.label.toLowerCase().startsWith("lieu"))) {
+          sitterRows.push({ label: "Lieu de prise en charge", value: pickupAddress });
+        }
+
+        const contactHtml = buildOwnerContactHtml(ownerName, ownerPhone);
+        const mapHtml = buildTravelMapExtraHtml(travel);
+        const dogHtml = buildDogProfileHtml(dog);
+        const checklistHtml = buildSitterChecklistHtml();
+
+        return renderEmailLayout({
+          logoUrl,
+          title: sitterReminderTitle,
+          subtitle: "Tout est prêt pour la prestation.",
+          summaryRows: sitterRows,
+          extraHtml: contactHtml + mapHtml + dogHtml + checklistHtml,
           ctaLabel: url ? "Voir la réservation" : undefined,
           ctaUrl: url || undefined,
         }).html;
       }
+
+      case "sitterPayoutReceived": {
+        const walletUrl = baseUrl ? `${baseUrl}/host/wallet` : "";
+        const payoutCur = payload.currency.toUpperCase() || "CHF";
+        const amountDisplay = formatMoney(payload.amountCents, payoutCur);
+
+        const bookingListHtml = payload.bookingIds.length > 0
+          ? `<div style="margin-top:16px;">
+              <div style="font-family:${SITTER_FF};font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#64748b;margin-bottom:8px;">Réservations incluses</div>
+              ${payload.bookingIds.map(id => `<div style="font-family:${SITTER_FF};font-size:13px;color:#475569;padding:4px 0;">• Réservation #${id}</div>`).join("")}
+            </div>`
+          : "";
+
+        const amountBlock = `
+          <div style="margin-top:20px;text-align:center;padding:24px 0;">
+            <div style="font-family:${SITTER_FF};font-size:36px;font-weight:800;color:#15803d;">${amountDisplay}</div>
+            <div style="font-family:${SITTER_FF};font-size:13px;color:#6b7280;margin-top:8px;">Le virement apparaît sous 1–3 jours ouvrés</div>
+          </div>`;
+
+        return renderEmailLayout({
+          logoUrl,
+          title: `${amountDisplay} viennent d'arriver sur ton compte 💚`,
+          subtitle: "Ton travail a été récompensé.",
+          extraHtml: amountBlock + bookingListHtml,
+          ctaLabel: walletUrl ? "Voir mon portefeuille" : undefined,
+          ctaUrl: walletUrl || undefined,
+        }).html;
+      }
+
+      case "sitterBookingModified": {
+        const url = bookingUrl(payload.bookingId, "host");
+        const { rows } = await resolveBookingEmailData(payload.bookingId);
+
+        const booking = await (prisma as any).booking.findUnique({
+          where: { id: payload.bookingId },
+          select: { userId: true },
+        });
+        let ownerName = "le propriétaire";
+        if (booking?.userId) {
+          const ownerUser = await resolveUserEmail(String(booking.userId));
+          if (ownerUser?.name) ownerName = ownerUser.name;
+        }
+
+        let comparisonHtml = "";
+        if (payload.oldStartDate || payload.oldEndDate) {
+          const oldStart = payload.oldStartDate ? formatDateTime(payload.oldStartDate) : "";
+          const oldEnd = payload.oldEndDate ? formatDateTime(payload.oldEndDate) : "";
+          const newRows = rows.filter(r => {
+            const lab = r.label.toLowerCase();
+            return lab === "début" || lab === "fin";
+          });
+          const newStart = newRows.find(r => r.label.toLowerCase() === "début")?.value || "";
+          const newEnd = newRows.find(r => r.label.toLowerCase() === "fin")?.value || "";
+
+          const diffRow = (label: string, oldVal: string, newVal: string) => {
+            if (!oldVal && !newVal) return "";
+            return `
+              <tr>
+                <td style="padding:6px 0;font-family:${SITTER_FF};font-size:13px;font-weight:600;color:#64748b;white-space:nowrap;vertical-align:top;">${label}</td>
+                <td style="padding:6px 0 6px 12px;font-family:${SITTER_FF};font-size:13px;vertical-align:top;">
+                  ${oldVal ? `<span style="text-decoration:line-through;color:#94a3b8;">${oldVal}</span><br/>` : ""}
+                  <span style="color:#15803d;font-weight:600;">${newVal}</span>
+                </td>
+              </tr>`;
+          };
+
+          comparisonHtml = `
+            <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;margin-top:18px;background:#fefce8;border:1px solid #fde68a;border-radius:12px;">
+              <tr><td style="padding:18px 20px;">
+                <div style="font-family:${SITTER_FF};font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#92400e;margin-bottom:10px;">Modifications</div>
+                <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
+                  ${diffRow("Début", oldStart, newStart)}
+                  ${diffRow("Fin", oldEnd, newEnd)}
+                </table>
+              </td></tr>
+            </table>`;
+        }
+
+        let earningsImpactHtml = "";
+        if (typeof payload.oldAmountCents === "number" && typeof payload.newAmountCents === "number" && payload.oldAmountCents !== payload.newAmountCents) {
+          const diff = payload.newAmountCents - payload.oldAmountCents;
+          const sign = diff > 0 ? "+" : "";
+          const color = diff > 0 ? "#15803d" : "#dc2626";
+          earningsImpactHtml = `
+            <div style="margin-top:14px;font-family:${SITTER_FF};font-size:14px;color:${color};font-weight:600;text-align:center;">
+              Impact sur tes gains : ${sign}${formatMoney(diff, "CHF")}
+            </div>`;
+        }
+
+        return renderEmailLayout({
+          logoUrl,
+          title: `Ta réservation avec ${ownerName} a été modifiée`,
+          subtitle: "Vérifie les détails et confirme.",
+          summaryRows: rows,
+          extraHtml: comparisonHtml + earningsImpactHtml,
+          ctaLabel: url ? "Voir la réservation" : undefined,
+          ctaUrl: url || undefined,
+        }).html;
+      }
+
+      case "sitterRefundTriggered": {
+        const requestsUrl = baseUrl ? `${baseUrl}/host/requests` : "";
+        const { rows } = await resolveBookingEmailData(payload.bookingId);
+
+        const booking = await (prisma as any).booking.findUnique({
+          where: { id: payload.bookingId },
+          select: { startDate: true },
+        });
+        const startDateStr = booking?.startDate ? formatDateTime(booking.startDate) : "";
+
+        const refundCur = payload.currency?.toUpperCase() || "CHF";
+        let explanationHtml: string;
+        if (payload.eligibleRefund) {
+          explanationHtml = `
+            <div style="margin-top:20px;padding:18px 20px;background:#fef2f2;border:1px solid #fecaca;border-radius:12px;">
+              <div style="font-family:${SITTER_FF};font-size:14px;line-height:22px;color:#991b1b;">
+                La réservation a été annulée plus de 24h avant le début. Aucune rémunération n'est due pour cette prestation.
+              </div>
+            </div>`;
+        } else {
+          const netDisplay = typeof payload.netAmountCents === "number" ? formatMoney(payload.netAmountCents, refundCur) : "";
+          explanationHtml = `
+            <div style="margin-top:20px;padding:18px 20px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;">
+              <div style="font-family:${SITTER_FF};font-size:14px;line-height:22px;color:#166534;">
+                L'annulation étant tardive (moins de 24h avant le début), ta rémunération${netDisplay ? ` de <strong>${netDisplay}</strong>` : ""} reste acquise.
+              </div>
+            </div>`;
+        }
+
+        return renderEmailLayout({
+          logoUrl,
+          title: `La réservation du ${startDateStr || "—"} a été annulée`,
+          subtitle: "Voici ce que cela signifie pour toi.",
+          summaryRows: rows.filter(r => {
+            const lab = r.label.toLowerCase();
+            return lab === "service" || lab === "début" || lab === "fin" || lab === "référence";
+          }),
+          extraHtml: explanationHtml,
+          ctaLabel: requestsUrl ? "Voir mes réservations" : undefined,
+          ctaUrl: requestsUrl || undefined,
+        }).html;
+      }
+
+      case "sitterReviewReceived": {
+        const profileUrl = baseUrl ? `${baseUrl}/host/profile` : "";
+        const reviewSubtitle = payload.rating >= 4
+          ? "Continue comme ça !"
+          : "Chaque retour est une occasion de progresser.";
+
+        const reviewHtml = buildReviewDisplayHtml(payload.rating, payload.comment, payload.ownerName);
+
+        return renderEmailLayout({
+          logoUrl,
+          title: `${payload.ownerName} vient de te laisser un avis ⭐`,
+          subtitle: reviewSubtitle,
+          extraHtml: reviewHtml,
+          ctaLabel: profileUrl ? "Voir mes avis" : undefined,
+          ctaUrl: profileUrl || undefined,
+        }).html;
+      }
+
+      case "sitterMonthlyRecap": {
+        const hostUrl = baseUrl ? `${baseUrl}/host` : "";
+        const statsHtml = buildMonthlyStatsHtml({
+          totalBookings: payload.totalBookings,
+          totalHours: payload.totalHours,
+          netRevenueCents: payload.netRevenueCents,
+          currency: payload.currency,
+          averageRating: payload.averageRating,
+        });
+
+        return renderEmailLayout({
+          logoUrl,
+          title: `Ton mois de ${payload.month} en chiffres`,
+          subtitle: "Voici ton récap du mois écoulé.",
+          extraHtml: statsHtml,
+          ctaLabel: hostUrl ? "Voir mes statistiques" : undefined,
+          ctaUrl: hostUrl || undefined,
+        }).html;
+      }
+
       default:
         return renderEmailLayout({ logoUrl, title: "Notification", subtitle: "DogShift" }).html;
     }

@@ -3,6 +3,7 @@ import type { NextRequest } from "next/server";
 
 import { prisma } from "@/lib/prisma";
 import { resolveDbUserId } from "@/lib/auth/resolveDbUserId";
+import { sendNotificationEmail } from "@/lib/notifications/sendNotificationEmail";
 
 export const runtime = "nodejs";
 
@@ -107,6 +108,39 @@ export async function POST(req: NextRequest) {
       },
       select: { id: true, bookingId: true, sitterId: true, rating: true, comment: true, anonymous: true, createdAt: true, updatedAt: true },
     });
+
+    // Notify sitter about the new review
+    try {
+      const sitterUser = await (prisma as any).user.findFirst({
+        where: { sitterId },
+        select: { id: true },
+      });
+      const reviewer = await (prisma as any).user.findUnique({
+        where: { id: userId },
+        select: { name: true },
+      });
+      const ownerDisplayName = typeof reviewer?.name === "string" && reviewer.name.trim()
+        ? reviewer.name.trim()
+        : "Un propriétaire";
+
+      if (sitterUser?.id) {
+        await sendNotificationEmail({
+          req,
+          recipientUserId: String(sitterUser.id),
+          key: "sitterReviewReceived",
+          entityId: `review:${bookingId}`,
+          payload: {
+            kind: "sitterReviewReceived",
+            bookingId,
+            rating,
+            comment,
+            ownerName: ownerDisplayName,
+          },
+        });
+      }
+    } catch (notifErr) {
+      console.error("[api][reviews][POST] sitter notification failed", notifErr);
+    }
 
     return NextResponse.json(
       {

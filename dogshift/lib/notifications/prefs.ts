@@ -9,7 +9,14 @@ export type NotificationKey =
   | "bookingReminder"
   | "bookingCancelled"
   | "bookingRefunded"
-  | "bookingRefundFailed";
+  | "bookingRefundFailed"
+  | "sitterBookingConfirmed"
+  | "sitterBookingReminder"
+  | "sitterPayoutReceived"
+  | "sitterBookingModified"
+  | "sitterRefundTriggered"
+  | "sitterReviewReceived"
+  | "sitterMonthlyRecap";
 
 export type NotificationPrefs = Record<NotificationKey, boolean>;
 
@@ -24,6 +31,13 @@ function defaultNotificationPrefs(): NotificationPrefs {
     bookingCancelled: true,
     bookingRefunded: true,
     bookingRefundFailed: true,
+    sitterBookingConfirmed: true,
+    sitterBookingReminder: true,
+    sitterPayoutReceived: true,
+    sitterBookingModified: true,
+    sitterRefundTriggered: true,
+    sitterReviewReceived: true,
+    sitterMonthlyRecap: true,
   };
 }
 
@@ -40,24 +54,26 @@ export function readNotificationPrefsFromHostProfileJson(hostProfileJson: string
   const defaults = defaultNotificationPrefs();
   const parsed = safeJsonParse(hostProfileJson);
   const notifications = parsed?.accountSettings?.notifications;
+  const read = (k: NotificationKey) =>
+    typeof notifications?.[k] === "boolean" ? notifications[k] : defaults[k];
+
   return {
-    newMessages: typeof notifications?.newMessages === "boolean" ? notifications.newMessages : defaults.newMessages,
-    messageReceived:
-      typeof notifications?.messageReceived === "boolean" ? notifications.messageReceived : defaults.messageReceived,
-    newBookingRequest:
-      typeof notifications?.newBookingRequest === "boolean" ? notifications.newBookingRequest : defaults.newBookingRequest,
-    bookingConfirmed:
-      typeof notifications?.bookingConfirmed === "boolean" ? notifications.bookingConfirmed : defaults.bookingConfirmed,
-    paymentReceived:
-      typeof notifications?.paymentReceived === "boolean" ? notifications.paymentReceived : defaults.paymentReceived,
-    bookingReminder:
-      typeof notifications?.bookingReminder === "boolean" ? notifications.bookingReminder : defaults.bookingReminder,
-    bookingCancelled:
-      typeof notifications?.bookingCancelled === "boolean" ? notifications.bookingCancelled : defaults.bookingCancelled,
-    bookingRefunded:
-      typeof notifications?.bookingRefunded === "boolean" ? notifications.bookingRefunded : defaults.bookingRefunded,
-    bookingRefundFailed:
-      typeof notifications?.bookingRefundFailed === "boolean" ? notifications.bookingRefundFailed : defaults.bookingRefundFailed,
+    newMessages: read("newMessages"),
+    messageReceived: read("messageReceived"),
+    newBookingRequest: read("newBookingRequest"),
+    bookingConfirmed: read("bookingConfirmed"),
+    paymentReceived: read("paymentReceived"),
+    bookingReminder: read("bookingReminder"),
+    bookingCancelled: read("bookingCancelled"),
+    bookingRefunded: read("bookingRefunded"),
+    bookingRefundFailed: read("bookingRefundFailed"),
+    sitterBookingConfirmed: read("sitterBookingConfirmed"),
+    sitterBookingReminder: read("sitterBookingReminder"),
+    sitterPayoutReceived: read("sitterPayoutReceived"),
+    sitterBookingModified: read("sitterBookingModified"),
+    sitterRefundTriggered: read("sitterRefundTriggered"),
+    sitterReviewReceived: read("sitterReviewReceived"),
+    sitterMonthlyRecap: read("sitterMonthlyRecap"),
   };
 }
 
