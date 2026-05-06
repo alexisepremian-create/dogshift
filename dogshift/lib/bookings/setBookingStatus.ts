@@ -3,7 +3,7 @@ import type { NextRequest } from "next/server";
 import { BookingStatus } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
-import { resolveBookingParticipants, sendNotificationEmail, computeEligibleRefund } from "@/lib/notifications/sendNotificationEmail";
+import { computeEligibleRefund, resolveBookingParticipants, sendNotificationEmail } from "@/lib/notifications/sendNotificationEmail";
 
 export async function setBookingStatus(
   bookingId: string,
@@ -20,7 +20,7 @@ export async function setBookingStatus(
   const id = (bookingId || "").trim();
   if (!id) return { ok: false as const, error: "INVALID_BOOKING_ID" as const };
 
-  const booking = await (prisma as any).booking.findUnique({
+  const booking = await prisma.booking.findUnique({
     where: { id },
     select: { id: true, status: true, startDate: true, endDate: true, amount: true, currency: true, sitterId: true },
   });
@@ -62,7 +62,7 @@ export async function setBookingStatus(
     return { ok: true as const, changed: false as const, previousStatus: currentStatus, nextStatus };
   }
 
-  const updated = await (prisma as any).booking.update({
+  const updated = await prisma.booking.update({
     where: { id },
     data: { status: nextStatus },
     select: { id: true, status: true },
@@ -127,13 +127,30 @@ export async function setBookingStatus(
     }
 
     if (nextStatus === "CANCELLED") {
+      const startDate = booking.startDate ? new Date(booking.startDate) : null;
+      const eligibleRefund = computeEligibleRefund(startDate, new Date());
+      const cancelledBy = opts?.notificationContext?.cancelledBy || "owner";
+      const amountCents = typeof booking.amount === "number" ? booking.amount : undefined;
+      const currency = typeof booking.currency === "string" ? booking.currency : undefined;
+
+      let sitterName: string | undefined;
+      if (booking.sitterId) {
+        try {
+          const sp = await prisma.sitterProfile.findUnique({
+            where: { sitterId: booking.sitterId },
+            select: { displayName: true },
+          });
+          sitterName = typeof sp?.displayName === "string" && sp.displayName.trim() ? sp.displayName.trim() : undefined;
+        } catch { /* non-critical */ }
+      }
+
       if (ownerId) {
         await sendNotificationEmail({
           req: opts?.req,
           recipientUserId: ownerId,
           key: "bookingCancelled",
           entityId: id,
-          payload: { kind: "bookingCancelled", bookingId: id, dashboard: "account" },
+          payload: { kind: "bookingCancelled", bookingId: id, dashboard: "account", eligibleRefund, cancelledBy, sitterName, amountCents, currency },
         });
       }
       if (sitterId) {
@@ -148,6 +165,8 @@ export async function setBookingStatus(
     }
 
     if (nextStatus === "REFUNDED") {
+      const refundAmountCents = typeof booking.amount === "number" ? booking.amount : undefined;
+      const refundCurrency = typeof booking.currency === "string" ? booking.currency : undefined;
       if (ownerId) {
         await sendNotificationEmail({
           req: opts?.req,
@@ -163,8 +182,10 @@ export async function setBookingStatus(
                   kind: "bookingAutoExpiredRefunded",
                   bookingId: id,
                   deadlineHours: opts?.notificationContext?.deadlineHours ?? 24,
+                  amountCents: refundAmountCents,
+                  currency: refundCurrency,
                 }
-              : { kind: "bookingRefunded", bookingId: id, dashboard: "account" },
+              : { kind: "bookingRefunded", bookingId: id, dashboard: "account", amountCents: refundAmountCents, currency: refundCurrency },
         });
       }
       if (sitterId) {
@@ -179,13 +200,15 @@ export async function setBookingStatus(
     }
 
     if (nextStatus === "REFUND_FAILED") {
+      const failAmountCents = typeof booking.amount === "number" ? booking.amount : undefined;
+      const failCurrency = typeof booking.currency === "string" ? booking.currency : undefined;
       if (ownerId) {
         await sendNotificationEmail({
           req: opts?.req,
           recipientUserId: ownerId,
           key: "bookingRefundFailed",
           entityId: id,
-          payload: { kind: "bookingRefundFailed", bookingId: id, dashboard: "account" },
+          payload: { kind: "bookingRefundFailed", bookingId: id, dashboard: "account", amountCents: failAmountCents, currency: failCurrency },
         });
       }
     }
