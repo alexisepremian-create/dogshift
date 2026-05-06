@@ -310,21 +310,21 @@ export function renderNurturingStep3(params: { baseUrl: string; prenom?: string 
             <tr>
               <td width="33%" style="padding:0 6px 0 0;vertical-align:top;">
                 <div style="background:#faf5ff;border-radius:10px;padding:14px;text-align:center;">
-                  <div style="font-size:22px;margin-bottom:6px;">🦮</div>
+                  <div style="font-size:22px;margin-bottom:6px;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 12c0-1 .5-2 1.5-2.5M12 5c1-1.5 3-2 4.5-1s2 3 1 4.5M5 16c-1 .5-2 1.5-2 3M21 16c1 .5 2 1.5 2 3M12 17c-3 0-5-2-5-4 0-1 1-2.5 2.5-3.5" stroke="#7c3aed" stroke-width="1.8" stroke-linecap="round"/></svg></div>
                   <div style="font-family:Arial,Helvetica,sans-serif;font-size:12px;font-weight:700;color:#6d28d9;">Promenade</div>
                   <div style="font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#6b7280;margin-top:3px;">1h ou 2h</div>
                 </div>
               </td>
               <td width="33%" style="padding:0 3px;vertical-align:top;">
                 <div style="background:#faf5ff;border-radius:10px;padding:14px;text-align:center;">
-                  <div style="font-size:22px;margin-bottom:6px;">🏠</div>
+                  <div style="font-size:22px;margin-bottom:6px;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" stroke="#7c3aed" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M9 22V12h6v10" stroke="#7c3aed" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
                   <div style="font-family:Arial,Helvetica,sans-serif;font-size:12px;font-weight:700;color:#6d28d9;">Garde</div>
                   <div style="font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#6b7280;margin-top:3px;">À la journée</div>
                 </div>
               </td>
               <td width="33%" style="padding:0 0 0 6px;vertical-align:top;">
                 <div style="background:#faf5ff;border-radius:10px;padding:14px;text-align:center;">
-                  <div style="font-size:22px;margin-bottom:6px;">🌙</div>
+                  <div style="font-size:22px;margin-bottom:6px;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M21 12.79A9 9 0 1111.21 3a7 7 0 0010 9.79z" stroke="#7c3aed" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
                   <div style="font-family:Arial,Helvetica,sans-serif;font-size:12px;font-weight:700;color:#6d28d9;">Pension</div>
                   <div style="font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#6b7280;margin-top:3px;">Nuit ou séjour</div>
                 </div>
@@ -350,7 +350,7 @@ export function renderNurturingStep3(params: { baseUrl: string; prenom?: string 
     baseUrl: base,
     previewText: "Promenade, garde ou pension — votre chien mérite le meilleur sitter. Consultez les profils.",
     heroLabel: "DogShift vous accompagne",
-    heroTitle: "Votre chien mérite le meilleur 🐾",
+    heroTitle: "Votre chien mérite le meilleur",
     heroSubtitle: "Promenade, garde à la journée, pension — trouvez le sitter idéal en quelques minutes.",
     bodyHtml,
     ctaLabel: "Voir les sitters disponibles →",
