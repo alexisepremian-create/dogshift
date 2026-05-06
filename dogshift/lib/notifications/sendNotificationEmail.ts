@@ -1016,15 +1016,29 @@ Notification DogShift.
       case "bookingRequest": {
         const url = bookingUrl(payload.bookingId, "host");
         const { rows, extraHtml } = await resolveBookingRequestEmailData(payload.bookingId);
+        const tipsHtml = `
+          <div style="margin-top:24px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:18px 20px;">
+            <div style="font-family:${SITTER_FF};font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#64748b;margin-bottom:12px;">Nos conseils pour bien démarrer</div>
+            <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
+              <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">💬</td><td style="padding:5px 0;font-family:${SITTER_FF};font-size:14px;line-height:20px;color:#475569;"><strong>Réponds rapidement</strong> — les propriétaires préfèrent les sitters réactifs.</td></tr>
+              <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">📋</td><td style="padding:5px 0;font-family:${SITTER_FF};font-size:14px;line-height:20px;color:#475569;"><strong>Lis bien les détails</strong> — vérifie le service, les dates et les consignes.</td></tr>
+              <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">🤝</td><td style="padding:5px 0;font-family:${SITTER_FF};font-size:14px;line-height:20px;color:#475569;"><strong>Pose des questions</strong> — n'hésite pas à contacter le propriétaire.</td></tr>
+            </table>
+          </div>
+          <div style="margin-top:16px;padding:14px 18px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;">
+            <div style="font-family:${SITTER_FF};font-size:13px;line-height:20px;color:#166534;">⏰ <strong>Pense à répondre sous 24h</strong> — passé ce délai, la demande pourra être automatiquement annulée.</div>
+          </div>`;
         return renderEmailLayout({
           logoUrl,
           audience: "sitter",
           title: "Nouvelle demande de réservation",
-          subtitle: "Tu as reçu une nouvelle demande.",
+          subtitle: "Tu as reçu une nouvelle demande. Consulte les détails et réponds au propriétaire.",
           summaryRows: rows,
-          extraHtml: extraHtml || undefined,
-          ctaLabel: url ? "Voir la réservation" : undefined,
+          extraHtml: (extraHtml || "") + tipsHtml,
+          ctaLabel: url ? "Voir la demande" : undefined,
           ctaUrl: url || undefined,
+          secondaryLinkLabel: baseUrl ? "Contacter le propriétaire" : undefined,
+          secondaryLinkUrl: baseUrl ? `${baseUrl}/host/messages` : undefined,
         }).html;
       }
       case "bookingConfirmed": {
@@ -1083,14 +1097,23 @@ Notification DogShift.
         if (payload.dashboard === "host") {
           const hostUrl = bookingUrl(payload.bookingId, "host");
           const hostRows = await resolveBookingSummaryRows(payload.bookingId);
+          const cancelExtraHtml = `
+            <div style="margin-top:16px;padding:14px 18px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;">
+              <div style="font-family:${SITTER_FF};font-size:13px;line-height:20px;color:#475569;">
+                💡 <strong>Astuce</strong> — vérifie que tes disponibilités sont à jour pour maximiser tes chances de recevoir de nouvelles demandes.
+              </div>
+            </div>`;
           return renderEmailLayout({
             logoUrl,
             audience: "sitter",
             title: "Réservation annulée",
-            subtitle: "Une réservation a été annulée.",
+            subtitle: "Le propriétaire a annulé la réservation. Aucune action n'est requise de ta part.",
             summaryRows: hostRows,
-            ctaLabel: hostUrl ? "Voir la réservation" : undefined,
+            extraHtml: cancelExtraHtml,
+            ctaLabel: hostUrl ? "Voir mes réservations" : undefined,
             ctaUrl: hostUrl || undefined,
+            secondaryLinkLabel: baseUrl ? "Mettre à jour mes disponibilités" : undefined,
+            secondaryLinkUrl: baseUrl ? `${baseUrl}/host/availability` : undefined,
           }).html;
         }
         const { rows, sitter, startDate } = await resolveBookingEmailData(payload.bookingId);
@@ -1128,14 +1151,29 @@ Notification DogShift.
         if (payload.dashboard === "host") {
           const hostRefUrl = bookingUrl(payload.bookingId, "host");
           const hostRefRows = await resolveBookingSummaryRows(payload.bookingId);
+          const refundCancelHtml = `
+            <div style="margin-top:20px;padding:18px 20px;background:#fefce8;border:1px solid #fde68a;border-radius:12px;">
+              <div style="font-family:${SITTER_FF};font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#92400e;margin-bottom:8px;">Ce qui se passe maintenant</div>
+              <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
+                <tr><td valign="top" style="padding:5px 0;width:24px;font-size:14px;color:#92400e;">1.</td><td style="padding:5px 0;font-family:${SITTER_FF};font-size:14px;line-height:20px;color:#78350f;">Le propriétaire a été remboursé selon les conditions d'annulation.</td></tr>
+                <tr><td valign="top" style="padding:5px 0;width:24px;font-size:14px;color:#92400e;">2.</td><td style="padding:5px 0;font-family:${SITTER_FF};font-size:14px;line-height:20px;color:#78350f;">Le créneau est de nouveau disponible dans ton agenda.</td></tr>
+                <tr><td valign="top" style="padding:5px 0;width:24px;font-size:14px;color:#92400e;">3.</td><td style="padding:5px 0;font-family:${SITTER_FF};font-size:14px;line-height:20px;color:#78350f;">Aucune action n'est requise de ta part.</td></tr>
+              </table>
+            </div>
+            <div style="margin-top:16px;padding:14px 18px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;">
+              <div style="font-family:${SITTER_FF};font-size:13px;line-height:20px;color:#475569;">💡 <strong>Astuce</strong> — vérifie que tes disponibilités sont à jour pour maximiser tes chances de recevoir de nouvelles demandes.</div>
+            </div>`;
           return renderEmailLayout({
             logoUrl,
             audience: "sitter",
             title: "Réservation annulée",
-            subtitle: "Une réservation a été annulée. Le remboursement du propriétaire a été traité conformément aux conditions applicables.",
+            subtitle: "Le propriétaire a annulé la réservation. Le remboursement a été traité automatiquement.",
             summaryRows: hostRefRows,
-            ctaLabel: hostRefUrl ? "Voir la réservation" : undefined,
+            extraHtml: refundCancelHtml,
+            ctaLabel: hostRefUrl ? "Voir mes réservations" : undefined,
             ctaUrl: hostRefUrl || undefined,
+            secondaryLinkLabel: baseUrl ? "Mettre à jour mes disponibilités" : undefined,
+            secondaryLinkUrl: baseUrl ? `${baseUrl}/host/availability` : undefined,
           }).html;
         }
         const refundedAmount = formatCents(payload.amountCents, payload.currency);
@@ -1220,7 +1258,7 @@ Notification DogShift.
 
       case "sitterBookingConfirmed": {
         const url = bookingUrl(payload.bookingId, "host");
-        const { rows, travel, dog, sitter } = await resolveBookingEmailData(payload.bookingId);
+        const { rows, travel, dog } = await resolveBookingEmailData(payload.bookingId);
 
         const booking = await (prisma as any).booking.findUnique({
           where: { id: payload.bookingId },
@@ -1287,7 +1325,7 @@ Notification DogShift.
         }
 
         const dogName = dog?.name || "ton prochain client à 4 pattes";
-        const sitterReminderTitle = `Demain, ${dogName} t'attend 🐾`;
+        void dogName;
 
         const sitterRows: EmailSummaryRow[] = rows.filter(r => {
           const lab = r.label.toLowerCase();
@@ -1332,12 +1370,22 @@ Notification DogShift.
             <div style="font-family:${SITTER_FF};font-size:13px;color:#6b7280;margin-top:8px;">Le virement apparaît sous 1–3 jours ouvrés</div>
           </div>`;
 
+        const payoutTipsHtml = `
+          <div style="margin-top:24px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:18px 20px;">
+            <div style="font-family:${SITTER_FF};font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#64748b;margin-bottom:12px;">Bon à savoir</div>
+            <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
+              <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">🏦</td><td style="padding:5px 0;font-family:${SITTER_FF};font-size:14px;line-height:20px;color:#475569;"><strong>Délai bancaire</strong> — le virement peut mettre 1 à 3 jours ouvrés à apparaître sur ton relevé.</td></tr>
+              <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">📊</td><td style="padding:5px 0;font-family:${SITTER_FF};font-size:14px;line-height:20px;color:#475569;"><strong>Historique</strong> — retrouve tous tes virements passés dans ton portefeuille DogShift.</td></tr>
+              <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">📝</td><td style="padding:5px 0;font-family:${SITTER_FF};font-size:14px;line-height:20px;color:#475569;"><strong>Comptabilité</strong> — pense à conserver tes relevés pour ta déclaration fiscale.</td></tr>
+            </table>
+          </div>`;
+
         return renderEmailLayout({
           logoUrl,
           audience: "sitter",
           title: "Virement reçu",
           subtitle: "Le paiement a été transféré sur ton compte.",
-          extraHtml: amountBlock + bookingListHtml,
+          extraHtml: amountBlock + bookingListHtml + payoutTipsHtml,
           ctaLabel: walletUrl ? "Voir mon portefeuille" : undefined,
           ctaUrl: walletUrl || undefined,
         }).html;
@@ -1403,15 +1451,27 @@ Notification DogShift.
             </div>`;
         }
 
+        const modifiedTipsHtml = `
+          <div style="margin-top:24px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:18px 20px;">
+            <div style="font-family:${SITTER_FF};font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#64748b;margin-bottom:12px;">Que faire maintenant ?</div>
+            <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
+              <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">🔍</td><td style="padding:5px 0;font-family:${SITTER_FF};font-size:14px;line-height:20px;color:#475569;"><strong>Vérifie les nouveaux horaires</strong> — assure-toi que le créneau modifié est compatible avec ton emploi du temps.</td></tr>
+              <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">💬</td><td style="padding:5px 0;font-family:${SITTER_FF};font-size:14px;line-height:20px;color:#475569;"><strong>Contacte le propriétaire</strong> — si un détail te pose problème, n'hésite pas à en discuter.</td></tr>
+              <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">📅</td><td style="padding:5px 0;font-family:${SITTER_FF};font-size:14px;line-height:20px;color:#475569;"><strong>Mets à jour ton agenda</strong> — pense à adapter tes disponibilités si nécessaire.</td></tr>
+            </table>
+          </div>`;
+
         return renderEmailLayout({
           logoUrl,
           audience: "sitter",
           title: "Réservation modifiée",
-          subtitle: "Le propriétaire a modifié les détails de la réservation.",
+          subtitle: `${ownerName} a modifié les détails de la réservation. Vérifie que tout te convient.`,
           summaryRows: rows,
-          extraHtml: comparisonHtml + earningsImpactHtml,
+          extraHtml: comparisonHtml + earningsImpactHtml + modifiedTipsHtml,
           ctaLabel: url ? "Voir la réservation" : undefined,
           ctaUrl: url || undefined,
+          secondaryLinkLabel: baseUrl ? "Contacter le propriétaire" : undefined,
+          secondaryLinkUrl: baseUrl ? `${baseUrl}/host/messages` : undefined,
         }).html;
       }
 
@@ -1427,12 +1487,21 @@ Notification DogShift.
 
         const refundCur = payload.currency?.toUpperCase() || "CHF";
         let explanationHtml: string;
+        let refundTipsHtml: string;
         if (payload.eligibleRefund) {
           explanationHtml = `
             <div style="margin-top:20px;padding:18px 20px;background:#fef2f2;border:1px solid #fecaca;border-radius:12px;">
               <div style="font-family:${SITTER_FF};font-size:14px;line-height:22px;color:#991b1b;">
                 La réservation a été annulée plus de 24h avant le début. Aucune rémunération n'est due pour cette prestation.
               </div>
+            </div>`;
+          refundTipsHtml = `
+            <div style="margin-top:24px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:18px 20px;">
+              <div style="font-family:${SITTER_FF};font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#64748b;margin-bottom:12px;">Ce que tu peux faire</div>
+              <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
+                <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">📅</td><td style="padding:5px 0;font-family:${SITTER_FF};font-size:14px;line-height:20px;color:#475569;"><strong>Créneau libéré</strong> — ton créneau est à nouveau disponible pour d'autres réservations.</td></tr>
+                <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">🔄</td><td style="padding:5px 0;font-family:${SITTER_FF};font-size:14px;line-height:20px;color:#475569;"><strong>Reste visible</strong> — vérifie que tes disponibilités sont à jour pour maximiser tes demandes.</td></tr>
+              </table>
             </div>`;
         } else {
           const netDisplay = typeof payload.netAmountCents === "number" ? formatMoney(payload.netAmountCents, refundCur) : "";
@@ -1441,6 +1510,15 @@ Notification DogShift.
               <div style="font-family:${SITTER_FF};font-size:14px;line-height:22px;color:#166534;">
                 L'annulation étant tardive (moins de 24h avant le début), ta rémunération${netDisplay ? ` de <strong>${netDisplay}</strong>` : ""} reste acquise.
               </div>
+            </div>`;
+          refundTipsHtml = `
+            <div style="margin-top:24px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:18px 20px;">
+              <div style="font-family:${SITTER_FF};font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#64748b;margin-bottom:12px;">Bon à savoir</div>
+              <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
+                <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">✅</td><td style="padding:5px 0;font-family:${SITTER_FF};font-size:14px;line-height:20px;color:#475569;"><strong>Rémunération maintenue</strong> — le montant sera inclus dans ton prochain virement.</td></tr>
+                <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">📅</td><td style="padding:5px 0;font-family:${SITTER_FF};font-size:14px;line-height:20px;color:#475569;"><strong>Créneau libéré</strong> — ton créneau est à nouveau disponible pour d'autres demandes.</td></tr>
+                <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">🙏</td><td style="padding:5px 0;font-family:${SITTER_FF};font-size:14px;line-height:20px;color:#475569;"><strong>Merci pour ta réactivité</strong> — les propriétaires apprécient les sitters fiables et disponibles.</td></tr>
+              </table>
             </div>`;
         }
 
@@ -1453,9 +1531,11 @@ Notification DogShift.
             const lab = r.label.toLowerCase();
             return lab === "service" || lab === "début" || lab === "fin" || lab === "référence";
           }),
-          extraHtml: explanationHtml,
+          extraHtml: explanationHtml + refundTipsHtml,
           ctaLabel: requestsUrl ? "Voir mes réservations" : undefined,
           ctaUrl: requestsUrl || undefined,
+          secondaryLinkLabel: baseUrl ? "Mettre à jour mes disponibilités" : undefined,
+          secondaryLinkUrl: baseUrl ? `${baseUrl}/host/availability` : undefined,
         }).html;
       }
 
@@ -1467,12 +1547,22 @@ Notification DogShift.
 
         const reviewHtml = buildReviewDisplayHtml(payload.rating, payload.comment, payload.ownerName);
 
+        const reviewTipsHtml = `
+          <div style="margin-top:24px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:18px 20px;">
+            <div style="font-family:${SITTER_FF};font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#64748b;margin-bottom:12px;">Pourquoi les avis comptent</div>
+            <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
+              <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">🏆</td><td style="padding:5px 0;font-family:${SITTER_FF};font-size:14px;line-height:20px;color:#475569;"><strong>Visibilité</strong> — les sitters bien notés apparaissent en priorité dans les résultats de recherche.</td></tr>
+              <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">🤝</td><td style="padding:5px 0;font-family:${SITTER_FF};font-size:14px;line-height:20px;color:#475569;"><strong>Confiance</strong> — les avis positifs rassurent les nouveaux propriétaires et boostent tes réservations.</td></tr>
+              <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">📈</td><td style="padding:5px 0;font-family:${SITTER_FF};font-size:14px;line-height:20px;color:#475569;"><strong>Progression</strong> — chaque retour est une occasion de t'améliorer et d'affiner tes services.</td></tr>
+            </table>
+          </div>`;
+
         return renderEmailLayout({
           logoUrl,
           audience: "sitter",
           title: `${payload.ownerName} vient de te laisser un avis ⭐`,
           subtitle: reviewSubtitle,
-          extraHtml: reviewHtml,
+          extraHtml: reviewHtml + reviewTipsHtml,
           ctaLabel: profileUrl ? "Voir mes avis" : undefined,
           ctaUrl: profileUrl || undefined,
         }).html;
@@ -1488,12 +1578,22 @@ Notification DogShift.
           averageRating: payload.averageRating,
         });
 
+        const recapTipsHtml = `
+          <div style="margin-top:24px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:18px 20px;">
+            <div style="font-family:${SITTER_FF};font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#64748b;margin-bottom:12px;">Conseils pour le mois prochain</div>
+            <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
+              <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">📅</td><td style="padding:5px 0;font-family:${SITTER_FF};font-size:14px;line-height:20px;color:#475569;"><strong>Anticipe tes disponibilités</strong> — ajoute tes créneaux à l'avance pour être visible des propriétaires qui planifient tôt.</td></tr>
+              <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">📸</td><td style="padding:5px 0;font-family:${SITTER_FF};font-size:14px;line-height:20px;color:#475569;"><strong>Soigne ton profil</strong> — une photo récente et une description détaillée font la différence.</td></tr>
+              <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">⭐</td><td style="padding:5px 0;font-family:${SITTER_FF};font-size:14px;line-height:20px;color:#475569;"><strong>Encourage les avis</strong> — après chaque prestation, un petit mot au propriétaire peut faire toute la différence.</td></tr>
+            </table>
+          </div>`;
+
         return renderEmailLayout({
           logoUrl,
           audience: "sitter",
           title: `Récap du mois de ${payload.month}`,
-          subtitle: "Voici ton récap du mois écoulé.",
-          extraHtml: statsHtml,
+          subtitle: "Voici ton récap du mois écoulé. Bravo pour ton engagement !",
+          extraHtml: statsHtml + recapTipsHtml,
           ctaLabel: hostUrl ? "Voir mon tableau de bord" : undefined,
           ctaUrl: hostUrl || undefined,
         }).html;
