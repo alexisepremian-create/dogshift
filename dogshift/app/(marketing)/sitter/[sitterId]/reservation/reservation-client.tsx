@@ -8,7 +8,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Calendar, ChevronLeft, ChevronRight, Home, MapPin } from "lucide-react";
+import { Calendar, ChevronLeft, ChevronRight, Home, MapPin, Scissors, AlertTriangle } from "lucide-react";
 
 import { useMaintenance } from "@/components/platform/MaintenanceProvider";
 import { maintenanceBookingUserMessage } from "@/lib/platform/maintenanceConstants";
@@ -2175,7 +2175,10 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
                   Ce sitter accepte au maximum {sitter.acceptanceCriteria.maxDogs} chien{sitter.acceptanceCriteria.maxDogs > 1 ? "s" : ""} simultanément.
                 </p>
                 {sitter.acceptanceCriteria.neuteredRequired && (
-                  <p className="mt-1 text-xs text-amber-600 font-medium">⚠️ Chiens castrés/stérilisés uniquement.</p>
+                  <p className="mt-1 flex items-center gap-1 text-xs font-medium text-amber-600">
+                    <Scissors className="h-3 w-3 flex-shrink-0" />
+                    Chiens castrés/stérilisés uniquement.
+                  </p>
                 )}
                 <div className="mt-4 flex items-center gap-4">
                   <button
@@ -2203,8 +2206,9 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
 
             {/* Neutered-only notice (when no maxDogs limit set) */}
             {sitter.acceptanceCriteria?.neuteredRequired && !sitter.acceptanceCriteria?.maxDogs && (
-              <div className="rounded-3xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
-                ⚠️ Ce sitter accepte uniquement les chiens castrés ou stérilisés.
+              <div className="flex items-start gap-2 rounded-3xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+                <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0" />
+                Ce sitter accepte uniquement les chiens castrés ou stérilisés.
               </div>
             )}
 

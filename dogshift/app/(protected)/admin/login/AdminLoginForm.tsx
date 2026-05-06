@@ -2,6 +2,7 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
+import { Eye, EyeOff } from "lucide-react";
 
 export default function AdminLoginForm() {
   const router = useRouter();
@@ -11,6 +12,7 @@ export default function AdminLoginForm() {
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showCode, setShowCode] = useState(false);
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -46,17 +48,28 @@ export default function AdminLoginForm() {
         <label htmlFor="admin-code" className="text-sm font-medium text-slate-700">
           Code admin interne
         </label>
-        <input
-          id="admin-code"
-          type="password"
-          value={code}
-          onChange={(e) => setCode(e.target.value)}
-          autoComplete="current-password"
-          required
-          disabled={loading}
-          className="h-11 w-full rounded-2xl border border-slate-300 bg-white px-4 text-slate-900 shadow-sm outline-none transition focus:border-[var(--dogshift-blue)] focus:ring-2 focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_80%)]"
-          placeholder="Saisir le code admin"
-        />
+        <div className="relative">
+          <input
+            id="admin-code"
+            type={showCode ? "text" : "password"}
+            value={code}
+            onChange={(e) => setCode(e.target.value)}
+            autoComplete="current-password"
+            required
+            disabled={loading}
+            className="h-11 w-full rounded-2xl border border-slate-300 bg-white px-4 pr-11 text-slate-900 shadow-sm outline-none transition focus:border-[var(--dogshift-blue)] focus:ring-2 focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_80%)]"
+            placeholder="Saisir le code admin"
+          />
+          <button
+            type="button"
+            tabIndex={-1}
+            onClick={() => setShowCode((v) => !v)}
+            className="absolute inset-y-0 right-0 flex w-11 items-center justify-center text-slate-400 transition hover:text-slate-600"
+            aria-label={showCode ? "Masquer le code" : "Afficher le code"}
+          >
+            {showCode ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+          </button>
+        </div>
       </div>
 
       {error ? <p className="text-center text-sm font-medium text-rose-600">{error}</p> : null}
