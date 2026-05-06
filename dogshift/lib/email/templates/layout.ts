@@ -43,25 +43,25 @@ const SOCIAL = {
   globe: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="10" stroke="#94a3b8" stroke-width="1.8"/><path d="M12 2c-2.5 3-4 6-4 10s1.5 7 4 10M12 2c2.5 3 4 6 4 10s-1.5 7-4 10M2 12h20" stroke="#94a3b8" stroke-width="1.8" stroke-linecap="round"/></svg>`,
 };
 
-// ── Dark mode CSS ─────────────────────────────────────────────────────────────
+// ── Force light mode CSS (prevents Gmail/iOS auto-dark-mode) ─────────────────
 
 const DARK_MODE_CSS = `
-<style>
-  @media (prefers-color-scheme: dark) {
-    body, .ds-outer          { background-color: #0f172a !important; }
-    .ds-card                 { background-color: #1e293b !important; border-color: #334155 !important; }
-    .ds-body-text            { color: #cbd5e1 !important; }
-    .ds-summary-title        { color: #e2e8f0 !important; }
-    .ds-row-border           { border-top-color: #334155 !important; }
-    .ds-row-label            { color: #64748b !important; }
-    .ds-row-value            { color: #e2e8f0 !important; }
-    .ds-highlight            { background-color: #1e293b !important; border-left-color: #6366f1 !important; }
-    .ds-highlight-text       { color: #cbd5e1 !important; }
-    .ds-footer-outer         { background-color: #0f172a !important; }
-    .ds-footer-text          { color: #475569 !important; }
-    .ds-footer-link          { color: #64748b !important; }
-    .ds-divider              { background-color: #1e293b !important; }
-  }
+<style type="text/css">
+  /* Force light-only rendering — Apple Mail, iOS Mail */
+  :root { color-scheme: light only !important; }
+  /* Gmail dark mode override — Gmail adds [data-ogsc] to :root when dark */
+  :root[data-ogsc] body,
+  :root[data-ogsc] .ds-outer { background-color: #f1f5f9 !important; }
+  :root[data-ogsc] .ds-card  { background-color: #ffffff !important; border-color: #e2e8f0 !important; }
+  :root[data-ogsc] .ds-card td,
+  :root[data-ogsc] .ds-card p,
+  :root[data-ogsc] .ds-card div,
+  :root[data-ogsc] .ds-card span { color: #475569 !important; }
+  :root[data-ogsc] .ds-card strong,
+  :root[data-ogsc] .ds-card b    { color: #0f172a !important; }
+  /* Gmail iOS extra hack (u+ selector only parsed by Gmail) */
+  u + .ds-outer .ds-card { background-color: #ffffff !important; }
+  u + .ds-outer body     { background-color: #f1f5f9 !important; }
 </style>`;
 
 // ── Main layout function ──────────────────────────────────────────────────────
@@ -113,12 +113,18 @@ export function renderEmailLayout(params: {
 
   // ── Logo block (white circle + white text — lives inside the purple hero) ───
   const logoHtml = logoUrl
-    ? `<a href="${esc(baseUrl)}" style="text-decoration:none;display:inline-flex;align-items:center;gap:10px;">
-        <span style="display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:50%;background:#ffffff;flex-shrink:0;">
-          <img src="${esc(logoUrl)}" width="24" alt="" style="display:block;width:24px;height:24px;border:0;outline:none;" />
-        </span>
-        <span style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,Helvetica,sans-serif;font-size:17px;font-weight:800;color:#ffffff;letter-spacing:-0.3px;">${esc(brandName)}</span>
-       </a>`
+    ? `<table role="presentation" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin-bottom:24px;">
+        <tr>
+          <td style="width:36px;height:36px;background-color:#ffffff;border-radius:18px;text-align:center;vertical-align:middle;padding:6px;">
+            <a href="${esc(baseUrl)}" style="text-decoration:none;display:block;">
+              <img src="${esc(logoUrl)}" width="24" height="24" alt="" style="display:block;border:0;outline:none;" />
+            </a>
+          </td>
+          <td style="padding-left:10px;vertical-align:middle;">
+            <a href="${esc(baseUrl)}" style="text-decoration:none;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,Helvetica,sans-serif;font-size:17px;font-weight:800;color:#ffffff;letter-spacing:-0.3px;">${esc(brandName)}</a>
+          </td>
+        </tr>
+      </table>`
     : `<a href="${esc(baseUrl)}" style="text-decoration:none;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,Helvetica,sans-serif;font-size:17px;font-weight:800;color:#ffffff;letter-spacing:-0.3px;">${esc(brandName)}</a>`;
 
   // ── Summary table ───────────────────────────────────────────────────────────
@@ -205,8 +211,8 @@ export function renderEmailLayout(params: {
   <meta http-equiv="X-UA-Compatible" content="IE=edge" />
   <meta name="x-apple-disable-message-reformatting" />
   <meta name="format-detection" content="telephone=no,date=no,address=no,email=no,url=no" />
-  <meta name="color-scheme" content="light dark" />
-  <meta name="supported-color-schemes" content="light dark" />
+  <meta name="color-scheme" content="light only" />
+  <meta name="supported-color-schemes" content="light only" />
   <title>${title}</title>
   ${DARK_MODE_CSS}
 </head>

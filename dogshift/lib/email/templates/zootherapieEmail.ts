@@ -55,7 +55,18 @@ export function renderZootherapieEmail(params: {
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="x-apple-disable-message-reformatting" />
+  <meta name="color-scheme" content="light only" />
+  <meta name="supported-color-schemes" content="light only" />
   <title>${escapeHtml(titre)}</title>
+  <style type="text/css">
+    :root { color-scheme: light only !important; }
+    :root[data-ogsc] body, :root[data-ogsc] .ds-outer { background-color: #f3f4f6 !important; }
+    :root[data-ogsc] .ds-card { background-color: #ffffff !important; border-color: #e2e8f0 !important; }
+    :root[data-ogsc] .ds-card td, :root[data-ogsc] .ds-card p,
+    :root[data-ogsc] .ds-card div, :root[data-ogsc] .ds-card span { color: #475569 !important; }
+    :root[data-ogsc] .ds-card strong, :root[data-ogsc] .ds-card b { color: #0f172a !important; }
+    u + .ds-outer .ds-card { background-color: #ffffff !important; }
+  </style>
 </head>
 <body style="margin:0;padding:0;background:#f3f4f6;">
   <!-- Preview text -->
@@ -73,14 +84,18 @@ export function renderZootherapieEmail(params: {
           <tr>
             <td style="border-radius:16px 16px 0 0;overflow:hidden;background:linear-gradient(135deg,#7c3aed 0%,#6366f1 55%,#818cf8 100%);padding:28px 36px 32px;">
           <!-- Logo inside hero -->
-              <div style="margin-bottom:24px;">
-                <a href="${siteUrl}" style="text-decoration:none;display:inline-flex;align-items:center;gap:10px;">
-                  <span style="display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:50%;background:#ffffff;flex-shrink:0;">
-                    <img src="${escapeHtml(logoUrl)}" width="24" height="24" alt="" style="display:block;border:0;width:24px;height:24px;" />
-                  </span>
-                  <span style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,Helvetica,sans-serif;font-size:17px;font-weight:800;color:#ffffff;letter-spacing:-0.3px;">DogShift</span>
-                </a>
-              </div>
+              <table role="presentation" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin-bottom:24px;">
+                <tr>
+                  <td style="width:36px;height:36px;background-color:#ffffff;border-radius:18px;text-align:center;vertical-align:middle;padding:6px;">
+                    <a href="${siteUrl}" style="text-decoration:none;display:block;">
+                      <img src="${escapeHtml(logoUrl)}" width="24" height="24" alt="" style="display:block;border:0;outline:none;" />
+                    </a>
+                  </td>
+                  <td style="padding-left:10px;vertical-align:middle;">
+                    <a href="${siteUrl}" style="text-decoration:none;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,Helvetica,sans-serif;font-size:17px;font-weight:800;color:#ffffff;letter-spacing:-0.3px;">DogShift</a>
+                  </td>
+                </tr>
+              </table>
               <div style="font-family:Arial,Helvetica,sans-serif;display:inline-block;background:rgba(255,255,255,0.18);color:rgba(255,255,255,0.95);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,Helvetica,sans-serif;font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;padding:4px 12px;border-radius:20px;margin-bottom:16px;">
                 Évaluation bien-être
               </div>
