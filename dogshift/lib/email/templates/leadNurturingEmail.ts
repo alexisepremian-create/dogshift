@@ -93,8 +93,8 @@ function buildBase(params: {
           <!-- Logo inside hero -->
               <table role="presentation" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin-bottom:24px;">
                 <tr>
-                  <td align="center" valign="middle" style="width:36px;height:36px;background-color:#ffffff;border-radius:18px;padding:6px;">
-                    <img src="${logoUrl}" width="24" height="24" alt="" style="display:inline-block;vertical-align:middle;border:0;outline:none;" />
+                  <td align="center" valign="middle" style="width:44px;height:44px;background-color:#ffffff;border-radius:22px;padding:7px;">
+                    <img src="${logoUrl}" width="30" height="30" alt="" style="display:inline-block;vertical-align:middle;border:0;outline:none;" />
                   </td>
                   <td style="padding-left:10px;vertical-align:middle;">
                     <a href="${siteUrl}" style="text-decoration:none;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,Helvetica,sans-serif;font-size:17px;font-weight:800;color:#ffffff;letter-spacing:-0.3px;">DogShift</a>
@@ -169,13 +169,25 @@ function buildBase(params: {
           <!-- FOOTER -->
           <tr>
             <td align="center" style="padding:24px 4px 0;text-align:center;">
-              <table role="presentation" cellpadding="0" cellspacing="0" align="center" style="border-collapse:collapse;margin:0 auto 16px;">
-                <tr>
-                  <td style="padding:0 6px;"><a href="https://instagram.com/dogshift" style="text-decoration:none;display:inline-block;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><rect x="2" y="2" width="20" height="20" rx="6" stroke="#94a3b8" stroke-width="1.8"/><circle cx="12" cy="12" r="4" stroke="#94a3b8" stroke-width="1.8"/><circle cx="17.5" cy="6.5" r="1" fill="#94a3b8"/></svg></a></td>
-                  <td style="padding:0 6px;"><a href="https://facebook.com/dogshift" style="text-decoration:none;display:inline-block;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z" stroke="#94a3b8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></a></td>
-                  <td style="padding:0 6px;"><a href="${siteUrl}" style="text-decoration:none;display:inline-block;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="#94a3b8" stroke-width="1.8"/><path d="M12 2c-2.5 3-4 6-4 10s1.5 7 4 10M12 2c2.5 3 4 6 4 10s-1.5 7-4 10M2 12h20" stroke="#94a3b8" stroke-width="1.8" stroke-linecap="round"/></svg></a></td>
-                </tr>
-              </table>
+              <table role="presentation" cellpadding="0" cellspacing="0" align="center" style="border-collapse:collapse;margin:12px auto 0;">
+              <tr>
+                <td style="padding:0 10px;">
+                  <a href="https://instagram.com/dogshift" style="text-decoration:none;display:inline-block;">
+                    <img src="${siteUrl}/icons/instagram.png" width="32" height="32" alt="Instagram" style="display:block;border:0;outline:none;" />
+                  </a>
+                </td>
+                <td style="padding:0 10px;">
+                  <a href="https://facebook.com/dogshift" style="text-decoration:none;display:inline-block;">
+                    <img src="${siteUrl}/icons/facebook.png" width="32" height="32" alt="Facebook" style="display:block;border:0;outline:none;" />
+                  </a>
+                </td>
+                <td style="padding:0 10px;">
+                  <a href="${siteUrl}" style="text-decoration:none;display:inline-block;">
+                    <img src="${siteUrl}/icons/globe.png" width="32" height="32" alt="DogShift" style="display:block;border:0;outline:none;" />
+                  </a>
+                </td>
+              </tr>
+            </table>
               <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;margin:0 0 12px;"><tr><td height="1" style="background-color:#e2e8f0;font-size:0;line-height:0;">&nbsp;</td></tr></table>
               <p style="margin:0 0 4px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,Helvetica,sans-serif;font-size:11px;line-height:17px;color:#94a3b8;text-align:center;">
                 DogShift &middot; support@dogshift.ch &middot; Plateforme de dogsitting premium en Suisse

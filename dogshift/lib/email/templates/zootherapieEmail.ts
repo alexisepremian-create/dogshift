@@ -86,8 +86,8 @@ export function renderZootherapieEmail(params: {
           <!-- Logo inside hero -->
               <table role="presentation" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin-bottom:24px;">
                 <tr>
-                  <td align="center" valign="middle" style="width:36px;height:36px;background-color:#ffffff;border-radius:18px;padding:6px;">
-                    <img src="${escapeHtml(logoUrl)}" width="24" height="24" alt="" style="display:inline-block;vertical-align:middle;border:0;outline:none;" />
+                  <td align="center" valign="middle" style="width:44px;height:44px;background-color:#ffffff;border-radius:22px;padding:7px;">
+                    <img src="${escapeHtml(logoUrl)}" width="30" height="30" alt="" style="display:inline-block;vertical-align:middle;border:0;outline:none;" />
                   </td>
                   <td style="padding-left:10px;vertical-align:middle;">
                     <a href="${siteUrl}" style="text-decoration:none;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,Helvetica,sans-serif;font-size:17px;font-weight:800;color:#ffffff;letter-spacing:-0.3px;">DogShift</a>
@@ -205,13 +205,58 @@ export function renderZootherapieEmail(params: {
           </tr>
 
           <!-- FOOTER -->
+          <!-- Banner -->
           <tr>
-            <td align="center" style="padding:20px 4px 0;font-family:Arial,Helvetica,sans-serif;font-size:11px;line-height:18px;color:#9ca3af;text-align:center;">
-              <center>
-                Vous recevez cet email car vous avez participé à l&apos;évaluation bien-être sur
-                <a href="${siteUrl}" style="color:#9ca3af;">dogshift.ch</a>.
-                DogShift &bull; <a href="mailto:support@dogshift.ch" style="color:#9ca3af;">support@dogshift.ch</a>
-              </center>
+            <td style="padding:20px 0 0;">
+              <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;border-radius:16px;overflow:hidden;background-color:#ffffff;border:1px solid #e2e8f0;box-shadow:0 4px 24px rgba(0,0,0,0.07);">
+                <tr>
+                  <td style="padding:0;line-height:0;font-size:0;">
+                    <img src="${siteUrl}/email-banners/banner-zoo1.jpg" width="600" alt="" style="display:block;width:100%;max-width:600px;border:0;border-radius:16px 16px 0 0;" />
+                  </td>
+                </tr>
+                <tr>
+                  <td style="background-color:#ffffff;padding:22px 36px 28px;text-align:center;border-radius:0 0 16px 16px;">
+                    <p style="margin:0 0 14px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;font-size:15px;font-weight:700;color:#0f172a;">Des sitters de confiance pour votre chien</p>
+                    <a href="${siteUrl}/sitters" style="display:inline-block;background-color:#6366f1;color:#ffffff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;font-size:14px;font-weight:700;text-decoration:none;padding:13px 28px;border-radius:10px;">Voir les dog-sitters →</a>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td align="center" style="padding:24px 4px 0;">
+              <table role="presentation" cellpadding="0" cellspacing="0" align="center" style="border-collapse:collapse;margin:0 auto 16px;">
+                <tr>
+                  <td style="padding:0 10px;">
+                    <a href="https://instagram.com/dogshift" style="text-decoration:none;display:inline-block;">
+                      <img src="${siteUrl}/icons/instagram.png" width="32" height="32" alt="Instagram" style="display:block;border:0;outline:none;" />
+                    </a>
+                  </td>
+                  <td style="padding:0 10px;">
+                    <a href="https://facebook.com/dogshift" style="text-decoration:none;display:inline-block;">
+                      <img src="${siteUrl}/icons/facebook.png" width="32" height="32" alt="Facebook" style="display:block;border:0;outline:none;" />
+                    </a>
+                  </td>
+                  <td style="padding:0 10px;">
+                    <a href="${siteUrl}" style="text-decoration:none;display:inline-block;">
+                      <img src="${siteUrl}/icons/globe.png" width="32" height="32" alt="DogShift" style="display:block;border:0;outline:none;" />
+                    </a>
+                  </td>
+                </tr>
+              </table>
+              <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;margin:0 0 12px;">
+                <tr><td height="1" style="height:1px;background-color:#e2e8f0;font-size:0;line-height:0px;">&nbsp;</td></tr>
+              </table>
+              <p style="margin:0 0 4px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;font-size:11px;line-height:17px;color:#94a3b8;text-align:center;">DogShift &middot; support@dogshift.ch &middot; Plateforme de dogsitting premium en Suisse</p>
+              <p style="margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;font-size:11px;line-height:17px;color:#94a3b8;text-align:center;">
+                <a href="${siteUrl}" style="color:#94a3b8;text-decoration:none;">dogshift.ch</a>
+                &nbsp;&middot;&nbsp;
+                <a href="mailto:support@dogshift.ch" style="color:#94a3b8;text-decoration:none;">support@dogshift.ch</a>
+                &nbsp;&middot;&nbsp;
+                <a href="${siteUrl}/unsubscribe" style="color:#94a3b8;text-decoration:underline;">Se désabonner</a>
+              </p>
             </td>
           </tr>
 
