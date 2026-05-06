@@ -406,6 +406,7 @@ function SitterPublicProfileContent({
   const [finalizeModalOpen, setFinalizeModalOpen] = useState(false);
   const [finalizeLoading, setFinalizeLoading] = useState(false);
   const [photoLightboxOpen, setPhotoLightboxOpen] = useState(false);
+  const [bioExpanded, setBioExpanded] = useState(false);
 
   useEffect(() => {
     if (!photoLightboxOpen) return;
@@ -2441,7 +2442,20 @@ function SitterPublicProfileContent({
                 <div className="mt-8 rounded-2xl border border-slate-200 bg-white p-5 sm:p-6">
                   <h2 className="text-lg font-bold tracking-tight text-slate-900">À propos de {sitter.name.split(" ")[0]}</h2>
                   {sitter.bio && sitter.bio.trim().length >= 20 ? (
-                    <p className="mt-3 text-[15px] leading-relaxed text-slate-700 whitespace-pre-line">{sitter.bio}</p>
+                    <div className="mt-3">
+                      <p className={`text-[15px] leading-relaxed text-slate-700 whitespace-pre-line ${!bioExpanded && sitter.bio.trim().length > 200 ? "line-clamp-4" : ""}`}>
+                        {sitter.bio}
+                      </p>
+                      {sitter.bio.trim().length > 200 && !bioExpanded && (
+                        <button
+                          type="button"
+                          onClick={() => setBioExpanded(true)}
+                          className="mt-1.5 text-sm font-semibold text-slate-900 underline decoration-slate-300 underline-offset-4 hover:decoration-slate-500 transition-colors"
+                        >
+                          Lire la suite
+                        </button>
+                      )}
+                    </div>
                   ) : (
                     <p className="mt-3 text-sm leading-relaxed text-slate-500 italic">Ce sitter n&apos;a pas encore complété sa présentation.</p>
                   )}
