@@ -1616,7 +1616,7 @@ function SitterPublicProfileContent({
                       {availableDots.length > 0 && !isCalendarSelected && !isInPensionRange ? (
                         <div className="absolute bottom-1.5 flex gap-1">
                           {availableDots.map((dotColor, idx) => (
-                            <span key={idx} className={`h-1.5 w-1.5 rounded-full ${dotColor}`} />
+                            <span key={idx} className={`h-1 w-1 rounded-full ${dotColor}`} />
                           ))}
                         </div>
                       ) : null}
