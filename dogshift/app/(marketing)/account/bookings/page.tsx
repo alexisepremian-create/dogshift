@@ -195,10 +195,10 @@ function matchesTab(b: BookingListItem, tab: TabKey) {
   if (tab === "ARCHIVED") return archived;
   if (archived) return false;
   if (tab === "ALL") {
-    return status === "PENDING_PAYMENT" || status === "DRAFT" || status === "PENDING_ACCEPTANCE" || status === "PAID" || status === "CONFIRMED";
+    return status === "PENDING_ACCEPTANCE" || status === "PAID" || status === "CONFIRMED";
   }
   if (tab === "PENDING") {
-    return status === "PENDING_PAYMENT" || status === "DRAFT" || status === "PENDING_ACCEPTANCE" || status === "PAID";
+    return status === "PENDING_ACCEPTANCE" || status === "PAID";
   }
   if (tab === "CONFIRMED") return status === "CONFIRMED";
   if (tab === "CANCELLED") return status === "CANCELLED" || status === "PAYMENT_FAILED" || status === "REFUNDED" || status === "REFUND_FAILED";
@@ -670,10 +670,8 @@ function AccountBookingsContent() {
                   {rows.map((b) => {
                   const service = b.service?.trim() ? b.service.trim() : "Service";
                   const isCancelled = b.status === "CANCELLED" || b.status === "PAYMENT_FAILED";
-                  const canDelete =
-                    !b.archivedAt && (b.status === "PENDING_PAYMENT" || b.status === "DRAFT");
-                  const canUnarchive =
-                    Boolean(b.archivedAt) && (b.status === "PENDING_PAYMENT" || b.status === "DRAFT");
+                  const canDelete = false; // DRAFT/PENDING_PAYMENT bookings are hidden server-side
+                  const canUnarchive = false;
                   const isSelected = b.id === selectedId;
 
                   return (
