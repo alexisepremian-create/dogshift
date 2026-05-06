@@ -9,10 +9,8 @@ import {
   Mail,
   MessageSquare,
   Megaphone,
-  Moon,
   SendHorizonal,
   Sparkles,
-  Sun,
   Users,
   CalendarDays,
   ShieldCheck,
@@ -325,7 +323,6 @@ export default function AdminEmailsPage() {
     Object.fromEntries(CATEGORIES.map((c) => [c.id, true])),
   );
   const [testState, setTestState] = useState<"idle" | "sending" | "sent" | "error">("idle");
-  const [darkMode, setDarkMode] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   async function loadPreview(templateId: string) {
@@ -349,97 +346,12 @@ export default function AdminEmailsPage() {
     }
   }
 
-  // CSS injected when dark mode is toggled ON
-  const DARK_CSS = `<style id="ds-preview-scheme">
-    /* ── Full-page dark background ── */
-    html{background-color:#0f172a!important}
-    body,.ds-outer{background-color:#0f172a!important}
-
-    /* ── White card → dark card ── */
-    .ds-card,.ds-card-bottom{background-color:#1e293b!important;border-color:#334155!important}
-
-    /* ── Text inside the white card (broad override for inline-styled elements) ── */
-    .ds-card td,.ds-card p,.ds-card div,.ds-card span{color:#94a3b8!important}
-    .ds-card strong,.ds-card b{color:#e2e8f0!important}
-    /* Preserve white text on coloured buttons */
-    .ds-card a[style*="background"]{color:#ffffff!important}
-    /* Step number circles (span or div, #ede9fe or rgb equivalent) */
-    .ds-card span[style*="background:#ede9fe"],.ds-card span[style*="background: #ede9fe"],
-    .ds-card div[style*="background-color: rgb(237"],.ds-card div[style*="backgroundColor: rgb(237"],
-    .ds-card div[style*="#ede9fe"]{background-color:#312e81!important;color:#a5b4fc!important}
-
-    /* ── Legacy class-based overrides (renderEmailLayout transactional emails) ── */
-    .ds-title{color:#f1f5f9!important}
-    .ds-subtitle,.ds-lead{color:#94a3b8!important}
-    .ds-body-text{color:#cbd5e1!important}
-    .ds-summary-title{color:#e2e8f0!important}
-    .ds-row-border{border-top-color:#334155!important}
-    .ds-row-label{color:#64748b!important}
-    .ds-row-value{color:#e2e8f0!important}
-
-    /* ── Footer ── */
-    .ds-footer-outer{background-color:#0f172a!important}
-    .ds-footer-text,.ds-bottom{color:#64748b!important}
-    .ds-footer-link{color:#64748b!important}
-    .ds-divider{background-color:#334155!important}
-
-    /* ── Specific components ── */
-    .ds-highlight{background-color:#1e3a5f!important;border-left-color:#6366f1!important}
-    .ds-highlight-text{color:#cbd5e1!important}
-    .ds-code-box{background-color:#0f172a!important;border-color:#334155!important}
-    .ds-code-val{color:#93c5fd!important}
-    .ds-msg-box{background-color:#1e1b4b!important;border-color:#3730a3!important}
-    .ds-msg-text{color:#c4b5fd!important}
-    .ds-section-title{color:#a78bfa!important;border-bottom-color:#3730a3!important}
-    .ds-err-titre{color:#f1f5f9!important}
-    .ds-err-texte{color:#94a3b8!important}
-    .ds-conseil{background-color:#1e1b4b!important}
-    .ds-conseil-text{color:#c4b5fd!important}
-  </style>`;
-
-  /**
-   * Remove all @media (prefers-color-scheme: dark) { ... } blocks from an HTML string.
-   * Works by counting brace depth — handles any nesting level.
-   * This is needed because color-scheme:light CSS does NOT suppress @media dark queries in Safari.
-   */
-  function stripDarkMediaQueries(html: string): string {
-    const marker = "prefers-color-scheme: dark";
-    let result = html;
-    let idx = result.toLowerCase().indexOf(marker.toLowerCase());
-    while (idx !== -1) {
-      // Walk backwards to find the @media keyword start
-      let start = idx;
-      while (start > 0 && result[start] !== "@") start--;
-      // Walk forward to find the opening brace
-      const openBrace = result.indexOf("{", idx);
-      if (openBrace === -1) break;
-      // Count braces to find the matching closing brace
-      let depth = 1;
-      let i = openBrace + 1;
-      while (i < result.length && depth > 0) {
-        if (result[i] === "{") depth++;
-        else if (result[i] === "}") depth--;
-        i++;
-      }
-      // Remove the entire @media block
-      result = result.slice(0, start) + result.slice(i);
-      idx = result.toLowerCase().indexOf(marker.toLowerCase());
-    }
-    return result;
-  }
-
-  function   writeHtmlToIframe(html: string, dark: boolean) {
+  function writeHtmlToIframe(html: string) {
     const doc = iframeRef.current?.contentDocument;
     if (!doc) return;
-    // Strip @media dark blocks — prevents Safari auto-dark
-    let processed = stripDarkMediaQueries(html);
-    if (dark) {
-      processed = processed.replace(/(<head[^>]*>)/i, `$1${DARK_CSS}`);
-    }
     doc.open();
-    doc.write(processed);
+    doc.write(html);
     doc.close();
-    // Auto-resize iframe to exact content height (no black void below)
     setTimeout(() => {
       if (iframeRef.current && doc.body) {
         iframeRef.current.style.height = `${doc.body.scrollHeight + 32}px`;
@@ -449,10 +361,10 @@ export default function AdminEmailsPage() {
 
   useEffect(() => {
     if (previewHtml !== null) {
-      writeHtmlToIframe(previewHtml, darkMode);
+      writeHtmlToIframe(previewHtml);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [previewHtml, darkMode]);
+     
+  }, [previewHtml]);
 
   async function sendTestEmail() {
     if (!selected || testState === "sending") return;
@@ -601,25 +513,6 @@ export default function AdminEmailsPage() {
                   </span>
                 )}
               </div>
-              {/* Dark / light mode toggle */}
-              <button
-                type="button"
-                onClick={() => setDarkMode((v) => !v)}
-                title={darkMode ? "Passer en mode clair" : "Passer en mode sombre"}
-                className={`flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
-                  darkMode
-                    ? "bg-slate-800 text-slate-200 hover:bg-slate-700"
-                    : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                }`}
-              >
-                {darkMode ? (
-                  <Sun className="h-3.5 w-3.5" />
-                ) : (
-                  <Moon className="h-3.5 w-3.5" />
-                )}
-                <span className="hidden sm:inline">{darkMode ? "Clair" : "Sombre"}</span>
-              </button>
-
               <button
                 type="button"
                 onClick={() => void sendTestEmail()}
