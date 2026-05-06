@@ -195,12 +195,11 @@ export function renderEmailLayout(params: {
             label = `${b.day}${b.time ? ` &middot; ${b.time}` : ""}`;
           }
           if (!label) return "";
-          // SVG calendar icon as a data URI keeps the email self-contained.
-          const calendarSvg =
-            "<svg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%237c3aed' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><rect x='3' y='4' width='18' height='18' rx='2'/><line x1='16' y1='2' x2='16' y2='6'/><line x1='8' y1='2' x2='8' y2='6'/><line x1='3' y1='10' x2='21' y2='10'/></svg>";
+          // Hosted PNG calendar icon (Gmail and most clients strip data:
+          // URIs in <img src>, so we serve it as a static asset).
           return `<table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;margin-top:14px;background:#faf8ff;border:1px solid #ede9fe;border-radius:12px;">
             <tr>
-              <td valign="middle" style="padding:14px 16px;width:32px;"><img src="data:image/svg+xml;utf8,${calendarSvg}" width="20" height="20" alt="" style="display:block;border:0;" /></td>
+              <td valign="middle" style="padding:14px 16px;width:32px;"><img src="${esc(baseUrl)}/icons/calendar.png" width="20" height="20" alt="" style="display:block;border:0;outline:none;" /></td>
               <td valign="middle" style="padding:14px 16px 14px 0;font-family:${FF};font-size:14px;line-height:20px;color:#0f172a;font-weight:600;">${esc(label).replace(/&amp;middot;/g, "&middot;")}</td>
             </tr>
           </table>`;
