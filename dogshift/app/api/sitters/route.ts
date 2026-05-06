@@ -57,36 +57,47 @@ export async function GET(req: NextRequest) {
   void req;
   try {
     const db = prisma as unknown as { sitterProfile: { findMany: (args: unknown) => Promise<DbRow[]> } };
-    const sitters = await db.sitterProfile.findMany({
-      where: { published: true },
-      orderBy: { updatedAt: "desc" },
-      select: {
-        sitterId: true,
-        displayName: true,
-        city: true,
-        postalCode: true,
-        bio: true,
-        avatarUrl: true,
-        verificationStatus: true,
-        lat: true,
-        lng: true,
-        services: true,
-        pricing: true,
-        dogSizes: true,
-        capacityPlaces: true,
-        acceptsSmall: true,
-        acceptsMedium: true,
-        acceptsLarge: true,
-        neuteredRequired: true,
-        updatedAt: true,
-        user: {
-          select: {
-            name: true,
-            image: true,
-          },
-        },
-      },
-    });
+
+    const baseSelect = {
+      sitterId: true,
+      displayName: true,
+      city: true,
+      postalCode: true,
+      bio: true,
+      avatarUrl: true,
+      verificationStatus: true,
+      lat: true,
+      lng: true,
+      services: true,
+      pricing: true,
+      dogSizes: true,
+      updatedAt: true,
+      user: { select: { name: true, image: true } },
+    };
+
+    const capacityFields = {
+      capacityPlaces: true,
+      acceptsSmall: true,
+      acceptsMedium: true,
+      acceptsLarge: true,
+      neuteredRequired: true,
+    };
+
+    let sitters: DbRow[];
+    try {
+      sitters = await db.sitterProfile.findMany({
+        where: { published: true },
+        orderBy: { updatedAt: "desc" },
+        select: { ...baseSelect, ...capacityFields },
+      });
+    } catch {
+      // Capacity columns may not exist yet if migration hasn't run
+      sitters = await db.sitterProfile.findMany({
+        where: { published: true },
+        orderBy: { updatedAt: "desc" },
+        select: baseSelect,
+      });
+    }
 
     const sitterIds = sitters
       .map((s) => String(s.sitterId ?? "").trim())

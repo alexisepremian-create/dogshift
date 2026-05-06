@@ -136,13 +136,18 @@ export async function GET(req: NextRequest) {
         avatarUrl: true,
         maxDogsBySize: true,
         acceptanceCriteria: true,
-        capacityPlaces: true,
-        acceptsSmall: true,
-        acceptsMedium: true,
-        acceptsLarge: true,
-        neuteredRequired: true,
       },
     });
+
+    // Try to fetch capacity fields separately (may not exist if migration hasn't run)
+    let capacityData: Record<string, unknown> = {};
+    try {
+      const cap = await (prisma as any).sitterProfile.findUnique({
+        where: { sitterId },
+        select: { capacityPlaces: true, acceptsSmall: true, acceptsMedium: true, acceptsLarge: true, neuteredRequired: true },
+      });
+      if (cap) capacityData = cap;
+    } catch { /* columns don't exist yet */ }
 
     const serviceConfigs = await (prisma as any).serviceConfig.findMany({
       where: { sitterId },
@@ -163,14 +168,13 @@ export async function GET(req: NextRequest) {
       ...(builtCompletionProfile && typeof builtCompletionProfile === "object" ? builtCompletionProfile : {}),
       stripeAccountStatus: typeof sitterProfile?.stripeAccountStatus === "string" ? sitterProfile.stripeAccountStatus : null,
     };
-    // Merge persisted DB-level fields that are not in hostProfileJson
     if ((sitterProfile as any)?.maxDogsBySize) mergedProfile.maxDogsBySize = (sitterProfile as any).maxDogsBySize;
     if ((sitterProfile as any)?.acceptanceCriteria) mergedProfile.acceptanceCriteria = (sitterProfile as any).acceptanceCriteria;
-    if (typeof sitterProfile?.capacityPlaces === "number") mergedProfile.capacityPlaces = sitterProfile.capacityPlaces;
-    if (typeof sitterProfile?.acceptsSmall === "boolean") mergedProfile.acceptsSmall = sitterProfile.acceptsSmall;
-    if (typeof sitterProfile?.acceptsMedium === "boolean") mergedProfile.acceptsMedium = sitterProfile.acceptsMedium;
-    if (typeof sitterProfile?.acceptsLarge === "boolean") mergedProfile.acceptsLarge = sitterProfile.acceptsLarge;
-    if (typeof sitterProfile?.neuteredRequired === "boolean") mergedProfile.neuteredRequired = sitterProfile.neuteredRequired;
+    if (typeof capacityData.capacityPlaces === "number") mergedProfile.capacityPlaces = capacityData.capacityPlaces;
+    if (typeof capacityData.acceptsSmall === "boolean") mergedProfile.acceptsSmall = capacityData.acceptsSmall;
+    if (typeof capacityData.acceptsMedium === "boolean") mergedProfile.acceptsMedium = capacityData.acceptsMedium;
+    if (typeof capacityData.acceptsLarge === "boolean") mergedProfile.acceptsLarge = capacityData.acceptsLarge;
+    if (typeof capacityData.neuteredRequired === "boolean") mergedProfile.neuteredRequired = capacityData.neuteredRequired;
     if (isPersistedAvatarMediaPath(persistedAvatarUrl)) {
       mergedProfile.avatarUrl = persistedAvatarUrl;
       delete mergedProfile.avatarDataUrl;
@@ -505,17 +509,10 @@ export async function POST(req: NextRequest) {
     if (acceptanceCriteriaObj) updateData.acceptanceCriteria = acceptanceCriteriaObj as Prisma.InputJsonValue;
 
     const capacityPlacesRaw = (b as Record<string, unknown>)?.capacityPlaces;
-    if (typeof capacityPlacesRaw === "number" && Number.isFinite(capacityPlacesRaw)) {
-      updateData.capacityPlaces = Math.min(15, Math.max(1, Math.floor(capacityPlacesRaw)));
-    }
     const acceptsSmallRaw = (b as Record<string, unknown>)?.acceptsSmall;
-    if (typeof acceptsSmallRaw === "boolean") updateData.acceptsSmall = acceptsSmallRaw;
     const acceptsMediumRaw = (b as Record<string, unknown>)?.acceptsMedium;
-    if (typeof acceptsMediumRaw === "boolean") updateData.acceptsMedium = acceptsMediumRaw;
     const acceptsLargeRaw = (b as Record<string, unknown>)?.acceptsLarge;
-    if (typeof acceptsLargeRaw === "boolean") updateData.acceptsLarge = acceptsLargeRaw;
     const neuteredRequiredRaw = (b as Record<string, unknown>)?.neuteredRequired;
-    if (typeof neuteredRequiredRaw === "boolean") updateData.neuteredRequired = neuteredRequiredRaw;
 
     // Keep dogSizes in sync for backward compat
     if (typeof acceptsSmallRaw === "boolean" || typeof acceptsMediumRaw === "boolean" || typeof acceptsLargeRaw === "boolean") {
@@ -532,37 +529,60 @@ export async function POST(req: NextRequest) {
       updateData.lng = finalLng;
     }
 
-    await (prisma as any).sitterProfile.upsert({
-      where: { userId: uid },
-      create: {
-        userId: uid,
-        sitterId,
-        published: willPublish,
-        publishedAt,
-        lifecycleStatus,
-        displayName,
-        city,
-        postalCode,
-        bio,
-        address,
-        avatarUrl: resolvedAvatarForColumn,
-        lat: finalLat,
-        lng: finalLng,
-        services: enabledServices as Prisma.InputJsonValue,
-        pricing: pricingObj as Prisma.InputJsonValue,
-        dogSizes: enabledDogSizes as Prisma.InputJsonValue,
-        maxDogsBySize: maxDogsBySizeObj as Prisma.InputJsonValue,
-        acceptanceCriteria: acceptanceCriteriaObj as Prisma.InputJsonValue,
-        capacityPlaces: typeof capacityPlacesRaw === "number" ? Math.min(15, Math.max(1, Math.floor(capacityPlacesRaw))) : 3,
-        acceptsSmall: typeof acceptsSmallRaw === "boolean" ? acceptsSmallRaw : true,
-        acceptsMedium: typeof acceptsMediumRaw === "boolean" ? acceptsMediumRaw : true,
-        acceptsLarge: typeof acceptsLargeRaw === "boolean" ? acceptsLargeRaw : true,
-        neuteredRequired: typeof neuteredRequiredRaw === "boolean" ? neuteredRequiredRaw : false,
-        profileCompletion: completion,
-      },
-      update: updateData,
-      select: { id: true },
-    });
+    // Build capacity fields separately — columns may not exist yet
+    const capacityUpdate: Record<string, unknown> = {};
+    if (typeof capacityPlacesRaw === "number" && Number.isFinite(capacityPlacesRaw))
+      capacityUpdate.capacityPlaces = Math.min(15, Math.max(1, Math.floor(capacityPlacesRaw)));
+    if (typeof acceptsSmallRaw === "boolean") capacityUpdate.acceptsSmall = acceptsSmallRaw;
+    if (typeof acceptsMediumRaw === "boolean") capacityUpdate.acceptsMedium = acceptsMediumRaw;
+    if (typeof acceptsLargeRaw === "boolean") capacityUpdate.acceptsLarge = acceptsLargeRaw;
+    if (typeof neuteredRequiredRaw === "boolean") capacityUpdate.neuteredRequired = neuteredRequiredRaw;
+
+    const capacityCreate = {
+      capacityPlaces: typeof capacityPlacesRaw === "number" ? Math.min(15, Math.max(1, Math.floor(capacityPlacesRaw))) : 3,
+      acceptsSmall: typeof acceptsSmallRaw === "boolean" ? acceptsSmallRaw : true,
+      acceptsMedium: typeof acceptsMediumRaw === "boolean" ? acceptsMediumRaw : true,
+      acceptsLarge: typeof acceptsLargeRaw === "boolean" ? acceptsLargeRaw : true,
+      neuteredRequired: typeof neuteredRequiredRaw === "boolean" ? neuteredRequiredRaw : false,
+    };
+
+    try {
+      await (prisma as any).sitterProfile.upsert({
+        where: { userId: uid },
+        create: {
+          userId: uid, sitterId, published: willPublish, publishedAt, lifecycleStatus,
+          displayName, city, postalCode, bio, address,
+          avatarUrl: resolvedAvatarForColumn, lat: finalLat, lng: finalLng,
+          services: enabledServices as Prisma.InputJsonValue,
+          pricing: pricingObj as Prisma.InputJsonValue,
+          dogSizes: enabledDogSizes as Prisma.InputJsonValue,
+          maxDogsBySize: maxDogsBySizeObj as Prisma.InputJsonValue,
+          acceptanceCriteria: acceptanceCriteriaObj as Prisma.InputJsonValue,
+          ...capacityCreate,
+          profileCompletion: completion,
+        },
+        update: { ...updateData, ...capacityUpdate },
+        select: { id: true },
+      });
+    } catch {
+      // Fallback without capacity fields if columns don't exist yet
+      await (prisma as any).sitterProfile.upsert({
+        where: { userId: uid },
+        create: {
+          userId: uid, sitterId, published: willPublish, publishedAt, lifecycleStatus,
+          displayName, city, postalCode, bio, address,
+          avatarUrl: resolvedAvatarForColumn, lat: finalLat, lng: finalLng,
+          services: enabledServices as Prisma.InputJsonValue,
+          pricing: pricingObj as Prisma.InputJsonValue,
+          dogSizes: enabledDogSizes as Prisma.InputJsonValue,
+          maxDogsBySize: maxDogsBySizeObj as Prisma.InputJsonValue,
+          acceptanceCriteria: acceptanceCriteriaObj as Prisma.InputJsonValue,
+          profileCompletion: completion,
+        },
+        update: updateData,
+        select: { id: true },
+      });
+    }
 
     return NextResponse.json(
       {
