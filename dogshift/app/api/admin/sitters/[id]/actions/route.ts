@@ -28,7 +28,7 @@ import {
 
 export const runtime = "nodejs";
 
-type ActionType = "select" | "generate_contract_link" | "approve" | "reject" | "suspend" | "reactivate" | "publish" | "unpublish" | "activate" | "send_activation_code";
+type ActionType = "select" | "generate_contract_link" | "approve" | "reject" | "suspend" | "reactivate" | "publish" | "unpublish" | "activate" | "send_activation_code" | "save_notes";
 
 function publicBaseUrlFromRequest(req: NextRequest) {
   const envUrl = (process.env.NEXTAUTH_URL || "").trim();
