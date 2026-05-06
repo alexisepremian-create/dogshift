@@ -1018,6 +1018,7 @@ Notification DogShift.
         const { rows, extraHtml } = await resolveBookingRequestEmailData(payload.bookingId);
         return renderEmailLayout({
           logoUrl,
+          audience: "sitter",
           title: "Nouvelle demande de réservation",
           subtitle: "Tu as reçu une nouvelle demande.",
           summaryRows: rows,
@@ -1084,6 +1085,7 @@ Notification DogShift.
           const hostRows = await resolveBookingSummaryRows(payload.bookingId);
           return renderEmailLayout({
             logoUrl,
+            audience: "sitter",
             title: "Réservation annulée",
             subtitle: "Une réservation a été annulée.",
             summaryRows: hostRows,
@@ -1128,6 +1130,7 @@ Notification DogShift.
           const hostRefRows = await resolveBookingSummaryRows(payload.bookingId);
           return renderEmailLayout({
             logoUrl,
+            audience: "sitter",
             title: "Réservation annulée",
             subtitle: "Une réservation a été annulée. Le remboursement du propriétaire a été traité conformément aux conditions applicables.",
             summaryRows: hostRefRows,
