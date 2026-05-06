@@ -272,14 +272,25 @@ export async function POST(req: NextRequest) {
     const clientOwnerLat = typeof body?.ownerLat === "number" && Number.isFinite(body.ownerLat) ? (body.ownerLat as number) : null;
     const clientOwnerLng = typeof body?.ownerLng === "number" && Number.isFinite(body.ownerLng) ? (body.ownerLng as number) : null;
 
-    const sitterProfile = await (prisma as any).sitterProfile.findFirst({
-      where: { sitterId, published: true },
-      select: {
-        sitterId: true, pricing: true, lat: true, lng: true, address: true,
-        pensionVerifStatus: true, pensionAcceptedSizes: true, acceptanceCriteria: true,
-        capacityPlaces: true, acceptsSmall: true, acceptsMedium: true, acceptsLarge: true, neuteredRequired: true,
-      },
-    });
+    const baseBookingSelect = {
+      sitterId: true, pricing: true, lat: true, lng: true, address: true,
+      pensionVerifStatus: true, pensionAcceptedSizes: true, acceptanceCriteria: true,
+    };
+    const capacityBookingSelect = {
+      capacityPlaces: true, acceptsSmall: true, acceptsMedium: true, acceptsLarge: true, neuteredRequired: true,
+    };
+    let sitterProfile: any;
+    try {
+      sitterProfile = await (prisma as any).sitterProfile.findFirst({
+        where: { sitterId, published: true },
+        select: { ...baseBookingSelect, ...capacityBookingSelect },
+      });
+    } catch {
+      sitterProfile = await (prisma as any).sitterProfile.findFirst({
+        where: { sitterId, published: true },
+        select: baseBookingSelect,
+      });
+    }
 
     if (!sitterProfile?.sitterId) {
       return NextResponse.json({ ok: false, error: "SITTER_NOT_FOUND" }, { status: 404 });

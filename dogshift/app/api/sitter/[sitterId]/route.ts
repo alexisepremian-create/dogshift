@@ -17,40 +17,69 @@ export async function GET(
       return NextResponse.json({ ok: false, error: "INVALID_ID" }, { status: 400 });
     }
 
-    const sitterProfile = await prisma.sitterProfile.findFirst({
-      where: {
-        sitterId,
-        published: true,
-      },
-      select: {
-        sitterId: true,
-        displayName: true,
-        city: true,
-        postalCode: true,
-        bio: true,
-        avatarUrl: true,
-        verificationStatus: true,
-        lat: true,
-        lng: true,
-        services: true,
-        pricing: true,
-        dogSizes: true,
-        capacityPlaces: true,
-        acceptsSmall: true,
-        acceptsMedium: true,
-        acceptsLarge: true,
-        neuteredRequired: true,
-        acceptanceCriteria: true,
-        maxDogsBySize: true,
-        updatedAt: true,
-        user: {
-          select: {
-            name: true,
-            image: true,
-          },
-        },
-      },
-    });
+    const baseSelect = {
+      sitterId: true,
+      displayName: true,
+      city: true,
+      postalCode: true,
+      bio: true,
+      avatarUrl: true,
+      verificationStatus: true,
+      lat: true,
+      lng: true,
+      services: true,
+      pricing: true,
+      dogSizes: true,
+      acceptanceCriteria: true,
+      maxDogsBySize: true,
+      updatedAt: true,
+      user: { select: { name: true, image: true } },
+    };
+
+    const capacityFields = {
+      capacityPlaces: true,
+      acceptsSmall: true,
+      acceptsMedium: true,
+      acceptsLarge: true,
+      neuteredRequired: true,
+    };
+
+    type SitterRow = {
+      sitterId: string;
+      displayName: string | null;
+      city: string | null;
+      postalCode: string | null;
+      bio: string | null;
+      avatarUrl: string | null;
+      verificationStatus: string | null;
+      lat: number | null;
+      lng: number | null;
+      services: unknown;
+      pricing: unknown;
+      dogSizes: unknown;
+      capacityPlaces?: number | null;
+      acceptsSmall?: boolean | null;
+      acceptsMedium?: boolean | null;
+      acceptsLarge?: boolean | null;
+      neuteredRequired?: boolean | null;
+      acceptanceCriteria: unknown;
+      maxDogsBySize: unknown;
+      updatedAt: Date;
+      user: { name: string | null; image: string | null } | null;
+    };
+
+    let sitterProfile: SitterRow | null;
+    try {
+      sitterProfile = await (prisma.sitterProfile.findFirst as Function)({
+        where: { sitterId, published: true },
+        select: { ...baseSelect, ...capacityFields },
+      });
+    } catch {
+      sitterProfile = await (prisma.sitterProfile.findFirst as Function)({
+        where: { sitterId, published: true },
+        select: baseSelect,
+      });
+    }
 
     if (!sitterProfile) {
       return NextResponse.json({ ok: false, error: "NOT_FOUND" }, { status: 404 });
