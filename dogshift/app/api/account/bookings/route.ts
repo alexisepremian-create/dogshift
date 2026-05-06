@@ -1,5 +1,5 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
 import { auth, currentUser } from "@clerk/nextjs/server";
 
 import { prisma } from "@/lib/prisma";
@@ -38,7 +38,7 @@ type AccountBookingListItem = {
   };
 };
 
-export async function GET(req: NextRequest) {
+export async function GET() {
   try {
     const { userId: clerkUserId } = await auth();
     if (!clerkUserId) {
@@ -66,7 +66,11 @@ export async function GET(req: NextRequest) {
     const userId = ensured.id;
 
     const bookings = await (prisma as any).booking.findMany({
-      where: { userId },
+      where: {
+        userId,
+        // Hide checkout-abandoned bookings — only show once payment has been initiated/confirmed
+        status: { notIn: ["DRAFT", "PENDING_PAYMENT"] },
+      },
       orderBy: { createdAt: "desc" },
       select: {
         id: true,

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
@@ -47,7 +48,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     }
 
     const status = String(booking.status ?? "");
-    if (status !== "DRAFT" && status !== "PENDING_PAYMENT") {
+    const archivableStatuses = new Set(["DRAFT", "PENDING_PAYMENT", "PENDING_ACCEPTANCE"]);
+    if (!archivableStatuses.has(status)) {
       return NextResponse.json({ ok: false, error: "INVALID_STATUS" }, { status: 409 });
     }
 
