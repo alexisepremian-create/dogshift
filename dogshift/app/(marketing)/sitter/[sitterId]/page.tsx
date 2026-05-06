@@ -2567,7 +2567,7 @@ function SitterPublicProfileContent({
                     {sitter.bio && sitter.bio.trim().length >= 20 ? (
                       <p className="mt-4 text-[15px] leading-relaxed text-slate-700 whitespace-pre-line">{sitter.bio}</p>
                     ) : (
-                      <p className="mt-4 text-[15px] leading-relaxed text-slate-500 italic">Ce sitter n'a pas encore complété sa présentation.</p>
+                      <p className="mt-4 text-[15px] leading-relaxed text-slate-500 italic">Ce sitter n&apos;a pas encore complété sa présentation.</p>
                     )}
                   </div>
 
@@ -2690,7 +2690,7 @@ function SitterPublicProfileContent({
                   >
                     {disableSelfActions ? (
                       <div className="rounded-xl border border-slate-100 bg-slate-50 p-4 text-center">
-                        <p className="text-[14px] font-medium text-slate-700">C'est votre profil public. Voici ce que voient vos clients.</p>
+                        <p className="text-[14px] font-medium text-slate-700">C&apos;est votre profil public. Voici ce que voient vos clients.</p>
                       </div>
                     ) : (
                       <>
@@ -2824,6 +2824,7 @@ function SitterPublicProfileContent({
                         </p>
                       </div>
                     ) : null}
+                  </div>
                   </div>
                   </div>
                 </aside>
