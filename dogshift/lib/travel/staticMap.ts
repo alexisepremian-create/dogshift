@@ -1,6 +1,11 @@
 /**
- * Generates a MapTiler Static Maps URL showing both sitter and owner locations.
- * Uses the bounding-box auto-fit endpoint so both points are always visible.
+ * Generates a URL for an email-friendly static map showing both sitter and
+ * owner locations.
+ *
+ * Routes the request through our own /api/email/map proxy so email clients
+ * (which strip or rewrite the Referer header and break MapTiler's domain
+ * restriction) can load the image successfully. See the proxy route for
+ * details.
  */
 export function buildTravelMapUrl(params: {
   sitterLat: number;
@@ -9,13 +14,11 @@ export function buildTravelMapUrl(params: {
   ownerLng: number;
   width?: number;
   height?: number;
+  /** Absolute base URL (defaults to https://www.dogshift.ch). */
+  baseUrl?: string;
 }): string {
-  const key = process.env.NEXT_PUBLIC_MAPTILER_KEY;
-  if (!key) return "";
-
   const { sitterLat, sitterLng, ownerLat, ownerLng, width = 560, height = 240 } = params;
 
-  // Pad the bounding box so both markers are not at the edges
   const latDelta = Math.abs(ownerLat - sitterLat);
   const lngDelta = Math.abs(ownerLng - sitterLng);
   const latPad = Math.max(latDelta * 0.35, 0.008);
@@ -26,8 +29,14 @@ export function buildTravelMapUrl(params: {
   const maxLng = (Math.max(sitterLng, ownerLng) + lngPad).toFixed(6);
   const maxLat = (Math.max(sitterLat, ownerLat) + latPad).toFixed(6);
 
-  return (
-    `https://api.maptiler.com/maps/streets-v2/static/` +
-    `${minLng},${minLat},${maxLng},${maxLat}/${width}x${height}.png?key=${key}`
-  );
+  const base = (params.baseUrl ?? process.env.NEXT_PUBLIC_BASE_URL ?? "https://www.dogshift.ch").replace(/\/$/, "");
+  const qs = new URLSearchParams({
+    minLng,
+    minLat,
+    maxLng,
+    maxLat,
+    w: String(width),
+    h: String(height),
+  });
+  return `${base}/api/email/map?${qs.toString()}`;
 }

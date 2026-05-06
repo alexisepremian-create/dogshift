@@ -52,8 +52,8 @@ export function CommunicationsEmail(props: {
           <table role="presentation" cellPadding={0} cellSpacing={0} style={{ borderCollapse: "collapse", marginBottom: 24 }}>
             <tbody>
               <tr>
-                <td align="center" valign="middle" style={{ width: 44, height: 44, backgroundColor: "#ffffff", borderRadius: 22, padding: 7 }}>
-                  <Img src={logoUrl} width={30} height={30} alt="" style={{ display: "inline-block", verticalAlign: "middle" }} />
+                <td align="center" valign="middle" style={{ width: 44, height: 44, backgroundColor: "#ffffff", borderRadius: 22, padding: 2 }}>
+                  <Img src={logoUrl} width={40} height={40} alt="" style={{ display: "inline-block", verticalAlign: "middle" }} />
                 </td>
                 <td style={{ paddingLeft: 10, verticalAlign: "middle" }}>
                   <Link href={baseUrl} style={{ textDecoration: "none" }}>
