@@ -10,7 +10,8 @@ import Link from "next/link";
 import { useParams, usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { User, Scissors, Dog } from "lucide-react";
+import { User, Scissors, Dog, MapPin, Users, MessageSquare, Star, Info, ChevronLeft, ChevronRight, Calendar, Shield, CreditCard, MessageCircle } from "lucide-react";
+import { SERVICE_COLORS, getServiceColors } from "@/lib/design/services";
 import { loadHostProfileFromStorage, type HostProfileV1 } from "@/lib/hostProfile";
 import HostDashboardShell from "@/components/HostDashboardShell";
 import { HostUserProvider, makeHostUserValuePreview } from "@/components/HostUserProvider";
@@ -197,33 +198,6 @@ function serviceLabelToSlotsType(service: string): "PROMENADE" | "DOGSITTING" | 
   return "PENSION";
 }
 
-function serviceColorClasses(serviceType: "PROMENADE" | "DOGSITTING" | "PENSION") {
-  if (serviceType === "PROMENADE") {
-    return {
-      dot: "bg-sky-400",
-      active: "border-sky-200 bg-sky-50 text-sky-900",
-      activePrice: "text-sky-900",
-      activeRing: "border-sky-500",
-      activeFill: "bg-sky-500",
-    };
-  }
-  if (serviceType === "DOGSITTING") {
-    return {
-      dot: "bg-violet-400",
-      active: "border-violet-200 bg-violet-50 text-violet-900",
-      activePrice: "text-violet-900",
-      activeRing: "border-violet-500",
-      activeFill: "bg-violet-500",
-    };
-  }
-  return {
-    dot: "bg-emerald-400",
-    active: "border-emerald-200 bg-emerald-50 text-emerald-900",
-    activePrice: "text-emerald-900",
-    activeRing: "border-emerald-500",
-    activeFill: "bg-emerald-500",
-  };
-}
 
 function statusForSelectedService(
   row:
@@ -1522,63 +1496,48 @@ function SitterPublicProfileContent({
                 const dateIso = `${String(monthMeta.year).padStart(4, "0")}-${String(monthMeta.month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
                 const row = monthDaysByDate.get(dateIso);
                 const isPast = dateIso < todayIso;
+                const isToday = dateIso === todayIso;
 
                 const serviceTone = statusForSelectedService(row, slotsServiceType);
                 const servicePartial = partialForSelectedService(row, slotsServiceType);
-
-                const selectedServiceTone =
-                  slotsServiceType === "PROMENADE"
-                    ? {
-                        available: "bg-white text-slate-900 ring-sky-400",
-                        onRequest: "bg-amber-50 text-amber-950 ring-amber-400",
-                        accent: "ring-sky-500/35",
-                        range: "bg-sky-50 ring-sky-300",
-                        selected: "ring-sky-600 shadow-[0_0_0_3px_rgba(14,165,233,0.12)]",
-                      }
-                    : slotsServiceType === "DOGSITTING"
-                      ? {
-                          available: "bg-white text-slate-900 ring-violet-400",
-                          onRequest: "bg-amber-50 text-amber-950 ring-amber-400",
-                          accent: "ring-violet-500/35",
-                          range: "bg-violet-50 ring-violet-300",
-                          selected: "ring-violet-600 shadow-[0_0_0_3px_rgba(139,92,246,0.12)]",
-                        }
-                      : {
-                          available: "bg-white text-slate-900 ring-emerald-400",
-                          onRequest: "bg-amber-50 text-amber-950 ring-amber-400",
-                          accent: "ring-emerald-500/35",
-                          range: "bg-emerald-50 ring-emerald-300",
-                          selected: "ring-emerald-600 shadow-[0_0_0_3px_rgba(16,185,129,0.12)]",
-                        };
-
-                const tone =
-                  isPast
-                    ? "bg-slate-100/80 text-slate-400 ring-slate-200"
-                    : row && (serviceTone === "AVAILABLE" || servicePartial)
-                    ? selectedServiceTone.available
-                    : row && serviceTone === "ON_REQUEST"
-                      ? selectedServiceTone.onRequest
-                      : "border border-dashed border-slate-200 bg-slate-50 text-slate-400 ring-0";
-
                 const isSelectableForService = !isPast && (serviceTone === "AVAILABLE" || serviceTone === "ON_REQUEST" || servicePartial);
+                
+                const selectedServiceTone = getServiceColors(slotsServiceType);
+                const isCalendarSelected = slotsServiceType === "PENSION"
+                  ? Boolean(boardingStart && dateIso === boardingStart) || Boolean(boardingEnd && dateIso === boardingEnd)
+                  : slotsDate === dateIso;
+                const isInPensionRange = slotsServiceType === "PENSION" && Boolean(boardingStart && boardingEnd && dateIso > boardingStart && dateIso < boardingEnd);
+
+                let btnClass = "relative flex aspect-square w-full flex-col items-center justify-center rounded-full text-[15px] font-semibold transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2";
+                
+                if (isPast) {
+                  btnClass += " text-slate-300 cursor-not-allowed opacity-40";
+                } else if (isCalendarSelected) {
+                  btnClass += ` ${selectedServiceTone.fill} text-white shadow-sm`;
+                } else if (isInPensionRange) {
+                  btnClass += ` ${selectedServiceTone.tint} ${selectedServiceTone.text}`;
+                } else if (isSelectableForService) {
+                  btnClass += " bg-white border border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-50";
+                } else {
+                  btnClass += " border border-dashed border-slate-200 bg-slate-50 text-slate-400";
+                }
+
+                if (isToday && !isCalendarSelected) {
+                  btnClass += " ring-2 ring-[var(--dogshift-blue)] ring-offset-1";
+                }
+
+                // Gather which services are available for the dots under the number
+                const availableDots = [];
+                if (!isPast && row) {
+                  if (row.promenadeStatus === "AVAILABLE" || row.promenadeStatus === "ON_REQUEST" || row.promenadePartial) availableDots.push(getServiceColors("PROMENADE").fill);
+                  if (row.dogsittingStatus === "AVAILABLE" || row.dogsittingStatus === "ON_REQUEST" || row.dogsittingPartial) availableDots.push(getServiceColors("DOGSITTING").fill);
+                  if (row.pensionStatus === "AVAILABLE" || row.pensionStatus === "ON_REQUEST" || row.pensionPartial) availableDots.push(getServiceColors("PENSION").fill);
+                }
+
                 const ariaLabel = `${dateIso} — ${serviceUi.current.label}: ${serviceUi.statusLabel(serviceTone)}`;
 
-                const focusRing = isSelectableForService ? `ring-[2px] ${selectedServiceTone.accent}` : "";
-
-                const isCalendarSelected =
-                  slotsServiceType === "PENSION"
-                    ? Boolean(boardingStart && dateIso === boardingStart) || Boolean(boardingEnd && dateIso === boardingEnd)
-                    : slotsDate === dateIso;
-                const isInPensionRange =
-                  slotsServiceType === "PENSION" && Boolean(boardingStart && boardingEnd && dateIso >= boardingStart && dateIso <= boardingEnd);
-
                 return (
-                  <div
-                    key={dateIso}
-                    className={`flex h-14 w-full flex-col rounded-2xl ring-1 ${tone} ${!isPast && servicePartial ? "ring-[3px] ring-amber-300" : ""} ${focusRing} ${
-                      !isPast && isInPensionRange ? selectedServiceTone.range : ""
-                    } ${isCalendarSelected ? `${isPast ? "ring-slate-300 shadow-[0_0_0_3px_rgba(148,163,184,0.12)]" : selectedServiceTone.selected}` : ""}`}
-                  >
+                  <div key={dateIso} className="flex aspect-square items-center justify-center p-0.5">
                     <button
                       type="button"
                       disabled={!isSelectableForService}
@@ -1642,18 +1601,19 @@ function SitterPublicProfileContent({
                         setCalendarInfoDate(dateIso);
                         setDayDetailsOpen(false);
                       }}
-                      className="flex h-full w-full flex-col justify-between rounded-2xl px-2 py-2 disabled:cursor-not-allowed disabled:opacity-70"
+                      className={btnClass}
                       aria-label={ariaLabel}
+                      aria-pressed={isCalendarSelected}
                     >
-                      <div className="flex items-start justify-end">
-                        <span className={`text-sm font-semibold leading-none ${isCalendarSelected ? "text-current" : ""}`}>{day}</span>
-                      </div>
-
-                      <div className="flex items-end justify-start">
-                        <div className={`text-[11px] font-semibold ${isCalendarSelected ? "text-current/80" : "text-slate-500"}`}>
-                          {isInPensionRange ? "Séjour" : ""}
+                      <span className={availableDots.length > 0 && !isCalendarSelected && !isInPensionRange ? "-translate-y-1" : ""}>{day}</span>
+                      
+                      {availableDots.length > 0 && !isCalendarSelected && !isInPensionRange ? (
+                        <div className="absolute bottom-1.5 flex gap-1">
+                          {availableDots.map((dotColor, idx) => (
+                            <span key={idx} className={`h-1.5 w-1.5 rounded-full ${dotColor}`} />
+                          ))}
                         </div>
-                      </div>
+                      ) : null}
                     </button>
                   </div>
                 );
@@ -2334,8 +2294,8 @@ function SitterPublicProfileContent({
             <div className="rounded-3xl border border-slate-200 bg-white shadow-[0_18px_60px_-40px_rgba(2,6,23,0.35)]">
               <div className="grid gap-0 lg:grid-cols-[1fr_360px]">
               <section className="p-6 sm:p-8">
-                  <div className="flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
-                    <div className="flex items-start gap-5">
+                  <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex items-center gap-5">
                       <button
                         type="button"
                         onClick={() => setPhotoLightboxOpen(true)}
@@ -2345,92 +2305,82 @@ function SitterPublicProfileContent({
                         <img
                           src={sitter.avatarUrl}
                           alt={sitter.name}
-                          className="h-16 w-16 rounded-2xl object-cover ring-1 ring-slate-200 transition-opacity hover:opacity-90"
+                          className="h-24 w-24 sm:h-32 sm:w-32 rounded-full object-cover ring-1 ring-slate-200 transition-opacity hover:opacity-90"
                           loading="lazy"
                           referrerPolicy="no-referrer"
                         />
                       </button>
                       <div>
-                        <h1 className="text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">{sitter.name}</h1>
-                        <p className="mt-1 text-sm text-slate-600">{sitter.city}</p>
-                        <div className="mt-6 flex flex-wrap items-center gap-2">
-                          <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
-                            <StarIcon className="h-4 w-4 text-[#F5B301]" />
-                            {ratingLabel}
-                          </span>
-                          <span className="inline-flex items-center rounded-full bg-white px-3 py-1 text-xs font-medium text-slate-600 ring-1 ring-slate-200">
-                            {reviewCountLabel} avis
-                          </span>
-                          {sitter.verified ? (
-                            <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-800 shadow-sm">
-                              Vérifié
+                        <h1 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">{sitter.name}</h1>
+                        <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-slate-600">
+                          <MapPin className="h-4 w-4 text-slate-400" />
+                          <span>{sitter.city}, {sitter.postalCode}</span>
+                          <span className="text-slate-300">•</span>
+                          {reviewCountLabel === 0 ? (
+                            <span className="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
+                              Nouveau sur DogShift
                             </span>
-                          ) : null}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4">
-                      <p className="text-sm text-slate-600">Tarif</p>
-                      <div className="mt-1 inline-flex items-baseline gap-1 whitespace-nowrap text-slate-900">
-                        <span className="text-sm font-medium text-slate-600">À partir de</span>
-                        <span className="text-base font-semibold">CHF</span>
-                        <span className="text-2xl font-semibold">{fromPricing?.price ?? sitter.pricePerDay}</span>
-                        <span className="text-sm font-medium text-slate-500">
-                          {fromPricing?.unit ??
-                            (typeof (sitter.pricing as unknown as Record<string, unknown> | null)?.Pension === "number" ? "/ jour" : " / heure")}
-                        </span>
-                      </div>
-                      {dogSizeBadges.length > 0 ? (
-                        <div className="mt-4 border-t border-slate-200/70 pt-3.5 text-left">
-                          <p className="text-sm text-slate-600">Chiens acceptés</p>
-                          <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-[13px] font-medium leading-none text-slate-700">
-                            {dogSizeBadges.map((size) => {
-                              const maxForSize = sitter.maxDogsBySize?.[size];
-                              return (
-                                <span key={size} className="inline-flex items-center gap-1.5 whitespace-nowrap">
-                                  <DogSizeIcon
-                                    size={size}
-                                    className={
-                                      size === "Petit"
-                                        ? "h-5 w-5 text-[var(--dogshift-blue)]"
-                                        : size === "Moyen"
-                                          ? "h-[22px] w-[22px] text-[var(--dogshift-blue)]"
-                                          : "h-6 w-6 text-[var(--dogshift-blue)]"
-                                    }
-                                  />
-                                  <span>
-                                    {size}
-                                    {maxForSize && maxForSize > 0 ? ` (max. ${maxForSize})` : ""}
-                                  </span>
-                                </span>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      ) : null}
-                      {/* Acceptance criteria badges */}
-                      {(sitter.acceptanceCriteria?.neuteredRequired || sitter.acceptanceCriteria?.maxDogs) ? (
-                        <div className="mt-3 flex flex-wrap gap-2">
-                          {sitter.acceptanceCriteria?.neuteredRequired && (
-                            <span className="inline-flex items-center gap-1.5 rounded-xl border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-800">
-                              <Scissors className="h-3.5 w-3.5 flex-shrink-0" />
-                              Castré/stérilisé requis
+                          ) : (
+                            <span className="inline-flex items-center gap-1 font-medium text-slate-900">
+                              <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
+                              {ratingLabel} <span className="text-slate-500 underline decoration-slate-300 underline-offset-2">({reviewCountLabel} avis)</span>
                             </span>
                           )}
-                          {sitter.acceptanceCriteria?.maxDogs ? (
-                            <span className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--dogshift-blue)]/30 bg-[color-mix(in_srgb,var(--dogshift-blue),white_88%)] px-2.5 py-1 text-xs font-semibold text-[var(--dogshift-blue)]">
-                              <Dog className="h-3.5 w-3.5 flex-shrink-0" />
-                              Max. {sitter.acceptanceCriteria.maxDogs} chien{sitter.acceptanceCriteria.maxDogs > 1 ? "s" : ""}
-                            </span>
+                          {sitter.verified ? (
+                            <>
+                              <span className="text-slate-300">•</span>
+                              <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-800 shadow-sm">
+                                Vérifié
+                              </span>
+                            </>
                           ) : null}
                         </div>
-                      ) : null}
+                      </div>
+                    </div>
+
+                    <div className="rounded-2xl border border-slate-200 bg-white px-6 py-5 shadow-sm shrink-0">
+                      <p className="text-sm font-medium text-slate-500">À partir de</p>
+                      <div className="mt-1 flex items-baseline gap-1.5 whitespace-nowrap text-slate-900">
+                        <span className="text-xl font-bold">CHF</span>
+                        <span className="text-3xl font-extrabold tracking-tight">{fromPricing?.price ?? sitter.pricePerDay}</span>
+                        <span className="text-sm font-medium text-slate-500">
+                          {fromPricing?.unit ??
+                            (typeof (sitter.pricing as unknown as Record<string, unknown> | null)?.Pension === "number" ? " / jour" : " / heure")}
+                        </span>
+                      </div>
                     </div>
                   </div>
+                  
+                  <div className="mt-8 flex flex-wrap items-center gap-3 border-y border-slate-100 py-4">
+                    {dogSizeBadges.map((size) => {
+                      const maxForSize = sitter.maxDogsBySize?.[size];
+                      return (
+                        <span key={size} className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[13px] font-medium text-slate-700 shadow-sm">
+                          <Dog className="h-4 w-4 text-slate-500" />
+                          {size}
+                          {maxForSize && maxForSize > 0 ? ` (max. ${maxForSize})` : ""}
+                        </span>
+                      );
+                    })}
+                    {dogSizeBadges.length > 0 && (sitter.acceptanceCriteria?.neuteredRequired || sitter.acceptanceCriteria?.maxDogs) ? (
+                      <div className="h-5 w-[1px] bg-slate-200 hidden sm:block" />
+                    ) : null}
+                    {sitter.acceptanceCriteria?.neuteredRequired && (
+                      <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[13px] font-medium text-slate-700 shadow-sm">
+                        <Scissors className="h-4 w-4 text-slate-500" />
+                        Castré/stérilisé requis
+                      </span>
+                    )}
+                    {sitter.acceptanceCriteria?.maxDogs ? (
+                      <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[13px] font-medium text-slate-700 shadow-sm">
+                        <Users className="h-4 w-4 text-slate-500" />
+                        Max. {sitter.acceptanceCriteria.maxDogs} chien{sitter.acceptanceCriteria.maxDogs > 1 ? "s" : ""}
+                      </span>
+                    ) : null}
+                  </div>
 
-                  <div className="mt-7 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                      <h2 className="text-sm font-semibold text-slate-900">Services & tarifs</h2>
+                  <div className="mt-7 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                      <h2 className="text-xl font-bold tracking-tight text-slate-900">Services & tarifs</h2>
                       {sitter.services.length === 0 ? (
                         <div className="mt-3 rounded-2xl border border-slate-200 bg-white p-4">
                           <p className="text-sm font-semibold text-slate-900">Aucun service</p>
@@ -2441,7 +2391,7 @@ function SitterPublicProfileContent({
                           {pricingRows.map((row) => {
                             const hasPrice = typeof row.price === "number" && Number.isFinite(row.price) && row.price > 0;
                             const slotServiceType = serviceLabelToSlotsType(row.service);
-                            const color = serviceColorClasses(slotServiceType);
+                            const color = getServiceColors(slotServiceType);
                             const selected = slotsServiceType === slotServiceType;
                             return (
                               <button
@@ -2454,25 +2404,30 @@ function SitterPublicProfileContent({
                                 }}
                                 className={
                                   selected
-                                    ? `flex w-full items-center rounded-2xl border px-4 py-3 text-left text-sm font-semibold ${color.active}`
-                                    : "flex w-full items-center rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left text-sm font-semibold text-slate-900 hover:bg-slate-50"
+                                    ? `flex w-full items-center justify-between rounded-2xl border px-4 py-3 text-left text-sm font-semibold transition-colors ${color.activeBorder} ${color.tint}`
+                                    : "flex w-full items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left text-sm font-semibold text-slate-900 transition-colors hover:bg-slate-50 hover:border-slate-300"
                                 }
                               >
-                                <span className="flex w-full items-center gap-3">
+                                <span className="flex items-center gap-3">
                                   <span
                                     className={
                                       selected
-                                        ? `inline-flex h-4 w-4 items-center justify-center rounded-full border-2 ${color.activeRing}`
+                                        ? `inline-flex h-4 w-4 items-center justify-center rounded-full border-2 ${color.ring}`
                                         : "inline-flex h-4 w-4 items-center justify-center rounded-full border-2 border-slate-300"
                                     }
                                     aria-hidden="true"
                                   >
-                                    {selected ? <span className={`h-2 w-2 rounded-full ${color.activeFill}`} /> : null}
+                                    {selected ? <span className={`h-2 w-2 rounded-full ${color.fill}`} /> : null}
                                   </span>
-                                  <span className="min-w-0 flex-1">{row.service}</span>
-                                  <span className={`w-[122px] shrink-0 text-left ${selected ? color.activePrice : hasPrice ? "text-slate-900" : "text-slate-500"}`}>
-                                    {hasPrice ? `CHF ${row.price}${row.service === "Pension" ? " / jour" : " / heure"}` : "Prix sur demande"}
-                                  </span>
+                                  <span className={selected ? color.text : "text-slate-900"}>{row.service}</span>
+                                </span>
+                                <span className={selected ? `${color.text} text-right` : "text-slate-500 text-right"}>
+                                  {hasPrice ? (
+                                    <>
+                                      <span className="font-bold">CHF {row.price}</span>
+                                      <span className="font-normal opacity-80">{row.service === "Pension" ? " / jour" : " / heure"}</span>
+                                    </>
+                                  ) : "Prix sur demande"}
                                 </span>
                               </button>
                             );
@@ -2481,27 +2436,35 @@ function SitterPublicProfileContent({
                       )}
                   </div>
 
-                  <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                      <h2 className="text-sm font-semibold text-slate-900">Agenda des disponibilités</h2>
-                      <div className="mt-3">
+                  <div className="mt-7 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                      <h2 className="text-xl font-bold tracking-tight text-slate-900">Agenda des disponibilités</h2>
+                      
+                      <div className="mt-5 rounded-xl bg-slate-50 p-4 border border-slate-100 flex gap-3 text-sm text-slate-700">
+                        <Info className="h-5 w-5 text-slate-400 flex-shrink-0" />
+                        <div>
+                          {slotsServiceType === "PENSION" ? "Cliquez sur une date de début, puis sur une date de fin pour réserver une période." : "Cliquez sur une date pour voir les créneaux disponibles et réserver."}
+                        </div>
+                      </div>
+
+                      <div className="mt-6">
                         <div className="flex items-center justify-between gap-3">
-                          <p className="text-sm font-medium capitalize text-slate-900">{monthMeta.monthLabel}</p>
+                          <p className="text-lg font-bold capitalize text-slate-900">{monthMeta.monthLabel}</p>
                           <div className="flex items-center gap-2">
                             <button
                               type="button"
                               onClick={() => setMonthCursor((d) => new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() - 1, 1, 0, 0, 0, 0)))}
-                              className="inline-flex h-9 items-center justify-center rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700"
+                              className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 transition-colors hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-1"
                               aria-label="Mois précédent"
                             >
-                              ◀
+                              <ChevronLeft className="h-5 w-5" />
                             </button>
                             <button
                               type="button"
                               onClick={() => setMonthCursor((d) => new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1, 0, 0, 0, 0)))}
-                              className="inline-flex h-9 items-center justify-center rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700"
+                              className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 transition-colors hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-1"
                               aria-label="Mois suivant"
                             >
-                              ▶
+                              <ChevronRight className="h-5 w-5" />
                             </button>
                           </div>
                         </div>
@@ -2539,81 +2502,111 @@ function SitterPublicProfileContent({
                           todayIso={todayIso}
                         />
 
-                        <p className="mt-5 text-sm font-medium text-slate-900">Prochaines disponibilités</p>
-                        {nextDaysLoading ? (
-                          <p className="mt-1 text-sm text-slate-600">Chargement…</p>
-                        ) : nextDaysError ? (
-                          <div className="mt-2">
-                            <p className="text-sm text-rose-700">{getAvailabilityLoadErrorMessage(nextDaysError)}</p>
-                            <button
-                              type="button"
-                              onClick={() => setNextDaysRetryKey((v) => v + 1)}
-                              className="mt-2 inline-flex h-9 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-xs font-semibold text-slate-700"
-                            >
-                              Réessayer
-                            </button>
+                        <div className="mt-4 flex flex-wrap gap-4 text-xs font-medium text-slate-500">
+                          <div className="flex items-center gap-1.5">
+                            <span className={`h-2 w-2 rounded-full ${getServiceColors("PROMENADE").fill}`} />
+                            <span>Promenade</span>
                           </div>
-                        ) : nextAvail.length ? (
-                          <div className="mt-2 flex flex-wrap gap-2">
-                            {nextAvail.map((d) => (
-                              <span
-                                key={d}
-                                className="inline-flex items-center rounded-full bg-white px-3 py-1 text-xs font-semibold text-emerald-800 ring-1 ring-emerald-200"
-                              >
-                                {formatDateFr(d)}
-                              </span>
-                            ))}
+                          <div className="flex items-center gap-1.5">
+                            <span className={`h-2 w-2 rounded-full ${getServiceColors("DOGSITTING").fill}`} />
+                            <span>Dogsitting</span>
                           </div>
-                        ) : (
-                          <div className="mt-2">
-                            <p className="text-sm text-slate-600">Aucune disponibilité renseignée pour le moment.</p>
-                            <p className="mt-2 text-sm font-semibold text-[var(--dogshift-blue)]">Envoie un message pour demander une date.</p>
-                          </div>
-                        )}
+                          <div className="flex items-center gap-1.5">
+                            <span className={`h-2 w-2 rounded-full ${getServiceColors("PENSION").fill}`} />
+                            <span>Pension</span>
                           </div>
                         </div>
 
-                  <div className="mt-7">
-                    <h2 className="text-sm font-semibold text-slate-900">À propos</h2>
-                    <p className="mt-3 text-sm leading-relaxed text-slate-600 whitespace-pre-line">{sitter.bio}</p>
+                        <div className="mt-8">
+                          <h3 className="text-[15px] font-bold text-slate-900">Prochaines disponibilités</h3>
+                          {nextDaysLoading ? (
+                            <p className="mt-2 text-[15px] text-slate-600">Chargement…</p>
+                          ) : nextDaysError ? (
+                            <div className="mt-2">
+                              <p className="text-[15px] text-rose-700">{getAvailabilityLoadErrorMessage(nextDaysError)}</p>
+                              <button
+                                type="button"
+                                onClick={() => setNextDaysRetryKey((v) => v + 1)}
+                                className="mt-2 inline-flex h-9 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                              >
+                                Réessayer
+                              </button>
+                            </div>
+                          ) : nextAvail.length ? (
+                            <ul className="mt-3 grid gap-2">
+                              {nextAvail.map((d) => (
+                                <li key={d} className="flex items-center gap-2 text-[15px] text-slate-700 font-medium">
+                                  <span className={`h-1.5 w-1.5 rounded-full ${getServiceColors(slotsServiceType).fill}`} />
+                                  <span>{formatDateFr(d)}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          ) : (
+                            <div className="mt-3 rounded-xl bg-slate-50 border border-slate-100 p-4">
+                              <p className="text-[14px] leading-relaxed text-slate-600">
+                                Aucune disponibilité publiée pour le moment. Contactez {sitter.name.split(" ")[0]} pour proposer vos dates — {sitter.name.split(" ")[0]} répond généralement sous 24h.
+                              </p>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (disableSelfActions) return;
+                                  actionsRef.current?.querySelector<HTMLButtonElement>('button[data-chat="1"]')?.click();
+                                }}
+                                className="mt-3 inline-flex text-sm font-semibold text-slate-900 underline decoration-slate-300 underline-offset-4 hover:decoration-slate-400 transition-colors focus:outline-none focus:ring-2 focus:ring-slate-400 rounded-sm"
+                              >
+                                Envoyer un message
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                          </div>
+                        </div>
+
+                  <div className="mt-7 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                    <h2 className="text-xl font-bold tracking-tight text-slate-900">À propos de {sitter.name.split(" ")[0]}</h2>
+                    {sitter.bio && sitter.bio.trim().length >= 20 ? (
+                      <p className="mt-4 text-[15px] leading-relaxed text-slate-700 whitespace-pre-line">{sitter.bio}</p>
+                    ) : (
+                      <p className="mt-4 text-[15px] leading-relaxed text-slate-500 italic">Ce sitter n&apos;a pas encore complété sa présentation.</p>
+                    )}
                   </div>
 
                   {showBoardingDetails && boardingDetails ? (
-                    <div className="mt-7 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                      <h2 className="text-sm font-semibold text-slate-900">Détails pension</h2>
-                      <dl className="mt-3 grid gap-x-6 gap-y-3 sm:grid-cols-2">
+                    <div className="mt-7 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                      <h2 className="text-xl font-bold tracking-tight text-slate-900">Détails pension</h2>
+                      <dl className="mt-4 grid gap-x-6 gap-y-4 sm:grid-cols-2">
                         {boardingDetails.housingType ? (
                           <div>
-                            <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Logement</dt>
-                            <dd className="mt-1 text-sm text-slate-900">{boardingDetails.housingType}</dd>
+                            <dt className="text-xs font-semibold uppercase tracking-wider text-slate-500">Logement</dt>
+                            <dd className="mt-1.5 text-[15px] text-slate-900 font-medium">{boardingDetails.housingType}</dd>
                           </div>
                         ) : null}
                         {typeof boardingDetails.hasGarden === "boolean" ? (
                           <div>
-                            <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Jardin</dt>
-                            <dd className="mt-1 text-sm text-slate-900">{boardingDetails.hasGarden ? "Oui" : "Non"}</dd>
+                            <dt className="text-xs font-semibold uppercase tracking-wider text-slate-500">Jardin</dt>
+                            <dd className="mt-1.5 text-[15px] text-slate-900 font-medium">{boardingDetails.hasGarden ? "Oui" : "Non"}</dd>
                           </div>
                         ) : null}
                         {typeof boardingDetails.hasOtherPets === "boolean" ? (
                           <div>
-                            <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Autres animaux</dt>
-                            <dd className="mt-1 text-sm text-slate-900">{boardingDetails.hasOtherPets ? "Oui" : "Non"}</dd>
+                            <dt className="text-xs font-semibold uppercase tracking-wider text-slate-500">Autres animaux</dt>
+                            <dd className="mt-1.5 text-[15px] text-slate-900 font-medium">{boardingDetails.hasOtherPets ? "Oui" : "Non"}</dd>
                           </div>
                         ) : null}
                         {boardingDetails.notes ? (
                           <div className="sm:col-span-2">
-                            <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Notes</dt>
-                            <dd className="mt-1 text-sm text-slate-600 whitespace-pre-line">{boardingDetails.notes}</dd>
+                            <dt className="text-xs font-semibold uppercase tracking-wider text-slate-500">Notes</dt>
+                            <dd className="mt-1.5 text-[15px] leading-relaxed text-slate-700 whitespace-pre-line">{boardingDetails.notes}</dd>
                           </div>
                         ) : null}
                         {Array.isArray(boardingDetails.pensionAcceptedSizes) && boardingDetails.pensionAcceptedSizes.length > 0 ? (
                           <div className="sm:col-span-2">
-                            <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Tailles acceptées</dt>
-                            <dd className="mt-2 flex flex-wrap gap-1.5">
+                            <dt className="text-xs font-semibold uppercase tracking-wider text-slate-500">Tailles acceptées en pension</dt>
+                            <dd className="mt-2 flex flex-wrap gap-2">
                               {boardingDetails.pensionAcceptedSizes.map((size) => (
                                 <span
                                   key={size}
-                                  className="inline-flex items-center rounded-full bg-white px-2.5 py-0.5 text-xs font-semibold text-slate-700 ring-1 ring-slate-200"
+                                  className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[13px] font-medium text-slate-700 shadow-sm"
                                 >
                                   {size}
                                 </span>
@@ -2625,44 +2618,46 @@ function SitterPublicProfileContent({
                     </div>
                   ) : null}
 
-                  <div className="mt-7 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                  <div className="mt-7 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <div>
-                        <h2 className="text-sm font-semibold text-slate-900">Avis</h2>
-                        <p className="mt-1 text-sm text-slate-600">Retours laissés après des réservations terminées.</p>
+                        <h2 className="text-xl font-bold tracking-tight text-slate-900">Avis</h2>
                       </div>
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="inline-flex items-center gap-1 rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-700 ring-1 ring-slate-200">
-                          <StarIcon className="h-4 w-4 text-[#F5B301]" />
-                          {ratingLabel}
-                        </span>
-                        <span className="inline-flex items-center rounded-full bg-white px-3 py-1 text-xs font-medium text-slate-600 ring-1 ring-slate-200">
-                          {reviewCountLabel} avis
-                        </span>
-                      </div>
+                      {visibleReviews.length > 0 && (
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="inline-flex items-center gap-1 font-medium text-slate-900">
+                            <Star className="h-5 w-5 fill-amber-400 text-amber-400" />
+                            <span className="text-lg font-bold">{ratingLabel}</span>
+                          </span>
+                          <span className="text-sm font-medium text-slate-500">
+                            ({reviewCountLabel} avis)
+                          </span>
+                        </div>
+                      )}
                     </div>
 
                     {visibleReviews.length === 0 ? (
-                      <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-4">
-                        <p className="text-sm font-semibold text-slate-900">Aucun avis pour le moment</p>
-                        <p className="mt-1 text-sm text-slate-600">Ce sitter n’a pas encore reçu d’avis publié.</p>
+                      <div className="mt-6 flex flex-col items-center justify-center rounded-2xl bg-slate-50 border border-slate-100 p-8 text-center">
+                        <MessageSquare className="h-10 w-10 text-slate-300" />
+                        <p className="mt-4 text-[15px] font-semibold text-slate-900">Aucun avis pour le moment</p>
+                        <p className="mt-1 text-sm text-slate-500">Sois le premier à laisser un retour après ta réservation.</p>
                       </div>
                     ) : (
-                      <div className="mt-4 grid gap-3">
+                      <div className="mt-6 grid gap-4">
                         {visibleReviews.map((review) => (
-                          <article key={review.id} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                          <article key={review.id} className="rounded-2xl border border-slate-100 bg-slate-50 p-5">
                             <div className="flex flex-wrap items-start justify-between gap-3">
                               <div>
-                                <p className="text-sm font-semibold text-slate-900">{review.authorName}</p>
-                                <p className="mt-1 text-xs font-medium text-slate-500">{formatReviewDate(review.createdAt)}</p>
+                                <p className="text-[15px] font-semibold text-slate-900">{review.authorName}</p>
+                                <p className="mt-0.5 text-sm font-medium text-slate-500">{formatReviewDate(review.createdAt)}</p>
                               </div>
-                              <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
-                                <StarIcon className="h-4 w-4 text-[#F5B301]" />
+                              <span className="inline-flex items-center gap-1 rounded-full bg-white px-3 py-1 text-[13px] font-semibold text-slate-700 shadow-sm border border-slate-200">
+                                <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
                                 {formatRating(review.rating)}
                               </span>
                             </div>
-                            <p className="mt-3 text-sm leading-6 text-slate-600">
-                              {review.comment?.trim() ? review.comment.trim() : "Aucun commentaire ajouté."}
+                            <p className="mt-3 text-[15px] leading-relaxed text-slate-700">
+                              {review.comment?.trim() ? review.comment.trim() : <span className="italic text-slate-500">Aucun commentaire ajouté.</span>}
                             </p>
                           </article>
                         ))}
@@ -2672,10 +2667,11 @@ function SitterPublicProfileContent({
                 </section>
 
                 <aside className="border-t border-slate-200 p-6 sm:p-8 lg:border-l lg:border-t-0">
-                  <h2 className="text-sm font-semibold text-slate-900">Actions</h2>
+                  <div className="sticky top-24">
+                  <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
                   <div
                     ref={actionsRef}
-                    className="mt-5 space-y-3"
+                    className="space-y-0"
                     onClickCapture={(e) => {
                       if (process.env.NODE_ENV === "production") return;
                       const t = e.target as HTMLElement | null;
@@ -2693,96 +2689,122 @@ function SitterPublicProfileContent({
                     }}
                   >
                     {disableSelfActions ? (
-                      <Link
-                        href="/host/messages"
-                        className="inline-flex w-full items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-6 py-3 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition hover:bg-[var(--dogshift-blue-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)]"
-                      >
-                        Voir mes messages
-                      </Link>
+                      <div className="rounded-xl border border-slate-100 bg-slate-50 p-4 text-center">
+                        <p className="text-[14px] font-medium text-slate-700">C&apos;est votre profil public. Voici ce que voient vos clients.</p>
+                      </div>
                     ) : (
-                      <button
-                        type="button"
-                        disabled={startingChat}
-                        onClickCapture={(e) => {
-                          if (process.env.NODE_ENV !== "production") {
-                            console.log("[sitter][cta][capture]", {
-                              id,
-                              mode: viewMode,
-                              isLoaded,
-                              isSignedIn,
-                              disableSelfActions,
-                              defaultPrevented: e.defaultPrevented,
-                            });
-                          }
-                        }}
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          if (process.env.NODE_ENV !== "production") {
-                            console.log("[sitter][cta][click]", {
-                              id,
-                              mode: viewMode,
-                              isLoaded,
-                              isSignedIn,
-                              disableSelfActions,
-                            });
-                          }
-                          if (startingChat) return;
-                          if (!isLoaded) {
-                            setChatError("Chargement de la session… Réessaie dans une seconde.");
-                            return;
-                          }
-                          if (!isSignedIn) {
-                            setChatError("Veuillez vous connecter pour envoyer un message.");
-                            return;
-                          }
-
-                          setStartingChat(true);
-                          setChatError(null);
-                          void (async () => {
-                            try {
-                              if (process.env.NODE_ENV !== "production") {
-                                console.log("[sitter][cta] creating conversation", { sitterId: id });
-                              }
-                              if (process.env.NODE_ENV !== "production") {
-                                console.log("[sitter][cta] about to POST /api/messages/conversations", { sitterId: id });
-                              }
-                              const res = await fetch("/api/messages/conversations", {
-                                method: "POST",
-                                headers: { "Content-Type": "application/json" },
-                                body: JSON.stringify({ sitterId: id }),
-                              });
-                              const payload = (await res.json()) as { ok?: boolean; conversationId?: string; error?: string };
-                              const conversationId = typeof payload?.conversationId === "string" ? payload.conversationId : "";
-                              if (!res.ok || !payload.ok || !conversationId) {
-                                if (res.status === 401 || payload.error === "UNAUTHORIZED") {
-                                  setChatError("Veuillez vous connecter pour envoyer un message.");
+                      <>
+                        <Tooltip label={!canRequestBooking ? "Sélectionnez une date pour activer la réservation" : ""}>
+                          {({ triggerProps }) => (
+                            <button
+                              {...triggerProps}
+                              type="button"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                if (maintenanceMode) {
+                                  setBookingCtaError(maintenanceBookingUserMessage(adminNote));
                                   return;
                                 }
-                                setChatError(`Erreur serveur: ${payload.error ?? res.status}`);
-                                return;
-                              }
-                              const target = `/account/messages/${encodeURIComponent(conversationId)}`;
-                              if (typeof window !== "undefined") {
-                                window.location.assign(target);
-                              } else {
-                                router.push(target);
-                              }
-                            } catch {
-                              setChatError("Erreur réseau. Réessaie.");
-                            } finally {
-                              setStartingChat(false);
+                                if (!isLoaded) {
+                                  setBookingCtaError("Chargement de la session… Réessaie dans une seconde.");
+                                  return;
+                                }
+                                if (!isSignedIn) {
+                                  setBookingCtaError("Veuillez vous connecter pour demander une réservation.");
+                                  return;
+                                }
+                                if (!canRequestBooking) {
+                                  setBookingCtaError(
+                                    slotsServiceType === "PENSION"
+                                      ? "Sélectionnez une arrivée et une date de départ valides pour continuer."
+                                      : "Sélectionnez un service et une date dans l’agenda pour continuer."
+                                  );
+                                  return;
+                                }
+                                setBookingCtaError(null);
+                                void continueToReservation();
+                              }}
+                              disabled={!canRequestBooking || maintenanceMode}
+                              className="mb-3 inline-flex w-full items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-6 py-3.5 text-[15px] font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition-colors hover:bg-[var(--dogshift-blue-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)] disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                              Demander une réservation
+                            </button>
+                          )}
+                        </Tooltip>
+
+                        <button
+                          type="button"
+                          disabled={startingChat}
+                          data-chat="1"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            if (startingChat) return;
+                            if (!isLoaded) {
+                              setChatError("Chargement de la session… Réessaie dans une seconde.");
+                              return;
                             }
-                          })();
-                        }}
-                        className="w-full rounded-2xl bg-[var(--dogshift-blue)] px-6 py-3 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition hover:bg-[var(--dogshift-blue-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)] disabled:cursor-not-allowed disabled:opacity-55"
-                      >
-                        {startingChat ? "Ouverture…" : "Envoyer un message"}
-                      </button>
+                            if (!isSignedIn) {
+                              setChatError("Veuillez vous connecter pour envoyer un message.");
+                              return;
+                            }
+                            setStartingChat(true);
+                            setChatError(null);
+                            void (async () => {
+                              try {
+                                const res = await fetch("/api/messages/conversations", {
+                                  method: "POST",
+                                  headers: { "Content-Type": "application/json" },
+                                  body: JSON.stringify({ sitterId: id }),
+                                });
+                                const payload = await res.json() as { ok?: boolean; conversationId?: string; error?: string };
+                                const conversationId = typeof payload?.conversationId === "string" ? payload.conversationId : "";
+                                if (!res.ok || !payload.ok || !conversationId) {
+                                  if (res.status === 401 || payload.error === "UNAUTHORIZED") {
+                                    setChatError("Veuillez vous connecter pour envoyer un message.");
+                                    return;
+                                  }
+                                  setChatError(`Erreur serveur: ${payload.error ?? res.status}`);
+                                  return;
+                                }
+                                const target = `/account/messages/${encodeURIComponent(conversationId)}`;
+                                if (typeof window !== "undefined") {
+                                  window.location.assign(target);
+                                } else {
+                                  router.push(target);
+                                }
+                              } catch {
+                                setChatError("Erreur réseau. Réessaie.");
+                              } finally {
+                                setStartingChat(false);
+                              }
+                            })();
+                          }}
+                          className="mb-4 w-full rounded-2xl border border-slate-200 bg-white px-6 py-3.5 text-[15px] font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          {startingChat ? "Ouverture…" : "Envoyer un message"}
+                        </button>
+
+                        <div className="mt-5 grid gap-3 border-t border-slate-100 pt-5">
+                          <div className="flex items-center gap-3">
+                            <Shield className="h-5 w-5 text-emerald-500" />
+                            <span className="text-[14px] text-slate-600">Sitter vérifié</span>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <CreditCard className="h-5 w-5 text-slate-400" />
+                            <span className="text-[14px] text-slate-600">Paiement sécurisé Stripe</span>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <MessageCircle className="h-5 w-5 text-[var(--dogshift-blue)]" />
+                            <span className="text-[14px] text-slate-600">Support 7/7</span>
+                          </div>
+                        </div>
+                      </>
                     )}
 
                     {chatError ? (
-                      <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4">
+                      <div className="mt-3 rounded-2xl border border-rose-200 bg-rose-50 p-4">
                         <p className="text-sm font-medium text-rose-900">
                           {chatError}{" "}
                           <Link href="/login" className="font-semibold underline underline-offset-2">
@@ -2792,75 +2814,8 @@ function SitterPublicProfileContent({
                       </div>
                     ) : null}
 
-                    {disableSelfActions ? (
-                      <button
-                        type="button"
-                        disabled
-                        className="w-full rounded-2xl bg-slate-200 px-6 py-3 text-sm font-semibold text-slate-500"
-                      >
-                        Demander une réservation
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          if (maintenanceMode) {
-                            setBookingCtaError(maintenanceBookingUserMessage(adminNote));
-                            return;
-                          }
-                          if (!isLoaded) {
-                            setBookingCtaError("Chargement de la session… Réessaie dans une seconde.");
-                            return;
-                          }
-                          if (!isSignedIn) {
-                            setBookingCtaError("Veuillez vous connecter pour demander une réservation.");
-                            return;
-                          }
-                          if (!canRequestBooking) {
-                            setBookingCtaError(
-                              slotsServiceType === "PENSION"
-                                ? "Sélectionnez une arrivée et une date de départ valides pour continuer."
-                                : "Sélectionnez un service et une date dans l’agenda pour continuer."
-                            );
-                            return;
-                          }
-                          setBookingCtaError(null);
-                          void continueToReservation();
-                        }}
-                        disabled={!canRequestBooking || maintenanceMode}
-                        className="inline-flex w-full items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-6 py-3 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition hover:bg-[var(--dogshift-blue-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)] disabled:cursor-not-allowed disabled:opacity-55"
-                      >
-                        Demander une réservation
-                      </button>
-                    )}
-
-                    {bookingSelectionSummary ? (
-                      <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                        <p className="text-sm font-medium text-slate-900">Sélection actuelle</p>
-                        <p className="mt-1 text-sm text-slate-600">{serviceUi.current.label}</p>
-                        <p className="mt-1 text-sm font-semibold text-slate-900">{bookingSelectionSummary}</p>
-                        {slotsServiceType === "PENSION" && boardingStatus?.status === "ON_REQUEST" ? (
-                          <p className="mt-2 text-sm text-amber-900">Certaines dates sont sur demande.</p>
-                        ) : null}
-                        {slotsServiceType === "PENSION" && boardingStatus?.status === "UNAVAILABLE" ? (
-                          <p className="mt-2 text-sm text-rose-700">Certaines dates du séjour ne sont pas disponibles.</p>
-                        ) : null}
-                        {slotsServiceType === "PENSION" && boardingStatusLoading ? (
-                          <p className="mt-2 text-sm text-slate-600">Vérification du séjour…</p>
-                        ) : null}
-                      </div>
-                    ) : (
-                      <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                        <p className="text-sm text-slate-600">
-                          Sélectionnez un service puis une date dans l’agenda pour activer la réservation.
-                        </p>
-                      </div>
-                    )}
-
                     {bookingCtaError ? (
-                      <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4">
+                      <div className="mt-3 rounded-2xl border border-rose-200 bg-rose-50 p-4">
                         <p className="text-sm font-medium text-rose-900">
                           {bookingCtaError}{" "}
                           <Link href="/login" className="font-semibold underline underline-offset-2">
@@ -2869,12 +2824,8 @@ function SitterPublicProfileContent({
                         </p>
                       </div>
                     ) : null}
-
-                    {disableSelfActions ? (
-                      <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                        <p className="text-sm text-slate-600">Vous ne pouvez pas vous contacter vous-même.</p>
-                      </div>
-                    ) : null}
+                  </div>
+                  </div>
                   </div>
                 </aside>
               </div>

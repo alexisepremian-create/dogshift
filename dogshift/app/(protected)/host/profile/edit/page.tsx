@@ -353,7 +353,7 @@ export default function HostProfileEditPage() {
         setError(
           pres?.error === "FILE_TOO_LARGE"
             ? "Ce fichier est trop volumineux (max. 12 Mo)."
-            : "Impossible de préparer l’envoi de la photo. Réessaie ou choisis une autre image.",
+            : "Impossible de préparer l'envoi de la photo. Réessaie ou choisis une autre image.",
         );
         return;
       }
@@ -375,7 +375,7 @@ export default function HostProfileEditPage() {
       });
       const commit = (await commitRes.json().catch(() => null)) as { ok?: boolean; avatarUrl?: string };
       if (!commitRes.ok || !commit?.ok || typeof commit.avatarUrl !== "string") {
-        setError("Impossible d’enregistrer la photo. Réessaie.");
+        setError("Impossible d'enregistrer la photo. Réessaie.");
         return;
       }
 
@@ -391,7 +391,7 @@ export default function HostProfileEditPage() {
         return next;
       });
     } catch {
-      setError("Impossible d’envoyer la photo. Vérifie ta connexion et réessaie.");
+      setError("Impossible d'envoyer la photo. Vérifie ta connexion et réessaie.");
     } finally {
       setAvatarUploading(false);
     }
@@ -453,7 +453,7 @@ export default function HostProfileEditPage() {
           if (typeof payload?.details === "string" && payload.details.trim()) {
             setError(payload.details.trim());
           } else {
-            setError(payload?.error ? `Impossible d’enregistrer le profil (${payload.error}).` : "Impossible d’enregistrer le profil.");
+            setError(payload?.error ? `Impossible d'enregistrer le profil (${payload.error}).` : "Impossible d'enregistrer le profil.");
           }
           setSaved(false);
           return;
@@ -462,7 +462,7 @@ export default function HostProfileEditPage() {
         if (payload.publishBlocked) {
           const msgs: Record<string, string> = {
             TERMS_NOT_ACCEPTED: "Accepte le règlement avant de publier ton annonce.",
-            PROFILE_INCOMPLETE: "Complète ton profil à 100 % avant de publier.",
+            PROFILE_INCOMPLETE: "Complète ton profil à 100 % avant de publier.",
             CONTRACT_NOT_SIGNED: "Signe le contrat avant de publier ton annonce.",
             ACCOUNT_NOT_ACTIVATED: "Ton compte doit être activé pour publier.",
             CONTRACT_AMENDMENT_REQUIRED: "Un avenant au contrat doit être accepté avant de publier.",
@@ -483,7 +483,7 @@ export default function HostProfileEditPage() {
           setSaved(true);
         }
       } catch {
-        setError("Impossible d’enregistrer le profil.");
+        setError("Impossible d'enregistrer le profil.");
         setSaved(false);
       } finally {
         setSaving(false);
@@ -496,7 +496,7 @@ export default function HostProfileEditPage() {
       <div className="relative grid gap-6 overflow-x-hidden" data-testid="host-profile-edit">
         <div className="relative z-10 rounded-3xl border border-slate-200 bg-white p-6">
           <p className="text-sm font-semibold text-slate-900">Profil hôte</p>
-          <p className="mt-2 text-sm text-slate-600">Ton profil hôte n’est pas encore disponible.</p>
+          <p className="mt-2 text-sm text-slate-600">Ton profil hôte n&apos;est pas encore disponible.</p>
           <div className="mt-4">
             <Link href="/devenir-dogsitter" className="text-sm font-semibold text-[var(--dogshift-blue)]">
               Créer mon profil hôte
@@ -525,195 +525,210 @@ export default function HostProfileEditPage() {
           </div>
         </div>
 
-        <div className="mt-8">
+        <div className="mt-8 grid gap-6">
+
+          {/* ── Section 1 — Identité du profil public ── */}
           <section className="relative rounded-3xl border border-slate-200 bg-white shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)]">
-              <div id="identity" className="scroll-mt-24 p-6 sm:p-8">
-                <h2 className="text-base font-semibold text-slate-900">Identité du profil public</h2>
-                <p className="mt-1 text-sm text-slate-600">Ces informations sont visibles par tous sur ton profil public.</p>
+            <div id="identity" className="scroll-mt-24 p-6 sm:p-8">
+              <h2 className="text-base font-semibold text-slate-900">Identité du profil public</h2>
+              <p className="mt-1 text-sm text-slate-600">Ces informations sont visibles par tous sur ton profil public.</p>
 
-                <div className="mt-5 grid gap-4 sm:grid-cols-2">
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700" htmlFor="host_firstName">
-                      Nom visible
-                    </label>
-                    <input
-                      id="host_firstName"
-                      value={profile.firstName}
-                      onChange={(e) => setProfile((p) => ({ ...p, firstName: e.target.value }))}
-                      className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition focus:border-[var(--dogshift-blue)] focus:ring-4 focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_85%)]"
-                      placeholder="ex. Camille"
-                      autoComplete="given-name"
-                    />
-                    <p className="mt-2 text-xs text-slate-500">Visible sur ton profil public.</p>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700" htmlFor="host_city">
-                      Ville / CP (visible)
-                    </label>
-                    <div className="mt-2 grid grid-cols-2 gap-3">
-                      <input
-                        id="host_city"
-                        value={profile.city}
-                        onChange={(e) => setProfile((p) => ({ ...p, city: e.target.value }))}
-                        className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition focus:border-[var(--dogshift-blue)] focus:ring-4 focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_85%)]"
-                        placeholder="Genève"
-                        autoComplete="address-level2"
-                      />
-                      <input
-                        value={profile.postalCode}
-                        onChange={(e) => setProfile((p) => ({ ...p, postalCode: e.target.value }))}
-                        className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition focus:border-[var(--dogshift-blue)] focus:ring-4 focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_85%)]"
-                        placeholder="1201"
-                        autoComplete="postal-code"
-                      />
-                    </div>
-                    <p className="mt-2 text-xs text-slate-500">Visible sur ton profil public.</p>
-                  </div>
-                </div>
-
-                <div className="mt-4">
-                  <label className="block text-sm font-medium text-slate-700" htmlFor="host_address">
-                    Adresse complète (confidentielle)
+              <div className="mt-5 grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700" htmlFor="host_firstName">
+                    Nom visible
                   </label>
                   <input
-                    id="host_address"
-                    value={profile.address ?? ""}
-                    onChange={(e) => setProfile((p) => ({ ...p, address: e.target.value }))}
+                    id="host_firstName"
+                    value={profile.firstName}
+                    onChange={(e) => setProfile((p) => ({ ...p, firstName: e.target.value }))}
                     className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition focus:border-[var(--dogshift-blue)] focus:ring-4 focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_85%)]"
-                    placeholder="ex. Rue du Rhône 12, 1204 Genève"
-                    autoComplete="street-address"
+                    placeholder="ex. Camille"
+                    autoComplete="given-name"
                   />
-                  <p className="mt-2 text-xs text-slate-500">
-                    Renseigne ton adresse pour activer l&apos;option &laquo;&nbsp;Le sitter se déplace chez moi&nbsp;&raquo; lors des réservations. Elle n&apos;est jamais partagée publiquement.
-                  </p>
+                  <p className="mt-2 text-xs text-slate-500">Visible sur ton profil public.</p>
                 </div>
 
-                <div id="photo" className="scroll-mt-24 mt-5">
-                  <label className="block text-sm font-medium text-slate-700" htmlFor="host_photo">
-                    Photo
+                <div>
+                  <label className="block text-sm font-medium text-slate-700" htmlFor="host_city">
+                    Ville / CP (visible)
                   </label>
-                  <p className="mt-1 text-xs text-slate-500">
-                    JPG, PNG ou WebP — les photos du téléphone sont acceptées (téléversement sécurisé jusqu’à 12&nbsp;Mo).
-                  </p>
-                  <div className="mt-2 flex flex-wrap items-center gap-3">
+                  <div className="mt-2 grid grid-cols-2 gap-3">
                     <input
-                      id="host_photo"
-                      type="file"
-                      accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"
-                      className="sr-only"
-                      disabled={avatarUploading}
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (!file) return;
-                        void uploadHostAvatar(file);
-                        e.target.value = "";
-                      }}
+                      id="host_city"
+                      value={profile.city}
+                      onChange={(e) => setProfile((p) => ({ ...p, city: e.target.value }))}
+                      className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition focus:border-[var(--dogshift-blue)] focus:ring-4 focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_85%)]"
+                      placeholder="Genève"
+                      autoComplete="address-level2"
                     />
-                    <label
-                      htmlFor="host_photo"
-                      className={
-                        "inline-flex cursor-pointer items-center justify-center rounded-2xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50" +
-                        (avatarUploading ? " pointer-events-none opacity-60" : "")
-                      }
-                    >
-                      {avatarUploading ? "Envoi…" : "Choisir un fichier"}
-                    </label>
-                    <p className="text-xs font-medium text-slate-600">
-                      {avatarUploading
-                        ? "Téléversement en cours…"
-                        : avatarFileName
-                          ? avatarFileName
-                          : profile.avatarDataUrl || profile.avatarUrl
-                            ? "Photo enregistrée"
-                            : "Aucun fichier choisi"}
-                    </p>
+                    <input
+                      value={profile.postalCode}
+                      onChange={(e) => setProfile((p) => ({ ...p, postalCode: e.target.value }))}
+                      className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition focus:border-[var(--dogshift-blue)] focus:ring-4 focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_85%)]"
+                      placeholder="1201"
+                      autoComplete="postal-code"
+                    />
                   </div>
-                  {profile.avatarDataUrl || profile.avatarUrl ? (
-                    <Image
-                      src={profile.avatarDataUrl || profile.avatarUrl || ""}
-                      alt="Aperçu"
-                      width={64}
-                      height={64}
-                      unoptimized={Boolean(profile.avatarDataUrl)}
-                      className="mt-3 h-16 w-16 rounded-2xl object-cover ring-1 ring-slate-200"
-                    />
-                  ) : null}
+                  <p className="mt-2 text-xs text-slate-500">Visible sur ton profil public.</p>
                 </div>
               </div>
 
-              <div id="description" className="scroll-mt-24 border-t border-slate-200 p-6 sm:p-8">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex min-w-0 flex-1 items-center gap-1.5">
-                    <h2 className="text-base font-semibold text-slate-900">Présentation</h2>
-                    <div
-                      ref={presentationTipsRef}
-                      className="relative shrink-0"
-                      onMouseEnter={() => {
-                        if (typeof window === "undefined") return;
-                        if (window.matchMedia("(hover: hover) and (pointer: fine)").matches) {
-                          setPresentationTipsOpen(true);
-                        }
-                      }}
-                      onMouseLeave={() => {
-                        if (typeof window === "undefined") return;
-                        if (window.matchMedia("(hover: hover) and (pointer: fine)").matches) {
-                          setPresentationTipsOpen(false);
-                        }
-                      }}
-                    >
-                      <button
-                        type="button"
-                        aria-expanded={presentationTipsOpen}
-                        aria-controls="presentation-help-popover"
-                        onClick={() => setPresentationTipsOpen((v) => !v)}
-                        className="inline-flex rounded-lg p-0.5 text-slate-400 outline-none transition hover:text-slate-500 focus-visible:ring-2 focus-visible:ring-[var(--dogshift-blue)] focus-visible:ring-offset-2"
-                      >
-                        <span className="sr-only">Conseils pour rédiger votre présentation</span>
-                        <Info className="h-4 w-4" aria-hidden="true" strokeWidth={2} />
-                      </button>
-                      {presentationTipsOpen ? (
-                        <div className="absolute left-0 top-full z-20 pt-2" role="presentation">
-                          <div
-                            id="presentation-help-popover"
-                            role="region"
-                            aria-label="Conseils pour la présentation"
-                            className="w-[min(calc(100vw-2rem),400px)] max-w-[400px] rounded-xl border border-slate-200/90 bg-white p-5 text-sm leading-relaxed text-slate-600 shadow-lg shadow-slate-900/10"
-                          >
-                            <p className="text-slate-700">Décris ton expérience et ton approche avec les chiens.</p>
-                            <p className="mt-2.5 text-slate-600">Précise par exemple :</p>
-                            <div className="mt-2 grid grid-cols-1 gap-x-4 gap-y-2 sm:grid-cols-2">
-                              <ul className="list-disc space-y-1.5 pl-4 text-slate-500 marker:text-slate-400">
-                                <li>types de chiens acceptés (âge, taille, caractère)</li>
-                                <li>expérience (promenades, garde, pension)</li>
-                              </ul>
-                              <ul className="list-disc space-y-1.5 pl-4 text-slate-500 marker:text-slate-400">
-                                <li>environnement (appartement, maison, jardin)</li>
-                                <li>habitudes (sorties, présence à domicile)</li>
-                              </ul>
-                            </div>
-                            <p className="mt-3 text-slate-700">
-                              Une description claire inspire confiance et augmente tes chances de recevoir des demandes.
-                            </p>
-                          </div>
-                        </div>
-                      ) : null}
-                    </div>
-                  </div>
-                  <p className="shrink-0 text-xs font-semibold text-slate-500">{profile.bio.length} caractères</p>
-                </div>
-                <textarea
-                  value={profile.bio}
-                  onChange={(e) => setProfile((p) => ({ ...p, bio: e.target.value }))}
-                  className="mt-4 w-full min-h-[140px] rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition focus:border-[var(--dogshift-blue)] focus:ring-4 focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_85%)]"
-                  placeholder="Décrivez votre expérience, votre approche et comment vous prenez soin des chiens."
+              <div className="mt-4">
+                <label className="block text-sm font-medium text-slate-700" htmlFor="host_address">
+                  Adresse complète (confidentielle)
+                </label>
+                <input
+                  id="host_address"
+                  value={profile.address ?? ""}
+                  onChange={(e) => setProfile((p) => ({ ...p, address: e.target.value }))}
+                  className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition focus:border-[var(--dogshift-blue)] focus:ring-4 focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_85%)]"
+                  placeholder="ex. Rue du Rhône 12, 1204 Genève"
+                  autoComplete="street-address"
                 />
+                <p className="mt-2 text-xs text-slate-500">
+                  Renseigne ton adresse pour activer l&apos;option &laquo;&nbsp;Le sitter se déplace chez moi&nbsp;&raquo; lors des réservations. Elle n&apos;est jamais partagée publiquement.
+                </p>
               </div>
 
-              <div id="dogSizes" className="scroll-mt-24 border-t border-slate-200 p-6 sm:p-8">
-                <h2 className="text-base font-semibold text-slate-900">Chiens acceptés par taille</h2>
-                <p className="mt-1 text-sm text-slate-500">
-                  Indiquez combien de chiens vous acceptez par taille (0 = taille non acceptée).
+              <div id="photo" className="scroll-mt-24 mt-5">
+                <label className="block text-sm font-medium text-slate-700" htmlFor="host_photo">
+                  Photo
+                </label>
+                <p className="mt-1 text-xs text-slate-500">
+                  JPG, PNG ou WebP — les photos du téléphone sont acceptées (téléversement sécurisé jusqu&apos;à 12&nbsp;Mo).
+                </p>
+                <div className="mt-2 flex flex-wrap items-center gap-3">
+                  <input
+                    id="host_photo"
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"
+                    className="sr-only"
+                    disabled={avatarUploading}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      void uploadHostAvatar(file);
+                      e.target.value = "";
+                    }}
+                  />
+                  <label
+                    htmlFor="host_photo"
+                    className={
+                      "inline-flex cursor-pointer items-center justify-center rounded-2xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50" +
+                      (avatarUploading ? " pointer-events-none opacity-60" : "")
+                    }
+                  >
+                    {avatarUploading ? "Envoi…" : "Choisir un fichier"}
+                  </label>
+                  <p className="text-xs font-medium text-slate-600">
+                    {avatarUploading
+                      ? "Téléversement en cours…"
+                      : avatarFileName
+                        ? avatarFileName
+                        : profile.avatarDataUrl || profile.avatarUrl
+                          ? "Photo enregistrée"
+                          : "Aucun fichier choisi"}
+                  </p>
+                </div>
+                {profile.avatarDataUrl || profile.avatarUrl ? (
+                  <Image
+                    src={profile.avatarDataUrl || profile.avatarUrl || ""}
+                    alt="Aperçu"
+                    width={64}
+                    height={64}
+                    unoptimized={Boolean(profile.avatarDataUrl)}
+                    className="mt-3 h-16 w-16 rounded-2xl object-cover ring-1 ring-slate-200"
+                  />
+                ) : null}
+              </div>
+            </div>
+          </section>
+
+          {/* ── Section 2 — Présentation ── */}
+          <section className="relative rounded-3xl border border-slate-200 bg-white shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)]">
+            <div id="description" className="scroll-mt-24 p-6 sm:p-8">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex min-w-0 flex-1 items-center gap-1.5">
+                  <h2 className="text-base font-semibold text-slate-900">Présentation</h2>
+                  <div
+                    ref={presentationTipsRef}
+                    className="relative shrink-0"
+                    onMouseEnter={() => {
+                      if (typeof window === "undefined") return;
+                      if (window.matchMedia("(hover: hover) and (pointer: fine)").matches) {
+                        setPresentationTipsOpen(true);
+                      }
+                    }}
+                    onMouseLeave={() => {
+                      if (typeof window === "undefined") return;
+                      if (window.matchMedia("(hover: hover) and (pointer: fine)").matches) {
+                        setPresentationTipsOpen(false);
+                      }
+                    }}
+                  >
+                    <button
+                      type="button"
+                      aria-expanded={presentationTipsOpen}
+                      aria-controls="presentation-help-popover"
+                      onClick={() => setPresentationTipsOpen((v) => !v)}
+                      className="inline-flex rounded-lg p-0.5 text-slate-400 outline-none transition hover:text-slate-500 focus-visible:ring-2 focus-visible:ring-[var(--dogshift-blue)] focus-visible:ring-offset-2"
+                    >
+                      <span className="sr-only">Conseils pour rédiger votre présentation</span>
+                      <Info className="h-4 w-4" aria-hidden="true" strokeWidth={2} />
+                    </button>
+                    {presentationTipsOpen ? (
+                      <div className="absolute left-0 top-full z-20 pt-2" role="presentation">
+                        <div
+                          id="presentation-help-popover"
+                          role="region"
+                          aria-label="Conseils pour la présentation"
+                          className="w-[min(calc(100vw-2rem),400px)] max-w-[400px] rounded-xl border border-slate-200/90 bg-white p-5 text-sm leading-relaxed text-slate-600 shadow-lg shadow-slate-900/10"
+                        >
+                          <p className="text-slate-700">Décris ton expérience et ton approche avec les chiens.</p>
+                          <p className="mt-2.5 text-slate-600">Précise par exemple :</p>
+                          <div className="mt-2 grid grid-cols-1 gap-x-4 gap-y-2 sm:grid-cols-2">
+                            <ul className="list-disc space-y-1.5 pl-4 text-slate-500 marker:text-slate-400">
+                              <li>types de chiens acceptés (âge, taille, caractère)</li>
+                              <li>expérience (promenades, garde, pension)</li>
+                            </ul>
+                            <ul className="list-disc space-y-1.5 pl-4 text-slate-500 marker:text-slate-400">
+                              <li>environnement (appartement, maison, jardin)</li>
+                              <li>habitudes (sorties, présence à domicile)</li>
+                            </ul>
+                          </div>
+                          <p className="mt-3 text-slate-700">
+                            Une description claire inspire confiance et augmente tes chances de recevoir des demandes.
+                          </p>
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+                <p className="shrink-0 text-xs font-semibold text-slate-500">{profile.bio.length} caractères</p>
+              </div>
+              <textarea
+                value={profile.bio}
+                onChange={(e) => setProfile((p) => ({ ...p, bio: e.target.value }))}
+                className="mt-4 w-full min-h-[140px] rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition focus:border-[var(--dogshift-blue)] focus:ring-4 focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_85%)]"
+                placeholder="Décrivez votre expérience, votre approche et comment vous prenez soin des chiens."
+              />
+            </div>
+          </section>
+
+          {/* ── Section 3 — Critères d'acceptation des chiens ── */}
+          <section className="relative rounded-3xl border border-slate-200 bg-white shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)]">
+            <div id="acceptanceCriteria" className="scroll-mt-24 p-6 sm:p-8">
+              <h2 className="text-base font-semibold text-slate-900">Critères d&apos;acceptation des chiens</h2>
+              <p className="mt-1 text-sm text-slate-500">
+                Ces critères s&apos;appliquent à tous vos services. Les réservations qui ne les respectent pas seront automatiquement bloquées.
+              </p>
+
+              {/* 3a — Tailles acceptées */}
+              <div id="dogSizes" className="scroll-mt-24 mt-6">
+                <h3 className="text-sm font-semibold text-slate-800">Tailles acceptées</h3>
+                <p className="mt-1 text-xs text-slate-500">
+                  Indiquez combien de chiens vous pouvez accueillir simultanément pour chaque taille. 0 = taille non acceptée.
                 </p>
                 <div className="mt-4 grid grid-cols-3 gap-3">
                   {(Object.keys(DOG_SIZE_LABELS) as DogSize[]).map((size) => {
@@ -772,239 +787,14 @@ export default function HostProfileEditPage() {
                     );
                   })}
                 </div>
-
-                {hasPension ? (
-                  <div className="mt-6">
-                    {pensionVerifStatus === "approved" ? (
-                      <div className="flex items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-4">
-                        <CheckCircle className="h-5 w-5 shrink-0 text-emerald-600" />
-                        <div>
-                          <p className="text-sm font-semibold text-emerald-900">Logement vérifié</p>
-                          <p className="text-xs text-emerald-700 mt-0.5">Le service Pension est actif sur votre profil public.</p>
-                        </div>
-                      </div>
-                    ) : pensionVerifStatus === "pending" || pensionVerifStatus === "ai_reviewing" || pensionVerifStatus === "ai_needs_review" ? (
-                      <div className="rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4">
-                        <div className="flex items-center gap-3">
-                          <Clock className="h-5 w-5 shrink-0 text-amber-600" />
-                          <div className="flex-1">
-                            <p className="text-sm font-semibold text-amber-900">Vérification en cours</p>
-                            <p className="text-xs text-amber-700 mt-0.5">Notre équipe examine vos photos. Vous recevrez un e-mail de réponse dans les 24–48 heures ouvrées.</p>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => void resetPensionVerification()}
-                            disabled={pensionResetting}
-                            className="shrink-0 text-xs text-amber-700 underline hover:text-amber-900 disabled:opacity-50"
-                          >
-                            {pensionResetting ? "Réinitialisation…" : "Réessayer"}
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      /* Single unified card: housing details + photo upload */
-                      <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-                        {/* Header */}
-                        <div className={`flex items-center gap-3 px-5 py-4 border-b ${pensionVerifStatus === "ai_rejected" || pensionVerifStatus === "rejected" ? "border-rose-100 bg-rose-50" : "border-slate-100 bg-slate-50"}`}>
-                          {pensionVerifStatus === "ai_rejected" || pensionVerifStatus === "rejected" ? (
-                            <XCircle className="h-5 w-5 shrink-0 text-rose-600" />
-                          ) : (
-                            <ShieldCheck className="h-5 w-5 shrink-0 text-[var(--dogshift-blue)]" />
-                          )}
-                          <div>
-                            <p className={`text-sm font-semibold ${pensionVerifStatus === "ai_rejected" || pensionVerifStatus === "rejected" ? "text-rose-900" : "text-slate-900"}`}>
-                              {pensionVerifStatus === "ai_rejected" || pensionVerifStatus === "rejected"
-                                ? "Photos refusées — Soumettez de nouvelles photos"
-                                : "Vérification du logement requise"}
-                            </p>
-                            <p className={`text-xs mt-0.5 ${pensionVerifStatus === "ai_rejected" || pensionVerifStatus === "rejected" ? "text-rose-700" : "text-slate-500"}`}>
-                              {pensionVerifStatus === "ai_rejected" || pensionVerifStatus === "rejected"
-                                ? "Vos photos n&apos;ont pas satisfait les critères. Complétez les informations et soumettez de nouvelles photos."
-                                : "Requis pour activer la Pension sur votre profil public."}
-                            </p>
-                          </div>
-                        </div>
-
-                        {/* Housing details — required before upload */}
-                        <div className="px-5 py-5 border-b border-slate-100">
-                          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-4">Détails du logement</p>
-                          <div className="grid gap-4 sm:grid-cols-2">
-                            <div>
-                              <label className="block text-sm font-medium text-slate-700" htmlFor="host_housing">
-                                Type de logement <span className="text-rose-500">*</span>
-                              </label>
-                              <div className="relative">
-                                <select
-                                  id="host_housing"
-                                  value={profile.boardingDetails?.housingType ?? ""}
-                                  onChange={(e) =>
-                                    setProfile((p) => ({
-                                      ...p,
-                                      boardingDetails: {
-                                        ...p.boardingDetails,
-                                        housingType: (e.target.value as "Appartement" | "Maison" | "") || undefined,
-                                      },
-                                    }))
-                                  }
-                                  className={`mt-2 w-full appearance-none rounded-2xl border px-4 py-3 pr-10 text-sm font-medium shadow-sm outline-none transition focus:ring-4 ${
-                                    !profile.boardingDetails?.housingType
-                                      ? "border-amber-400 bg-amber-50 text-slate-900 focus:border-amber-500 focus:ring-amber-100"
-                                      : "border-slate-300 bg-white text-slate-900 focus:border-[var(--dogshift-blue)] focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_85%)]"
-                                  }`}
-                                >
-                                  <option value="">Sélectionner</option>
-                                  <option value="Appartement">Appartement</option>
-                                  <option value="Maison">Maison</option>
-                                </select>
-                                <div className="pointer-events-none absolute right-4 top-[calc(50%+4px)] -translate-y-1/2 text-slate-400">
-                                  <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4" aria-hidden="true">
-                                    <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
-                                  </svg>
-                                </div>
-                              </div>
-                              {!profile.boardingDetails?.housingType && (
-                                <p className="mt-1.5 flex items-center gap-1 text-xs text-amber-700">
-                                  <AlertTriangle className="h-3 w-3 shrink-0" />
-                                  Requis pour soumettre vos photos
-                                </p>
-                              )}
-                            </div>
-
-                            <div>
-                              <label className="block text-sm font-medium text-slate-700" htmlFor="host_boarding_notes">
-                                Notes (optionnel)
-                              </label>
-                              <input
-                                id="host_boarding_notes"
-                                value={profile.boardingDetails?.notes ?? ""}
-                                onChange={(e) =>
-                                  setProfile((p) => ({
-                                    ...p,
-                                    boardingDetails: { ...p.boardingDetails, notes: e.target.value },
-                                  }))
-                                }
-                                className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition focus:border-[var(--dogshift-blue)] focus:ring-4 focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_85%)]"
-                                placeholder="ex. Jardin clos, parc à 5 min"
-                              />
-                            </div>
-                          </div>
-
-                          <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                            <label className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-900 cursor-pointer">
-                              <input
-                                type="checkbox"
-                                checked={Boolean(profile.boardingDetails?.hasGarden)}
-                                onChange={(e) =>
-                                  setProfile((p) => ({
-                                    ...p,
-                                    boardingDetails: { ...p.boardingDetails, hasGarden: e.target.checked },
-                                  }))
-                                }
-                              />
-                              Jardin
-                            </label>
-                            <label className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-900 cursor-pointer">
-                              <input
-                                type="checkbox"
-                                checked={Boolean(profile.boardingDetails?.hasOtherPets)}
-                                onChange={(e) =>
-                                  setProfile((p) => ({
-                                    ...p,
-                                    boardingDetails: { ...p.boardingDetails, hasOtherPets: e.target.checked },
-                                  }))
-                                }
-                              />
-                              Autres animaux
-                            </label>
-                          </div>
-                        </div>
-
-                        {/* Photo upload */}
-                        <div className="px-5 py-5">
-                          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-3">Photos requises (3 minimum, 8 maximum)</p>
-                          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 mb-4">
-                            {["Salon / séjour", "Chambre / espace nuit", "Cuisine", "Extérieur (si dispo)"].map((label) => (
-                              <div key={label} className="flex items-center gap-1.5 text-xs text-slate-600">
-                                <Camera className="h-3.5 w-3.5 shrink-0 text-slate-400" />
-                                {label}
-                              </div>
-                            ))}
-                          </div>
-
-                          {pensionPhotoKeys.length > 0 && (
-                            <div className="mb-3 flex items-center gap-2 rounded-xl bg-slate-50 border border-slate-200 px-3 py-2">
-                              <CheckCircle className="h-4 w-4 text-emerald-500 shrink-0" />
-                              <span className="text-xs font-medium text-slate-700">{pensionPhotoKeys.length} photo{pensionPhotoKeys.length > 1 ? "s" : ""} prête{pensionPhotoKeys.length > 1 ? "s" : ""} pour l&apos;envoi</span>
-                              <button type="button" onClick={() => { setPensionPhotoKeys([]); setPensionExifData([]); }} className="ml-auto text-xs text-slate-400 hover:text-slate-600 transition">
-                                Effacer
-                              </button>
-                            </div>
-                          )}
-                          {pensionError && (
-                            <div className="mb-3 flex items-center gap-2 rounded-xl bg-rose-50 border border-rose-200 px-3 py-2">
-                              <AlertTriangle className="h-4 w-4 text-rose-500 shrink-0" />
-                              <span className="text-xs font-medium text-rose-700">{pensionError}</span>
-                            </div>
-                          )}
-
-                          <div className="flex flex-wrap gap-2">
-                            <button
-                              type="button"
-                              onClick={() => pensionPhotoInputRef.current?.click()}
-                              disabled={pensionUploadingCount > 0 || pensionPhotoKeys.length >= 8}
-                              className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:opacity-50"
-                            >
-                              <Upload className="h-3.5 w-3.5" />
-                              {pensionUploadingCount > 0 ? `Chargement (${pensionUploadingCount})…` : "Sélectionner des photos"}
-                            </button>
-                            {pensionPhotoKeys.length >= 3 && (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  if (!profile.boardingDetails?.housingType) {
-                                    setPensionError("Veuillez d'abord sélectionner le type de logement.");
-                                    return;
-                                  }
-                                  void submitPensionVerification();
-                                }}
-                                disabled={pensionSubmitting || !profile.boardingDetails?.housingType}
-                                title={!profile.boardingDetails?.housingType ? "Sélectionnez d'abord le type de logement" : undefined}
-                                className="inline-flex items-center gap-2 rounded-xl bg-[var(--dogshift-blue)] px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
-                              >
-                                <ShieldCheck className="h-3.5 w-3.5" />
-                                {pensionSubmitting ? "Envoi en cours…" : "Soumettre pour vérification"}
-                              </button>
-                            )}
-                          </div>
-                          {pensionPhotoKeys.length >= 3 && !profile.boardingDetails?.housingType && (
-                            <p className="mt-2 flex items-center gap-1 text-xs text-amber-700">
-                              <AlertTriangle className="h-3 w-3 shrink-0" />
-                              Sélectionnez le type de logement pour pouvoir soumettre.
-                            </p>
-                          )}
-                          <input
-                            ref={pensionPhotoInputRef}
-                            type="file"
-                            accept="image/jpeg,image/png,image/webp"
-                            multiple
-                            className="hidden"
-                            onChange={(e) => void handlePensionPhotoAdd(e)}
-                          />
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ) : null}
               </div>
 
-              {/* ── Critères d'acceptation ── */}
-              <div id="acceptanceCriteria" className="scroll-mt-24 border-t border-slate-200 p-6 sm:p-8">
-                <h2 className="text-base font-semibold text-slate-900">Critères d&apos;acceptation</h2>
-                <p className="mt-1 text-sm text-slate-500">
-                  Ces critères s&apos;appliquent à tous vos services. Les réservations non conformes seront bloquées.
-                </p>
+              <div className="my-6 border-t border-slate-100" />
+
+              {/* 3b — Conditions sur le chien */}
+              <div>
+                <h3 className="text-sm font-semibold text-slate-800">Conditions sur le chien</h3>
                 <div className="mt-4 space-y-4">
-                  {/* Castration */}
                   <div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-4">
                     <div>
                       <p className="text-sm font-semibold text-slate-900">Chien castré/stérilisé requis</p>
@@ -1037,11 +827,21 @@ export default function HostProfileEditPage() {
                       />
                     </button>
                   </div>
+                </div>
+              </div>
 
-                  {/* Max chiens simultanés */}
+              <div className="my-6 border-t border-slate-100" />
+
+              {/* 3c — Capacité globale */}
+              <div>
+                <h3 className="text-sm font-semibold text-slate-800">Capacité globale</h3>
+                <p className="mt-1 text-xs text-slate-500">
+                  0 = pas de limite. Cette limite s&apos;applique en plus des limites par taille.
+                </p>
+                <div className="mt-4 space-y-4">
                   <div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-4">
                     <div>
-                      <p className="text-sm font-semibold text-slate-900">Nombre maximum de chiens simultanés</p>
+                      <p className="text-sm font-semibold text-slate-900">Nombre maximum de chiens simultanés (tous services confondus)</p>
                       <p className="mt-0.5 text-xs text-slate-500">0 = pas de limite.</p>
                     </div>
                     <div className="flex items-center gap-3">
@@ -1083,155 +883,366 @@ export default function HostProfileEditPage() {
                       </button>
                     </div>
                   </div>
-                </div>
 
-                {/* OPAn certificate required when maxDogs > 5 */}
-                {(profile.acceptanceCriteria?.maxDogs ?? 0) > 5 && (
-                  <div className="mt-5">
-                    {maxDogsCertStatus === "approved" ? (
-                      <div className="flex items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-4">
-                        <CheckCircle className="h-5 w-5 shrink-0 text-emerald-600" />
-                        <div>
-                          <p className="text-sm font-semibold text-emerald-900">Certificat OPAn validé</p>
-                          <p className="text-xs text-emerald-700 mt-0.5">Vous êtes autorisé(e) à accueillir plus de 5 chiens simultanément.</p>
-                        </div>
-                      </div>
-                    ) : maxDogsCertStatus === "pending" ? (
-                      <div className="rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4">
-                        <div className="flex items-center gap-3">
-                          <Clock className="h-5 w-5 shrink-0 text-amber-600" />
-                          <div className="flex-1">
-                            <p className="text-sm font-semibold text-amber-900">Document en cours de vérification</p>
-                            <p className="text-xs text-amber-700 mt-0.5">Notre équipe examine votre document. Réponse sous 24–48h ouvrées.</p>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => void resetMaxDogsCert()}
-                            disabled={maxDogsCertResetting}
-                            className="shrink-0 text-xs text-amber-700 underline hover:text-amber-900 disabled:opacity-50"
-                          >
-                            {maxDogsCertResetting ? "…" : "Nouveau document"}
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-                        <div className={`flex items-center gap-3 px-5 py-4 border-b ${maxDogsCertStatus === "rejected" ? "border-rose-100 bg-rose-50" : "border-slate-100 bg-slate-50"}`}>
-                          <ShieldCheck className={`h-5 w-5 shrink-0 ${maxDogsCertStatus === "rejected" ? "text-rose-600" : "text-[var(--dogshift-blue)]"}`} />
+                  {/* OPAn certificate required when maxDogs > 5 */}
+                  {(profile.acceptanceCriteria?.maxDogs ?? 0) > 5 && (
+                    <div>
+                      {maxDogsCertStatus === "approved" ? (
+                        <div className="flex items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-4">
+                          <CheckCircle className="h-5 w-5 shrink-0 text-emerald-600" />
                           <div>
-                            <p className={`text-sm font-semibold ${maxDogsCertStatus === "rejected" ? "text-rose-900" : "text-slate-900"}`}>
-                              {maxDogsCertStatus === "rejected" ? "Document refusé — soumettez-en un nouveau" : "Certificat OPAn requis (art. 101 OPAn)"}
-                            </p>
-                            <p className={`text-xs mt-0.5 ${maxDogsCertStatus === "rejected" ? "text-rose-700" : "text-slate-500"}`}>
-                              La loi suisse exige une attestation FSIFP ou une autorisation cantonale pour garder plus de 5 chiens simultanément.
-                            </p>
+                            <p className="text-sm font-semibold text-emerald-900">Certificat OPAn validé</p>
+                            <p className="text-xs text-emerald-700 mt-0.5">Vous êtes autorisé(e) à accueillir plus de 5 chiens simultanément.</p>
                           </div>
                         </div>
-                        <div className="px-5 py-5">
-                          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-3">Document accepté</p>
-                          <div className="grid grid-cols-1 gap-1.5 mb-4 sm:grid-cols-2 text-xs text-slate-600">
-                            {["Attestation FSIFP (garde d'animaux de compagnie)", "Autorisation cantonale (SCAV/service vétérinaire)"].map((l) => (
-                              <div key={l} className="flex items-center gap-1.5">
-                                <CheckCircle className="h-3.5 w-3.5 shrink-0 text-slate-400" />
-                                {l}
-                              </div>
-                            ))}
-                          </div>
-                          {maxDogsCertError && (
-                            <div className="mb-3 flex items-center gap-2 rounded-xl bg-rose-50 border border-rose-200 px-3 py-2">
-                              <AlertTriangle className="h-4 w-4 text-rose-500 shrink-0" />
-                              <span className="text-xs font-medium text-rose-700">{maxDogsCertError}</span>
+                      ) : maxDogsCertStatus === "pending" ? (
+                        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4">
+                          <div className="flex items-center gap-3">
+                            <Clock className="h-5 w-5 shrink-0 text-amber-600" />
+                            <div className="flex-1">
+                              <p className="text-sm font-semibold text-amber-900">Document en cours de vérification</p>
+                              <p className="text-xs text-amber-700 mt-0.5">Notre équipe examine votre document. Réponse sous 24–48h ouvrées.</p>
                             </div>
-                          )}
-                          {maxDogsCertKey ? (
-                            <div className="mb-3 flex items-center gap-2 rounded-xl bg-slate-50 border border-slate-200 px-3 py-2">
-                              <CheckCircle className="h-4 w-4 text-emerald-500 shrink-0" />
-                              <span className="text-xs font-medium text-slate-700">Document prêt pour envoi</span>
-                              <button type="button" onClick={() => setMaxDogsCertKey(null)} className="ml-auto text-xs text-slate-400 hover:text-slate-600">Effacer</button>
-                            </div>
-                          ) : null}
-                          <div className="flex flex-wrap gap-2">
                             <button
                               type="button"
-                              onClick={() => maxDogsCertInputRef.current?.click()}
-                              disabled={maxDogsCertUploading}
-                              className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:opacity-50"
+                              onClick={() => void resetMaxDogsCert()}
+                              disabled={maxDogsCertResetting}
+                              className="shrink-0 text-xs text-amber-700 underline hover:text-amber-900 disabled:opacity-50"
                             >
-                              <Upload className="h-3.5 w-3.5" />
-                              {maxDogsCertUploading ? "Upload…" : "Choisir un document"}
+                              {maxDogsCertResetting ? "…" : "Nouveau document"}
                             </button>
-                            {maxDogsCertKey && (
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+                          <div className={`flex items-center gap-3 px-5 py-4 border-b ${maxDogsCertStatus === "rejected" ? "border-rose-100 bg-rose-50" : "border-slate-100 bg-slate-50"}`}>
+                            <ShieldCheck className={`h-5 w-5 shrink-0 ${maxDogsCertStatus === "rejected" ? "text-rose-600" : "text-[var(--dogshift-blue)]"}`} />
+                            <div>
+                              <p className={`text-sm font-semibold ${maxDogsCertStatus === "rejected" ? "text-rose-900" : "text-slate-900"}`}>
+                                {maxDogsCertStatus === "rejected" ? "Document refusé — soumettez-en un nouveau" : "Certificat OPAn requis (art. 101 OPAn)"}
+                              </p>
+                              <p className={`text-xs mt-0.5 ${maxDogsCertStatus === "rejected" ? "text-rose-700" : "text-slate-500"}`}>
+                                La loi suisse exige une attestation FSIFP ou une autorisation cantonale pour garder plus de 5 chiens simultanément.
+                              </p>
+                            </div>
+                          </div>
+                          <div className="px-5 py-5">
+                            <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-3">Document accepté</p>
+                            <div className="grid grid-cols-1 gap-1.5 mb-4 sm:grid-cols-2 text-xs text-slate-600">
+                              {["Attestation FSIFP (garde d'animaux de compagnie)", "Autorisation cantonale (SCAV/service vétérinaire)"].map((l) => (
+                                <div key={l} className="flex items-center gap-1.5">
+                                  <CheckCircle className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+                                  {l}
+                                </div>
+                              ))}
+                            </div>
+                            {maxDogsCertError && (
+                              <div className="mb-3 flex items-center gap-2 rounded-xl bg-rose-50 border border-rose-200 px-3 py-2">
+                                <AlertTriangle className="h-4 w-4 text-rose-500 shrink-0" />
+                                <span className="text-xs font-medium text-rose-700">{maxDogsCertError}</span>
+                              </div>
+                            )}
+                            {maxDogsCertKey ? (
+                              <div className="mb-3 flex items-center gap-2 rounded-xl bg-slate-50 border border-slate-200 px-3 py-2">
+                                <CheckCircle className="h-4 w-4 text-emerald-500 shrink-0" />
+                                <span className="text-xs font-medium text-slate-700">Document prêt pour envoi</span>
+                                <button type="button" onClick={() => setMaxDogsCertKey(null)} className="ml-auto text-xs text-slate-400 hover:text-slate-600">Effacer</button>
+                              </div>
+                            ) : null}
+                            <div className="flex flex-wrap gap-2">
                               <button
                                 type="button"
-                                onClick={() => void submitMaxDogsCert()}
-                                disabled={maxDogsCertSubmitting}
-                                className="inline-flex items-center gap-1.5 rounded-xl bg-[var(--dogshift-blue)] px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-[var(--dogshift-blue-hover)] disabled:opacity-50"
+                                onClick={() => maxDogsCertInputRef.current?.click()}
+                                disabled={maxDogsCertUploading}
+                                className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:opacity-50"
                               >
-                                {maxDogsCertSubmitting ? "Envoi…" : "Soumettre pour vérification"}
+                                <Upload className="h-3.5 w-3.5" />
+                                {maxDogsCertUploading ? "Upload…" : "Choisir un document"}
                               </button>
-                            )}
+                              {maxDogsCertKey && (
+                                <button
+                                  type="button"
+                                  onClick={() => void submitMaxDogsCert()}
+                                  disabled={maxDogsCertSubmitting}
+                                  className="inline-flex items-center gap-1.5 rounded-xl bg-[var(--dogshift-blue)] px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-[var(--dogshift-blue-hover)] disabled:opacity-50"
+                                >
+                                  {maxDogsCertSubmitting ? "Envoi…" : "Soumettre pour vérification"}
+                                </button>
+                              )}
+                            </div>
+                            <input
+                              ref={maxDogsCertInputRef}
+                              type="file"
+                              accept="image/jpeg,image/png,image/webp,application/pdf"
+                              className="hidden"
+                              onChange={(e) => void handleMaxDogsCertFileChange(e)}
+                            />
                           </div>
-                          <input
-                            ref={maxDogsCertInputRef}
-                            type="file"
-                            accept="image/jpeg,image/png,image/webp,application/pdf"
-                            className="hidden"
-                            onChange={(e) => void handleMaxDogsCertFileChange(e)}
-                          />
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* ── Section 4 — Logement (conditionnelle) ── */}
+          <section className="relative rounded-3xl border border-slate-200 bg-white shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)]">
+            <div className="p-6 sm:p-8">
+              <h2 className="text-base font-semibold text-slate-900">Logement</h2>
+              <p className="mt-1 text-sm text-slate-500">
+                Informations sur votre logement, requises pour activer la Pension sur votre profil.
+              </p>
+
+              {hasPension ? (
+                <div className="mt-5">
+                  {pensionVerifStatus === "approved" ? (
+                    <div className="flex items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-4">
+                      <CheckCircle className="h-5 w-5 shrink-0 text-emerald-600" />
+                      <div>
+                        <p className="text-sm font-semibold text-emerald-900">Logement vérifié</p>
+                        <p className="text-xs text-emerald-700 mt-0.5">Le service Pension est actif sur votre profil public.</p>
+                      </div>
+                    </div>
+                  ) : pensionVerifStatus === "pending" || pensionVerifStatus === "ai_reviewing" || pensionVerifStatus === "ai_needs_review" ? (
+                    <div className="rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4">
+                      <div className="flex items-center gap-3">
+                        <Clock className="h-5 w-5 shrink-0 text-amber-600" />
+                        <div className="flex-1">
+                          <p className="text-sm font-semibold text-amber-900">Vérification en cours</p>
+                          <p className="text-xs text-amber-700 mt-0.5">Notre équipe examine vos photos. Vous recevrez un e-mail de réponse dans les 24–48 heures ouvrées.</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => void resetPensionVerification()}
+                          disabled={pensionResetting}
+                          className="shrink-0 text-xs text-amber-700 underline hover:text-amber-900 disabled:opacity-50"
+                        >
+                          {pensionResetting ? "Réinitialisation…" : "Réessayer"}
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    /* Single unified card: housing details + photo upload */
+                    <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+                      {/* Header */}
+                      <div className={`flex items-center gap-3 px-5 py-4 border-b ${pensionVerifStatus === "ai_rejected" || pensionVerifStatus === "rejected" ? "border-rose-100 bg-rose-50" : "border-slate-100 bg-slate-50"}`}>
+                        {pensionVerifStatus === "ai_rejected" || pensionVerifStatus === "rejected" ? (
+                          <XCircle className="h-5 w-5 shrink-0 text-rose-600" />
+                        ) : (
+                          <ShieldCheck className="h-5 w-5 shrink-0 text-[var(--dogshift-blue)]" />
+                        )}
+                        <div>
+                          <p className={`text-sm font-semibold ${pensionVerifStatus === "ai_rejected" || pensionVerifStatus === "rejected" ? "text-rose-900" : "text-slate-900"}`}>
+                            {pensionVerifStatus === "ai_rejected" || pensionVerifStatus === "rejected"
+                              ? "Photos refusées — Soumettez de nouvelles photos"
+                              : "Vérification du logement requise"}
+                          </p>
+                          <p className={`text-xs mt-0.5 ${pensionVerifStatus === "ai_rejected" || pensionVerifStatus === "rejected" ? "text-rose-700" : "text-slate-500"}`}>
+                            {pensionVerifStatus === "ai_rejected" || pensionVerifStatus === "rejected"
+                              ? "Vos photos n&apos;ont pas satisfait les critères. Complétez les informations et soumettez de nouvelles photos."
+                              : "Requis pour activer la Pension sur votre profil public."}
+                          </p>
                         </div>
                       </div>
-                    )}
-                  </div>
-                )}
-              </div>
 
-              <div className="border-t border-slate-200 p-6 sm:p-8">
-                <div className="mb-5 flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                  <div>
-                    <p className="text-sm font-semibold text-slate-900">Annonce publiée</p>
-                    <p className="mt-1 text-sm text-slate-600">
-                      {published ? "Votre annonce est visible dans la recherche." : "Votre annonce est cachée (brouillon)."}
-                    </p>
-                    {!canPublish && !published ? (
-                      <p className="mt-2 text-sm font-semibold text-slate-700">
-                        Complète ton profil et accepte le règlement pour publier.
-                      </p>
-                    ) : null}
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (!canTogglePublish) return;
-                      setPublished((v) => !v);
-                    }}
-                    disabled={!canTogglePublish}
-                    className={
-                      published
-                        ? "inline-flex h-9 w-14 items-center rounded-full bg-[var(--dogshift-blue)] p-1 transition"
-                        : "inline-flex h-9 w-14 items-center rounded-full bg-slate-200 p-1 transition"
-                    }
-                    aria-label="Annonce publiée"
-                  >
-                    <span
-                      className={
-                        published
-                          ? "h-7 w-7 translate-x-5 rounded-full bg-white shadow-sm transition"
-                          : "h-7 w-7 translate-x-0 rounded-full bg-white shadow-sm transition"
-                      }
-                    />
-                  </button>
+                      {/* Housing details — required before upload */}
+                      <div className="px-5 py-5 border-b border-slate-100">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-4">Détails du logement</p>
+                        <div className="grid gap-4 sm:grid-cols-2">
+                          <div>
+                            <label className="block text-sm font-medium text-slate-700" htmlFor="host_housing">
+                              Type de logement <span className="text-rose-500">*</span>
+                            </label>
+                            <div className="relative">
+                              <select
+                                id="host_housing"
+                                value={profile.boardingDetails?.housingType ?? ""}
+                                onChange={(e) =>
+                                  setProfile((p) => ({
+                                    ...p,
+                                    boardingDetails: {
+                                      ...p.boardingDetails,
+                                      housingType: (e.target.value as "Appartement" | "Maison" | "") || undefined,
+                                    },
+                                  }))
+                                }
+                                className={`mt-2 w-full appearance-none rounded-2xl border px-4 py-3 pr-10 text-sm font-medium shadow-sm outline-none transition focus:ring-4 ${
+                                  !profile.boardingDetails?.housingType
+                                    ? "border-amber-400 bg-amber-50 text-slate-900 focus:border-amber-500 focus:ring-amber-100"
+                                    : "border-slate-300 bg-white text-slate-900 focus:border-[var(--dogshift-blue)] focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_85%)]"
+                                }`}
+                              >
+                                <option value="">Sélectionner</option>
+                                <option value="Appartement">Appartement</option>
+                                <option value="Maison">Maison</option>
+                              </select>
+                              <div className="pointer-events-none absolute right-4 top-[calc(50%+4px)] -translate-y-1/2 text-slate-400">
+                                <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4" aria-hidden="true">
+                                  <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
+                                </svg>
+                              </div>
+                            </div>
+                            {!profile.boardingDetails?.housingType && (
+                              <p className="mt-1.5 flex items-center gap-1 text-xs text-amber-700">
+                                <AlertTriangle className="h-3 w-3 shrink-0" />
+                                Requis pour soumettre vos photos
+                              </p>
+                            )}
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-medium text-slate-700" htmlFor="host_boarding_notes">
+                              Notes (optionnel)
+                            </label>
+                            <input
+                              id="host_boarding_notes"
+                              value={profile.boardingDetails?.notes ?? ""}
+                              onChange={(e) =>
+                                setProfile((p) => ({
+                                  ...p,
+                                  boardingDetails: { ...p.boardingDetails, notes: e.target.value },
+                                }))
+                              }
+                              className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition focus:border-[var(--dogshift-blue)] focus:ring-4 focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_85%)]"
+                              placeholder="ex. Jardin clos, parc à 5 min"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                          <label className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-900 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={Boolean(profile.boardingDetails?.hasGarden)}
+                              onChange={(e) =>
+                                setProfile((p) => ({
+                                  ...p,
+                                  boardingDetails: { ...p.boardingDetails, hasGarden: e.target.checked },
+                                }))
+                              }
+                            />
+                            Jardin
+                          </label>
+                          <label className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-900 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={Boolean(profile.boardingDetails?.hasOtherPets)}
+                              onChange={(e) =>
+                                setProfile((p) => ({
+                                  ...p,
+                                  boardingDetails: { ...p.boardingDetails, hasOtherPets: e.target.checked },
+                                }))
+                              }
+                            />
+                            Autres animaux
+                          </label>
+                        </div>
+                      </div>
+
+                      {/* Photo upload */}
+                      <div className="px-5 py-5">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-3">Photos requises (3 minimum, 8 maximum)</p>
+                        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 mb-4">
+                          {["Salon / séjour", "Chambre / espace nuit", "Cuisine", "Extérieur (si dispo)"].map((label) => (
+                            <div key={label} className="flex items-center gap-1.5 text-xs text-slate-600">
+                              <Camera className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+                              {label}
+                            </div>
+                          ))}
+                        </div>
+
+                        {pensionPhotoKeys.length > 0 && (
+                          <div className="mb-3 flex items-center gap-2 rounded-xl bg-slate-50 border border-slate-200 px-3 py-2">
+                            <CheckCircle className="h-4 w-4 text-emerald-500 shrink-0" />
+                            <span className="text-xs font-medium text-slate-700">{pensionPhotoKeys.length} photo{pensionPhotoKeys.length > 1 ? "s" : ""} prête{pensionPhotoKeys.length > 1 ? "s" : ""} pour l&apos;envoi</span>
+                            <button type="button" onClick={() => { setPensionPhotoKeys([]); setPensionExifData([]); }} className="ml-auto text-xs text-slate-400 hover:text-slate-600 transition">
+                              Effacer
+                            </button>
+                          </div>
+                        )}
+                        {pensionError && (
+                          <div className="mb-3 flex items-center gap-2 rounded-xl bg-rose-50 border border-rose-200 px-3 py-2">
+                            <AlertTriangle className="h-4 w-4 text-rose-500 shrink-0" />
+                            <span className="text-xs font-medium text-rose-700">{pensionError}</span>
+                          </div>
+                        )}
+
+                        <div className="flex flex-wrap gap-2">
+                          <button
+                            type="button"
+                            onClick={() => pensionPhotoInputRef.current?.click()}
+                            disabled={pensionUploadingCount > 0 || pensionPhotoKeys.length >= 8}
+                            className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:opacity-50"
+                          >
+                            <Upload className="h-3.5 w-3.5" />
+                            {pensionUploadingCount > 0 ? `Chargement (${pensionUploadingCount})…` : "Sélectionner des photos"}
+                          </button>
+                          {pensionPhotoKeys.length >= 3 && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (!profile.boardingDetails?.housingType) {
+                                  setPensionError("Veuillez d'abord sélectionner le type de logement.");
+                                  return;
+                                }
+                                void submitPensionVerification();
+                              }}
+                              disabled={pensionSubmitting || !profile.boardingDetails?.housingType}
+                              title={!profile.boardingDetails?.housingType ? "Sélectionnez d'abord le type de logement" : undefined}
+                              className="inline-flex items-center gap-2 rounded-xl bg-[var(--dogshift-blue)] px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
+                            >
+                              <ShieldCheck className="h-3.5 w-3.5" />
+                              {pensionSubmitting ? "Envoi en cours…" : "Soumettre pour vérification"}
+                            </button>
+                          )}
+                        </div>
+                        {pensionPhotoKeys.length >= 3 && !profile.boardingDetails?.housingType && (
+                          <p className="mt-2 flex items-center gap-1 text-xs text-amber-700">
+                            <AlertTriangle className="h-3 w-3 shrink-0" />
+                            Sélectionnez le type de logement pour pouvoir soumettre.
+                          </p>
+                        )}
+                        <input
+                          ref={pensionPhotoInputRef}
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp"
+                          multiple
+                          className="hidden"
+                          onChange={(e) => void handlePensionPhotoAdd(e)}
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
+              ) : (
+                <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
+                  <p className="text-sm text-slate-600">
+                    Activez le service Pension dans &quot;Services&quot; pour configurer votre logement.
+                  </p>
+                </div>
+              )}
+            </div>
+          </section>
 
-                <div id="verification" className="mt-8 rounded-2xl border border-slate-200 bg-white p-5">
-                  <p className="text-sm font-semibold text-slate-900">Vérification</p>
+          {/* ── Section 5 — Statut du compte ── */}
+          <section className="relative rounded-3xl border border-slate-200 bg-white shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)]">
+            <div className="p-6 sm:p-8">
+              <h2 className="text-base font-semibold text-slate-900">Statut du compte</h2>
+
+              {/* 5a — Vérification d'identité */}
+              <div id="verification" className="scroll-mt-24 mt-5">
+                <h3 className="text-sm font-semibold text-slate-800">Vérification d&apos;identité</h3>
+                <div className="mt-3 rounded-2xl border border-slate-200 bg-white p-5">
                   {verificationStatus === "approved" ? (
-                    <div className="mt-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+                    <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
                       <p className="text-sm font-semibold text-emerald-900">Vérifié</p>
                       <p className="mt-1 text-sm text-emerald-900/80">Votre profil est vérifié.</p>
                       <p className="mt-2 text-xs text-emerald-900/70">Nouvelle demande désactivée.</p>
                     </div>
                   ) : verificationStatus === "pending" ? (
-                    <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 p-4">
+                    <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
                       <p className="text-sm font-semibold text-amber-900">Vérification en cours</p>
                       <p className="mt-1 text-sm text-amber-900/80">Votre demande est en cours de vérification.</p>
                       {verificationSubmittedAt ? (
@@ -1266,7 +1277,7 @@ export default function HostProfileEditPage() {
                       </button>
                     </div>
                   ) : (
-                    <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                       <p className="text-sm text-slate-600">Demandez la vérification pour rassurer les clients.</p>
 
                       {verificationStatus === "rejected" ? (
@@ -1279,7 +1290,7 @@ export default function HostProfileEditPage() {
 
                       <div className="mt-4 grid gap-3 sm:grid-cols-2">
                         <div>
-                          <p className="text-xs font-semibold text-slate-700">Pièce d’identité (obligatoire)</p>
+                          <p className="text-xs font-semibold text-slate-700">Pièce d&apos;identité (obligatoire)</p>
                           <div className="mt-2 flex flex-wrap items-center gap-3">
                             <input
                               id="host_verification_id"
@@ -1339,7 +1350,7 @@ export default function HostProfileEditPage() {
                           disabled={verificationUploading}
                           onClick={async () => {
                             if (!verificationIdFile) {
-                              setVerificationError("Ajoutez votre pièce d’identité pour demander la vérification.");
+                              setVerificationError("Ajoutez votre pièce d'identité pour demander la vérification.");
                               return;
                             }
                             if (verificationIdFile.size > 5 * 1024 * 1024) {
@@ -1365,7 +1376,7 @@ export default function HostProfileEditPage() {
                               });
                               const presignId = (await presignIdRes.json().catch(() => null)) as any;
                               if (!presignIdRes.ok || !presignId?.ok || !presignId?.uploadUrl || !presignId?.key) {
-                                setVerificationError("Impossible de préparer l’upload du document.");
+                                setVerificationError("Impossible de préparer l'upload du document.");
                                 return;
                               }
 
@@ -1392,7 +1403,7 @@ export default function HostProfileEditPage() {
                                 });
                                 const presignSelfie = (await presignSelfieRes.json().catch(() => null)) as any;
                                 if (!presignSelfieRes.ok || !presignSelfie?.ok || !presignSelfie?.uploadUrl || !presignSelfie?.key) {
-                                  setVerificationError("Impossible de préparer l’upload du selfie.");
+                                  setVerificationError("Impossible de préparer l'upload du selfie.");
                                   return;
                                 }
                                 const putSelfieRes = await fetch(String(presignSelfie.uploadUrl), {
@@ -1471,33 +1482,79 @@ export default function HostProfileEditPage() {
                     </div>
                   )}
                 </div>
-
-                <button
-                  type="button"
-                  disabled={saving}
-                  onClick={onSave}
-                  className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-[var(--dogshift-blue)] px-6 py-3 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition hover:bg-[var(--dogshift-blue-hover)] disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {saving ? (
-                    <>
-                      <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" aria-hidden="true" />
-                      <span>Enregistrement…</span>
-                    </>
-                  ) : (
-                    "Enregistrer"
-                  )}
-                </button>
-
-                {saved ? (
-                  <div className="mt-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
-                    <p className="text-sm font-semibold text-emerald-900">Enregistré</p>
-                    <p className="mt-1 text-sm text-emerald-900/80">Vos modifications seront visibles sur votre profil public.</p>
-                  </div>
-                ) : null}
-
-                {error ? <p className="mt-4 text-sm font-medium text-rose-600">{error}</p> : null}
               </div>
+
+              <div className="my-6 border-t border-slate-100" />
+
+              {/* 5b — Publication de l'annonce */}
+              <div>
+                <h3 className="text-sm font-semibold text-slate-800">Publication de l&apos;annonce</h3>
+                <div className="mt-4 flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                  <div>
+                    <p className="text-sm font-semibold text-slate-900">
+                      {published ? "Votre annonce est visible dans la recherche." : "Votre annonce est cachée (brouillon)."}
+                    </p>
+                    {!canPublish && !published ? (
+                      <p className="mt-2 text-sm font-semibold text-slate-700">
+                        Complète ton profil et accepte le règlement pour publier.
+                      </p>
+                    ) : null}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!canTogglePublish) return;
+                      setPublished((v) => !v);
+                    }}
+                    disabled={!canTogglePublish}
+                    className={
+                      published
+                        ? "inline-flex h-9 w-14 items-center rounded-full bg-[var(--dogshift-blue)] p-1 transition"
+                        : "inline-flex h-9 w-14 items-center rounded-full bg-slate-200 p-1 transition"
+                    }
+                    aria-label="Annonce publiée"
+                  >
+                    <span
+                      className={
+                        published
+                          ? "h-7 w-7 translate-x-5 rounded-full bg-white shadow-sm transition"
+                          : "h-7 w-7 translate-x-0 rounded-full bg-white shadow-sm transition"
+                      }
+                    />
+                  </button>
+                </div>
+              </div>
+            </div>
           </section>
+
+          {/* ── Bouton Enregistrer ── */}
+          <div>
+            <button
+              type="button"
+              disabled={saving}
+              onClick={onSave}
+              className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-[var(--dogshift-blue)] px-6 py-3 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition hover:bg-[var(--dogshift-blue-hover)] disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {saving ? (
+                <>
+                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" aria-hidden="true" />
+                  <span>Enregistrement…</span>
+                </>
+              ) : (
+                "Enregistrer"
+              )}
+            </button>
+
+            {saved ? (
+              <div className="mt-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+                <p className="text-sm font-semibold text-emerald-900">Enregistré</p>
+                <p className="mt-1 text-sm text-emerald-900/80">Vos modifications seront visibles sur votre profil public.</p>
+              </div>
+            ) : null}
+
+            {error ? <p className="mt-4 text-sm font-medium text-rose-600">{error}</p> : null}
+          </div>
+
         </div>
       </div>
     </div>
