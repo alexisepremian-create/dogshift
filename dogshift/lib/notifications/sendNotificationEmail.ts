@@ -170,7 +170,7 @@ function buildDogProfileHtml(dog: DogProfileData): string {
     <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;margin-top:16px;border-radius:12px;overflow:hidden;border:1px solid #e0e7ef;">
       <tr>
         <td colspan="2" style="padding:10px 14px;background:#f0f4f8;font-family:Arial,Helvetica,sans-serif;font-size:13px;font-weight:700;color:#1e3a5f;">
-          🐾 Fiche de ${dog.name}
+          Fiche de ${dog.name}
         </td>
       </tr>
       <tr>

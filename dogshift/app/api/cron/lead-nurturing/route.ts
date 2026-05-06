@@ -24,9 +24,9 @@ const STEP_1_DELAY_MS = 86400e3; // 1 jour après capturedAt
 const BATCH_SIZE = 50;
 
 const SUBJECTS: Record<number, string> = {
-  1: "Avez-vous eu le temps de lire votre guide ? 🐾",
+  1: "Avez-vous eu le temps de lire votre guide ?",
   2: "Ce que disent les autres propriétaires de DogShift",
-  3: "Votre chien mérite le meilleur sitter 🐾",
+  3: "Votre chien mérite le meilleur sitter",
 };
 
 function baseUrl() {

@@ -3,7 +3,6 @@ import {
   Button,
   Container,
   Head,
-  Hr,
   Html,
   Img,
   Link,
@@ -13,8 +12,20 @@ import {
 } from "@react-email/components";
 import type { CSSProperties } from "react";
 
-const brandBlue = "#2f4d6b";
-const brandBlueHover = "#263f58";
+const ACCENT = "#2f4d6b";
+
+const DARK_CSS = `
+@media (prefers-color-scheme: dark) {
+  body, .ds-outer { background-color: #0f172a !important; }
+  .ds-card { background-color: #1e293b !important; border-color: #334155 !important; }
+  .ds-title { color: #f1f5f9 !important; }
+  .ds-lead { color: #94a3b8 !important; }
+  .ds-msg-box { background-color: #0f172a !important; border-color: #334155 !important; border-left-color: #3b82f6 !important; }
+  .ds-msg-text { color: #94a3b8 !important; }
+  .ds-footer-text { color: #475569 !important; }
+  .ds-footer-link { color: #64748b !important; }
+  .ds-bottom { color: #334155 !important; }
+}`;
 
 export function CommunicationsEmail(props: {
   baseUrl: string;
@@ -26,76 +37,76 @@ export function CommunicationsEmail(props: {
   const baseUrl = (props.baseUrl || "https://www.dogshift.ch").trim().replace(/\/$/, "");
   const logoUrl = `${baseUrl}/dogshift-logo.png`;
   const previewText = (props.previewText || props.subject || "Message de DogShift").trim();
+  const firstName = (props.firstName || "").trim();
 
   return (
     <Html lang="fr">
-      <Head />
+      <Head>
+        <style>{DARK_CSS}</style>
+      </Head>
       <Preview>{previewText}</Preview>
-      <Body style={styles.body}>
-        <Container style={styles.container}>
+      <Body className="ds-outer" style={s.body}>
+        <Container style={s.container}>
 
           {/* Logo */}
-          <Section style={styles.brandSection}>
-            <Img src={logoUrl} width={152} alt="DogShift" style={styles.logo} />
+          <Section style={s.logoSection}>
+            <Link href={baseUrl} style={s.logoLink}>
+              <Img src={logoUrl} width={140} alt="DogShift" style={s.logo} />
+            </Link>
           </Section>
 
           {/* Card */}
-          <Section style={styles.card}>
-            <Text style={styles.h1}>{props.subject}</Text>
+          <Section className="ds-card" style={s.card}>
+            <div style={s.accentBar} />
+            <div style={s.cardBody}>
+              <Text className="ds-title" style={s.h1}>{props.subject}</Text>
+              <Text className="ds-lead" style={s.lead}>
+                Bonjour{firstName ? ` ${firstName}` : ""},
+              </Text>
 
-            <Text style={styles.lead}>
-              Bonjour{props.firstName?.trim() ? ` ${props.firstName.trim()}` : ""},
-            </Text>
+              {props.customMessage ? (
+                <Section className="ds-msg-box" style={s.messageBox}>
+                  {props.customMessage.split("\n").map((line, i) =>
+                    line.trim() === "" ? (
+                      <Text key={i} style={s.messageSpacer}>{" "}</Text>
+                    ) : (
+                      <Text key={i} className="ds-msg-text" style={s.messageText}>{line}</Text>
+                    ),
+                  )}
+                </Section>
+              ) : null}
 
-            {props.customMessage ? (
-              <Section style={styles.messageBox}>
-                {props.customMessage.split("\n").map((line, i) =>
-                  line.trim() === "" ? (
-                    <Text key={i} style={styles.messageSpacer}>{" "}</Text>
-                  ) : (
-                    <Text key={i} style={styles.messageText}>{line}</Text>
-                  ),
-                )}
+              <Section style={s.ctaRow}>
+                <Button href={baseUrl} style={s.cta}>
+                  Visiter DogShift
+                </Button>
               </Section>
-            ) : null}
-
-            <Section style={styles.ctaRow}>
-              <Button href={baseUrl} style={styles.ctaPrimary}>
-                Visiter DogShift
-              </Button>
-            </Section>
-
-            <Hr style={styles.hr} />
-
-            <Text style={styles.footerText}>
-              Des questions ?{" "}
-              <Link href="mailto:support@dogshift.ch" style={styles.link}>
-                support@dogshift.ch
-              </Link>
-            </Text>
-            <Text style={styles.footerText}>
-              <Link href={baseUrl} style={styles.link}>dogshift.ch</Link>
-            </Text>
+            </div>
           </Section>
 
-          <Text style={styles.bottomMuted}>
-            DogShift · <Link href={`${baseUrl}/cgu`} style={styles.bottomLink}>CGU</Link>
-            {" · "}
-            <Link href={`${baseUrl}/confidentialite`} style={styles.bottomLink}>Confidentialité</Link>
-            {" · "}
-            <Link href={`${baseUrl}/mentions-legales`} style={styles.bottomLink}>Mentions légales</Link>
+          {/* Footer */}
+          <Text className="ds-footer-text" style={s.footerText}>
+            Questions ?{" "}
+            <Link href="mailto:support@dogshift.ch" className="ds-footer-link" style={s.footerLink}>
+              support@dogshift.ch
+            </Link>
+            {" "}·{" "}
+            <Link href={baseUrl} className="ds-footer-link" style={s.footerLink}>
+              dogshift.ch
+            </Link>
           </Text>
-
-          <Text style={styles.unsubscribe}>
-            Vous recevez cet email car vous êtes inscrit sur DogShift.{" "}
+          <Text className="ds-bottom" style={s.bottomMuted}>
+            <Link href={`${baseUrl}/cgu`} style={s.legalLink}>CGU</Link>
+            {" · "}
+            <Link href={`${baseUrl}/confidentialite`} style={s.legalLink}>Confidentialité</Link>
+            {" · "}
             <Link
-              href={`mailto:support@dogshift.ch?subject=D%C3%A9sabonnement%20aux%20communications%20DogShift`}
-              style={styles.unsubscribeLink}
+              href={`mailto:support@dogshift.ch?subject=D%C3%A9sabonnement`}
+              style={s.legalLink}
             >
               Se désabonner
             </Link>
           </Text>
-
         </Container>
       </Body>
     </Html>
@@ -122,120 +133,72 @@ export function communicationsEmailPlainText(params: {
   ].join("\n");
 }
 
-const styles: Record<string, CSSProperties> = {
+// ── Styles ─────────────────────────────────────────────────────────────────────
+
+const s: Record<string, CSSProperties> = {
   body: {
     margin: 0,
     padding: 0,
-    backgroundColor: "#f6f8fb",
-    fontFamily:
-      "ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica Neue,Arial,sans-serif",
+    backgroundColor: "#f1f5f9",
+    fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,Helvetica,sans-serif",
     color: "#0f172a",
   },
   container: {
     margin: "0 auto",
-    padding: "28px 12px 40px",
+    padding: "32px 12px 40px",
     width: "100%",
-    maxWidth: 560,
+    maxWidth: 600,
   },
-  brandSection: {
-    textAlign: "center",
-    padding: "0 0 14px",
-  },
-  logo: {
-    margin: "0 auto",
-    display: "block",
-    height: "auto",
-  },
+  logoSection: { textAlign: "center", padding: "0 0 20px" },
+  logoLink: { display: "inline-block" },
+  logo: { display: "block", margin: "0 auto", height: "auto" },
   card: {
     backgroundColor: "#ffffff",
-    border: "1px solid #e6edf5",
-    borderRadius: 18,
-    padding: "22px 22px 18px",
-    boxShadow: "0 18px 60px -44px rgba(2,6,23,0.25)",
+    border: "1px solid #e2e8f0",
+    borderRadius: 16,
+    overflow: "hidden",
+    boxShadow: "0 1px 3px rgba(0,0,0,0.06),0 4px 16px rgba(0,0,0,0.04)",
   },
+  accentBar: { height: 4, backgroundColor: ACCENT, fontSize: 0, lineHeight: "0" },
+  cardBody: { padding: "32px 36px 36px" },
   h1: {
-    margin: 0,
+    margin: "0 0 8px",
     fontSize: 20,
     fontWeight: 800,
     lineHeight: "26px",
-    letterSpacing: "-0.2px",
+    letterSpacing: "-0.3px",
     color: "#0f172a",
   },
-  lead: {
-    margin: "10px 0 0",
-    fontSize: 14,
-    lineHeight: "20px",
-    color: "#334155",
-  },
+  lead: { margin: "0 0 4px", fontSize: 14, lineHeight: "22px", color: "#475569" },
   messageBox: {
-    marginTop: 14,
-    padding: "12px 16px",
-    backgroundColor: "#f0f5fb",
-    borderRadius: 12,
-    borderLeft: `3px solid ${brandBlue}`,
+    marginTop: 16,
+    padding: "14px 18px",
+    backgroundColor: "#f8fafc",
+    borderRadius: 10,
+    borderLeft: `3px solid ${ACCENT}`,
+    border: "1px solid #e2e8f0",
   },
-  messageText: {
-    margin: "2px 0",
-    fontSize: 13,
-    lineHeight: "19px",
-    color: "#334155",
-  },
-  messageSpacer: {
-    margin: 0,
-    fontSize: 6,
-    lineHeight: "6px",
-    color: "transparent",
-  },
-  ctaRow: {
-    textAlign: "center",
-    paddingTop: 18,
-  },
-  ctaPrimary: {
-    backgroundColor: brandBlue,
+  messageText: { margin: "2px 0", fontSize: 14, lineHeight: "22px", color: "#334155" },
+  messageSpacer: { margin: 0, fontSize: 6, lineHeight: "6px", color: "transparent" },
+  ctaRow: { textAlign: "center", padding: "20px 0 4px" },
+  cta: {
+    backgroundColor: ACCENT,
     color: "#ffffff",
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: 700,
     textDecoration: "none",
-    padding: "11px 22px",
+    padding: "14px 28px",
     borderRadius: 10,
     display: "inline-block",
-    border: `1px solid ${brandBlueHover}`,
-  },
-  hr: {
-    border: "none",
-    borderTop: "1px solid #e6edf5",
-    margin: "16px 0",
   },
   footerText: {
-    margin: "6px 0 0",
+    margin: "20px 0 0",
     fontSize: 12,
     lineHeight: "18px",
-    color: "#475569",
-    textAlign: "center",
-  },
-  link: {
-    color: brandBlue,
-    textDecoration: "underline",
-  },
-  bottomMuted: {
-    margin: "14px 0 0",
-    fontSize: 11,
-    lineHeight: "16px",
     color: "#94a3b8",
     textAlign: "center",
   },
-  bottomLink: {
-    color: "#94a3b8",
-    textDecoration: "underline",
-  },
-  unsubscribe: {
-    margin: "10px 0 0",
-    fontSize: 11,
-    color: "#94a3b8",
-    textAlign: "center" as const,
-  },
-  unsubscribeLink: {
-    color: "#94a3b8",
-    textDecoration: "underline",
-  },
+  footerLink: { color: "#64748b", textDecoration: "none" },
+  bottomMuted: { margin: "8px 0 0", fontSize: 11, lineHeight: "16px", color: "#cbd5e1", textAlign: "center" },
+  legalLink: { color: "#cbd5e1", textDecoration: "underline" },
 };

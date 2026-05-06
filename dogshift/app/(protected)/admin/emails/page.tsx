@@ -9,8 +9,10 @@ import {
   Mail,
   MessageSquare,
   Megaphone,
+  Moon,
   SendHorizonal,
   Sparkles,
+  Sun,
   Users,
   CalendarDays,
   ShieldCheck,
@@ -323,6 +325,7 @@ export default function AdminEmailsPage() {
     Object.fromEntries(CATEGORIES.map((c) => [c.id, true])),
   );
   const [testState, setTestState] = useState<"idle" | "sending" | "sent" | "error">("idle");
+  const [darkMode, setDarkMode] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   async function loadPreview(templateId: string) {
@@ -346,6 +349,59 @@ export default function AdminEmailsPage() {
     }
   }
 
+  function applyDarkModeToIframe(dark: boolean) {
+    if (!iframeRef.current) return;
+    const doc = iframeRef.current.contentDocument;
+    if (!doc) return;
+    const html = doc.documentElement;
+    if (dark) {
+      html.classList.add("ds-force-dark");
+      // Also inject color-scheme to trigger @media prefers-color-scheme: dark
+      let styleTag = doc.getElementById("ds-preview-dark") as HTMLStyleElement | null;
+      if (!styleTag) {
+        styleTag = doc.createElement("style");
+        styleTag.id = "ds-preview-dark";
+        doc.head?.appendChild(styleTag);
+      }
+      styleTag.textContent = `
+        html { color-scheme: dark; }
+        body, .ds-outer { background-color: #0f172a !important; }
+        .ds-card { background-color: #1e293b !important; border-color: #334155 !important; }
+        .ds-header { background-color: #1e293b !important; }
+        .ds-title, h1 { color: #f1f5f9 !important; }
+        .ds-subtitle, .ds-lead { color: #94a3b8 !important; }
+        .ds-body-text { color: #cbd5e1 !important; }
+        .ds-summary-title { color: #e2e8f0 !important; }
+        .ds-row-border { border-top-color: #334155 !important; }
+        .ds-row-label { color: #64748b !important; }
+        .ds-row-value { color: #e2e8f0 !important; }
+        .ds-footer-outer { background-color: #0f172a !important; }
+        .ds-footer-text, .ds-bottom { color: #475569 !important; }
+        .ds-footer-link { color: #64748b !important; }
+        .ds-divider { background-color: #1e293b !important; }
+        .ds-highlight { background-color: #1e293b !important; border-left-color: #3b82f6 !important; }
+        .ds-highlight-text { color: #cbd5e1 !important; }
+        .ds-steps { background-color: #0f172a !important; border-color: #334155 !important; }
+        .ds-step-item { color: #94a3b8 !important; }
+        .ds-code-box { background-color: #0f172a !important; border-color: #334155 !important; }
+        .ds-code-val { color: #93c5fd !important; }
+        .ds-muted { color: #475569 !important; }
+        .ds-msg-box { background-color: #0f172a !important; border-color: #334155 !important; }
+        .ds-msg-text { color: #94a3b8 !important; }
+        .ds-section-title { color: #a78bfa !important; border-bottom-color: #3730a3 !important; }
+        .ds-err-titre { color: #f1f5f9 !important; }
+        .ds-err-texte { color: #94a3b8 !important; }
+        .ds-conseil { background-color: #1e1b4b !important; }
+        .ds-conseil-text { color: #c4b5fd !important; }
+        .ds-card, .ds-card-bottom { background-color: #1e293b !important; border-color: #334155 !important; }
+      `;
+    } else {
+      html.classList.remove("ds-force-dark");
+      const styleTag = doc.getElementById("ds-preview-dark");
+      styleTag?.remove();
+    }
+  }
+
   useEffect(() => {
     if (iframeRef.current && previewHtml !== null) {
       const doc = iframeRef.current.contentDocument;
@@ -353,9 +409,19 @@ export default function AdminEmailsPage() {
         doc.open();
         doc.write(previewHtml);
         doc.close();
+        // Apply current dark mode preference after writing
+        applyDarkModeToIframe(darkMode);
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [previewHtml]);
+
+  useEffect(() => {
+    if (previewHtml !== null) {
+      applyDarkModeToIframe(darkMode);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [darkMode]);
 
   async function sendTestEmail() {
     if (!selected || testState === "sending") return;
@@ -504,6 +570,25 @@ export default function AdminEmailsPage() {
                   </span>
                 )}
               </div>
+              {/* Dark / light mode toggle */}
+              <button
+                type="button"
+                onClick={() => setDarkMode((v) => !v)}
+                title={darkMode ? "Passer en mode clair" : "Passer en mode sombre"}
+                className={`flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+                  darkMode
+                    ? "bg-slate-800 text-slate-200 hover:bg-slate-700"
+                    : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                }`}
+              >
+                {darkMode ? (
+                  <Sun className="h-3.5 w-3.5" />
+                ) : (
+                  <Moon className="h-3.5 w-3.5" />
+                )}
+                <span className="hidden sm:inline">{darkMode ? "Clair" : "Sombre"}</span>
+              </button>
+
               <button
                 type="button"
                 onClick={() => void sendTestEmail()}
@@ -562,7 +647,7 @@ export default function AdminEmailsPage() {
             )}
 
             {previewHtml !== null && !loading && (
-              <div className="flex-1 overflow-hidden rounded-b-2xl">
+              <div className={`flex-1 overflow-hidden rounded-b-2xl transition-colors ${darkMode ? "bg-[#0f172a]" : "bg-white"}`}>
                 <iframe
                   ref={iframeRef}
                   title="Aperçu email"

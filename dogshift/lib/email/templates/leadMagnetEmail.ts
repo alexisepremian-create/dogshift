@@ -55,16 +55,16 @@ export function renderLeadMagnetEmail(params: { baseUrl: string }) {
   const siteUrl = escapeHtml(baseUrl);
 
   const erreursHtml = ERREURS.map(
-    ({ label, titre, texte }) => `
+    (          { label, titre, texte }) => `
       <tr>
         <td style="padding:0 0 18px 0;">
           <div style="display:inline-block;background:#ede9fe;color:#6d28d9;font-family:Arial,Helvetica,sans-serif;font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;padding:3px 10px;border-radius:20px;margin-bottom:6px;">
             ${escapeHtml(label)}
           </div>
-          <div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:700;color:#111827;margin-bottom:4px;">
+          <div class="ds-err-titre" style="font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:700;color:#111827;margin-bottom:4px;">
             ${escapeHtml(titre)}
           </div>
-          <div style="font-family:Georgia,'Times New Roman',serif;font-size:14px;line-height:22px;color:#374151;">
+          <div class="ds-err-texte" style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,Helvetica,sans-serif;font-size:14px;line-height:22px;color:#374151;">
             ${escapeHtml(texte)}
           </div>
         </td>
@@ -77,26 +77,39 @@ export function renderLeadMagnetEmail(params: { baseUrl: string }) {
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="x-apple-disable-message-reformatting" />
-  <title>Votre guide gratuit est prêt 🐕</title>
+  <meta name="color-scheme" content="light dark" />
+  <meta name="supported-color-schemes" content="light dark" />
+  <title>Votre guide gratuit est prêt</title>
+  <style>
+    @media (prefers-color-scheme: dark) {
+      body, .ds-bg { background-color: #0f172a !important; }
+      .ds-card { background-color: #1e293b !important; border-color: #334155 !important; }
+      .ds-card-bottom { background-color: #1e293b !important; border-color: #334155 !important; }
+      .ds-section-title { color: #a78bfa !important; border-bottom-color: #3730a3 !important; }
+      .ds-err-titre { color: #f1f5f9 !important; }
+      .ds-err-texte { color: #94a3b8 !important; }
+      .ds-conseil { background-color: #1e1b4b !important; border-left-color: #7c3aed !important; }
+      .ds-conseil-text { color: #c4b5fd !important; }
+    }
+  </style>
 </head>
-<body style="margin:0;padding:0;background:#f3f4f6;">
+<body class="ds-bg" style="margin:0;padding:0;background:#f1f5f9;">
   <!-- Preview text -->
-  <div style="display:none;max-height:0;overflow:hidden;opacity:0;visibility:hidden;">
+  <div style="display:none;max-height:0;overflow:hidden;opacity:0;visibility:hidden;font-size:1px;line-height:1px;">
     Les 5 erreurs à éviter quand vous confiez votre chien — conseils d'experts DogShift.
   </div>
 
-  <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;background:#f3f4f6;">
+  <table role="presentation" cellpadding="0" cellspacing="0" width="100%" class="ds-bg" style="border-collapse:collapse;background:#f1f5f9;">
     <tr>
       <td align="center" style="padding:32px 12px;">
         <table role="presentation" cellpadding="0" cellspacing="0" width="560" style="border-collapse:collapse;width:560px;max-width:560px;">
 
           <!-- LOGO -->
           <tr>
-            <td align="center" style="padding:0 0 20px 0;">
-              <a href="${siteUrl}" style="text-decoration:none;">
-                <img src="${logoUrl}" width="44" height="44" alt="DogShift"
-                  style="display:inline-block;border:0;width:44px;height:44px;border-radius:12px;vertical-align:middle;margin-right:10px;" />
-                <span style="font-family:Arial,Helvetica,sans-serif;font-size:20px;font-weight:800;color:#111827;vertical-align:middle;">DogShift</span>
+            <td align="center" style="padding:0 0 20px 0;text-align:center;">
+              <a href="${siteUrl}" style="text-decoration:none;display:inline-block;">
+                <img src="${logoUrl}" width="140" alt="DogShift"
+                  style="display:block;border:0;width:140px;max-width:140px;height:auto;" />
               </a>
             </td>
           </tr>
@@ -108,7 +121,7 @@ export function renderLeadMagnetEmail(params: { baseUrl: string }) {
                 Guide gratuit
               </div>
               <div style="font-family:Georgia,'Times New Roman',serif;font-size:26px;font-weight:700;line-height:34px;color:#ffffff;margin-bottom:10px;">
-                Votre guide est prêt 🐕
+                Votre guide est prêt
               </div>
               <div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:22px;color:#ddd6fe;">
                 Les 5 erreurs à éviter quand vous confiez votre chien — pour un séjour serein, en toute confiance.
@@ -118,10 +131,10 @@ export function renderLeadMagnetEmail(params: { baseUrl: string }) {
 
           <!-- MAIN CARD -->
           <tr>
-            <td style="background:#ffffff;padding:32px;border:1px solid #e5e7eb;border-top:none;">
+            <td class="ds-card" style="background:#ffffff;padding:32px;border:1px solid #e5e7eb;border-top:none;">
 
               <!-- Section title -->
-              <div style="font-family:Arial,Helvetica,sans-serif;font-size:13px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#6d28d9;margin-bottom:20px;padding-bottom:12px;border-bottom:2px solid #ede9fe;">
+              <div class="ds-section-title" style="font-family:Arial,Helvetica,sans-serif;font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#6d28d9;margin-bottom:20px;padding-bottom:12px;border-bottom:2px solid #ede9fe;">
                 Ce que vous allez découvrir
               </div>
 
@@ -136,11 +149,11 @@ export function renderLeadMagnetEmail(params: { baseUrl: string }) {
               <!-- Conseil clé -->
               <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
                 <tr>
-                  <td style="background:#faf5ff;border-left:3px solid #7c3aed;border-radius:0 8px 8px 0;padding:16px 18px;">
+                  <td class="ds-conseil" style="background:#faf5ff;border-left:3px solid #7c3aed;border-radius:0 8px 8px 0;padding:16px 18px;">
                     <div style="font-family:Arial,Helvetica,sans-serif;font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#6d28d9;margin-bottom:6px;">
                       Le conseil DogShift
                     </div>
-                    <div style="font-family:Georgia,'Times New Roman',serif;font-size:15px;line-height:24px;color:#1e1b4b;">
+                    <div class="ds-conseil-text" style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,Helvetica,sans-serif;font-size:14px;line-height:22px;color:#1e1b4b;">
                       Un sitter DogShift est vérifié manuellement, assuré, et formé aux urgences vétérinaires. Confiez votre chien à quelqu&apos;un en qui vous pouvez vraiment avoir confiance.
                     </div>
                   </td>
@@ -177,7 +190,7 @@ export function renderLeadMagnetEmail(params: { baseUrl: string }) {
 
           <!-- CTA -->
           <tr>
-            <td style="background:#ffffff;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 16px 16px;padding:28px 32px 32px;">
+            <td class="ds-card-bottom" style="background:#ffffff;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 16px 16px;padding:28px 32px 32px;">
               <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
                 <tr>
                   <td align="center" style="text-align:center;">
@@ -209,13 +222,32 @@ export function renderLeadMagnetEmail(params: { baseUrl: string }) {
 
           <!-- FOOTER -->
           <tr>
-            <td align="center" style="padding:20px 4px 0;font-family:Arial,Helvetica,sans-serif;font-size:11px;line-height:18px;color:#9ca3af;text-align:center;">
-              <center>
+            <td align="center" style="padding:24px 4px 0;text-align:center;">
+              <!-- Social icons -->
+              <table role="presentation" cellpadding="0" cellspacing="0" align="center" style="border-collapse:collapse;margin:0 auto 14px;">
+                <tr>
+                  <td style="padding:0 6px;">
+                    <a href="${siteUrl}/instagram" title="Instagram" style="text-decoration:none;display:block;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="2" y="2" width="20" height="20" rx="6" stroke="#94a3b8" stroke-width="1.8"/><circle cx="12" cy="12" r="4" stroke="#94a3b8" stroke-width="1.8"/><circle cx="17.5" cy="6.5" r="1" fill="#94a3b8"/></svg></a>
+                  </td>
+                  <td style="padding:0 6px;">
+                    <a href="https://linkedin.com/company/dogshift" title="LinkedIn" style="text-decoration:none;display:block;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="2" y="2" width="20" height="20" rx="4" stroke="#94a3b8" stroke-width="1.8"/><path d="M7 10v7M7 7v.01M11 17v-4a2 2 0 014 0v4M11 10v7" stroke="#94a3b8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+                  </td>
+                  <td style="padding:0 6px;">
+                    <a href="${siteUrl}" title="DogShift" style="text-decoration:none;display:block;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="10" stroke="#94a3b8" stroke-width="1.8"/><path d="M12 2c-2.5 3-4 6-4 10s1.5 7 4 10M12 2c2.5 3 4 6 4 10s-1.5 7-4 10M2 12h20" stroke="#94a3b8" stroke-width="1.8" stroke-linecap="round"/></svg></a>
+                  </td>
+                </tr>
+              </table>
+              <!-- Divider -->
+              <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;margin-bottom:12px;"><tr><td height="1" style="background:#e2e8f0;font-size:0;line-height:0;">&nbsp;</td></tr></table>
+              <!-- Text -->
+              <p style="margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,Helvetica,sans-serif;font-size:11px;line-height:18px;color:#94a3b8;text-align:center;">
                 Vous recevez cet email car vous avez demandé notre guide gratuit sur
-                <a href="${siteUrl}" style="color:#9ca3af;">dogshift.ch</a>.
-                DogShift &bull; <a href="mailto:support@dogshift.ch" style="color:#9ca3af;">support@dogshift.ch</a>
-                &bull; <a href="${escapeHtml(`${baseUrl}/unsubscribe`)}" style="color:#9ca3af;">Se désabonner</a>
-              </center>
+                <a href="${siteUrl}" style="color:#94a3b8;text-decoration:none;">dogshift.ch</a>.
+              </p>
+              <p style="margin:4px 0 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,Helvetica,sans-serif;font-size:11px;line-height:18px;color:#94a3b8;text-align:center;">
+                DogShift &bull; <a href="mailto:support@dogshift.ch" style="color:#94a3b8;text-decoration:none;">support@dogshift.ch</a>
+                &bull; <a href="${escapeHtml(`${baseUrl}/unsubscribe`)}" style="color:#94a3b8;text-decoration:underline;">Se désabonner</a>
+              </p>
             </td>
           </tr>
 

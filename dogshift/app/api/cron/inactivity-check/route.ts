@@ -53,7 +53,7 @@ function buildNudgeEmail(name: string) {
 
 function buildWarning1Email(name: string, daysLeft: number) {
   return renderEmailLayout({
-    title: "⚠️ Avertissement — votre compte sera suspendu",
+    title: "Avertissement — votre compte sera suspendu",
     subtitle: `Bonjour ${name},`,
     ctaLabel: "Ajouter mes disponibilités maintenant",
     ctaUrl: `${APP_URL}/host/availability`,
@@ -77,7 +77,7 @@ function buildWarning1Email(name: string, daysLeft: number) {
 
 function buildWarning2Email(name: string, daysLeft: number) {
   return renderEmailLayout({
-    title: "🚨 Dernier avertissement — suspension imminente",
+    title: "Dernier avertissement — suspension imminente",
     subtitle: `Bonjour ${name},`,
     ctaLabel: "Ajouter mes disponibilités maintenant",
     ctaUrl: `${APP_URL}/host/availability`,
@@ -233,7 +233,7 @@ export async function GET(req: NextRequest) {
           if (email) {
             await sendEmail({
               to: email,
-              subject: "🚨 Dernier avertissement — suspension imminente — DogShift",
+              subject: "Dernier avertissement — suspension imminente — DogShift",
               text: `Bonjour ${name},\n\nDernier avertissement : votre compte sera suspendu dans ${WARNING2_TO_SUSPEND_DAYS} jours si vous n'ajoutez pas de disponibilités.`,
               html: buildWarning2Email(name, WARNING2_TO_SUSPEND_DAYS).html,
             }).catch((e) => console.error("[inactivity-check] warning2 email failed", e));

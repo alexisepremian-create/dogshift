@@ -13,9 +13,9 @@ export type ApplicationStatusEmailStatus = "HIGH" | "REVIEW" | "LOW";
 export function applicationStatusEmailSubject(status: ApplicationStatusEmailStatus): string {
   switch (status) {
     case "HIGH":
-      return "🎉 Bienvenue chez DogShift — Réservons ton entretien";
+      return "Bienvenue chez DogShift — Réservons ton entretien";
     case "REVIEW":
-      return "Ta candidature DogShift est à l'étude 🐾";
+      return "Ta candidature DogShift est à l'étude";
     case "LOW":
     default:
       return "Ta candidature DogShift";

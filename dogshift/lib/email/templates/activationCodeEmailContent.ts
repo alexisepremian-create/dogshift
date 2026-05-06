@@ -23,7 +23,7 @@ export type ActivationCodeEmailParams = {
 };
 
 export function activationCodeEmailSubject(): string {
-  return "🎉 Ton contrat est signé — voici ton code d’activation DogShift";
+  return "Ton contrat est signé — voici ton code d’activation DogShift";
 }
 
 export function activationCodeEmailDefaultPreviewText(): string {
