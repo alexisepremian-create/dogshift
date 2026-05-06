@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { sendEmail } from "@/lib/email/sendEmail";
 import { renderEmailLayout, type EmailSummaryRow } from "@/lib/email/templates/layout";
 import { buildTravelMapUrl } from "@/lib/travel/staticMap";
+import { getSitterReviewSnapshot } from "@/lib/sitterReviews";
 import {
   hasNotificationAlreadySent,
   markNotificationSent,
@@ -184,12 +185,19 @@ function buildDogProfileHtml(dog: DogProfileData): string {
     </table>`;
 }
 
+export type SitterEmailData = {
+  name: string;
+  avatarUrl: string | null;
+  rating: number | null;
+};
+
 async function resolveBookingEmailData(bookingId: string): Promise<{
   rows: EmailSummaryRow[];
   travel: TravelEmailData;
   dog: DogProfileData;
   ownerPhone: string | null;
   pickupAddress: string | null;
+  sitter: SitterEmailData | null;
 }> {
   const booking = await (prisma as any).booking.findUnique({
     where: { id: bookingId },
@@ -227,7 +235,7 @@ async function resolveBookingEmailData(bookingId: string): Promise<{
     },
   });
 
-  if (!booking) return { rows: [{ label: "Référence", value: bookingId }], travel: null, dog: null, ownerPhone: null, pickupAddress: null };
+  if (!booking) return { rows: [{ label: "Référence", value: bookingId }], travel: null, dog: null, ownerPhone: null, pickupAddress: null, sitter: null };
 
   const rows: EmailSummaryRow[] = [];
   const service = typeof booking.service === "string" && booking.service.trim() ? booking.service.trim() : "";
@@ -260,47 +268,53 @@ async function resolveBookingEmailData(bookingId: string): Promise<{
   if (totalAmount !== null) rows.push({ label: "Total", value: formatMoney(totalAmount, currency) });
   rows.push({ label: "Référence", value: String(booking.id) });
 
-  // Build static map if travel booking with both sets of coordinates
   let travel: TravelEmailData = null;
-  if (
-    booking.locationMode === "AT_OWNER" &&
-    typeof booking.ownerLat === "number" &&
-    typeof booking.ownerLng === "number" &&
-    booking.sitterId
-  ) {
+  let sitter: SitterEmailData | null = null;
+  if (booking.sitterId) {
     try {
       const sitterProfile = await (prisma as any).sitterProfile.findUnique({
         where: { sitterId: booking.sitterId },
-        select: { lat: true, lng: true },
+        select: { lat: true, lng: true, displayName: true, avatarUrl: true },
       });
-      if (
-        sitterProfile &&
-        typeof sitterProfile.lat === "number" &&
-        typeof sitterProfile.lng === "number"
-      ) {
-        const mapUrl = buildTravelMapUrl({
-          sitterLat: sitterProfile.lat,
-          sitterLng: sitterProfile.lng,
-          ownerLat: booking.ownerLat,
-          ownerLng: booking.ownerLng,
-        });
-        const distanceKm =
-          typeof booking.travelDistanceKm === "number" && Number.isFinite(booking.travelDistanceKm)
-            ? booking.travelDistanceKm
-            : 0;
-        if (mapUrl) {
-          travel = { mapUrl, distanceKm, feeCents: travelFee };
+      if (sitterProfile) {
+        const reviewSnapshot = await getSitterReviewSnapshot(booking.sitterId);
+        sitter = {
+          name: sitterProfile.displayName || "Sitter",
+          avatarUrl: sitterProfile.avatarUrl || null,
+          rating: reviewSnapshot.averageRating,
+        };
+
+        if (
+          booking.locationMode === "AT_OWNER" &&
+          typeof booking.ownerLat === "number" &&
+          typeof booking.ownerLng === "number" &&
+          typeof sitterProfile.lat === "number" &&
+          typeof sitterProfile.lng === "number"
+        ) {
+          const mapUrl = buildTravelMapUrl({
+            sitterLat: sitterProfile.lat,
+            sitterLng: sitterProfile.lng,
+            ownerLat: booking.ownerLat,
+            ownerLng: booking.ownerLng,
+          });
+          const distanceKm =
+            typeof booking.travelDistanceKm === "number" && Number.isFinite(booking.travelDistanceKm)
+              ? booking.travelDistanceKm
+              : 0;
+          if (mapUrl) {
+            travel = { mapUrl, distanceKm, feeCents: travelFee };
+          }
         }
       }
     } catch {
-      // non-critical — email sends without map
+      // non-critical — email sends without map/sitter profile
     }
   }
 
   const ownerPhone = typeof booking.ownerPhone === "string" && booking.ownerPhone.trim() ? booking.ownerPhone.trim() : null;
   const dog: DogProfileData = booking.selectedDog ?? null;
 
-  return { rows, travel, dog, ownerPhone, pickupAddress };
+  return { rows, travel, dog, ownerPhone, pickupAddress, sitter };
 }
 
 async function resolveBookingSummaryRows(bookingId: string): Promise<EmailSummaryRow[]> {
@@ -321,6 +335,76 @@ async function resolveBookingRequestEmailData(bookingId: string): Promise<{
 
   const extraHtml = buildTravelMapExtraHtml(travel) + buildDogProfileHtml(dog);
   return { rows: sitterRows, extraHtml };
+}
+
+function buildReminderExtraHtml(
+  sitter: SitterEmailData | null,
+  travel: TravelEmailData | null,
+  baseUrl: string,
+  bookingId: string
+): string {
+  const FF = "-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,Helvetica,sans-serif";
+  const messagesUrl = baseUrl ? `${baseUrl}/account/messages` : "#";
+  const cancelUrl = baseUrl ? `${baseUrl}/account/bookings?id=${encodeURIComponent(bookingId)}` : "#";
+
+  let sitterHtml = "";
+  if (sitter) {
+    const avatar = sitter.avatarUrl
+      ? `<img src="${sitter.avatarUrl}" width="48" height="48" alt="${sitter.name}" style="display:block;border-radius:24px;border:1px solid #e2e8f0;object-fit:cover;" />`
+      : `<div style="width:48px;height:48px;border-radius:24px;background:#f1f5f9;border:1px solid #e2e8f0;text-align:center;line-height:48px;color:#64748b;font-size:18px;font-weight:700;">${sitter.name.charAt(0).toUpperCase()}</div>`;
+    
+    const ratingHtml = sitter.rating !== null
+      ? `<div style="color:#eab308;font-size:13px;font-weight:600;margin-top:2px;">★ ${sitter.rating.toFixed(1)}</div>`
+      : `<div style="color:#94a3b8;font-size:12px;margin-top:2px;">Nouveau sitter</div>`;
+
+    sitterHtml = `
+      <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;margin-top:20px;margin-bottom:16px;">
+        <tr>
+          <td valign="middle" style="width:56px;">${avatar}</td>
+          <td valign="middle" style="font-family:${FF};">
+            <div style="font-size:15px;font-weight:700;color:#0f172a;">${sitter.name}</div>
+            ${ratingHtml}
+          </td>
+        </tr>
+      </table>
+    `;
+  }
+
+  const mapHtml = travel ? buildTravelMapExtraHtml(travel) : "";
+
+  const checklistItems = [
+    "Préparer la laisse, le harnais et un sac à déjections",
+    "Avoir de l'eau fraîche disponible",
+    "Indiquer au sitter les habitudes ou consignes particulières",
+    "Prévoir les clés ou code d'accès si remise en main propre impossible"
+  ];
+
+  const checkIcon = `<span style="color:#10b981;font-weight:bold;font-size:14px;display:inline-block;width:20px;">✓</span>`;
+  const checklistHtml = `
+    <div style="margin-top:24px;background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;padding:18px 20px;">
+      <h3 style="margin:0 0 14px;font-family:${FF};font-size:14px;font-weight:700;color:#0f172a;text-transform:uppercase;letter-spacing:0.05em;">Avant l'arrivée du sitter</h3>
+      <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
+        ${checklistItems.map(item => `
+          <tr>
+            <td valign="top" style="padding:4px 0;width:24px;">${checkIcon}</td>
+            <td valign="top" style="padding:4px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;">${item}</td>
+          </tr>
+        `).join("")}
+      </table>
+    </div>
+  `;
+
+  const contactHtml = `
+    <div style="margin-top:24px;text-align:center;font-family:${FF};">
+      <div style="font-size:14px;font-weight:700;color:#0f172a;margin-bottom:12px;">Une question de dernière minute ?</div>
+      <a href="${messagesUrl}" style="display:inline-block;background:#f1f5f9;color:#0f172a;text-decoration:none;font-size:13px;font-weight:600;padding:10px 20px;border-radius:8px;border:1px solid #e2e8f0;">Contacter ${sitter?.name || "le sitter"}</a>
+      <div style="margin-top:16px;">
+        <a href="${cancelUrl}" style="color:#64748b;text-decoration:underline;font-size:12px;">Modifier ou annuler</a>
+      </div>
+    </div>
+  `;
+
+  return sitterHtml + mapHtml + checklistHtml + contactHtml;
 }
 
 function buildTravelMapExtraHtml(travel: TravelEmailData): string {
@@ -673,14 +757,26 @@ Notification DogShift.
       }
       case "bookingReminder": {
         const url = bookingUrl(payload.bookingId, "account");
-        const rows = await resolveBookingSummaryRows(payload.bookingId);
-        const starts = payload.startsAtIso ? formatDateTime(payload.startsAtIso) : "";
-        const nextRows = starts ? [{ label: "Début", value: starts }, ...rows.filter((r) => r.label !== "Début") ] : rows;
+        const { rows, sitter, travel, dog } = await resolveBookingEmailData(payload.bookingId);
+        
+        const now = new Date();
+        const start = payload.startsAtIso ? new Date(payload.startsAtIso) : now;
+        const diffHours = (start.getTime() - now.getTime()) / (1000 * 60 * 60);
+        const days = Math.max(1, Math.round(diffHours / 24));
+        
+        const timePrefix = days <= 1 ? "Demain" : `Dans ${days} jours`;
+        const dogName = dog?.name || "votre chien";
+        const sitterFirstName = sitter?.name?.split(" ")[0] || "le sitter";
+        
+        const title = `${timePrefix}, ${dogName} retrouve ${sitterFirstName} 🐾`;
+        const subtitle = "Tout est prêt pour la prestation. Voici un petit récap pour ne rien oublier.";
+
         return renderEmailLayout({
           logoUrl,
-          title: "Rappel de réservation",
-          subtitle: "Une réservation approche.",
-          summaryRows: nextRows,
+          title,
+          subtitle,
+          summaryRows: rows,
+          extraHtml: buildReminderExtraHtml(sitter, travel, baseUrl || "", payload.bookingId),
           ctaLabel: url ? "Voir la réservation" : undefined,
           ctaUrl: url || undefined,
         }).html;

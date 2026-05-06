@@ -78,6 +78,62 @@ function buildMockTravelMapHtml(): string {
   `;
 }
 
+function buildMockReminderHtml(): string {
+  const FF = "-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,Helvetica,sans-serif";
+  const messagesUrl = `${BASE_URL}/account/messages`;
+  const cancelUrl = `${BASE_URL}/account/bookings`;
+
+  const sitterHtml = `
+    <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;margin-top:20px;margin-bottom:16px;">
+      <tr>
+        <td valign="middle" style="width:56px;">
+          <div style="width:48px;height:48px;border-radius:24px;background:#f1f5f9;border:1px solid #e2e8f0;text-align:center;line-height:48px;color:#64748b;font-size:18px;font-weight:700;">C</div>
+        </td>
+        <td valign="middle" style="font-family:${FF};">
+          <div style="font-size:15px;font-weight:700;color:#0f172a;">Camille R.</div>
+          <div style="color:#eab308;font-size:13px;font-weight:600;margin-top:2px;">★ 4.9</div>
+        </td>
+      </tr>
+    </table>
+  `;
+
+  const mapHtml = buildMockTravelMapHtml();
+
+  const checklistItems = [
+    "Préparer la laisse, le harnais et un sac à déjections",
+    "Avoir de l'eau fraîche disponible",
+    "Indiquer au sitter les habitudes ou consignes particulières",
+    "Prévoir les clés ou code d'accès si remise en main propre impossible"
+  ];
+
+  const checkIcon = `<span style="color:#10b981;font-weight:bold;font-size:14px;display:inline-block;width:20px;">✓</span>`;
+  const checklistHtml = `
+    <div style="margin-top:24px;background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;padding:18px 20px;">
+      <h3 style="margin:0 0 14px;font-family:${FF};font-size:14px;font-weight:700;color:#0f172a;text-transform:uppercase;letter-spacing:0.05em;">Avant l'arrivée du sitter</h3>
+      <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
+        ${checklistItems.map(item => `
+          <tr>
+            <td valign="top" style="padding:4px 0;width:24px;">${checkIcon}</td>
+            <td valign="top" style="padding:4px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;">${item}</td>
+          </tr>
+        `).join("")}
+      </table>
+    </div>
+  `;
+
+  const contactHtml = `
+    <div style="margin-top:24px;text-align:center;font-family:${FF};">
+      <div style="font-size:14px;font-weight:700;color:#0f172a;margin-bottom:12px;">Une question de dernière minute ?</div>
+      <a href="${messagesUrl}" style="display:inline-block;background:#f1f5f9;color:#0f172a;text-decoration:none;font-size:13px;font-weight:600;padding:10px 20px;border-radius:8px;border:1px solid #e2e8f0;">Contacter Camille</a>
+      <div style="margin-top:16px;">
+        <a href="${cancelUrl}" style="color:#64748b;text-decoration:underline;font-size:12px;">Modifier ou annuler</a>
+      </div>
+    </div>
+  `;
+
+  return sitterHtml + mapHtml + checklistHtml + contactHtml;
+}
+
 async function renderTemplate(template: string): Promise<{ html: string; subject: string } | null> {
   switch (template) {
     case "activation-code":
@@ -267,12 +323,13 @@ async function renderTemplate(template: string): Promise<{ html: string; subject
 
     case "booking-reminder":
       return {
-        subject: "Rappel de réservation – DogShift",
+        subject: "Demain, Max retrouve Camille 🐾 – DogShift",
         html: renderEmailLayout({
           logoUrl: LOGO_URL,
-          title: "Rappel de réservation",
-          subtitle: "Une réservation approche.",
-          summaryRows: MOCK_BOOKING_ROWS,
+          title: "Demain, Max retrouve Camille 🐾",
+          subtitle: "Tout est prêt pour la prestation. Voici un petit récap pour ne rien oublier.",
+          summaryRows: MOCK_TRAVEL_BOOKING_ROWS,
+          extraHtml: buildMockReminderHtml(),
           ctaLabel: "Voir la réservation",
           ctaUrl: `${BASE_URL}/account/bookings`,
         }).html,
