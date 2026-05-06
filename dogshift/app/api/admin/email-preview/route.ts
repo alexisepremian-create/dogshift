@@ -23,6 +23,11 @@ export const runtime = "nodejs";
 const BASE_URL = (process.env.NEXT_PUBLIC_BASE_URL ?? "https://www.dogshift.ch").replace(/\/$/, "");
 const LOGO_URL = `${BASE_URL}/dogshift-logo.png`;
 
+// Mock names used across all booking-reminder previews.
+// In real emails these come from booking.selectedDog.name (DogProfile) and sitter.name.
+const MOCK_DOG_NAME = "Luna";
+const MOCK_SITTER_FIRST_NAME = "Camille";
+
 const MOCK_BOOKING_ROWS = [
   { label: "Service", value: "Promenade (1h)" },
   { label: "Début", value: "lun. 06 mai 2026, 10:00" },
@@ -78,7 +83,7 @@ function buildMockTravelMapHtml(): string {
   `;
 }
 
-function buildMockReminderHtml(): string {
+function buildMockReminderHtml(sitterFirstName = MOCK_SITTER_FIRST_NAME): string {
   const FF = "-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,Helvetica,sans-serif";
   const messagesUrl = `${BASE_URL}/account/messages`;
   const cancelUrl = `${BASE_URL}/account/bookings`;
@@ -87,10 +92,10 @@ function buildMockReminderHtml(): string {
     <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;margin-top:20px;margin-bottom:16px;">
       <tr>
         <td valign="middle" style="width:56px;">
-          <div style="width:48px;height:48px;border-radius:24px;background:#f1f5f9;border:1px solid #e2e8f0;text-align:center;line-height:48px;color:#64748b;font-size:18px;font-weight:700;">C</div>
+          <div style="width:48px;height:48px;border-radius:24px;background:#f1f5f9;border:1px solid #e2e8f0;text-align:center;line-height:48px;color:#64748b;font-size:18px;font-weight:700;">${sitterFirstName[0]}</div>
         </td>
         <td valign="middle" style="font-family:${FF};">
-          <div style="font-size:15px;font-weight:700;color:#0f172a;">Camille R.</div>
+          <div style="font-size:15px;font-weight:700;color:#0f172a;">${sitterFirstName} R.</div>
           <div style="color:#eab308;font-size:13px;font-weight:600;margin-top:2px;">★ 4.9</div>
         </td>
       </tr>
@@ -124,7 +129,7 @@ function buildMockReminderHtml(): string {
   const contactHtml = `
     <div style="margin-top:24px;text-align:center;font-family:${FF};">
       <div style="font-size:14px;font-weight:700;color:#0f172a;margin-bottom:12px;">Une question de dernière minute ?</div>
-      <a href="${messagesUrl}" style="display:inline-block;background:#f1f5f9;color:#0f172a;text-decoration:none;font-size:13px;font-weight:600;padding:10px 20px;border-radius:8px;border:1px solid #e2e8f0;">Contacter Camille</a>
+      <a href="${messagesUrl}" style="display:inline-block;background:#f1f5f9;color:#0f172a;text-decoration:none;font-size:13px;font-weight:600;padding:10px 20px;border-radius:8px;border:1px solid #e2e8f0;">Contacter ${sitterFirstName}</a>
       <div style="margin-top:16px;">
         <a href="${cancelUrl}" style="color:#64748b;text-decoration:underline;font-size:12px;">Modifier ou annuler</a>
       </div>
@@ -323,13 +328,13 @@ async function renderTemplate(template: string): Promise<{ html: string; subject
 
     case "booking-reminder":
       return {
-        subject: "Demain, Max retrouve Camille 🐾 – DogShift",
+        subject: `Demain, ${MOCK_DOG_NAME} retrouve ${MOCK_SITTER_FIRST_NAME} 🐾 – DogShift`,
         html: renderEmailLayout({
           logoUrl: LOGO_URL,
-          title: "Demain, Max retrouve Camille 🐾",
+          title: `Demain, ${MOCK_DOG_NAME} retrouve ${MOCK_SITTER_FIRST_NAME} 🐾`,
           subtitle: "Tout est prêt pour la prestation. Voici un petit récap pour ne rien oublier.",
           summaryRows: MOCK_TRAVEL_BOOKING_ROWS,
-          extraHtml: buildMockReminderHtml(),
+          extraHtml: buildMockReminderHtml(MOCK_SITTER_FIRST_NAME),
           ctaLabel: "Voir la réservation",
           ctaUrl: `${BASE_URL}/account/bookings`,
         }).html,
