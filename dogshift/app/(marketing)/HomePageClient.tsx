@@ -33,6 +33,7 @@ import { createPortal } from "react-dom";
 import MapPreview from "@/components/MapPreview";
 import SitterCard, { type SitterPreview } from "@/components/ui/SitterCard";
 import { DogSmallIcon, DogMediumIcon, DogLargeIcon } from "@/components/DogSizeIcon";
+import { MONTHS_FR, WEEK_FR, calendarDays, toISO, isDatePast, isToday } from "@/components/ui/Calendar";
 
 // ── HOOKS ─────────────────────────────────────────────────────────────────────
 
@@ -170,11 +171,7 @@ const GARDE_DURATION_OPTIONS: { value: string; label: string }[] = [
   { value: "12h",  label: "12 heures" },
 ];
 
-const MONTHS_FR = [
-  "Janvier","Février","Mars","Avril","Mai","Juin",
-  "Juillet","Août","Septembre","Octobre","Novembre","Décembre",
-];
-const WEEK_FR = ["L","M","M","J","V","S","D"];
+// MONTHS_FR, WEEK_FR imported from @/components/ui/Calendar
 const TIMES: string[] = [];
 for (let h = 7; h <= 21; h++) {
   TIMES.push(`${String(h).padStart(2,"0")}:00`);
@@ -189,28 +186,7 @@ function formatDateShort(d: string): string {
   return `${day} ${(MONTHS_FR[m] ?? "").slice(0, 3).toLowerCase()}.`;
 }
 
-function calendarDays(year: number, month: number): (number | null)[] {
-  const firstDow = new Date(year, month, 1).getDay();
-  const dim = new Date(year, month + 1, 0).getDate();
-  const offset = firstDow === 0 ? 6 : firstDow - 1;
-  const result: (number | null)[] = Array(offset).fill(null);
-  for (let i = 1; i <= dim; i++) result.push(i);
-  return result;
-}
-
-function isDatePast(year: number, month: number, day: number): boolean {
-  const today = new Date();
-  return new Date(year, month, day) < new Date(today.getFullYear(), today.getMonth(), today.getDate());
-}
-
-function isToday(year: number, month: number, day: number): boolean {
-  const t = new Date();
-  return year === t.getFullYear() && month === t.getMonth() && day === t.getDate();
-}
-
-function toISO(y: number, m: number, d: number): string {
-  return `${y}-${String(m + 1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
-}
+// calendarDays, isDatePast, isToday, toISO imported from @/components/ui/Calendar
 
 // ── DATE PICKER (portal-based) ────────────────────────────────────────────────
 
