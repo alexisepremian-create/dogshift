@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
@@ -40,7 +41,15 @@ export async function GET(req: NextRequest) {
     ownerIdForLog = ownerId;
 
     const conversations = await (prisma as any).conversation.findMany({
-      where: { ownerId },
+      where: {
+        ownerId,
+        // Only show conversations linked to a paid/confirmed booking
+        // Conversations with no booking (direct contact) are always shown
+        OR: [
+          { bookingId: null },
+          { booking: { status: { notIn: ["DRAFT", "PENDING_PAYMENT"] } } },
+        ],
+      },
       orderBy: [{ lastMessageAt: "desc" }, { updatedAt: "desc" }],
       select: {
         id: true,
