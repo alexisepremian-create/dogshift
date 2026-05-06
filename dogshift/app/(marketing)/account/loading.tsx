@@ -1,6 +1,5 @@
-import PageLoader from "@/components/ui/PageLoader";
+import AccountPageSkeleton from "@/components/ui/AccountPageSkeleton";
 
-// Fullscreen overlay during account-route transitions — keeps footer hidden.
 export default function Loading() {
-  return <PageLoader static />;
+  return <AccountPageSkeleton />;
 }
