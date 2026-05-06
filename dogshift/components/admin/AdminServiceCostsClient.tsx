@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 
+import { AdminSimpleListSkeleton } from "@/components/admin/AdminListSkeleton";
+
 type ServiceType = "hosting" | "db" | "payment" | "email" | "auth" | "other";
 type CostType = "fixed" | "variable";
 
@@ -262,7 +264,7 @@ export default function AdminServiceCostsClient() {
 
       <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.12)] sm:p-8">
         <h3 className="text-lg font-semibold tracking-tight text-slate-900">Services</h3>
-        {loading ? <p className="mt-4 text-sm text-slate-600">Chargement…</p> : (
+        {loading ? <AdminSimpleListSkeleton rows={3} /> : (
           <div className="mt-5 overflow-x-auto">
             <table className="min-w-full divide-y divide-slate-200 text-sm">
               <thead className="bg-slate-50 text-left text-slate-600">

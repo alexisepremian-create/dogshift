@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 
+import { AdminSimpleListSkeleton } from "@/components/admin/AdminListSkeleton";
+
 type PayoutMethod = "STRIPE" | "MANUAL";
 type PayoutStatus = "PENDING" | "PAID";
 
@@ -98,7 +100,7 @@ export default function AdminBookingPayoutControls({ bookingId }: { bookingId: s
         </span>
       </div>
 
-      {loading ? <p className="mt-4 text-sm text-slate-600">Chargement…</p> : null}
+      {loading ? <AdminSimpleListSkeleton rows={2} /> : null}
 
       {!loading ? (
         <div className="mt-5 grid gap-4">

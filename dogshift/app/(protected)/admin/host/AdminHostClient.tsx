@@ -1,6 +1,9 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+
+import AdminListSkeleton from "@/components/admin/AdminListSkeleton";
 
 type PendingItem = {
   sitterProfileId: string;
@@ -160,7 +163,7 @@ export default function AdminHostClient({ adminCode }: { adminCode: string }) {
       {error ? <p className="mt-4 text-sm font-medium text-rose-600">{error}</p> : null}
 
       {loading ? (
-        <p className="mt-4 text-sm text-slate-600">Chargement…</p>
+        <AdminListSkeleton rows={4} />
       ) : pending.length === 0 ? (
         <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-5">
           <p className="text-sm font-semibold text-slate-900">Aucune demande en attente</p>

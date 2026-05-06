@@ -1,7 +1,10 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+
+import AdminListSkeleton from "@/components/admin/AdminListSkeleton";
 
 import AdminSitterActions from "@/components/admin/AdminSitterActions";
 
@@ -154,7 +157,7 @@ export default function AdminActiveSittersClient() {
       {error ? <p className="mt-4 text-sm font-medium text-rose-600">{error}</p> : null}
 
       {loading ? (
-        <p className="mt-4 text-sm text-slate-600">Chargement…</p>
+        <AdminListSkeleton rows={6} />
       ) : filtered.length === 0 ? (
         <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-5">
           <p className="text-sm font-semibold text-slate-900">Aucun dogsitter actif</p>
