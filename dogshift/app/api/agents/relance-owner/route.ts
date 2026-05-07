@@ -4,6 +4,7 @@ import { anthropic } from "@ai-sdk/anthropic";
 
 import { prisma } from "@/lib/prisma";
 import { sendEmail } from "@/lib/email/sendEmail";
+import { renderEmailLayout } from "@/lib/email/templates/layout";
 
 // ====================================================================
 // AGENT RELANCE OWNER
@@ -50,17 +51,18 @@ export async function POST(req: NextRequest) {
       "https://dogshift.ch"
     ).replace(/\/$/, "");
 
-    // 1. Generate personalized email copy via Claude
+    // 1. Generate personalized body paragraphs via Claude
     const { text: rawText } = await generateText({
       model: anthropic("claude-sonnet-4-6"),
-      system: `Tu es chargé de rédiger un email court, chaleureux et émotionnel au nom de DogShift, plateforme premium de dog-sitting en Suisse romande.
+      system: `Tu es chargé de rédiger le corps d'un email court, chaleureux et émotionnel au nom de DogShift, plateforme premium de dog-sitting en Suisse romande.
 Ton rôle : inciter un propriétaire de chien à finaliser sa réservation auprès d'un sitter avec qui il a échangé.
 Ton ton est humain, bienveillant, pas commercial — tu parles du bien-être du chien et de la confiance que DogShift garantit.
 Tu réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans balises \`\`\`json — juste le JSON brut.
 Le JSON doit avoir exactement ces deux champs : { "subject": string, "bodyHtml": string }
-Le bodyHtml doit être du HTML propre (balises <p>, <strong>, <a>) incluant un bouton CTA vers ${baseUrl}/sitters.
-IMPORTANT : n'utilise aucun emoji dans le sujet ni dans le corps de l'email. Garde un style sobre, professionnel et chaleureux.`,
-      prompt: `Rédige un email de relance pour un propriétaire de chien qui a échangé avec un sitter sur DogShift mais n'a pas encore réservé.
+Le bodyHtml doit contenir UNIQUEMENT les paragraphes du corps (balises <p> et <strong> uniquement).
+Ne pas inclure : doctype, html, head, body, table, bouton CTA, header, footer, logo — notre système les ajoute automatiquement.
+Aucun emoji. Style sobre, professionnel et chaleureux.`,
+      prompt: `Rédige le corps d'un email de relance pour un propriétaire de chien qui a échangé avec un sitter sur DogShift mais n'a pas encore réservé.
 
 Informations disponibles :
 - Prénom du propriétaire : ${prenom ?? "non renseigné"}
@@ -68,17 +70,15 @@ Informations disponibles :
 - Ville du sitter : ${sitterVille ?? "non renseignée"}
 - Jours depuis le dernier message : ${daysSinceLastMessage ?? "quelques"}
 
-L'email doit :
-- Commencer par une accroche chaleureuse personnalisée si le prénom est disponible
+Le corps doit :
+- Commencer par "Bonjour ${prenom ?? ""}," puis une accroche chaleureuse personnalisée
 - Rappeler subtilement la conversation avec le sitter (ton non-commercial, empathique)
 - Mettre en avant le bien-être du chien et la tranquillité d'esprit que DogShift offre
-- Mentionner que chaque sitter est vérifié manuellement
-- Inclure un bouton CTA "Finaliser ma réservation →" pointant vers ${baseUrl}/sitters
-- Rester court (3-4 paragraphes max), chaleureux, et ne pas être insistant
-- Signer "L'équipe DogShift" avec le lien support@dogshift.ch
-- Aucun emoji dans le sujet ni dans le corps
+- Mentionner que chaque sitter est vérifié manuellement (identité, domicile, entretien)
+- Rester court (3-4 paragraphes max), sans insistance
+- Aucun emoji, aucun bouton (le CTA est ajouté par notre système)
 
-Réponds UNIQUEMENT avec le JSON brut : { "subject": "...", "bodyHtml": "..." }`,
+Réponds UNIQUEMENT avec le JSON brut : { "subject": "...", "bodyHtml": "<p>...</p><p>...</p>" }`,
     });
 
     let emailContent: { subject: string; bodyHtml: string };
@@ -92,17 +92,40 @@ Réponds UNIQUEMENT avec le JSON brut : { "subject": "...", "bodyHtml": "..." }`
       throw new Error("Claude output missing subject or bodyHtml");
     }
 
-    // 2. Send email via Resend
+    // 2. Wrap Claude's body in the standard DogShift layout
+    const FF = "-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,Helvetica,sans-serif";
+    const personalBodyHtml = `
+      <div style="font-family:${FF};font-size:14px;line-height:22px;color:#374151;">
+        ${emailContent.bodyHtml}
+      </div>`;
+
+    const logoUrl = `${baseUrl}/dogshift-logo.png`;
+    const { html } = renderEmailLayout({
+      logoUrl,
+      title: emailContent.subject,
+      extraHtml: personalBodyHtml,
+      ctaLabel: "Finaliser ma réservation →",
+      ctaUrl: `${baseUrl}/sitters`,
+      secondaryLinkLabel: "Voir les sitters disponibles",
+      secondaryLinkUrl: `${baseUrl}/sitters`,
+      footerText: "Vous recevez cet email car vous avez échangé avec un sitter sur DogShift sans finaliser votre réservation.",
+      footerLinks: [
+        { label: "dogshift.ch", url: baseUrl },
+        { label: "support@dogshift.ch", url: "mailto:support@dogshift.ch" },
+      ],
+    });
+
     const fallbackText =
       `${prenom ? `Bonjour ${prenom},\n\n` : ""}` +
       `Vous avez échangé avec ${sitterPrenom ?? "un sitter"}${sitterVille ? ` à ${sitterVille}` : ""} sur DogShift ` +
       `il y a ${daysSinceLastMessage ?? "quelques"} jours. ` +
       `Finalisez votre réservation : ${baseUrl}/sitters\n\n— L'équipe DogShift`;
 
+    // 3. Send email via Resend
     await sendEmail({
       to: email,
       subject: emailContent.subject,
-      html: emailContent.bodyHtml,
+      html,
       text: fallbackText,
     });
 
