@@ -485,7 +485,7 @@ function buildCancellationPolicyHtml(
         <tr>
           <td style="padding:18px 24px;">
             <div style="font-family:${CANCEL_FF};font-size:14px;line-height:22px;color:#15803d;font-weight:600;">
-              ✅ Tu seras remboursé(e) intégralement${amount ? ` de ${amount}` : ""}.
+              Tu seras remboursé(e) intégralement${amount ? ` de ${amount}` : ""}.
             </div>
             <div style="margin-top:6px;font-family:${CANCEL_FF};font-size:13px;line-height:20px;color:#475569;">
               Le remboursement apparaîtra sur ton compte sous 5 à 10 jours ouvrés.
@@ -500,7 +500,7 @@ function buildCancellationPolicyHtml(
       <tr>
         <td style="padding:18px 24px;">
           <div style="font-family:${CANCEL_FF};font-size:14px;line-height:22px;color:#92400e;font-weight:600;">
-            ⚠️ Annulation à moins de 24h du début de la prestation
+            Annulation à moins de 24h du début de la prestation
           </div>
           <div style="margin-top:6px;font-family:${CANCEL_FF};font-size:13px;line-height:20px;color:#475569;">
             ${amount ? `Le montant de ${amount} reste acquis à ${sitterName || "le sitter"}.` : `Le montant reste acquis à ${sitterName || "le sitter"}.`}
@@ -528,9 +528,9 @@ function buildRefundInfoHtml(params: {
       <tr>
         <td style="padding:20px 24px;">
           ${amount ? `<div style="font-family:${CANCEL_FF};font-size:28px;font-weight:800;color:#15803d;margin-bottom:8px;">${amount}</div>` : ""}
-          ${cardInfo ? `<div style="font-family:${CANCEL_FF};font-size:13px;color:#475569;margin-bottom:4px;">💳 ${cardInfo}</div>` : ""}
-          <div style="font-family:${CANCEL_FF};font-size:13px;color:#475569;margin-bottom:4px;">📅 Remboursement initié le ${formatShortDate(new Date())}</div>
-          <div style="font-family:${CANCEL_FF};font-size:13px;color:#475569;">⏱ Délai estimé : 5 à 10 jours ouvrés</div>
+          ${cardInfo ? `<div style="font-family:${CANCEL_FF};font-size:13px;color:#475569;margin-bottom:4px;">Carte : ${cardInfo}</div>` : ""}
+          <div style="font-family:${CANCEL_FF};font-size:13px;color:#475569;margin-bottom:4px;">Remboursement initié le ${formatShortDate(new Date())}</div>
+          <div style="font-family:${CANCEL_FF};font-size:13px;color:#475569;">Délai estimé : 5 à 10 jours ouvrés</div>
           ${params.stripeRefundId ? `<div style="margin-top:8px;font-family:Menlo,Consolas,monospace;font-size:11px;color:#94a3b8;">Réf. ${params.stripeRefundId}</div>` : ""}
         </td>
       </tr>
@@ -539,7 +539,7 @@ function buildRefundInfoHtml(params: {
       <tr>
         <td style="padding:14px 20px;">
           <div style="font-family:${CANCEL_FF};font-size:13px;line-height:20px;color:#475569;">
-            🛡️ <strong style="color:#0f172a;">Paiement sécurisé</strong> — Ton remboursement est traité via Stripe, le même prestataire de paiement utilisé par des millions de sites.
+            <strong style="color:#0f172a;">Paiement sécurisé</strong> — Ton remboursement est traité via Stripe, le même prestataire de paiement utilisé par des millions de sites.
           </div>
         </td>
       </tr>
@@ -552,7 +552,7 @@ function buildAutoExpiredExplanationHtml(deadlineHours: number): string {
       <tr>
         <td style="padding:18px 24px;">
           <div style="font-family:${CANCEL_FF};font-size:14px;line-height:22px;color:#1e40af;font-weight:600;">
-            ℹ️ Que s'est-il passé ?
+            Que s'est-il passé ?
           </div>
           <div style="margin-top:6px;font-family:${CANCEL_FF};font-size:13px;line-height:20px;color:#475569;">
             Chaque sitter dispose de ${deadlineHours}h pour accepter une demande de réservation.
@@ -579,7 +579,7 @@ function buildRefundFailedExplanationHtml(failureReason?: string): string {
       <tr>
         <td style="padding:18px 24px;">
           <div style="font-family:${CANCEL_FF};font-size:14px;line-height:22px;color:#92400e;font-weight:600;">
-            ⚠️ Détail du problème
+            Détail du problème
           </div>
           <div style="margin-top:6px;font-family:${CANCEL_FF};font-size:13px;line-height:20px;color:#475569;">
             ${readableReason}
@@ -627,6 +627,15 @@ export type NotificationPayload =
 // ── Sitter email helpers ──────────────────────────────────────────────────────
 
 const SITTER_FF = "-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,Helvetica,sans-serif";
+
+// Small colored dot icon for email tips rows — replaces emojis for professional look
+const dot = (color: string) =>
+  `<td valign="top" style="padding:8px 10px 0 0;width:10px;"><div style="width:10px;height:10px;border-radius:50%;background:${color};"></div></td>`;
+const D_INDIGO = dot("#818cf8");
+const D_GREEN  = dot("#4ade80");
+const D_AMBER  = dot("#fbbf24");
+const D_RED    = dot("#f87171");
+const D_SLATE  = dot("#94a3b8");
 
 function buildSitterEarningsHtml(
   grossCents: number,
@@ -807,17 +816,17 @@ export async function sendNotificationEmail(params: {
       case "bookingRefundFailed":
         return "Action requise : remboursement impossible – DogShift";
       case "sitterBookingConfirmed":
-        return "Ta prestation est confirmée 🐾 – DogShift";
+        return "Ta prestation est confirmée – DogShift";
       case "sitterBookingReminder":
         return "Rappel de prestation – DogShift";
       case "sitterPayoutReceived":
-        return `${formatMoney(payload.amountCents, payload.currency)} reçus 💚 – DogShift`;
+        return `${formatMoney(payload.amountCents, payload.currency)} reçus – DogShift`;
       case "sitterBookingModified":
         return "Réservation modifiée – DogShift";
       case "sitterRefundTriggered":
         return "Annulation de réservation – DogShift";
       case "sitterReviewReceived":
-        return `${payload.ownerName} t'a laissé un avis ⭐ – DogShift`;
+        return `${payload.ownerName} t'a laissé un avis – DogShift`;
       case "sitterMonthlyRecap":
         return `Ton récap ${payload.month} – DogShift`;
       default:
@@ -1020,13 +1029,13 @@ Notification DogShift.
           <div style="margin-top:24px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:18px 20px;">
             <div style="font-family:${SITTER_FF};font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#64748b;margin-bottom:12px;">Nos conseils pour bien démarrer</div>
             <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
-              <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">💬</td><td style="padding:5px 0;font-family:${SITTER_FF};font-size:14px;line-height:20px;color:#475569;"><strong>Réponds rapidement</strong> — les propriétaires préfèrent les sitters réactifs.</td></tr>
-              <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">📋</td><td style="padding:5px 0;font-family:${SITTER_FF};font-size:14px;line-height:20px;color:#475569;"><strong>Lis bien les détails</strong> — vérifie le service, les dates et les consignes.</td></tr>
-              <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">🤝</td><td style="padding:5px 0;font-family:${SITTER_FF};font-size:14px;line-height:20px;color:#475569;"><strong>Pose des questions</strong> — n'hésite pas à contacter le propriétaire.</td></tr>
+              <tr>${D_INDIGO}<td style="padding:5px 0;font-family:${SITTER_FF};font-size:14px;line-height:20px;color:#475569;"><strong>Réponds rapidement</strong> — les propriétaires préfèrent les sitters réactifs.</td></tr>
+              <tr>${D_INDIGO}<td style="padding:5px 0;font-family:${SITTER_FF};font-size:14px;line-height:20px;color:#475569;"><strong>Lis bien les détails</strong> — vérifie le service, les dates et les consignes.</td></tr>
+              <tr>${D_INDIGO}<td style="padding:5px 0;font-family:${SITTER_FF};font-size:14px;line-height:20px;color:#475569;"><strong>Pose des questions</strong> — n'hésite pas à contacter le propriétaire.</td></tr>
             </table>
           </div>
           <div style="margin-top:16px;padding:14px 18px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;">
-            <div style="font-family:${SITTER_FF};font-size:13px;line-height:20px;color:#166534;">⏰ <strong>Pense à répondre sous 24h</strong> — passé ce délai, la demande pourra être automatiquement annulée.</div>
+            <div style="font-family:${SITTER_FF};font-size:13px;line-height:20px;color:#166534;"><strong>Pense à répondre sous 24h</strong> — passé ce délai, la demande pourra être automatiquement annulée.</div>
           </div>`;
         return renderEmailLayout({
           logoUrl,
@@ -1048,9 +1057,9 @@ Notification DogShift.
           <div style="margin-top:24px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:18px 20px;">
             <div style="font-family:${CANCEL_FF};font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#64748b;margin-bottom:12px;">Prépare-toi pour le jour J</div>
             <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
-              <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">📋</td><td style="padding:5px 0;font-family:${CANCEL_FF};font-size:14px;line-height:20px;color:#475569;"><strong>Prépare les affaires</strong> — laisse, harnais, sacs, friandises et tout ce dont le sitter aura besoin.</td></tr>
-              <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">💬</td><td style="padding:5px 0;font-family:${CANCEL_FF};font-size:14px;line-height:20px;color:#475569;"><strong>Contacte ton sitter</strong> — présente-lui les habitudes de ton chien et les consignes importantes.</td></tr>
-              <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">📍</td><td style="padding:5px 0;font-family:${CANCEL_FF};font-size:14px;line-height:20px;color:#475569;"><strong>Confirme le lieu</strong> — assure-toi que le point de rendez-vous est bien défini.</td></tr>
+              <tr>${D_INDIGO}<td style="padding:5px 0;font-family:${CANCEL_FF};font-size:14px;line-height:20px;color:#475569;"><strong>Prépare les affaires</strong> — laisse, harnais, sacs, friandises et tout ce dont le sitter aura besoin.</td></tr>
+              <tr>${D_INDIGO}<td style="padding:5px 0;font-family:${CANCEL_FF};font-size:14px;line-height:20px;color:#475569;"><strong>Contacte ton sitter</strong> — présente-lui les habitudes de ton chien et les consignes importantes.</td></tr>
+              <tr>${D_INDIGO}<td style="padding:5px 0;font-family:${CANCEL_FF};font-size:14px;line-height:20px;color:#475569;"><strong>Confirme le lieu</strong> — assure-toi que le point de rendez-vous est bien défini.</td></tr>
             </table>
           </div>`;
         return renderEmailLayout({
@@ -1072,9 +1081,9 @@ Notification DogShift.
           <div style="margin-top:24px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:18px 20px;">
             <div style="font-family:${CANCEL_FF};font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#15803d;margin-bottom:12px;">Tout est en ordre</div>
             <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
-              <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">✅</td><td style="padding:5px 0;font-family:${CANCEL_FF};font-size:14px;line-height:20px;color:#475569;"><strong>Paiement sécurisé</strong> — le montant est conservé en toute sécurité jusqu'à la prestation.</td></tr>
-              <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">🔒</td><td style="padding:5px 0;font-family:${CANCEL_FF};font-size:14px;line-height:20px;color:#475569;"><strong>Protection DogShift</strong> — en cas de problème, notre équipe est là pour t'aider.</td></tr>
-              <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">📄</td><td style="padding:5px 0;font-family:${CANCEL_FF};font-size:14px;line-height:20px;color:#475569;"><strong>Justificatif</strong> — tu retrouveras ton reçu dans l'espace "Mes réservations".</td></tr>
+              <tr>${D_GREEN}<td style="padding:5px 0;font-family:${CANCEL_FF};font-size:14px;line-height:20px;color:#475569;"><strong>Paiement sécurisé</strong> — le montant est conservé en toute sécurité jusqu'à la prestation.</td></tr>
+              <tr>${D_GREEN}<td style="padding:5px 0;font-family:${CANCEL_FF};font-size:14px;line-height:20px;color:#475569;"><strong>Protection DogShift</strong> — en cas de problème, notre équipe est là pour t'aider.</td></tr>
+              <tr>${D_GREEN}<td style="padding:5px 0;font-family:${CANCEL_FF};font-size:14px;line-height:20px;color:#475569;"><strong>Justificatif</strong> — tu retrouveras ton reçu dans l'espace "Mes réservations".</td></tr>
             </table>
           </div>`;
         return renderEmailLayout({
@@ -1100,16 +1109,16 @@ Notification DogShift.
         const dogName = dog?.name || "votre chien";
         const sitterFirstName = sitter?.name?.split(" ")[0] || "le sitter";
         
-        const title = `${timePrefix}, ${dogName} retrouve ${sitterFirstName} 🐾`;
+        const title = `${timePrefix}, ${dogName} retrouve ${sitterFirstName}`;
         const subtitle = "Tout est prêt pour la prestation. Voici un petit récap pour ne rien oublier.";
 
         const ownerChecklistHtml = `
           <div style="margin-top:24px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:18px 20px;">
             <div style="font-family:${CANCEL_FF};font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#64748b;margin-bottom:12px;">Checklist du propriétaire</div>
             <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
-              <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">🦴</td><td style="padding:5px 0;font-family:${CANCEL_FF};font-size:14px;line-height:20px;color:#475569;"><strong>Prépare le nécessaire</strong> — laisse, harnais, sacs, gamelle et éventuelles friandises.</td></tr>
-              <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">📝</td><td style="padding:5px 0;font-family:${CANCEL_FF};font-size:14px;line-height:20px;color:#475569;"><strong>Rappelle les consignes</strong> — allergies, médicaments, comportement en laisse ou avec d'autres chiens.</td></tr>
-              <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">📞</td><td style="padding:5px 0;font-family:${CANCEL_FF};font-size:14px;line-height:20px;color:#475569;"><strong>Garde ton téléphone à portée</strong> — le sitter pourra te contacter en cas de besoin.</td></tr>
+              <tr>${D_INDIGO}<td style="padding:5px 0;font-family:${CANCEL_FF};font-size:14px;line-height:20px;color:#475569;"><strong>Prépare le nécessaire</strong> — laisse, harnais, sacs, gamelle et éventuelles friandises.</td></tr>
+              <tr>${D_INDIGO}<td style="padding:5px 0;font-family:${CANCEL_FF};font-size:14px;line-height:20px;color:#475569;"><strong>Rappelle les consignes</strong> — allergies, médicaments, comportement en laisse ou avec d'autres chiens.</td></tr>
+              <tr>${D_INDIGO}<td style="padding:5px 0;font-family:${CANCEL_FF};font-size:14px;line-height:20px;color:#475569;"><strong>Garde ton téléphone à portée</strong> — le sitter pourra te contacter en cas de besoin.</td></tr>
             </table>
           </div>`;
         return renderEmailLayout({
@@ -1129,7 +1138,7 @@ Notification DogShift.
           const cancelExtraHtml = `
             <div style="margin-top:16px;padding:14px 18px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;">
               <div style="font-family:${SITTER_FF};font-size:13px;line-height:20px;color:#475569;">
-                💡 <strong>Astuce</strong> — vérifie que tes disponibilités sont à jour pour maximiser tes chances de recevoir de nouvelles demandes.
+                <strong>Astuce</strong> — vérifie que tes disponibilités sont à jour pour maximiser tes chances de recevoir de nouvelles demandes.
               </div>
             </div>`;
           return renderEmailLayout({
@@ -1167,8 +1176,8 @@ Notification DogShift.
           <div style="margin-top:24px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:18px 20px;">
             <div style="font-family:${CANCEL_FF};font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#64748b;margin-bottom:12px;">Et maintenant ?</div>
             <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
-              <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">🔍</td><td style="padding:5px 0;font-family:${CANCEL_FF};font-size:14px;line-height:20px;color:#475569;"><strong>Trouve un autre sitter</strong> — des dizaines de sitters vérifiés sont disponibles près de chez toi.</td></tr>
-              <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">💬</td><td style="padding:5px 0;font-family:${CANCEL_FF};font-size:14px;line-height:20px;color:#475569;"><strong>Besoin d'aide ?</strong> — notre équipe est disponible à support@dogshift.ch.</td></tr>
+              <tr>${D_INDIGO}<td style="padding:5px 0;font-family:${CANCEL_FF};font-size:14px;line-height:20px;color:#475569;"><strong>Trouve un autre sitter</strong> — des dizaines de sitters vérifiés sont disponibles près de chez toi.</td></tr>
+              <tr>${D_INDIGO}<td style="padding:5px 0;font-family:${CANCEL_FF};font-size:14px;line-height:20px;color:#475569;"><strong>Besoin d'aide ?</strong> — notre équipe est disponible à support@dogshift.ch.</td></tr>
             </table>
           </div>`;
         return renderEmailLayout({
@@ -1198,7 +1207,7 @@ Notification DogShift.
               </table>
             </div>
             <div style="margin-top:16px;padding:14px 18px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;">
-              <div style="font-family:${SITTER_FF};font-size:13px;line-height:20px;color:#475569;">💡 <strong>Astuce</strong> — vérifie que tes disponibilités sont à jour pour maximiser tes chances de recevoir de nouvelles demandes.</div>
+              <div style="font-family:${SITTER_FF};font-size:13px;line-height:20px;color:#475569;"><strong>Astuce</strong> — vérifie que tes disponibilités sont à jour pour maximiser tes chances de recevoir de nouvelles demandes.</div>
             </div>`;
           return renderEmailLayout({
             logoUrl,
@@ -1226,9 +1235,9 @@ Notification DogShift.
           <div style="margin-top:24px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:18px 20px;">
             <div style="font-family:${CANCEL_FF};font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#15803d;margin-bottom:12px;">Détails du remboursement</div>
             <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
-              <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">⏱</td><td style="padding:5px 0;font-family:${CANCEL_FF};font-size:14px;line-height:20px;color:#475569;"><strong>Délai estimé</strong> — 5 à 10 jours ouvrés selon ta banque.</td></tr>
-              <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">💳</td><td style="padding:5px 0;font-family:${CANCEL_FF};font-size:14px;line-height:20px;color:#475569;"><strong>Moyen de paiement</strong> — le remboursement sera crédité sur le moyen utilisé lors de la réservation.</td></tr>
-              <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">📧</td><td style="padding:5px 0;font-family:${CANCEL_FF};font-size:14px;line-height:20px;color:#475569;"><strong>Question ?</strong> — contacte-nous à support@dogshift.ch si le remboursement n'apparaît pas passé ce délai.</td></tr>
+              <tr>${D_GREEN}<td style="padding:5px 0;font-family:${CANCEL_FF};font-size:14px;line-height:20px;color:#475569;"><strong>Délai estimé</strong> — 5 à 10 jours ouvrés selon ta banque.</td></tr>
+              <tr>${D_GREEN}<td style="padding:5px 0;font-family:${CANCEL_FF};font-size:14px;line-height:20px;color:#475569;"><strong>Moyen de paiement</strong> — le remboursement sera crédité sur le moyen utilisé lors de la réservation.</td></tr>
+              <tr>${D_GREEN}<td style="padding:5px 0;font-family:${CANCEL_FF};font-size:14px;line-height:20px;color:#475569;"><strong>Question ?</strong> — contacte-nous à support@dogshift.ch si le remboursement n'apparaît pas passé ce délai.</td></tr>
             </table>
           </div>`;
         return renderEmailLayout({
@@ -1261,7 +1270,7 @@ Notification DogShift.
           subtitle: "Ta réservation a été automatiquement annulée et remboursée.",
           extraHtml: expiredExplanationHtml + expiredRefundHtml + buildSupportBlockHtml() + `
           <div style="margin-top:16px;padding:14px 18px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;">
-            <div style="font-family:${CANCEL_FF};font-size:13px;line-height:20px;color:#166534;">🐾 <strong>Bonne nouvelle</strong> — de nombreux sitters vérifiés sont disponibles près de chez toi. Réserve en quelques clics !</div>
+            <div style="font-family:${CANCEL_FF};font-size:13px;line-height:20px;color:#166534;"><strong>Bonne nouvelle</strong> — de nombreux sitters vérifiés sont disponibles près de chez toi. Réserve en quelques clics !</div>
           </div>`,
           ctaLabel: baseUrl ? "Trouver un sitter disponible" : undefined,
           ctaUrl: baseUrl ? `${baseUrl}/sitters` : undefined,
@@ -1298,9 +1307,9 @@ Notification DogShift.
           <div style="margin-top:24px;background:#fef2f2;border:1px solid #fecaca;border-radius:12px;padding:18px 20px;">
             <div style="font-family:${CANCEL_FF};font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#991b1b;margin-bottom:12px;">Actions recommandées</div>
             <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
-              <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">💳</td><td style="padding:5px 0;font-family:${CANCEL_FF};font-size:14px;line-height:20px;color:#7f1d1d;"><strong>Vérifie tes informations bancaires</strong> — assure-toi que ta carte ou ton IBAN est toujours valide.</td></tr>
-              <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">🔄</td><td style="padding:5px 0;font-family:${CANCEL_FF};font-size:14px;line-height:20px;color:#7f1d1d;"><strong>Mets à jour tes infos</strong> — si ta carte a expiré, ajoute un nouveau moyen de paiement.</td></tr>
-              <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">📧</td><td style="padding:5px 0;font-family:${CANCEL_FF};font-size:14px;line-height:20px;color:#7f1d1d;"><strong>Contacte-nous</strong> — si le problème persiste, écris à support@dogshift.ch avec ta référence.</td></tr>
+              <tr>${D_RED}<td style="padding:5px 0;font-family:${CANCEL_FF};font-size:14px;line-height:20px;color:#7f1d1d;"><strong>Vérifie tes informations bancaires</strong> — assure-toi que ta carte ou ton IBAN est toujours valide.</td></tr>
+              <tr>${D_RED}<td style="padding:5px 0;font-family:${CANCEL_FF};font-size:14px;line-height:20px;color:#7f1d1d;"><strong>Mets à jour tes infos</strong> — si ta carte a expiré, ajoute un nouveau moyen de paiement.</td></tr>
+              <tr>${D_RED}<td style="padding:5px 0;font-family:${CANCEL_FF};font-size:14px;line-height:20px;color:#7f1d1d;"><strong>Contacte-nous</strong> — si le problème persiste, écris à support@dogshift.ch avec ta référence.</td></tr>
             </table>
           </div>`,
           ctaLabel: baseUrl ? "Mettre à jour mes informations" : undefined,
@@ -1431,9 +1440,9 @@ Notification DogShift.
           <div style="margin-top:24px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:18px 20px;">
             <div style="font-family:${SITTER_FF};font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#64748b;margin-bottom:12px;">Bon à savoir</div>
             <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
-              <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">🏦</td><td style="padding:5px 0;font-family:${SITTER_FF};font-size:14px;line-height:20px;color:#475569;"><strong>Délai bancaire</strong> — le virement peut mettre 1 à 3 jours ouvrés à apparaître sur ton relevé.</td></tr>
-              <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">📊</td><td style="padding:5px 0;font-family:${SITTER_FF};font-size:14px;line-height:20px;color:#475569;"><strong>Historique</strong> — retrouve tous tes virements passés dans ton portefeuille DogShift.</td></tr>
-              <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">📝</td><td style="padding:5px 0;font-family:${SITTER_FF};font-size:14px;line-height:20px;color:#475569;"><strong>Comptabilité</strong> — pense à conserver tes relevés pour ta déclaration fiscale.</td></tr>
+              <tr>${D_GREEN}<td style="padding:5px 0;font-family:${SITTER_FF};font-size:14px;line-height:20px;color:#475569;"><strong>Délai bancaire</strong> — le virement peut mettre 1 à 3 jours ouvrés à apparaître sur ton relevé.</td></tr>
+              <tr>${D_GREEN}<td style="padding:5px 0;font-family:${SITTER_FF};font-size:14px;line-height:20px;color:#475569;"><strong>Historique</strong> — retrouve tous tes virements passés dans ton portefeuille DogShift.</td></tr>
+              <tr>${D_GREEN}<td style="padding:5px 0;font-family:${SITTER_FF};font-size:14px;line-height:20px;color:#475569;"><strong>Comptabilité</strong> — pense à conserver tes relevés pour ta déclaration fiscale.</td></tr>
             </table>
           </div>`;
 
@@ -1512,9 +1521,9 @@ Notification DogShift.
           <div style="margin-top:24px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:18px 20px;">
             <div style="font-family:${SITTER_FF};font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#64748b;margin-bottom:12px;">Que faire maintenant ?</div>
             <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
-              <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">🔍</td><td style="padding:5px 0;font-family:${SITTER_FF};font-size:14px;line-height:20px;color:#475569;"><strong>Vérifie les nouveaux horaires</strong> — assure-toi que le créneau modifié est compatible avec ton emploi du temps.</td></tr>
-              <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">💬</td><td style="padding:5px 0;font-family:${SITTER_FF};font-size:14px;line-height:20px;color:#475569;"><strong>Contacte le propriétaire</strong> — si un détail te pose problème, n'hésite pas à en discuter.</td></tr>
-              <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">📅</td><td style="padding:5px 0;font-family:${SITTER_FF};font-size:14px;line-height:20px;color:#475569;"><strong>Mets à jour ton agenda</strong> — pense à adapter tes disponibilités si nécessaire.</td></tr>
+              <tr>${D_INDIGO}<td style="padding:5px 0;font-family:${SITTER_FF};font-size:14px;line-height:20px;color:#475569;"><strong>Vérifie les nouveaux horaires</strong> — assure-toi que le créneau modifié est compatible avec ton emploi du temps.</td></tr>
+              <tr>${D_INDIGO}<td style="padding:5px 0;font-family:${SITTER_FF};font-size:14px;line-height:20px;color:#475569;"><strong>Contacte le propriétaire</strong> — si un détail te pose problème, n'hésite pas à en discuter.</td></tr>
+              <tr>${D_INDIGO}<td style="padding:5px 0;font-family:${SITTER_FF};font-size:14px;line-height:20px;color:#475569;"><strong>Mets à jour ton agenda</strong> — pense à adapter tes disponibilités si nécessaire.</td></tr>
             </table>
           </div>`;
 
@@ -1556,8 +1565,8 @@ Notification DogShift.
             <div style="margin-top:24px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:18px 20px;">
               <div style="font-family:${SITTER_FF};font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#64748b;margin-bottom:12px;">Ce que tu peux faire</div>
               <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
-                <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">📅</td><td style="padding:5px 0;font-family:${SITTER_FF};font-size:14px;line-height:20px;color:#475569;"><strong>Créneau libéré</strong> — ton créneau est à nouveau disponible pour d'autres réservations.</td></tr>
-                <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">🔄</td><td style="padding:5px 0;font-family:${SITTER_FF};font-size:14px;line-height:20px;color:#475569;"><strong>Reste visible</strong> — vérifie que tes disponibilités sont à jour pour maximiser tes demandes.</td></tr>
+                <tr>${D_SLATE}<td style="padding:5px 0;font-family:${SITTER_FF};font-size:14px;line-height:20px;color:#475569;"><strong>Créneau libéré</strong> — ton créneau est à nouveau disponible pour d'autres réservations.</td></tr>
+                <tr>${D_SLATE}<td style="padding:5px 0;font-family:${SITTER_FF};font-size:14px;line-height:20px;color:#475569;"><strong>Reste visible</strong> — vérifie que tes disponibilités sont à jour pour maximiser tes demandes.</td></tr>
               </table>
             </div>`;
         } else {
@@ -1572,9 +1581,9 @@ Notification DogShift.
             <div style="margin-top:24px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:18px 20px;">
               <div style="font-family:${SITTER_FF};font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#64748b;margin-bottom:12px;">Bon à savoir</div>
               <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
-                <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">✅</td><td style="padding:5px 0;font-family:${SITTER_FF};font-size:14px;line-height:20px;color:#475569;"><strong>Rémunération maintenue</strong> — le montant sera inclus dans ton prochain virement.</td></tr>
-                <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">📅</td><td style="padding:5px 0;font-family:${SITTER_FF};font-size:14px;line-height:20px;color:#475569;"><strong>Créneau libéré</strong> — ton créneau est à nouveau disponible pour d'autres demandes.</td></tr>
-                <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">🙏</td><td style="padding:5px 0;font-family:${SITTER_FF};font-size:14px;line-height:20px;color:#475569;"><strong>Merci pour ta réactivité</strong> — les propriétaires apprécient les sitters fiables et disponibles.</td></tr>
+                <tr>${D_GREEN}<td style="padding:5px 0;font-family:${SITTER_FF};font-size:14px;line-height:20px;color:#475569;"><strong>Rémunération maintenue</strong> — le montant sera inclus dans ton prochain virement.</td></tr>
+                <tr>${D_SLATE}<td style="padding:5px 0;font-family:${SITTER_FF};font-size:14px;line-height:20px;color:#475569;"><strong>Créneau libéré</strong> — ton créneau est à nouveau disponible pour d'autres demandes.</td></tr>
+                <tr>${D_INDIGO}<td style="padding:5px 0;font-family:${SITTER_FF};font-size:14px;line-height:20px;color:#475569;"><strong>Merci pour ta réactivité</strong> — les propriétaires apprécient les sitters fiables et disponibles.</td></tr>
               </table>
             </div>`;
         }
@@ -1608,16 +1617,16 @@ Notification DogShift.
           <div style="margin-top:24px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:18px 20px;">
             <div style="font-family:${SITTER_FF};font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#64748b;margin-bottom:12px;">Pourquoi les avis comptent</div>
             <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
-              <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">🏆</td><td style="padding:5px 0;font-family:${SITTER_FF};font-size:14px;line-height:20px;color:#475569;"><strong>Visibilité</strong> — les sitters bien notés apparaissent en priorité dans les résultats de recherche.</td></tr>
-              <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">🤝</td><td style="padding:5px 0;font-family:${SITTER_FF};font-size:14px;line-height:20px;color:#475569;"><strong>Confiance</strong> — les avis positifs rassurent les nouveaux propriétaires et boostent tes réservations.</td></tr>
-              <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">📈</td><td style="padding:5px 0;font-family:${SITTER_FF};font-size:14px;line-height:20px;color:#475569;"><strong>Progression</strong> — chaque retour est une occasion de t'améliorer et d'affiner tes services.</td></tr>
+              <tr>${D_AMBER}<td style="padding:5px 0;font-family:${SITTER_FF};font-size:14px;line-height:20px;color:#475569;"><strong>Visibilité</strong> — les sitters bien notés apparaissent en priorité dans les résultats de recherche.</td></tr>
+              <tr>${D_AMBER}<td style="padding:5px 0;font-family:${SITTER_FF};font-size:14px;line-height:20px;color:#475569;"><strong>Confiance</strong> — les avis positifs rassurent les nouveaux propriétaires et boostent tes réservations.</td></tr>
+              <tr>${D_AMBER}<td style="padding:5px 0;font-family:${SITTER_FF};font-size:14px;line-height:20px;color:#475569;"><strong>Progression</strong> — chaque retour est une occasion de t'améliorer et d'affiner tes services.</td></tr>
             </table>
           </div>`;
 
         return renderEmailLayout({
           logoUrl,
           audience: "sitter",
-          title: `${payload.ownerName} vient de te laisser un avis ⭐`,
+          title: `${payload.ownerName} vient de te laisser un avis`,
           subtitle: reviewSubtitle,
           extraHtml: reviewHtml + reviewTipsHtml,
           ctaLabel: profileUrl ? "Voir mes avis" : undefined,
@@ -1639,9 +1648,9 @@ Notification DogShift.
           <div style="margin-top:24px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:18px 20px;">
             <div style="font-family:${SITTER_FF};font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#64748b;margin-bottom:12px;">Conseils pour le mois prochain</div>
             <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
-              <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">📅</td><td style="padding:5px 0;font-family:${SITTER_FF};font-size:14px;line-height:20px;color:#475569;"><strong>Anticipe tes disponibilités</strong> — ajoute tes créneaux à l'avance pour être visible des propriétaires qui planifient tôt.</td></tr>
-              <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">📸</td><td style="padding:5px 0;font-family:${SITTER_FF};font-size:14px;line-height:20px;color:#475569;"><strong>Soigne ton profil</strong> — une photo récente et une description détaillée font la différence.</td></tr>
-              <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">⭐</td><td style="padding:5px 0;font-family:${SITTER_FF};font-size:14px;line-height:20px;color:#475569;"><strong>Encourage les avis</strong> — après chaque prestation, un petit mot au propriétaire peut faire toute la différence.</td></tr>
+              <tr>${D_INDIGO}<td style="padding:5px 0;font-family:${SITTER_FF};font-size:14px;line-height:20px;color:#475569;"><strong>Anticipe tes disponibilités</strong> — ajoute tes créneaux à l'avance pour être visible des propriétaires qui planifient tôt.</td></tr>
+              <tr>${D_INDIGO}<td style="padding:5px 0;font-family:${SITTER_FF};font-size:14px;line-height:20px;color:#475569;"><strong>Soigne ton profil</strong> — une photo récente et une description détaillée font la différence.</td></tr>
+              <tr>${D_INDIGO}<td style="padding:5px 0;font-family:${SITTER_FF};font-size:14px;line-height:20px;color:#475569;"><strong>Encourage les avis</strong> — après chaque prestation, un petit mot au propriétaire peut faire toute la différence.</td></tr>
             </table>
           </div>`;
 
