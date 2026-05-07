@@ -240,70 +240,90 @@ export async function sendPensionResultEmail(params: {
   sitterEmail: string;
   sitterName: string;
   finalStatus: string;
-  score: number;
+  score?: number;
 }) {
-  const { sitterEmail, sitterName, finalStatus, score } = params;
+  const { sitterEmail, sitterName, finalStatus } = params;
   const firstName = sitterName.split(" ")[0] || "Bonjour";
+
+  const FF = "-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,Helvetica,sans-serif";
+  const DG = `<td valign="top" style="padding:8px 10px 0 0;width:10px;"><div style="width:10px;height:10px;border-radius:50%;background:#4ade80;"></div></td>`;
+  const DR = `<td valign="top" style="padding:8px 10px 0 0;width:10px;"><div style="width:10px;height:10px;border-radius:50%;background:#f87171;"></div></td>`;
+  const DI = `<td valign="top" style="padding:8px 10px 0 0;width:10px;"><div style="width:10px;height:10px;border-radius:50%;background:#818cf8;"></div></td>`;
+  const logoUrl = `${APP_URL}/dogshift-logo.png`;
 
   let subject: string;
   let bodyHtml: string;
   let bodyText: string;
 
   if (finalStatus === "approved") {
-    subject = "Votre logement est vérifié — Pension activée";
+    subject = "Votre logement est approuvé — Pension activée";
     bodyHtml = `
-      <p style="margin:0 0 12px 0;">Bonne nouvelle, ${firstName} !</p>
-      <p style="margin:0 0 12px 0;">
-        Votre logement a été analysé et répond à nos critères de qualité
-        <strong style="color:#059669;">(score ${score}/100)</strong>.
-        Le service <strong>Pension</strong> est maintenant actif sur votre profil public.
-      </p>
-      <p style="margin:0;color:#6b7280;font-size:13px;">
-        Les propriétaires peuvent désormais vous réserver pour une pension. Pensez à bien configurer vos disponibilités.
-      </p>
-    `;
-    bodyText = `Bonne nouvelle ${firstName} ! Votre logement a été vérifié (score ${score}/100). La Pension est maintenant active sur votre profil.`;
+      <div style="font-family:${FF};font-size:14px;line-height:22px;color:#374151;">
+        <p style="margin:0 0 12px 0;">Bonne nouvelle, ${firstName} !</p>
+        <p style="margin:0 0 16px 0;">
+          Notre équipe a examiné vos photos et votre logement répond à nos critères de qualité.
+          Le service <strong>Pension</strong> est maintenant <strong style="color:#059669;">actif</strong> sur votre profil public.
+        </p>
+      </div>
+      <div style="margin-top:20px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:18px 20px;">
+        <div style="font-family:${FF};font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#64748b;margin-bottom:12px;">Prochaines étapes</div>
+        <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
+          <tr>${DG}<td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Configurez vos disponibilités</strong> — activez les créneaux Pension pour commencer à recevoir des demandes.</td></tr>
+          <tr>${DG}<td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Précisez les tailles acceptées</strong> — indiquez les gabarits de chiens que vous pouvez accueillir.</td></tr>
+          <tr>${DG}<td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Complétez votre profil</strong> — une photo récente et une description détaillée rassurent les propriétaires.</td></tr>
+        </table>
+      </div>`;
+    bodyText = `Bonne nouvelle ${firstName} ! Notre équipe a approuvé votre logement. La Pension est maintenant active sur votre profil. Pensez à configurer vos disponibilités.`;
+
   } else if (finalStatus === "ai_needs_review") {
     subject = "Vos photos sont en cours d'examen — Pension";
     bodyHtml = `
-      <p style="margin:0 0 12px 0;">Bonjour ${firstName},</p>
-      <p style="margin:0 0 12px 0;">
-        Vos photos ont été analysées automatiquement <strong>(score ${score}/100)</strong>.
-        Elles nécessitent une vérification manuelle complémentaire par notre équipe.
-      </p>
-      <p style="margin:0 0 12px 0;">
-        Vous recevrez une réponse définitive dans les 48 heures ouvrées.
-      </p>
-      <p style="margin:0;color:#6b7280;font-size:13px;">
-        Si vous avez des questions : <a href="mailto:support@dogshift.ch" style="color:#6b7280;">support@dogshift.ch</a>
-      </p>
-    `;
-    bodyText = `Bonjour ${firstName}, vos photos ont été analysées (score ${score}/100) et nécessitent une vérification manuelle. Réponse sous 48h.`;
+      <div style="font-family:${FF};font-size:14px;line-height:22px;color:#374151;">
+        <p style="margin:0 0 12px 0;">Bonjour ${firstName},</p>
+        <p style="margin:0 0 12px 0;">
+          Nous avons bien reçu vos photos et notre équipe les examine actuellement.
+          Vous recevrez une réponse définitive dans les <strong>48 heures ouvrées</strong>.
+        </p>
+        <p style="margin:0;color:#6b7280;font-size:13px;">
+          Si vous avez des questions : <a href="mailto:support@dogshift.ch" style="color:#6b7280;">support@dogshift.ch</a>
+        </p>
+      </div>
+      <div style="margin-top:20px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:18px 20px;">
+        <div style="font-family:${FF};font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#64748b;margin-bottom:12px;">En attendant</div>
+        <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
+          <tr>${DI}<td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Complétez votre profil</strong> — préparez votre description et vos disponibilités.</td></tr>
+          <tr>${DI}<td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Aucune action requise</strong> — nous vous notifierons dès que la vérification sera terminée.</td></tr>
+        </table>
+      </div>`;
+    bodyText = `Bonjour ${firstName}, notre équipe examine vos photos. Vous recevrez une réponse dans les 48 heures ouvrées.`;
+
   } else {
-    subject = "Photos de vérification refusées — Pension";
+    subject = "Photos de vérification non retenues — Pension";
     bodyHtml = `
-      <p style="margin:0 0 12px 0;">Bonjour ${firstName},</p>
-      <p style="margin:0 0 16px 0;">
-        Malheureusement, vos photos n'ont pas atteint le niveau requis
-        <strong style="color:#dc2626;">(score ${score}/100, minimum requis : 50/100)</strong>.
-      </p>
-      <p style="margin:0 0 12px 0;"><strong>Conseils pour améliorer vos photos :</strong></p>
-      <ul style="margin:0 0 16px 0;padding-left:20px;font-size:14px;line-height:22px;">
-        <li style="margin-bottom:6px;">Photographiez les pièces principales (salon, chambre, cuisine)</li>
-        <li style="margin-bottom:6px;">Assurez-vous que le logement est bien éclairé et rangé</li>
-        <li style="margin-bottom:6px;">Montrez l'espace où le chien pourra dormir</li>
-        <li style="margin-bottom:6px;">Incluez une vue extérieure si vous avez un jardin ou une terrasse</li>
-      </ul>
-      <p style="margin:0;color:#6b7280;font-size:13px;">
-        Vous pouvez soumettre de nouvelles photos à tout moment depuis votre profil.
-      </p>
-    `;
-    bodyText = `Bonjour ${firstName}, vos photos n'ont pas atteint le niveau requis (score ${score}/100). Vous pouvez soumettre de nouvelles photos depuis votre profil : ${APP_URL}/host/profile/edit`;
+      <div style="font-family:${FF};font-size:14px;line-height:22px;color:#374151;">
+        <p style="margin:0 0 12px 0;">Bonjour ${firstName},</p>
+        <p style="margin:0 0 16px 0;">
+          Après examen de vos photos, notre équipe n'a pas pu valider votre logement pour le service Pension.
+          Vous pouvez soumettre de nouvelles photos à tout moment.
+        </p>
+      </div>
+      <div style="margin-top:20px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:18px 20px;">
+        <div style="font-family:${FF};font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#64748b;margin-bottom:12px;">Conseils pour améliorer vos photos</div>
+        <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
+          <tr>${DR}<td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Pièces principales</strong> — photographiez le salon, la chambre et la cuisine.</td></tr>
+          <tr>${DR}<td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Luminosité et ordre</strong> — logement bien éclairé et rangé pour une meilleure impression.</td></tr>
+          <tr>${DR}<td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Espace pour le chien</strong> — montrez où le chien pourra dormir et se déplacer.</td></tr>
+          <tr>${DR}<td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Extérieur</strong> — incluez une vue du jardin ou de la terrasse si vous en avez un(e).</td></tr>
+        </table>
+      </div>`;
+    bodyText = `Bonjour ${firstName}, nos équipes n'ont pas pu valider votre logement. Vous pouvez soumettre de nouvelles photos depuis votre profil : ${APP_URL}/host/profile/edit`;
   }
 
   const { html } = renderEmailLayout({
+    logoUrl,
+    audience: "sitter",
     title: subject,
-    extraHtml: `<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:22px;color:#374151;">${bodyHtml}</div>`,
+    extraHtml: bodyHtml,
     ctaLabel: "Voir mon profil",
     ctaUrl: `${APP_URL}/host/profile/edit`,
     footerText: "DogShift · Dog-sitting premium en Suisse · support@dogshift.ch",
