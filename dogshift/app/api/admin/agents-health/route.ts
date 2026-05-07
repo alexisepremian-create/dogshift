@@ -29,6 +29,7 @@ const ROUTE_MAP: Record<string, string | null> = {
   "zootherapie-evaluation":  "/api/agents/zootherapie-evaluation",
   "deps-agent":              "/api/agents/deps-agent",
   "deps-weekly":             "/api/agents/deps-weekly",
+  "dog-news":                "/api/agents/dog-news",
   // No dedicated route yet
   auth:                null,
   reservations:        null,

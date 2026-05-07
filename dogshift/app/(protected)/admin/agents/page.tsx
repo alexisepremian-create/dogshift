@@ -28,6 +28,7 @@ import {
   UserPlus,
   Package,
   ScanSearch,
+  Newspaper,
 } from "lucide-react";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -116,6 +117,7 @@ const COLORS: Record<string, { icon: ElementType; color: string; bg: string }> =
   "zootherapie-evaluation":   { icon: Sparkles,      color: "#7c3aed", bg: "#f5f3ff" },
   "deps-agent":               { icon: Package,       color: "#0e7490", bg: "#ecfeff" },
   "deps-weekly":              { icon: ScanSearch,    color: "#6d28d9", bg: "#f5f3ff" },
+  "dog-news":                 { icon: Newspaper,     color: "#b45309", bg: "#fffbeb" },
 };
 
 const DEFAULT_COLOR = { icon: Bot, color: "#64748b", bg: "rgba(100,116,139,0.12)" };
@@ -137,7 +139,7 @@ const Y_MAESTRO_CHILDREN   = 460;
 const Y_CANDIDATURE_CHILDREN = 640;
 
 // X centers for each row
-const FREE_CX        = [-400, -300, -200, -100, 0, 100, 200, 300, 400] as const;
+const FREE_CX        = [-450, -350, -250, -150, -50, 50, 150, 250, 350, 450] as const;
 const MAESTRO_CX     = 0;
 const MAESTRO_CHILDREN_CX = [-280, -140, 0, 140, 280] as const;
 const CANDIDATURE_CX = 0; // candidature is index 2 of MAESTRO_CHILDREN → cx=0
@@ -166,10 +168,11 @@ const AGENTS: AgentDef[] = [
   { id: "candidature_ai",     name: "Analyse IA",    description: "Claude qualitatif",                  icon: "Brain" },
   { id: "deps-agent",         name: "Deps Nightly",  description: "MAJ autonome des dépendances — npm outdated → branche → tsc → Claude fix → PR auto-merge", icon: "Package" },
   { id: "deps-weekly",        name: "Deep Scan",     description: "Rapport hebdo lundi 07h — release notes Clerk/Stripe/Next.js/Prisma analysées par Claude",  icon: "ScanSearch" },
+  { id: "dog-news",           name: "Dog News",      description: "Veille quotidienne 08h — Google News RSS → Claude → 3 idées de posts réseaux sociaux → Telegram", icon: "Newspaper" },
 ];
 
 // Zone membership
-const FREE_AGENTS          = ["auth", "reservations", "calendrier", "contrat", "activation", "assistant", "lead-magnet", "onboarding-owner", "zootherapie-evaluation"] as const;
+const FREE_AGENTS          = ["auth", "reservations", "calendrier", "contrat", "activation", "assistant", "lead-magnet", "onboarding-owner", "zootherapie-evaluation", "dog-news"] as const;
 const MAESTRO_CHILDREN     = ["deps-agent", "booking", "candidature", "notifications", "deps-weekly"] as const;
 const CANDIDATURE_CHILDREN = ["candidature_classic", "candidature_ai"] as const;
 
@@ -285,6 +288,7 @@ const AGENT_ROUTES: Record<string, string> = {
   activation:               "/api/agents/activation",
   "deps-agent":             "/api/agents/deps-agent",
   "deps-weekly":            "/api/agents/deps-weekly",
+  "dog-news":               "/api/agents/dog-news",
 };
 
 const DEFAULT_BODIES: Record<string, object> = {
@@ -302,6 +306,7 @@ const DEFAULT_BODIES: Record<string, object> = {
   booking:                  { userId: "user_test", sitterId: "sitter_test", startDate: "2026-06-01", serviceType: "PENSION" },
   "deps-agent":             { trigger: "manual" },
   "deps-weekly":            { trigger: "manual" },
+  "dog-news":               { trigger: "manual" },
 };
 
 function Sparkline({ data }: { data: { date: string; count: number }[] }) {
@@ -1470,7 +1475,7 @@ export default function AgentsDashboard() {
 
   const centerTree = useCallback((canvasEl: HTMLDivElement) => {
     const { width: cw, height: ch } = canvasEl.getBoundingClientRect();
-    const treeW = FREE_CX[FREE_CX.length - 1] * 2 + CHILD_SIZE + 80; // ~928px with 9 free agents
+    const treeW = FREE_CX[FREE_CX.length - 1] * 2 + CHILD_SIZE + 80; // ~1028px with 10 free agents
     const treeH = Y_CANDIDATURE_CHILDREN + CHILD_SIZE + 80;           // ~776px
     const fitZoom = Math.min((cw - 80) / treeW, (ch - 80) / treeH, 1.2);
     const z = Math.max(0.3, Math.min(fitZoom, 1.5));
