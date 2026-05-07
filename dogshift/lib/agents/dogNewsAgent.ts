@@ -162,11 +162,11 @@ Génère UNIQUEMENT le message Telegram, sans aucun texte avant ou après.`,
 // ─── Telegram delivery ────────────────────────────────────────────────────────
 
 async function sendTelegram(message: string): Promise<void> {
-  const token = process.env.TELEGRAM_BOT_TOKEN;
-  const chatId = process.env.TELEGRAM_CHAT_ID;
+  const token = process.env.TELEGRAM_BOT_TOKEN_NEWS ?? process.env.TELEGRAM_BOT_TOKEN;
+  const chatId = process.env.TELEGRAM_CHAT_ID_NEWS ?? process.env.TELEGRAM_CHAT_ID;
 
   if (!token || !chatId) {
-    throw new Error("TELEGRAM_BOT_TOKEN ou TELEGRAM_CHAT_ID manquant dans les variables d'environnement");
+    throw new Error("TELEGRAM_BOT_TOKEN_NEWS ou TELEGRAM_CHAT_ID_NEWS manquant dans les variables d'environnement");
   }
 
   const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {

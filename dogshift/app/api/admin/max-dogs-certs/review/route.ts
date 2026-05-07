@@ -101,7 +101,8 @@ export async function POST(req: NextRequest) {
     // Telegram
     const emoji = decision === "approved" ? "✅" : "❌";
     await sendTelegramMessage(
-      `[DogShift] ${emoji} Certificat OPAn — décision manuelle\n\nSitter : ${sitterName || sitterId}\nMax chiens : ${maxDogs ?? "?"}\nDécision : ${decision === "approved" ? "Approuvé" : "Refusé"}${notes ? `\nNote : ${notes}` : ""}\n\nEmail envoyé à : ${sitterEmail || "—"}`
+      `[DogShift] ${emoji} Certificat OPAn — décision manuelle\n\nSitter : ${sitterName || sitterId}\nMax chiens : ${maxDogs ?? "?"}\nDécision : ${decision === "approved" ? "Approuvé" : "Refusé"}${notes ? `\nNote : ${notes}` : ""}\n\nEmail envoyé à : ${sitterEmail || "—"}`,
+      { bot: "verifications" }
     ).catch((e) => console.error("[admin][max-dogs-certs][review] telegram failed", e));
 
     return NextResponse.json({ ok: true });

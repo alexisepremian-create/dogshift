@@ -136,7 +136,8 @@ export async function POST(req: NextRequest) {
     // Telegram confirmation
     const emoji = decision === "approved" ? "✅" : "❌";
     await sendTelegramMessage(
-      `[DogShift] ${emoji} Vérification identité — décision manuelle\n\nSitter : ${sitterName || sitterId}\nDécision : ${decision === "approved" ? "Approuvée" : "Refusée"}${notes ? `\nNote : ${notes}` : ""}\n\nEmail envoyé à : ${sitterEmail || "—"}`
+      `[DogShift] ${emoji} Vérification identité — décision manuelle\n\nSitter : ${sitterName || sitterId}\nDécision : ${decision === "approved" ? "Approuvée" : "Refusée"}${notes ? `\nNote : ${notes}` : ""}\n\nEmail envoyé à : ${sitterEmail || "—"}`,
+      { bot: "verifications" }
     ).catch((e) => console.error("[admin][verifications][review] telegram failed", e));
 
     return NextResponse.json({ ok: true }, { status: 200 });

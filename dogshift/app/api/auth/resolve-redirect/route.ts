@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { isActivatedStatus, normalizeSitterLifecycleStatus } from "@/lib/sitterContract";
 import { sendEmail } from "@/lib/email/sendEmail";
 import { renderEmailLayout } from "@/lib/email/templates/layout";
+import { sendTelegramMessage } from "@/lib/telegram/sendTelegramMessage";
 
 async function runOnboardingOwner({ email, userId, name }: { email: string; userId: string; name?: string }) {
   const baseUrl = (
@@ -82,15 +83,7 @@ async function runOnboardingOwner({ email, userId, name }: { email: string; user
     },
   });
 
-  const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || "";
-  const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID || "977094430";
-  if (TELEGRAM_BOT_TOKEN) {
-    await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ chat_id: TELEGRAM_CHAT_ID, text: `🏠 Nouveau propriétaire inscrit : ${email}` }),
-    }).catch(() => {});
-  }
+  await sendTelegramMessage(`🏠 Nouveau propriétaire inscrit : ${email}`, { bot: "relances" }).catch(() => {});
 }
 
 export async function GET() {

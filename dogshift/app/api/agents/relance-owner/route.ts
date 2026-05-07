@@ -14,18 +14,10 @@ import { renderEmailLayout } from "@/lib/email/templates/layout";
 
 export const runtime = "nodejs";
 
-const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || "";
-const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID || "977094430";
+import { sendTelegramMessage } from "@/lib/telegram/sendTelegramMessage";
 
 async function sendTelegram(text: string) {
-  if (!TELEGRAM_BOT_TOKEN) return;
-  try {
-    await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ chat_id: TELEGRAM_CHAT_ID, text }),
-    });
-  } catch {}
+  await sendTelegramMessage(text, { bot: "relances" }).catch(() => {});
 }
 
 export async function POST(req: NextRequest) {

@@ -254,7 +254,8 @@ export async function GET(req: NextRequest) {
             }).catch((e) => console.error("[inactivity-check] suspend email failed", e));
           }
           await sendTelegramMessage(
-            `[DogShift] 🔴 Compte suspendu (inactivité)\n\nSitter : ${name} (${email})\nID : ${sitter.sitterId}\nAucune disponibilité depuis trop longtemps.`
+            `[DogShift] Compte suspendu (inactivité)\n\nSitter : ${name} (${email})\nID : ${sitter.sitterId}\nAucune disponibilité depuis trop longtemps.`,
+            { bot: "relances" }
           ).catch(() => {});
           results.suspended++;
         }

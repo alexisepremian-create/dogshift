@@ -35,6 +35,7 @@ import {
 } from "@/lib/email/templates/applicationStatusEmail";
 import { sendInterviewEmail } from "@/lib/sitterApplication/sendInterviewEmail";
 import { calculateCandidatureScore, buildCandidatureTelegramMessage } from "@/lib/candidature/scoring";
+import { sendTelegramMessage } from "@/lib/telegram/sendTelegramMessage";
 import { logAudit } from "@/lib/audit";
 
 export const runtime = "nodejs";
@@ -423,19 +424,11 @@ export async function POST(req: NextRequest) {
     }
 
     // 4. Telegram
-    const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || "";
-    const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID || "977094430";
-    if (TELEGRAM_BOT_TOKEN) {
-      try {
-        const msg = buildCandidatureTelegramMessage({ firstName, lastName, city, email, result: scoreResult });
-        await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ chat_id: TELEGRAM_CHAT_ID, text: msg, parse_mode: "Markdown" }),
-        });
-      } catch (err) {
-        console.warn("[api][sitter-applications] telegram failed", err);
-      }
+    try {
+      const msg = buildCandidatureTelegramMessage({ firstName, lastName, city, email, result: scoreResult });
+      await sendTelegramMessage(msg, { bot: "candidatures", parseMode: "Markdown" });
+    } catch (err) {
+      console.warn("[api][sitter-applications] telegram failed", err);
     }
 
     // 5. Email candidat — contenu adapté à la décision du scoring

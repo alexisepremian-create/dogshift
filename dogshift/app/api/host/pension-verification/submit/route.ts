@@ -58,7 +58,8 @@ export async function POST(req: NextRequest) {
 
     // Telegram alert to admin on every new submission
     await sendTelegramMessage(
-      `[DogShift] Nouvelle demande de vérification Pension\n\nSitter : ${sitterName || profile.sitterId}\n${photoKeys.length} photo(s) soumise(s)\n\nRevoir : ${APP_URL}/admin/verifications`
+      `[DogShift] Nouvelle demande de vérification Pension\n\nSitter : ${sitterName || profile.sitterId}\n${photoKeys.length} photo(s) soumise(s)\n\nRevoir : ${APP_URL}/admin/verifications`,
+      { bot: "verifications" }
     ).catch((e) => console.error("[pension-submit] telegram failed", e));
 
     // Receipt email to sitter — "notre équipe vérifie"
