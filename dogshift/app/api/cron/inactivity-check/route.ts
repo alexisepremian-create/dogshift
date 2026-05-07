@@ -32,93 +32,132 @@ function verifyCronSecret(req: NextRequest) {
 
 // ─── Email builders ──────────────────────────────────────────────────────────
 
+const FF = "-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,Helvetica,sans-serif";
+const LOGO_URL = `${APP_URL}/dogshift-logo.png`;
+
+const dot = (color: string) =>
+  `<td valign="top" style="padding:8px 10px 0 0;width:10px;"><div style="width:10px;height:10px;border-radius:50%;background:${color};"></div></td>`;
+const D_INDIGO = dot("#818cf8");
+const D_AMBER  = dot("#fbbf24");
+const D_RED    = dot("#f87171");
+const D_GREEN  = dot("#4ade80");
+
 function buildNudgeEmail(name: string) {
   return renderEmailLayout({
+    logoUrl: LOGO_URL,
+    audience: "sitter",
     title: "Ajoutez vos disponibilités pour être visible",
-    subtitle: `Bonjour ${name},`,
     ctaLabel: "Gérer mes disponibilités",
     ctaUrl: `${APP_URL}/host/availability`,
     footerText: "Vous recevez cet e-mail car vous êtes dogsitter sur DogShift.",
     extraHtml: `
-      <p style="color:#475569;font-size:15px;line-height:1.6;margin:16px 0">
-        Votre profil est publié mais vous n'avez pas encore renseigné vos disponibilités.
-        Sans disponibilités, les propriétaires ne peuvent pas vous réserver.
-      </p>
-      <p style="color:#475569;font-size:15px;line-height:1.6;margin:16px 0">
-        Prenez deux minutes pour indiquer vos créneaux disponibles — c'est rapide et ça fait toute la différence !
-      </p>
-    `,
+      <div style="font-family:${FF};font-size:14px;line-height:22px;color:#374151;">
+        <p style="margin:0 0 12px 0;">Bonjour ${name},</p>
+        <p style="margin:0 0 16px 0;">
+          Votre profil est publié mais vous n'avez pas encore renseigné vos disponibilités.
+          Sans disponibilités, les propriétaires ne peuvent pas vous réserver — et votre profil n'apparaît pas dans les recherches.
+        </p>
+      </div>
+      <div style="margin-top:20px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:18px 20px;">
+        <div style="font-family:${FF};font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#64748b;margin-bottom:12px;">Pourquoi configurer vos disponibilités</div>
+        <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
+          <tr>${D_INDIGO}<td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Soyez trouvable</strong> — les propriétaires filtrent par disponibilités, sans créneaux vous êtes invisible.</td></tr>
+          <tr>${D_INDIGO}<td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Recevez des demandes</strong> — chaque créneau activé est une opportunité de réservation supplémentaire.</td></tr>
+          <tr>${D_INDIGO}<td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Deux minutes suffisent</strong> — configurez des règles récurrentes et c'est automatique semaine après semaine.</td></tr>
+        </table>
+      </div>`,
   });
 }
 
 function buildWarning1Email(name: string, daysLeft: number) {
   return renderEmailLayout({
+    logoUrl: LOGO_URL,
+    audience: "sitter",
     title: "Avertissement — votre compte sera suspendu",
-    subtitle: `Bonjour ${name},`,
     ctaLabel: "Ajouter mes disponibilités maintenant",
     ctaUrl: `${APP_URL}/host/availability`,
     footerText: "Vous recevez cet e-mail car vous êtes dogsitter sur DogShift.",
     extraHtml: `
-      <p style="color:#475569;font-size:15px;line-height:1.6;margin:16px 0">
-        Cela fait plusieurs jours que votre profil est publié sans aucune disponibilité renseignée.
-        Les propriétaires ne peuvent pas vous contacter ni vous réserver.
-      </p>
-      <p style="color:#b45309;font-size:15px;font-weight:600;line-height:1.6;margin:16px 0">
-        Si vous n'ajoutez pas de disponibilités dans les ${daysLeft} prochains jours,
-        votre compte sera suspendu pour inactivité.
-      </p>
-      <p style="color:#475569;font-size:15px;line-height:1.6;margin:16px 0">
-        Si vous souhaitez mettre votre profil en pause temporairement, vous pouvez le désactiver
-        depuis vos paramètres — cela évite toute suspension automatique.
-      </p>
-    `,
+      <div style="font-family:${FF};font-size:14px;line-height:22px;color:#374151;">
+        <p style="margin:0 0 12px 0;">Bonjour ${name},</p>
+        <p style="margin:0 0 12px 0;">
+          Cela fait plusieurs jours que votre profil est publié sans aucune disponibilité renseignée.
+          Les propriétaires ne peuvent pas vous contacter ni vous réserver.
+        </p>
+        <p style="margin:0 0 16px 0;font-weight:600;color:#b45309;">
+          Si vous n'ajoutez pas de disponibilités dans les <strong>${daysLeft} prochains jours</strong>,
+          votre compte sera suspendu pour inactivité.
+        </p>
+      </div>
+      <div style="margin-top:20px;background:#fffbeb;border:1px solid #fde68a;border-radius:12px;padding:18px 20px;">
+        <div style="font-family:${FF};font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#92400e;margin-bottom:12px;">Comment éviter la suspension</div>
+        <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
+          <tr>${D_AMBER}<td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#78350f;"><strong>Ajoutez vos disponibilités</strong> — connectez-vous et configurez vos créneaux en moins de 2 minutes.</td></tr>
+          <tr>${D_AMBER}<td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#78350f;"><strong>Mettez votre profil en pause</strong> — si vous n'êtes pas disponible actuellement, désactivez-le temporairement depuis vos paramètres.</td></tr>
+          <tr>${D_AMBER}<td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#78350f;"><strong>Besoin d'aide ?</strong> — écrivez-nous à <a href="mailto:support@dogshift.ch" style="color:#92400e;">support@dogshift.ch</a></td></tr>
+        </table>
+      </div>`,
   });
 }
 
 function buildWarning2Email(name: string, daysLeft: number) {
   return renderEmailLayout({
+    logoUrl: LOGO_URL,
+    audience: "sitter",
     title: "Dernier avertissement — suspension imminente",
-    subtitle: `Bonjour ${name},`,
     ctaLabel: "Ajouter mes disponibilités maintenant",
     ctaUrl: `${APP_URL}/host/availability`,
     footerText: "Vous recevez cet e-mail car vous êtes dogsitter sur DogShift.",
     extraHtml: `
-      <p style="color:#475569;font-size:15px;line-height:1.6;margin:16px 0">
-        C'est votre dernier avertissement. Votre profil est publié depuis plusieurs jours
-        sans aucune disponibilité, et les propriétaires ne peuvent pas vous réserver.
-      </p>
-      <p style="color:#dc2626;font-size:15px;font-weight:600;line-height:1.6;margin:16px 0">
-        Sans action de votre part dans les ${daysLeft} prochains jours,
-        votre compte sera suspendu automatiquement pour inactivité.
-      </p>
-      <p style="color:#475569;font-size:15px;line-height:1.6;margin:16px 0">
-        En cas de suspension, vous devrez contacter notre support pour débloquer votre compte.
-      </p>
-    `,
+      <div style="font-family:${FF};font-size:14px;line-height:22px;color:#374151;">
+        <p style="margin:0 0 12px 0;">Bonjour ${name},</p>
+        <p style="margin:0 0 12px 0;">
+          C'est votre dernier avertissement. Votre profil est publié depuis plusieurs jours
+          sans aucune disponibilité, et les propriétaires ne peuvent pas vous réserver.
+        </p>
+        <p style="margin:0 0 16px 0;font-weight:600;color:#dc2626;">
+          Sans action de votre part dans les <strong>${daysLeft} prochains jours</strong>,
+          votre compte sera suspendu automatiquement et votre profil retiré des résultats de recherche.
+        </p>
+      </div>
+      <div style="margin-top:20px;background:#fef2f2;border:1px solid #fecaca;border-radius:12px;padding:18px 20px;">
+        <div style="font-family:${FF};font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#991b1b;margin-bottom:12px;">Ce qui se passe en cas de suspension</div>
+        <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
+          <tr>${D_RED}<td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#7f1d1d;"><strong>Profil masqué</strong> — votre fiche n'apparaîtra plus dans les recherches des propriétaires.</td></tr>
+          <tr>${D_RED}<td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#7f1d1d;"><strong>Réactivation manuelle</strong> — vous devrez contacter notre support pour débloquer votre compte.</td></tr>
+          <tr>${D_RED}<td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#7f1d1d;"><strong>Agissez maintenant</strong> — ajoutez vos disponibilités ou mettez votre profil en pause depuis vos paramètres.</td></tr>
+        </table>
+      </div>`,
   });
 }
 
 function buildSuspendedEmail(name: string) {
   return renderEmailLayout({
+    logoUrl: LOGO_URL,
+    audience: "sitter",
     title: "Votre compte a été suspendu",
-    subtitle: `Bonjour ${name},`,
     ctaLabel: "Contacter le support",
-    ctaUrl: `mailto:support@dogshift.ch`,
+    ctaUrl: "mailto:support@dogshift.ch",
     footerText: "Vous recevez cet e-mail car vous êtes dogsitter sur DogShift.",
     extraHtml: `
-      <p style="color:#475569;font-size:15px;line-height:1.6;margin:16px 0">
-        Votre compte dogsitter a été <strong>suspendu pour inactivité</strong> : votre profil
-        était publié depuis plusieurs jours sans aucune disponibilité renseignée.
-      </p>
-      <p style="color:#475569;font-size:15px;line-height:1.6;margin:16px 0">
-        Votre profil n'est plus visible dans les résultats de recherche.
-      </p>
-      <p style="color:#475569;font-size:15px;line-height:1.6;margin:16px 0">
-        Pour réactiver votre compte, contactez-nous à
-        <a href="mailto:support@dogshift.ch" style="color:#2563eb">support@dogshift.ch</a>
-        en précisant votre adresse e-mail et la raison de votre inactivité.
-      </p>
-    `,
+      <div style="font-family:${FF};font-size:14px;line-height:22px;color:#374151;">
+        <p style="margin:0 0 12px 0;">Bonjour ${name},</p>
+        <p style="margin:0 0 12px 0;">
+          Votre compte dogsitter a été <strong>suspendu pour inactivité</strong> : votre profil
+          était publié depuis plusieurs jours sans aucune disponibilité renseignée.
+        </p>
+        <p style="margin:0 0 16px 0;">
+          Votre profil n'est plus visible dans les résultats de recherche.
+        </p>
+      </div>
+      <div style="margin-top:20px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:18px 20px;">
+        <div style="font-family:${FF};font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#64748b;margin-bottom:12px;">Comment réactiver votre compte</div>
+        <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
+          <tr>${D_GREEN}<td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Contactez notre support</strong> — écrivez à <a href="mailto:support@dogshift.ch" style="color:#2563eb;">support@dogshift.ch</a> en précisant votre adresse e-mail.</td></tr>
+          <tr>${D_GREEN}<td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Ajoutez vos disponibilités</strong> — dès la réactivation, configurez vos créneaux pour rester visible.</td></tr>
+          <tr>${D_GREEN}<td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Utilisez la mise en pause</strong> — si vous avez des périodes sans disponibilité, préférez désactiver temporairement plutôt qu'ignorer.</td></tr>
+        </table>
+      </div>`,
   });
 }
 
@@ -254,7 +293,7 @@ export async function GET(req: NextRequest) {
           if (email) {
             await sendEmail({
               to: email,
-              subject: "⚠️ Votre compte sera suspendu — ajoutez vos disponibilités — DogShift",
+              subject: "Votre compte sera suspendu — ajoutez vos disponibilités — DogShift",
               text: `Bonjour ${name},\n\nAvertissement : votre compte sera suspendu dans ${WARNING1_TO_WARNING2_DAYS} jours si vous n'ajoutez pas de disponibilités.`,
               html: buildWarning1Email(name, WARNING1_TO_WARNING2_DAYS).html,
             }).catch((e) => console.error("[inactivity-check] warning1 email failed", e));
