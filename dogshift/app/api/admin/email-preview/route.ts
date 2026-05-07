@@ -23,6 +23,14 @@ export const runtime = "nodejs";
 const BASE_URL = (process.env.NEXT_PUBLIC_BASE_URL ?? "https://www.dogshift.ch").replace(/\/$/, "");
 const LOGO_URL = `${BASE_URL}/dogshift-logo.png`;
 
+const _d = (c: string) =>
+  `<td valign="top" style="padding:8px 10px 0 0;width:10px;"><div style="width:10px;height:10px;border-radius:50%;background:${c};"></div></td>`;
+const D_INDIGO = _d("#818cf8");
+const D_GREEN  = _d("#4ade80");
+const D_AMBER  = _d("#fbbf24");
+const D_RED    = _d("#f87171");
+const D_SLATE  = _d("#94a3b8");
+
 const MOCK_BOOKING_ROWS = [
   { label: "Service", value: "Promenade (1h)" },
   { label: "Début", value: "lun. 06 mai 2026, 10:00" },
@@ -286,14 +294,14 @@ async function renderTemplate(template: string): Promise<{ html: string; subject
         <div style="margin-top:24px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:18px 20px;">
           <div style="font-family:${FF};font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#64748b;margin-bottom:12px;">Nos conseils pour bien démarrer</div>
           <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
-            <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">💬</td><td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Réponds rapidement</strong> — les propriétaires préfèrent les sitters réactifs. Un message dans l'heure fait toute la différence.</td></tr>
-            <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">📋</td><td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Lis bien les détails</strong> — vérifie le service, les dates, la taille du chien et les éventuelles consignes avant d'accepter.</td></tr>
-            <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">🤝</td><td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Pose des questions</strong> — n'hésite pas à contacter le propriétaire pour clarifier les besoins de son chien.</td></tr>
+            <tr>${D_INDIGO}<td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Réponds rapidement</strong> — les propriétaires préfèrent les sitters réactifs. Un message dans l'heure fait toute la différence.</td></tr>
+            <tr>${D_INDIGO}<td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Lis bien les détails</strong> — vérifie le service, les dates, la taille du chien et les éventuelles consignes avant d'accepter.</td></tr>
+            <tr>${D_INDIGO}<td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Pose des questions</strong> — n'hésite pas à contacter le propriétaire pour clarifier les besoins de son chien.</td></tr>
           </table>
         </div>
         <div style="margin-top:16px;padding:14px 18px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;">
           <div style="font-family:${FF};font-size:13px;line-height:20px;color:#166534;">
-            ⏰ <strong>Pense à répondre sous 24h</strong> — passé ce délai, la demande pourra être automatiquement annulée.
+            <strong>Pense à répondre sous 24h</strong> — passé ce délai, la demande pourra être automatiquement annulée.
           </div>
         </div>`;
       return {
@@ -326,9 +334,9 @@ async function renderTemplate(template: string): Promise<{ html: string; subject
             <div style="margin-top:24px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:18px 20px;">
               <div style="font-family:${FF};font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#64748b;margin-bottom:12px;">Prépare-toi pour le jour J</div>
               <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
-                <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">📋</td><td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Prépare les affaires</strong> — laisse, harnais, sacs, friandises et tout ce dont le sitter aura besoin.</td></tr>
-                <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">💬</td><td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Contacte ton sitter</strong> — présente-lui les habitudes de ton chien et les consignes importantes.</td></tr>
-                <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">📍</td><td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Confirme le lieu</strong> — assure-toi que le point de rendez-vous est bien défini avec le sitter.</td></tr>
+                <tr>${D_INDIGO}<td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Prépare les affaires</strong> — laisse, harnais, sacs, friandises et tout ce dont le sitter aura besoin.</td></tr>
+                <tr>${D_INDIGO}<td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Contacte ton sitter</strong> — présente-lui les habitudes de ton chien et les consignes importantes.</td></tr>
+                <tr>${D_INDIGO}<td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Confirme le lieu</strong> — assure-toi que le point de rendez-vous est bien défini avec le sitter.</td></tr>
               </table>
             </div>`,
           ctaLabel: "Voir la réservation",
@@ -352,9 +360,9 @@ async function renderTemplate(template: string): Promise<{ html: string; subject
             <div style="margin-top:24px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:18px 20px;">
               <div style="font-family:${FF};font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#15803d;margin-bottom:12px;">Tout est en ordre</div>
               <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
-                <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">✅</td><td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Paiement sécurisé</strong> — le montant est conservé en toute sécurité jusqu'à la prestation.</td></tr>
-                <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">🔒</td><td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Protection DogShift</strong> — en cas de problème, notre équipe est là pour t'aider.</td></tr>
-                <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">📄</td><td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Justificatif</strong> — tu retrouveras ton reçu dans l'espace "Mes réservations".</td></tr>
+                <tr>${D_GREEN}<td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Paiement sécurisé</strong> — le montant est conservé en toute sécurité jusqu'à la prestation.</td></tr>
+                <tr>${D_GREEN}<td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Protection DogShift</strong> — en cas de problème, notre équipe est là pour t'aider.</td></tr>
+                <tr>${D_GREEN}<td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Justificatif</strong> — tu retrouveras ton reçu dans l'espace "Mes réservations".</td></tr>
               </table>
             </div>`,
           ctaLabel: "Voir la réservation",
@@ -366,18 +374,18 @@ async function renderTemplate(template: string): Promise<{ html: string; subject
     case "booking-reminder": {
       const FF = "-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,Helvetica,sans-serif";
       return {
-        subject: "Demain, Max retrouve Camille 🐾 – DogShift",
+        subject: "Demain, Max retrouve Camille – DogShift",
         html: renderEmailLayout({
           logoUrl: LOGO_URL,
-          title: "Demain, Max retrouve Camille 🐾",
+          title: "Demain, Max retrouve Camille",
           subtitle: "Tout est prêt pour la prestation. Voici un petit récap pour ne rien oublier.",
           summaryRows: MOCK_TRAVEL_BOOKING_ROWS,
           extraHtml: buildMockReminderHtml() + `
             <div style="margin-top:24px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:18px 20px;">
               <div style="font-family:${FF};font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#64748b;margin-bottom:12px;">Checklist du propriétaire</div>
               <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
-                <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">🦴</td><td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Prépare le nécessaire</strong> — laisse, harnais, sacs, gamelle et éventuelles friandises.</td></tr>
-                <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">📝</td><td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Rappelle les consignes</strong> — allergies, médicaments, comportement en laisse ou avec d'autres chiens.</td></tr>
+                <tr>${D_INDIGO}<td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Prépare le nécessaire</strong> — laisse, harnais, sacs, gamelle et éventuelles friandises.</td></tr>
+                <tr>${D_INDIGO}<td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Rappelle les consignes</strong> — allergies, médicaments, comportement en laisse ou avec d'autres chiens.</td></tr>
                 <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">📞</td><td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Garde ton téléphone à portée</strong> — le sitter pourra te contacter en cas de besoin.</td></tr>
               </table>
             </div>`,
@@ -400,9 +408,9 @@ async function renderTemplate(template: string): Promise<{ html: string; subject
             <div style="margin-top:24px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:18px 20px;">
               <div style="font-family:${FF};font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#64748b;margin-bottom:12px;">Et maintenant ?</div>
               <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
-                <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">💰</td><td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Remboursement</strong> — si tu es éligible, le remboursement sera traité automatiquement sous 5 à 10 jours ouvrés.</td></tr>
-                <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">🔍</td><td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Trouve un autre sitter</strong> — des dizaines de sitters vérifiés sont disponibles près de chez toi.</td></tr>
-                <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">💬</td><td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Besoin d'aide ?</strong> — notre équipe est disponible à support@dogshift.ch.</td></tr>
+                <tr>${D_GREEN}<td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Remboursement</strong> — si tu es éligible, le remboursement sera traité automatiquement sous 5 à 10 jours ouvrés.</td></tr>
+                <tr>${D_INDIGO}<td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Trouve un autre sitter</strong> — des dizaines de sitters vérifiés sont disponibles près de chez toi.</td></tr>
+                <tr>${D_INDIGO}<td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Besoin d'aide ?</strong> — notre équipe est disponible à support@dogshift.ch.</td></tr>
               </table>
             </div>`,
           ctaLabel: "Trouver un autre sitter",
@@ -426,9 +434,9 @@ async function renderTemplate(template: string): Promise<{ html: string; subject
             <div style="margin-top:24px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:18px 20px;">
               <div style="font-family:${FF};font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#15803d;margin-bottom:12px;">Détails du remboursement</div>
               <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
-                <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">⏱</td><td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Délai estimé</strong> — 5 à 10 jours ouvrés selon ta banque.</td></tr>
-                <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">💳</td><td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Moyen de paiement</strong> — le remboursement sera crédité sur le moyen de paiement utilisé lors de la réservation.</td></tr>
-                <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">📧</td><td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Question ?</strong> — contacte-nous à support@dogshift.ch si le remboursement n'apparaît pas passé ce délai.</td></tr>
+                <tr>${D_GREEN}<td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Délai estimé</strong> — 5 à 10 jours ouvrés selon ta banque.</td></tr>
+                <tr>${D_GREEN}<td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Moyen de paiement</strong> — le remboursement sera crédité sur le moyen de paiement utilisé lors de la réservation.</td></tr>
+                <tr>${D_GREEN}<td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Question ?</strong> — contacte-nous à support@dogshift.ch si le remboursement n'apparaît pas passé ce délai.</td></tr>
               </table>
             </div>`,
           ctaLabel: "Trouver un nouveau sitter",
@@ -452,7 +460,7 @@ async function renderTemplate(template: string): Promise<{ html: string; subject
         </div>
         <div style="margin-top:16px;padding:14px 18px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;">
           <div style="font-family:${FF};font-size:13px;line-height:20px;color:#475569;">
-            💡 <strong>Astuce</strong> — vérifie que tes disponibilités sont à jour pour maximiser tes chances de recevoir de nouvelles demandes.
+            <strong>Astuce</strong> — vérifie que tes disponibilités sont à jour pour maximiser tes chances de recevoir de nouvelles demandes.
           </div>
         </div>`;
       return {
@@ -486,12 +494,12 @@ async function renderTemplate(template: string): Promise<{ html: string; subject
             <div style="margin-top:24px;background:#fefce8;border:1px solid #fde68a;border-radius:12px;padding:18px 20px;">
               <div style="font-family:${FF};font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#92400e;margin-bottom:12px;">Pourquoi ça arrive</div>
               <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
-                <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">⏰</td><td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#78350f;">Chaque sitter dispose d'un délai pour accepter les demandes. Ce délai a été dépassé, donc ta réservation a été annulée par sécurité.</td></tr>
-                <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">💰</td><td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#78350f;">Ton remboursement intégral est en cours — il apparaîtra sous 5 à 10 jours ouvrés.</td></tr>
+                <tr>${D_AMBER}<td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#78350f;">Chaque sitter dispose d'un délai pour accepter les demandes. Ce délai a été dépassé, donc ta réservation a été annulée par sécurité.</td></tr>
+                <tr>${D_GREEN}<td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#78350f;">Ton remboursement intégral est en cours — il apparaîtra sous 5 à 10 jours ouvrés.</td></tr>
               </table>
             </div>
             <div style="margin-top:16px;padding:14px 18px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;">
-              <div style="font-family:${FF};font-size:13px;line-height:20px;color:#166534;">🐾 <strong>Bonne nouvelle</strong> — de nombreux sitters vérifiés sont disponibles près de chez toi. Réserve en quelques clics !</div>
+              <div style="font-family:${FF};font-size:13px;line-height:20px;color:#166534;"><strong>Bonne nouvelle</strong> — de nombreux sitters vérifiés sont disponibles près de chez toi. Réserve en quelques clics !</div>
             </div>`,
           ctaLabel: "Trouver un sitter disponible",
           ctaUrl: `${BASE_URL}/sitters`,
@@ -514,9 +522,9 @@ async function renderTemplate(template: string): Promise<{ html: string; subject
             <div style="margin-top:24px;background:#fef2f2;border:1px solid #fecaca;border-radius:12px;padding:18px 20px;">
               <div style="font-family:${FF};font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#991b1b;margin-bottom:12px;">Actions recommandées</div>
               <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
-                <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">💳</td><td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#7f1d1d;"><strong>Vérifie tes informations bancaires</strong> — assure-toi que ta carte ou ton IBAN est toujours valide.</td></tr>
-                <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">🔄</td><td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#7f1d1d;"><strong>Mets à jour tes infos</strong> — si ta carte a expiré, ajoute un nouveau moyen de paiement.</td></tr>
-                <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">📧</td><td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#7f1d1d;"><strong>Contacte-nous</strong> — si le problème persiste, écris à support@dogshift.ch avec ta référence de réservation.</td></tr>
+                <tr>${D_RED}<td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#7f1d1d;"><strong>Vérifie tes informations bancaires</strong> — assure-toi que ta carte ou ton IBAN est toujours valide.</td></tr>
+                <tr>${D_RED}<td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#7f1d1d;"><strong>Mets à jour tes infos</strong> — si ta carte a expiré, ajoute un nouveau moyen de paiement.</td></tr>
+                <tr>${D_RED}<td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#7f1d1d;"><strong>Contacte-nous</strong> — si le problème persiste, écris à support@dogshift.ch avec ta référence de réservation.</td></tr>
               </table>
             </div>`,
           ctaLabel: "Mettre à jour mes informations",
@@ -564,9 +572,9 @@ async function renderTemplate(template: string): Promise<{ html: string; subject
             <div style="margin-top:24px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:18px 20px;">
               <div style="font-family:${FF};font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#64748b;margin-bottom:12px;">Pourquoi laisser un avis ?</div>
               <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
-                <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">🌟</td><td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Aide la communauté</strong> — ton avis guide les autres propriétaires dans leur choix.</td></tr>
-                <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">🙏</td><td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Encourage ton sitter</strong> — un retour positif motive et valorise son travail.</td></tr>
-                <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">📈</td><td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Améliore le service</strong> — tes retours constructifs aident DogShift à s'améliorer.</td></tr>
+                <tr>${D_AMBER}<td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Aide la communauté</strong> — ton avis guide les autres propriétaires dans leur choix.</td></tr>
+                <tr>${D_AMBER}<td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Encourage ton sitter</strong> — un retour positif motive et valorise son travail.</td></tr>
+                <tr>${D_AMBER}<td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Améliore le service</strong> — tes retours constructifs aident DogShift à s'améliorer.</td></tr>
               </table>
             </div>`,
           ctaLabel: "Laisser un avis",
@@ -960,9 +968,9 @@ async function renderTemplate(template: string): Promise<{ html: string; subject
           <div style="margin-top:24px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:18px 20px;">
             <div style="font-family:${FF};font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#64748b;margin-bottom:12px;">Bon à savoir</div>
             <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
-              <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">🏦</td><td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Délai bancaire</strong> — le virement peut mettre 1 à 3 jours ouvrés à apparaître sur ton relevé.</td></tr>
-              <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">📊</td><td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Historique</strong> — retrouve tous tes virements passés dans ton portefeuille DogShift.</td></tr>
-              <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">📝</td><td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Comptabilité</strong> — pense à conserver tes relevés pour ta déclaration fiscale.</td></tr>
+              <tr>${D_GREEN}<td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Délai bancaire</strong> — le virement peut mettre 1 à 3 jours ouvrés à apparaître sur ton relevé.</td></tr>
+              <tr>${D_GREEN}<td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Historique</strong> — retrouve tous tes virements passés dans ton portefeuille DogShift.</td></tr>
+              <tr>${D_GREEN}<td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Comptabilité</strong> — pense à conserver tes relevés pour ta déclaration fiscale.</td></tr>
             </table>
           </div>`,
         ctaLabel: "Voir mon portefeuille",
@@ -997,9 +1005,9 @@ async function renderTemplate(template: string): Promise<{ html: string; subject
           <div style="margin-top:24px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:18px 20px;">
             <div style="font-family:${FF};font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#64748b;margin-bottom:12px;">Que faire maintenant ?</div>
             <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
-              <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">🔍</td><td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Vérifie les nouveaux horaires</strong> — assure-toi que le créneau modifié est compatible avec ton emploi du temps.</td></tr>
-              <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">💬</td><td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Contacte le propriétaire</strong> — si un détail te pose problème, n'hésite pas à en discuter.</td></tr>
-              <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">📅</td><td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Mets à jour ton agenda</strong> — pense à adapter tes disponibilités si nécessaire.</td></tr>
+              <tr>${D_INDIGO}<td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Vérifie les nouveaux horaires</strong> — assure-toi que le créneau modifié est compatible avec ton emploi du temps.</td></tr>
+              <tr>${D_INDIGO}<td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Contacte le propriétaire</strong> — si un détail te pose problème, n'hésite pas à en discuter.</td></tr>
+              <tr>${D_INDIGO}<td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Mets à jour ton agenda</strong> — pense à adapter tes disponibilités si nécessaire.</td></tr>
             </table>
           </div>`,
         ctaLabel: "Voir la réservation",
@@ -1032,8 +1040,8 @@ async function renderTemplate(template: string): Promise<{ html: string; subject
           <div style="margin-top:24px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:18px 20px;">
             <div style="font-family:${FF};font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#64748b;margin-bottom:12px;">Ce que tu peux faire</div>
             <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
-              <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">📅</td><td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Créneau libéré</strong> — ton créneau est à nouveau disponible pour d'autres réservations.</td></tr>
-              <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">🔄</td><td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Reste visible</strong> — vérifie que tes disponibilités sont à jour pour maximiser tes demandes.</td></tr>
+              <tr>${D_SLATE}<td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Créneau libéré</strong> — ton créneau est à nouveau disponible pour d'autres réservations.</td></tr>
+              <tr>${D_SLATE}<td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Reste visible</strong> — vérifie que tes disponibilités sont à jour pour maximiser tes demandes.</td></tr>
             </table>
           </div>`,
         ctaLabel: "Voir mes réservations",
@@ -1066,9 +1074,9 @@ async function renderTemplate(template: string): Promise<{ html: string; subject
           <div style="margin-top:24px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:18px 20px;">
             <div style="font-family:${FF};font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#64748b;margin-bottom:12px;">Bon à savoir</div>
             <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
-              <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">✅</td><td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Rémunération maintenue</strong> — le montant sera inclus dans ton prochain virement.</td></tr>
-              <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">📅</td><td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Créneau libéré</strong> — ton créneau est à nouveau disponible pour d'autres demandes.</td></tr>
-              <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">🙏</td><td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Merci pour ta réactivité</strong> — les propriétaires apprécient les sitters fiables et disponibles.</td></tr>
+              <tr>${D_GREEN}<td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Rémunération maintenue</strong> — le montant sera inclus dans ton prochain virement.</td></tr>
+              <tr>${D_SLATE}<td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Créneau libéré</strong> — ton créneau est à nouveau disponible pour d'autres demandes.</td></tr>
+              <tr>${D_INDIGO}<td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Merci pour ta réactivité</strong> — les propriétaires apprécient les sitters fiables et disponibles.</td></tr>
             </table>
           </div>`,
         ctaLabel: "Voir mes réservations",
@@ -1089,7 +1097,7 @@ async function renderTemplate(template: string): Promise<{ html: string; subject
       const { html } = renderEmailLayout({
         logoUrl: LOGO_URL,
         audience: "sitter",
-        title: "Sophie vient de te laisser un avis ⭐",
+        title: "Sophie vient de te laisser un avis",
         subtitle: "Découvre ce qu'elle a pensé de la prestation.",
         extraHtml: `
           <div style="margin-top:20px;text-align:center;">
@@ -1103,15 +1111,15 @@ async function renderTemplate(template: string): Promise<{ html: string; subject
           <div style="margin-top:24px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:18px 20px;">
             <div style="font-family:${FF};font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#64748b;margin-bottom:12px;">Pourquoi les avis comptent</div>
             <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
-              <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">🏆</td><td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Visibilité</strong> — les sitters bien notés apparaissent en priorité dans les résultats de recherche.</td></tr>
-              <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">🤝</td><td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Confiance</strong> — les avis positifs rassurent les nouveaux propriétaires et boostent tes réservations.</td></tr>
-              <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">📈</td><td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Progression</strong> — chaque retour est une occasion de t'améliorer et d'affiner tes services.</td></tr>
+              <tr>${D_AMBER}<td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Visibilité</strong> — les sitters bien notés apparaissent en priorité dans les résultats de recherche.</td></tr>
+              <tr>${D_AMBER}<td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Confiance</strong> — les avis positifs rassurent les nouveaux propriétaires et boostent tes réservations.</td></tr>
+              <tr>${D_AMBER}<td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Progression</strong> — chaque retour est une occasion de t'améliorer et d'affiner tes services.</td></tr>
             </table>
           </div>`,
         ctaLabel: "Voir mes avis",
         ctaUrl: `${BASE_URL}/host/profile`,
       });
-      return { subject: "Sophie t'a laissé un avis ⭐ – DogShift", html };
+      return { subject: "Sophie t'a laissé un avis – DogShift", html };
     }
 
     case "sitter-monthly-recap": {
@@ -1140,9 +1148,9 @@ async function renderTemplate(template: string): Promise<{ html: string; subject
           <div style="margin-top:24px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:18px 20px;">
             <div style="font-family:${FF};font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#64748b;margin-bottom:12px;">Conseils pour le mois prochain</div>
             <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
-              <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">📅</td><td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Anticipe tes disponibilités</strong> — ajoute tes créneaux à l'avance pour être visible des propriétaires qui planifient tôt.</td></tr>
-              <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">📸</td><td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Soigne ton profil</strong> — une photo récente et une description détaillée font la différence.</td></tr>
-              <tr><td valign="top" style="padding:5px 0;width:24px;font-size:16px;">⭐</td><td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Encourage les avis</strong> — après chaque prestation, un petit mot au propriétaire peut faire toute la différence.</td></tr>
+              <tr>${D_INDIGO}<td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Anticipe tes disponibilités</strong> — ajoute tes créneaux à l'avance pour être visible des propriétaires qui planifient tôt.</td></tr>
+              <tr>${D_INDIGO}<td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Soigne ton profil</strong> — une photo récente et une description détaillée font la différence.</td></tr>
+              <tr>${D_INDIGO}<td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Encourage les avis</strong> — après chaque prestation, un petit mot au propriétaire peut faire toute la différence.</td></tr>
             </table>
           </div>`,
         ctaLabel: "Voir mon tableau de bord",
