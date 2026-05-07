@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { BookingStatus, Role, VerificationStatus } from "@prisma/client";
+import { CheckCircle2, AlertTriangle, XCircle, Activity } from "lucide-react";
 
 import AdminShell from "@/components/admin/AdminShell";
 import { requireAdminPageAccess } from "@/lib/adminAuth";
@@ -123,6 +124,14 @@ export default async function AdminDashboardPage() {
     }),
   ]);
 
+  // ── Technical health (last deps-agent run) ─────────────────────────────────
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const lastHealthRun = await (prisma as any).agentLog.findFirst({
+    where: { agentName: "deps-agent" },
+    orderBy: { createdAt: "desc" },
+    select: { status: true, summary: true, createdAt: true, actionType: true },
+  });
+
   const verificationMap = new Map(sitterVerificationCounts.map((item) => [item.verificationStatus, item._count._all]));
   const bookingMap = new Map(bookingStatusCounts.map((item) => [item.status, item._count._all]));
   const pilotMap = new Map(pilotApplicationCounts.map((item) => [item.status, item._count._all]));
@@ -237,6 +246,61 @@ export default async function AdminDashboardPage() {
               </div>
             </div>
           </div>
+        </section>
+
+        {/* ── Santé technique widget ────────────────────────────────────────── */}
+        <section>
+          <Link
+            href="/admin/maintenance"
+            className="group flex items-center justify-between gap-4 rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.12)] transition hover:border-indigo-200 hover:bg-indigo-50/40 sm:p-8"
+          >
+            <div className="flex items-center gap-4">
+              <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl ${
+                !lastHealthRun ? "bg-slate-100" :
+                lastHealthRun.status === "success" ? "bg-emerald-100" :
+                lastHealthRun.status === "partial" || lastHealthRun.status === "warning" ? "bg-amber-100" :
+                "bg-red-100"
+              }`}>
+                {!lastHealthRun
+                  ? <Activity className="h-5 w-5 text-slate-400" />
+                  : lastHealthRun.status === "success"
+                    ? <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+                    : lastHealthRun.status === "partial" || lastHealthRun.status === "warning"
+                      ? <AlertTriangle className="h-5 w-5 text-amber-600" />
+                      : <XCircle className="h-5 w-5 text-red-600" />
+                }
+              </div>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Santé technique</p>
+                <p className="mt-0.5 text-sm font-semibold text-slate-900">
+                  {!lastHealthRun
+                    ? "Aucun scan enregistré"
+                    : lastHealthRun.status === "success"
+                      ? "Dépendances à jour"
+                      : lastHealthRun.status === "partial"
+                        ? "Mises à jour partielles"
+                        : "Problème détecté"}
+                </p>
+                <p className="mt-0.5 text-xs text-slate-500">
+                  {lastHealthRun
+                    ? `${lastHealthRun.summary} · ${new Date(lastHealthRun.createdAt).toLocaleDateString("fr-CH", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}`
+                    : "Le premier scan nightly apparaîtra demain à 00h30 UTC"}
+                </p>
+              </div>
+            </div>
+            <div className="flex shrink-0 items-center gap-2">
+              {lastHealthRun && (
+                <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${
+                  lastHealthRun.status === "success" ? "bg-emerald-100 text-emerald-700" :
+                  lastHealthRun.status === "partial" ? "bg-amber-100 text-amber-700" :
+                  "bg-red-100 text-red-700"
+                }`}>
+                  {lastHealthRun.status === "success" ? "OK" : lastHealthRun.status === "partial" ? "Partiel" : "Erreur"}
+                </span>
+              )}
+              <span className="text-xs text-slate-400 group-hover:text-indigo-500 transition">Voir le détail →</span>
+            </div>
+          </Link>
         </section>
 
         <section className="grid gap-4 lg:grid-cols-3">

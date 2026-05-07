@@ -211,15 +211,31 @@ const SENSITIVE_PACKAGES = [
   { name: "prisma", label: "Prisma", icon: "🗄" },
 ];
 
+const POLL_INTERVAL_MS = 30_000;
+
 export default function MaintenancePage() {
   const [logs, setLogs] = useState<MaintenanceLog[]>([]);
   const [loading, setLoading] = useState(true);
+  const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const fetchLogs = async (silent = false) => {
+    if (!silent) setRefreshing(true);
+    try {
+      const r = await fetch("/api/admin/maintenance");
+      const d = await r.json();
+      setLogs(d.logs ?? []);
+      setLastRefreshed(new Date());
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
 
   useEffect(() => {
-    fetch("/api/admin/maintenance")
-      .then(r => r.json())
-      .then(d => setLogs(d.logs ?? []))
-      .finally(() => setLoading(false));
+    fetchLogs(false);
+    const id = setInterval(() => fetchLogs(true), POLL_INTERVAL_MS);
+    return () => clearInterval(id);
   }, []);
 
   const lastRun = logs[0];
@@ -235,11 +251,30 @@ export default function MaintenancePage() {
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">Santé technique</h1>
-        <p className="mt-1 text-sm text-gray-500">
-          Surveillance autonome des dépendances — mises à jour automatiques + alertes Telegram
-        </p>
+      <div className="mb-8 flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Santé technique</h1>
+          <p className="mt-1 text-sm text-gray-500">
+            Surveillance autonome des dépendances — mises à jour automatiques + alertes Telegram
+          </p>
+          {lastRefreshed && (
+            <p className="mt-1 flex items-center gap-1.5 text-xs text-gray-400">
+              <span className="relative flex h-2 w-2">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+              </span>
+              Mise à jour en direct · dernière sync {lastRefreshed.toLocaleTimeString("fr-CH", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+            </p>
+          )}
+        </div>
+        <button
+          onClick={() => fetchLogs(false)}
+          disabled={refreshing}
+          className="flex shrink-0 items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-600 shadow-sm transition hover:bg-gray-50 disabled:opacity-50"
+        >
+          <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} />
+          Actualiser
+        </button>
       </div>
 
       {/* Status cards */}
