@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { sendTelegramMessage } from "@/lib/telegram/sendTelegramMessage";
 
 // ====================================================================
 // AGENT ACTIVATION (nouveau sitter inscrit)
@@ -7,18 +8,8 @@ import { prisma } from "@/lib/prisma";
 // Reçoit nouveau sitter → notifie Telegram
 // ====================================================================
 
-const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID || "977094430";
-const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || "";
-
 async function sendTelegram(text: string) {
-  if (!TELEGRAM_BOT_TOKEN) return;
-  try {
-    await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ chat_id: TELEGRAM_CHAT_ID, text }),
-    });
-  } catch {}
+  await sendTelegramMessage(text, { bot: "candidatures" }).catch(() => {});
 }
 
 export async function POST(req: NextRequest) {

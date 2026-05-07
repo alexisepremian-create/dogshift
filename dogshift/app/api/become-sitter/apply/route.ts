@@ -222,7 +222,8 @@ export async function POST(req: NextRequest) {
 
     // Telegram admin notification — best-effort, never blocks the response.
     void sendTelegramMessage(
-      `🐾 *Nouveau dogsitter inscrit !*\n👤 ${firstName || "Inconnu"}\n📍 ${city || "?"}\n📧 ${primaryEmail}\n🆔 ${ensured.id}\n🏠 Services : ${Array.isArray(services) ? services.join(", ") : "?"}`
+      `🐾 *Nouveau dogsitter inscrit !*\n👤 ${firstName || "Inconnu"}\n📍 ${city || "?"}\n📧 ${primaryEmail}\n🆔 ${ensured.id}\n🏠 Services : ${Array.isArray(services) ? services.join(", ") : "?"}`,
+      { bot: "candidatures", parseMode: "Markdown" }
     ).catch((e) => console.warn("[become-sitter][apply] telegram notification failed", e));
 
     return NextResponse.json({ ok: true, sitterId, activated: true }, { status: 200 });

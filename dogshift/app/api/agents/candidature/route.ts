@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { sendTelegramMessage } from "@/lib/telegram/sendTelegramMessage";
 
 // ====================================================================
 // AGENT CANDIDATURE SITTER
@@ -7,11 +8,6 @@ import { prisma } from "@/lib/prisma";
 // Reçoit les données candidature → score → décision → logs
 // ====================================================================
 
-const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID || "977094430";
-const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || "";
-
-type LinkAnimalProfessionSlug = 'none' | 'veterinarian' | 'asa' | 'breeder' | 'groomer' | 'trainer' | 'handler' | 'behaviorist' | 'shelter_volunteer' | 'other';
-type GardeExperienceSlug = 'never' | 'occasional_family' | 'regular_lt_1y' | 'regular_1_3y' | 'extensive_3y_plus' | 'professional';
 type Decision = 'HIGH' | 'REVIEW' | 'LOW';
 
 const PROFESSION_LABELS: Record<string, string> = {
@@ -82,6 +78,7 @@ interface ScoredApplication {
   telephoneSuisse: boolean;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function calculateScore(body: any): ScoredApplication {
   let score = 0;
   let hardBlock = false;
@@ -203,14 +200,7 @@ function calculateScore(body: any): ScoredApplication {
 }
 
 async function sendTelegram(text: string) {
-  if (!TELEGRAM_BOT_TOKEN) return;
-  try {
-    await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ chat_id: TELEGRAM_CHAT_ID, text, parse_mode: 'Markdown' }),
-    });
-  } catch {}
+  await sendTelegramMessage(text, { bot: "candidatures", parseMode: "Markdown" }).catch(() => {});
 }
 
 export async function POST(req: NextRequest) {

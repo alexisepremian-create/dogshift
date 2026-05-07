@@ -112,7 +112,8 @@ export async function runPensionVerificationAgent(params: {
         await sendPensionResultEmail({ sitterEmail, sitterName, finalStatus: "ai_needs_review", score: 0 });
       }
       await sendTelegramMessage(
-        `[DogShift] Vérification Pension — révision manuelle requise\n\nSitter : ${sitterName || sitterId}\nRaison : Impossible de charger les photos depuis R2.\n\nRevoir : ${APP_URL}/admin/pension-verifications`
+        `[DogShift] Vérification Pension — révision manuelle requise\n\nSitter : ${sitterName || sitterId}\nRaison : Impossible de charger les photos depuis R2.\n\nRevoir : ${APP_URL}/admin/pension-verifications`,
+        { bot: "verifications" }
       );
       return;
     }
@@ -212,7 +213,8 @@ Sois objectif et bienveillant mais rigoureux sur la sécurité.`,
         ? "Aucune photo n'a de métadonnée EXIF appareil — vérification manuelle obligatoire."
         : `Score IA : ${analyse.score}/100 (zone 50–74, révision requise).`;
       await sendTelegramMessage(
-        `[DogShift] Vérification Pension — révision manuelle requise\n\nSitter : ${sitterName || sitterId}\nScore IA : ${analyse.score}/100\n${reason}\n\nRevoir : ${APP_URL}/admin/pension-verifications`
+        `[DogShift] Vérification Pension — révision manuelle requise\n\nSitter : ${sitterName || sitterId}\nScore IA : ${analyse.score}/100\n${reason}\n\nRevoir : ${APP_URL}/admin/pension-verifications`,
+        { bot: "verifications" }
       );
     }
 
@@ -228,7 +230,8 @@ Sois objectif et bienveillant mais rigoureux sur la sécurité.`,
         await sendPensionResultEmail({ sitterEmail, sitterName, finalStatus: "ai_needs_review", score: 0 });
       }
       await sendTelegramMessage(
-        `[DogShift] Vérification Pension — ERREUR AGENT\n\nSitter : ${sitterName || sitterId}\nErreur : ${String(err).slice(0, 200)}\n\nRevoir manuellement : ${APP_URL}/admin/pension-verifications`
+        `[DogShift] Vérification Pension — ERREUR AGENT\n\nSitter : ${sitterName || sitterId}\nErreur : ${String(err).slice(0, 200)}\n\nRevoir manuellement : ${APP_URL}/admin/pension-verifications`,
+        { bot: "verifications" }
       );
     } catch (fallbackErr) {
       console.error("[pensionVerificationAgent] fallback also failed", sitterId, fallbackErr);

@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server';
 
+import { sendTelegramMessage } from "@/lib/telegram/sendTelegramMessage";
+
 export const runtime = 'nodejs';
 
 const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3001';
-const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
-const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
 
 // Notification Telegram enrichie (séparée de celle du Candidature Agent classique)
 async function sendEnrichedTelegram(payload: {
@@ -16,8 +16,6 @@ async function sendEnrichedTelegram(payload: {
   recommandationIA: string | null;
   drapeauxRouges: string[];
 }) {
-  if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) return;
-
   const lignes = [
     `🧠 *Analyse enrichie : ${payload.nom}*`,
     ``,
@@ -27,7 +25,7 @@ async function sendEnrichedTelegram(payload: {
   if (payload.niveauIA && payload.scoreIA !== null) {
     lignes.push(`🤖 Niveau IA : *${payload.niveauIA}* (${payload.scoreIA}/100)`);
   } else {
-    lignes.push(`⚠️ Analyse IA indisponible`);
+    lignes.push(`Analyse IA indisponible`);
   }
 
   if (payload.recommandationIA) {
@@ -35,22 +33,11 @@ async function sendEnrichedTelegram(payload: {
   }
 
   if (payload.drapeauxRouges.length > 0) {
-    lignes.push(``, `🚩 Drapeaux rouges : ${payload.drapeauxRouges.join(', ')}`);
+    lignes.push(``, `Drapeaux rouges : ${payload.drapeauxRouges.join(', ')}`);
   }
 
-  try {
-    await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        chat_id: TELEGRAM_CHAT_ID,
-        text: lignes.join('\n'),
-        parse_mode: 'Markdown',
-      }),
-    });
-  } catch (err) {
-    console.error('[candidature-enriched] Telegram failed:', err);
-  }
+  await sendTelegramMessage(lignes.join('\n'), { bot: "candidatures", parseMode: "Markdown" })
+    .catch((err) => console.error('[candidature-enriched] Telegram failed:', err));
 }
 
 export async function POST(req: Request) {

@@ -13,8 +13,8 @@ import { join } from "node:path";
 
 const ROOT = join(import.meta.dirname, "..");
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY ?? "";
-const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN ?? "";
-const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID ?? "977094430";
+const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN_MAINTENANCE ?? process.env.TELEGRAM_BOT_TOKEN ?? "";
+const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID_MAINTENANCE ?? process.env.TELEGRAM_CHAT_ID ?? "977094430";
 const MAINTENANCE_API_KEY = process.env.MAINTENANCE_API_KEY ?? "";
 const APP_URL = (process.env.NEXT_PUBLIC_APP_URL ?? "https://www.dogshift.ch").replace(/\/$/, "");
 

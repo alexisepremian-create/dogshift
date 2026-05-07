@@ -63,7 +63,8 @@ export async function POST(req: NextRequest) {
 
     // Telegram alert to admin
     await sendTelegramMessage(
-      `[DogShift] 📋 Nouveau document OPAn soumis\n\nSitter : ${sitterName || profile.sitterId}\nMax chiens configuré : ${maxDogs ?? "?"}\n\nRevoir : ${APP_URL}/admin/verifications`
+      `[DogShift] Nouveau document OPAn soumis\n\nSitter : ${sitterName || profile.sitterId}\nMax chiens configuré : ${maxDogs ?? "?"}\n\nRevoir : ${APP_URL}/admin/verifications`,
+      { bot: "verifications" }
     ).catch((e) => console.error("[max-dogs-cert][submit] telegram failed", e));
 
     // Receipt email to sitter

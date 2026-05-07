@@ -133,7 +133,8 @@ export async function POST(req: NextRequest) {
 
     // Telegram alert to admin
     await sendTelegramMessage(
-      `[DogShift] Nouvelle demande de vérification d'identité\n\nSitter : ${sitterName || sitterProfile.sitterId}\nEmail : ${email}\n\nRevoir : ${APP_URL}/admin/verifications`
+      `[DogShift] Nouvelle demande de vérification d'identité\n\nSitter : ${sitterName || sitterProfile.sitterId}\nEmail : ${email}\n\nRevoir : ${APP_URL}/admin/verifications`,
+      { bot: "verifications" }
     ).catch((e) => console.error("[verification-submit] telegram failed", e));
 
     // Receipt email to sitter

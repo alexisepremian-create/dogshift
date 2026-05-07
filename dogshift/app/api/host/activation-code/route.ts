@@ -84,6 +84,7 @@ export async function POST(req: Request) {
     const emailPart = email ? `\n📧 ${email}` : "";
     await sendTelegramMessage(
       `🚀 Sitter activé !${namePart}${emailPart}\n🆔 ${sitterProfile.userId}`,
+      { bot: "candidatures" }
     );
 
     const hasClerkAccount = Boolean(sitterProfile.user?.clerkUserId);

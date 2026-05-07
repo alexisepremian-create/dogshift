@@ -492,6 +492,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ token:
     const codePart = activationCode ? `\n🔑 Code: ${activationCode.rawCode}` : "";
     await sendTelegramMessage(
       `✍️ *Contrat signé !*${namePart}${emailPart}${codePart}\n🆔 ${access.profile.userId}`,
+      { bot: "candidatures", parseMode: "Markdown" }
     );
 
     return NextResponse.json(
