@@ -96,6 +96,7 @@ export async function GET(req: NextRequest) {
   let skipped = 0;
 
   try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const bookings = await (prisma as any).booking.findMany({
       where: {
         endDate: { gte: windowStart, lt: windowEnd },
@@ -170,14 +171,29 @@ export async function GET(req: NextRequest) {
 
         const subject = `Comment s’est passée votre réservation avec ${sitterName} ?`;
 
+        const RFF = "-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,Helvetica,sans-serif";
+        const DA = `<td valign="top" style="padding:8px 10px 0 0;width:10px;"><div style="width:10px;height:10px;border-radius:50%;background:#fbbf24;"></div></td>`;
+        const reviewTipsHtml = `
+          <div style="margin-top:24px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:18px 20px;">
+            <div style="font-family:${RFF};font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#64748b;margin-bottom:12px;">Pourquoi laisser un avis ?</div>
+            <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
+              <tr>${DA}<td style="padding:5px 0;font-family:${RFF};font-size:14px;line-height:20px;color:#475569;"><strong>Aide la communauté</strong> — votre avis guide les autres propriétaires dans leur choix.</td></tr>
+              <tr>${DA}<td style="padding:5px 0;font-family:${RFF};font-size:14px;line-height:20px;color:#475569;"><strong>Encouragez votre sitter</strong> — un retour positif motive et valorise son travail.</td></tr>
+              <tr>${DA}<td style="padding:5px 0;font-family:${RFF};font-size:14px;line-height:20px;color:#475569;"><strong>Améliorez le service</strong> — vos retours constructifs aident DogShift à progresser.</td></tr>
+            </table>
+          </div>`;
+
         const rendered = renderEmailLayout({
           logoUrl,
           title: "Noter votre sitter",
-          subtitle: `Votre réservation avec ${sitterName} est maintenant terminée. Comment s’est-elle passée ?`,
+          subtitle: `Votre réservation avec ${sitterName} est maintenant terminée. Comment s'est-elle passée ?`,
           summaryTitle: "Résumé",
           summaryRows: rows,
+          extraHtml: reviewTipsHtml,
           ctaLabel: reviewUrl ? "Laisser un avis" : undefined,
           ctaUrl: reviewUrl || undefined,
+          secondaryLinkLabel: baseUrl ? "Voir mes réservations" : undefined,
+          secondaryLinkUrl: baseUrl ? `${baseUrl}/account/bookings` : undefined,
           footerText: "Votre avis aide la communauté DogShift.",
         });
 
@@ -196,6 +212,7 @@ export async function GET(req: NextRequest) {
           text,
         });
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         await (prisma as any).booking.update({
           where: { id: bookingId },
           data: { reviewRequestEmailSentAt: new Date() },

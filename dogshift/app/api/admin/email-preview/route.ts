@@ -269,7 +269,17 @@ async function renderTemplate(template: string): Promise<{ html: string; subject
         }).html,
       };
 
-    case "new-message":
+    case "new-message": {
+      const FF = "-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,Helvetica,sans-serif";
+      const msgTipsHtml = `
+        <div style="margin-top:24px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:18px 20px;">
+          <div style="font-family:${FF};font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#64748b;margin-bottom:12px;">Pour gérer vos messages</div>
+          <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
+            <tr>${D_INDIGO}<td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Répondez rapidement</strong> — la réactivité est un gage de confiance pour les deux parties.</td></tr>
+            <tr>${D_INDIGO}<td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Retrouvez vos échanges</strong> — tous vos messages sont accessibles depuis votre espace personnel.</td></tr>
+            <tr>${D_INDIGO}<td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Besoin d'aide ?</strong> — si un message vous semble suspect, contactez-nous à support@dogshift.ch.</td></tr>
+          </table>
+        </div>`;
       return {
         subject: "Nouveau message sur DogShift",
         html: renderEmailLayout({
@@ -280,6 +290,7 @@ async function renderTemplate(template: string): Promise<{ html: string; subject
             { label: "De", value: "Marie Durand (Dog-sitter)" },
             { label: "Conversation", value: "Réservation #bk_preview_demo_2026" },
           ],
+          extraHtml: msgTipsHtml,
           ctaLabel: "Voir la conversation",
           ctaUrl: `${BASE_URL}/account/messages`,
           secondaryLinkLabel: "Ouvrir DogShift",
@@ -287,6 +298,7 @@ async function renderTemplate(template: string): Promise<{ html: string; subject
           footerLinks: [{ label: "Gérer mes notifications", url: `${BASE_URL}/account/settings` }],
         }).html,
       };
+    }
 
     case "booking-request": {
       const FF = "-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,Helvetica,sans-serif";
@@ -535,12 +547,27 @@ async function renderTemplate(template: string): Promise<{ html: string; subject
       };
     }
 
-    case "welcome-owner":
+    case "welcome-owner": {
+      const FF = "-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,Helvetica,sans-serif";
+      const welcomeTipsHtml = `
+        <div style="margin-top:24px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:18px 20px;">
+          <div style="font-family:${FF};font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#64748b;margin-bottom:12px;">Bien démarrer sur DogShift</div>
+          <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
+            <tr>${D_INDIGO}<td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Parcours les sitters</strong> — filtre par service, disponibilité et zone géographique.</td></tr>
+            <tr>${D_INDIGO}<td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Lis les profils</strong> — photos, avis et descriptions te donnent une idée claire de chaque sitter.</td></tr>
+            <tr>${D_INDIGO}<td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Réserve en quelques clics</strong> — choisis tes dates, confirme et laisse DogShift gérer le reste.</td></tr>
+          </table>
+        </div>
+        <div style="margin-top:14px;padding:14px 18px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;">
+          <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
+            <tr>${D_GREEN}<td style="font-family:${FF};font-size:13px;line-height:20px;color:#166534;"><strong>Chaque sitter est vérifié manuellement</strong> — identité, domicile et entretien individuel avant publication.</td></tr>
+          </table>
+        </div>`;
       return {
         subject: "Bienvenue sur DogShift",
         html: renderEmailLayout({
           logoUrl: LOGO_URL,
-          title: "Bienvenue sur DogShift",
+          title: "Bienvenue sur DogShift, Sophie",
           subtitle: "Trouvez le dog-sitter idéal pour votre compagnon en toute sérénité.",
           summaryTitle: "Pourquoi choisir DogShift ?",
           summaryRows: [
@@ -548,8 +575,11 @@ async function renderTemplate(template: string): Promise<{ html: string; subject
             { label: "Réservation simple", value: "Choisissez vos dates, confirmez en 2 clics — aucune complication" },
             { label: "Support réactif", value: "Notre équipe répond sous 24 h — Lausanne & Riviera vaudoise" },
           ],
+          extraHtml: welcomeTipsHtml,
           ctaLabel: "Trouver mon sitter →",
           ctaUrl: `${BASE_URL}/search`,
+          secondaryLinkLabel: "Comment ça marche",
+          secondaryLinkUrl: `${BASE_URL}/how-it-works`,
           footerText: "Vous recevez cet email car vous venez de créer un compte DogShift. DogShift • support@dogshift.ch",
           footerLinks: [
             { label: "dogshift.ch", url: BASE_URL },
@@ -557,6 +587,7 @@ async function renderTemplate(template: string): Promise<{ html: string; subject
           ],
         }).html,
       };
+    }
 
     case "review-request": {
       const FF = "-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,Helvetica,sans-serif";
