@@ -1010,11 +1010,21 @@ Notification DogShift.
           { label: "De", value: payload.fromName || "Utilisateur" },
           { label: "Conversation", value: conversationLabel },
         ];
+        const msgTipsHtml = `
+          <div style="margin-top:24px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:18px 20px;">
+            <div style="font-family:${CANCEL_FF};font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#64748b;margin-bottom:12px;">Pour gérer vos messages</div>
+            <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
+              <tr>${D_INDIGO}<td style="padding:5px 0;font-family:${CANCEL_FF};font-size:14px;line-height:20px;color:#475569;"><strong>Répondez rapidement</strong> — la réactivité est un gage de confiance pour les deux parties.</td></tr>
+              <tr>${D_INDIGO}<td style="padding:5px 0;font-family:${CANCEL_FF};font-size:14px;line-height:20px;color:#475569;"><strong>Retrouvez vos échanges</strong> — tous vos messages sont accessibles depuis votre espace personnel.</td></tr>
+              <tr>${D_INDIGO}<td style="padding:5px 0;font-family:${CANCEL_FF};font-size:14px;line-height:20px;color:#475569;"><strong>Besoin d'aide ?</strong> — si un message vous semble suspect, contactez-nous à support@dogshift.ch.</td></tr>
+            </table>
+          </div>`;
         return renderEmailLayout({
           logoUrl,
           title: "Nouveau message",
           subtitle: "Vous avez reçu un nouveau message sur DogShift.",
           summaryRows: rows,
+          extraHtml: msgTipsHtml,
           ctaLabel: conversationUrl ? "Voir la conversation" : undefined,
           ctaUrl: conversationUrl || undefined,
           secondaryLinkLabel: baseUrl ? "Ouvrir DogShift" : undefined,

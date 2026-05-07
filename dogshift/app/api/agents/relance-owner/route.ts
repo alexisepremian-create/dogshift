@@ -58,7 +58,8 @@ Ton rôle : inciter un propriétaire de chien à finaliser sa réservation aupr�
 Ton ton est humain, bienveillant, pas commercial — tu parles du bien-être du chien et de la confiance que DogShift garantit.
 Tu réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans balises \`\`\`json — juste le JSON brut.
 Le JSON doit avoir exactement ces deux champs : { "subject": string, "bodyHtml": string }
-Le bodyHtml doit être du HTML propre (balises <p>, <strong>, <a>) incluant un bouton CTA vers ${baseUrl}/sitters.`,
+Le bodyHtml doit être du HTML propre (balises <p>, <strong>, <a>) incluant un bouton CTA vers ${baseUrl}/sitters.
+IMPORTANT : n'utilise aucun emoji dans le sujet ni dans le corps de l'email. Garde un style sobre, professionnel et chaleureux.`,
       prompt: `Rédige un email de relance pour un propriétaire de chien qui a échangé avec un sitter sur DogShift mais n'a pas encore réservé.
 
 Informations disponibles :
@@ -69,10 +70,13 @@ Informations disponibles :
 
 L'email doit :
 - Commencer par une accroche chaleureuse personnalisée si le prénom est disponible
-- Rappeler subtilement la conversation avec le sitter
+- Rappeler subtilement la conversation avec le sitter (ton non-commercial, empathique)
 - Mettre en avant le bien-être du chien et la tranquillité d'esprit que DogShift offre
+- Mentionner que chaque sitter est vérifié manuellement
 - Inclure un bouton CTA "Finaliser ma réservation →" pointant vers ${baseUrl}/sitters
 - Rester court (3-4 paragraphes max), chaleureux, et ne pas être insistant
+- Signer "L'équipe DogShift" avec le lien support@dogshift.ch
+- Aucun emoji dans le sujet ni dans le corps
 
 Réponds UNIQUEMENT avec le JSON brut : { "subject": "...", "bodyHtml": "..." }`,
     });
