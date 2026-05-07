@@ -92,6 +92,10 @@ const AGENT_REGISTRY: Record<string, AgentRoute> = {
     url: `${BASE_URL}/api/agents/deps-weekly`,
     method: "POST",
   },
+  dog_news_run: {
+    url: `${BASE_URL}/api/agents/dog-news`,
+    method: "POST",
+  },
 };
 
 // ─── Arbre des agents pour le frontend ───

@@ -43,6 +43,10 @@
     {
       "path": "/api/cron/sitter-monthly-recap",
       "schedule": "0 9 1 * *"
+    },
+    {
+      "path": "/api/cron/dog-news",
+      "schedule": "0 8 * * *"
     }
   ],
   "buildCommand": "npm run build",
