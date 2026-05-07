@@ -714,20 +714,30 @@ async function renderTemplate(template: string): Promise<{ html: string; subject
 
     // ── Vérification Pension ─────────────────────────────────────────────────
     case "pension-submission-receipt": {
+      const FF = "-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,Helvetica,sans-serif";
       const { html } = renderEmailLayout({
+        logoUrl: LOGO_URL,
+        audience: "sitter",
         title: "Vos photos ont bien été reçues — Vérification Pension",
-        extraHtml: `<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:22px;color:#374151;">
-          <p style="margin:0 0 12px 0;">Bonjour Camille,</p>
-          <p style="margin:0 0 12px 0;">
-            Nous avons bien reçu vos <strong>4 photos</strong> pour la vérification de votre logement.
-          </p>
-          <p style="margin:0 0 12px 0;">
-            Notre équipe va les examiner et vous envoyer une réponse dans les <strong>24–48 heures ouvrées</strong>.
-          </p>
-          <p style="margin:0;color:#6b7280;font-size:13px;">
-            En cas de question : <a href="mailto:support@dogshift.ch" style="color:#6b7280;">support@dogshift.ch</a>
-          </p>
-        </div>`,
+        extraHtml: `
+          <div style="font-family:${FF};font-size:14px;line-height:22px;color:#374151;">
+            <p style="margin:0 0 12px 0;">Bonjour Camille,</p>
+            <p style="margin:0 0 12px 0;">
+              Nous avons bien reçu vos <strong>4 photos</strong> pour la vérification de votre logement.
+              Notre équipe va les examiner et vous envoyer une réponse dans les <strong>24–48 heures ouvrées</strong>.
+            </p>
+            <p style="margin:0;color:#6b7280;font-size:13px;">
+              En cas de question : <a href="mailto:support@dogshift.ch" style="color:#6b7280;">support@dogshift.ch</a>
+            </p>
+          </div>
+          <div style="margin-top:20px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:18px 20px;">
+            <div style="font-family:${FF};font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#64748b;margin-bottom:12px;">Ce qui se passe ensuite</div>
+            <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
+              <tr>${D_INDIGO}<td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Examen par notre équipe</strong> — chaque logement est vérifié manuellement selon nos critères qualité.</td></tr>
+              <tr>${D_INDIGO}<td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Réponse sous 24–48h ouvrées</strong> — vous serez notifié par email dès la décision.</td></tr>
+              <tr>${D_INDIGO}<td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>En cas d'approbation</strong> — le service Pension s'activera automatiquement sur votre profil.</td></tr>
+            </table>
+          </div>`,
         ctaLabel: "Voir mon profil",
         ctaUrl: `${BASE_URL}/host/profile/edit`,
         footerText: "DogShift · Dog-sitting premium en Suisse · support@dogshift.ch",
@@ -736,40 +746,58 @@ async function renderTemplate(template: string): Promise<{ html: string; subject
     }
 
     case "pension-approved": {
+      const FF = "-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,Helvetica,sans-serif";
       const { html } = renderEmailLayout({
-        title: "Votre logement est vérifié — Pension activée",
-        extraHtml: `<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:22px;color:#374151;">
-          <p style="margin:0 0 12px 0;">Bonne nouvelle, Camille !</p>
-          <p style="margin:0 0 12px 0;">
-            Votre logement a été analysé et répond à nos critères de qualité
-            <strong style="color:#059669;">(score 82/100)</strong>.
-            Le service <strong>Pension</strong> est maintenant actif sur votre profil public.
-          </p>
-          <p style="margin:0;color:#6b7280;font-size:13px;">
-            Les propriétaires peuvent désormais vous réserver pour une pension. Pensez à bien configurer vos disponibilités.
-          </p>
-        </div>`,
+        logoUrl: LOGO_URL,
+        audience: "sitter",
+        title: "Votre logement est approuvé — Pension activée",
+        extraHtml: `
+          <div style="font-family:${FF};font-size:14px;line-height:22px;color:#374151;">
+            <p style="margin:0 0 12px 0;">Bonne nouvelle, Camille !</p>
+            <p style="margin:0 0 16px 0;">
+              Notre équipe a examiné vos photos et votre logement répond à nos critères de qualité.
+              Le service <strong>Pension</strong> est maintenant <strong style="color:#059669;">actif</strong> sur votre profil public.
+            </p>
+          </div>
+          <div style="margin-top:20px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:18px 20px;">
+            <div style="font-family:${FF};font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#64748b;margin-bottom:12px;">Prochaines étapes</div>
+            <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
+              <tr>${D_GREEN}<td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Configurez vos disponibilités</strong> — activez les créneaux Pension pour recevoir des demandes.</td></tr>
+              <tr>${D_GREEN}<td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Précisez les tailles acceptées</strong> — indiquez les gabarits de chiens que vous pouvez accueillir.</td></tr>
+              <tr>${D_GREEN}<td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Complétez votre profil</strong> — une photo récente et une description détaillée rassurent les propriétaires.</td></tr>
+            </table>
+          </div>`,
         ctaLabel: "Voir mon profil",
         ctaUrl: `${BASE_URL}/host/profile/edit`,
         footerText: "DogShift · Dog-sitting premium en Suisse · support@dogshift.ch",
       });
-      return { subject: "Votre logement est vérifié — Pension activée", html };
+      return { subject: "Votre logement est approuvé — Pension activée", html };
     }
 
     case "pension-needs-review": {
+      const FF = "-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,Helvetica,sans-serif";
       const { html } = renderEmailLayout({
+        logoUrl: LOGO_URL,
+        audience: "sitter",
         title: "Vos photos sont en cours d'examen — Pension",
-        extraHtml: `<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:22px;color:#374151;">
-          <p style="margin:0 0 12px 0;">Bonjour Camille,</p>
-          <p style="margin:0 0 12px 0;">
-            Vos photos ont été analysées automatiquement <strong>(score 48/100)</strong>.
-            Elles nécessitent une vérification manuelle complémentaire par notre équipe.
-          </p>
-          <p style="margin:0 0 12px 0;">Vous recevrez une réponse définitive dans les 48 heures ouvrées.</p>
-          <p style="margin:0;color:#6b7280;font-size:13px;">
-            Si vous avez des questions : <a href="mailto:support@dogshift.ch" style="color:#6b7280;">support@dogshift.ch</a>
-          </p>
-        </div>`,
+        extraHtml: `
+          <div style="font-family:${FF};font-size:14px;line-height:22px;color:#374151;">
+            <p style="margin:0 0 12px 0;">Bonjour Camille,</p>
+            <p style="margin:0 0 12px 0;">
+              Nous avons bien reçu vos photos et notre équipe les examine actuellement.
+              Vous recevrez une réponse définitive dans les <strong>48 heures ouvrées</strong>.
+            </p>
+            <p style="margin:0;color:#6b7280;font-size:13px;">
+              Si vous avez des questions : <a href="mailto:support@dogshift.ch" style="color:#6b7280;">support@dogshift.ch</a>
+            </p>
+          </div>
+          <div style="margin-top:20px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:18px 20px;">
+            <div style="font-family:${FF};font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#64748b;margin-bottom:12px;">En attendant</div>
+            <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
+              <tr>${D_INDIGO}<td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Complétez votre profil</strong> — préparez votre description et vos disponibilités.</td></tr>
+              <tr>${D_INDIGO}<td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Aucune action requise</strong> — nous vous notifierons dès que la vérification sera terminée.</td></tr>
+            </table>
+          </div>`,
         ctaLabel: "Voir mon profil",
         ctaUrl: `${BASE_URL}/host/profile/edit`,
         footerText: "DogShift · Dog-sitting premium en Suisse · support@dogshift.ch",
@@ -778,30 +806,33 @@ async function renderTemplate(template: string): Promise<{ html: string; subject
     }
 
     case "pension-rejected": {
+      const FF = "-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,Helvetica,sans-serif";
       const { html } = renderEmailLayout({
-        title: "Photos de vérification refusées — Pension",
-        extraHtml: `<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:22px;color:#374151;">
-          <p style="margin:0 0 12px 0;">Bonjour Camille,</p>
-          <p style="margin:0 0 16px 0;">
-            Malheureusement, vos photos n'ont pas atteint le niveau requis
-            <strong style="color:#dc2626;">(score 22/100, minimum requis : 50/100)</strong>.
-          </p>
-          <p style="margin:0 0 12px 0;"><strong>Conseils pour améliorer vos photos :</strong></p>
-          <ul style="margin:0 0 16px 0;padding-left:20px;font-size:14px;line-height:22px;">
-            <li style="margin-bottom:6px;">Photographiez les pièces principales (salon, chambre, cuisine)</li>
-            <li style="margin-bottom:6px;">Assurez-vous que le logement est bien éclairé et rangé</li>
-            <li style="margin-bottom:6px;">Montrez l'espace où le chien pourra dormir</li>
-            <li style="margin-bottom:6px;">Incluez une vue extérieure si vous avez un jardin ou une terrasse</li>
-          </ul>
-          <p style="margin:0;color:#6b7280;font-size:13px;">
-            Vous pouvez soumettre de nouvelles photos à tout moment depuis votre profil.
-          </p>
-        </div>`,
+        logoUrl: LOGO_URL,
+        audience: "sitter",
+        title: "Photos de vérification non retenues — Pension",
+        extraHtml: `
+          <div style="font-family:${FF};font-size:14px;line-height:22px;color:#374151;">
+            <p style="margin:0 0 12px 0;">Bonjour Camille,</p>
+            <p style="margin:0 0 16px 0;">
+              Après examen de vos photos, notre équipe n'a pas pu valider votre logement pour le service Pension.
+              Vous pouvez soumettre de nouvelles photos à tout moment.
+            </p>
+          </div>
+          <div style="margin-top:20px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:18px 20px;">
+            <div style="font-family:${FF};font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#64748b;margin-bottom:12px;">Conseils pour améliorer vos photos</div>
+            <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
+              <tr>${D_RED}<td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Pièces principales</strong> — photographiez le salon, la chambre et la cuisine.</td></tr>
+              <tr>${D_RED}<td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Luminosité et ordre</strong> — logement bien éclairé et rangé pour une meilleure impression.</td></tr>
+              <tr>${D_RED}<td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Espace pour le chien</strong> — montrez où le chien pourra dormir et se déplacer.</td></tr>
+              <tr>${D_RED}<td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Extérieur</strong> — incluez une vue du jardin ou de la terrasse si disponible.</td></tr>
+            </table>
+          </div>`,
         ctaLabel: "Resoumettre mes photos",
         ctaUrl: `${BASE_URL}/host/profile/edit`,
         footerText: "DogShift · Dog-sitting premium en Suisse · support@dogshift.ch",
       });
-      return { subject: "Photos de vérification refusées — Pension", html };
+      return { subject: "Photos de vérification non retenues — Pension", html };
     }
 
     // ── Inactivité sitter ────────────────────────────────────────────────────
