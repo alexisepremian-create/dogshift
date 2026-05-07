@@ -137,11 +137,14 @@ const Y_MAESTRO_CHILDREN   = 460;
 const Y_CANDIDATURE_CHILDREN = 640;
 
 // X centers for each row
-const FREE_CX        = [-500, -400, -300, -200, -100, 0, 100, 200, 300, 400, 500] as const;
+const FREE_CX        = [-400, -300, -200, -100, 0, 100, 200, 300, 400] as const;
 const MAESTRO_CX     = 0;
-const MAESTRO_CHILDREN_CX = [-200, 0, 200] as const;
-const CANDIDATURE_CX = 0; // candidature is index 1 of MAESTRO_CHILDREN → cx=0
+const MAESTRO_CHILDREN_CX = [-280, -140, 0, 140, 280] as const;
+const CANDIDATURE_CX = 0; // candidature is index 2 of MAESTRO_CHILDREN → cx=0
 const CANDIDATURE_CHILDREN_CX = [-110, 110] as const;
+
+// Maintenance agents inside MAESTRO_CHILDREN that get dashed connection lines
+const MAINTENANCE_AGENT_IDS = new Set(["deps-agent", "deps-weekly"]);
 
 // ─── Static agent definitions ─────────────────────────────────────────────────
 
@@ -166,8 +169,8 @@ const AGENTS: AgentDef[] = [
 ];
 
 // Zone membership
-const FREE_AGENTS          = ["auth", "reservations", "calendrier", "contrat", "activation", "assistant", "lead-magnet", "onboarding-owner", "zootherapie-evaluation", "deps-agent", "deps-weekly"] as const;
-const MAESTRO_CHILDREN     = ["booking", "candidature", "notifications"] as const;
+const FREE_AGENTS          = ["auth", "reservations", "calendrier", "contrat", "activation", "assistant", "lead-magnet", "onboarding-owner", "zootherapie-evaluation"] as const;
+const MAESTRO_CHILDREN     = ["deps-agent", "booking", "candidature", "notifications", "deps-weekly"] as const;
 const CANDIDATURE_CHILDREN = ["candidature_classic", "candidature_ai"] as const;
 
 // Build lookup: id → AgentNode (static node for rendering — status comes from health polling)
@@ -280,6 +283,8 @@ const AGENT_ROUTES: Record<string, string> = {
   calendrier:               "/api/agents/calendrier",
   contrat:                  "/api/agents/contrat",
   activation:               "/api/agents/activation",
+  "deps-agent":             "/api/agents/deps-agent",
+  "deps-weekly":            "/api/agents/deps-weekly",
 };
 
 const DEFAULT_BODIES: Record<string, object> = {
@@ -295,6 +300,8 @@ const DEFAULT_BODIES: Record<string, object> = {
   candidature_classic:      { nom: "Test", email: "test@example.com", ville: "Lausanne", experience: "3 ans" },
   candidature_ai:           { nom: "Test", email: "test@example.com", ville: "Lausanne", experience: "3 ans", message: "Passionné par les animaux." },
   booking:                  { userId: "user_test", sitterId: "sitter_test", startDate: "2026-06-01", serviceType: "PENSION" },
+  "deps-agent":             { trigger: "manual" },
+  "deps-weekly":            { trigger: "manual" },
 };
 
 function Sparkline({ data }: { data: { date: string; count: number }[] }) {
@@ -346,10 +353,14 @@ function BarChart({ data }: { data: { date: string; count: number }[] }) {
 
 // ─── Agent Drawer ─────────────────────────────────────────────────────────────
 
-function santeGlobale(rate: number | null): { color: string; label: string; bg: string } {
-  if (rate == null) return { color: "#9ca3af", label: "Inconnu",  bg: "#f3f4f6" };
-  if (rate >= 95)   return { color: "#16a34a", label: "Excellent", bg: "#f0fdf4" };
-  if (rate >= 80)   return { color: "#f59e0b", label: "Correct",   bg: "#fffbeb" };
+function santeGlobale(rate: number | null, liveness?: AgentHealthStatus): { color: string; label: string; bg: string } {
+  if (rate == null) {
+    // Agent répond correctement mais n'a pas encore de logs → "En ligne"
+    if (liveness === "online") return { color: "#0284c7", label: "En ligne", bg: "#f0f9ff" };
+    return { color: "#9ca3af", label: "Inconnu", bg: "#f3f4f6" };
+  }
+  if (rate >= 95) return { color: "#16a34a", label: "Excellent", bg: "#f0fdf4" };
+  if (rate >= 80) return { color: "#f59e0b", label: "Correct",   bg: "#fffbeb" };
   return               { color: "#dc2626", label: "Dégradé",  bg: "#fef2f2" };
 }
 
@@ -609,7 +620,7 @@ function AgentDrawer({
     { id: "config", label: "Config" },
   ];
 
-  const sante = santeGlobale(stats?.successRate7d ?? null);
+  const sante = santeGlobale(stats?.successRate7d ?? null, status);
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end" style={{ pointerEvents: "none" }}>
@@ -1301,13 +1312,15 @@ function HierarchyCanvas({
           {/* Maestro → Maestro children */}
           {MAESTRO_CHILDREN.map((id, i) => {
             const cx = MAESTRO_CHILDREN_CX[i];
+            const isMaintenance = MAINTENANCE_AGENT_IDS.has(id);
             return (
               <path
                 key={id}
                 d={`M ${MAESTRO_CX},${maestroCY} C ${MAESTRO_CX},${midY1} ${cx},${midY1} ${cx},${childCY}`}
                 fill="none"
-                stroke="#cbd5e1"
+                stroke={isMaintenance ? "#a5b4fc" : "#cbd5e1"}
                 strokeWidth={1.5}
+                strokeDasharray={isMaintenance ? "6 4" : undefined}
               />
             );
           })}
@@ -1457,7 +1470,7 @@ export default function AgentsDashboard() {
 
   const centerTree = useCallback((canvasEl: HTMLDivElement) => {
     const { width: cw, height: ch } = canvasEl.getBoundingClientRect();
-    const treeW = FREE_CX[FREE_CX.length - 1] * 2 + CHILD_SIZE + 80; // ~1080px with 11 agents
+    const treeW = FREE_CX[FREE_CX.length - 1] * 2 + CHILD_SIZE + 80; // ~928px with 9 free agents
     const treeH = Y_CANDIDATURE_CHILDREN + CHILD_SIZE + 80;           // ~776px
     const fitZoom = Math.min((cw - 80) / treeW, (ch - 80) / treeH, 1.2);
     const z = Math.max(0.3, Math.min(fitZoom, 1.5));
