@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
@@ -119,9 +120,12 @@ export async function POST(req: NextRequest) {
         where: { id: userId },
         select: { name: true },
       });
-      const ownerDisplayName = typeof reviewer?.name === "string" && reviewer.name.trim()
-        ? reviewer.name.trim()
-        : "Un propriétaire";
+      // Respect anonymity: never expose the real name if the owner chose anonymous
+      const ownerDisplayName = anonymous
+        ? "Un propriétaire"
+        : typeof reviewer?.name === "string" && reviewer.name.trim()
+          ? reviewer.name.trim()
+          : "Un propriétaire";
 
       if (sitterUser?.id) {
         await sendNotificationEmail({

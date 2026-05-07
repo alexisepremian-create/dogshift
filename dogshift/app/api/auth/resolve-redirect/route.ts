@@ -7,7 +7,7 @@ import { isActivatedStatus, normalizeSitterLifecycleStatus } from "@/lib/sitterC
 import { sendEmail } from "@/lib/email/sendEmail";
 import { renderEmailLayout } from "@/lib/email/templates/layout";
 
-async function runOnboardingOwner({ email, userId }: { email: string; userId: string }) {
+async function runOnboardingOwner({ email, userId, name }: { email: string; userId: string; name?: string }) {
   const baseUrl = (
     process.env.NEXT_PUBLIC_APP_URL ??
     process.env.NEXT_PUBLIC_BASE_URL ??
@@ -34,9 +34,12 @@ async function runOnboardingOwner({ email, userId }: { email: string; userId: st
       </table>
     </div>`;
 
+  const firstName = name ? name.trim().split(/\s+/)[0] : "";
+  const greeting = firstName ? `Bienvenue ${firstName} !` : "Bienvenue sur DogShift";
+
   const { html } = renderEmailLayout({
     logoUrl,
-    title: "Bienvenue sur DogShift",
+    title: greeting,
     subtitle: "Trouvez le dog-sitter idéal pour votre compagnon en toute sérénité.",
     summaryTitle: "Pourquoi choisir DogShift ?",
     summaryRows: [
@@ -58,8 +61,8 @@ async function runOnboardingOwner({ email, userId }: { email: string; userId: st
 
   await sendEmail({
     to: email,
-    subject: "Bienvenue sur DogShift",
-    text: `Bienvenue sur DogShift — la plateforme de dog-sitting premium en Suisse romande.\n\nSitters vérifiés manuellement par notre équipe\nRéservation simple en 2 clics\nSupport réactif — Lausanne & Riviera vaudoise\n\nTrouvez votre sitter : ${baseUrl}/search\n\n— L'équipe DogShift\nsupport@dogshift.ch`,
+    subject: firstName ? `Bienvenue ${firstName} — DogShift` : "Bienvenue sur DogShift",
+    text: `${greeting} — la plateforme de dog-sitting premium en Suisse romande.\n\nSitters vérifiés manuellement par notre équipe\nRéservation simple en 2 clics\nSupport réactif — Lausanne & Riviera vaudoise\n\nTrouvez votre sitter : ${baseUrl}/search\n\n— L'équipe DogShift\nsupport@dogshift.ch`,
     html,
   });
 
@@ -100,7 +103,7 @@ export async function GET() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Prisma dynamic field (clerkUserId not in generated types).
     let dbUser = await (prisma as any).user.findUnique({
       where: { clerkUserId: userId },
-      select: { id: true, role: true, email: true, sitterId: true },
+      select: { id: true, role: true, email: true, sitterId: true, name: true },
     });
 
     if (!dbUser?.id) {
@@ -112,13 +115,13 @@ export async function GET() {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Prisma dynamic field.
       dbUser = await (prisma as any).user.findUnique({
         where: { id: ensured.id },
-        select: { id: true, role: true, email: true, sitterId: true },
+        select: { id: true, role: true, email: true, sitterId: true, name: true },
       });
 
       // Inline onboarding for brand-new OWNER accounts (no HTTP self-call — unreliable on Vercel)
       if (ensured.created && ensured.role === "OWNER" && dbUser?.email) {
         try {
-          await runOnboardingOwner({ email: dbUser.email, userId: ensured.id });
+          await runOnboardingOwner({ email: dbUser.email, userId: ensured.id, name: dbUser.name ?? undefined });
         } catch (err) {
           console.warn("[resolve-redirect] onboarding-owner failed", err);
         }
