@@ -1,0 +1,111 @@
+---
+description: Règles pour créer ou modifier des emails transactionnels DogShift. Applique quand tu travailles sur des fichiers d'email (sendEmail, renderEmailLayout, sendNotificationEmail, email-preview, inactivity-check, review-requests, pension-verification).
+globs:
+  - "lib/email/**"
+  - "lib/notifications/**"
+  - "lib/pensionVerificationAgent.ts"
+  - "app/api/cron/inactivity-check/**"
+  - "app/api/cron/review-requests/**"
+  - "app/api/cron/sitter-booking-reminders/**"
+  - "app/api/cron/sitter-monthly-recap/**"
+  - "app/api/agents/onboarding-owner/**"
+  - "app/api/agents/relance-owner/**"
+  - "app/api/auth/resolve-redirect/**"
+  - "app/api/admin/email-preview/**"
+  - "app/api/host/pension-verification/**"
+  - "app/api/admin/pension-verifications/**"
+  - "app/api/reviews/**"
+  - "lib/bookings/setBookingStatus.ts"
+alwaysApply: false
+---
+
+# Règles emails DogShift
+
+**Documentation complète** : `docs/emails/EMAIL_SYSTEM.md` et `docs/emails/EMAIL_CATALOG.md`
+
+## Règles absolues
+
+1. **Toujours utiliser `renderEmailLayout()`** — jamais de HTML email from scratch
+   ```typescript
+   import { renderEmailLayout } from "@/lib/email/templates/layout";
+   const { html } = renderEmailLayout({ logoUrl, audience, title, extraHtml, ... });
+   ```
+
+2. **Toujours préciser `audience`** :
+   - `audience: "owner"` → bannière `/email-banners/banner-confiance.jpg`
+   - `audience: "sitter"` → bannière `/email-banners/banner-hero.jpg`
+
+3. **Toujours passer `logoUrl`** :
+   ```typescript
+   const logoUrl = `${APP_URL}/dogshift-logo.png`;
+   ```
+
+4. **Police `FF` obligatoire** dans tout `extraHtml` :
+   ```typescript
+   const FF = "-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,Helvetica,sans-serif";
+   // Utiliser sur chaque div/p/td dans extraHtml
+   ```
+
+5. **Zéro emoji** — ni dans le sujet, ni dans le body HTML, ni dans le footerText.
+   Utiliser des dots CSS à la place pour les listes :
+   ```typescript
+   const dot = (color: string) =>
+     `<td valign="top" style="padding:8px 10px 0 0;width:10px;"><div style="width:10px;height:10px;border-radius:50%;background:${color};"></div></td>`;
+   const D_INDIGO = dot("#818cf8"); // info
+   const D_GREEN  = dot("#4ade80"); // positif
+   const D_AMBER  = dot("#fbbf24"); // warning
+   const D_RED    = dot("#f87171"); // danger
+   ```
+
+6. **Noms depuis la DB, jamais hardcodés** :
+   ```typescript
+   const firstName = sitterName.trim().split(/\s+/)[0] || "";
+   // Si firstName vide → "Bonjour," (sans doublon)
+   const greeting = firstName ? `Bonjour ${firstName},` : "Bonjour,";
+   // JAMAIS : || "Bonjour" comme prénom → produit "Bonjour Bonjour,"
+   ```
+
+7. **Avis anonymes** — ne jamais exposer le vrai nom si `anonymous: true` :
+   ```typescript
+   const ownerDisplayName = anonymous ? "Un propriétaire" : (user.name?.trim() || "Un propriétaire");
+   ```
+
+8. **Nom du chien** vient de `Booking.selectedDog?.name` (DogProfile) :
+   ```typescript
+   const dogName = booking.selectedDog?.name ?? "votre chien";
+   ```
+
+9. **Sitters reçoivent des emails dédiés** — jamais les templates owner :
+   - Confirmation → `sitterBookingConfirmed` (pas `bookingConfirmed`)
+   - Rappel → `sitterBookingReminder` (pas `bookingReminder`)
+   - Annulation → payload `{ dashboard: "host" }`
+
+10. **Toujours mettre à jour en parallèle** :
+    - `app/api/admin/email-preview/route.ts` (preview admin)
+    - `app/(protected)/admin/emails/page.tsx` (catalogue admin)
+
+## Structure d'un bloc de conseils (tips block)
+
+```typescript
+const tipsHtml = `
+  <div style="margin-top:20px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:18px 20px;">
+    <div style="font-family:${FF};font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#64748b;margin-bottom:12px;">Titre section</div>
+    <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
+      <tr>${D_INDIGO}<td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Titre item</strong> — description.</td></tr>
+    </table>
+  </div>`;
+```
+
+## Checklist avant commit
+
+- [ ] `renderEmailLayout()` utilisé
+- [ ] `logoUrl` passé
+- [ ] `audience` précisé
+- [ ] `FF` défini et utilisé partout dans `extraHtml`
+- [ ] Aucun emoji
+- [ ] Dots CSS pour les listes
+- [ ] Noms depuis la DB (fallback propre)
+- [ ] Anonymat avis respecté
+- [ ] Preview admin mis à jour
+- [ ] Catalogue admin mis à jour
+- [ ] `text` brut fourni à `sendEmail()`

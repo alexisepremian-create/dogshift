@@ -116,12 +116,13 @@ export async function setBookingStatus(
         });
       }
       if (sitterId) {
+        // Sitter gets a dedicated sitter-facing confirmation email (different CTA, wording, dog details)
         await sendNotificationEmail({
           req: opts?.req,
           recipientUserId: sitterId,
-          key: "bookingConfirmed",
-          entityId: id,
-          payload: { kind: "bookingConfirmed", bookingId: id },
+          key: "sitterBookingConfirmed",
+          entityId: `${id}:sitter`,
+          payload: { kind: "sitterBookingConfirmed", bookingId: id },
         });
       }
     }

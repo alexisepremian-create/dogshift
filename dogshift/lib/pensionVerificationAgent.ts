@@ -243,7 +243,8 @@ export async function sendPensionResultEmail(params: {
   score?: number;
 }) {
   const { sitterEmail, sitterName, finalStatus } = params;
-  const firstName = sitterName.split(" ")[0] || "Bonjour";
+  // Derive first name; use empty string as fallback so greeting stays "Bonjour," without duplication
+  const firstName = sitterName.trim().split(/\s+/)[0] || "";
 
   const FF = "-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,Helvetica,sans-serif";
   const DG = `<td valign="top" style="padding:8px 10px 0 0;width:10px;"><div style="width:10px;height:10px;border-radius:50%;background:#4ade80;"></div></td>`;
@@ -259,7 +260,7 @@ export async function sendPensionResultEmail(params: {
     subject = "Votre logement est approuvé — Pension activée";
     bodyHtml = `
       <div style="font-family:${FF};font-size:14px;line-height:22px;color:#374151;">
-        <p style="margin:0 0 12px 0;">Bonne nouvelle, ${firstName} !</p>
+        <p style="margin:0 0 12px 0;">Bonne nouvelle${firstName ? `, ${firstName}` : ""} !</p>
         <p style="margin:0 0 16px 0;">
           Notre équipe a examiné vos photos et votre logement répond à nos critères de qualité.
           Le service <strong>Pension</strong> est maintenant <strong style="color:#059669;">actif</strong> sur votre profil public.
@@ -273,13 +274,13 @@ export async function sendPensionResultEmail(params: {
           <tr>${DG}<td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Complétez votre profil</strong> — une photo récente et une description détaillée rassurent les propriétaires.</td></tr>
         </table>
       </div>`;
-    bodyText = `Bonne nouvelle ${firstName} ! Notre équipe a approuvé votre logement. La Pension est maintenant active sur votre profil. Pensez à configurer vos disponibilités.`;
+    bodyText = `Bonne nouvelle${firstName ? ` ${firstName}` : ""} ! Notre équipe a approuvé votre logement. La Pension est maintenant active sur votre profil. Pensez à configurer vos disponibilités.`;
 
   } else if (finalStatus === "ai_needs_review") {
     subject = "Vos photos sont en cours d'examen — Pension";
     bodyHtml = `
       <div style="font-family:${FF};font-size:14px;line-height:22px;color:#374151;">
-        <p style="margin:0 0 12px 0;">Bonjour ${firstName},</p>
+        <p style="margin:0 0 12px 0;">Bonjour${firstName ? ` ${firstName}` : ""},</p>
         <p style="margin:0 0 12px 0;">
           Nous avons bien reçu vos photos et notre équipe les examine actuellement.
           Vous recevrez une réponse définitive dans les <strong>48 heures ouvrées</strong>.
@@ -295,13 +296,13 @@ export async function sendPensionResultEmail(params: {
           <tr>${DI}<td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Aucune action requise</strong> — nous vous notifierons dès que la vérification sera terminée.</td></tr>
         </table>
       </div>`;
-    bodyText = `Bonjour ${firstName}, notre équipe examine vos photos. Vous recevrez une réponse dans les 48 heures ouvrées.`;
+    bodyText = `Bonjour${firstName ? ` ${firstName}` : ""}, notre équipe examine vos photos. Vous recevrez une réponse dans les 48 heures ouvrées.`;
 
   } else {
     subject = "Photos de vérification non retenues — Pension";
     bodyHtml = `
       <div style="font-family:${FF};font-size:14px;line-height:22px;color:#374151;">
-        <p style="margin:0 0 12px 0;">Bonjour ${firstName},</p>
+        <p style="margin:0 0 12px 0;">Bonjour${firstName ? ` ${firstName}` : ""},</p>
         <p style="margin:0 0 16px 0;">
           Après examen de vos photos, notre équipe n'a pas pu valider votre logement pour le service Pension.
           Vous pouvez soumettre de nouvelles photos à tout moment.
@@ -316,7 +317,7 @@ export async function sendPensionResultEmail(params: {
           <tr>${DR}<td style="padding:5px 0;font-family:${FF};font-size:14px;line-height:20px;color:#475569;"><strong>Extérieur</strong> — incluez une vue du jardin ou de la terrasse si vous en avez un(e).</td></tr>
         </table>
       </div>`;
-    bodyText = `Bonjour ${firstName}, nos équipes n'ont pas pu valider votre logement. Vous pouvez soumettre de nouvelles photos depuis votre profil : ${APP_URL}/host/profile/edit`;
+    bodyText = `Bonjour${firstName ? ` ${firstName}` : ""}, nos équipes n'ont pas pu valider votre logement. Vous pouvez soumettre de nouvelles photos depuis votre profil : ${APP_URL}/host/profile/edit`;
   }
 
   const { html } = renderEmailLayout({
