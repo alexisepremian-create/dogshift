@@ -729,26 +729,8 @@ export default function HostProfileEditPage() {
               <div id="dogSizes" className="scroll-mt-24 mt-6">
                 <h3 className="text-sm font-semibold text-slate-800">Tailles acceptées</h3>
                 <p className="mt-1 text-xs text-slate-500">
-                  Sélectionnez les tailles de chiens que vous acceptez. Chaque taille occupe un nombre de places différent dans votre capacité.
+                  Sélectionnez les tailles de chiens que vous acceptez pour vos services (Promenade, Garde…). Pour la Pension, les tailles autorisées sont définies par DogShift selon la vérification de votre logement — voir la section ci-dessous.
                 </p>
-
-                {pensionVerifStatus === "approved" && pensionAcceptedSizes && pensionAcceptedSizes.length > 0 && (
-                  <div className="mt-3 flex items-start gap-2.5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
-                    <svg className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
-                    <div>
-                      <p className="text-xs font-semibold text-amber-900">Tailles autorisées par DogShift pour la Pension</p>
-                      <p className="mt-0.5 text-xs text-amber-700">
-                        Suite à la vérification de votre logement, vous pouvez uniquement accueillir des chiens de taille&nbsp;:&nbsp;
-                        <span className="font-bold">
-                          {pensionAcceptedSizes
-                            .map((s) => ({ small: "Petit", medium: "Moyen", large: "Grand" }[s] ?? s))
-                            .join(", ")}
-                        </span>.
-                        Les autres tailles sont désactivées pour le service Pension.
-                      </p>
-                    </div>
-                  </div>
-                )}
 
                 <div className="mt-4">
                   <SizeAcceptanceToggle
@@ -757,15 +739,6 @@ export default function HostProfileEditPage() {
                       medium: profile.acceptsMedium ?? profile.dogSizes.Moyen,
                       large: profile.acceptsLarge ?? profile.dogSizes.Grand,
                     }}
-                    disabledSizes={
-                      pensionVerifStatus === "approved" && pensionAcceptedSizes && pensionAcceptedSizes.length > 0
-                        ? {
-                            small: !pensionAcceptedSizes.includes("small"),
-                            medium: !pensionAcceptedSizes.includes("medium"),
-                            large: !pensionAcceptedSizes.includes("large"),
-                          }
-                        : undefined
-                    }
                     onChange={(next) =>
                       setProfile((p) => ({
                         ...p,
