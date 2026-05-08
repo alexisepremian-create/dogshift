@@ -5,6 +5,7 @@ import { ClipboardList, CalendarClock, Banknote, Hash, MessageCircle, MessageSqu
 
 import { statusMeta, type BookingStatus } from "./status";
 import type { HostRequest } from "./RequestListItem";
+import { publicDogPhotoPath } from "@/lib/dogPhotoMedia";
 
 function formatDateTimeHuman(iso: string) {
   if (!iso) return "—";
@@ -536,7 +537,7 @@ export function RequestDetailPanel({
             </div>
             {request.dog.photoUrl ? (
               <Image
-                src={request.dog.photoUrl}
+                src={publicDogPhotoPath(request.dog.photoUrl)}
                 alt={request.dog.name}
                 width={48}
                 height={48}

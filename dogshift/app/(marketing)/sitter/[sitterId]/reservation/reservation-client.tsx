@@ -14,6 +14,7 @@ import { useMaintenance } from "@/components/platform/MaintenanceProvider";
 import { maintenanceBookingUserMessage } from "@/lib/platform/maintenanceConstants";
 import { cancellationPolicyVariantFromStartMs } from "@/lib/reservation/cancellationPolicyUi";
 import { DOG_SIZE_WEIGHTS, dogSizeKeyFromWeight } from "@/lib/constants/dog-sizes";
+import { publicDogPhotoPath } from "@/lib/dogPhotoMedia";
 
 type PricingUnit = "HOURLY" | "DAILY";
 
@@ -829,7 +830,7 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
 
   const [dogs, setDogs] = useState<Array<{ id: string; name: string; breed: string | null; weightKg: number | null; isDefault: boolean; photoUrl: string | null }>>([]);
   const [dogsLoading, setDogsLoading] = useState(true);
-  const [selectedDogId, setSelectedDogId] = useState<string | null>(null);
+  const [selectedDogIds, setSelectedDogIds] = useState<string[]>([]);
   const [ownerPhone, setOwnerPhone] = useState("");
 
   const [submitting, setSubmitting] = useState(false);
@@ -965,7 +966,7 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
           setDogs(data.dogs);
           const def = data.dogs.find((d) => d.isDefault) ?? (data.dogs.length === 1 ? data.dogs[0] : null);
           if (def) {
-            setSelectedDogId(def.id);
+            setSelectedDogIds([def.id]);
             const sizeKey = dogSizeKeyFromWeight(def.weightKg);
             if (sizeKey) setDogSize(sizeKey);
           }
@@ -1802,7 +1803,7 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
         ownerLng: locationMode === "AT_OWNER" && travelPreview ? travelPreview.ownerLng : null,
         ...(dogSize ? { dogSize } : {}),
         numberOfDogs,
-        dogProfileId: selectedDogId ?? null,
+        dogProfileId: selectedDogIds[0] ?? null,
         ownerPhone: ownerPhone.trim() || null,
       };
 
@@ -2240,56 +2241,77 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
                   </a>
                 </div>
               ) : (
-                <div className="mt-4 flex flex-wrap gap-2">
+                <div className="mt-4 flex flex-col gap-2">
                   {dogs.map((dog) => {
-                    const isSelected = selectedDogId === dog.id;
+                    const isSelected = selectedDogIds.includes(dog.id);
                     const dogSizeKey = dogSizeKeyFromWeight(dog.weightKg);
                     const pensionSizes = sitter.pensionAcceptedSizes ?? [];
                     const isPension = selectedService === "Pension";
                     const sizeBlocked = isPension && pensionSizes.length > 0 && dogSizeKey !== null && !pensionSizes.includes(dogSizeKey);
+                    const photoSrc = dog.photoUrl ? publicDogPhotoPath(dog.photoUrl) : null;
                     return (
-                          <button
-                            key={dog.id}
-                            type="button"
-                            onClick={() => {
-                              const next = isSelected ? null : dog.id;
-                              setSelectedDogId(next);
-                              if (next) {
-                                const sk = dogSizeKeyFromWeight(dog.weightKg);
-                                if (sk) setDogSize(sk);
-                              }
-                            }}
-                            className={`flex items-center gap-2.5 rounded-2xl border px-4 py-2.5 text-left text-sm transition ${
-                              sizeBlocked
-                                ? "border-rose-200 bg-rose-50 opacity-70"
-                                : isSelected
-                                  ? "border-[var(--dogshift-blue)] bg-[color-mix(in_srgb,var(--dogshift-blue),white_92%)] text-[var(--dogshift-blue)]"
-                                  : "border-slate-200 bg-white text-slate-800 hover:bg-slate-50"
-                            }`}
-                          >
-                            {dog.photoUrl ? (
-                              <img
-                                src={dog.photoUrl}
-                                alt={dog.name}
-                                className="h-8 w-8 rounded-xl object-cover ring-1 ring-slate-200"
-                              />
-                            ) : (
-                              <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-sm font-bold ${isSelected ? "bg-[var(--dogshift-blue)]/20 text-[var(--dogshift-blue)]" : sizeBlocked ? "bg-rose-100 text-rose-400" : "bg-slate-100 text-slate-500"}`}>
-                                {dog.name.charAt(0).toUpperCase()}
-                              </div>
-                            )}
-                            <div>
-                              <p className="font-semibold leading-tight">{dog.name}</p>
-                              <p className="text-[11px] leading-tight opacity-70">
-                                {[
-                                  dog.breed,
-                                  dog.weightKg ? `${dog.weightKg} kg` : null,
-                                  dogSizeKey ? DOG_SIZE_WEIGHTS[dogSizeKey].label : null,
-                                ].filter(Boolean).join(" · ")}
-                                {sizeBlocked && <span className="ml-1 font-semibold text-rose-500">— taille non acceptée</span>}
-                              </p>
-                            </div>
-                          </button>
+                      <button
+                        key={dog.id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedDogIds((prev) => {
+                            const next = prev.includes(dog.id)
+                              ? prev.filter((id) => id !== dog.id)
+                              : [...prev, dog.id];
+                            // Update dog size to reflect the first selected dog
+                            const firstId = next[0] ?? null;
+                            const firstDog = dogs.find((d) => d.id === firstId);
+                            const sk = firstDog ? dogSizeKeyFromWeight(firstDog.weightKg) : null;
+                            if (sk) setDogSize(sk);
+                            return next;
+                          });
+                        }}
+                        className={`flex w-full items-center gap-3 rounded-2xl border px-4 py-3 text-left text-sm transition ${
+                          sizeBlocked
+                            ? "border-rose-200 bg-rose-50 opacity-70"
+                            : isSelected
+                              ? "border-[var(--dogshift-blue)] bg-[color-mix(in_srgb,var(--dogshift-blue),white_92%)] text-[var(--dogshift-blue)]"
+                              : "border-slate-200 bg-white text-slate-800 hover:bg-slate-50"
+                        }`}
+                      >
+                        {/* Checkbox */}
+                        <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border-2 transition ${
+                          isSelected
+                            ? "border-[var(--dogshift-blue)] bg-[var(--dogshift-blue)]"
+                            : sizeBlocked
+                              ? "border-rose-300 bg-white"
+                              : "border-slate-300 bg-white"
+                        }`}>
+                          {isSelected && (
+                            <svg className="h-3 w-3 text-white" viewBox="0 0 12 12" fill="none">
+                              <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                            </svg>
+                          )}
+                        </span>
+                        {/* Photo or initial */}
+                        {photoSrc ? (
+                          <img
+                            src={photoSrc}
+                            alt={dog.name}
+                            className="h-9 w-9 shrink-0 rounded-xl object-cover ring-1 ring-slate-200"
+                          />
+                        ) : (
+                          <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-sm font-bold ${isSelected ? "bg-[var(--dogshift-blue)]/20 text-[var(--dogshift-blue)]" : sizeBlocked ? "bg-rose-100 text-rose-400" : "bg-slate-100 text-slate-500"}`}>
+                            {dog.name.charAt(0).toUpperCase()}
+                          </div>
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <p className="font-semibold leading-tight">{dog.name}</p>
+                          <p className="text-[11px] leading-tight opacity-70">
+                            {[
+                              dog.breed,
+                              dog.weightKg ? `${dog.weightKg} kg` : null,
+                              dogSizeKey ? DOG_SIZE_WEIGHTS[dogSizeKey].label : null,
+                            ].filter(Boolean).join(" · ")}
+                            {sizeBlocked && <span className="ml-1 font-semibold text-rose-500">— taille non acceptée</span>}
+                          </p>
+                        </div>
+                      </button>
                     );
                   })}
                 </div>
@@ -2312,7 +2334,7 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
             {/* Dog size — shown for Pension when sitter has restricted sizes */}
             {selectedService === "Pension" && (sitter.pensionAcceptedSizes ?? []).length > 0 && (() => {
               const pensionSizes = sitter.pensionAcceptedSizes!;
-              const selectedDog = dogs.find((d) => d.id === selectedDogId) ?? null;
+              const selectedDog = dogs.find((d) => d.id === selectedDogIds[0]) ?? null;
               const autoDogSize = selectedDog ? dogSizeKeyFromWeight(selectedDog.weightKg) : null;
               const isSizeBlocked = autoDogSize !== null && !pensionSizes.includes(autoDogSize);
               return (
