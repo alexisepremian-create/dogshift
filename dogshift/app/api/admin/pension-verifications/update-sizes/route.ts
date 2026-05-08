@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
 
     const sitterId = typeof body?.sitterId === "string" ? body.sitterId.trim() : "";
     const pensionAcceptedSizes = Array.isArray(body?.pensionAcceptedSizes)
-      ? body.pensionAcceptedSizes.filter((s: unknown) => s === "Petit" || s === "Moyen" || s === "Grand")
+      ? body.pensionAcceptedSizes.filter((s: unknown) => s === "small" || s === "medium" || s === "large")
       : null;
 
     if (!sitterId || !pensionAcceptedSizes || pensionAcceptedSizes.length === 0) {

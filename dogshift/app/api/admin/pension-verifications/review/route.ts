@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
     const decision = body?.decision;
     const notes = typeof body?.notes === "string" ? body.notes.trim().slice(0, 2000) : null;
     const pensionAcceptedSizes = Array.isArray(body?.pensionAcceptedSizes)
-      ? body.pensionAcceptedSizes.filter((s: unknown) => s === "Petit" || s === "Moyen" || s === "Grand")
+      ? body.pensionAcceptedSizes.filter((s: unknown) => s === "small" || s === "medium" || s === "large")
       : null;
 
     if (!sitterId || (decision !== "approved" && decision !== "rejected")) {
