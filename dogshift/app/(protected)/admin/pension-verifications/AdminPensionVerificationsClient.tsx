@@ -2,9 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { X, ChevronLeft, ChevronRight } from "lucide-react";
-
-const DOG_SIZES = ["Petit", "Moyen", "Grand"] as const;
-type DogSize = (typeof DOG_SIZES)[number];
+import { DOG_SIZE_KEYS, DOG_SIZE_WEIGHTS, type DogSizeKey } from "@/lib/constants/dog-sizes";
 
 type PensionVerifItem = {
   sitterProfileId: string;
@@ -17,7 +15,7 @@ type PensionVerifItem = {
   photoKeys: string[];
   submittedAt: string | null;
   adminNotes: string | null;
-  pensionAcceptedSizes: string[];
+  pensionAcceptedSizes: DogSizeKey[];
   housingType: string | null;
   hasGarden: boolean | null;
 };
@@ -34,12 +32,12 @@ const TABS: { id: Tab; label: string }[] = [
 ];
 
 /** Auto-suggest accepted sizes based on housing context */
-function suggestSizes(housingType: string | null, hasGarden: boolean | null): DogSize[] {
-  if (housingType === "Maison" && hasGarden) return ["Petit", "Moyen", "Grand"];
-  if (housingType === "Maison") return ["Petit", "Moyen"];
-  if (housingType === "Appartement" && hasGarden) return ["Petit", "Moyen"];
-  if (housingType === "Appartement") return ["Petit"];
-  return ["Petit"];
+function suggestSizes(housingType: string | null, hasGarden: boolean | null): DogSizeKey[] {
+  if (housingType === "Maison" && hasGarden) return ["small", "medium", "large"];
+  if (housingType === "Maison") return ["small", "medium"];
+  if (housingType === "Appartement" && hasGarden) return ["small", "medium"];
+  if (housingType === "Appartement") return ["small"];
+  return ["small"];
 }
 
 function statusBadge(status: string) {
@@ -87,7 +85,7 @@ export default function AdminPensionVerificationsClient() {
   const [presignedUrls, setPresignedUrls] = useState<Record<string, string>>({});
   const [presignLoading, setPresignLoading] = useState<Set<string>>(new Set());
   const [adminNotesInput, setAdminNotesInput] = useState<Record<string, string>>({});
-  const [selectedSizes, setSelectedSizes] = useState<Record<string, DogSize[]>>({});
+  const [selectedSizes, setSelectedSizes] = useState<Record<string, DogSizeKey[]>>({});
   const [lightbox, setLightbox] = useState<{ urls: string[]; index: number } | null>(null);
   const [sizesUpdateLoading, setSizesUpdateLoading] = useState<string | null>(null);
   const [sizesUpdateSuccess, setSizesUpdateSuccess] = useState<string | null>(null);
@@ -164,7 +162,7 @@ export default function AdminPensionVerificationsClient() {
     for (const k of photoKeys) { void loadPhotoUrl(k); }
   }
 
-  function toggleSize(sitterId: string, size: DogSize) {
+  function toggleSize(sitterId: string, size: DogSizeKey) {
     setSelectedSizes((prev) => {
       const current = prev[sitterId] ?? [];
       const next = current.includes(size)
@@ -309,7 +307,7 @@ export default function AdminPensionVerificationsClient() {
                       <div className="mt-2 flex flex-wrap gap-1">
                         {item.pensionAcceptedSizes.map((s) => (
                           <span key={s} className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-200">
-                            {s}
+                            {DOG_SIZE_WEIGHTS[s]?.label ?? s}
                           </span>
                         ))}
                       </div>
@@ -393,8 +391,9 @@ export default function AdminPensionVerificationsClient() {
                           )}
                         </p>
                         <div className="flex flex-wrap items-center gap-3">
-                          {DOG_SIZES.map((size) => {
+                          {DOG_SIZE_KEYS.map((size) => {
                             const checked = sizes.includes(size);
+                            const sizeLabel = DOG_SIZE_WEIGHTS[size].label;
                             return (
                               <label
                                 key={size}
@@ -425,7 +424,7 @@ export default function AdminPensionVerificationsClient() {
                                     </svg>
                                   )}
                                 </span>
-                                {size}
+                                {sizeLabel}
                               </label>
                             );
                           })}

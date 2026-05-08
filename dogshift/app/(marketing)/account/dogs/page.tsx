@@ -6,6 +6,7 @@ import { useUser } from "@clerk/nextjs";
 import { Plus, Pencil, Trash2, Star, Dog, X, Check, Camera, Loader2 } from "lucide-react";
 import AccountPageSkeleton from "@/components/ui/AccountPageSkeleton";
 import { publicDogPhotoPath } from "@/lib/dogPhotoMedia";
+import { DOG_SIZE_WEIGHTS, dogSizeKeyFromWeight } from "@/lib/constants/dog-sizes";
 
 type DogItem = {
   id: string;
@@ -300,8 +301,19 @@ export default function DogsPage() {
               <input id="dog-breed" className={INPUT} value={form.breed} onChange={field("breed")} placeholder="Ex. Labrador" maxLength={80} />
             </div>
             <div>
-              <label className={LABEL} htmlFor="dog-weight">Poids (kg)</label>
+              <label className={LABEL} htmlFor="dog-weight">Poids (kg) <span className="font-normal text-slate-400">— requis pour la Pension</span></label>
               <input id="dog-weight" className={INPUT} type="number" min={0} max={200} step={0.1} value={form.weightKg} onChange={field("weightKg")} placeholder="Ex. 28" />
+              {(() => {
+                const kg = parseFloat(form.weightKg);
+                const sizeKey = dogSizeKeyFromWeight(Number.isFinite(kg) ? kg : null);
+                if (!sizeKey) return null;
+                const { label, range } = DOG_SIZE_WEIGHTS[sizeKey];
+                return (
+                  <p className="mt-1.5 text-xs text-slate-500">
+                    Catégorie détectée : <span className="font-semibold text-[var(--dogshift-blue)]">{label}</span> ({range}) — utilisé pour valider les critères de pension.
+                  </p>
+                );
+              })()}
             </div>
             <div>
               <label className={LABEL} htmlFor="dog-year">Année de naissance</label>
@@ -437,15 +449,27 @@ export default function DogsPage() {
                       .filter(Boolean)
                       .join(" · ") || "Aucune info de base"}
                   </p>
-                  {typeof dog.neutered === "boolean" && (
-                    <span className={`mt-1 inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
-                      dog.neutered
-                        ? "bg-emerald-50 text-emerald-700"
-                        : "bg-slate-100 text-slate-600"
-                    }`}>
-                      {dog.neutered ? "✂️ Castré/stérilisé" : "Non castré"}
-                    </span>
-                  )}
+                  <div className="mt-1.5 flex flex-wrap gap-1.5">
+                    {(() => {
+                      const sizeKey = dogSizeKeyFromWeight(dog.weightKg);
+                      if (!sizeKey) return null;
+                      const { label, range } = DOG_SIZE_WEIGHTS[sizeKey];
+                      return (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-[var(--dogshift-blue)]/10 px-2.5 py-0.5 text-xs font-semibold text-[var(--dogshift-blue)]">
+                          {label} <span className="font-normal opacity-70">{range}</span>
+                        </span>
+                      );
+                    })()}
+                    {typeof dog.neutered === "boolean" && (
+                      <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                        dog.neutered
+                          ? "bg-emerald-50 text-emerald-700"
+                          : "bg-slate-100 text-slate-600"
+                      }`}>
+                        {dog.neutered ? "Castré/stérilisé" : "Non castré"}
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
 

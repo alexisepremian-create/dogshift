@@ -23,6 +23,7 @@ import { SizeAcceptanceToggle } from "@/components/capacity/SizeAcceptanceToggle
 import { CapacitySlider } from "@/components/capacity/CapacitySlider";
 import { CapacityScenariosVisualizer } from "@/components/capacity/CapacityScenariosVisualizer";
 import { SizeWeightLegend } from "@/components/capacity/SizeWeightLegend";
+import { DOG_SIZE_WEIGHTS } from "@/lib/constants/dog-sizes";
 
 export default function HostProfileEditPage() {
   const host = useHostUser();
@@ -962,12 +963,45 @@ export default function HostProfileEditPage() {
               {hasPension ? (
                 <div className="mt-5">
                   {pensionVerifStatus === "approved" ? (
-                    <div className="flex items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-4">
-                      <CheckCircle className="h-5 w-5 shrink-0 text-emerald-600" />
-                      <div>
-                        <p className="text-sm font-semibold text-emerald-900">Logement vérifié</p>
-                        <p className="text-xs text-emerald-700 mt-0.5">Le service Pension est actif sur votre profil public.</p>
+                    <div className="rounded-2xl border border-emerald-200 bg-emerald-50 overflow-hidden">
+                      <div className="flex items-center gap-3 px-5 py-4">
+                        <CheckCircle className="h-5 w-5 shrink-0 text-emerald-600" />
+                        <div>
+                          <p className="text-sm font-semibold text-emerald-900">Logement vérifié</p>
+                          <p className="text-xs text-emerald-700 mt-0.5">Le service Pension est actif sur votre profil public.</p>
+                        </div>
                       </div>
+                      {pensionAcceptedSizes && pensionAcceptedSizes.length > 0 && (
+                        <div className="border-t border-emerald-100 bg-emerald-50/60 px-5 py-3">
+                          <p className="text-[11px] font-bold uppercase tracking-wider text-emerald-700 mb-2">
+                            Tailles autorisées pour la Pension
+                          </p>
+                          <div className="flex flex-wrap gap-2">
+                            {(["small", "medium", "large"] as const).map((key) => {
+                              const allowed = pensionAcceptedSizes.includes(key);
+                              const { label, range } = DOG_SIZE_WEIGHTS[key];
+                              return (
+                                <div
+                                  key={key}
+                                  className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${
+                                    allowed
+                                      ? "bg-emerald-600 text-white"
+                                      : "bg-emerald-100/60 text-emerald-400 line-through"
+                                  }`}
+                                >
+                                  {label}
+                                  <span className={`font-normal ${allowed ? "text-emerald-100" : "text-emerald-300"}`}>
+                                    {range}
+                                  </span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                          <p className="mt-2 text-[11px] text-emerald-600">
+                            Ces tailles ont été déterminées lors de la vérification de votre logement. Contactez le support pour toute modification.
+                          </p>
+                        </div>
+                      )}
                     </div>
                   ) : pensionVerifStatus === "pending" || pensionVerifStatus === "ai_reviewing" || pensionVerifStatus === "ai_needs_review" ? (
                     <div className="rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4">
