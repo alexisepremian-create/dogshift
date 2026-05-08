@@ -106,7 +106,7 @@ export default function AdminPensionVerificationsClient() {
           if (!(item.sitterId in next)) {
             next[item.sitterId] =
               item.pensionAcceptedSizes.length > 0
-                ? (item.pensionAcceptedSizes as DogSize[])
+                ? (item.pensionAcceptedSizes as DogSizeKey[])
                 : suggestSizes(item.housingType, item.hasGarden);
           }
         }
