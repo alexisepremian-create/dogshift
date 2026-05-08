@@ -212,12 +212,12 @@ export function renderZootherapieEmail(params: {
               <table role="presentation" cellpadding="0" cellspacing="0" align="center" style="border-collapse:collapse;margin:0 auto 16px;">
                 <tr>
                   <td style="padding:0 10px;">
-                    <a href="https://instagram.com/dogshift" style="text-decoration:none;display:inline-block;">
+                    <a href="https://www.instagram.com/dogshift_ch/" style="text-decoration:none;display:inline-block;">
                       <img src="${siteUrl}/icons/instagram.png" width="32" height="32" alt="Instagram" style="display:block;border:0;outline:none;" />
                     </a>
                   </td>
                   <td style="padding:0 10px;">
-                    <a href="https://facebook.com/dogshift" style="text-decoration:none;display:inline-block;">
+                    <a href="https://www.facebook.com/profile.php?id=61578479756521" style="text-decoration:none;display:inline-block;">
                       <img src="${siteUrl}/icons/facebook.png" width="32" height="32" alt="Facebook" style="display:block;border:0;outline:none;" />
                     </a>
                   </td>
