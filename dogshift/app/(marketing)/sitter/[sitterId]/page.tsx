@@ -2119,18 +2119,7 @@ function SitterPublicProfileContent({
 
   if (isLoading) {
     if (dbg) console.log("[ProfileContent] returning loader - profile is", sitter);
-    return (
-      <div className="flex min-h-[60vh] flex-col items-center justify-center gap-5">
-        <div className="relative flex h-20 w-20 items-center justify-center">
-          <span className="absolute inset-0 animate-ping rounded-full bg-[var(--dogshift-blue)]/15" />
-          <span className="absolute inset-2 animate-pulse rounded-full bg-[var(--dogshift-blue)]/10" />
-          <span className="relative flex h-16 w-16 items-center justify-center rounded-full border border-slate-200 bg-white shadow-md">
-            <img src="/dogshift-logo.png" alt="DogShift" className="h-10 w-auto" />
-          </span>
-        </div>
-        <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-400">Chargement…</p>
-      </div>
-    );
+    return <AccountPageSkeleton />;
   }
 
   if (dbg) console.log("[ProfileContent] render complete");
