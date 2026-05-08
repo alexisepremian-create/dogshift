@@ -187,12 +187,20 @@ function CalendarMonth({
 
           const availDots: string[] = [];
           if (!past && row) {
-            if ((row.promenadeStatus === "AVAILABLE" || row.promenadeStatus === "ON_REQUEST" || row.promenadePartial))
-              availDots.push(getServiceColors("PROMENADE").fill);
-            if ((row.dogsittingStatus === "AVAILABLE" || row.dogsittingStatus === "ON_REQUEST" || row.dogsittingPartial))
-              availDots.push(getServiceColors("DOGSITTING").fill);
-            if ((row.pensionStatus === "AVAILABLE" || row.pensionStatus === "ON_REQUEST" || row.pensionPartial))
-              availDots.push(getServiceColors("PENSION").fill);
+            if (activeService) {
+              const svcStatus = getStatusForService(row, activeService);
+              const svcPartial = getPartialForService(row, activeService);
+              if (svcStatus === "AVAILABLE" || svcStatus === "ON_REQUEST" || svcPartial) {
+                availDots.push(getServiceColors(activeService).fill);
+              }
+            } else {
+              if ((row.promenadeStatus === "AVAILABLE" || row.promenadeStatus === "ON_REQUEST" || row.promenadePartial))
+                availDots.push(getServiceColors("PROMENADE").fill);
+              if ((row.dogsittingStatus === "AVAILABLE" || row.dogsittingStatus === "ON_REQUEST" || row.dogsittingPartial))
+                availDots.push(getServiceColors("DOGSITTING").fill);
+              if ((row.pensionStatus === "AVAILABLE" || row.pensionStatus === "ON_REQUEST" || row.pensionPartial))
+                availDots.push(getServiceColors("PENSION").fill);
+            }
           }
 
           let btnClass = "relative flex h-10 w-10 sm:h-11 sm:w-11 flex-col items-center justify-center rounded-full text-sm font-semibold transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2";

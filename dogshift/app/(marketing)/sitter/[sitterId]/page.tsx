@@ -115,7 +115,7 @@ function Tooltip({
           "aria-describedby": id,
         },
       })}
-      {open ? (
+      {open && label ? (
         <span
           id={id}
           role="tooltip"
