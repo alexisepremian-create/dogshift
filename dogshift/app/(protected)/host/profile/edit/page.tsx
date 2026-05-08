@@ -722,7 +722,7 @@ export default function HostProfileEditPage() {
             <div id="acceptanceCriteria" className="scroll-mt-24 p-6 sm:p-8">
               <h2 className="text-base font-semibold text-slate-900">Critères d&apos;acceptation des chiens</h2>
               <p className="mt-1 text-sm text-slate-500">
-                Ces critères s&apos;appliquent à tous vos services. Les réservations qui ne les respectent pas seront automatiquement bloquées.
+                Ces critères s&apos;appliquent à vos services Promenade et Garde. Pour la Pension, les tailles et conditions sont définies par DogShift selon la vérification de votre logement.
               </p>
 
               {/* 3a — Tailles acceptées (toggle ON/OFF) */}
