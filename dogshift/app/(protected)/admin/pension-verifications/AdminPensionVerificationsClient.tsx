@@ -89,6 +89,8 @@ export default function AdminPensionVerificationsClient() {
   const [adminNotesInput, setAdminNotesInput] = useState<Record<string, string>>({});
   const [selectedSizes, setSelectedSizes] = useState<Record<string, DogSize[]>>({});
   const [lightbox, setLightbox] = useState<{ urls: string[]; index: number } | null>(null);
+  const [sizesUpdateLoading, setSizesUpdateLoading] = useState<string | null>(null);
+  const [sizesUpdateSuccess, setSizesUpdateSuccess] = useState<string | null>(null);
 
   const fetchItems = useCallback(async () => {
     setLoading(true);
@@ -202,6 +204,37 @@ export default function AdminPensionVerificationsClient() {
       await fetchItems();
     } finally {
       setActionLoading(null);
+    }
+  }
+
+  async function handleUpdateSizes(item: PensionVerifItem) {
+    const sizes = selectedSizes[item.sitterId] ?? [];
+    if (sizes.length === 0) {
+      alert("Veuillez sélectionner au moins une taille.");
+      return;
+    }
+    setSizesUpdateLoading(item.sitterId);
+    setSizesUpdateSuccess(null);
+    try {
+      const res = await fetch("/api/admin/pension-verifications/update-sizes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sitterId: item.sitterId, pensionAcceptedSizes: sizes }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) {
+        alert(`Erreur : ${data.error ?? "inconnue"}`);
+        return;
+      }
+      setSizesUpdateSuccess(item.sitterId);
+      setTimeout(() => setSizesUpdateSuccess(null), 3000);
+      setItems((prev) =>
+        prev.map((i) =>
+          i.sitterId === item.sitterId ? { ...i, pensionAcceptedSizes: sizes } : i
+        )
+      );
+    } finally {
+      setSizesUpdateLoading(null);
     }
   }
 
@@ -359,19 +392,17 @@ export default function AdminPensionVerificationsClient() {
                             </span>
                           )}
                         </p>
-                        <div className="flex gap-3">
+                        <div className="flex flex-wrap items-center gap-3">
                           {DOG_SIZES.map((size) => {
                             const checked = sizes.includes(size);
                             return (
                               <label
                                 key={size}
                                 className={`flex cursor-pointer items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-semibold transition select-none ${
-                                  isApproved
-                                    ? checked
-                                      ? "border-emerald-300 bg-emerald-50 text-emerald-700"
-                                      : "border-slate-200 bg-white text-slate-400"
-                                    : checked
-                                    ? "border-indigo-300 bg-indigo-50 text-indigo-700 hover:bg-indigo-100"
+                                  checked
+                                    ? isApproved
+                                      ? "border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+                                      : "border-indigo-300 bg-indigo-50 text-indigo-700 hover:bg-indigo-100"
                                     : "border-slate-200 bg-white text-slate-600 hover:bg-slate-100"
                                 }`}
                               >
@@ -379,7 +410,6 @@ export default function AdminPensionVerificationsClient() {
                                   type="checkbox"
                                   className="sr-only"
                                   checked={checked}
-                                  disabled={isApproved}
                                   onChange={() => toggleSize(item.sitterId, size)}
                                 />
                                 <span
@@ -399,9 +429,27 @@ export default function AdminPensionVerificationsClient() {
                               </label>
                             );
                           })}
+
+                          {isApproved && (
+                            <button
+                              type="button"
+                              onClick={() => void handleUpdateSizes(item)}
+                              disabled={sizesUpdateLoading === item.sitterId}
+                              className="rounded-xl border border-emerald-300 bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-50 transition"
+                            >
+                              {sizesUpdateLoading === item.sitterId
+                                ? "Sauvegarde…"
+                                : sizesUpdateSuccess === item.sitterId
+                                  ? "✓ Sauvegardé"
+                                  : "Mettre à jour"}
+                            </button>
+                          )}
                         </div>
                         {!isApproved && (
                           <p className="mt-1.5 text-[11px] text-slate-400">Ces tailles seront sauvegardées et affichées sur le profil public lors de l&#39;approbation.</p>
+                        )}
+                        {isApproved && (
+                          <p className="mt-1.5 text-[11px] text-slate-400">Modifie les tailles puis clique sur &quot;Mettre à jour&quot; — le profil du sitter sera immédiatement restreint.</p>
                         )}
                       </div>
                     )}
