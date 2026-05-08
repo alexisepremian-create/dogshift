@@ -1,22 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ClipboardList, CalendarClock, Banknote, Hash, MessageCircle, MessageSquareShare, Info, X, Trash2, CheckCircle2, HandCoins, ShieldCheck, Clock, XCircle } from "lucide-react";
+import Image from "next/image";
+import { ClipboardList, CalendarClock, Banknote, Hash, MessageCircle, MessageSquareShare, Info, X, Trash2, CheckCircle2, HandCoins, ShieldCheck, Clock, XCircle, PawPrint, Phone, Syringe, AlertTriangle, Heart, UtensilsCrossed, StickyNote } from "lucide-react";
 
 import { statusMeta, type BookingStatus } from "./status";
 import type { HostRequest } from "./RequestListItem";
-
-function formatDateHuman(value: string) {
-  if (!/^(\d{4})-(\d{2})-(\d{2})$/.test(value)) return value || "—";
-  const [y, m, d] = value.split("-").map((n) => Number(n));
-  const dt = new Date(Date.UTC(y, m - 1, d));
-  if (Number.isNaN(dt.getTime())) return value;
-  return new Intl.DateTimeFormat("fr-CH", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-    timeZone: "UTC",
-  }).format(dt);
-}
 
 function formatDateTimeHuman(iso: string) {
   if (!iso) return "—";
@@ -77,14 +65,6 @@ function formatChfCents(amount: number) {
   return new Intl.NumberFormat("fr-CH", { style: "currency", currency: "CHF" }).format(value / 100);
 }
 
-function SummaryRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex items-start justify-between gap-4 text-sm">
-      <p className="text-slate-600">{label}</p>
-      <p className="text-right font-semibold text-slate-900">{value}</p>
-    </div>
-  );
-}
 
 async function copyToClipboard(value: string) {
   try {
@@ -332,7 +312,7 @@ export function RequestDetailPanel({
               Message
             </p>
             <div className="mt-4 rounded-xl bg-slate-50 p-3">
-              <p className="whitespace-pre-line text-sm text-slate-700 italic">"{request.message}"</p>
+              <p className="whitespace-pre-line text-sm text-slate-700 italic">&ldquo;{request.message}&rdquo;</p>
             </div>
           </section>
         ) : null}
@@ -464,7 +444,7 @@ export function RequestDetailPanel({
         </section>
       </div>
 
-      <div className={`fixed inset-0 z-50 ${confirmCancelOpen ? "" : "hidden"}`}>
+      <div className={`fixed inset-0 z-[90] ${confirmCancelOpen ? "" : "hidden"}`}>
         <button
           type="button"
           aria-label="Fermer"
@@ -529,6 +509,126 @@ export function RequestDetailPanel({
         </div>
       </div>
 
+      {request.dog ? (
+        <div className="mt-6 rounded-3xl border border-slate-100 bg-white/60 shadow-[0_8px_30px_-12px_rgba(15,23,42,0.06)] backdrop-blur-xl overflow-hidden transition-all duration-300 hover:shadow-md hover:border-slate-200">
+          <div className="flex items-center gap-3 border-b border-slate-100 bg-amber-50/40 px-5 py-4">
+            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-amber-100 text-amber-600 shrink-0">
+              <PawPrint className="h-4 w-4" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-bold text-slate-900">
+                {request.dog.name}
+                {request.dog.breed ? <span className="ml-2 text-xs font-medium text-slate-500">— {request.dog.breed}</span> : null}
+              </p>
+              <p className="text-xs text-slate-500 mt-0.5">
+                {request.dog.birthYear ? `Né(e) en ${request.dog.birthYear}` : null}
+                {request.dog.birthYear && request.dog.weightKg ? " · " : null}
+                {request.dog.weightKg ? `${request.dog.weightKg} kg` : null}
+                {(request.dog.birthYear || request.dog.weightKg) && request.dog.neutered !== null
+                  ? " · "
+                  : null}
+                {request.dog.neutered === true
+                  ? "Castré(e)"
+                  : request.dog.neutered === false
+                    ? "Non castré(e)"
+                    : null}
+              </p>
+            </div>
+            {request.dog.photoUrl ? (
+              <Image
+                src={request.dog.photoUrl}
+                alt={request.dog.name}
+                width={48}
+                height={48}
+                className="h-12 w-12 rounded-full border-2 border-white object-cover shadow-sm shrink-0"
+                unoptimized
+              />
+            ) : (
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-amber-100 border-2 border-white shadow-sm">
+                <PawPrint className="h-6 w-6 text-amber-500" />
+              </div>
+            )}
+          </div>
+
+          <div className="divide-y divide-slate-50">
+            {request.dog.sitterInstructions?.trim() ? (
+              <div className="flex gap-3 px-5 py-4">
+                <StickyNote className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">Instructions du propriétaire</p>
+                  <p className="text-sm text-slate-700 whitespace-pre-line leading-relaxed">{request.dog.sitterInstructions}</p>
+                </div>
+              </div>
+            ) : null}
+
+            {request.dog.behaviorNotes?.trim() ? (
+              <div className="flex gap-3 px-5 py-4">
+                <Heart className="mt-0.5 h-4 w-4 shrink-0 text-rose-400" />
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">Comportement</p>
+                  <p className="text-sm text-slate-700 whitespace-pre-line leading-relaxed">{request.dog.behaviorNotes}</p>
+                </div>
+              </div>
+            ) : null}
+
+            {request.dog.feedingNotes?.trim() ? (
+              <div className="flex gap-3 px-5 py-4">
+                <UtensilsCrossed className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">Alimentation</p>
+                  <p className="text-sm text-slate-700 whitespace-pre-line leading-relaxed">{request.dog.feedingNotes}</p>
+                </div>
+              </div>
+            ) : null}
+
+            {request.dog.medications?.trim() ? (
+              <div className="flex gap-3 px-5 py-4">
+                <Syringe className="mt-0.5 h-4 w-4 shrink-0 text-violet-500" />
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">Médicaments</p>
+                  <p className="text-sm text-slate-700 whitespace-pre-line leading-relaxed">{request.dog.medications}</p>
+                </div>
+              </div>
+            ) : null}
+
+            {request.dog.allergies?.trim() ? (
+              <div className="flex gap-3 px-5 py-4">
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-orange-500" />
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">Allergies</p>
+                  <p className="text-sm text-slate-700 whitespace-pre-line leading-relaxed">{request.dog.allergies}</p>
+                </div>
+              </div>
+            ) : null}
+
+            {request.dog.vetContact?.trim() ? (
+              <div className="flex gap-3 px-5 py-4">
+                <Phone className="mt-0.5 h-4 w-4 shrink-0 text-sky-500" />
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">Contact vétérinaire</p>
+                  <p className="text-sm text-slate-700">{request.dog.vetContact}</p>
+                </div>
+              </div>
+            ) : null}
+
+            {request.ownerPhone?.trim() ? (
+              <div className="flex gap-3 px-5 py-4">
+                <Phone className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">Téléphone du propriétaire</p>
+                  <a
+                    href={`tel:${request.ownerPhone}`}
+                    className="text-sm font-medium text-[var(--dogshift-blue)] hover:underline"
+                  >
+                    {request.ownerPhone}
+                  </a>
+                </div>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
+
       <div className="mt-6 rounded-3xl border border-slate-100 bg-white/60 p-6 shadow-[0_8px_30px_-12px_rgba(15,23,42,0.06)] backdrop-blur-xl transition-all duration-300 hover:shadow-md hover:border-slate-200">
         <p className="text-base font-bold text-slate-900 mb-6 flex items-center gap-2">
           <span className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-50 text-indigo-600">
@@ -564,7 +664,7 @@ export function RequestDetailPanel({
             </div>
             <div>
               <p className="text-sm font-bold text-slate-900">3. Versement</p>
-              <p className="mt-1.5 text-sm text-slate-600 leading-relaxed">L'argent est versé automatiquement sur ton compte bancaire 48h après la fin du service.</p>
+              <p className="mt-1.5 text-sm text-slate-600 leading-relaxed">L&apos;argent est versé automatiquement sur ton compte bancaire 48h après la fin du service.</p>
             </div>
           </div>
         </div>

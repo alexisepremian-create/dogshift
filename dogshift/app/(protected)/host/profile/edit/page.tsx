@@ -64,6 +64,7 @@ export default function HostProfileEditPage() {
 
   const [pensionVerifStatus, setPensionVerifStatus] = useState<string>("not_submitted");
   const [hasPension, setHasPension] = useState(false);
+  const [pensionAcceptedSizes, setPensionAcceptedSizes] = useState<string[] | null>(null);
   const [pensionPhotoKeys, setPensionPhotoKeys] = useState<string[]>([]);
   const [pensionExifData, setPensionExifData] = useState<Record<string, unknown>[]>([]);
   const [pensionSubmitting, setPensionSubmitting] = useState(false);
@@ -172,6 +173,7 @@ export default function HostProfileEditPage() {
       if (data.ok) {
         setPensionVerifStatus(data.status ?? "not_submitted");
         setHasPension(Boolean(data.hasPension));
+        setPensionAcceptedSizes(Array.isArray(data.pensionAcceptedSizes) ? data.pensionAcceptedSizes : null);
       }
     } catch { /* ignore */ }
   }
@@ -551,7 +553,7 @@ export default function HostProfileEditPage() {
                   <label className="block text-sm font-medium text-slate-700" htmlFor="host_city">
                     Ville / CP (visible)
                   </label>
-                  <div className="mt-2 grid grid-cols-2 gap-3">
+                  <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <input
                       id="host_city"
                       value={profile.city}
@@ -728,6 +730,25 @@ export default function HostProfileEditPage() {
                 <p className="mt-1 text-xs text-slate-500">
                   Sélectionnez les tailles de chiens que vous acceptez. Chaque taille occupe un nombre de places différent dans votre capacité.
                 </p>
+
+                {pensionVerifStatus === "approved" && pensionAcceptedSizes && pensionAcceptedSizes.length > 0 && (
+                  <div className="mt-3 flex items-start gap-2.5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+                    <svg className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+                    <div>
+                      <p className="text-xs font-semibold text-amber-900">Tailles autorisées par DogShift pour la Pension</p>
+                      <p className="mt-0.5 text-xs text-amber-700">
+                        Suite à la vérification de votre logement, vous pouvez uniquement accueillir des chiens de taille&nbsp;:&nbsp;
+                        <span className="font-bold">
+                          {pensionAcceptedSizes
+                            .map((s) => ({ small: "Petit", medium: "Moyen", large: "Grand" }[s] ?? s))
+                            .join(", ")}
+                        </span>.
+                        Les autres tailles sont désactivées pour le service Pension.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
                 <div className="mt-4">
                   <SizeAcceptanceToggle
                     accepted={{
@@ -735,6 +756,15 @@ export default function HostProfileEditPage() {
                       medium: profile.acceptsMedium ?? profile.dogSizes.Moyen,
                       large: profile.acceptsLarge ?? profile.dogSizes.Grand,
                     }}
+                    disabledSizes={
+                      pensionVerifStatus === "approved" && pensionAcceptedSizes && pensionAcceptedSizes.length > 0
+                        ? {
+                            small: !pensionAcceptedSizes.includes("small"),
+                            medium: !pensionAcceptedSizes.includes("medium"),
+                            large: !pensionAcceptedSizes.includes("large"),
+                          }
+                        : undefined
+                    }
                     onChange={(next) =>
                       setProfile((p) => ({
                         ...p,
@@ -1423,13 +1453,13 @@ export default function HostProfileEditPage() {
               {/* 5b — Publication de l'annonce */}
               <div>
                 <h3 className="text-sm font-semibold text-slate-800">Publication de l&apos;annonce</h3>
-                <div className="mt-4 flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                  <div>
+                <div className="mt-4 flex flex-col gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="min-w-0 flex-1">
                     <p className="text-sm font-semibold text-slate-900">
                       {published ? "Votre annonce est visible dans la recherche." : "Votre annonce est cachée (brouillon)."}
                     </p>
                     {!canPublish && !published ? (
-                      <p className="mt-2 text-sm font-semibold text-slate-700">
+                      <p className="mt-1.5 text-sm text-slate-500">
                         Complète ton profil et accepte le règlement pour publier.
                       </p>
                     ) : null}
@@ -1441,19 +1471,17 @@ export default function HostProfileEditPage() {
                       setPublished((v) => !v);
                     }}
                     disabled={!canTogglePublish}
-                    className={
-                      published
-                        ? "inline-flex h-9 w-14 items-center rounded-full bg-[var(--dogshift-blue)] p-1 transition"
-                        : "inline-flex h-9 w-14 items-center rounded-full bg-slate-200 p-1 transition"
-                    }
-                    aria-label="Annonce publiée"
+                    className={`inline-flex h-9 w-14 shrink-0 items-center rounded-full p-1 transition disabled:cursor-not-allowed disabled:opacity-50 ${
+                      published ? "bg-[var(--dogshift-blue)]" : "bg-slate-200"
+                    }`}
+                    aria-label={published ? "Désactiver la publication de l'annonce" : "Activer la publication de l'annonce"}
+                    aria-checked={published}
+                    role="switch"
                   >
                     <span
-                      className={
-                        published
-                          ? "h-7 w-7 translate-x-5 rounded-full bg-white shadow-sm transition"
-                          : "h-7 w-7 translate-x-0 rounded-full bg-white shadow-sm transition"
-                      }
+                      className={`h-7 w-7 rounded-full bg-white shadow-sm transition-transform ${
+                        published ? "translate-x-5" : "translate-x-0"
+                      }`}
                     />
                   </button>
                 </div>

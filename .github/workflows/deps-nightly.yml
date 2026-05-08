@@ -47,6 +47,9 @@ jobs:
         run: node --experimental-strip-types scripts/deps-agent.ts
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          TELEGRAM_BOT_TOKEN_MAINTENANCE: ${{ secrets.TELEGRAM_BOT_TOKEN_MAINTENANCE }}
+          TELEGRAM_CHAT_ID_MAINTENANCE: ${{ secrets.TELEGRAM_CHAT_ID_MAINTENANCE }}
+          # Legacy fallbacks (kept for safety — script prefers _MAINTENANCE above)
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           MAINTENANCE_API_KEY: ${{ secrets.MAINTENANCE_API_KEY }}

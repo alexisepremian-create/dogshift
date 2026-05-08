@@ -5,7 +5,7 @@ import { runDogNewsAgent } from "@/lib/agents/dogNewsAgent";
 import { reportApiError } from "@/lib/observability/reportApiError";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 export async function GET(req: Request) {
   // Vercel cron authentication

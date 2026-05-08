@@ -429,7 +429,7 @@ export function RequestsSplitView({
           </aside>
         </div>
 
-      <div className={`fixed inset-0 z-50 ${mobileOpen && selected ? "lg:hidden" : "hidden"}`}>
+      <div className={`fixed inset-0 z-[80] ${mobileOpen && selected ? "lg:hidden" : "hidden"}`}>
         <button
           type="button"
           aria-label="Fermer"
@@ -451,7 +451,7 @@ export function RequestsSplitView({
       </div>
 
       {toast ? (
-        <div className="fixed bottom-5 left-1/2 z-50 -translate-x-1/2 rounded-full border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-900 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.35)]">
+        <div className="fixed bottom-5 left-1/2 z-[90] -translate-x-1/2 rounded-full border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-900 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.35)]">
           <div className="flex items-center gap-3">
             <span>{toast.message}</span>
             {toast.undoId ? (
@@ -468,7 +468,7 @@ export function RequestsSplitView({
         </div>
       ) : null}
 
-      <div className={`fixed inset-0 z-50 ${confirmDeleteId ? "" : "hidden"}`}>
+      <div className={`fixed inset-0 z-[90] ${confirmDeleteId ? "" : "hidden"}`}>
         <button
           type="button"
           aria-label="Fermer"
@@ -554,8 +554,8 @@ function DraggableRequestRow({
       onDelete={mode === "ARCHIVED" ? onDelete : undefined}
       outerRef={setNodeRef}
       style={style}
-      dragAttributes={attributes as any}
-      dragListeners={listeners as any}
+      dragAttributes={attributes as unknown as Record<string, unknown>}
+      dragListeners={listeners as unknown as Record<string, unknown>}
       dragging={dragging}
     />
   );

@@ -22,6 +22,22 @@ const prismaAny = prisma as unknown as PrismaClientLike;
 
 export const runtime = "nodejs";
 
+type DogProfileItem = {
+  id: string;
+  name: string;
+  breed: string | null;
+  birthYear: number | null;
+  weightKg: number | null;
+  photoUrl: string | null;
+  neutered: boolean | null;
+  medications: string | null;
+  allergies: string | null;
+  vetContact: string | null;
+  behaviorNotes: string | null;
+  feedingNotes: string | null;
+  sitterInstructions: string | null;
+};
+
 type BookingListItem = {
   id: string;
   createdAt: string;
@@ -36,6 +52,8 @@ type BookingListItem = {
   amount: number;
   currency: string;
   owner: { id: string; name: string; avatarUrl: string | null };
+  dog: DogProfileItem | null;
+  ownerPhone: string | null;
 };
 
 async function resolveDbUserAndSitterId() {
@@ -116,7 +134,25 @@ export async function GET(req: NextRequest) {
         message: true,
         amount: true,
         currency: true,
+        ownerPhone: true,
         user: { select: { id: true, name: true, image: true } },
+        selectedDog: {
+          select: {
+            id: true,
+            name: true,
+            breed: true,
+            birthYear: true,
+            weightKg: true,
+            photoUrl: true,
+            neutered: true,
+            medications: true,
+            allergies: true,
+            vetContact: true,
+            behaviorNotes: true,
+            feedingNotes: true,
+            sitterInstructions: true,
+          },
+        },
       },
     });
 
@@ -193,6 +229,27 @@ export async function GET(req: NextRequest) {
         amount: typeof rec.amount === "number" ? rec.amount : Number(rec.amount ?? 0),
         currency: typeof rec.currency === "string" ? String(rec.currency) : "chf",
         owner: { id: String(userRec?.id ?? ""), name: ownerName, avatarUrl },
+        ownerPhone: typeof rec.ownerPhone === "string" && rec.ownerPhone.trim() ? rec.ownerPhone.trim() : null,
+        dog: rec.selectedDog
+          ? (() => {
+              const d = rec.selectedDog as Record<string, unknown>;
+              return {
+                id: String(d.id ?? ""),
+                name: typeof d.name === "string" ? d.name : "",
+                breed: typeof d.breed === "string" ? d.breed : null,
+                birthYear: typeof d.birthYear === "number" ? d.birthYear : null,
+                weightKg: typeof d.weightKg === "number" ? d.weightKg : null,
+                photoUrl: typeof d.photoUrl === "string" ? d.photoUrl : null,
+                neutered: typeof d.neutered === "boolean" ? d.neutered : null,
+                medications: typeof d.medications === "string" ? d.medications : null,
+                allergies: typeof d.allergies === "string" ? d.allergies : null,
+                vetContact: typeof d.vetContact === "string" ? d.vetContact : null,
+                behaviorNotes: typeof d.behaviorNotes === "string" ? d.behaviorNotes : null,
+                feedingNotes: typeof d.feedingNotes === "string" ? d.feedingNotes : null,
+                sitterInstructions: typeof d.sitterInstructions === "string" ? d.sitterInstructions : null,
+              };
+            })()
+          : null,
       };
     });
 
