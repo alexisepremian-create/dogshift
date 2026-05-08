@@ -25,6 +25,7 @@ export async function GET(req: NextRequest) {
         pensionAiVerdict: true,
         pensionAiReasoning: true,
         pensionAdminNotes: true,
+        pensionAcceptedSizes: true,
       },
     });
 
@@ -59,6 +60,7 @@ export async function GET(req: NextRequest) {
       aiVerdict: profile.pensionAiVerdict ?? null,
       aiReasoning: profile.pensionAiReasoning ?? null,
       adminNotes: profile.pensionAdminNotes ?? null,
+      pensionAcceptedSizes: Array.isArray(profile.pensionAcceptedSizes) ? profile.pensionAcceptedSizes : null,
     });
   } catch (err) {
     console.error("[api][host][pension-verification][GET]", err);

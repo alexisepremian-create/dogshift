@@ -1,6 +1,23 @@
+import Image from "next/image";
 import { statusMeta, type BookingStatus } from "./status";
 import type { CSSProperties } from "react";
 import { Trash2, Footprints, Home, Moon } from "lucide-react";
+
+export type DogProfile = {
+  id: string;
+  name: string;
+  breed: string | null;
+  birthYear: number | null;
+  weightKg: number | null;
+  photoUrl: string | null;
+  neutered: boolean | null;
+  medications: string | null;
+  allergies: string | null;
+  vetContact: string | null;
+  behaviorNotes: string | null;
+  feedingNotes: string | null;
+  sitterInstructions: string | null;
+};
 
 export type HostRequest = {
   id: string;
@@ -16,42 +33,20 @@ export type HostRequest = {
   amount: number;
   currency: string;
   owner: { id: string; name: string; avatarUrl: string | null };
+  ownerPhone?: string | null;
+  dog?: DogProfile | null;
 };
-
-function formatDateHuman(value: string) {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return value || "—";
-  const [y, m, d] = value.split("-").map((n) => Number(n));
-  const dt = new Date(Date.UTC(y, m - 1, d));
-  if (Number.isNaN(dt.getTime())) return value;
-  return new Intl.DateTimeFormat("fr-CH", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    timeZone: "UTC",
-  }).format(dt);
-}
 
 function formatChfCents(amount: number) {
   const value = Number.isFinite(amount) ? amount : 0;
   return new Intl.NumberFormat("fr-CH", { style: "currency", currency: "CHF" }).format(value / 100);
 }
 
-async function copyToClipboard(value: string) {
-  try {
-    await navigator.clipboard.writeText(value);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
 export function RequestListItem({
   request,
   selected,
   onSelect,
-  canArchive,
   onArchive,
-  canDelete,
   onDelete,
   outerRef,
   style,
@@ -80,9 +75,6 @@ export function RequestListItem({
       : status === "REFUND_FAILED"
         ? "Remboursement au propriétaire: échoué"
         : null;
-  const start = request.startDate ? request.startDate.slice(0, 10) : "";
-  const end = request.endDate ? request.endDate.slice(0, 10) : "";
-  const when = start ? `${formatDateHuman(start)}${end ? ` → ${formatDateHuman(end)}` : ""}` : "—";
   const service = request.service?.trim() ? request.service.trim() : "Service";
 
   const border = selected ? "border-[var(--dogshift-blue)] ring-1 ring-[var(--dogshift-blue)] shadow-md" : "border-slate-100 shadow-sm";
@@ -108,8 +100,8 @@ export function RequestListItem({
         }
       }}
       style={style}
-      {...(dragAttributes as any)}
-      {...(dragListeners as any)}
+      {...(dragAttributes as Record<string, unknown>)}
+      {...(dragListeners as Record<string, unknown>)}
       className={`group relative w-full rounded-2xl border ${border} ${bg} p-4 text-left transition-all duration-300 ease-out ${!selected && 'hover:border-slate-200 hover:bg-slate-50/80 hover:shadow-md'} focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--dogshift-blue)] ${dragFx} cursor-pointer`}
     >
       {canShowArchive && canArchiveThis && !request.archivedAt ? (
@@ -122,7 +114,7 @@ export function RequestListItem({
             e.stopPropagation();
             onArchive?.();
           }}
-          className="pointer-events-none absolute -left-2 -top-2 inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 opacity-0 shadow-sm transition group-hover:pointer-events-auto group-hover:opacity-100 hover:bg-slate-50"
+          className="absolute -left-2 -top-2 inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 opacity-0 shadow-sm transition group-hover:opacity-100 hover:bg-slate-50 [@media(hover:none)]:opacity-100 [@media(hover:none)]:pointer-events-auto"
         >
           <Trash2 className="h-4 w-4" />
         </button>
@@ -138,7 +130,7 @@ export function RequestListItem({
             e.stopPropagation();
             onDelete();
           }}
-          className="pointer-events-none absolute -left-2 -top-2 z-10 inline-flex h-8 w-8 scale-95 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 opacity-0 shadow-sm transition-all duration-150 group-hover:pointer-events-auto group-hover:scale-100 group-hover:opacity-100 hover:text-rose-600 hover:shadow-md"
+          className="absolute -left-2 -top-2 z-10 inline-flex h-8 w-8 scale-95 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 opacity-0 shadow-sm transition-all duration-150 group-hover:scale-100 group-hover:opacity-100 hover:text-rose-600 hover:shadow-md [@media(hover:none)]:opacity-100 [@media(hover:none)]:scale-100"
         >
           <Trash2 className="h-4 w-4" />
         </button>
@@ -146,11 +138,14 @@ export function RequestListItem({
 
       <div className="flex items-start gap-3">
         {request.owner.avatarUrl ? (
-          <img
+          <Image
             src={request.owner.avatarUrl}
             alt=""
+            width={36}
+            height={36}
             className="mt-0.5 h-9 w-9 rounded-full border border-slate-200 object-cover"
             referrerPolicy="no-referrer"
+            unoptimized
           />
         ) : (
           <div className="mt-0.5 flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-sm font-semibold text-slate-500">
