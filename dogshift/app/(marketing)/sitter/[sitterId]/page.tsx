@@ -2119,7 +2119,7 @@ function SitterPublicProfileContent({
 
   if (isLoading) {
     if (dbg) console.log("[ProfileContent] returning loader - profile is", sitter);
-    return <AccountPageSkeleton />;
+    return null;
   }
 
   if (dbg) console.log("[ProfileContent] render complete");
