@@ -313,12 +313,12 @@ export function renderEmailLayout(params: {
     <table role="presentation" cellpadding="0" cellspacing="0" align="center" style="border-collapse:collapse;margin:12px auto 0;">
       <tr>
         <td style="padding:0 10px;">
-          <a href="https://instagram.com/dogshift" title="Instagram" style="text-decoration:none;display:inline-block;">
+          <a href="https://www.instagram.com/dogshift_ch/" title="Instagram" style="text-decoration:none;display:inline-block;">
             <img src="${esc(baseUrl)}/icons/instagram.png" width="32" height="32" alt="Instagram" style="display:block;border:0;outline:none;" />
           </a>
         </td>
         <td style="padding:0 10px;">
-          <a href="https://facebook.com/dogshift" title="Facebook" style="text-decoration:none;display:inline-block;">
+          <a href="https://www.facebook.com/profile.php?id=61578479756521" title="Facebook" style="text-decoration:none;display:inline-block;">
             <img src="${esc(baseUrl)}/icons/facebook.png" width="32" height="32" alt="Facebook" style="display:block;border:0;outline:none;" />
           </a>
         </td>

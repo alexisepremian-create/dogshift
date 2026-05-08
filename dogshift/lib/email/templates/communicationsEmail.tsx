@@ -136,12 +136,12 @@ export function CommunicationsEmail(props: {
               <tbody>
                 <tr>
                   <td style={{ padding: "0 10px" }}>
-                    <Link href="https://instagram.com/dogshift" style={{ textDecoration: "none", display: "inline-block" }}>
+                    <Link href="https://www.instagram.com/dogshift_ch/" style={{ textDecoration: "none", display: "inline-block" }}>
                       <Img src={`${baseUrl}/icons/instagram.png`} width={32} height={32} alt="Instagram" style={{ display: "block", border: 0 }} />
                     </Link>
                   </td>
                   <td style={{ padding: "0 10px" }}>
-                    <Link href="https://facebook.com/dogshift" style={{ textDecoration: "none", display: "inline-block" }}>
+                    <Link href="https://www.facebook.com/profile.php?id=61578479756521" style={{ textDecoration: "none", display: "inline-block" }}>
                       <Img src={`${baseUrl}/icons/facebook.png`} width={32} height={32} alt="Facebook" style={{ display: "block", border: 0 }} />
                     </Link>
                   </td>
