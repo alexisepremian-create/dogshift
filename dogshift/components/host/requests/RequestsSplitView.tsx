@@ -554,8 +554,8 @@ function DraggableRequestRow({
       onDelete={mode === "ARCHIVED" ? onDelete : undefined}
       outerRef={setNodeRef}
       style={style}
-      dragAttributes={attributes as Record<string, unknown>}
-      dragListeners={listeners as Record<string, unknown>}
+      dragAttributes={attributes as unknown as Record<string, unknown>}
+      dragListeners={listeners as unknown as Record<string, unknown>}
       dragging={dragging}
     />
   );
