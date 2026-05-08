@@ -16,6 +16,17 @@ export function slotsUsed(size: DogSizeKey): number {
 }
 
 /**
+ * Derive a dog's size category from its weight.
+ * small: < 10 kg, medium: 10–25 kg, large: > 25 kg
+ */
+export function dogSizeKeyFromWeight(weightKg: number | null | undefined): DogSizeKey | null {
+  if (weightKg == null || !Number.isFinite(weightKg) || weightKg <= 0) return null;
+  if (weightKg < 10) return "small";
+  if (weightKg <= 25) return "medium";
+  return "large";
+}
+
+/**
  * Compute weighted capacity from per-size counts (for migration from old model).
  * Clamps to MAX_CAPACITY_PLACES.
  */

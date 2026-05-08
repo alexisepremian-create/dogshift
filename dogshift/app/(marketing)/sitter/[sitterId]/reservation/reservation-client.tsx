@@ -13,6 +13,7 @@ import { Calendar, ChevronLeft, ChevronRight, Home, MapPin, Scissors, AlertTrian
 import { useMaintenance } from "@/components/platform/MaintenanceProvider";
 import { maintenanceBookingUserMessage } from "@/lib/platform/maintenanceConstants";
 import { cancellationPolicyVariantFromStartMs } from "@/lib/reservation/cancellationPolicyUi";
+import { DOG_SIZE_WEIGHTS, dogSizeKeyFromWeight } from "@/lib/constants/dog-sizes";
 
 type PricingUnit = "HOURLY" | "DAILY";
 
@@ -963,7 +964,11 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
         if (Array.isArray(data.dogs)) {
           setDogs(data.dogs);
           const def = data.dogs.find((d) => d.isDefault) ?? (data.dogs.length === 1 ? data.dogs[0] : null);
-          if (def) setSelectedDogId(def.id);
+          if (def) {
+            setSelectedDogId(def.id);
+            const sizeKey = dogSizeKeyFromWeight(def.weightKg);
+            if (sizeKey) setDogSize(sizeKey);
+          }
         }
       })
       .catch(() => {})
@@ -2238,38 +2243,53 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
                 <div className="mt-4 flex flex-wrap gap-2">
                   {dogs.map((dog) => {
                     const isSelected = selectedDogId === dog.id;
+                    const dogSizeKey = dogSizeKeyFromWeight(dog.weightKg);
+                    const pensionSizes = sitter.pensionAcceptedSizes ?? [];
+                    const isPension = selectedService === "Pension";
+                    const sizeBlocked = isPension && pensionSizes.length > 0 && dogSizeKey !== null && !pensionSizes.includes(dogSizeKey);
                     return (
-                      <button
-                        key={dog.id}
-                        type="button"
-                        onClick={() => setSelectedDogId(isSelected ? null : dog.id)}
-                        className={`flex items-center gap-2.5 rounded-2xl border px-4 py-2.5 text-left text-sm transition ${
-                          isSelected
-                            ? "border-[var(--dogshift-blue)] bg-[color-mix(in_srgb,var(--dogshift-blue),white_92%)] text-[var(--dogshift-blue)]"
-                            : "border-slate-200 bg-white text-slate-800 hover:bg-slate-50"
-                        }`}
-                      >
-                        {dog.photoUrl ? (
-                           
-                          <img
-                            src={dog.photoUrl}
-                            alt={dog.name}
-                            className="h-8 w-8 rounded-xl object-cover ring-1 ring-slate-200"
-                          />
-                        ) : (
-                          <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-sm font-bold ${isSelected ? "bg-[var(--dogshift-blue)]/20 text-[var(--dogshift-blue)]" : "bg-slate-100 text-slate-500"}`}>
-                            {dog.name.charAt(0).toUpperCase()}
-                          </div>
-                        )}
-                        <div>
-                          <p className="font-semibold leading-tight">{dog.name}</p>
-                          {dog.breed || dog.weightKg ? (
-                            <p className="text-[11px] leading-tight opacity-70">
-                              {[dog.breed, dog.weightKg ? `${dog.weightKg} kg` : null].filter(Boolean).join(" · ")}
-                            </p>
-                          ) : null}
-                        </div>
-                      </button>
+                          <button
+                            key={dog.id}
+                            type="button"
+                            onClick={() => {
+                              const next = isSelected ? null : dog.id;
+                              setSelectedDogId(next);
+                              if (next) {
+                                const sk = dogSizeKeyFromWeight(dog.weightKg);
+                                if (sk) setDogSize(sk);
+                              }
+                            }}
+                            className={`flex items-center gap-2.5 rounded-2xl border px-4 py-2.5 text-left text-sm transition ${
+                              sizeBlocked
+                                ? "border-rose-200 bg-rose-50 opacity-70"
+                                : isSelected
+                                  ? "border-[var(--dogshift-blue)] bg-[color-mix(in_srgb,var(--dogshift-blue),white_92%)] text-[var(--dogshift-blue)]"
+                                  : "border-slate-200 bg-white text-slate-800 hover:bg-slate-50"
+                            }`}
+                          >
+                            {dog.photoUrl ? (
+                              <img
+                                src={dog.photoUrl}
+                                alt={dog.name}
+                                className="h-8 w-8 rounded-xl object-cover ring-1 ring-slate-200"
+                              />
+                            ) : (
+                              <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-sm font-bold ${isSelected ? "bg-[var(--dogshift-blue)]/20 text-[var(--dogshift-blue)]" : sizeBlocked ? "bg-rose-100 text-rose-400" : "bg-slate-100 text-slate-500"}`}>
+                                {dog.name.charAt(0).toUpperCase()}
+                              </div>
+                            )}
+                            <div>
+                              <p className="font-semibold leading-tight">{dog.name}</p>
+                              <p className="text-[11px] leading-tight opacity-70">
+                                {[
+                                  dog.breed,
+                                  dog.weightKg ? `${dog.weightKg} kg` : null,
+                                  dogSizeKey ? DOG_SIZE_WEIGHTS[dogSizeKey].label : null,
+                                ].filter(Boolean).join(" · ")}
+                                {sizeBlocked && <span className="ml-1 font-semibold text-rose-500">— taille non acceptée</span>}
+                              </p>
+                            </div>
+                          </button>
                     );
                   })}
                 </div>
@@ -2289,31 +2309,58 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
               </div>
             </div>
 
-            {/* Dog size picker — shown for Pension only when sitter has pensionAcceptedSizes */}
-            {selectedService === "Pension" && (sitter.pensionAcceptedSizes ?? []).length > 0 && (
-              <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.12)] sm:p-8">
-                <p className="text-sm font-semibold text-slate-900">
-                  Taille de votre chien <span className="text-rose-500">*</span>
-                </p>
-                <p className="mt-1 text-xs text-slate-500">Ce sitter accepte uniquement les chiens : {sitter.pensionAcceptedSizes!.join(", ")}.</p>
-                <div className="mt-4 flex flex-wrap gap-3">
-                  {sitter.pensionAcceptedSizes!.map((size) => (
-                    <button
-                      key={size}
-                      type="button"
-                      onClick={() => setDogSize(size)}
-                      className={`rounded-2xl border px-4 py-2 text-sm font-semibold transition ${
-                        dogSize === size
-                          ? "border-[var(--dogshift-blue)] bg-[color-mix(in_srgb,var(--dogshift-blue),transparent_90%)] text-[var(--dogshift-blue)]"
-                          : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
-                      }`}
-                    >
-                      {size}
-                    </button>
-                  ))}
+            {/* Dog size — shown for Pension when sitter has restricted sizes */}
+            {selectedService === "Pension" && (sitter.pensionAcceptedSizes ?? []).length > 0 && (() => {
+              const pensionSizes = sitter.pensionAcceptedSizes!;
+              const selectedDog = dogs.find((d) => d.id === selectedDogId) ?? null;
+              const autoDogSize = selectedDog ? dogSizeKeyFromWeight(selectedDog.weightKg) : null;
+              const isSizeBlocked = autoDogSize !== null && !pensionSizes.includes(autoDogSize);
+              return (
+                <div className={`rounded-3xl border p-6 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.12)] sm:p-8 ${isSizeBlocked ? "border-rose-200 bg-rose-50" : "border-slate-200 bg-white"}`}>
+                  <p className="text-sm font-semibold text-slate-900">
+                    Taille de votre chien <span className="text-rose-500">*</span>
+                  </p>
+                  <p className="mt-1 text-xs text-slate-500">
+                    Ce sitter accepte uniquement les chiens de taille :{" "}
+                    <strong>{pensionSizes.map((s) => DOG_SIZE_WEIGHTS[s as keyof typeof DOG_SIZE_WEIGHTS]?.label ?? s).join(", ")}</strong>.
+                  </p>
+                  {isSizeBlocked && (
+                    <div className="mt-3 flex items-start gap-2 rounded-xl border border-rose-200 bg-rose-100 px-4 py-3">
+                      <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-rose-600" />
+                      <p className="text-xs font-medium text-rose-800">
+                        La taille détectée de votre chien ({DOG_SIZE_WEIGHTS[autoDogSize].label}, {autoDogSize === "small" ? "< 10 kg" : autoDogSize === "medium" ? "10–25 kg" : "> 25 kg"}) n&apos;est pas acceptée par ce sitter pour la Pension. Vous ne pouvez pas réserver ce service.
+                      </p>
+                    </div>
+                  )}
+                  <div className="mt-4 flex flex-wrap gap-3">
+                    {(["small", "medium", "large"] as const).map((size) => {
+                      const accepted = pensionSizes.includes(size);
+                      const { label, range } = DOG_SIZE_WEIGHTS[size];
+                      const isActive = dogSize === size;
+                      return (
+                        <button
+                          key={size}
+                          type="button"
+                          disabled={!accepted}
+                          onClick={() => accepted && setDogSize(size)}
+                          title={!accepted ? "Non accepté par ce sitter" : undefined}
+                          className={`flex flex-col items-center gap-0.5 rounded-2xl border-2 px-4 py-2.5 text-sm font-semibold transition ${
+                            !accepted
+                              ? "cursor-not-allowed border-slate-100 bg-slate-50 opacity-40"
+                              : isActive
+                                ? "border-[var(--dogshift-blue)] bg-[color-mix(in_srgb,var(--dogshift-blue),transparent_90%)] text-[var(--dogshift-blue)]"
+                                : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                          }`}
+                        >
+                          {label}
+                          <span className="text-[10px] font-normal opacity-60">{range}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
-            )}
+              );
+            })()}
 
             <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.12)] sm:p-8">
               <p className="text-sm font-semibold text-slate-900">Message (optionnel)</p>
