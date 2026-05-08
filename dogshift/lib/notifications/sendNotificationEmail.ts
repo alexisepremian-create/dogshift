@@ -220,6 +220,7 @@ async function resolveBookingEmailData(bookingId: string): Promise<{
   rows: EmailSummaryRow[];
   travel: TravelEmailData;
   dog: DogProfileData;
+  additionalDogNames: string[];
   ownerPhone: string | null;
   pickupAddress: string | null;
   sitter: SitterEmailData | null;
@@ -245,6 +246,7 @@ async function resolveBookingEmailData(bookingId: string): Promise<{
       ownerAddress: true,
       ownerPhone: true,
       dogProfileId: true,
+      additionalDogProfileIds: true,
       selectedDog: {
         select: {
           name: true,
@@ -263,7 +265,7 @@ async function resolveBookingEmailData(bookingId: string): Promise<{
     },
   });
 
-  if (!booking) return { rows: [{ label: "Référence", value: bookingId }], travel: null, dog: null, ownerPhone: null, pickupAddress: null, sitter: null, startDate: null, amountCents: null, currency: "CHF" };
+  if (!booking) return { rows: [{ label: "Référence", value: bookingId }], travel: null, dog: null, additionalDogNames: [], ownerPhone: null, pickupAddress: null, sitter: null, startDate: null, amountCents: null, currency: "CHF" };
 
   const rows: EmailSummaryRow[] = [];
   const service = typeof booking.service === "string" && booking.service.trim() ? booking.service.trim() : "";
@@ -342,10 +344,28 @@ async function resolveBookingEmailData(bookingId: string): Promise<{
   const ownerPhone = typeof booking.ownerPhone === "string" && booking.ownerPhone.trim() ? booking.ownerPhone.trim() : null;
   const dog: DogProfileData = booking.selectedDog ?? null;
 
+  // Fetch additional dog names for multi-dog bookings
+  let additionalDogNames: string[] = [];
+  if (typeof (booking as { additionalDogProfileIds?: unknown }).additionalDogProfileIds === "string") {
+    try {
+      const ids = JSON.parse((booking as { additionalDogProfileIds: string }).additionalDogProfileIds) as unknown[];
+      const validIds = ids.filter((id): id is string => typeof id === "string" && id.trim().length > 0);
+      if (validIds.length > 0) {
+        const additionalDogs = await (prisma as any).dogProfile.findMany({
+          where: { id: { in: validIds } },
+          select: { name: true },
+        });
+        additionalDogNames = (additionalDogs as { name: string }[]).map((d) => d.name);
+      }
+    } catch {
+      // non-critical — proceed without additional dog names
+    }
+  }
+
   const rawStartDate = booking.startDate instanceof Date ? booking.startDate : booking.startDate ? new Date(String(booking.startDate)) : null;
   const rawAmountCents = typeof booking.amount === "number" && Number.isFinite(booking.amount) ? booking.amount : null;
 
-  return { rows, travel, dog, ownerPhone, pickupAddress, sitter, startDate: rawStartDate, amountCents: rawAmountCents, currency };
+  return { rows, travel, dog, additionalDogNames, ownerPhone, pickupAddress, sitter, startDate: rawStartDate, amountCents: rawAmountCents, currency };
 }
 
 async function resolveBookingSummaryRows(bookingId: string): Promise<EmailSummaryRow[]> {
@@ -357,14 +377,20 @@ async function resolveBookingRequestEmailData(bookingId: string): Promise<{
   rows: EmailSummaryRow[];
   extraHtml: string;
 }> {
-  const { rows, travel, dog, ownerPhone } = await resolveBookingEmailData(bookingId);
+  const { rows, travel, dog, additionalDogNames, ownerPhone } = await resolveBookingEmailData(bookingId);
 
   // Add owner phone to summary rows for the sitter
   const sitterRows: EmailSummaryRow[] = ownerPhone
     ? [...rows.slice(0, -1), { label: "Tél. propriétaire", value: ownerPhone }, rows[rows.length - 1]!]
     : rows;
 
-  const extraHtml = buildTravelMapExtraHtml(travel) + buildDogProfileHtml(dog);
+  // Show primary dog profile + list additional dog names if any
+  const additionalDogsHtml = additionalDogNames.length > 0
+    ? `<p style="margin:12px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#374151;">
+        <strong>Chiens supplémentaires :</strong> ${additionalDogNames.join(", ")}
+       </p>`
+    : "";
+  const extraHtml = buildTravelMapExtraHtml(travel) + buildDogProfileHtml(dog) + additionalDogsHtml;
   return { rows: sitterRows, extraHtml };
 }
 
@@ -1108,7 +1134,7 @@ Notification DogShift.
       }
       case "bookingReminder": {
         const url = bookingUrl(payload.bookingId, "account");
-        const { rows, sitter, travel, dog } = await resolveBookingEmailData(payload.bookingId);
+        const { rows, sitter, travel, dog, additionalDogNames } = await resolveBookingEmailData(payload.bookingId);
         
         const now = new Date();
         const start = payload.startsAtIso ? new Date(payload.startsAtIso) : now;
@@ -1116,10 +1142,11 @@ Notification DogShift.
         const days = Math.max(1, Math.round(diffHours / 24));
         
         const timePrefix = days <= 1 ? "Demain" : `Dans ${days} jours`;
-        const dogName = dog?.name || "votre chien";
+        const allDogNames = [dog?.name, ...additionalDogNames].filter(Boolean);
+        const dogName = allDogNames.length > 0 ? allDogNames.join(" et ") : "votre chien";
         const sitterFirstName = sitter?.name?.split(" ")[0] || "le sitter";
         
-        const title = `${timePrefix}, ${dogName} retrouve ${sitterFirstName}`;
+        const title = `${timePrefix}, ${dogName} retrouve${allDogNames.length > 1 ? "nt" : ""} ${sitterFirstName}`;
         const subtitle = "Tout est prêt pour la prestation. Voici un petit récap pour ne rien oublier.";
 
         const ownerChecklistHtml = `
@@ -1334,7 +1361,7 @@ Notification DogShift.
 
       case "sitterBookingConfirmed": {
         const url = bookingUrl(payload.bookingId, "host");
-        const { rows, travel, dog } = await resolveBookingEmailData(payload.bookingId);
+        const { rows, travel, dog, additionalDogNames } = await resolveBookingEmailData(payload.bookingId);
 
         const booking = await (prisma as any).booking.findUnique({
           where: { id: payload.bookingId },
@@ -1366,11 +1393,20 @@ Notification DogShift.
           }),
           { label: "Propriétaire", value: ownerName },
         ];
-        if (dog?.name) sitterRows.push({ label: "Chien", value: dog.name + (dog.breed ? ` (${dog.breed})` : "") });
+        const allDogNamesForSitter = [
+          dog?.name ? dog.name + (dog.breed ? ` (${dog.breed})` : "") : null,
+          ...additionalDogNames,
+        ].filter(Boolean);
+        if (allDogNamesForSitter.length > 0) {
+          sitterRows.push({ label: allDogNamesForSitter.length > 1 ? "Chiens" : "Chien", value: allDogNamesForSitter.join(", ") });
+        }
 
         const earningsHtml = buildSitterEarningsHtml(grossCents, commissionCents, netCents, cur);
         const mapHtml = buildTravelMapExtraHtml(travel);
-        const dogHtml = buildDogProfileHtml(dog);
+        const additionalDogsNoteHtml = additionalDogNames.length > 0
+          ? `<p style="margin:12px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#374151;"><strong>Chiens supplémentaires :</strong> ${additionalDogNames.join(", ")}</p>`
+          : "";
+        const dogHtml = buildDogProfileHtml(dog) + additionalDogsNoteHtml;
 
         return renderEmailLayout({
           logoUrl,
@@ -1388,7 +1424,7 @@ Notification DogShift.
 
       case "sitterBookingReminder": {
         const url = bookingUrl(payload.bookingId, "host");
-        const { rows, travel, dog, ownerPhone, pickupAddress } = await resolveBookingEmailData(payload.bookingId);
+        const { rows, travel, dog, additionalDogNames: sitterReminderAdditionalDogs, ownerPhone, pickupAddress } = await resolveBookingEmailData(payload.bookingId);
 
         const booking = await (prisma as any).booking.findUnique({
           where: { id: payload.bookingId },
@@ -1400,7 +1436,8 @@ Notification DogShift.
           if (ownerUser?.name) ownerName = ownerUser.name;
         }
 
-        const dogName = dog?.name || "ton prochain client à 4 pattes";
+        const allSitterReminderDogNames = [dog?.name, ...sitterReminderAdditionalDogs].filter(Boolean);
+        const dogName = allSitterReminderDogNames.length > 0 ? allSitterReminderDogNames.join(" et ") : "ton prochain client à 4 pattes";
         void dogName;
 
         const sitterRows: EmailSummaryRow[] = rows.filter(r => {

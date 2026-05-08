@@ -550,6 +550,8 @@ model Booking {
 
   /// Dog profile selected by the owner at booking time
   dogProfileId String?
+  /// Additional dog profile IDs (JSON array of strings) when multiple dogs are booked
+  additionalDogProfileIds String?
   /// Owner phone number shared with the sitter
   ownerPhone   String?
 
