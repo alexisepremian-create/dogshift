@@ -1,5 +1,6 @@
 import { generateText } from "ai";
 import { anthropic } from "@ai-sdk/anthropic";
+import { sendTelegramMessage } from "@/lib/telegram/sendTelegramMessage";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -166,7 +167,10 @@ async function sendTelegram(message: string): Promise<void> {
   const chatId = process.env.TELEGRAM_CHAT_ID_NEWS ?? process.env.TELEGRAM_CHAT_ID;
 
   if (!token || !chatId) {
-    throw new Error("TELEGRAM_BOT_TOKEN_NEWS ou TELEGRAM_CHAT_ID_NEWS manquant dans les variables d'environnement");
+    console.warn("[dogNewsAgent] TELEGRAM_BOT_TOKEN_NEWS ou TELEGRAM_CHAT_ID_NEWS non défini — envoi via helper centralisé avec fallback");
+    const sent = await sendTelegramMessage(message, { bot: "news", parseMode: "Markdown" });
+    if (!sent) throw new Error("Impossible d'envoyer le message Telegram (bot news)");
+    return;
   }
 
   const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
@@ -195,7 +199,14 @@ export async function runDogNewsAgent(): Promise<DogNewsReport> {
   const items = await fetchDogNews();
 
   if (items.length === 0) {
-    throw new Error("Aucune actualité récupérée depuis les flux RSS");
+    // Don't throw — send a graceful fallback message instead of silently failing
+    const day = today.getDate();
+    const month = MONTHS_FR[today.getMonth()];
+    const year = today.getFullYear();
+    const dateStr = `${day} ${month} ${year}`;
+    const fallbackMsg = `🐾 *DogShift News — ${dateStr}*\n\n_Aucune actualité disponible aujourd'hui (flux RSS injoignables). Réessai demain automatiquement._`;
+    await sendTelegram(fallbackMsg);
+    return { telegramMessage: fallbackMsg, itemCount: 0, date: today.toISOString() };
   }
 
   // 2. Synthesize with Claude
