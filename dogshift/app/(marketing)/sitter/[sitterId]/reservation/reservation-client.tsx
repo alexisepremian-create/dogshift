@@ -1804,6 +1804,7 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
         ...(dogSize ? { dogSize } : {}),
         numberOfDogs,
         dogProfileId: selectedDogIds[0] ?? null,
+        additionalDogProfileIds: selectedDogIds.slice(1),
         ownerPhone: ownerPhone.trim() || null,
       };
 
@@ -2331,12 +2332,15 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
               </div>
             </div>
 
-            {/* Dog size — shown for Pension when sitter has restricted sizes */}
+            {/* Dog size — shown for Pension when sitter has restricted sizes AND no dog with known size is selected */}
             {selectedService === "Pension" && (sitter.pensionAcceptedSizes ?? []).length > 0 && (() => {
               const pensionSizes = sitter.pensionAcceptedSizes!;
               const selectedDog = dogs.find((d) => d.id === selectedDogIds[0]) ?? null;
               const autoDogSize = selectedDog ? dogSizeKeyFromWeight(selectedDog.weightKg) : null;
               const isSizeBlocked = autoDogSize !== null && !pensionSizes.includes(autoDogSize);
+              // If at least one dog is selected with a known size, the picker is redundant
+              // (sizes are shown on each dog card; validation messages are shown inline)
+              if (selectedDogIds.length > 0 && autoDogSize !== null) return null;
               return (
                 <div className={`rounded-3xl border p-6 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.12)] sm:p-8 ${isSizeBlocked ? "border-rose-200 bg-rose-50" : "border-slate-200 bg-white"}`}>
                   <p className="text-sm font-semibold text-slate-900">

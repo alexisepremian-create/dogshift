@@ -621,6 +621,13 @@ export async function POST(req: NextRequest) {
     const dogProfileId = typeof body?.dogProfileId === "string" && body.dogProfileId.trim() ? body.dogProfileId.trim() : null;
     const ownerPhone = typeof body?.ownerPhone === "string" && body.ownerPhone.trim() ? body.ownerPhone.trim() : null;
 
+    // Additional dog profile IDs (for multi-dog bookings)
+    const rawAdditionalIds = Array.isArray((body as { additionalDogProfileIds?: unknown }).additionalDogProfileIds)
+      ? ((body as { additionalDogProfileIds: unknown[] }).additionalDogProfileIds).filter(
+          (id): id is string => typeof id === "string" && id.trim().length > 0
+        )
+      : [];
+
     // Validate that the dog profile belongs to the current user if provided
     if (dogProfileId) {
       const dog = await (prisma as any).dogProfile.findFirst({
@@ -630,6 +637,16 @@ export async function POST(req: NextRequest) {
       if (!dog) {
         return NextResponse.json({ ok: false, error: "DOG_NOT_FOUND" }, { status: 400 });
       }
+    }
+
+    // Validate additional dogs belong to the current user
+    let additionalDogProfileIds: string[] = [];
+    if (rawAdditionalIds.length > 0) {
+      const validAdditional = await (prisma as any).dogProfile.findMany({
+        where: { id: { in: rawAdditionalIds }, userId },
+        select: { id: true },
+      });
+      additionalDogProfileIds = (validAdditional as { id: string }[]).map((d) => d.id);
     }
 
     const booking = await (prisma as any).booking.create({
@@ -651,6 +668,7 @@ export async function POST(req: NextRequest) {
         ownerLng,
         ownerAddress: resolvedOwnerAddress,
         dogProfileId,
+        additionalDogProfileIds: additionalDogProfileIds.length > 0 ? JSON.stringify(additionalDogProfileIds) : null,
         ownerPhone,
       },
       select: { id: true },
