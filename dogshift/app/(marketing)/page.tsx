@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/no-explicit-any -- Prisma generated types
+ * lag behind the schema for SitterProfile shape; pre-existing usage in this
+ * file. Tracked separately from this perf fix. */
 import Link from "next/link";
 import type { Metadata } from "next";
 
@@ -31,6 +34,23 @@ export const metadata: Metadata = {
     description: homepageDescription,
   },
 };
+
+/**
+ * Some legacy sitter profiles were saved with avatar data inlined as
+ * `data:image/...;base64,...` URLs. Returning those to the client inlines
+ * megabytes of base64 into the homepage HTML (one observed page hit was
+ * 5 MB of HTML, mostly base64 avatars), which on mobile networks looks
+ * like an "infinite loading" spinner. Strip them here so the homepage
+ * stays small; the SitterCard already falls back to initials when the
+ * avatar URL is null.
+ */
+function sanitizeAvatarUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+  const trimmed = String(url).trim();
+  if (!trimmed) return null;
+  if (trimmed.startsWith("data:")) return null;
+  return trimmed;
+}
 
 async function getFeaturedSitters(): Promise<SitterPreview[]> {
   try {
@@ -116,7 +136,7 @@ async function getFeaturedSitters(): Promise<SitterPreview[]> {
           sitterId: sid,
           displayName: String(s.displayName ?? s.user?.name ?? "").trim() || "Dogsitter",
           city: String(s.city ?? "").trim(),
-          avatarUrl: (s.avatarUrl ?? s.user?.image ?? null) as string | null,
+          avatarUrl: sanitizeAvatarUrl(s.avatarUrl ?? s.user?.image ?? null),
           verified: s.verificationStatus === "approved",
           services,
           minPrice,
