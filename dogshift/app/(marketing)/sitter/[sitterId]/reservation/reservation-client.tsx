@@ -1773,6 +1773,12 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
         setDateEnd(dateStart);
       }
 
+      // Pension requires a dog profile
+      if (selectedService === "Pension" && !dogsLoading && dogs.length === 0) {
+        setError("Pour réserver la pension, vous devez d'abord ajouter la fiche de votre chien dans votre compte.");
+        return;
+      }
+
       // Pension size validation
       const pensionSizes = sitter.pensionAcceptedSizes ?? [];
       if (selectedService === "Pension" && pensionSizes.length > 0) {
@@ -2464,6 +2470,19 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
               <button type="button" disabled={!canSubmit || submitting} onClick={() => void onContinue()} className={`mt-6 ${PRIMARY_BTN}`}>
                 {submitting ? "Redirection…" : "Continuer"}
               </button>
+
+              {selectedService === "Pension" && !dogsLoading && dogs.length === 0 && (
+                <p className="mt-3 flex items-start gap-1.5 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs text-amber-800">
+                  <svg className="mt-px h-3.5 w-3.5 shrink-0 text-amber-500" viewBox="0 0 16 16" fill="currentColor" aria-hidden>
+                    <path fillRule="evenodd" d="M8 1.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13ZM0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8Zm8-2.5a.75.75 0 0 1 .75.75v3a.75.75 0 0 1-1.5 0v-3A.75.75 0 0 1 8 5.5Zm0 6.5a1 1 0 1 1 0-2 1 1 0 0 1 0 2Z" clipRule="evenodd" />
+                  </svg>
+                  <span>La pension nécessite une fiche chien.{" "}
+                    <a href="/account/dogs" target="_blank" rel="noopener noreferrer" className="font-semibold underline underline-offset-2">
+                      Ajouter mon chien →
+                    </a>
+                  </span>
+                </p>
+              )}
 
               <p className="mt-3 text-xs text-slate-500">
                 Le montant final est calculé au moment de la réservation.
