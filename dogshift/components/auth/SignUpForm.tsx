@@ -1,15 +1,32 @@
 "use client";
 
-// Clerk's runtime API is richer than its exported TS types (resendEmailCode,
-// legacySignUp access, dynamic `.sso` vs `.authenticateWithRedirect`, etc.),
-// so we intentionally cast to `any` in a few spots — disable that rule here
-// rather than peppering the file with per-line comments.
-/* eslint-disable @typescript-eslint/no-explicit-any */
+/**
+ * Sign-up form using ONLY Clerk v7 documented APIs.
+ *
+ * Why no `as any` casts here?
+ *  - Casts hide silent breakages: if Clerk renames a method (e.g. v6 had
+ *    `signUp.verifications.sendEmailCode()`, v7 has `prepareEmailAddressVerification()`),
+ *    a typed call breaks at build time. A cast lets the broken call compile and
+ *    fail in production.
+ *  - All methods used here are part of the public typed surface of @clerk/nextjs
+ *    7.x and won't disappear without a major version bump (which we control via
+ *    pinned versions in package.json — no caret, no auto-update).
+ *  - The Cloudflare Turnstile widget (`#clerk-captcha`) is mounted ONCE for the
+ *    entire component lifetime so its token survives email→OTP transitions.
+ *
+ * Source: https://clerk.com/docs/references/javascript/sign-up
+ */
 
 import { useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { useClerk, useSignUp } from "@clerk/nextjs";
+// `@clerk/nextjs/legacy` exports the typed v7 API (`useSignIn`, `useSignUp`
+// returning `UseSignInReturn` / `UseSignUpReturn`). The bare
+// `@clerk/nextjs` exports point to the new "Future" Signal API (still beta)
+// which has a different surface — we stick with the stable typed legacy.
+import { useSignUp } from "@clerk/nextjs/legacy";
+import { useClerk } from "@clerk/nextjs";
 import Link from "next/link";
+
 import { withPublicOrigin } from "@/lib/url/publicOrigin";
 import {
   clerkErrorCode,
@@ -23,10 +40,11 @@ function normalizeEmail(input: string) {
   return input.replace(/\s+/g, "").trim().toLowerCase();
 }
 
+const RESEND_COOLDOWN_SECONDS = 30;
+
 export default function SignUpForm() {
+  const { signUp, isLoaded, setActive } = useSignUp();
   const clerk = useClerk();
-  const { signUp, fetchStatus } = useSignUp();
-  const { setActive } = useClerk() as any;
   const searchParams = useSearchParams();
   const router = useRouter();
 
@@ -39,19 +57,15 @@ export default function SignUpForm() {
   const [oauthInFlight, setOauthInFlight] = useState(false);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  /** Tracks when the last email-code was sent, so we can show a "renvoyer" button
-   *  with a reasonable cooldown (Clerk rate-limits back-to-back sends). */
   const [codeSentAt, setCodeSentAt] = useState<number | null>(null);
   const [resendCooldownLeft, setResendCooldownLeft] = useState(0);
 
-  const fetching = fetchStatus === "fetching";
-  const signUpReady = !!signUp;
-  const formDisabled = !signUpReady || fetching || loading || oauthInFlight;
-  const googleDisabled = !signUpReady || oauthInFlight;
+  const formDisabled = !isLoaded || loading || oauthInFlight;
+  const googleDisabled = !isLoaded || oauthInFlight;
 
   async function handleEmailSignUp(e: React.FormEvent) {
     e.preventDefault();
-    if (!signUp) return;
+    if (!isLoaded || !signUp) return;
 
     const normalized = normalizeEmail(email);
     if (!normalized) {
@@ -62,14 +76,13 @@ export default function SignUpForm() {
     setError(null);
     setLoading(true);
     try {
-      await (signUp as any).create({ emailAddress: normalized });
-      await (signUp as any).prepareEmailAddressVerification({ strategy: "email_code" });
+      await signUp.create({ emailAddress: normalized });
+      await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
       setSent(true);
       setCodeSentAt(Date.now());
     } catch (err) {
       const code = clerkErrorCode(err);
-      const isAlreadyExists = code === "form_identifier_exists";
-      if (isAlreadyExists) {
+      if (code === "form_identifier_exists") {
         setError("Un compte existe déjà avec cette adresse e-mail. Connecte-toi plutôt.");
       } else {
         reportApiError({
@@ -77,49 +90,35 @@ export default function SignUpForm() {
           code: code ?? "CLERK_SIGN_UP_CREATE_FAILED",
           route: "auth.signup.create",
         });
-        setError(
-          clerkErrorMessage(
-            err,
-            "Impossible d'envoyer le code. Réessaie dans un instant.",
-          ),
-        );
+        setError(clerkErrorMessage(err, "Impossible d'envoyer le code. Réessaie dans un instant."));
       }
     } finally {
       setLoading(false);
     }
   }
 
-  /** Resends the verification email code. Shown as a button on the code step
-   *  — the #1 fix for users stuck on expired or lost codes. */
   async function resendEmailCode() {
-    if (!signUp || loading) return;
-    if (resendCooldownLeft > 0) return;
+    if (!isLoaded || !signUp || loading || resendCooldownLeft > 0) return;
     setError(null);
     setLoading(true);
     try {
-      await (signUp as any).prepareEmailAddressVerification({ strategy: "email_code" });
+      await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
       setEmailCode("");
       setCodeSentAt(Date.now());
     } catch (err) {
-      console.error("[SignUpForm] resendEmailCode error:", err);
       reportApiError({
         kind: "upstream_error",
         code: clerkErrorCode(err) ?? "CLERK_SIGN_UP_RESEND_CODE_FAILED",
         route: "auth.signup.resend_code",
       });
       setError(
-        clerkErrorMessage(
-          err,
-          "Impossible d'envoyer un nouveau code. Réessaie dans un instant.",
-        ),
+        clerkErrorMessage(err, "Impossible d'envoyer un nouveau code. Réessaie dans un instant."),
       );
     } finally {
       setLoading(false);
     }
   }
 
-  // Countdown for the "Renvoyer un code" button (Clerk rate-limits ~30s between sends).
-  const RESEND_COOLDOWN_SECONDS = 30;
   useEffect(() => {
     if (!codeSentAt) {
       setResendCooldownLeft(0);
@@ -127,8 +126,7 @@ export default function SignUpForm() {
     }
     const tick = () => {
       const elapsed = Math.floor((Date.now() - codeSentAt) / 1000);
-      const left = Math.max(0, RESEND_COOLDOWN_SECONDS - elapsed);
-      setResendCooldownLeft(left);
+      setResendCooldownLeft(Math.max(0, RESEND_COOLDOWN_SECONDS - elapsed));
     };
     tick();
     const id = window.setInterval(tick, 1000);
@@ -137,7 +135,7 @@ export default function SignUpForm() {
 
   async function handleEmailCodeVerify(e: React.FormEvent) {
     e.preventDefault();
-    if (!signUp || loading) return;
+    if (!isLoaded || !signUp || loading) return;
 
     // Strip every non-digit character — invisible whitespace from Gmail/Outlook
     // copy-paste is the #1 cause of "code invalide" bug reports.
@@ -150,11 +148,12 @@ export default function SignUpForm() {
     setError(null);
     setLoading(true);
     try {
-      // Use the standard Clerk v7 API and read status from the RETURNED value
-      // (not from the stale `signUp` hook variable, which causes "already verified" loops).
-      const result = await (signUp as any).attemptEmailAddressVerification({ code });
+      // Read status from the RETURNED resource — not from the stale `signUp`
+      // hook variable which can lag behind by one render and cause a phantom
+      // "already verified" loop on retries.
+      const result = await signUp.attemptEmailAddressVerification({ code });
 
-      if (result.status === "complete") {
+      if (result.status === "complete" && result.createdSessionId && setActive) {
         await setActive({ session: result.createdSessionId });
         router.replace(redirectAfterAuth);
         return;
@@ -163,24 +162,20 @@ export default function SignUpForm() {
       setError("Inscription incomplète. Réessaie.");
       setLoading(false);
     } catch (err) {
-      console.error("[SignUpForm] handleEmailCodeVerify error:", err);
       reportApiError({
         kind: "upstream_error",
         code: clerkErrorCode(err) ?? "CLERK_SIGN_UP_VERIFY_FAILED",
         route: "auth.signup.verify_code",
       });
       setError(
-        clerkErrorMessage(
-          err,
-          "Code incorrect ou expiré. Demande un nouveau code puis réessaie.",
-        ),
+        clerkErrorMessage(err, "Code incorrect ou expiré. Demande un nouveau code puis réessaie."),
       );
       setLoading(false);
     }
   }
 
   async function handleGoogle() {
-    if (!signUp || oauthInFlight) return;
+    if (!isLoaded || !signUp || oauthInFlight) return;
 
     setError(null);
     setOauthInFlight(true);
@@ -190,44 +185,33 @@ export default function SignUpForm() {
       } catch {
         /* private mode */
       }
-      const legacySignUp = (clerk as any)?.client?.signUp;
-      if (legacySignUp && typeof legacySignUp.authenticateWithRedirect === "function") {
-        await legacySignUp.authenticateWithRedirect({
-          strategy: "oauth_google",
-          redirectUrl: withPublicOrigin("/auth/google"),
-          redirectUrlComplete: withPublicOrigin(redirectAfterAuth),
-        });
-      } else {
-        const { error: ssoError } = await (signUp as any).sso({
-          strategy: "oauth_google",
-          redirectCallbackUrl: withPublicOrigin("/auth/google"),
-          redirectUrl: withPublicOrigin(redirectAfterAuth),
-        });
-        if (ssoError) throw new Error(ssoError.message ?? "Inscription Google impossible.");
-      }
+      // `authenticateWithRedirect` is the typed v7 OAuth entry point.
+      // It throws on error rather than returning { error } — wrap in try/catch.
+      await signUp.authenticateWithRedirect({
+        strategy: "oauth_google",
+        redirectUrl: withPublicOrigin("/auth/google"),
+        redirectUrlComplete: withPublicOrigin(redirectAfterAuth),
+      });
     } catch (err) {
-      console.error("[SignUpForm] handleGoogle error:", err);
       reportApiError({
         kind: "upstream_error",
         code: clerkErrorCode(err) ?? "CLERK_SIGN_UP_GOOGLE_FAILED",
         route: "auth.signup.google",
       });
-      setError(
-        clerkErrorMessage(
-          err,
-          "Inscription Google impossible. Réessaie dans un instant.",
-        ),
-      );
+      setError(clerkErrorMessage(err, "Inscription Google impossible. Réessaie dans un instant."));
       setOauthInFlight(false);
     }
   }
 
+  // Touch `clerk` to keep it in scope for future programmatic access (e.g.
+  // sign-out before a fresh sign-up). Avoids dead-code lint warnings without
+  // affecting behavior.
+  void clerk;
+
   return (
     <div className="flex flex-col">
       {/* Mounted ONCE for the lifetime of the component so the Cloudflare
-       *  Turnstile widget keeps its token across step transitions. Moving
-       *  this inside the conditional <form> caused the Cloudflare widget
-       *  to remount and triggered a 401 on signUp.create(). */}
+          Turnstile widget keeps its token across step transitions. */}
       <div id="clerk-captcha" className="absolute h-0 w-0 overflow-hidden" aria-hidden />
 
       <h1 className="text-center text-2xl font-semibold tracking-tight text-slate-900">Créer un compte</h1>
@@ -241,7 +225,7 @@ export default function SignUpForm() {
           aria-busy={oauthInFlight}
           className="inline-flex w-full items-center justify-center rounded-full border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {!signUpReady ? "Chargement…" : oauthInFlight ? "Redirection…" : "S'inscrire avec Google"}
+          {!isLoaded ? "Chargement…" : oauthInFlight ? "Redirection…" : "S'inscrire avec Google"}
         </button>
 
         <div className="flex items-center gap-3">
@@ -287,11 +271,7 @@ export default function SignUpForm() {
             </div>
 
             <div className="space-y-3">
-              <OtpInput
-                value={emailCode}
-                onChange={setEmailCode}
-                disabled={formDisabled}
-              />
+              <OtpInput value={emailCode} onChange={setEmailCode} disabled={formDisabled} />
               {error ? <p className="text-center text-sm text-rose-600">{error}</p> : null}
             </div>
 

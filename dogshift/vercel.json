@@ -47,6 +47,10 @@
     {
       "path": "/api/cron/dog-news",
       "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/cron/auth-health-check",
+      "schedule": "0 7 * * *"
     }
   ],
   "buildCommand": "npm run build",
