@@ -36,19 +36,28 @@ export const metadata: Metadata = {
 };
 
 /**
- * Some legacy sitter profiles were saved with avatar data inlined as
- * `data:image/...;base64,...` URLs. Returning those to the client inlines
- * megabytes of base64 into the homepage HTML (one observed page hit was
- * 5 MB of HTML, mostly base64 avatars), which on mobile networks looks
- * like an "infinite loading" spinner. Strip them here so the homepage
- * stays small; the SitterCard already falls back to initials when the
- * avatar URL is null.
+ * Some legacy sitter profiles were saved with their avatar inlined as a
+ * `data:image/...;base64,...` URL. Returning those verbatim to the client
+ * inlines several MB of base64 into the homepage HTML on every render
+ * (a 5 MB HTML payload was observed in production, ~3.6 MB of which was
+ * base64 avatars). On mobile networks that looked like the site was
+ * "stuck loading forever".
+ *
+ * Solution: rewrite `data:` URLs to a route handler that decodes and
+ * serves the image as a real HTTP response (`/api/sitters/{id}/avatar`).
+ * The HTML stays small (just a URL string), the browser fetches each
+ * avatar in parallel over HTTP/2, and the response is aggressively
+ * cacheable. Photos still display — they're just not inlined.
+ *
+ * Regular (R2 / external) URLs pass through untouched.
  */
-function sanitizeAvatarUrl(url: string | null | undefined): string | null {
+function rewriteAvatarUrl(sitterId: string, url: string | null | undefined): string | null {
   if (!url) return null;
   const trimmed = String(url).trim();
   if (!trimmed) return null;
-  if (trimmed.startsWith("data:")) return null;
+  if (trimmed.startsWith("data:")) {
+    return `/api/sitters/${encodeURIComponent(sitterId)}/avatar`;
+  }
   return trimmed;
 }
 
@@ -136,7 +145,7 @@ async function getFeaturedSitters(): Promise<SitterPreview[]> {
           sitterId: sid,
           displayName: String(s.displayName ?? s.user?.name ?? "").trim() || "Dogsitter",
           city: String(s.city ?? "").trim(),
-          avatarUrl: sanitizeAvatarUrl(s.avatarUrl ?? s.user?.image ?? null),
+          avatarUrl: rewriteAvatarUrl(sid, s.avatarUrl ?? s.user?.image ?? null),
           verified: s.verificationStatus === "approved",
           services,
           minPrice,
