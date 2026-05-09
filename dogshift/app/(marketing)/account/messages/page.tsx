@@ -725,7 +725,10 @@ export default function AccountMessagesPage() {
                                 )}
                               </div>
                               <div className="min-w-0">
-                                <p className="text-sm font-semibold text-slate-900 truncate">{c.sitter.name}</p>
+                                <p className="flex items-center gap-1.5 text-sm font-semibold text-slate-900 truncate">
+                                  {c.sitter.name}
+                                  {isPinned && <Pin className="h-3 w-3 shrink-0 fill-amber-400 text-amber-400" aria-label="Épinglée" />}
+                                </p>
                                 <p className="mt-0.5 text-xs text-slate-500 truncate">{subtitle}</p>
                                 <p className="mt-2 text-xs text-slate-500 truncate">
                                   {c.lastMessagePreview?.trim() ? c.lastMessagePreview : "Aucun message"}
