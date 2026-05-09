@@ -67,15 +67,15 @@ export default async function AccountDashboardPage({
   // `contexts.hasSitterProfile` only means a SitterProfile exists, not the user's actual role.
   const dbUserRole = await prisma.user.findUnique({
     where: { id: uid },
-    select: { role: true },
+    select: { role: true, name: true },
   });
 
   const isSitterRole = dbUserRole?.role === "SITTER";
   const hostUser = contexts.hasSitterProfile && isSitterRole ? await getHostUserData().catch(() => null) : null;
 
   const clerkUser = await currentUser();
-  // fullName can be null when only firstName is set (no lastName) — fall back to firstName directly.
-  const rawName = clerkUser?.fullName || clerkUser?.firstName || "";
+  // fullName is null when user has no last name — fall back to firstName, then DB name.
+  const rawName = clerkUser?.fullName || clerkUser?.firstName || dbUserRole?.name || "";
   const firstName = firstNameFromFullName(rawName) || "";
 
   const now = new Date();
@@ -137,7 +137,7 @@ export default async function AccountDashboardPage({
   const allConfirmed = total > 0 && confirmed === total;
 
   const statCardBase =
-    "group relative overflow-hidden rounded-3xl border p-6 text-left shadow-sm transition hover:shadow-md sm:p-7";
+    "group relative overflow-hidden rounded-2xl border p-3.5 text-left shadow-sm transition hover:shadow-md sm:rounded-3xl sm:p-7";
   const contentCardBase = "relative isolate rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8";
   const quickLinkBase =
     "group inline-flex items-center justify-between gap-3 rounded-2xl border px-5 py-4 text-sm font-semibold shadow-sm transition";
@@ -164,7 +164,20 @@ export default async function AccountDashboardPage({
   return (
     <div className="relative grid gap-6" data-testid="account-dashboard">
       {hostUser?.sitterId ? <ContractAmendmentBlockingModal sitterId={hostUser.sitterId} state={hostUser.contractAmendment} /> : null}
-      <SunCornerGlow variant="ownerDashboard" />
+      {/* Desktop: full animated sun rays */}
+      <div className="hidden sm:block">
+        <SunCornerGlow variant="ownerDashboard" />
+      </div>
+      {/* Mobile: simple warm yellow gradient — lighter and less distracting on small screens */}
+      <div
+        className="pointer-events-none fixed inset-0 z-0 sm:hidden"
+        aria-hidden="true"
+        style={{
+          background: "linear-gradient(135deg, rgba(250,204,21,0.22) 0%, rgba(251,146,60,0.10) 28%, transparent 58%)",
+          maskImage: "linear-gradient(to bottom, rgba(0,0,0,1) 0px, rgba(0,0,0,1) 160px, rgba(0,0,0,0) 300px)",
+          WebkitMaskImage: "linear-gradient(to bottom, rgba(0,0,0,1) 0px, rgba(0,0,0,1) 160px, rgba(0,0,0,0) 300px)",
+        }}
+      />
 
       <div className="relative z-10">
         <p className="text-sm font-semibold text-slate-600">Mon compte</p>
@@ -179,41 +192,41 @@ export default async function AccountDashboardPage({
         {allConfirmed ? <p className="mt-2 text-sm font-medium text-emerald-700">Bravo 🎉 toutes tes réservations sont confirmées.</p> : null}
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Link href="/account/bookings?tab=pending&pending=payment" className={`${statCardBase} border-amber-200 bg-amber-50 hover:bg-amber-50/80`}>
           <div className="flex items-center justify-between">
             <p className="text-sm font-semibold text-amber-900">En attente de paiement</p>
           </div>
-          <CreditCard className="absolute right-6 top-6 h-6 w-6 text-amber-600" aria-hidden="true" />
-          <p className="mt-3 text-3xl font-semibold tracking-tight text-amber-950">{pendingPayment}</p>
-          <p className="mt-2 text-xs font-medium text-amber-800/80">Voir les réservations à payer</p>
+          <CreditCard className="absolute right-3.5 top-3.5 h-5 w-5 text-amber-600 sm:right-6 sm:top-6 sm:h-6 sm:w-6" aria-hidden="true" />
+          <p className="mt-2 text-2xl font-semibold tracking-tight text-amber-950 sm:mt-3 sm:text-3xl">{pendingPayment}</p>
+          <p className="mt-1 text-[11px] font-medium text-amber-800/80 sm:mt-2 sm:text-xs">Voir les réservations à payer</p>
         </Link>
 
         <Link href="/account/bookings?tab=pending&pending=acceptance" className={`${statCardBase} border-[color-mix(in_srgb,var(--dogshift-blue),white_55%)] bg-[color-mix(in_srgb,var(--dogshift-blue),white_92%)] hover:bg-[color-mix(in_srgb,var(--dogshift-blue),white_89%)]`}>
           <div className="flex items-center justify-between">
             <p className="text-sm font-semibold text-[color-mix(in_srgb,var(--dogshift-blue),black_25%)]">En attente d’acceptation</p>
           </div>
-          <Hourglass className="absolute right-6 top-6 h-6 w-6 text-[color-mix(in_srgb,var(--dogshift-blue),black_15%)]" aria-hidden="true" />
-          <p className="mt-3 text-3xl font-semibold tracking-tight text-[color-mix(in_srgb,var(--dogshift-blue),black_20%)]">{pendingAcceptance}</p>
-          <p className="mt-2 text-xs font-medium text-[color-mix(in_srgb,var(--dogshift-blue),black_35%)]">Voir les demandes en attente</p>
+          <Hourglass className="absolute right-3.5 top-3.5 h-5 w-5 text-[color-mix(in_srgb,var(--dogshift-blue),black_15%)] sm:right-6 sm:top-6 sm:h-6 sm:w-6" aria-hidden="true" />
+          <p className="mt-2 text-2xl font-semibold tracking-tight text-[color-mix(in_srgb,var(--dogshift-blue),black_20%)] sm:mt-3 sm:text-3xl">{pendingAcceptance}</p>
+          <p className="mt-1 text-[11px] font-medium text-[color-mix(in_srgb,var(--dogshift-blue),black_35%)] sm:mt-2 sm:text-xs">Voir les demandes en attente</p>
         </Link>
 
         <Link href="/account/bookings?tab=confirmed" className={`${statCardBase} border-emerald-200 bg-emerald-50 hover:bg-emerald-50/80`}>
           <div className="flex items-center justify-between">
             <p className="text-sm font-semibold text-emerald-900">Confirmées</p>
           </div>
-          <CheckCircle2 className="absolute right-6 top-6 h-6 w-6 text-emerald-600" aria-hidden="true" />
-          <p className="mt-3 text-3xl font-semibold tracking-tight text-emerald-950">{confirmed}</p>
-          <p className="mt-2 text-xs font-medium text-emerald-800/80">Voir les réservations confirmées</p>
+          <CheckCircle2 className="absolute right-3.5 top-3.5 h-5 w-5 text-emerald-600 sm:right-6 sm:top-6 sm:h-6 sm:w-6" aria-hidden="true" />
+          <p className="mt-2 text-2xl font-semibold tracking-tight text-emerald-950 sm:mt-3 sm:text-3xl">{confirmed}</p>
+          <p className="mt-1 text-[11px] font-medium text-emerald-800/80 sm:mt-2 sm:text-xs">Voir les réservations confirmées</p>
         </Link>
 
         <Link href="/account/bookings?tab=all" className={`${statCardBase} border-slate-200 bg-white hover:bg-slate-50`}>
           <div className="flex items-center justify-between">
             <p className="text-sm font-semibold text-slate-700">Historique total</p>
           </div>
-          <BarChart3 className="absolute right-6 top-6 h-6 w-6 text-slate-500" aria-hidden="true" />
-          <p className="mt-3 text-3xl font-semibold tracking-tight text-slate-900">{total}</p>
-          <p className="mt-2 text-xs font-medium text-slate-500">Voir l’historique actif des réservations</p>
+          <BarChart3 className="absolute right-3.5 top-3.5 h-5 w-5 text-slate-500 sm:right-6 sm:top-6 sm:h-6 sm:w-6" aria-hidden="true" />
+          <p className="mt-2 text-2xl font-semibold tracking-tight text-slate-900 sm:mt-3 sm:text-3xl">{total}</p>
+          <p className="mt-1 text-[11px] font-medium text-slate-500 sm:mt-2 sm:text-xs">Voir l’historique actif des réservations</p>
         </Link>
       </div>
 

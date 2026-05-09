@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
-import { ChevronDown, Dog, MessageCircle, Plus, RefreshCw, X } from "lucide-react";
+import { Archive, ChevronDown, Dog, MessageCircle, Pin, Plus, RefreshCw, Trash2, X } from "lucide-react";
 import { publicDogPhotoPath } from "@/lib/dogPhotoMedia";
 
 type ConversationListItem = {
@@ -114,6 +114,106 @@ function DogAvatar({ dog, size = 28 }: { dog: { id: string; name: string; photoU
   );
 }
 
+// ── Swipeable row component (reveal actions on left-swipe, like iMessage) ─────
+function SwipeableRow({
+  children,
+  onPin,
+  onArchive,
+  onDelete,
+}: {
+  children: React.ReactNode;
+  onPin?: () => void;
+  onArchive?: () => void;
+  onDelete?: () => void;
+}) {
+  const [offset, setOffset] = useState(0);
+  const [dragging, setDragging] = useState(false);
+  const startX = useRef(0);
+  const startY = useRef(0);
+  const isHorizontal = useRef<boolean | null>(null);
+  const SNAP_THRESHOLD = 60; // px to reveal actions
+  const ACTION_WIDTH = 168; // total width of 3 actions (3 × 56px)
+
+  function onTouchStart(e: React.TouchEvent) {
+    startX.current = e.touches[0].clientX;
+    startY.current = e.touches[0].clientY;
+    isHorizontal.current = null;
+    setDragging(true);
+  }
+
+  function onTouchMove(e: React.TouchEvent) {
+    const dx = e.touches[0].clientX - startX.current;
+    const dy = e.touches[0].clientY - startY.current;
+    if (isHorizontal.current === null) {
+      isHorizontal.current = Math.abs(dx) > Math.abs(dy);
+    }
+    if (!isHorizontal.current) return;
+    e.preventDefault();
+    const raw = Math.min(0, dx); // only allow left swipe
+    setOffset(Math.max(-ACTION_WIDTH, raw));
+  }
+
+  function onTouchEnd() {
+    setDragging(false);
+    isHorizontal.current = null;
+    setOffset((prev) => (prev < -SNAP_THRESHOLD ? -ACTION_WIDTH : 0));
+  }
+
+  function close() { setOffset(0); }
+
+  return (
+    <div className="relative overflow-hidden">
+      {/* Action buttons revealed behind the row */}
+      <div
+        className="absolute inset-y-0 right-0 flex"
+        style={{ width: ACTION_WIDTH }}
+        aria-hidden={offset === 0}
+      >
+        <button
+          type="button"
+          onClick={() => { onPin?.(); close(); }}
+          className="flex w-14 flex-col items-center justify-center gap-1 bg-slate-500 text-white text-[10px] font-semibold"
+          aria-label="Épingler"
+        >
+          <Pin className="h-4 w-4" />
+          <span>Épingler</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => { onArchive?.(); close(); }}
+          className="flex w-14 flex-col items-center justify-center gap-1 bg-[var(--dogshift-blue)] text-white text-[10px] font-semibold"
+          aria-label="Archiver"
+        >
+          <Archive className="h-4 w-4" />
+          <span>Archiver</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => { onDelete?.(); close(); }}
+          className="flex w-14 flex-col items-center justify-center gap-1 bg-rose-600 text-white text-[10px] font-semibold"
+          aria-label="Supprimer"
+        >
+          <Trash2 className="h-4 w-4" />
+          <span>Supprimer</span>
+        </button>
+      </div>
+
+      {/* Main content — slides left on swipe */}
+      <div
+        onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
+        onTouchEnd={onTouchEnd}
+        style={{
+          transform: `translateX(${offset}px)`,
+          transition: dragging ? "none" : "transform 0.25s cubic-bezier(0.25,0.46,0.45,0.94)",
+        }}
+      >
+        {children}
+      </div>
+    </div>
+  );
+}
+
 export default function AccountMessagesPage() {
   const { isLoaded, isSignedIn } = useUser();
   const router = useRouter();
@@ -122,6 +222,8 @@ export default function AccountMessagesPage() {
   const [conversations, setConversations] = useState<ConversationListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [pinnedIds, setPinnedIds] = useState<Set<string>>(new Set());
+  const [archivedIds, setArchivedIds] = useState<Set<string>>(new Set());
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [threadHeader, setThreadHeader] = useState<ConversationHeader | null>(null);
@@ -261,12 +363,18 @@ export default function AccountMessagesPage() {
   }, [isLoaded, isSignedIn]);
 
   const rows = useMemo(() => {
-    return conversations.slice().sort((a, b) => {
-      const ta = new Date(a.lastMessageAt ?? a.updatedAt).getTime();
-      const tb = new Date(b.lastMessageAt ?? b.updatedAt).getTime();
-      return (Number.isNaN(tb) ? 0 : tb) - (Number.isNaN(ta) ? 0 : ta);
-    });
-  }, [conversations]);
+    return conversations
+      .filter((c) => !archivedIds.has(c.id))
+      .slice()
+      .sort((a, b) => {
+        const pinA = pinnedIds.has(a.id) ? 1 : 0;
+        const pinB = pinnedIds.has(b.id) ? 1 : 0;
+        if (pinB !== pinA) return pinB - pinA;
+        const ta = new Date(a.lastMessageAt ?? a.updatedAt).getTime();
+        const tb = new Date(b.lastMessageAt ?? b.updatedAt).getTime();
+        return (Number.isNaN(tb) ? 0 : tb) - (Number.isNaN(ta) ? 0 : ta);
+      });
+  }, [conversations, pinnedIds, archivedIds]);
 
   const requestedConversationId = useMemo(() => {
     const raw = searchParams?.get("conversationId");
@@ -409,52 +517,64 @@ export default function AccountMessagesPage() {
                     ? `${c.booking.service} • ${c.booking.startDate ? formatDateOnly(c.booking.startDate) : "—"}`
                     : "Conversation";
                   const active = c.id === selectedId;
+                  const isPinned = pinnedIds.has(c.id);
                   return (
-                    <button
+                    <SwipeableRow
                       key={c.id}
-                      type="button"
-                      onClick={() => {
-                        setSelectedId(c.id);
-                        setConversations((prev) => prev.map((x) => (x.id === c.id ? { ...x, unreadCount: 0 } : x)));
-                        const params = new URLSearchParams(searchParams?.toString() ?? "");
-                        params.set("conversationId", c.id);
-                        router.replace(`/account/messages?${params.toString()}`);
-                        void loadThread(c.id);
-                      }}
-                      className={
-                        "block w-full border-b border-slate-100 px-4 py-3 text-left transition " +
-                        (active
-                          ? "bg-[color-mix(in_srgb,var(--dogshift-blue),white_96%)]"
-                          : "bg-white hover:bg-slate-50")
-                      }
+                      onPin={() => setPinnedIds((prev) => { const n = new Set(prev); if (isPinned) { n.delete(c.id); } else { n.add(c.id); } return n; })}
+                      onArchive={() => setArchivedIds((prev) => { const n = new Set(prev); n.add(c.id); return n; })}
+                      onDelete={() => setConversations((prev) => prev.filter((x) => x.id !== c.id))}
                     >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex min-w-0 items-start gap-3">
-                          <div className="relative mt-0.5 h-10 w-10 flex-none overflow-hidden rounded-2xl bg-slate-100">
-                            {c.sitter.avatarUrl && avatarIsSafe(c.sitter.avatarUrl) ? (
-                              <Image src={c.sitter.avatarUrl} alt={c.sitter.name} fill className="object-cover" sizes="40px" />
-                            ) : (
-                              <div className="flex h-full w-full items-center justify-center text-sm font-semibold text-slate-600">
-                                {initialForName(c.sitter.name)}
-                              </div>
-                            )}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedId(c.id);
+                          setConversations((prev) => prev.map((x) => (x.id === c.id ? { ...x, unreadCount: 0 } : x)));
+                          const params = new URLSearchParams(searchParams?.toString() ?? "");
+                          params.set("conversationId", c.id);
+                          router.replace(`/account/messages?${params.toString()}`);
+                          void loadThread(c.id);
+                        }}
+                        className={
+                          "block w-full border-b border-slate-100 px-4 py-3 text-left transition " +
+                          (active
+                            ? "bg-[color-mix(in_srgb,var(--dogshift-blue),white_96%)]"
+                            : "bg-white hover:bg-slate-50")
+                        }
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex min-w-0 items-start gap-3">
+                            <div className="relative mt-0.5 h-10 w-10 flex-none overflow-hidden rounded-2xl bg-slate-100">
+                              {c.sitter.avatarUrl && avatarIsSafe(c.sitter.avatarUrl) ? (
+                                <Image src={c.sitter.avatarUrl} alt={c.sitter.name} fill className="object-cover" sizes="40px" />
+                              ) : (
+                                <div className="flex h-full w-full items-center justify-center text-sm font-semibold text-slate-600">
+                                  {initialForName(c.sitter.name)}
+                                </div>
+                              )}
+                              {isPinned && (
+                                <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-slate-500 text-white">
+                                  <Pin className="h-2.5 w-2.5" />
+                                </span>
+                              )}
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-sm font-semibold text-slate-900 truncate">{c.sitter.name}</p>
+                              <p className="mt-0.5 text-xs text-slate-500 truncate">{subtitle}</p>
+                              <p className="mt-2 text-xs text-slate-500 truncate">
+                                {c.lastMessagePreview?.trim() ? c.lastMessagePreview : "Aucun message"}
+                              </p>
+                              <p className="mt-2 text-xs text-slate-500">{formatDateTime(c.lastMessageAt ?? c.updatedAt)}</p>
+                            </div>
                           </div>
-                          <div className="min-w-0">
-                            <p className="text-sm font-semibold text-slate-900 truncate">{c.sitter.name}</p>
-                            <p className="mt-0.5 text-xs text-slate-500 truncate">{subtitle}</p>
-                            <p className="mt-2 text-xs text-slate-500 truncate">
-                              {c.lastMessagePreview?.trim() ? c.lastMessagePreview : "Aucun message"}
-                            </p>
-                            <p className="mt-2 text-xs text-slate-500">{formatDateTime(c.lastMessageAt ?? c.updatedAt)}</p>
-                          </div>
+                          {c.unreadCount > 0 ? (
+                            <span className="inline-flex h-6 min-w-[24px] items-center justify-center rounded-full bg-rose-600 px-2 text-xs font-semibold text-white">
+                              {c.unreadCount}
+                            </span>
+                          ) : null}
                         </div>
-                        {c.unreadCount > 0 ? (
-                          <span className="inline-flex h-6 min-w-[24px] items-center justify-center rounded-full bg-rose-600 px-2 text-xs font-semibold text-white">
-                            {c.unreadCount}
-                          </span>
-                        ) : null}
-                      </div>
-                    </button>
+                      </button>
+                    </SwipeableRow>
                   );
                 })}
               </div>
@@ -580,9 +700,9 @@ export default function AccountMessagesPage() {
                     </div>
                   </div>
 
-                  {/* Messages */}
-                  <div className="flex min-h-0 flex-1 flex-col p-5">
-                    <div className="min-h-0 flex-1 space-y-3 overflow-y-auto">
+                  {/* Messages — scrollable area */}
+                  <div className="min-h-0 flex-1 overflow-y-auto p-5 pb-2">
+                    <div className="space-y-3">
                       {messages.length === 0 ? (
                         <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                           <p className="text-sm text-slate-600">Aucun message pour l&apos;instant.</p>
@@ -607,36 +727,40 @@ export default function AccountMessagesPage() {
                         })
                       )}
                     </div>
+                  </div>
 
-                    <div className="mt-4 border-t border-slate-100 pt-4">
-                      <div className="flex items-end gap-3">
-                        <textarea
-                          id="reply"
-                          value={text}
-                          onChange={(e) => setText(e.target.value)}
-                          className="block w-full min-h-[44px] max-h-32 resize-none overflow-y-auto rounded-3xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-[15px] text-slate-900 outline-none transition focus:border-[var(--dogshift-blue)] focus:bg-white focus:ring-4 focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_85%)] sm:text-sm"
-                          placeholder="Message"
-                          rows={1}
-                        />
-                        <button
-                          type="button"
-                          disabled={!canSend}
-                          onClick={(e) => {
-                            e.preventDefault();
-                            void send();
-                          }}
-                          className="mb-[2px] flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--dogshift-blue)] text-white shadow-sm transition hover:bg-[var(--dogshift-blue-hover)] disabled:cursor-not-allowed disabled:opacity-50"
-                          aria-label="Envoyer"
-                        >
-                          {sending ? (
-                            <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                          ) : (
-                            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 10.5L12 3m0 0l7.5 7.5M12 3v18" />
-                            </svg>
-                          )}
-                        </button>
-                      </div>
+                  {/* Input bar — always visible at bottom, above safe area */}
+                  <div
+                    className="shrink-0 border-t border-slate-100 bg-white px-4 py-3"
+                    style={{ paddingBottom: "max(12px, env(safe-area-inset-bottom))" }}
+                  >
+                    <div className="flex items-end gap-3">
+                      <textarea
+                        id="reply"
+                        value={text}
+                        onChange={(e) => setText(e.target.value)}
+                        className="block w-full min-h-[44px] max-h-32 resize-none overflow-y-auto rounded-3xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-[15px] text-slate-900 outline-none transition focus:border-[var(--dogshift-blue)] focus:bg-white focus:ring-4 focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_85%)] sm:text-sm"
+                        placeholder="Message"
+                        rows={1}
+                      />
+                      <button
+                        type="button"
+                        disabled={!canSend}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          void send();
+                        }}
+                        className="mb-[2px] flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--dogshift-blue)] text-white shadow-sm transition hover:bg-[var(--dogshift-blue-hover)] disabled:cursor-not-allowed disabled:opacity-50"
+                        aria-label="Envoyer"
+                      >
+                        {sending ? (
+                          <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                        ) : (
+                          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 10.5L12 3m0 0l7.5 7.5M12 3v18" />
+                          </svg>
+                        )}
+                      </button>
                     </div>
                   </div>
                 </div>

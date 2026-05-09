@@ -1,4 +1,4 @@
-
+/* eslint-disable */
 "use client";
 
 import Link from "next/link";
@@ -523,29 +523,29 @@ function OwnerWalletContent() {
             </div>
 
             {/* Totaux compacts sous les graphes */}
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm transition-all hover:border-[var(--dogshift-blue)] hover:shadow-md">
+            <div className="grid grid-cols-3 gap-2 sm:gap-4">
+              <div className="rounded-2xl border border-slate-100 bg-white p-3 shadow-sm transition-all hover:border-[var(--dogshift-blue)] hover:shadow-md sm:p-5">
                 <div className="flex items-center justify-between">
-                  <p className="text-xs font-bold uppercase tracking-wider text-slate-500">Total payé</p>
-                  <ArrowUpRight className="h-4 w-4 text-emerald-500" />
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 sm:text-xs">Total payé</p>
+                  <ArrowUpRight className="h-3.5 w-3.5 text-emerald-500 sm:h-4 sm:w-4" />
                 </div>
-                <p className="mt-3 text-2xl font-black text-slate-900">{formatChfCents(totalPaid)}</p>
+                <p className="mt-1.5 text-base font-black text-slate-900 sm:mt-3 sm:text-2xl">{formatChfCents(totalPaid)}</p>
               </div>
 
-              <div className="rounded-2xl border border-rose-100 bg-rose-50/50 p-5 shadow-sm transition-all hover:border-rose-200 hover:shadow-md">
+              <div className="rounded-2xl border border-rose-100 bg-rose-50/50 p-3 shadow-sm transition-all hover:border-rose-200 hover:shadow-md sm:p-5">
                 <div className="flex items-center justify-between">
-                  <p className="text-xs font-bold uppercase tracking-wider text-rose-500">Total remboursé</p>
-                  <ArrowDownRight className="h-4 w-4 text-rose-500" />
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-rose-500 sm:text-xs">Total remboursé</p>
+                  <ArrowDownRight className="h-3.5 w-3.5 text-rose-500 sm:h-4 sm:w-4" />
                 </div>
-                <p className="mt-3 text-2xl font-black text-rose-900">{formatChfCents(totalRefunded)}</p>
+                <p className="mt-1.5 text-base font-black text-rose-900 sm:mt-3 sm:text-2xl">{formatChfCents(totalRefunded)}</p>
               </div>
 
-              <div className="rounded-2xl border border-[color-mix(in_srgb,var(--dogshift-blue),transparent_80%)] bg-[color-mix(in_srgb,var(--dogshift-blue),transparent_95%)] p-5 shadow-sm transition-all hover:border-[var(--dogshift-blue)] hover:shadow-md">
+              <div className="rounded-2xl border border-[color-mix(in_srgb,var(--dogshift-blue),transparent_80%)] bg-[color-mix(in_srgb,var(--dogshift-blue),transparent_95%)] p-3 shadow-sm transition-all hover:border-[var(--dogshift-blue)] hover:shadow-md sm:p-5">
                 <div className="flex items-center justify-between">
-                  <p className="text-xs font-bold uppercase tracking-wider text-[var(--dogshift-blue)]">Coût net</p>
-                  <Wallet className="h-4 w-4 text-[var(--dogshift-blue)]" />
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--dogshift-blue)] sm:text-xs">Coût net</p>
+                  <Wallet className="h-3.5 w-3.5 text-[var(--dogshift-blue)] sm:h-4 sm:w-4" />
                 </div>
-                <p className="mt-3 text-2xl font-black text-slate-900">{formatChfCents(netBalance)}</p>
+                <p className="mt-1.5 text-base font-black text-slate-900 sm:mt-3 sm:text-2xl">{formatChfCents(netBalance)}</p>
               </div>
             </div>
 

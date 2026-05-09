@@ -97,21 +97,21 @@ export default function HowItWorksSchema({ title, intro, steps, note, moreHref, 
         ) : null}
       </div>
 
-      <div className="relative z-10 mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="relative z-10 mt-6 grid grid-cols-2 gap-3 xl:grid-cols-4">
         {steps.map((step, index) => {
           const Icon = step.icon;
           return (
             <article key={step.title} className={CARD_BASE}>
-              <div className="flex items-center justify-between gap-3">
-                <span className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-[color-mix(in_srgb,var(--dogshift-blue),white_88%)] text-[var(--dogshift-blue)] ring-1 ring-[color-mix(in_srgb,var(--dogshift-blue),white_70%)]">
-                  <Icon className="h-5 w-5" aria-hidden="true" />
+              <div className="flex items-center justify-between gap-2">
+                <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-[color-mix(in_srgb,var(--dogshift-blue),white_88%)] text-[var(--dogshift-blue)] ring-1 ring-[color-mix(in_srgb,var(--dogshift-blue),white_70%)] sm:h-11 sm:w-11 sm:rounded-2xl">
+                  <Icon className="h-4 w-4 sm:h-5 sm:w-5" aria-hidden="true" />
                 </span>
-                <span className="inline-flex h-8 min-w-[32px] items-center justify-center rounded-full border border-slate-200 bg-white px-2 text-xs font-semibold text-slate-500 shadow-sm">
+                <span className="inline-flex h-6 min-w-[24px] items-center justify-center rounded-full border border-slate-200 bg-white px-1.5 text-[10px] font-semibold text-slate-500 shadow-sm sm:h-8 sm:min-w-[32px] sm:px-2 sm:text-xs">
                   {index + 1}
                 </span>
               </div>
-              <h3 className="mt-5 text-base font-semibold text-slate-900">{step.title}</h3>
-              <p className="mt-2 text-sm leading-6 text-slate-600">{step.description}</p>
+              <h3 className="mt-3 text-[13px] font-semibold leading-snug text-slate-900 sm:mt-5 sm:text-base">{step.title}</h3>
+              <p className="mt-1.5 text-[12px] leading-5 text-slate-600 sm:mt-2 sm:text-sm sm:leading-6">{step.description}</p>
             </article>
           );
         })}
