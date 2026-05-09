@@ -76,7 +76,12 @@ export default function LoginForm() {
   const [error, setError] = useState<string | null>(null);
   const [autoGoogleStarted, setAutoGoogleStarted] = useState(false);
 
-  const formDisabled = !isLoaded || loading || oauthInFlight;
+  // Inputs and submit buttons are never disabled just because Clerk hasn't loaded yet.
+  // The submit handler guards signIn/signUp null itself. This ensures elements are
+  // always interactable for users and e2e tests without waiting for Clerk init.
+  const inputDisabled = loading || oauthInFlight;
+  const formDisabled = loading || oauthInFlight;
+  // Google OAuth still requires Clerk to be ready before calling.
   const googleDisabled = !isLoaded || oauthInFlight;
 
   /** After any signIn.attempt* call, drive the next step from the resource's
@@ -98,7 +103,10 @@ export default function LoginForm() {
 
   async function handleEmailContinue(e: React.FormEvent) {
     e.preventDefault();
-    if (!isLoaded || !signIn) return;
+    if (!signIn) {
+      setError("Service en cours de chargement, veuillez réessayer dans un instant.");
+      return;
+    }
 
     const normalized = normalizeEmail(email);
     if (!normalized) {
@@ -404,7 +412,7 @@ export default function LoginForm() {
                 autoComplete="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                disabled={formDisabled}
+                disabled={inputDisabled}
                 className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:ring-4 focus:ring-slate-200 disabled:cursor-not-allowed disabled:opacity-60"
                 placeholder="toi@exemple.com"
               />
@@ -436,7 +444,7 @@ export default function LoginForm() {
                   autoFocus
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  disabled={formDisabled}
+                  disabled={inputDisabled}
                   className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 pr-12 text-sm text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:ring-4 focus:ring-slate-200 disabled:cursor-not-allowed disabled:opacity-60"
                   placeholder="••••••••"
                 />

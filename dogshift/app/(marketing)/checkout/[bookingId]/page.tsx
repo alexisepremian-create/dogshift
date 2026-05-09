@@ -312,41 +312,18 @@ function CheckoutForm({
 
   const inner = (
     <>
-      <div className="flex items-start justify-between gap-6">
-        <div>
-          <h2 className="text-lg font-semibold tracking-tight text-slate-900">Paiement sécurisé</h2>
-          <p className="mt-1 text-sm text-slate-600">Choisis le moyen de paiement le plus rapide pour finaliser ta réservation.</p>
-        </div>
+      <div>
+        <h2 className="text-lg font-semibold tracking-tight text-slate-900">Paiement sécurisé</h2>
+        <p className="mt-1 text-sm text-slate-600">Choisis ton moyen de paiement pour finaliser la réservation.</p>
       </div>
-      <div className="mt-6">
+      <div className="mt-5">
         <CancellationPolicyEncart variant={cancellationPolicyVariant} />
       </div>
-      <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-4 sm:p-5">
-        <p className="text-sm font-semibold text-slate-900">Choisis ton moyen de paiement</p>
-        <div className="mt-4 space-y-3">
-          {expressApplePayReady ? (
-            <div className="mx-auto w-full max-w-[360px] rounded-2xl border border-slate-200 bg-white p-4 text-center shadow-sm">
-              <div className="flex flex-col items-center justify-center text-center">
-                <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Paiement rapide</p>
-              </div>
-              <div className="mt-4 mx-auto w-full max-w-[320px] rounded-2xl border border-slate-200 bg-white p-3">
-                <div className="flex justify-center">
-                  {ExpressCheckoutElement ? (
-                    <ExpressCheckoutElement
-                      options={expressCheckoutOptions}
-                      onConfirm={() => void onExpressConfirm()}
-                      onReady={(event: any) => {
-                        setExpressApplePayReady(Boolean(event?.availablePaymentMethods?.applePay));
-                      }}
-                    />
-                  ) : null}
-                </div>
-              </div>
-            </div>
-          ) : ExpressCheckoutElement && expressApplePayReady === null ? (
-            // Mount once to detect Apple Pay availability, but don't show the "Paiement rapide" block
-            // if Apple Pay is not available on the device/browser.
-            <div className="hidden">
+
+      <div className="mt-5 space-y-3">
+        {expressApplePayReady ? (
+          <div className="w-full">
+            {ExpressCheckoutElement ? (
               <ExpressCheckoutElement
                 options={expressCheckoutOptions}
                 onConfirm={() => void onExpressConfirm()}
@@ -354,14 +331,22 @@ function CheckoutForm({
                   setExpressApplePayReady(Boolean(event?.availablePaymentMethods?.applePay));
                 }}
               />
-            </div>
-          ) : null}
-
-          <div className="w-full overflow-hidden rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
-            <div className="w-full">
-              <PaymentElement options={paymentElementOptions} />
-            </div>
+            ) : null}
           </div>
+        ) : ExpressCheckoutElement && expressApplePayReady === null ? (
+          <div className="hidden">
+            <ExpressCheckoutElement
+              options={expressCheckoutOptions}
+              onConfirm={() => void onExpressConfirm()}
+              onReady={(event: any) => {
+                setExpressApplePayReady(Boolean(event?.availablePaymentMethods?.applePay));
+              }}
+            />
+          </div>
+        ) : null}
+
+        <div className="w-full">
+          <PaymentElement options={paymentElementOptions} />
         </div>
       </div>
       {error ? <p className="mt-4 text-sm font-medium text-rose-600">{error}</p> : null}

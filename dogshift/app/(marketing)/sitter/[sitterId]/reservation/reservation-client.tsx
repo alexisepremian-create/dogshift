@@ -1699,6 +1699,23 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
     setDurationHours(null);
   }, [durationHours, durationOptionsForStart]);
 
+  // Surface "no slots today" and "last-minute disabled" as visible errors in sticky CTA
+  useEffect(() => {
+    if (!isTodaySelected || unit !== "HOURLY") return;
+    if (lastMinuteEnabled === false) {
+      setError("Ce sitter n'accepte pas les réservations de dernière minute. Choisissez une date au minimum 24h à l'avance.");
+      return;
+    }
+    if (hasLeadTimeOnlyForToday) {
+      setError("Aucun créneau disponible pour aujourd\u2019hui — tous les horaires sont passés. Choisissez une date prochaine.");
+      return;
+    }
+    if (availableStartTimes.length === 0 && startAvailabilities.length === 0 && !durationSlotsLoading) {
+      setError("Aucune disponibilité pour aujourd\u2019hui. Choisissez une date prochaine.");
+    }
+   
+  }, [isTodaySelected, unit, lastMinuteEnabled, hasLeadTimeOnlyForToday, availableStartTimes.length, startAvailabilities.length, durationSlotsLoading]);
+
   async function onContinue() {
     if (submitting) return;
     setSubmitting(true);
@@ -1748,8 +1765,12 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
           setError("Choisis une date.");
           return;
         }
-        if (!startTime || !durationHours) {
-          setError("Choisis une heure et une durée.");
+        if (!startTime) {
+          setError("Sélectionne une heure de début pour continuer.");
+          return;
+        }
+        if (!durationHours) {
+          setError("Sélectionne une durée pour continuer.");
           return;
         }
         if (dateStart < todayIso) {
@@ -2104,6 +2125,22 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
                   <p className="mt-4 text-sm font-medium text-rose-700">Aucun créneau disponible pour aujourd’hui.</p>
                 ) : null}
 
+                {dateStart && !startTime && !hasLeadTimeOnlyForToday ? (
+                  <p className="mt-3 flex items-start gap-1.5 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs text-amber-800">
+                    <svg className="mt-px h-3.5 w-3.5 shrink-0 text-amber-500" viewBox="0 0 16 16" fill="currentColor" aria-hidden>
+                      <path fillRule="evenodd" d="M8 1.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13ZM0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8Zm8-2.5a.75.75 0 0 1 .75.75v3a.75.75 0 0 1-1.5 0v-3A.75.75 0 0 1 8 5.5Zm0 6.5a1 1 0 1 1 0-2 1 1 0 0 1 0 2Z" clipRule="evenodd" />
+                    </svg>
+                    <span>Sélectionne une heure de début pour continuer.</span>
+                  </p>
+                ) : dateStart && startTime && !durationHours ? (
+                  <p className="mt-3 flex items-start gap-1.5 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs text-amber-800">
+                    <svg className="mt-px h-3.5 w-3.5 shrink-0 text-amber-500" viewBox="0 0 16 16" fill="currentColor" aria-hidden>
+                      <path fillRule="evenodd" d="M8 1.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13ZM0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8Zm8-2.5a.75.75 0 0 1 .75.75v3a.75.75 0 0 1-1.5 0v-3A.75.75 0 0 1 8 5.5Zm0 6.5a1 1 0 1 1 0-2 1 1 0 0 1 0 2Z" clipRule="evenodd" />
+                    </svg>
+                    <span>Sélectionne une durée pour continuer.</span>
+                  </p>
+                ) : null}
+
               </div>
             ) : null}
 
@@ -2444,7 +2481,7 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
                 </p>
               ) : null}
 
-              <button type="button" disabled={!canSubmit || submitting} onClick={() => void onContinue()} className={`mt-6 ${PRIMARY_BTN}`}>
+              <button type="button" disabled={submitting} onClick={() => void onContinue()} className={`mt-6 ${PRIMARY_BTN}`}>
                 {submitting ? "Redirection…" : "Continuer"}
               </button>
 
@@ -2474,8 +2511,8 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
         className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white shadow-[0_-8px_30px_-15px_rgba(0,0,0,0.1)] lg:hidden"
         style={{ paddingBottom: "env(safe-area-inset-bottom, 16px)" }}
       >
-        {(error ?? (!canSubmit ? disabledReason : null)) && (
-          <p className={`px-4 pt-3 text-center text-xs font-medium ${error ? "text-rose-600" : "text-slate-500"}`}>
+        {(error ?? disabledReason) && (
+          <p className={`px-4 pt-3 text-center text-xs font-medium ${error ? "text-rose-600" : "text-slate-400"}`}>
             {error ?? disabledReason}
           </p>
         )}
@@ -2488,14 +2525,8 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
           </div>
           <button
             type="button"
-            disabled={!canSubmit || submitting}
-            onClick={() => {
-              if (!canSubmit) {
-                window.scrollTo({ top: 0, behavior: "smooth" });
-                return;
-              }
-              void onContinue();
-            }}
+            disabled={submitting}
+            onClick={() => void onContinue()}
             className="inline-flex shrink-0 items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-6 py-3 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition hover:bg-[var(--dogshift-blue-hover)] disabled:cursor-not-allowed disabled:opacity-60"
           >
             {submitting ? "Redirection…" : "Continuer"}
