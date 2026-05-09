@@ -17,9 +17,10 @@ const dailyBookingBody = z.object({
   startDate: isoDateString,
   endDate: isoDateString,
   message: z.string().max(2000).optional().nullable(),
-  dogSize: z.enum(["Petit", "Moyen", "Grand"]).optional().nullable(),
+  dogSize: z.enum(["small", "medium", "large", "Petit", "Moyen", "Grand"]).optional().nullable(),
   numberOfDogs: z.number().int().min(1).max(20).optional().nullable(),
   dogProfileId: z.string().optional().nullable(),
+  additionalDogProfileIds: z.array(z.string()).optional().nullable(),
   ownerPhone: z.string().max(30).optional().nullable(),
 }).merge(travelFields);
 
@@ -31,6 +32,7 @@ const hourlyBookingBody = z.object({
   message: z.string().max(2000).optional().nullable(),
   numberOfDogs: z.number().int().min(1).max(20).optional().nullable(),
   dogProfileId: z.string().optional().nullable(),
+  additionalDogProfileIds: z.array(z.string()).optional().nullable(),
   ownerPhone: z.string().max(30).optional().nullable(),
 }).merge(travelFields);
 

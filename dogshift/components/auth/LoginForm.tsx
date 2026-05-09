@@ -63,9 +63,9 @@ export default function LoginForm() {
   /** Google: do not tie to `fetching` / email `loading` so the button stays clickable when those get stuck. */
   const googleDisabled = !signInReady || oauthInFlight;
 
-  async function finalizeSignIn() {
+  async function finalizeSignIn(): Promise<{ done: boolean; error?: string }> {
     if ((signIn as any).status === "complete") {
-      await (signIn as any).finalize({
+      const { error: finalizeError } = await (signIn as any).finalize({
         navigate: ({ session, decorateUrl }: { session?: any; decorateUrl: (url: string) => string }) => {
           if (session?.currentTask) {
             console.log("[LoginForm] session task:", session.currentTask);
@@ -78,9 +78,12 @@ export default function LoginForm() {
           window.location.replace(url);
         },
       });
-      return true;
+      if (finalizeError) {
+        return { done: false, error: clerkErrorMessage(finalizeError, "Connexion incomplète. Réessaie.") };
+      }
+      return { done: true };
     }
-    return false;
+    return { done: false };
   }
 
   async function handleEmailContinue(e: React.FormEvent) {
@@ -143,9 +146,9 @@ export default function LoginForm() {
       const status = (signIn as any).status;
 
       if (status === "complete") {
-        const done = await finalizeSignIn();
+        const { done, error: finalizeMsg } = await finalizeSignIn();
         if (!done) {
-          setError("Connexion incomplète. Réessaie.");
+          setError(finalizeMsg ?? "Connexion incomplète. Réessaie.");
           setLoading(false);
         }
       } else if (status === "needs_client_trust" || status === "needs_second_factor") {
@@ -251,9 +254,9 @@ export default function LoginForm() {
         const { error: verifyError } = await (signIn as any).emailCode.verifyCode({ code });
         if (verifyError) throw verifyError;
       }
-      const done = await finalizeSignIn();
+      const { done, error: finalizeMsg } = await finalizeSignIn();
       if (!done) {
-        setError("Connexion incomplète. Réessaie.");
+        setError(finalizeMsg ?? "Connexion incomplète. Réessaie.");
         setLoading(false);
       }
     } catch (err) {
