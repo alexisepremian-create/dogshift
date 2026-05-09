@@ -26,7 +26,7 @@
  */
 
 import { useEffect, useState } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { Eye, EyeOff } from "lucide-react";
 // `@clerk/nextjs/legacy` exports the typed v7 API (`useSignIn`, `useSignUp`
 // returning `UseSignInReturn` / `UseSignUpReturn`). The bare
@@ -58,7 +58,6 @@ export default function SignUpForm() {
   const { signUp, isLoaded, setActive } = useSignUp();
   const clerk = useClerk();
   const searchParams = useSearchParams();
-  const router = useRouter();
 
   const next = (searchParams?.get("next") ?? "").trim();
   const redirectAfterAuth = next ? `/post-login?next=${encodeURIComponent(next)}` : "/post-login";
@@ -142,7 +141,9 @@ export default function SignUpForm() {
       // still needs verification), finalize directly. Otherwise move to OTP.
       if (updated.status === "complete" && updated.createdSessionId && setActive) {
         await setActive({ session: updated.createdSessionId });
-        router.replace(redirectAfterAuth);
+        // Force canonical origin (see LoginForm.finalizeIfComplete) so the
+        // session cookie isn't dropped by an apex→www 308 redirect.
+        window.location.replace(withPublicOrigin(redirectAfterAuth));
         return;
       }
       setStep(nextStepFrom(updated));
@@ -222,7 +223,8 @@ export default function SignUpForm() {
 
       if (result.status === "complete" && result.createdSessionId && setActive) {
         await setActive({ session: result.createdSessionId });
-        router.replace(redirectAfterAuth);
+        // Force canonical origin (see LoginForm.finalizeIfComplete).
+        window.location.replace(withPublicOrigin(redirectAfterAuth));
         return;
       }
 
