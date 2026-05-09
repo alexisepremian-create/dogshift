@@ -513,7 +513,7 @@ function DogShiftTimePicker({
       </button>
 
       {open && !disabled ? (
-        <div className="absolute left-0 top-full z-50 mt-3 w-[min(360px,calc(100vw-32px))]">
+        <div className="absolute left-1/2 top-full z-50 mt-3 w-[min(360px,calc(100vw-32px))] -translate-x-1/2">
           <div className="rounded-[20px] border border-slate-200 bg-white p-3 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.18)]">
             <div className="flex items-center justify-between gap-3 px-1 pb-2">
               <button
@@ -1610,6 +1610,23 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
     unit,
   ]);
 
+  const disabledReason = useMemo(() => {
+    if (canSubmit) return null;
+    if (maintenanceMode) return null;
+    if (!selectedService) return "Sélectionne un service pour continuer.";
+    if (unit === "HOURLY") {
+      if (!dateStart) return "Sélectionne une date pour continuer.";
+      if (!startTime) return "Sélectionne une heure de début pour continuer.";
+      if (!durationHours) return "Sélectionne une durée pour continuer.";
+      if (!selectedHourlySlot) return "Ce créneau n'est plus disponible, choisis un autre horaire.";
+    }
+    if (unit === "DAILY") {
+      if (!dateStart) return "Sélectionne une date de début pour continuer.";
+      if (!dateEnd) return "Sélectionne une date de fin pour continuer.";
+    }
+    return null;
+  }, [canSubmit, dateEnd, dateStart, durationHours, maintenanceMode, selectedHourlySlot, selectedService, startTime, unit]);
+
   const recapCancellationVariant = useMemo(() => {
     if (!selectedService || !unit) return null;
     if (unit === "DAILY") {
@@ -1882,7 +1899,7 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
 
   return (
     <div className="min-h-screen bg-white text-slate-900">
-      <main className="mx-auto max-w-5xl px-4 py-10 pb-32 sm:px-6 lg:pb-10">
+      <main className="mx-auto max-w-5xl px-4 pt-4 pb-32 sm:px-6 sm:pt-6 lg:pb-10">
         <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">Demande de réservation</h1>
@@ -2457,8 +2474,10 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
         className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white shadow-[0_-8px_30px_-15px_rgba(0,0,0,0.1)] lg:hidden"
         style={{ paddingBottom: "env(safe-area-inset-bottom, 16px)" }}
       >
-        {error && (
-          <p className="px-4 pt-3 text-center text-xs font-medium text-rose-600">{error}</p>
+        {(error ?? (!canSubmit ? disabledReason : null)) && (
+          <p className={`px-4 pt-3 text-center text-xs font-medium ${error ? "text-rose-600" : "text-slate-500"}`}>
+            {error ?? disabledReason}
+          </p>
         )}
         <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 p-4">
           <div className="min-w-0 flex-1">
