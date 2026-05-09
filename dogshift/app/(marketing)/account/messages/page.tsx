@@ -123,12 +123,14 @@ function SwipeableRow({
   onArchive,
   onDelete,
   archiveLabel = "Archiver",
+  isPinned = false,
 }: {
   children: React.ReactNode;
   onPin?: () => void;
   onArchive?: () => void;
   onDelete?: () => void;
   archiveLabel?: string;
+  isPinned?: boolean;
 }) {
   const [offset, setOffset] = useState(0);
   const [dragging, setDragging] = useState(false);
@@ -177,10 +179,10 @@ function SwipeableRow({
           type="button"
           onClick={() => { onPin?.(); close(); }}
           className="flex w-14 flex-col items-center justify-center gap-1 bg-slate-500 text-white text-[10px] font-semibold"
-          aria-label="Épingler"
+          aria-label={isPinned ? "Désépingler" : "Épingler"}
         >
           <Pin className="h-4 w-4" />
-          <span>Épingler</span>
+          <span>{isPinned ? "Désépingler" : "Épingler"}</span>
         </button>
         <button
           type="button"
@@ -686,6 +688,7 @@ export default function AccountMessagesPage() {
                         onPin={() => handlePin(c)}
                         onArchive={() => handleArchive(c)}
                         onDelete={() => handleDelete(c)}
+                        isPinned={isPinned}
                       >
                         <button
                           type="button"
@@ -705,6 +708,12 @@ export default function AccountMessagesPage() {
                           }
                         >
                           <div className="flex items-start justify-between gap-3">
+                            {/* Yellow pin indicator on the left */}
+                            {isPinned && (
+                              <span className="mt-3 shrink-0 text-amber-400" aria-label="Épinglée">
+                                <Pin className="h-3.5 w-3.5 fill-amber-400" />
+                              </span>
+                            )}
                             <div className="flex min-w-0 items-start gap-3">
                               <div className="relative mt-0.5 h-10 w-10 flex-none overflow-hidden rounded-2xl bg-slate-100">
                                 {c.sitter.avatarUrl && avatarIsSafe(c.sitter.avatarUrl) ? (
@@ -713,11 +722,6 @@ export default function AccountMessagesPage() {
                                   <div className="flex h-full w-full items-center justify-center text-sm font-semibold text-slate-600">
                                     {initialForName(c.sitter.name)}
                                   </div>
-                                )}
-                                {isPinned && (
-                                  <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-slate-500 text-white">
-                                    <Pin className="h-2.5 w-2.5" />
-                                  </span>
                                 )}
                               </div>
                               <div className="min-w-0">
