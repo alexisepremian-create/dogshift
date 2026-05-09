@@ -76,11 +76,12 @@ export default function LoginForm() {
   const [error, setError] = useState<string | null>(null);
   const [autoGoogleStarted, setAutoGoogleStarted] = useState(false);
 
-  // Text inputs: only disabled while a request is in flight (not during Clerk init)
-  // so users can start typing immediately and e2e tests can fill them right away.
+  // Inputs and submit buttons are never disabled just because Clerk hasn't loaded yet.
+  // The submit handler guards signIn/signUp null itself. This ensures elements are
+  // always interactable for users and e2e tests without waiting for Clerk init.
   const inputDisabled = loading || oauthInFlight;
-  // Submit buttons and action buttons still wait for Clerk to be ready.
-  const formDisabled = !isLoaded || loading || oauthInFlight;
+  const formDisabled = loading || oauthInFlight;
+  // Google OAuth still requires Clerk to be ready before calling.
   const googleDisabled = !isLoaded || oauthInFlight;
 
   /** After any signIn.attempt* call, drive the next step from the resource's
@@ -102,7 +103,10 @@ export default function LoginForm() {
 
   async function handleEmailContinue(e: React.FormEvent) {
     e.preventDefault();
-    if (!isLoaded || !signIn) return;
+    if (!signIn) {
+      setError("Service en cours de chargement, veuillez réessayer dans un instant.");
+      return;
+    }
 
     const normalized = normalizeEmail(email);
     if (!normalized) {
