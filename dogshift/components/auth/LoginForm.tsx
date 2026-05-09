@@ -20,6 +20,7 @@
 
 import { useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
+import { Eye, EyeOff } from "lucide-react";
 // `@clerk/nextjs/legacy` exports the typed v7 API (`useSignIn`, `useSignUp`
 // returning `UseSignInReturn` / `UseSignUpReturn`). The bare
 // `@clerk/nextjs` exports point to the new "Future" Signal API (still beta)
@@ -59,6 +60,7 @@ export default function LoginForm() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [emailCode, setEmailCode] = useState("");
   const [step, setStep] = useState<Step>("email");
   const [verifyMode, setVerifyMode] = useState<VerifyMode>("firstFactor");
@@ -424,17 +426,28 @@ export default function LoginForm() {
                 Mot de passe
               </label>
               <p className="mt-0.5 text-xs text-slate-500">{email}</p>
-              <input
-                id="password"
-                type="password"
-                autoComplete="current-password"
-                autoFocus
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                disabled={formDisabled}
-                className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:ring-4 focus:ring-slate-200 disabled:cursor-not-allowed disabled:opacity-60"
-                placeholder="••••••••"
-              />
+              <div className="relative mt-2">
+                <input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  autoComplete="current-password"
+                  autoFocus
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  disabled={formDisabled}
+                  className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 pr-12 text-sm text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:ring-4 focus:ring-slate-200 disabled:cursor-not-allowed disabled:opacity-60"
+                  placeholder="••••••••"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  disabled={formDisabled}
+                  aria-label={showPassword ? "Masquer le mot de passe" : "Afficher le mot de passe"}
+                  className="absolute inset-y-0 right-0 flex w-12 items-center justify-center text-slate-400 transition hover:text-slate-600 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" aria-hidden /> : <Eye className="h-4 w-4" aria-hidden />}
+                </button>
+              </div>
               {error ? <p className="mt-2 text-center text-sm text-rose-600">{error}</p> : null}
             </div>
 

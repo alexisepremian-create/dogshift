@@ -12,13 +12,22 @@
  *    7.x and won't disappear without a major version bump (which we control via
  *    pinned versions in package.json — no caret, no auto-update).
  *  - The Cloudflare Turnstile widget (`#clerk-captcha`) is mounted ONCE for the
- *    entire component lifetime so its token survives email→OTP transitions.
+ *    entire component lifetime so its token survives email→password→OTP transitions.
+ *
+ * Steps:
+ *  - "email"   → user enters email, we call signUp.create + prepareEmailAddressVerification
+ *  - "password" → only shown if Clerk dashboard requires a password (user.requiredFields includes "password");
+ *               we call signUp.update({ password }) before showing the OTP step
+ *  - "otp"     → user enters the 6-digit code, we call signUp.attemptEmailAddressVerification;
+ *               on `complete` we setActive + redirect; on `missing_requirements` with password
+ *               missing we fall back to the password step (defense-in-depth)
  *
  * Source: https://clerk.com/docs/references/javascript/sign-up
  */
 
 import { useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
+import { Eye, EyeOff } from "lucide-react";
 // `@clerk/nextjs/legacy` exports the typed v7 API (`useSignIn`, `useSignUp`
 // returning `UseSignInReturn` / `UseSignUpReturn`). The bare
 // `@clerk/nextjs` exports point to the new "Future" Signal API (still beta)
@@ -41,6 +50,9 @@ function normalizeEmail(input: string) {
 }
 
 const RESEND_COOLDOWN_SECONDS = 30;
+const PASSWORD_MIN_LENGTH = 8;
+
+type Step = "email" | "password" | "otp";
 
 export default function SignUpForm() {
   const { signUp, isLoaded, setActive } = useSignUp();
@@ -52,16 +64,29 @@ export default function SignUpForm() {
   const redirectAfterAuth = next ? `/post-login?next=${encodeURIComponent(next)}` : "/post-login";
 
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [emailCode, setEmailCode] = useState("");
+  const [step, setStep] = useState<Step>("email");
   const [loading, setLoading] = useState(false);
   const [oauthInFlight, setOauthInFlight] = useState(false);
-  const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [codeSentAt, setCodeSentAt] = useState<number | null>(null);
   const [resendCooldownLeft, setResendCooldownLeft] = useState(0);
 
   const formDisabled = !isLoaded || loading || oauthInFlight;
   const googleDisabled = !isLoaded || oauthInFlight;
+
+  /**
+   * Decide which step to show next based on Clerk's `requiredFields` /
+   * `missingFields`. Centralized so all paths (after create / update / verify)
+   * route to the same place.
+   */
+  function nextStepFrom(resource: { requiredFields: string[]; missingFields: string[] }): Step {
+    const stillMissing = resource.missingFields ?? [];
+    if (stillMissing.includes("password")) return "password";
+    return "otp";
+  }
 
   async function handleEmailSignUp(e: React.FormEvent) {
     e.preventDefault();
@@ -76,10 +101,12 @@ export default function SignUpForm() {
     setError(null);
     setLoading(true);
     try {
-      await signUp.create({ emailAddress: normalized });
+      const created = await signUp.create({ emailAddress: normalized });
+      // Always send the verification code now — we'll show the OTP step after
+      // the password step (if any). The code stays valid for 10 minutes.
       await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
-      setSent(true);
       setCodeSentAt(Date.now());
+      setStep(nextStepFrom(created));
     } catch (err) {
       const code = clerkErrorCode(err);
       if (code === "form_identifier_exists") {
@@ -92,6 +119,46 @@ export default function SignUpForm() {
         });
         setError(clerkErrorMessage(err, "Impossible d'envoyer le code. Réessaie dans un instant."));
       }
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handlePasswordSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!isLoaded || !signUp || loading) return;
+
+    if (password.length < PASSWORD_MIN_LENGTH) {
+      setError(`Le mot de passe doit faire au moins ${PASSWORD_MIN_LENGTH} caractères.`);
+      return;
+    }
+
+    setError(null);
+    setLoading(true);
+    try {
+      const updated = await signUp.update({ password });
+
+      // If Clerk now considers the sign-up complete (rare — usually email
+      // still needs verification), finalize directly. Otherwise move to OTP.
+      if (updated.status === "complete" && updated.createdSessionId && setActive) {
+        await setActive({ session: updated.createdSessionId });
+        router.replace(redirectAfterAuth);
+        return;
+      }
+      setStep(nextStepFrom(updated));
+    } catch (err) {
+      const code = clerkErrorCode(err);
+      reportApiError({
+        kind: "upstream_error",
+        code: code ?? "CLERK_SIGN_UP_PASSWORD_FAILED",
+        route: "auth.signup.password",
+      });
+      setError(
+        clerkErrorMessage(
+          err,
+          "Mot de passe refusé. Choisis-en un plus complexe (8 caractères minimum, mélange lettres/chiffres).",
+        ),
+      );
     } finally {
       setLoading(false);
     }
@@ -159,6 +226,23 @@ export default function SignUpForm() {
         return;
       }
 
+      // Email is verified but Clerk needs more (typically: password). This is
+      // exactly the case that previously produced a phantom 400 because we
+      // re-attempted verification instead of moving forward. Now we route to
+      // the right next step.
+      if (result.status === "missing_requirements") {
+        const target = nextStepFrom(result);
+        if (target === "otp") {
+          // Should never happen at this point, but be defensive.
+          setError("Inscription incomplète : champs manquants : " + result.missingFields.join(", "));
+          setLoading(false);
+          return;
+        }
+        setStep(target);
+        setLoading(false);
+        return;
+      }
+
       setError("Inscription incomplète. Réessaie.");
       setLoading(false);
     } catch (err) {
@@ -203,6 +287,15 @@ export default function SignUpForm() {
     }
   }
 
+  function resetToEmail() {
+    if (loading) return;
+    setStep("email");
+    setPassword("");
+    setEmailCode("");
+    setError(null);
+    setCodeSentAt(null);
+  }
+
   // Touch `clerk` to keep it in scope for future programmatic access (e.g.
   // sign-out before a fresh sign-up). Avoids dead-code lint warnings without
   // affecting behavior.
@@ -234,7 +327,7 @@ export default function SignUpForm() {
           <div className="h-px flex-1 bg-slate-200" />
         </div>
 
-        {!sent ? (
+        {step === "email" && (
           <form onSubmit={handleEmailSignUp} className="space-y-5">
             <div>
               <label className="block text-sm font-medium text-slate-700" htmlFor="email">
@@ -262,7 +355,66 @@ export default function SignUpForm() {
               {loading ? "Envoi…" : "S'inscrire par e-mail"}
             </button>
           </form>
-        ) : (
+        )}
+
+        {step === "password" && (
+          <form onSubmit={handlePasswordSubmit} className="space-y-6">
+            <div className="text-center space-y-1">
+              <p className="text-sm font-medium text-slate-700">Choisis un mot de passe</p>
+              <p className="text-sm font-semibold text-slate-900">{email}</p>
+              <p className="text-xs text-slate-500">8 caractères minimum, sécurisé.</p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700" htmlFor="password">
+                Mot de passe
+              </label>
+              <div className="relative mt-2">
+                <input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  autoComplete="new-password"
+                  autoFocus
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  disabled={formDisabled}
+                  minLength={PASSWORD_MIN_LENGTH}
+                  className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 pr-12 text-sm text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:ring-4 focus:ring-slate-200 disabled:cursor-not-allowed disabled:opacity-60"
+                  placeholder="••••••••"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  disabled={formDisabled}
+                  aria-label={showPassword ? "Masquer le mot de passe" : "Afficher le mot de passe"}
+                  className="absolute inset-y-0 right-0 flex w-12 items-center justify-center text-slate-400 transition hover:text-slate-600 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" aria-hidden /> : <Eye className="h-4 w-4" aria-hidden />}
+                </button>
+              </div>
+              {error ? <p className="mt-2 text-center text-sm text-rose-600">{error}</p> : null}
+            </div>
+
+            <button
+              type="submit"
+              disabled={formDisabled || password.length < PASSWORD_MIN_LENGTH}
+              className="inline-flex w-full items-center justify-center rounded-full bg-slate-900 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {loading ? "Enregistrement…" : "Continuer"}
+            </button>
+
+            <button
+              type="button"
+              disabled={formDisabled}
+              onClick={resetToEmail}
+              className="block w-full text-center text-sm text-slate-400 hover:text-slate-600 transition"
+            >
+              ← Changer d&apos;adresse e-mail
+            </button>
+          </form>
+        )}
+
+        {step === "otp" && (
           <form onSubmit={handleEmailCodeVerify} className="space-y-6">
             <div className="text-center space-y-1">
               <p className="text-sm font-medium text-slate-700">Code envoyé à</p>
@@ -298,13 +450,7 @@ export default function SignUpForm() {
               <button
                 type="button"
                 disabled={formDisabled}
-                onClick={() => {
-                  if (loading) return;
-                  setSent(false);
-                  setEmailCode("");
-                  setError(null);
-                  setCodeSentAt(null);
-                }}
+                onClick={resetToEmail}
                 className="text-sm text-slate-400 hover:text-slate-600 transition"
               >
                 ← Changer d&apos;adresse e-mail
