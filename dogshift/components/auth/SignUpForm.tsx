@@ -24,7 +24,7 @@ function normalizeEmail(input: string) {
 
 export default function SignUpForm() {
   const clerk = useClerk();
-  const { signUp, fetchStatus } = useSignUp();
+  const { signUp, setActive, fetchStatus } = useSignUp();
   const searchParams = useSearchParams();
   const router = useRouter();
 
@@ -60,11 +60,8 @@ export default function SignUpForm() {
     setError(null);
     setLoading(true);
     try {
-      const { error: createError } = await (signUp as any).create({ emailAddress: normalized });
-      if (createError) throw createError;
-
-      const { error: sendError } = await (signUp as any).verifications.sendEmailCode();
-      if (sendError) throw sendError;
+      await signUp.create({ emailAddress: normalized });
+      await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
       setSent(true);
       setCodeSentAt(Date.now());
     } catch (err) {
@@ -98,8 +95,7 @@ export default function SignUpForm() {
     setError(null);
     setLoading(true);
     try {
-      const { error: resendError } = await (signUp as any).verifications.sendEmailCode();
-      if (resendError) throw resendError;
+      await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
       setEmailCode("");
       setCodeSentAt(Date.now());
     } catch (err) {
@@ -152,28 +148,13 @@ export default function SignUpForm() {
     setError(null);
     setLoading(true);
     try {
-      const { error: verifyError } = await (signUp as any).verifications.verifyEmailCode({ code });
-      if (verifyError) throw verifyError;
+      // Use the standard Clerk v7 API and read status from the RETURNED value
+      // (not from the stale `signUp` hook variable, which causes "already verified" loops).
+      const result = await signUp.attemptEmailAddressVerification({ code });
 
-      if ((signUp as any).status === "complete") {
-        const { error: finalizeError } = await (signUp as any).finalize({
-          navigate: ({ session, decorateUrl }: { session?: any; decorateUrl: (url: string) => string }) => {
-            if (session?.currentTask) {
-              console.log("[SignUpForm] session task:", session.currentTask);
-              return;
-            }
-            const url = decorateUrl(redirectAfterAuth);
-            if (url.startsWith("http")) {
-              window.location.href = url;
-            } else {
-              router.replace(url);
-            }
-          },
-        });
-        if (finalizeError) {
-          setError(clerkErrorMessage(finalizeError, "Inscription incomplète. Réessaie."));
-          setLoading(false);
-        }
+      if (result.status === "complete") {
+        await setActive!({ session: result.createdSessionId });
+        router.replace(redirectAfterAuth);
         return;
       }
 
