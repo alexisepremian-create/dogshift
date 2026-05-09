@@ -1,15 +1,33 @@
 "use client";
 
-// Clerk's runtime API is richer than its exported TS types (mfa.sendEmailCode,
-// legacySignIn access via `clerk.client`, dynamic strategies, etc.), so we
-// intentionally cast to `any` in a few spots — disable that rule here rather
-// than peppering the file with per-line comments.
-/* eslint-disable @typescript-eslint/no-explicit-any */
+/**
+ * Login form using ONLY Clerk v7 documented APIs.
+ *
+ * Why no `as any` casts here?
+ *  - The previous version used `signIn.password()`, `signIn.emailCode.sendCode()`,
+ *    `signIn.mfa.sendEmailCode()`, `signIn.finalize()` — methods that are NOT
+ *    on the Clerk v7 typed surface. They worked through a compat layer that
+ *    can disappear at any patch release without warning.
+ *  - This file uses ONLY the typed v7 API:
+ *      signIn.create, prepareFirstFactor, attemptFirstFactor,
+ *      prepareSecondFactor, attemptSecondFactor,
+ *      authenticateWithRedirect (OAuth),
+ *      setActive (from useClerk).
+ *    If Clerk renames any of these in v8, the build fails — no silent prod bug.
+ *
+ * Source: https://clerk.com/docs/references/javascript/sign-in
+ */
 
 import { useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { useClerk, useSignIn, useUser } from "@clerk/nextjs";
+// `@clerk/nextjs/legacy` exports the typed v7 API (`useSignIn`, `useSignUp`
+// returning `UseSignInReturn` / `UseSignUpReturn`). The bare
+// `@clerk/nextjs` exports point to the new "Future" Signal API (still beta)
+// which has a different surface — we stick with the stable typed legacy.
+import { useSignIn } from "@clerk/nextjs/legacy";
+import { useClerk, useUser } from "@clerk/nextjs";
 import Link from "next/link";
+
 import { withPublicOrigin } from "@/lib/url/publicOrigin";
 import {
   clerkErrorCode,
@@ -23,17 +41,16 @@ function normalizeEmail(input: string) {
 }
 
 type Step = "email" | "password" | "emailCode";
-type VerifyMode = "emailCode" | "mfa";
+type VerifyMode = "firstFactor" | "secondFactor";
+
+const RESEND_COOLDOWN_SECONDS = 30;
 
 export default function LoginForm() {
+  const { signIn, isLoaded, setActive } = useSignIn();
   const clerk = useClerk();
-  const { signIn, fetchStatus } = useSignIn();
   const { isLoaded: userLoaded, isSignedIn } = useUser();
   const searchParams = useSearchParams();
-  // `router` and `forceMode` are kept on purpose: they're part of the signIn
-  // contract we may reuse as the flow grows (e.g. programmatic redirects,
-  // "force re-auth" support already exposed as a query string).
-  useRouter();
+  const router = useRouter();
 
   const next = (searchParams?.get("next") ?? "").trim();
   const startGoogle = (searchParams?.get("startGoogle") ?? "").trim();
@@ -44,51 +61,40 @@ export default function LoginForm() {
   const [password, setPassword] = useState("");
   const [emailCode, setEmailCode] = useState("");
   const [step, setStep] = useState<Step>("email");
-  const [verifyMode, setVerifyMode] = useState<VerifyMode>("emailCode");
+  const [verifyMode, setVerifyMode] = useState<VerifyMode>("firstFactor");
+  /** Cached id of the email factor returned by `signIn.create()` — needed to
+   *  call `prepareFirstFactor({ strategy: "email_code", emailAddressId })`. */
+  const [emailFactorId, setEmailFactorId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  /** Tracks when the last email-code was sent, so we can show a "renvoyer" button
-   *  with a reasonable cooldown (Clerk rate-limits back-to-back sends). */
   const [codeSentAt, setCodeSentAt] = useState<number | null>(null);
   const [resendCooldownLeft, setResendCooldownLeft] = useState(0);
-  /** Google OAuth: must not reuse `loading` — successful sso() often returns before navigation, and we never cleared `loading`, which disabled the whole form ("Vérification…"). */
   const [oauthInFlight, setOauthInFlight] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [autoGoogleStarted, setAutoGoogleStarted] = useState(false);
 
-  const fetching = fetchStatus === "fetching";
-  /** Clerk v7 `useSignIn` has no `isLoaded`; `signIn` is null until the client is ready. */
-  const signInReady = !!signIn;
-  /** Email / password / code steps — can wait on Clerk fetch. */
-  const formDisabled = !signInReady || fetching || loading || oauthInFlight;
-  /** Google: do not tie to `fetching` / email `loading` so the button stays clickable when those get stuck. */
-  const googleDisabled = !signInReady || oauthInFlight;
+  const formDisabled = !isLoaded || loading || oauthInFlight;
+  const googleDisabled = !isLoaded || oauthInFlight;
 
-  async function finalizeSignIn(): Promise<{ done: boolean; error?: string }> {
-    if ((signIn as any).status === "complete") {
-      const { error: finalizeError } = await (signIn as any).finalize({
-        navigate: ({ session, decorateUrl }: { session?: any; decorateUrl: (url: string) => string }) => {
-          if (session?.currentTask) {
-            console.log("[LoginForm] session task:", session.currentTask);
-            return;
-          }
-          // Always use window.location.replace so the browser sends the Clerk
-          // handshake params in the next request, allowing the server middleware
-          // to set the session cookie before /api/auth/resolve-redirect is called.
-          const url = decorateUrl(redirectAfterAuth);
-          window.location.replace(url);
-        },
-      });
-      if (finalizeError) {
-        return { done: false, error: clerkErrorMessage(finalizeError, "Connexion incomplète. Réessaie.") };
-      }
-      return { done: true };
+  /** After any signIn.attempt* call, drive the next step from the resource's
+   *  status. Centralized so all paths (password, email-code, MFA) finalize the
+   *  same way. Returns true when the session is fully active. */
+  async function finalizeIfComplete(
+    result: { status: string | null; createdSessionId: string | null },
+  ): Promise<boolean> {
+    if (result.status === "complete" && result.createdSessionId && setActive) {
+      await setActive({ session: result.createdSessionId });
+      // window.location.replace ensures the browser sends Clerk handshake
+      // params on the next request so middleware can set the session cookie
+      // before /api/auth/resolve-redirect runs server-side.
+      window.location.replace(redirectAfterAuth);
+      return true;
     }
-    return { done: false };
+    return false;
   }
 
   async function handleEmailContinue(e: React.FormEvent) {
     e.preventDefault();
-    if (!signIn) return;
+    if (!isLoaded || !signIn) return;
 
     const normalized = normalizeEmail(email);
     if (!normalized) {
@@ -99,23 +105,31 @@ export default function LoginForm() {
     setError(null);
     setLoading(true);
     try {
-      const { error: createError } = await (signIn as any).create({ identifier: normalized });
-      if (createError) throw createError;
+      const result = await signIn.create({ identifier: normalized });
 
-      const factors: Array<{ strategy: string }> = (signIn as any).supportedFirstFactors ?? [];
-      const hasPassword = factors.some((f) => f.strategy === "password");
+      const factors = result.supportedFirstFactors ?? [];
+      const passwordFactor = factors.find((f) => f.strategy === "password");
+      const emailFactor = factors.find((f) => f.strategy === "email_code");
 
-      if (hasPassword) {
+      if (passwordFactor) {
         setStep("password");
-      } else {
-        const { error: sendError } = await (signIn as any).emailCode.sendCode();
-        if (sendError) throw sendError;
-        setVerifyMode("emailCode");
-        setStep("emailCode");
-        setCodeSentAt(Date.now());
+        return;
       }
+
+      if (!emailFactor || !("emailAddressId" in emailFactor)) {
+        setError("Aucune méthode de connexion disponible pour ce compte.");
+        return;
+      }
+
+      setEmailFactorId(emailFactor.emailAddressId);
+      await signIn.prepareFirstFactor({
+        strategy: "email_code",
+        emailAddressId: emailFactor.emailAddressId,
+      });
+      setVerifyMode("firstFactor");
+      setStep("emailCode");
+      setCodeSentAt(Date.now());
     } catch (err) {
-      console.error("[LoginForm] handleEmailContinue error:", err);
       reportApiError({
         kind: "upstream_error",
         code: clerkErrorCode(err) ?? "CLERK_SIGN_IN_CREATE_FAILED",
@@ -129,7 +143,7 @@ export default function LoginForm() {
 
   async function handlePasswordSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!signIn || loading) return;
+    if (!isLoaded || !signIn || loading) return;
 
     if (!password) {
       setError("Merci d'entrer ton mot de passe.");
@@ -139,32 +153,33 @@ export default function LoginForm() {
     setError(null);
     setLoading(true);
     try {
-      // Clerk v7 API: signIn.password() replaces attemptFirstFactor({ strategy: "password" })
-      const { error: passwordError } = await (signIn as any).password({ emailAddress: normalizeEmail(email), password });
-      if (passwordError) throw passwordError;
+      const result = await signIn.attemptFirstFactor({ strategy: "password", password });
 
-      const status = (signIn as any).status;
+      if (await finalizeIfComplete(result)) return;
 
-      if (status === "complete") {
-        const { done, error: finalizeMsg } = await finalizeSignIn();
-        if (!done) {
-          setError(finalizeMsg ?? "Connexion incomplète. Réessaie.");
+      if (result.status === "needs_second_factor") {
+        const factors = result.supportedSecondFactors ?? [];
+        const emailMfa = factors.find((f) => f.strategy === "email_code");
+
+        if (emailMfa && "emailAddressId" in emailMfa) {
+          await signIn.prepareSecondFactor({
+            strategy: "email_code",
+            emailAddressId: emailMfa.emailAddressId,
+          });
+          setVerifyMode("secondFactor");
+          setStep("emailCode");
+          setCodeSentAt(Date.now());
           setLoading(false);
+          return;
         }
-      } else if (status === "needs_client_trust" || status === "needs_second_factor") {
-        // Client Trust (new device) or MFA: verify identity via email code
-        const { error: mfaSendError } = await (signIn as any).mfa.sendEmailCode();
-        if (mfaSendError) throw mfaSendError;
-        setVerifyMode("mfa");
-        setStep("emailCode");
-        setCodeSentAt(Date.now());
+        setError("Méthode de second facteur non supportée. Contacte le support.");
         setLoading(false);
-      } else {
-        setError("Connexion incomplète. Réessaie.");
-        setLoading(false);
+        return;
       }
+
+      setError("Connexion incomplète. Réessaie.");
+      setLoading(false);
     } catch (err) {
-      console.error("[LoginForm] handlePasswordSubmit error:", err);
       reportApiError({
         kind: "upstream_error",
         code: clerkErrorCode(err) ?? "CLERK_PASSWORD_SUBMIT_FAILED",
@@ -176,17 +191,27 @@ export default function LoginForm() {
   }
 
   async function switchToEmailCode() {
-    if (!signIn || loading) return;
+    if (!isLoaded || !signIn || loading) return;
     setError(null);
     setLoading(true);
     try {
-      const { error: sendError } = await (signIn as any).emailCode.sendCode();
-      if (sendError) throw sendError;
-      setVerifyMode("emailCode");
+      // Look up the email factor on the live signIn resource (state from
+      // handleEmailContinue may be stale if the user backed out).
+      const factors = signIn.supportedFirstFactors ?? [];
+      const emailFactor = factors.find((f) => f.strategy === "email_code");
+      if (!emailFactor || !("emailAddressId" in emailFactor)) {
+        setError("Méthode de connexion par e-mail non disponible.");
+        return;
+      }
+      setEmailFactorId(emailFactor.emailAddressId);
+      await signIn.prepareFirstFactor({
+        strategy: "email_code",
+        emailAddressId: emailFactor.emailAddressId,
+      });
+      setVerifyMode("firstFactor");
       setStep("emailCode");
       setCodeSentAt(Date.now());
     } catch (err) {
-      console.error("[LoginForm] switchToEmailCode error:", err);
       reportApiError({
         kind: "upstream_error",
         code: clerkErrorCode(err) ?? "CLERK_SEND_CODE_FAILED",
@@ -198,28 +223,31 @@ export default function LoginForm() {
     }
   }
 
-  /**
-   * Resends the email code on the current step. Used by the "Renvoyer un code"
-   * button on the emailCode screen — the #1 fix for users stuck on expired
-   * codes / old codes lingering in their inbox.
-   */
   async function resendEmailCode() {
-    if (!signIn || loading) return;
-    if (resendCooldownLeft > 0) return;
+    if (!isLoaded || !signIn || loading || resendCooldownLeft > 0) return;
     setError(null);
     setLoading(true);
     try {
-      if (verifyMode === "mfa") {
-        const { error: resendError } = await (signIn as any).mfa.sendEmailCode();
-        if (resendError) throw resendError;
+      if (verifyMode === "secondFactor") {
+        const factors = signIn.supportedSecondFactors ?? [];
+        const emailMfa = factors.find((f) => f.strategy === "email_code");
+        if (!emailMfa || !("emailAddressId" in emailMfa)) {
+          throw new Error("MFA email factor unavailable");
+        }
+        await signIn.prepareSecondFactor({
+          strategy: "email_code",
+          emailAddressId: emailMfa.emailAddressId,
+        });
       } else {
-        const { error: resendError } = await (signIn as any).emailCode.sendCode();
-        if (resendError) throw resendError;
+        const factorId =
+          emailFactorId ??
+          (signIn.supportedFirstFactors ?? []).find((f) => f.strategy === "email_code" && "emailAddressId" in f)?.emailAddressId;
+        if (!factorId) throw new Error("Email first factor unavailable");
+        await signIn.prepareFirstFactor({ strategy: "email_code", emailAddressId: factorId });
       }
       setEmailCode("");
       setCodeSentAt(Date.now());
     } catch (err) {
-      console.error("[LoginForm] resendEmailCode error:", err);
       reportApiError({
         kind: "upstream_error",
         code: clerkErrorCode(err) ?? "CLERK_RESEND_CODE_FAILED",
@@ -231,12 +259,24 @@ export default function LoginForm() {
     }
   }
 
+  useEffect(() => {
+    if (!codeSentAt) {
+      setResendCooldownLeft(0);
+      return;
+    }
+    const tick = () => {
+      const elapsed = Math.floor((Date.now() - codeSentAt) / 1000);
+      setResendCooldownLeft(Math.max(0, RESEND_COOLDOWN_SECONDS - elapsed));
+    };
+    tick();
+    const id = window.setInterval(tick, 1000);
+    return () => window.clearInterval(id);
+  }, [codeSentAt]);
+
   async function handleEmailCodeVerify(e: React.FormEvent) {
     e.preventDefault();
-    if (!signIn || loading) return;
+    if (!isLoaded || !signIn || loading) return;
 
-    // Strip every non-digit character — invisible whitespace from Gmail/Outlook
-    // copy-paste is the #1 cause of "code invalide" bug reports.
     const code = sanitizeVerificationCode(emailCode);
     if (!code) {
       setError("Merci d'entrer le code reçu par e-mail.");
@@ -246,31 +286,23 @@ export default function LoginForm() {
     setError(null);
     setLoading(true);
     try {
-      // Use mfa.verifyEmailCode for password+ClientTrust flow, emailCode.verifyCode otherwise
-      if (verifyMode === "mfa") {
-        const { error: verifyError } = await (signIn as any).mfa.verifyEmailCode({ code });
-        if (verifyError) throw verifyError;
-      } else {
-        const { error: verifyError } = await (signIn as any).emailCode.verifyCode({ code });
-        if (verifyError) throw verifyError;
-      }
-      const { done, error: finalizeMsg } = await finalizeSignIn();
-      if (!done) {
-        setError(finalizeMsg ?? "Connexion incomplète. Réessaie.");
-        setLoading(false);
-      }
+      const result =
+        verifyMode === "secondFactor"
+          ? await signIn.attemptSecondFactor({ strategy: "email_code", code })
+          : await signIn.attemptFirstFactor({ strategy: "email_code", code });
+
+      if (await finalizeIfComplete(result)) return;
+
+      setError("Connexion incomplète. Réessaie.");
+      setLoading(false);
     } catch (err) {
-      console.error("[LoginForm] handleEmailCodeVerify error:", err);
       reportApiError({
         kind: "upstream_error",
         code: clerkErrorCode(err) ?? "CLERK_EMAIL_CODE_VERIFY_FAILED",
         route: "auth.login.verify_code",
       });
       setError(
-        clerkErrorMessage(
-          err,
-          "Code incorrect ou expiré. Demande un nouveau code puis réessaie.",
-        ),
+        clerkErrorMessage(err, "Code incorrect ou expiré. Demande un nouveau code puis réessaie."),
       );
       setLoading(false);
     }
@@ -280,12 +312,13 @@ export default function LoginForm() {
     setStep("email");
     setPassword("");
     setEmailCode("");
-    setVerifyMode("emailCode");
+    setVerifyMode("firstFactor");
+    setEmailFactorId(null);
     setError(null);
   }
 
   async function handleGoogle() {
-    if (!signIn || oauthInFlight) return;
+    if (!isLoaded || !signIn || oauthInFlight) return;
 
     setError(null);
     setOauthInFlight(true);
@@ -295,23 +328,12 @@ export default function LoginForm() {
       } catch {
         /* private mode */
       }
-      const legacySignIn = (clerk as any)?.client?.signIn;
-      if (legacySignIn && typeof legacySignIn.authenticateWithRedirect === "function") {
-        await legacySignIn.authenticateWithRedirect({
-          strategy: "oauth_google",
-          redirectUrl: withPublicOrigin("/auth/google"),
-          redirectUrlComplete: withPublicOrigin(redirectAfterAuth),
-        });
-      } else {
-        const { error: ssoError } = await (signIn as any).sso({
-          strategy: "oauth_google",
-          redirectCallbackUrl: withPublicOrigin("/auth/google"),
-          redirectUrl: withPublicOrigin(redirectAfterAuth),
-        });
-        if (ssoError) throw new Error(ssoError.message ?? "Connexion Google impossible.");
-      }
+      await signIn.authenticateWithRedirect({
+        strategy: "oauth_google",
+        redirectUrl: withPublicOrigin("/auth/google"),
+        redirectUrlComplete: withPublicOrigin(redirectAfterAuth),
+      });
     } catch (err) {
-      console.error("[LoginForm] handleGoogle error:", err);
       reportApiError({
         kind: "upstream_error",
         code: clerkErrorCode(err) ?? "CLERK_GOOGLE_OAUTH_FAILED",
@@ -325,33 +347,26 @@ export default function LoginForm() {
   useEffect(() => {
     if (!startGoogleMode) return;
     if (autoGoogleStarted) return;
-    if (!signIn) return;
+    if (!isLoaded || !signIn) return;
     if (!userLoaded) return;
     if (isSignedIn) return;
     setAutoGoogleStarted(true);
     void handleGoogle();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoGoogleStarted, signIn, startGoogleMode, userLoaded, isSignedIn]);
+  }, [autoGoogleStarted, isLoaded, signIn, startGoogleMode, userLoaded, isSignedIn]);
 
-  // Countdown for the "Renvoyer un code" button (Clerk rate-limits ~30s between sends).
-  const RESEND_COOLDOWN_SECONDS = 30;
-  useEffect(() => {
-    if (!codeSentAt) {
-      setResendCooldownLeft(0);
-      return;
-    }
-    const tick = () => {
-      const elapsed = Math.floor((Date.now() - codeSentAt) / 1000);
-      const left = Math.max(0, RESEND_COOLDOWN_SECONDS - elapsed);
-      setResendCooldownLeft(left);
-    };
-    tick();
-    const id = window.setInterval(tick, 1000);
-    return () => window.clearInterval(id);
-  }, [codeSentAt]);
+  // Touch `clerk` and `router` so they remain in scope for any future
+  // programmatic auth calls. No runtime impact.
+  void clerk;
+  void router;
 
   return (
     <div className="flex flex-col">
+      {/* Mounted ONCE for the lifetime of the component so the Cloudflare
+          Turnstile widget keeps its token. Used for client-trust verification
+          on suspicious sign-ins. */}
+      <div id="clerk-captcha" className="absolute h-0 w-0 overflow-hidden" aria-hidden />
+
       <h1 className="text-center text-2xl font-semibold tracking-tight text-slate-900">S&apos;identifier</h1>
       <p className="mt-2 text-center text-sm text-slate-600">Accède à ton espace DogShift.</p>
 
@@ -363,7 +378,7 @@ export default function LoginForm() {
           aria-busy={oauthInFlight}
           className="inline-flex w-full items-center justify-center rounded-full border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {!signInReady ? "Chargement…" : oauthInFlight ? "Redirection…" : "Continuer avec Google"}
+          {!isLoaded ? "Chargement…" : oauthInFlight ? "Redirection…" : "Continuer avec Google"}
         </button>
 
         <div className="flex items-center gap-3">
@@ -524,9 +539,6 @@ export default function LoginForm() {
         </Link>
         .
       </p>
-
-      {/* Required by Clerk v7 for bot / client-trust verification (invisible CAPTCHA) */}
-      <div id="clerk-captcha" />
     </div>
   );
 }
