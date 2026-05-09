@@ -202,7 +202,18 @@ function DashboardSkeleton() {
       aria-busy="true"
       aria-live="polite"
     >
-      <SunCornerGlow variant="sitterDashboard" />
+      <div className="hidden sm:block">
+        <SunCornerGlow variant="sitterDashboard" />
+      </div>
+      <div
+        className="pointer-events-none fixed inset-0 z-0 sm:hidden"
+        aria-hidden="true"
+        style={{
+          background: "linear-gradient(135deg, rgba(250,204,21,0.22) 0%, rgba(251,146,60,0.10) 28%, transparent 58%)",
+          maskImage: "linear-gradient(to bottom, rgba(0,0,0,1) 0px, rgba(0,0,0,1) 160px, rgba(0,0,0,0) 300px)",
+          WebkitMaskImage: "linear-gradient(to bottom, rgba(0,0,0,1) 0px, rgba(0,0,0,1) 160px, rgba(0,0,0,0) 300px)",
+        }}
+      />
       <span className="sr-only">Chargement du tableau de bord…</span>
 
       <div className="relative z-10">
@@ -502,7 +513,18 @@ export default function HostDashboardPage() {
   if (!sitterId) {
     return (
       <div className="relative grid gap-6 overflow-hidden" data-testid="host-dashboard">
-        <SunCornerGlow variant="sitterDashboard" />
+        <div className="hidden sm:block">
+          <SunCornerGlow variant="sitterDashboard" />
+        </div>
+        <div
+          className="pointer-events-none fixed inset-0 z-0 sm:hidden"
+          aria-hidden="true"
+          style={{
+            background: "linear-gradient(135deg, rgba(250,204,21,0.22) 0%, rgba(251,146,60,0.10) 28%, transparent 58%)",
+            maskImage: "linear-gradient(to bottom, rgba(0,0,0,1) 0px, rgba(0,0,0,1) 160px, rgba(0,0,0,0) 300px)",
+            WebkitMaskImage: "linear-gradient(to bottom, rgba(0,0,0,1) 0px, rgba(0,0,0,1) 160px, rgba(0,0,0,0) 300px)",
+          }}
+        />
         <div className="relative z-10 rounded-3xl border border-slate-200 bg-white p-6">
           <p className="text-sm font-semibold text-slate-900">Tableau de bord</p>
           <p className="mt-2 text-sm text-slate-600">Ton profil hôte n’est pas encore disponible.</p>
@@ -518,7 +540,20 @@ export default function HostDashboardPage() {
 
   return (
     <div className="relative grid gap-6 overflow-hidden" data-testid="host-dashboard">
-      <SunCornerGlow variant="sitterDashboard" />
+      {/* Desktop: full animated sun rays */}
+      <div className="hidden sm:block">
+        <SunCornerGlow variant="sitterDashboard" />
+      </div>
+      {/* Mobile: simple warm yellow gradient — same as owner dashboard */}
+      <div
+        className="pointer-events-none fixed inset-0 z-0 sm:hidden"
+        aria-hidden="true"
+        style={{
+          background: "linear-gradient(135deg, rgba(250,204,21,0.22) 0%, rgba(251,146,60,0.10) 28%, transparent 58%)",
+          maskImage: "linear-gradient(to bottom, rgba(0,0,0,1) 0px, rgba(0,0,0,1) 160px, rgba(0,0,0,0) 300px)",
+          WebkitMaskImage: "linear-gradient(to bottom, rgba(0,0,0,1) 0px, rgba(0,0,0,1) 160px, rgba(0,0,0,0) 300px)",
+        }}
+      />
 
       <div className="relative z-10">
         <Suspense fallback={null}>
