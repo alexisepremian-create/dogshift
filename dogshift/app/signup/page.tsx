@@ -16,13 +16,14 @@ export default function SignUpPage() {
 
   const force = (searchParams?.get("force") ?? "").trim();
   const forceMode = force === "1" || force.toLowerCase() === "true";
+  const next = (searchParams?.get("next") ?? "").trim();
 
   useEffect(() => {
     if (!isLoaded) return;
     if (!isSignedIn) return;
     if (forceMode) return;
-    router.replace("/post-login");
-  }, [forceMode, isLoaded, isSignedIn, router]);
+    router.replace(next ? `/post-login?next=${encodeURIComponent(next)}` : "/post-login");
+  }, [forceMode, isLoaded, isSignedIn, next, router]);
 
   return (
     <AuthLayout>
