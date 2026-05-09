@@ -25,7 +25,8 @@ function normalizeEmail(input: string) {
 
 export default function SignUpForm() {
   const clerk = useClerk();
-  const { signUp, setActive, fetchStatus } = useSignUp();
+  const { signUp, fetchStatus } = useSignUp();
+  const { setActive } = useClerk() as any;
   const searchParams = useSearchParams();
   const router = useRouter();
 
@@ -61,8 +62,8 @@ export default function SignUpForm() {
     setError(null);
     setLoading(true);
     try {
-      await signUp.create({ emailAddress: normalized });
-      await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
+      await (signUp as any).create({ emailAddress: normalized });
+      await (signUp as any).prepareEmailAddressVerification({ strategy: "email_code" });
       setSent(true);
       setCodeSentAt(Date.now());
     } catch (err) {
@@ -96,7 +97,7 @@ export default function SignUpForm() {
     setError(null);
     setLoading(true);
     try {
-      await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
+      await (signUp as any).prepareEmailAddressVerification({ strategy: "email_code" });
       setEmailCode("");
       setCodeSentAt(Date.now());
     } catch (err) {
@@ -151,10 +152,10 @@ export default function SignUpForm() {
     try {
       // Use the standard Clerk v7 API and read status from the RETURNED value
       // (not from the stale `signUp` hook variable, which causes "already verified" loops).
-      const result = await signUp.attemptEmailAddressVerification({ code });
+      const result = await (signUp as any).attemptEmailAddressVerification({ code });
 
       if (result.status === "complete") {
-        await setActive!({ session: result.createdSessionId });
+        await setActive({ session: result.createdSessionId });
         router.replace(redirectAfterAuth);
         return;
       }
