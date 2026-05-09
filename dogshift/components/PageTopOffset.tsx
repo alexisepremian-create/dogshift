@@ -18,7 +18,8 @@ export default function PageTopOffset({ children }: { children: React.ReactNode 
       (pathname === "/devenir-dogsitter" ||
         pathname.startsWith("/devenir-dogsitter/") ||
         pathname.includes("/reservation") ||
-        pathname.startsWith("/checkout/")),
+        pathname.startsWith("/checkout/") ||
+        pathname.startsWith("/sitter/")),
   );
 
   const needsOffset = useMemo(() => {
