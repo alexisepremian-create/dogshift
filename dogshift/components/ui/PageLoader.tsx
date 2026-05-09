@@ -7,6 +7,8 @@ import { useState, useEffect, useRef } from "react";
 
 const EASE = "cubic-bezier(0.16, 1, 0.3, 1)";
 const DEFAULT_MIN = 800;
+// 350ms fade-out — during this window, the overlay is visually dismissing but
+// would block taps unless we explicitly disable pointer-events (see render).
 const FADE_MS = 350;
 
 export const PAGE_LOADER_MIN_DURATION_MS = DEFAULT_MIN;
@@ -108,8 +110,11 @@ export default function PageLoader({
       style={{
         transition: phase === "fadeOut" ? `opacity ${FADE_MS}ms ease` : undefined,
         opacity: phase === "fadeOut" ? 0 : 1,
+        // During fade-out, let taps pass through to the underlying page so
+        // buttons feel responsive instead of being silently blocked.
+        pointerEvents: phase === "fadeOut" ? "none" : undefined,
       }}
-      aria-busy="true"
+      aria-busy={phase === "animate" ? "true" : "false"}
       aria-live="polite"
     >
       <div

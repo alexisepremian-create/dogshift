@@ -52,7 +52,10 @@ export const metadata: Metadata = {
   },
 };
 
-export const dynamic = "force-dynamic";
+// No `force-dynamic` here: pages that need it opt in individually (or are
+// implicitly dynamic via `auth()`/`cookies()`/`headers()` callers). This lets
+// pages with `revalidate` (e.g. homepage) be statically cached → faster TTFB
+// and faster hydration on mobile.
 
 export default async function RootLayout({
   children,
