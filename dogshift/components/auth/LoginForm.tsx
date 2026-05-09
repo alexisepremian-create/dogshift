@@ -92,10 +92,13 @@ export default function LoginForm() {
   ): Promise<boolean> {
     if (result.status === "complete" && result.createdSessionId && setActive) {
       await setActive({ session: result.createdSessionId });
-      // window.location.replace ensures the browser sends Clerk handshake
-      // params on the next request so middleware can set the session cookie
-      // before /api/auth/resolve-redirect runs server-side.
-      window.location.replace(redirectAfterAuth);
+      // Force the canonical origin (e.g. https://www.dogshift.ch). Without this
+      // the browser does a same-origin replace() to /post-login on whatever
+      // host the form was submitted from (e.g. dogshift.ch apex). The proxy
+      // then 308-redirects to www, dropping the freshly-set Clerk session
+      // cookie because cookies are scoped per-host. Google OAuth already does
+      // this via withPublicOrigin(redirectUrlComplete) — email login must too.
+      window.location.replace(withPublicOrigin(redirectAfterAuth));
       return true;
     }
     return false;
