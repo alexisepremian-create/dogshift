@@ -66,6 +66,28 @@ select {
   -webkit-tap-highlight-color: transparent;
 }
 
+/* iOS Safari & Chrome : neutralise le délai 300ms sur tap pour tous les éléments
+ * interactifs. Sans ça, chaque bouton/lien réagit en ~300ms. Régression documentée
+ * dans docs/bugs.md (issues #78/#79). */
+button,
+a,
+label,
+summary,
+[role="button"],
+[role="link"],
+[role="tab"],
+[role="menuitem"],
+[role="checkbox"],
+[role="radio"],
+[role="switch"],
+input[type="submit"],
+input[type="button"],
+input[type="reset"],
+input[type="checkbox"],
+input[type="radio"] {
+  touch-action: manipulation;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
