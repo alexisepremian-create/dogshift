@@ -3045,9 +3045,25 @@ export default function HomePageClient({ sitters = [] }: { sitters?: SitterPrevi
   const mapReveal = useRevealOnce({ repeat: true });
   const [showSticky, setShowSticky] = useState(false);
 
+  // rAF-throttled scroll handler that only commits state when the boolean
+  // actually changes. Without this, every scroll pixel triggered a setState,
+  // re-rendering this 3000-line tree on every event and starving touch input.
   useEffect(() => {
-    const onScroll = () => setShowSticky(window.scrollY > 150);
-    onScroll();
+    let ticking = false;
+    let lastVisible = window.scrollY > 150;
+    setShowSticky(lastVisible);
+    const onScroll = () => {
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(() => {
+        const visible = window.scrollY > 150;
+        if (visible !== lastVisible) {
+          lastVisible = visible;
+          setShowSticky(visible);
+        }
+        ticking = false;
+      });
+    };
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
