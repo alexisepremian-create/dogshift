@@ -23,6 +23,8 @@ type ConversationListItem = {
   lastMessageAt: string | null;
   lastMessagePreview: string | null;
   updatedAt: string;
+  pinnedAt: string | null;
+  archivedAt: string | null;
   sitter: { sitterId: string; name: string; avatarUrl: string | null };
   booking: { service: string | null; startDate: string | null; endDate: string | null } | null;
   unreadCount: number;
@@ -43,6 +45,7 @@ export async function GET(req: NextRequest) {
     const conversations = await (prisma as any).conversation.findMany({
       where: {
         ownerId,
+        deletedAt: null,
         // Only show conversations linked to a paid/confirmed booking
         // Conversations with no booking (direct contact) are always shown
         OR: [
@@ -58,6 +61,8 @@ export async function GET(req: NextRequest) {
         lastMessagePreview: true,
         updatedAt: true,
         sitterId: true,
+        pinnedAt: true,
+        archivedAt: true,
         booking: {
           select: { service: true, startDate: true, endDate: true },
         },
@@ -135,6 +140,8 @@ export async function GET(req: NextRequest) {
         lastMessageAt: c.lastMessageAt instanceof Date ? c.lastMessageAt.toISOString() : c.lastMessageAt ? new Date(c.lastMessageAt).toISOString() : null,
         lastMessagePreview: typeof c.lastMessagePreview === "string" ? c.lastMessagePreview : null,
         updatedAt: c.updatedAt instanceof Date ? c.updatedAt.toISOString() : new Date(c.updatedAt).toISOString(),
+        pinnedAt: c.pinnedAt instanceof Date ? c.pinnedAt.toISOString() : c.pinnedAt ? new Date(c.pinnedAt).toISOString() : null,
+        archivedAt: c.archivedAt instanceof Date ? c.archivedAt.toISOString() : c.archivedAt ? new Date(c.archivedAt).toISOString() : null,
         sitter: {
           sitterId: String((typeof sitter?.sitterId === "string" && sitter.sitterId) || sitterKey),
           name: displayName,
