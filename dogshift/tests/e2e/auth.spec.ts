@@ -38,10 +38,10 @@ for (const path of PROTECTED_ROUTES) {
 test("login page renders the email input and Continuer button", async ({ page }) => {
   await page.goto("/login", { waitUntil: "domcontentloaded" });
 
-  // Email input renders immediately but is enabled only once Clerk initialises.
+  // Email input is always enabled immediately (not gated on Clerk init).
   const emailInput = page.locator('input[type="email"], input#email');
   await expect(emailInput).toBeVisible({ timeout: 15_000 });
-  await expect(emailInput).toBeEnabled({ timeout: 30_000 });
+  await expect(emailInput).toBeEnabled({ timeout: 5_000 });
 
   // The submit button renders as "Chargement…" while Clerk initialises, then
   // switches to "Continuer". We wait for Clerk to finish before asserting text.
@@ -58,8 +58,7 @@ test("login form processes email without crashing", async ({ page }) => {
 
   const emailInput = page.locator('input[type="email"], input#email');
   await expect(emailInput).toBeVisible({ timeout: 15_000 });
-  // Wait for Clerk to finish loading so the input becomes enabled
-  await expect(emailInput).toBeEnabled({ timeout: 30_000 });
+  await expect(emailInput).toBeEnabled({ timeout: 5_000 });
 
   await page.waitForLoadState("networkidle").catch(() => { /* timeout is ok */ });
   const continuerBtn = page.getByRole("button", { name: /continuer/i }).first();
@@ -87,8 +86,7 @@ test("login form shows an error for a non-existent email", async ({ page }) => {
 
   const emailInput = page.locator('input[type="email"], input#email');
   await expect(emailInput).toBeVisible({ timeout: 15_000 });
-  // Wait for Clerk to finish loading so the input becomes enabled
-  await expect(emailInput).toBeEnabled({ timeout: 30_000 });
+  await expect(emailInput).toBeEnabled({ timeout: 5_000 });
 
   await page.waitForLoadState("networkidle").catch(() => { /* timeout is ok */ });
   const continuerBtn = page.getByRole("button", { name: /continuer/i }).first();
