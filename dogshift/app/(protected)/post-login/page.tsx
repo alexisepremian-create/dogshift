@@ -16,8 +16,11 @@ function absolutePath(path: string): string {
 export default function PostLoginPage() {
   const { isLoaded, userId } = useAuth();
   const userIdRef = useRef(userId);
-  userIdRef.current = userId;
   const runStartedRef = useRef(false);
+
+  useEffect(() => {
+    userIdRef.current = userId;
+  }, [userId]);
 
   useEffect(() => {
     if (!isLoaded) return;
@@ -54,7 +57,7 @@ export default function PostLoginPage() {
         typeof data?.redirect === "string" && data.redirect.startsWith("/") ? data.redirect : "/account";
       // Allow callers (e.g. /become-sitter/form login link) to specify a `next`
       // destination. We only honor it for known-safe prefixes to prevent open redirects.
-      const SAFE_NEXT_PREFIXES = ["/host", "/become-sitter/", "/account"];
+      const SAFE_NEXT_PREFIXES = ["/host", "/become-sitter/", "/account", "/sitter/"];
       const isSafeNext =
         next.startsWith("/") &&
         !next.startsWith("//") &&

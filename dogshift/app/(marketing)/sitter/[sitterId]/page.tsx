@@ -2637,7 +2637,11 @@ function SitterPublicProfileContent({
                               e.stopPropagation();
                               if (startingChat) return;
                               if (!isLoaded) { setChatError("Chargement de la session… Réessaie dans une seconde."); return; }
-                              if (!isSignedIn) { setChatError("Veuillez vous connecter pour envoyer un message."); return; }
+                              if (!isSignedIn) {
+                                const next = `/sitter/${encodeURIComponent(id ?? "")}?mode=public&startChat=1`;
+                                router.push(`/login?next=${encodeURIComponent(next)}`);
+                                return;
+                              }
                               setStartingChat(true);
                               setChatError(null);
                               void (async () => {
@@ -2668,7 +2672,7 @@ function SitterPublicProfileContent({
                       )}
                       {chatError ? (
                         <div className="mt-3 rounded-xl border border-rose-200 bg-rose-50 p-3">
-                          <p className="text-xs font-medium text-rose-900">{chatError}{" "}<Link href="/login" className="font-semibold underline underline-offset-2">Se connecter</Link></p>
+                          <p className="text-xs font-medium text-rose-900">{chatError}{" "}<Link href={`/login?next=${encodeURIComponent(`/sitter/${encodeURIComponent(id ?? "")}?mode=public&startChat=1`)}`} className="font-semibold underline underline-offset-2">Se connecter</Link></p>
                         </div>
                       ) : null}
                       {bookingCtaError ? (
