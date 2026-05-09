@@ -33,6 +33,15 @@ function firstNameFromFullName(name: string) {
   return part.trim();
 }
 
+/** Last-resort: extract a human-readable first name from an email local-part.
+ *  "alexis.premian@gmail.com" → "Alexis", "user123@..." → "" (skip numeric starts) */
+function firstNameFromEmail(email: string): string {
+  const local = (email || "").split("@")[0] ?? "";
+  const first = local.split(/[._\-+]/)[0] ?? "";
+  if (!first || first.length < 2 || /^\d/.test(first)) return "";
+  return first.charAt(0).toUpperCase() + first.slice(1).toLowerCase();
+}
+
 function FilledSunIcon({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 64 64" className={className} aria-hidden="true" focusable="false">
@@ -74,9 +83,10 @@ export default async function AccountDashboardPage({
   const hostUser = contexts.hasSitterProfile && isSitterRole ? await getHostUserData().catch(() => null) : null;
 
   const clerkUser = await currentUser();
-  // fullName is null when user has no last name — fall back to firstName, then DB name.
+  // Priority: Clerk fullName → Clerk firstName → DB name → email prefix
   const rawName = clerkUser?.fullName || clerkUser?.firstName || dbUserRole?.name || "";
-  const firstName = firstNameFromFullName(rawName) || "";
+  const primaryEmail = clerkUser?.primaryEmailAddress?.emailAddress ?? contexts.primaryEmail ?? "";
+  const firstName = firstNameFromFullName(rawName) || firstNameFromEmail(primaryEmail);
 
   const now = new Date();
   const stalePaymentBefore = new Date(now.getTime() - 48 * 60 * 60 * 1000);

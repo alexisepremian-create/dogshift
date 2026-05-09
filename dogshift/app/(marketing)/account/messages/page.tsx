@@ -464,7 +464,7 @@ export default function AccountMessagesPage() {
   const selectedDog = threadHeader?.selectedDog ?? null;
 
   return (
-    <div className="flex h-[calc(100vh-80px)] flex-col bg-white -mx-4 -mt-4 sm:mx-0 sm:mt-0 sm:rounded-3xl sm:border sm:border-slate-200 sm:shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)]" data-testid="account-messages-page">
+    <div className="flex h-[calc(100dvh-128px)] flex-col bg-white -mx-4 -mt-4 sm:mx-0 sm:mt-0 sm:rounded-3xl sm:border sm:border-slate-200 sm:shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)] lg:h-[calc(100dvh-80px)]" data-testid="account-messages-page">
       {error ? (
         <div className="rounded-3xl border border-rose-200 bg-rose-50 p-6 text-sm font-medium text-rose-900 sm:p-8">
           <p>{error}</p>

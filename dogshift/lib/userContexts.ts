@@ -28,7 +28,7 @@ export async function getUserContexts(): Promise<UserContexts> {
     throw new Error("MISSING_PRIMARY_EMAIL");
   }
 
-  const rawName = typeof clerkUser?.fullName === "string" ? clerkUser.fullName : "";
+  const rawName = clerkUser?.fullName || clerkUser?.firstName || "";
 
   const ensured = await ensureDbUserByClerkUserId({ clerkUserId: userId, email: primaryEmail, name: rawName || null });
   if (!ensured) {
@@ -54,7 +54,7 @@ export async function getUserContexts(): Promise<UserContexts> {
     clerkUserId: userId,
     dbUserId: dbUser.id,
     email: primaryEmail,
-    dbRole: (dbUser as any).role ?? null,
+    dbRole: (dbUser as { role?: string }).role ?? null,
     hasSitterProfile: Boolean(sitterProfile),
     rawLifecycleStatus: sitterProfile?.lifecycleStatus ?? null,
     published: sitterProfile?.published ?? null,
