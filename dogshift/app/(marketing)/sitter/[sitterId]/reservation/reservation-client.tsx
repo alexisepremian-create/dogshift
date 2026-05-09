@@ -513,7 +513,7 @@ function DogShiftTimePicker({
       </button>
 
       {open && !disabled ? (
-        <div className="absolute left-0 top-full z-20 mt-3 w-[min(360px,calc(100vw-32px))]">
+        <div className="absolute left-0 top-full z-50 mt-3 w-[min(360px,calc(100vw-32px))]">
           <div className="rounded-[20px] border border-slate-200 bg-white p-3 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.18)]">
             <div className="flex items-center justify-between gap-3 px-1 pb-2">
               <button
@@ -657,7 +657,7 @@ function DogShiftDurationPicker({
       </button>
 
       {open && !disabled ? (
-        <div className="absolute left-0 top-full z-20 mt-3 w-[min(220px,calc(100vw-32px))]">
+        <div className="absolute left-0 top-full z-50 mt-3 w-[min(220px,calc(100vw-32px))]">
           <div className="rounded-[20px] border border-slate-200 bg-white p-3 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.18)]">
             <div className="flex items-center justify-between gap-3 px-1 pb-2">
               <button
@@ -784,7 +784,7 @@ function DogShiftDatePicker({
       </button>
 
       {open ? (
-        <div className="absolute left-0 top-full z-20 mt-3 w-[min(360px,calc(100vw-32px))]">
+        <div className="absolute left-0 top-full z-50 mt-3 w-[min(360px,calc(100vw-32px))]">
           <DogShiftCalendar
             selected={value}
             isDisabled={isDisabled}
@@ -1773,21 +1773,35 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
         setDateEnd(dateStart);
       }
 
-      // Pension requires a dog profile
-      if (selectedService === "Pension" && !dogsLoading && dogs.length === 0) {
-        setError("Pour réserver la pension, vous devez d'abord ajouter la fiche de votre chien dans votre compte.");
-        return;
-      }
-
-      // Pension size validation
-      const pensionSizes = sitter.pensionAcceptedSizes ?? [];
-      if (selectedService === "Pension" && pensionSizes.length > 0) {
-        if (!dogSize) {
-          setError("Indiquez la taille de votre chien pour continuer.");
+      // Pension: dog profile required, must be selected, and must have weight
+      if (selectedService === "Pension" && !dogsLoading) {
+        if (dogs.length === 0) {
+          setError("Pour réserver la pension, vous devez d'abord ajouter la fiche de votre chien dans votre compte.");
           return;
         }
-        if (!pensionSizes.includes(dogSize)) {
-          setError(`Ce sitter n'accepte pas les chiens de taille ${dogSize} en pension.`);
+        if (selectedDogIds.length === 0) {
+          setError("Veuillez sélectionner votre chien pour réserver la pension.");
+          return;
+        }
+        const firstSelected = dogs.find((d) => d.id === selectedDogIds[0]);
+        if (!firstSelected?.weightKg) {
+          setError("Le poids de votre chien n'est pas renseigné. Veuillez compléter sa fiche pour réserver la pension — cette information est nécessaire pour vérifier la taille.");
+          return;
+        }
+      }
+
+      // Pension size validation (derives from dog weight, never from manual picker)
+      const pensionSizes = sitter.pensionAcceptedSizes ?? [];
+      if (selectedService === "Pension" && pensionSizes.length > 0) {
+        const firstSelected = dogs.find((d) => d.id === selectedDogIds[0]);
+        const computedSize = firstSelected?.weightKg ? dogSizeKeyFromWeight(firstSelected.weightKg) : null;
+        const effectiveDogSize = computedSize ?? dogSize;
+        if (!effectiveDogSize) {
+          setError("Impossible de déterminer la taille de votre chien. Veuillez renseigner son poids dans sa fiche.");
+          return;
+        }
+        if (!pensionSizes.includes(effectiveDogSize)) {
+          setError(`Ce sitter n'accepte pas les chiens de taille ${DOG_SIZE_WEIGHTS[effectiveDogSize as keyof typeof DOG_SIZE_WEIGHTS]?.label ?? effectiveDogSize} en pension.`);
           return;
         }
       }
@@ -1868,7 +1882,7 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
 
   return (
     <div className="min-h-screen bg-white text-slate-900">
-      <main className="mx-auto max-w-5xl px-4 py-10 sm:px-6">
+      <main className="mx-auto max-w-5xl px-4 py-10 pb-32 sm:px-6 lg:pb-10">
         <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">Demande de réservation</h1>
@@ -2316,6 +2330,7 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
                               dogSizeKey ? DOG_SIZE_WEIGHTS[dogSizeKey].label : null,
                             ].filter(Boolean).join(" · ")}
                             {sizeBlocked && <span className="ml-1 font-semibold text-rose-500">— taille non acceptée</span>}
+                            {isPension && !dog.weightKg && <span className="ml-1 font-semibold text-amber-600">— poids manquant, compléter la fiche</span>}
                           </p>
                         </div>
                       </button>
@@ -2338,61 +2353,6 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
               </div>
             </div>
 
-            {/* Dog size — shown for Pension when sitter has restricted sizes AND no dog with known size is selected */}
-            {selectedService === "Pension" && (sitter.pensionAcceptedSizes ?? []).length > 0 && (() => {
-              const pensionSizes = sitter.pensionAcceptedSizes!;
-              const selectedDog = dogs.find((d) => d.id === selectedDogIds[0]) ?? null;
-              const autoDogSize = selectedDog ? dogSizeKeyFromWeight(selectedDog.weightKg) : null;
-              const isSizeBlocked = autoDogSize !== null && !pensionSizes.includes(autoDogSize);
-              // If at least one dog is selected with a known size, the picker is redundant
-              // (sizes are shown on each dog card; validation messages are shown inline)
-              if (selectedDogIds.length > 0 && autoDogSize !== null) return null;
-              return (
-                <div className={`rounded-3xl border p-6 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.12)] sm:p-8 ${isSizeBlocked ? "border-rose-200 bg-rose-50" : "border-slate-200 bg-white"}`}>
-                  <p className="text-sm font-semibold text-slate-900">
-                    Taille de votre chien <span className="text-rose-500">*</span>
-                  </p>
-                  <p className="mt-1 text-xs text-slate-500">
-                    Ce sitter accepte uniquement les chiens de taille :{" "}
-                    <strong>{pensionSizes.map((s) => DOG_SIZE_WEIGHTS[s as keyof typeof DOG_SIZE_WEIGHTS]?.label ?? s).join(", ")}</strong>.
-                  </p>
-                  {isSizeBlocked && (
-                    <div className="mt-3 flex items-start gap-2 rounded-xl border border-rose-200 bg-rose-100 px-4 py-3">
-                      <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-rose-600" />
-                      <p className="text-xs font-medium text-rose-800">
-                        La taille détectée de votre chien ({DOG_SIZE_WEIGHTS[autoDogSize].label}, {autoDogSize === "small" ? "< 10 kg" : autoDogSize === "medium" ? "10–25 kg" : "> 25 kg"}) n&apos;est pas acceptée par ce sitter pour la Pension. Vous ne pouvez pas réserver ce service.
-                      </p>
-                    </div>
-                  )}
-                  <div className="mt-4 flex flex-wrap gap-3">
-                    {(["small", "medium", "large"] as const).map((size) => {
-                      const accepted = pensionSizes.includes(size);
-                      const { label, range } = DOG_SIZE_WEIGHTS[size];
-                      const isActive = dogSize === size;
-                      return (
-                        <button
-                          key={size}
-                          type="button"
-                          disabled={!accepted}
-                          onClick={() => accepted && setDogSize(size)}
-                          title={!accepted ? "Non accepté par ce sitter" : undefined}
-                          className={`flex flex-col items-center gap-0.5 rounded-2xl border-2 px-4 py-2.5 text-sm font-semibold transition ${
-                            !accepted
-                              ? "cursor-not-allowed border-slate-100 bg-slate-50 opacity-40"
-                              : isActive
-                                ? "border-[var(--dogshift-blue)] bg-[color-mix(in_srgb,var(--dogshift-blue),transparent_90%)] text-[var(--dogshift-blue)]"
-                                : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
-                          }`}
-                        >
-                          {label}
-                          <span className="text-[10px] font-normal opacity-60">{range}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })()}
 
             <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.12)] sm:p-8">
               <p className="text-sm font-semibold text-slate-900">Message (optionnel)</p>
@@ -2493,8 +2453,14 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
       </main>
 
       {/* Mobile Sticky CTA */}
-      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white p-4 pb-safe shadow-[0_-8px_30px_-15px_rgba(0,0,0,0.1)] lg:hidden">
-        <div className="mx-auto flex max-w-5xl items-center justify-between gap-4">
+      <div
+        className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white shadow-[0_-8px_30px_-15px_rgba(0,0,0,0.1)] lg:hidden"
+        style={{ paddingBottom: "env(safe-area-inset-bottom, 16px)" }}
+      >
+        {error && (
+          <p className="px-4 pt-3 text-center text-xs font-medium text-rose-600">{error}</p>
+        )}
+        <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 p-4">
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-semibold text-slate-900">Total : CHF {summary ? summary.total.toFixed(2) : "—"}</p>
             <p className="truncate text-xs text-slate-600">
@@ -2506,13 +2472,12 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
             disabled={!canSubmit || submitting}
             onClick={() => {
               if (!canSubmit) {
-                // Scroll to top so user sees what is missing
-                window.scrollTo({ top: 0, behavior: 'smooth' });
+                window.scrollTo({ top: 0, behavior: "smooth" });
                 return;
               }
               void onContinue();
             }}
-            className={`shrink-0 ${PRIMARY_BTN}`}
+            className="inline-flex shrink-0 items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-6 py-3 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition hover:bg-[var(--dogshift-blue-hover)] disabled:cursor-not-allowed disabled:opacity-60"
           >
             {submitting ? "Redirection…" : "Continuer"}
           </button>
