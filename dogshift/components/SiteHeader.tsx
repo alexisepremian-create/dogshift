@@ -58,12 +58,34 @@ export default function SiteHeader() {
 
   useEffect(() => { setHasMounted(true); }, []);
 
+  // rAF-throttled scroll handler that only writes state when the *boolean
+  // outcome* actually changes. Without this, every scroll pixel triggered two
+  // setStates → SiteHeader re-rendered on every scroll event, starving touch
+  // input on mobile (especially noticeable on the long homepage).
   useEffect(() => {
+    let ticking = false;
+    let lastScrolled = window.scrollY > 8;
+    let lastHidden = isHomepage && window.scrollY > 70;
+    setScrolled(lastScrolled);
+    setHeaderHidden(lastHidden);
     const onScroll = () => {
-      setScrolled(window.scrollY > 8);
-      setHeaderHidden(isHomepage && window.scrollY > 70);
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(() => {
+        const y = window.scrollY;
+        const nextScrolled = y > 8;
+        const nextHidden = isHomepage && y > 70;
+        if (nextScrolled !== lastScrolled) {
+          lastScrolled = nextScrolled;
+          setScrolled(nextScrolled);
+        }
+        if (nextHidden !== lastHidden) {
+          lastHidden = nextHidden;
+          setHeaderHidden(nextHidden);
+        }
+        ticking = false;
+      });
     };
-    onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, [isHomepage]);

@@ -52,10 +52,15 @@ export const metadata: Metadata = {
   },
 };
 
-// Keep the root layout dynamic so auth-dependent flows (Clerk session resolution,
-// redirects after login) always get a fresh render. Removing this caused the
-// post-login redirect to break.
-export const dynamic = "force-dynamic";
+// Do NOT mark the root layout `force-dynamic`: it would override per-page
+// `revalidate` (e.g. the homepage's `revalidate = 300`), forcing every request
+// to re-render server-side and re-run Prisma queries. The post-login redirect
+// flow does not need this — it's powered by:
+//   1. /api/auth/resolve-redirect (route handler, dynamic via `auth()` cookies)
+//   2. /post-login & /login (client components driving navigation)
+//   3. The Clerk middleware in proxy.ts (handles cookie/session per request)
+// Removing `force-dynamic` here restores the static cache for the homepage
+// and saves significant TTFB + hydration time on mobile.
 
 export default async function RootLayout({
   children,
