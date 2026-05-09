@@ -16,7 +16,9 @@ export default function PageTopOffset({ children }: { children: React.ReactNode 
   const isCompactPage = Boolean(
     pathname &&
       (pathname === "/devenir-dogsitter" ||
-        pathname.startsWith("/devenir-dogsitter/")),
+        pathname.startsWith("/devenir-dogsitter/") ||
+        pathname.includes("/reservation") ||
+        pathname.startsWith("/checkout/")),
   );
 
   const needsOffset = useMemo(() => {
