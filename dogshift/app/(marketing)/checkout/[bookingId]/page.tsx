@@ -693,17 +693,28 @@ const stripeReact = await import("@stripe/react-stripe-js");
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white text-slate-900">
-      <main className="mx-auto max-w-[1100px] px-4 py-12 sm:px-6">
+      <main className="mx-auto max-w-[1100px] px-4 pt-4 pb-10 sm:px-6 sm:pt-6">
         <div className="mx-auto max-w-5xl">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-            <div>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0">
               <h1 className="text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">Confirmer et payer</h1>
+              {booking && (
+                <p className="mt-1.5 text-sm text-slate-500 truncate">
+                  {[
+                    booking.service,
+                    isHourlyBooking ? bookingDateLabel : null,
+                    isHourlyBooking ? bookingTimeRangeLabel : null,
+                    !isHourlyBooking && booking.startDate ? formatDateLabel(booking.startDate) : null,
+                    !isHourlyBooking && booking.endDate ? `→ ${formatDateLabel(booking.endDate)}` : null,
+                  ].filter(Boolean).join(" · ")}
+                </p>
+              )}
             </div>
             <Link
               href={booking?.sitterId ? `/sitter/${booking.sitterId}` : "/search"}
-              className={SECONDARY_BTN}
+              className="inline-flex shrink-0 items-center justify-center rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
             >
-              Retour
+              ← Retour
             </Link>
           </div>
 
