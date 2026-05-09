@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import type { NextRequest } from "next/server";
 
 import { auth, clerkClient, currentUser } from "@clerk/nextjs/server";
@@ -153,7 +154,7 @@ export async function ensureDbUserFromClerkAuth(): Promise<(DbUserEnsured & { cr
     const clerkUser =
       fromSession ?? (await client.users.getUser(userId).catch(() => null));
     email = clerkUser?.primaryEmailAddress?.emailAddress ?? "";
-    name = typeof clerkUser?.fullName === "string" ? clerkUser.fullName : null;
+    name = clerkUser?.fullName || clerkUser?.firstName || null;
     if (email) break;
     await new Promise((r) => setTimeout(r, 400));
   }
@@ -175,7 +176,7 @@ export async function resolveDbUserId(req: NextRequest) {
   const ensured = await ensureDbUserByClerkUserId({
     clerkUserId: userId,
     email,
-    name: typeof clerkUser?.fullName === "string" ? clerkUser.fullName : null,
+    name: clerkUser?.fullName || clerkUser?.firstName || null,
   });
 
   if (process.env.NODE_ENV !== "production") {
