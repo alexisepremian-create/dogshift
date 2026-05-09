@@ -708,6 +708,12 @@ export default function AccountMessagesPage() {
                           }
                         >
                           <div className="flex items-start justify-between gap-3">
+                            {/* Yellow pin indicator on the left */}
+                            {isPinned && (
+                              <span className="mt-3 shrink-0 text-amber-400" aria-label="Épinglée">
+                                <Pin className="h-3.5 w-3.5 fill-amber-400" />
+                              </span>
+                            )}
                             <div className="flex min-w-0 items-start gap-3">
                               <div className="relative mt-0.5 h-10 w-10 flex-none overflow-hidden rounded-2xl bg-slate-100">
                                 {c.sitter.avatarUrl && avatarIsSafe(c.sitter.avatarUrl) ? (
