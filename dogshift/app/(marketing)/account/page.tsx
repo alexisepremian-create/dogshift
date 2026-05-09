@@ -74,11 +74,12 @@ export default async function AccountDashboardPage({
   const hostUser = contexts.hasSitterProfile && isSitterRole ? await getHostUserData().catch(() => null) : null;
 
   const clerkUser = await currentUser();
-  const rawName = typeof clerkUser?.fullName === "string" ? clerkUser.fullName : "";
+  // fullName can be null when only firstName is set (no lastName) — fall back to firstName directly.
+  const rawName = clerkUser?.fullName || clerkUser?.firstName || "";
   const firstName = firstNameFromFullName(rawName) || "";
 
   const now = new Date();
-  const stalePaymentBefore = new Date(Date.now() - 48 * 60 * 60 * 1000);
+  const stalePaymentBefore = new Date(now.getTime() - 48 * 60 * 60 * 1000);
 
   const activeHistoryWhere: Prisma.BookingWhereInput = {
     userId: uid,
@@ -128,6 +129,7 @@ export default async function AccountDashboardPage({
         },
       },
     }),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (prisma as any).dogProfile.count({ where: { userId: uid } }),
   ]);
 
@@ -236,8 +238,7 @@ export default async function AccountDashboardPage({
                   </p>
                   <p className="mt-1 text-xs font-medium text-slate-500">
                     Dogsitter :{" "}
-                    {((nextBooking.sitter as any)?.sitterProfile?.displayName as string | undefined) ||
-                      (typeof (nextBooking.sitter as any)?.name === "string" ? (nextBooking.sitter as any).name : "—")}
+                    {nextBooking.sitter?.sitterProfile?.displayName || nextBooking.sitter?.name || "—"}
                   </p>
                 </div>
 
