@@ -70,15 +70,21 @@ export default function SiteHeader() {
 
   useEffect(() => {
     if (navOpen) {
+      // Snapshot the existing overflow so we restore it (instead of forcing "")
+      // — closing the nav must never strand the page in overflow:hidden if some
+      // other component had set it intentionally.
+      const previousOverflow = document.body.style.overflow;
       setNavMounted(true);
       document.body.style.overflow = "hidden";
       const frame = requestAnimationFrame(() => {
         requestAnimationFrame(() => setNavAnimating(true));
       });
-      return () => cancelAnimationFrame(frame);
+      return () => {
+        cancelAnimationFrame(frame);
+        document.body.style.overflow = previousOverflow;
+      };
     }
     setNavAnimating(false);
-    document.body.style.overflow = "";
     if (!navMounted) return;
     const t = window.setTimeout(() => setNavMounted(false), 400); // 400ms duration for fade/slide
     return () => window.clearTimeout(t);
