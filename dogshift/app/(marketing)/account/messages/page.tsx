@@ -204,8 +204,9 @@ function SwipeableRow({
         </button>
       </div>
 
-      {/* Main content — slides left on swipe */}
+      {/* Main content — slides left on swipe; bg-white hides action buttons when not swiping */}
       <div
+        className="bg-white"
         onTouchStart={onTouchStart}
         onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}
