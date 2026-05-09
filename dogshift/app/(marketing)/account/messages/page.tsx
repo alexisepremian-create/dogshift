@@ -154,8 +154,8 @@ function SwipeableRow({
       isHorizontal.current = Math.abs(dx) > Math.abs(dy);
     }
     if (!isHorizontal.current) return;
-    e.preventDefault();
-    const raw = Math.min(0, dx); // only allow left swipe
+    // No preventDefault — touch-action:pan-y on the container handles it natively
+    const raw = Math.min(0, dx);
     setOffset(Math.max(-ACTION_WIDTH, raw));
   }
 
@@ -168,10 +168,11 @@ function SwipeableRow({
   function close() { setOffset(0); }
 
   return (
-    <div className="relative overflow-hidden">
-      {/* Action buttons revealed behind the row */}
+    // touch-action:pan-y lets iOS handle vertical scroll natively → no tap delay
+    <div className="relative overflow-hidden" style={{ touchAction: "pan-y" }}>
+      {/* Action buttons — z-0 so they stay behind the content wrapper */}
       <div
-        className="absolute inset-y-0 right-0 flex"
+        className="absolute inset-y-0 right-0 z-0 flex"
         style={{ width: ACTION_WIDTH }}
         aria-hidden={offset === 0}
       >
@@ -204,9 +205,9 @@ function SwipeableRow({
         </button>
       </div>
 
-      {/* Main content — slides left on swipe; bg-white hides action buttons when not swiping */}
+      {/* Main content — z-10 so it sits above action buttons; bg-white covers them at rest */}
       <div
-        className="bg-white"
+        className="relative z-10 bg-white"
         onTouchStart={onTouchStart}
         onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}
