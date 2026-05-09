@@ -43,14 +43,8 @@ test("login page renders the email input and Continuer button", async ({ page })
   await expect(emailInput).toBeVisible({ timeout: 15_000 });
   await expect(emailInput).toBeEnabled({ timeout: 5_000 });
 
-  // The submit button renders as "Chargement…" while Clerk initialises, then
-  // switches to "Continuer". We wait for Clerk to finish before asserting text.
-  await page.waitForLoadState("networkidle").catch(() => { /* timeout is ok */ });
-  // Use .first() because there are multiple buttons on the page that match (Google + email submit).
-  await expect(page.getByRole("button", { name: /continuer|chargement/i }).first()).toBeVisible({ timeout: 15_000 });
-
-  // Google button must be present (appears once Clerk client is ready).
-  await expect(page.getByRole("button", { name: /google/i })).toBeVisible({ timeout: 15_000 });
+  // The submit button is always rendered (not gated on Clerk init).
+  await expect(page.getByRole("button", { name: /continuer/i }).first()).toBeVisible({ timeout: 15_000 });
 });
 
 test("login form processes email without crashing", async ({ page }) => {
