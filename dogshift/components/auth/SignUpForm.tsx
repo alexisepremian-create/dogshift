@@ -61,11 +61,7 @@ export default function SignUpForm() {
     setLoading(true);
     try {
       const { error: createError } = await (signUp as any).create({ emailAddress: normalized });
-      if (createError) {
-        const msg: string = createError.message ?? "";
-        const isAlreadyExists = msg.toLowerCase().includes("identifier already exists");
-        throw new Error(isAlreadyExists ? "Un compte existe déjà avec cet email. Connecte-toi." : (msg || "Impossible de créer le compte."));
-      }
+      if (createError) throw createError;
 
       const { error: sendError } = await (signUp as any).verifications.sendEmailCode();
       if (sendError) throw sendError;
@@ -73,10 +69,7 @@ export default function SignUpForm() {
       setCodeSentAt(Date.now());
     } catch (err) {
       const code = clerkErrorCode(err);
-      const rawMessage = err instanceof Error ? err.message : "";
-      const isAlreadyExists =
-        code === "form_identifier_exists" ||
-        rawMessage.toLowerCase().includes("identifier already exists");
+      const isAlreadyExists = code === "form_identifier_exists";
       if (isAlreadyExists) {
         setError("Un compte existe déjà avec cette adresse e-mail. Connecte-toi plutôt.");
       } else {
@@ -163,7 +156,7 @@ export default function SignUpForm() {
       if (verifyError) throw verifyError;
 
       if ((signUp as any).status === "complete") {
-        await (signUp as any).finalize({
+        const { error: finalizeError } = await (signUp as any).finalize({
           navigate: ({ session, decorateUrl }: { session?: any; decorateUrl: (url: string) => string }) => {
             if (session?.currentTask) {
               console.log("[SignUpForm] session task:", session.currentTask);
@@ -177,6 +170,10 @@ export default function SignUpForm() {
             }
           },
         });
+        if (finalizeError) {
+          setError(clerkErrorMessage(finalizeError, "Inscription incomplète. Réessaie."));
+          setLoading(false);
+        }
         return;
       }
 
