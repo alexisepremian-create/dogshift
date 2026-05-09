@@ -138,7 +138,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   }
 }
 
-/** PATCH — owner sets (or clears) the selected dog for this conversation */
+/** PATCH — owner updates: selected dog, pin, archive, unarchive */
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const ownerId = await resolveDbUserId(req);
@@ -147,9 +147,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const { id: conversationId } = await params;
     if (!conversationId) return NextResponse.json({ ok: false, error: "INVALID_ID" }, { status: 400 });
 
-    const body = (await req.json()) as { dogProfileId?: string | null };
+    const body = (await req.json()) as {
+      dogProfileId?: string | null;
+      action?: "pin" | "unpin" | "archive" | "unarchive";
+    };
 
-    // Verify conversation belongs to this owner
     const conversation = await db.conversation.findUnique({
       where: { id: conversationId },
       select: { ownerId: true },
@@ -157,7 +159,25 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     if (!conversation) return NextResponse.json({ ok: false, error: "NOT_FOUND" }, { status: 404 });
     if (conversation.ownerId !== ownerId) return NextResponse.json({ ok: false, error: "FORBIDDEN" }, { status: 403 });
 
-    // If setting a dog, verify it belongs to this owner
+    // Handle pin / archive actions
+    if (body.action === "pin") {
+      await db.conversation.update({ where: { id: conversationId }, data: { pinnedAt: new Date() } });
+      return NextResponse.json({ ok: true, action: "pin" });
+    }
+    if (body.action === "unpin") {
+      await db.conversation.update({ where: { id: conversationId }, data: { pinnedAt: null } });
+      return NextResponse.json({ ok: true, action: "unpin" });
+    }
+    if (body.action === "archive") {
+      await db.conversation.update({ where: { id: conversationId }, data: { archivedAt: new Date(), pinnedAt: null } });
+      return NextResponse.json({ ok: true, action: "archive" });
+    }
+    if (body.action === "unarchive") {
+      await db.conversation.update({ where: { id: conversationId }, data: { archivedAt: null } });
+      return NextResponse.json({ ok: true, action: "unarchive" });
+    }
+
+    // Default: update selected dog
     const dogProfileId = body.dogProfileId ?? null;
     if (dogProfileId) {
       const dog = await db.dogProfile.findFirst({ where: { id: dogProfileId, userId: ownerId } });
@@ -174,6 +194,32 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   } catch (err) {
     if (process.env.NODE_ENV !== "production") {
       console.error("[api][account][messages][conversations][id][PATCH] error", err);
+    }
+    return NextResponse.json({ ok: false, error: "INTERNAL_ERROR" }, { status: 500 });
+  }
+}
+
+/** DELETE — owner soft-deletes a conversation (sets deletedAt) */
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const ownerId = await resolveDbUserId(req);
+    if (!ownerId) return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
+
+    const { id: conversationId } = await params;
+    if (!conversationId) return NextResponse.json({ ok: false, error: "INVALID_ID" }, { status: 400 });
+
+    const conversation = await db.conversation.findUnique({
+      where: { id: conversationId },
+      select: { ownerId: true },
+    });
+    if (!conversation) return NextResponse.json({ ok: false, error: "NOT_FOUND" }, { status: 404 });
+    if (conversation.ownerId !== ownerId) return NextResponse.json({ ok: false, error: "FORBIDDEN" }, { status: 403 });
+
+    await db.conversation.update({ where: { id: conversationId }, data: { deletedAt: new Date() } });
+    return NextResponse.json({ ok: true });
+  } catch (err) {
+    if (process.env.NODE_ENV !== "production") {
+      console.error("[api][account][messages][conversations][id][DELETE] error", err);
     }
     return NextResponse.json({ ok: false, error: "INTERNAL_ERROR" }, { status: 500 });
   }

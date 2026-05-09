@@ -14,6 +14,8 @@ type ConversationListItem = {
   lastMessageAt: string | null;
   lastMessagePreview: string | null;
   updatedAt: string;
+  pinnedAt: string | null;
+  archivedAt: string | null;
   sitter: { sitterId: string; name: string; avatarUrl: string | null };
   booking: { service: string | null; startDate: string | null; endDate: string | null } | null;
   unreadCount: number;
@@ -120,11 +122,13 @@ function SwipeableRow({
   onPin,
   onArchive,
   onDelete,
+  archiveLabel = "Archiver",
 }: {
   children: React.ReactNode;
   onPin?: () => void;
   onArchive?: () => void;
   onDelete?: () => void;
+  archiveLabel?: string;
 }) {
   const [offset, setOffset] = useState(0);
   const [dragging, setDragging] = useState(false);
@@ -182,10 +186,10 @@ function SwipeableRow({
           type="button"
           onClick={() => { onArchive?.(); close(); }}
           className="flex w-14 flex-col items-center justify-center gap-1 bg-[var(--dogshift-blue)] text-white text-[10px] font-semibold"
-          aria-label="Archiver"
+          aria-label={archiveLabel}
         >
           <Archive className="h-4 w-4" />
-          <span>Archiver</span>
+          <span>{archiveLabel}</span>
         </button>
         <button
           type="button"
@@ -222,8 +226,7 @@ export default function AccountMessagesPage() {
   const [conversations, setConversations] = useState<ConversationListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [pinnedIds, setPinnedIds] = useState<Set<string>>(new Set());
-  const [archivedIds, setArchivedIds] = useState<Set<string>>(new Set());
+  const [archivedOpen, setArchivedOpen] = useState(false);
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [threadHeader, setThreadHeader] = useState<ConversationHeader | null>(null);
@@ -364,17 +367,89 @@ export default function AccountMessagesPage() {
 
   const rows = useMemo(() => {
     return conversations
-      .filter((c) => !archivedIds.has(c.id))
+      .filter((c) => !c.archivedAt)
       .slice()
       .sort((a, b) => {
-        const pinA = pinnedIds.has(a.id) ? 1 : 0;
-        const pinB = pinnedIds.has(b.id) ? 1 : 0;
+        const pinA = a.pinnedAt ? 1 : 0;
+        const pinB = b.pinnedAt ? 1 : 0;
         if (pinB !== pinA) return pinB - pinA;
         const ta = new Date(a.lastMessageAt ?? a.updatedAt).getTime();
         const tb = new Date(b.lastMessageAt ?? b.updatedAt).getTime();
         return (Number.isNaN(tb) ? 0 : tb) - (Number.isNaN(ta) ? 0 : ta);
       });
-  }, [conversations, pinnedIds, archivedIds]);
+  }, [conversations]);
+
+  const archivedRows = useMemo(() => {
+    return conversations
+      .filter((c) => Boolean(c.archivedAt))
+      .slice()
+      .sort((a, b) => {
+        const ta = new Date(a.lastMessageAt ?? a.updatedAt).getTime();
+        const tb = new Date(b.lastMessageAt ?? b.updatedAt).getTime();
+        return (Number.isNaN(tb) ? 0 : tb) - (Number.isNaN(ta) ? 0 : ta);
+      });
+  }, [conversations]);
+
+  async function apiPatch(conversationId: string, action: "pin" | "unpin" | "archive" | "unarchive") {
+    try {
+      await fetch(`/api/account/messages/conversations/${encodeURIComponent(conversationId)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action }),
+      });
+    } catch {
+      // Optimistic update already applied; server will sync on next load
+    }
+  }
+
+  async function apiDelete(conversationId: string) {
+    try {
+      await fetch(`/api/account/messages/conversations/${encodeURIComponent(conversationId)}`, {
+        method: "DELETE",
+      });
+    } catch {
+      // Optimistic update already applied
+    }
+  }
+
+  function handlePin(c: ConversationListItem) {
+    const action = c.pinnedAt ? "unpin" : "pin";
+    setConversations((prev) =>
+      prev.map((x) => (x.id === c.id ? { ...x, pinnedAt: action === "pin" ? new Date().toISOString() : null } : x))
+    );
+    void apiPatch(c.id, action);
+  }
+
+  function handleArchive(c: ConversationListItem) {
+    setConversations((prev) =>
+      prev.map((x) => (x.id === c.id ? { ...x, archivedAt: new Date().toISOString(), pinnedAt: null } : x))
+    );
+    if (selectedId === c.id) {
+      setSelectedId(null);
+      setThreadHeader(null);
+      setMessages([]);
+      setViewerId(null);
+    }
+    void apiPatch(c.id, "archive");
+  }
+
+  function handleUnarchive(c: ConversationListItem) {
+    setConversations((prev) =>
+      prev.map((x) => (x.id === c.id ? { ...x, archivedAt: null } : x))
+    );
+    void apiPatch(c.id, "unarchive");
+  }
+
+  function handleDelete(c: ConversationListItem) {
+    setConversations((prev) => prev.filter((x) => x.id !== c.id));
+    if (selectedId === c.id) {
+      setSelectedId(null);
+      setThreadHeader(null);
+      setMessages([]);
+      setViewerId(null);
+    }
+    void apiDelete(c.id);
+  }
 
   const requestedConversationId = useMemo(() => {
     const raw = searchParams?.get("conversationId");
@@ -401,14 +476,14 @@ export default function AccountMessagesPage() {
       setThreadError(null);
       return;
     }
-    if (selectedId && !rows.some((c) => c.id === selectedId)) {
+    if (selectedId && !rows.some((c) => c.id === selectedId) && !archivedRows.some((c) => c.id === selectedId)) {
       setSelectedId(null);
       setThreadHeader(null);
       setMessages([]);
       setViewerId(null);
       setThreadError(null);
     }
-  }, [loading, rows, selectedId]);
+  }, [loading, rows, archivedRows, selectedId]);
 
   const canSend = text.trim().length > 0 && !sending;
 
@@ -484,7 +559,7 @@ export default function AccountMessagesPage() {
         <div className="rounded-3xl border border-slate-200 bg-white p-6 sm:p-8">
           <p className="text-sm font-semibold text-slate-900">Chargement…</p>
         </div>
-      ) : rows.length === 0 ? (
+      ) : rows.length === 0 && archivedRows.length === 0 ? (
         <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)] sm:p-8">
           <p className="text-sm font-semibold text-slate-900">Aucune conversation</p>
           <p className="mt-2 text-sm text-slate-600">Quand tu contactes un dogsitter, la conversation apparaîtra ici.</p>
@@ -511,72 +586,160 @@ export default function AccountMessagesPage() {
                   <RefreshCw className="h-4 w-4" />
                 </button>
               </div>
-              <div className="min-h-0 flex-1 space-y-2 overflow-y-auto">
-                {rows.map((c) => {
-                  const subtitle = c.booking?.service
-                    ? `${c.booking.service} • ${c.booking.startDate ? formatDateOnly(c.booking.startDate) : "—"}`
-                    : "Conversation";
-                  const active = c.id === selectedId;
-                  const isPinned = pinnedIds.has(c.id);
-                  return (
-                    <SwipeableRow
-                      key={c.id}
-                      onPin={() => setPinnedIds((prev) => { const n = new Set(prev); if (isPinned) { n.delete(c.id); } else { n.add(c.id); } return n; })}
-                      onArchive={() => setArchivedIds((prev) => { const n = new Set(prev); n.add(c.id); return n; })}
-                      onDelete={() => setConversations((prev) => prev.filter((x) => x.id !== c.id))}
+              <div className="min-h-0 flex-1 overflow-y-auto">
+                {/* Archived section — collapsible, at top like WhatsApp */}
+                {archivedRows.length > 0 && (
+                  <div className="mb-1">
+                    <button
+                      type="button"
+                      onClick={() => setArchivedOpen((v) => !v)}
+                      className="flex w-full items-center gap-2 border-b border-slate-100 px-4 py-3 text-left transition hover:bg-slate-50"
                     >
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setSelectedId(c.id);
-                          setConversations((prev) => prev.map((x) => (x.id === c.id ? { ...x, unreadCount: 0 } : x)));
-                          const params = new URLSearchParams(searchParams?.toString() ?? "");
-                          params.set("conversationId", c.id);
-                          router.replace(`/account/messages?${params.toString()}`);
-                          void loadThread(c.id);
-                        }}
-                        className={
-                          "block w-full border-b border-slate-100 px-4 py-3 text-left transition " +
-                          (active
-                            ? "bg-[color-mix(in_srgb,var(--dogshift-blue),white_96%)]"
-                            : "bg-white hover:bg-slate-50")
-                        }
+                      <Archive className="h-4 w-4 shrink-0 text-slate-400" />
+                      <span className="flex-1 text-sm font-semibold text-slate-700">Archivées</span>
+                      <span className="text-xs font-semibold text-slate-400">{archivedRows.length}</span>
+                      <svg
+                        className={`h-4 w-4 shrink-0 text-slate-400 transition-transform ${archivedOpen ? "rotate-180" : ""}`}
+                        viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}
                       >
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="flex min-w-0 items-start gap-3">
-                            <div className="relative mt-0.5 h-10 w-10 flex-none overflow-hidden rounded-2xl bg-slate-100">
-                              {c.sitter.avatarUrl && avatarIsSafe(c.sitter.avatarUrl) ? (
-                                <Image src={c.sitter.avatarUrl} alt={c.sitter.name} fill className="object-cover" sizes="40px" />
-                              ) : (
-                                <div className="flex h-full w-full items-center justify-center text-sm font-semibold text-slate-600">
-                                  {initialForName(c.sitter.name)}
+                        <path d="m6 9 6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    </button>
+                    {archivedOpen && (
+                      <div className="space-y-0">
+                        {archivedRows.map((c) => {
+                          const subtitle = c.booking?.service
+                            ? `${c.booking.service} • ${c.booking.startDate ? formatDateOnly(c.booking.startDate) : "—"}`
+                            : "Conversation";
+                          const active = c.id === selectedId;
+                          return (
+                            <SwipeableRow
+                              key={c.id}
+                              onPin={() => handlePin(c)}
+                              onArchive={() => handleUnarchive(c)}
+                              onDelete={() => handleDelete(c)}
+                              archiveLabel="Désarchiver"
+                            >
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setSelectedId(c.id);
+                                  setConversations((prev) => prev.map((x) => (x.id === c.id ? { ...x, unreadCount: 0 } : x)));
+                                  const params = new URLSearchParams(searchParams?.toString() ?? "");
+                                  params.set("conversationId", c.id);
+                                  router.replace(`/account/messages?${params.toString()}`);
+                                  void loadThread(c.id);
+                                }}
+                                className={
+                                  "block w-full border-b border-slate-100 px-4 py-3 text-left transition " +
+                                  (active ? "bg-[color-mix(in_srgb,var(--dogshift-blue),white_96%)]" : "bg-white hover:bg-slate-50")
+                                }
+                              >
+                                <div className="flex items-start justify-between gap-3">
+                                  <div className="flex min-w-0 items-start gap-3">
+                                    <div className="relative mt-0.5 h-10 w-10 flex-none overflow-hidden rounded-2xl bg-slate-100">
+                                      {c.sitter.avatarUrl && avatarIsSafe(c.sitter.avatarUrl) ? (
+                                        <Image src={c.sitter.avatarUrl} alt={c.sitter.name} fill className="object-cover" sizes="40px" />
+                                      ) : (
+                                        <div className="flex h-full w-full items-center justify-center text-sm font-semibold text-slate-600">
+                                          {initialForName(c.sitter.name)}
+                                        </div>
+                                      )}
+                                    </div>
+                                    <div className="min-w-0">
+                                      <p className="text-sm font-semibold text-slate-500 truncate">{c.sitter.name}</p>
+                                      <p className="mt-0.5 text-xs text-slate-400 truncate">{subtitle}</p>
+                                      <p className="mt-2 text-xs text-slate-400 truncate">
+                                        {c.lastMessagePreview?.trim() ? c.lastMessagePreview : "Aucun message"}
+                                      </p>
+                                    </div>
+                                  </div>
+                                  {c.unreadCount > 0 ? (
+                                    <span className="inline-flex h-6 min-w-[24px] items-center justify-center rounded-full bg-rose-600 px-2 text-xs font-semibold text-white">
+                                      {c.unreadCount}
+                                    </span>
+                                  ) : null}
                                 </div>
-                              )}
-                              {isPinned && (
-                                <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-slate-500 text-white">
-                                  <Pin className="h-2.5 w-2.5" />
-                                </span>
-                              )}
+                              </button>
+                            </SwipeableRow>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Active conversations */}
+                <div className="space-y-0">
+                  {rows.length === 0 && archivedRows.length > 0 ? (
+                    <p className="px-4 py-6 text-center text-xs text-slate-400">Toutes tes conversations sont archivées.</p>
+                  ) : null}
+                  {rows.map((c) => {
+                    const subtitle = c.booking?.service
+                      ? `${c.booking.service} • ${c.booking.startDate ? formatDateOnly(c.booking.startDate) : "—"}`
+                      : "Conversation";
+                    const active = c.id === selectedId;
+                    const isPinned = Boolean(c.pinnedAt);
+                    return (
+                      <SwipeableRow
+                        key={c.id}
+                        onPin={() => handlePin(c)}
+                        onArchive={() => handleArchive(c)}
+                        onDelete={() => handleDelete(c)}
+                      >
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedId(c.id);
+                            setConversations((prev) => prev.map((x) => (x.id === c.id ? { ...x, unreadCount: 0 } : x)));
+                            const params = new URLSearchParams(searchParams?.toString() ?? "");
+                            params.set("conversationId", c.id);
+                            router.replace(`/account/messages?${params.toString()}`);
+                            void loadThread(c.id);
+                          }}
+                          className={
+                            "block w-full border-b border-slate-100 px-4 py-3 text-left transition " +
+                            (active
+                              ? "bg-[color-mix(in_srgb,var(--dogshift-blue),white_96%)]"
+                              : "bg-white hover:bg-slate-50")
+                          }
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex min-w-0 items-start gap-3">
+                              <div className="relative mt-0.5 h-10 w-10 flex-none overflow-hidden rounded-2xl bg-slate-100">
+                                {c.sitter.avatarUrl && avatarIsSafe(c.sitter.avatarUrl) ? (
+                                  <Image src={c.sitter.avatarUrl} alt={c.sitter.name} fill className="object-cover" sizes="40px" />
+                                ) : (
+                                  <div className="flex h-full w-full items-center justify-center text-sm font-semibold text-slate-600">
+                                    {initialForName(c.sitter.name)}
+                                  </div>
+                                )}
+                                {isPinned && (
+                                  <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-slate-500 text-white">
+                                    <Pin className="h-2.5 w-2.5" />
+                                  </span>
+                                )}
+                              </div>
+                              <div className="min-w-0">
+                                <p className="text-sm font-semibold text-slate-900 truncate">{c.sitter.name}</p>
+                                <p className="mt-0.5 text-xs text-slate-500 truncate">{subtitle}</p>
+                                <p className="mt-2 text-xs text-slate-500 truncate">
+                                  {c.lastMessagePreview?.trim() ? c.lastMessagePreview : "Aucun message"}
+                                </p>
+                                <p className="mt-2 text-xs text-slate-500">{formatDateTime(c.lastMessageAt ?? c.updatedAt)}</p>
+                              </div>
                             </div>
-                            <div className="min-w-0">
-                              <p className="text-sm font-semibold text-slate-900 truncate">{c.sitter.name}</p>
-                              <p className="mt-0.5 text-xs text-slate-500 truncate">{subtitle}</p>
-                              <p className="mt-2 text-xs text-slate-500 truncate">
-                                {c.lastMessagePreview?.trim() ? c.lastMessagePreview : "Aucun message"}
-                              </p>
-                              <p className="mt-2 text-xs text-slate-500">{formatDateTime(c.lastMessageAt ?? c.updatedAt)}</p>
-                            </div>
+                            {c.unreadCount > 0 ? (
+                              <span className="inline-flex h-6 min-w-[24px] items-center justify-center rounded-full bg-rose-600 px-2 text-xs font-semibold text-white">
+                                {c.unreadCount}
+                              </span>
+                            ) : null}
                           </div>
-                          {c.unreadCount > 0 ? (
-                            <span className="inline-flex h-6 min-w-[24px] items-center justify-center rounded-full bg-rose-600 px-2 text-xs font-semibold text-white">
-                              {c.unreadCount}
-                            </span>
-                          ) : null}
-                        </div>
-                      </button>
-                    </SwipeableRow>
-                  );
-                })}
+                        </button>
+                      </SwipeableRow>
+                    );
+                  })}
+                </div>
               </div>
             </section>
 

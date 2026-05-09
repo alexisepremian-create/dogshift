@@ -750,6 +750,13 @@ model Conversation {
   lastMessageAt      DateTime?
   lastMessagePreview String?
 
+  /// Set when owner pins the conversation; null = not pinned.
+  pinnedAt   DateTime?
+  /// Set when owner archives the conversation; null = not archived.
+  archivedAt DateTime?
+  /// Soft-delete: set when owner deletes the conversation; null = visible.
+  deletedAt  DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
