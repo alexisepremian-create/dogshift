@@ -29,6 +29,8 @@ import { useSignIn } from "@clerk/nextjs/legacy";
 import { useClerk, useUser } from "@clerk/nextjs";
 import Link from "next/link";
 
+import OtpInput from "@/components/auth/OtpInput";
+
 import { withPublicOrigin } from "@/lib/url/publicOrigin";
 import {
   clerkErrorCode,
@@ -480,36 +482,22 @@ export default function LoginForm() {
         )}
 
         {step === "emailCode" && (
-          <form onSubmit={handleEmailCodeVerify} className="space-y-5">
-            <div>
-              <label className="block text-sm font-medium text-slate-700" htmlFor="email-code">
-                Code reçu par e-mail
-              </label>
-              <input
-                id="email-code"
-                inputMode="numeric"
-                pattern="[0-9]*"
-                autoComplete="one-time-code"
-                autoFocus
-                value={emailCode}
-                onChange={(e) => setEmailCode(sanitizeVerificationCode(e.target.value))}
-                disabled={formDisabled}
-                maxLength={6}
-                className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-base tracking-[0.3em] text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:ring-4 focus:ring-slate-200 disabled:cursor-not-allowed disabled:opacity-60"
-                placeholder="123456"
-              />
-              <p className="mt-2 text-sm text-slate-600">
-                Un code à 6 chiffres a été envoyé à <span className="font-medium text-slate-800">{email}</span>. Vérifie ta boîte mail (et les spams) — il reste valable 10 minutes.
-              </p>
-              <p className="mt-1 text-xs text-slate-500">
-                Si tu as déjà demandé plusieurs codes, seul le dernier fonctionne.
-              </p>
-              {error ? <p className="mt-2 text-center text-sm text-rose-600">{error}</p> : null}
+          <form onSubmit={handleEmailCodeVerify} className="space-y-6">
+            <div className="text-center space-y-1">
+              <p className="text-sm font-medium text-slate-700">Code envoyé à</p>
+              <p className="text-sm font-semibold text-slate-900">{email}</p>
+              <p className="text-xs text-slate-500">Vérifie ta boîte mail (et les spams) — valable 10 minutes.</p>
+              <p className="text-xs text-slate-400">Si tu as déjà demandé plusieurs codes, seul le dernier fonctionne.</p>
+            </div>
+
+            <div className="space-y-3">
+              <OtpInput value={emailCode} onChange={setEmailCode} disabled={formDisabled} />
+              {error ? <p className="text-center text-sm text-rose-600">{error}</p> : null}
             </div>
 
             <button
               type="submit"
-              disabled={formDisabled}
+              disabled={formDisabled || emailCode.length < 6}
               className="inline-flex w-full items-center justify-center rounded-full bg-slate-900 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {loading ? "Vérification…" : "Valider le code"}
