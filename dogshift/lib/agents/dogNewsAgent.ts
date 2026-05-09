@@ -163,31 +163,14 @@ Génère UNIQUEMENT le message Telegram, sans aucun texte avant ou après.`,
 // ─── Telegram delivery ────────────────────────────────────────────────────────
 
 async function sendTelegram(message: string): Promise<void> {
-  const token = process.env.TELEGRAM_BOT_TOKEN_NEWS ?? process.env.TELEGRAM_BOT_TOKEN;
-  const chatId = process.env.TELEGRAM_CHAT_ID_NEWS ?? process.env.TELEGRAM_CHAT_ID;
+  // Try with Markdown first, fall back to plain text if Telegram rejects it.
+  // This avoids silent failures when Claude generates unescaped special chars.
+  const sent = await sendTelegramMessage(message, { bot: "news", parseMode: "Markdown" });
+  if (sent) return;
 
-  if (!token || !chatId) {
-    console.warn("[dogNewsAgent] TELEGRAM_BOT_TOKEN_NEWS ou TELEGRAM_CHAT_ID_NEWS non défini — envoi via helper centralisé avec fallback");
-    const sent = await sendTelegramMessage(message, { bot: "news", parseMode: "Markdown" });
-    if (!sent) throw new Error("Impossible d'envoyer le message Telegram (bot news)");
-    return;
-  }
-
-  const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      chat_id: chatId,
-      text: message,
-      parse_mode: "Markdown",
-      disable_web_page_preview: false,
-    }),
-  });
-
-  if (!res.ok) {
-    const err = await res.text();
-    throw new Error(`Telegram API error ${res.status}: ${err}`);
-  }
+  console.warn("[dogNewsAgent] Markdown send failed — retrying as plain text");
+  const sentPlain = await sendTelegramMessage(message, { bot: "news" });
+  if (!sentPlain) throw new Error("Impossible d'envoyer le message Telegram (bot news) — both Markdown and plain failed");
 }
 
 // ─── Main export ──────────────────────────────────────────────────────────────
