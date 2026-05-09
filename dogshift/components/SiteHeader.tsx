@@ -17,7 +17,7 @@ import {
   X,
 } from "lucide-react";
 import { useUser } from "@clerk/nextjs";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import BrandLogo from "@/components/BrandLogo";
 import MobileSearchOverlay from "@/components/MobileSearchOverlay";
@@ -68,12 +68,16 @@ export default function SiteHeader() {
     return () => window.removeEventListener("scroll", onScroll);
   }, [isHomepage]);
 
+  // Snapshot of body.overflow at the moment the nav opens, used to restore
+  // the original value when the nav closes (in case another component had
+  // set it intentionally). Stored in a ref so the open/close effect can
+  // depend ONLY on `navOpen` — depending on `navMounted` causes re-runs
+  // that desync the open animation when the user spam-toggles the menu.
+  const overflowSnapshotRef = useRef<string | null>(null);
+
   useEffect(() => {
     if (navOpen) {
-      // Snapshot the existing overflow so we restore it (instead of forcing "")
-      // — closing the nav must never strand the page in overflow:hidden if some
-      // other component had set it intentionally.
-      const previousOverflow = document.body.style.overflow;
+      overflowSnapshotRef.current = document.body.style.overflow;
       setNavMounted(true);
       document.body.style.overflow = "hidden";
       const frame = requestAnimationFrame(() => {
@@ -81,14 +85,15 @@ export default function SiteHeader() {
       });
       return () => {
         cancelAnimationFrame(frame);
-        document.body.style.overflow = previousOverflow;
+        document.body.style.overflow = overflowSnapshotRef.current ?? "";
+        overflowSnapshotRef.current = null;
       };
     }
+    // closing path — animate out, then unmount after 400ms
     setNavAnimating(false);
-    if (!navMounted) return;
-    const t = window.setTimeout(() => setNavMounted(false), 400); // 400ms duration for fade/slide
+    const t = window.setTimeout(() => setNavMounted(false), 400);
     return () => window.clearTimeout(t);
-  }, [navOpen, navMounted]);
+  }, [navOpen]);
 
   useEffect(() => {
     if (!navOpen) return;
@@ -150,7 +155,7 @@ export default function SiteHeader() {
               type="button"
               onClick={() => setSearchOpen(true)}
               aria-label="Recherche rapide"
-              className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 shadow-sm transition-all hover:bg-slate-50 active:scale-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)] md:hidden"
+              className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 shadow-sm transition-[background-color,transform] duration-150 hover:bg-slate-50 active:scale-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)] md:hidden"
             >
               <Search className="h-4 w-4 text-slate-700" strokeWidth={2.25} aria-hidden="true" />
             </button>
@@ -186,11 +191,11 @@ export default function SiteHeader() {
             {/* Hamburger pill */}
             <button
               type="button"
-              onClick={() => setNavOpen(true)}
+              onClick={() => setNavOpen((prev) => !prev)}
               aria-haspopup="dialog"
               aria-expanded={navOpen}
-              aria-label="Menu de navigation"
-              className="inline-flex h-10 items-center gap-2 rounded-full border border-slate-200 bg-white px-3 shadow-sm transition-all hover:bg-slate-50 active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)]"
+              aria-label={navOpen ? "Fermer le menu" : "Menu de navigation"}
+              className="inline-flex h-10 items-center gap-2 rounded-full border border-slate-200 bg-white px-3 shadow-sm transition-[background-color,transform] duration-150 hover:bg-slate-50 active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)]"
             >
               <Menu className="h-4 w-4 text-slate-700" strokeWidth={2.25} aria-hidden="true" />
               <span

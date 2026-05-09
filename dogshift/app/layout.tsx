@@ -52,10 +52,10 @@ export const metadata: Metadata = {
   },
 };
 
-// No `force-dynamic` here: pages that need it opt in individually (or are
-// implicitly dynamic via `auth()`/`cookies()`/`headers()` callers). This lets
-// pages with `revalidate` (e.g. homepage) be statically cached → faster TTFB
-// and faster hydration on mobile.
+// Keep the root layout dynamic so auth-dependent flows (Clerk session resolution,
+// redirects after login) always get a fresh render. Removing this caused the
+// post-login redirect to break.
+export const dynamic = "force-dynamic";
 
 export default async function RootLayout({
   children,
