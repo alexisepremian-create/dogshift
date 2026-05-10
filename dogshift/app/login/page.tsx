@@ -31,8 +31,6 @@ export default function LoginPage() {
   const [signOutAttempting, setSignOutAttempting] = useState(false);
   const [signOutError, setSignOutError] = useState<string | null>(null);
 
-  const [switching, setSwitching] = useState(false);
-  const [switchError, setSwitchError] = useState<string | null>(null);
 
   // Track whether the user was ALREADY signed in when the page first loaded.
   // If they were signed out on load and then signed in via the form → redirect
@@ -197,44 +195,59 @@ export default function LoginPage() {
       ) : null}
 
       {isLoaded && isSignedIn && forceMode && alreadySignedInOnLoad.current === true ? (
-        <div className="mb-6 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-          <p className="text-sm font-semibold text-slate-900">Vous êtes déjà connecté.</p>
-          <p className="mt-1 text-sm text-slate-600">Pour tester un autre compte, déconnectez-vous puis reconnectez-vous.</p>
-
-          <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">
-            <button
-              type="button"
-              disabled={switching}
-              onClick={() => {
-                if (switching) return;
-                setSwitching(true);
-                setSwitchError(null);
-                try {
-                  window.localStorage.removeItem("ds_auth_user");
-                } catch {
-                  // ignore
-                }
-                window.location.assign("/sign-out?redirect=%2Flogin%3Fforce%3D1%26startGoogle%3D1");
-              }}
-              className="inline-flex items-center justify-center rounded-full bg-slate-900 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {switching ? "Déconnexion…" : "Changer de compte"}
-            </button>
-
-            <button
-              type="button"
-              onClick={() => router.push("/post-login")}
-              className="inline-flex items-center justify-center rounded-full border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50"
-            >
-              Aller à mon espace
-            </button>
-          </div>
-
-          {switchError ? <p className="mt-3 text-center text-sm font-medium text-rose-600">{switchError}</p> : null}
-        </div>
+        <ForceSignOut clerk={clerk} />
       ) : null}
 
       <LoginForm />
     </AuthLayout>
+  );
+}
+
+/**
+ * Shown when the user arrives at /login?force=1 but is still signed in
+ * (sign-out didn't fully clear the session). Automatically retries signOut
+ * and shows a manual fallback after 3s.
+ */
+function ForceSignOut({ clerk }: { clerk: ReturnType<typeof useClerk> }) {
+  const [retrying, setRetrying] = useState(true);
+  const triedRef = useRef(false);
+
+  useEffect(() => {
+    if (triedRef.current) return;
+    triedRef.current = true;
+
+    void (async () => {
+      try {
+        await clerk.signOut();
+      } catch { /* ignore */ }
+      window.location.replace("/login");
+    })();
+
+    const giveUp = setTimeout(() => setRetrying(false), 3000);
+    return () => clearTimeout(giveUp);
+  }, [clerk]);
+
+  if (retrying) {
+    return (
+      <div className="mb-6 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+        <p className="text-sm font-semibold text-slate-900">Déconnexion en cours…</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mb-6 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+      <p className="text-sm font-semibold text-slate-900">Vous êtes toujours connecté.</p>
+      <p className="mt-1 text-sm text-slate-600">La déconnexion automatique n&apos;a pas fonctionné.</p>
+      <div className="mt-4">
+        <button
+          type="button"
+          onClick={() => window.location.assign("/sign-out")}
+          className="inline-flex items-center justify-center rounded-full bg-slate-900 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800"
+        >
+          Réessayer la déconnexion
+        </button>
+      </div>
+    </div>
   );
 }

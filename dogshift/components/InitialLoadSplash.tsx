@@ -12,6 +12,7 @@ import PageLoader from "@/components/ui/PageLoader";
 const SPLASH_SKIP_PATHS = [
   "/",
   "/login",
+  "/sign-out",
   "/become-sitter",
   "/devenir-dogsitter",
   "/contract/sign",
