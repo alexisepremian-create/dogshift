@@ -1,0 +1,134 @@
+name: Deps Weekly Report
+
+on:
+  schedule:
+    - cron: '0 7 * * 1'  # Monday 07:00 UTC — 08:00 CET / 09:00 CEST
+  workflow_dispatch:
+
+jobs:
+  weekly-report:
+    name: Weekly dependency analysis
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --quiet
+
+      # ── Collect current versions of sensitive packages ─────────────────────
+
+      - name: Collect package versions
+        id: versions
+        run: |
+          node -e "
+          const pkg = require('./package.json');
+          const deps = { ...pkg.dependencies, ...pkg.devDependencies };
+          const sensitive = ['next', '@clerk/nextjs', 'stripe', '@stripe/stripe-js', 'prisma', '@prisma/client'];
+          const result = sensitive.map(name => ({
+            name,
+            installed: (deps[name] ?? '—').replace(/[\^~]/,''),
+          }));
+          console.log(JSON.stringify(result));
+          " > /tmp/versions.json
+          cat /tmp/versions.json
+
+      # ── Check npm for latest versions ──────────────────────────────────────
+
+      - name: Fetch latest versions
+        id: latest
+        run: |
+          node -e "
+          const { execSync } = require('child_process');
+          const versions = JSON.parse(require('fs').readFileSync('/tmp/versions.json'));
+          const results = versions.map(({ name, installed }) => {
+            try {
+              const latest = execSync('npm view ' + name + ' version', { encoding: 'utf8' }).trim();
+              const upToDate = installed.replace(/[\^~]/,'').split('.')[0] === latest.split('.')[0];
+              return { name, installed, latest, upToDate };
+            } catch {
+              return { name, installed, latest: '?', upToDate: false };
+            }
+          });
+          console.log(JSON.stringify(results));
+          " > /tmp/report.json
+          cat /tmp/report.json
+
+      # ── Post report to DogShift admin + Telegram ───────────────────────────
+
+      - name: Send weekly report
+        env:
+          APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL }}
+          MAINTENANCE_API_KEY: ${{ secrets.MAINTENANCE_API_KEY }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN_MAINTENANCE }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID_MAINTENANCE }}
+        run: |
+          DATE=$(date '+%d/%m/%Y')
+          WEEK=$(date '+%V')
+          REPORT=$(cat /tmp/report.json)
+
+          # Build Telegram message
+          MSG=$(node -e "
+          const data = JSON.parse(process.env.REPORT || '[]');
+          const lines = [
+            '📊 <b>Rapport hebdo — semaine $WEEK ($DATE)</b>',
+            '',
+            '🔐 <b>Paquets sensibles</b>',
+          ];
+          for (const p of data) {
+            const icon = p.upToDate ? '✅' : '⚠️';
+            const diff = p.installed !== p.latest ? ' → ' + p.latest : '';
+            lines.push(icon + ' <code>' + p.name + '</code> ' + p.installed + diff);
+          }
+          const outdated = data.filter(p => !p.upToDate);
+          if (outdated.length === 0) {
+            lines.push('', '✅ Tous les paquets sensibles sont à jour.');
+          } else {
+            lines.push('', '⚠️ ' + outdated.length + ' paquet(s) à mettre à jour manuellement (nécessitent une revue).');
+          }
+          lines.push('', '<i>Rapport généré automatiquement · $DATE</i>');
+          console.log(lines.join('\n'));
+          " REPORT="$REPORT")
+
+          # Send Telegram
+          if [ -n "$TELEGRAM_BOT_TOKEN" ] && [ -n "$TELEGRAM_CHAT_ID" ]; then
+            curl -s "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+              -d "chat_id=${TELEGRAM_CHAT_ID}&text=$(echo "$MSG" | python3 -c 'import sys,urllib.parse; print(urllib.parse.quote(sys.stdin.read()))')&parse_mode=HTML" \
+              || true
+          fi
+
+          # Build packages array for DogShift API
+          PACKAGES=$(node -e "
+          const data = JSON.parse(process.env.REPORT || '[]');
+          const result = data.map(p => ({
+            pkg: p.name,
+            current: p.installed,
+            latest: p.latest,
+            status: p.upToDate ? 'up_to_date' : 'failed',
+            isSensitive: true,
+            risk: p.upToDate ? 'none' : 'high',
+          }));
+          console.log(JSON.stringify(result));
+          " REPORT="$REPORT")
+
+          OUTDATED_COUNT=$(node -e "
+          const d=JSON.parse(process.env.REPORT||'[]');
+          console.log(d.filter(p=>!p.upToDate).length);
+          " REPORT="$REPORT")
+
+          # Post to DogShift API
+          if [ -n "$APP_URL" ] && [ -n "$MAINTENANCE_API_KEY" ]; then
+            curl -s -X POST "${APP_URL}/api/admin/maintenance/report" \
+              -H "Authorization: Bearer $MAINTENANCE_API_KEY" \
+              -H "Content-Type: application/json" \
+              -d "{\"type\":\"weekly_report\",\"status\":\"success\",\"summary\":\"Rapport hebdo semaine $WEEK — $OUTDATED_COUNT paquet(s) sensible(s) à mettre à jour\",\"packages\":$PACKAGES}" \
+              || true
+          fi

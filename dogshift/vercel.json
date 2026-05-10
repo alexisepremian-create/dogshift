@@ -45,6 +45,10 @@
       "schedule": "0 9 1 * *"
     },
     {
+      "path": "/api/cron/maintenance-recap",
+      "schedule": "0 7 * * *"
+    },
+    {
       "path": "/api/cron/dog-news",
       "schedule": "0 8 * * *"
     },

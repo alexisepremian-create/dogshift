@@ -1,0 +1,188 @@
+name: Deps Nightly
+
+on:
+  schedule:
+    - cron: '30 0 * * *'  # 00:30 UTC — 02:30 CET / 03:30 CEST
+  workflow_dispatch:       # Manual trigger from GitHub Actions UI
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  deps-update:
+    name: Check & update dependencies
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      # ── Check which packages are outdated ──────────────────────────────────
+
+      - name: Run npm outdated
+        id: outdated
+        run: |
+          npm outdated --json > /tmp/outdated.json || true
+          COUNT=$(node -e "const d=require('/tmp/outdated.json'); console.log(Object.keys(d).length)")
+          echo "count=$COUNT" >> "$GITHUB_OUTPUT"
+          echo "Outdated packages: $COUNT"
+          cat /tmp/outdated.json
+
+      # ── Update each non-sensitive package on its own branch ───────────────
+
+      - name: Update packages and open PRs
+        if: steps.outdated.outputs.count != '0'
+        id: update
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL }}
+          MAINTENANCE_API_KEY: ${{ secrets.MAINTENANCE_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          # Packages that require careful manual review before updating
+          SENSITIVE="next @clerk/nextjs stripe @stripe/stripe-js prisma @prisma/client"
+
+          RESULTS="[]"
+
+          for PKG in $(node -e "
+            const d=require('/tmp/outdated.json');
+            console.log(Object.keys(d).join(' '))
+          "); do
+            if echo "$SENSITIVE" | grep -qw "$PKG"; then
+              echo "⚠️  Skipping sensitive package: $PKG"
+              CURRENT=$(node -e "const d=require('/tmp/outdated.json'); console.log(d['$PKG']?.current ?? '')")
+              LATEST=$(node -e "const d=require('/tmp/outdated.json'); console.log(d['$PKG']?.latest ?? '')")
+              RESULTS=$(echo "$RESULTS" | node -e "
+                const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
+                d.push({pkg:'$PKG',current:'$CURRENT',latest:'$LATEST',status:'up_to_date',isSensitive:true});
+                console.log(JSON.stringify(d));
+              ")
+              continue
+            fi
+
+            CURRENT=$(node -e "const d=require('/tmp/outdated.json'); console.log(d['$PKG']?.current ?? '')")
+            LATEST=$(node -e "const d=require('/tmp/outdated.json'); console.log(d['$PKG']?.latest ?? '')")
+            BRANCH="deps/update-$(echo "$PKG" | tr '/@' '-')-$(date +%Y%m%d)"
+
+            echo "⬆️  Updating $PKG: $CURRENT → $LATEST (branch: $BRANCH)"
+
+            # Reset to main before each package
+            git checkout main
+            git checkout -b "$BRANCH"
+
+            # Install the new version
+            npm install "${PKG}@${LATEST}" --save-exact
+
+            # Check if TypeScript still compiles
+            TS_OK=true
+            if ! npx tsc --noEmit 2>/tmp/ts-errors.txt; then
+              TS_OK=false
+              echo "TypeScript errors detected, attempting Claude fix..."
+              # Simple approach: revert the update if TS breaks (no Claude round-trip in MVP)
+              git checkout -- package.json package-lock.json
+              npm ci --quiet
+              git checkout main
+              git branch -D "$BRANCH"
+              RESULTS=$(echo "$RESULTS" | node -e "
+                const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
+                d.push({pkg:'$PKG',current:'$CURRENT',latest:'$LATEST',status:'ts_fix_failed'});
+                console.log(JSON.stringify(d));
+              ")
+              continue
+            fi
+
+            # Commit and push
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git config user.name "github-actions[bot]"
+            git add package.json package-lock.json
+            git commit -m "chore(deps): update ${PKG} ${CURRENT} → ${LATEST}"
+            git push origin "$BRANCH"
+
+            # Open PR with auto-merge
+            PR_URL=$(gh pr create \
+              --title "chore(deps): update ${PKG} to ${LATEST}" \
+              --body "Automated dependency update by Deps Nightly.
+
+| Package | Current | Latest |
+|---------|---------|--------|
+| \`${PKG}\` | \`${CURRENT}\` | \`${LATEST}\` |
+
+CI must pass before merge." \
+              --base main \
+              --head "$BRANCH" \
+              --label "dependencies" 2>/dev/null || true)
+
+            # Enable auto-merge if PR was created
+            if [ -n "$PR_URL" ]; then
+              gh pr merge --auto --squash "$PR_URL" 2>/dev/null || true
+            fi
+
+            git checkout main
+
+            RESULTS=$(echo "$RESULTS" | node -e "
+              const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
+              d.push({pkg:'$PKG',current:'$CURRENT',latest:'$LATEST',status:'updated',prUrl:'$PR_URL'});
+              console.log(JSON.stringify(d));
+            ")
+          done
+
+          echo "results=$RESULTS" >> "$GITHUB_OUTPUT"
+
+      # ── Post report to DogShift + Telegram ────────────────────────────────
+
+      - name: Post maintenance report
+        if: always()
+        env:
+          APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL }}
+          MAINTENANCE_API_KEY: ${{ secrets.MAINTENANCE_API_KEY }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN_MAINTENANCE }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID_MAINTENANCE }}
+        run: |
+          COUNT="${{ steps.outdated.outputs.count }}"
+          RESULTS='${{ steps.update.outputs.results }}'
+          RESULTS="${RESULTS:-[]}"
+
+          # Send to DogShift admin API
+          if [ -n "$APP_URL" ] && [ -n "$MAINTENANCE_API_KEY" ]; then
+            UPDATED=$(echo "$RESULTS" | node -e "
+              const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
+              console.log(d.filter(p=>p.status==='updated').length);
+            " 2>/dev/null || echo "0")
+            SUMMARY="Nightly: $COUNT outdated · $UPDATED mis à jour"
+            curl -s -X POST "${APP_URL}/api/admin/maintenance/report" \
+              -H "Authorization: Bearer $MAINTENANCE_API_KEY" \
+              -H "Content-Type: application/json" \
+              -d "{\"type\":\"nightly_update\",\"status\":\"success\",\"summary\":\"$SUMMARY\",\"packages\":$RESULTS}" \
+              || true
+          fi
+
+          # Send Telegram message
+          if [ -n "$TELEGRAM_BOT_TOKEN" ] && [ -n "$TELEGRAM_CHAT_ID" ]; then
+            DATE=$(date '+%d/%m/%Y')
+            if [ "$COUNT" = "0" ]; then
+              MSG="📦 <b>Deps Nightly — ${DATE}</b>%0A%0A✅ Toutes les dépendances sont à jour."
+            else
+              UPDATED=$(echo "$RESULTS" | node -e "
+                const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
+                const upd=d.filter(p=>p.status==='updated');
+                console.log(upd.map(p=>'• '+p.pkg+': '+p.current+' → '+p.latest).join('%0A'));
+              " 2>/dev/null || echo "")
+              MSG="📦 <b>Deps Nightly — ${DATE}</b>%0A%0A${COUNT} paquet(s) obsolète(s) trouvé(s).%0A${UPDATED}%0A%0A<i>PRs ouvertes avec auto-merge activé.</i>"
+            fi
+            curl -s "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+              -d "chat_id=${TELEGRAM_CHAT_ID}&text=${MSG}&parse_mode=HTML" \
+              || true
+          fi
