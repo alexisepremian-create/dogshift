@@ -1167,10 +1167,6 @@ function StickySearchBar({ visible = true, hero = false }: { visible?: boolean; 
     return () => document.removeEventListener("pointerdown", onPointerDown, true);
   }, [activeSection]);
 
-  // ── Sliding pill: compute position after layout has fully settled ──
-  // Uses double-RAF so the measurement happens after pending compositing/layout
-  // work (e.g. float-card-enter animation frame) is complete. This ensures
-  // the pill covers the section button correctly on both first click and return.
   useEffect(() => {
     if (!activeSection) {
       setPillVisible(false);
@@ -1180,25 +1176,18 @@ function StickySearchBar({ visible = true, hero = false }: { visible?: boolean; 
       lieu: lieuRef, quand: quandRef, besoin: besoinRef,
     };
 
-    let raf2: number;
-
-    const raf1 = requestAnimationFrame(() => {
-      raf2 = requestAnimationFrame(() => {
-        const el = refMap[activeSection]?.current;
-        const bar = barRef.current;
-        if (!el || !bar) return;
-        const barRect = bar.getBoundingClientRect();
-        const elRect = el.getBoundingClientRect();
-        setPillLeft(elRect.left - barRect.left);
-        setPillWidth(elRect.width);
-        setPillVisible(true);
-      });
+    const raf = requestAnimationFrame(() => {
+      const el = refMap[activeSection]?.current;
+      const bar = barRef.current;
+      if (!el || !bar) return;
+      const barRect = bar.getBoundingClientRect();
+      const elRect = el.getBoundingClientRect();
+      setPillLeft(elRect.left - barRect.left);
+      setPillWidth(elRect.width);
+      setPillVisible(true);
     });
 
-    return () => {
-      cancelAnimationFrame(raf1);
-      cancelAnimationFrame(raf2);
-    };
+    return () => cancelAnimationFrame(raf);
   }, [activeSection]);
 
   // ── Helper aliases for readability ──
@@ -1453,14 +1442,11 @@ function StickySearchBar({ visible = true, hero = false }: { visible?: boolean; 
 
   return (
     <>
-      {/* ── Visual dimming backdrop (purely decorative — click-outside handled by pointerdown listener) ── */}
-      {bodyMounted
+      {/* ── Visual dimming backdrop — only mounted when a panel is open ── */}
+      {bodyMounted && activeSection
         ? createPortal(
             <div
-              className="fixed inset-0 z-[38] pointer-events-none transition-[background-color] duration-300"
-              style={{
-                background: activeSection ? "rgba(2,6,23,0.22)" : "transparent",
-              }}
+              className="fixed inset-0 z-[38] pointer-events-none bg-slate-950/20"
               aria-hidden="true"
             />,
             document.body,
@@ -1482,8 +1468,8 @@ function StickySearchBar({ visible = true, hero = false }: { visible?: boolean; 
         className={hero
           ? "relative z-[45]"
           : [
-              "fixed left-0 right-0 z-40 w-full transition-[opacity,transform] duration-400 ease-out origin-top",
-              visible ? "opacity-100 scale-100" : "pointer-events-none opacity-0 scale-95",
+              "fixed left-0 right-0 z-40 w-full transition-[opacity,transform] duration-300 ease-out will-change-[transform,opacity]",
+              visible ? "opacity-100 translate-y-0" : "pointer-events-none opacity-0 -translate-y-3",
             ].join(" ")
         }
         style={hero ? undefined : { top: "calc(max(env(safe-area-inset-top), 16px) + 20px)" }}
@@ -1502,12 +1488,12 @@ function StickySearchBar({ visible = true, hero = false }: { visible?: boolean; 
                 */}
                 <div
                   aria-hidden="true"
-                  className="pointer-events-none absolute inset-y-1 rounded-full bg-white"
+                  className="pointer-events-none absolute inset-y-1 left-0 rounded-full bg-white will-change-transform"
                   style={{
-                    left: pillLeft,
-                    width: pillWidth,
+                    width: pillWidth || undefined,
+                    transform: `translateX(${pillLeft}px)`,
                     opacity: pillVisible ? 1 : 0,
-                    transition: "left 380ms cubic-bezier(0.34, 1.15, 0.64, 1), width 380ms cubic-bezier(0.34, 1.15, 0.64, 1), opacity 180ms ease",
+                    transition: "transform 300ms cubic-bezier(0.34, 1.15, 0.64, 1), opacity 180ms ease",
                   }}
                 />
 
@@ -1620,10 +1606,9 @@ function StickySearchBar({ visible = true, hero = false }: { visible?: boolean; 
             */
             <div className="pointer-events-none absolute left-0 right-0 top-full z-10 flex justify-center px-6 pt-2 sm:px-8 sm:pt-2.5">
               <div
-                className="pointer-events-auto float-card-enter overflow-hidden rounded-3xl bg-white shadow-[0_32px_72px_-20px_rgba(2,6,23,0.22),0_6px_20px_-8px_rgba(2,6,23,0.10)]"
+                className="pointer-events-auto float-card-enter overflow-hidden rounded-3xl bg-white shadow-[0_32px_72px_-20px_rgba(2,6,23,0.22),0_6px_20px_-8px_rgba(2,6,23,0.10)] w-full"
                 style={{
-                  width: `min(${cardWidth}px, calc(100vw - 48px))`,
-                  transition: "width 420ms cubic-bezier(0.34, 1.1, 0.64, 1)",
+                  maxWidth: `min(${cardWidth}px, calc(100vw - 48px))`,
                 }}
               >
                 <div key={activeSection} className="panel-tab-enter">
@@ -1938,12 +1923,12 @@ const HERO_TRUST_ITEMS = [
   { icon: Lock, label: "Paiement sécurisé" },
 ] as const;
 
-function HeroSection() {
+function HeroSection({ searchBar }: { searchBar?: React.ReactNode }) {
   return (
     <section className="relative bg-gradient-to-b from-slate-50 to-white pt-20 pb-6 sm:pt-14 sm:pb-8">
-      {/* Ambient glow — clipped to its own container so it doesn't leak */}
+      {/* Ambient glow — radial gradient instead of blur for GPU performance */}
       <div className="pointer-events-none absolute inset-x-0 top-0 h-64 overflow-hidden" aria-hidden="true">
-        <div className="absolute left-1/2 top-0 h-[500px] w-[800px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[var(--dogshift-blue)] opacity-[0.05] blur-[90px]" />
+        <div className="absolute left-1/2 top-0 h-[500px] w-[800px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(ellipse_at_center,var(--dogshift-blue)_0%,transparent_70%)] opacity-[0.06]" />
       </div>
 
       <div className="relative mx-auto max-w-4xl px-4 sm:px-6 lg:px-0">
@@ -1958,8 +1943,7 @@ function HeroSection() {
           </p>
         </div>
 
-        {/* Hero search bar — same premium pill as the sticky bar, hero-sized */}
-        <StickySearchBar hero />
+        {searchBar}
 
         {/* Reassurance row */}
         <div className="mt-5 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 sm:gap-x-7">
@@ -3064,22 +3048,11 @@ function FinalCTASection() {
 export default function HomePageClient({ sitters = [] }: { sitters?: SitterPreview[] }) {
   const mapReveal = useRevealOnce({ repeat: true });
   const [showSticky, setShowSticky] = useState(false);
-  // We never mount the sticky search bar (which carries ~15 useStates +
-  // ~10 useEffects) until the user scrolls past the threshold once.
-  // Keeping it out of the initial hydration pass leaves the main thread
-  // free to handle the user's first taps on the hero / hamburger / loupe.
-  // Once mounted, it stays mounted so the show/hide animation runs both
-  // ways.
-  const [stickyEverShown, setStickyEverShown] = useState(false);
 
-  // rAF-throttled scroll handler that only commits state when the boolean
-  // actually changes. Without this, every scroll pixel triggered a setState,
-  // re-rendering this 3000-line tree on every event and starving touch input.
   useEffect(() => {
     let ticking = false;
     let lastVisible = window.scrollY > 150;
     setShowSticky(lastVisible);
-    if (lastVisible) setStickyEverShown(true);
     const onScroll = () => {
       if (ticking) return;
       ticking = true;
@@ -3088,7 +3061,6 @@ export default function HomePageClient({ sitters = [] }: { sitters?: SitterPrevi
         if (visible !== lastVisible) {
           lastVisible = visible;
           setShowSticky(visible);
-          if (visible) setStickyEverShown(true);
         }
         ticking = false;
       });
@@ -3099,9 +3071,8 @@ export default function HomePageClient({ sitters = [] }: { sitters?: SitterPrevi
 
   return (
     <div className="min-h-screen bg-white text-slate-900">
-      {stickyEverShown ? <StickySearchBar visible={showSticky} /> : null}
       <main className="pb-24 md:pb-0">
-        <HeroSection />
+        <HeroSection searchBar={<StickySearchBar hero={!showSticky} visible={showSticky} />} />
         {sitters.length > 0 && <FeaturedSittersSection sitters={sitters} />}
         <LazySection><ReassuranceSection /></LazySection>
         <LazySection><ServicesSection /></LazySection>

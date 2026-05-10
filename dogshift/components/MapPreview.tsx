@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import { ChevronDown, Expand } from "lucide-react";
 import { useMemo, useState } from "react";
 import { createPortal } from "react-dom";
+import "maplibre-gl/dist/maplibre-gl.css";
 
 const MAP_SELECT_CLASS =
   "mt-1 block w-full rounded-xl border border-slate-200 bg-white px-3 py-2 pr-10 text-sm font-medium text-slate-900 shadow-sm outline-none transition appearance-none [-webkit-appearance:none] [-moz-appearance:none] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)]";
@@ -44,12 +45,12 @@ export default function MapPreview({
               <button
                 type="button"
                 aria-label="Informations sur la carte"
-                className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-slate-200 bg-white/70 text-xs font-bold text-slate-700 shadow-sm backdrop-blur transition hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)]"
+                className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-slate-200 bg-white text-xs font-bold text-slate-700 shadow-sm transition-colors hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)]"
               >
                 i
               </button>
 
-              <div className="pointer-events-none absolute left-0 top-8 z-40 w-[300px] rounded-2xl border border-slate-200 bg-white/55 p-3 text-xs text-slate-700 opacity-0 shadow-[0_18px_60px_-44px_rgba(2,6,23,0.45)] backdrop-blur-md transition duration-150 ease-out translate-y-1 group-hover:translate-y-0 group-focus-within:translate-y-0 group-hover:opacity-100 group-focus-within:opacity-100">
+              <div className="pointer-events-none absolute left-0 top-8 z-40 w-[300px] rounded-2xl border border-slate-200 bg-white p-3 text-xs text-slate-700 opacity-0 shadow-[0_18px_60px_-44px_rgba(2,6,23,0.45)] transition-[opacity,transform] duration-150 ease-out translate-y-1 group-hover:translate-y-0 group-focus-within:translate-y-0 group-hover:opacity-100 group-focus-within:opacity-100">
                 <p className="font-semibold text-slate-900">À quoi sert la carte ?</p>
                 <p className="mt-1 leading-relaxed text-slate-600">
                   Visualisez les dogsitters autour de vous, puis affinez avec les filtres (service + lieu). Pour une grande
@@ -70,7 +71,7 @@ export default function MapPreview({
         </div>
 
         <div className="relative h-[80vh] w-full bg-slate-50">
-          <div className="pointer-events-auto absolute bottom-16 right-4 z-30 w-[220px] rounded-2xl border border-slate-200 bg-white/92 p-3 shadow-sm backdrop-blur sm:w-[240px]">
+          <div className="pointer-events-auto absolute bottom-16 right-4 z-30 w-[220px] rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:w-[240px]">
             <div className="grid gap-2">
               <div>
                 <label htmlFor="map-service" className="block text-[11px] font-semibold text-slate-700">
@@ -136,7 +137,7 @@ export default function MapPreview({
             <button
               type="button"
               onClick={() => setOpen(true)}
-              className="pointer-events-auto inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200/90 bg-white/80 shadow-[0_10px_30px_-18px_rgba(2,6,23,0.35)] ring-1 ring-white/60 backdrop-blur transition hover:bg-white"
+              className="pointer-events-auto inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200/90 bg-white shadow-[0_10px_30px_-18px_rgba(2,6,23,0.35)] ring-1 ring-white/60 transition-colors hover:bg-slate-50"
               aria-label="Agrandir la carte"
             >
               <Expand className="h-[18px] w-[18px] text-slate-700" aria-hidden="true" />
