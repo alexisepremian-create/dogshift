@@ -65,7 +65,7 @@ const csp = [
   ].join(" "),
   // Iframes: Stripe payment iframes
   "frame-src 'self' https://js.stripe.com https://hooks.stripe.com https://*.stripe.com https://challenges.cloudflare.com",
-  // Workers: self + blob (used by MapLibre/MapTiler GL)
+  // Workers: self + blob (used by MapLibre/MapTiler GL + service worker)
   "worker-src 'self' blob:",
   // Objects: none
   "object-src 'none'",
