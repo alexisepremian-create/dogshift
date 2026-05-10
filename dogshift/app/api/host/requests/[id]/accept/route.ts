@@ -102,6 +102,25 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
         } catch (err) {
           console.error("[api][host][requests][accept][POST] in-app notification failed (owner)", err);
         }
+        const ownerId = participants.owner.id;
+        void (async () => {
+          try {
+            const sitterProfile = await prisma.sitterProfile.findUnique({
+              where: { userId: uid },
+              select: { displayName: true },
+            });
+            const sitterName = sitterProfile?.displayName ?? "Ton sitter";
+            await sendPushToUser(ownerId, {
+              title: "Réservation confirmée ✅",
+              body: `${sitterName} a accepté ta demande de réservation.`,
+              url: `/account/bookings?id=${encodeURIComponent(bookingId)}`,
+              tag: `booking-confirmed-${bookingId}`,
+              data: { bookingId, type: "confirmed" },
+            });
+          } catch (err) {
+            console.error("[api][host][requests][accept][POST] push notification failed", err);
+          }
+        })();
       }
       if (participants?.sitter?.id) {
         try {
@@ -128,28 +147,6 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     if (!res.ok) {
       return NextResponse.json({ ok: false, error: res.error }, { status: 500 });
     }
-
-    // Fire-and-forget: push notification to owner that their booking is confirmed
-    void (async () => {
-      try {
-        if (participants?.owner?.id) {
-          const sitterProfile = await prisma.sitterProfile.findUnique({
-            where: { userId: uid },
-            select: { displayName: true },
-          });
-          const sitterName = sitterProfile?.displayName ?? "Ton sitter";
-          await sendPushToUser(participants.owner.id, {
-            title: "Réservation confirmée ✅",
-            body: `${sitterName} a accepté ta demande de réservation.`,
-            url: `/account/bookings?id=${encodeURIComponent(bookingId)}`,
-            tag: `booking-confirmed-${bookingId}`,
-            data: { bookingId, type: "confirmed" },
-          });
-        }
-      } catch (err) {
-        console.error("[api][host][requests][accept][POST] push notification failed", err);
-      }
-    })();
 
     return NextResponse.json({ ok: true, id: bookingId, status: "CONFIRMED" }, { status: 200 });
   } catch (err) {
