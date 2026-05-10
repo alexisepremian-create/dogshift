@@ -3044,6 +3044,13 @@ function FinalCTASection() {
 export default function HomePageClient({ sitters = [] }: { sitters?: SitterPreview[] }) {
   const mapReveal = useRevealOnce({ repeat: true });
   const [showSticky, setShowSticky] = useState(false);
+  // We never mount the sticky search bar (which carries ~15 useStates +
+  // ~10 useEffects) until the user scrolls past the threshold once.
+  // Keeping it out of the initial hydration pass leaves the main thread
+  // free to handle the user's first taps on the hero / hamburger / loupe.
+  // Once mounted, it stays mounted so the show/hide animation runs both
+  // ways.
+  const [stickyEverShown, setStickyEverShown] = useState(false);
 
   // rAF-throttled scroll handler that only commits state when the boolean
   // actually changes. Without this, every scroll pixel triggered a setState,
@@ -3052,6 +3059,7 @@ export default function HomePageClient({ sitters = [] }: { sitters?: SitterPrevi
     let ticking = false;
     let lastVisible = window.scrollY > 150;
     setShowSticky(lastVisible);
+    if (lastVisible) setStickyEverShown(true);
     const onScroll = () => {
       if (ticking) return;
       ticking = true;
@@ -3060,6 +3068,7 @@ export default function HomePageClient({ sitters = [] }: { sitters?: SitterPrevi
         if (visible !== lastVisible) {
           lastVisible = visible;
           setShowSticky(visible);
+          if (visible) setStickyEverShown(true);
         }
         ticking = false;
       });
@@ -3070,7 +3079,7 @@ export default function HomePageClient({ sitters = [] }: { sitters?: SitterPrevi
 
   return (
     <div className="min-h-screen bg-white text-slate-900">
-      <StickySearchBar visible={showSticky} />
+      {stickyEverShown ? <StickySearchBar visible={showSticky} /> : null}
       <main className="pb-24 md:pb-0">
         <HeroSection />
         {sitters.length > 0 && <FeaturedSittersSection sitters={sitters} />}
