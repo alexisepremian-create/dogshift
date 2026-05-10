@@ -12,6 +12,7 @@
  * Telegram never retries due to timeouts.
  */
 
+import { after } from "next/server";
 import { NextRequest, NextResponse } from "next/server";
 import type { TelegramBot } from "@/lib/telegram/sendTelegramMessage";
 import { handleBotUpdate, type TelegramUpdate } from "@/lib/telegram/webhookHandlers";
@@ -52,10 +53,15 @@ export async function POST(
     return NextResponse.json({ ok: false, error: "Invalid JSON" }, { status: 400 });
   }
 
-  // Process in background — respond to Telegram immediately
-  handleBotUpdate(bot, update).catch((err) =>
-    console.error(`[telegram/webhook/${bot}] handler error`, err)
-  );
+  // Respond 200 immediately, then process via next/server after()
+  // which keeps the runtime alive until the callback resolves.
+  after(async () => {
+    try {
+      await handleBotUpdate(bot, update);
+    } catch (err) {
+      console.error(`[telegram/webhook/${bot}] handler error`, err);
+    }
+  });
 
   return NextResponse.json({ ok: true });
 }

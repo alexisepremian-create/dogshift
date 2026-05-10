@@ -10,7 +10,7 @@
  * forget side effects that must never block or crash the main request.
  */
 
-const TELEGRAM_API_TIMEOUT_MS = 4000;
+const TELEGRAM_API_TIMEOUT_MS = 8000;
 
 /**
  * Available bot channels.
@@ -86,7 +86,9 @@ export async function sendTelegramMessage(
 
     if (!res.ok) {
       const errBody = await res.text().catch(() => "");
-      console.error("[telegram] sendMessage non-2xx", { bot: opts.bot, status: res.status, body: errBody });
+      console.error("[telegram] sendMessage non-2xx", {
+        bot: opts.bot, status: res.status, chatId, body: errBody,
+      });
       return false;
     }
 
