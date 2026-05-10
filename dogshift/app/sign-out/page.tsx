@@ -6,8 +6,16 @@ import PageLoader from "@/components/ui/PageLoader";
 
 export const dynamic = "force-dynamic";
 
-const REDIRECT_FALLBACK = "/login";
 const FAILSAFE_MS = 5000;
+
+function getRedirectTarget(): string {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const r = (params.get("redirect") ?? "").trim();
+    if (r.startsWith("/") && !r.startsWith("//")) return r;
+  } catch { /* ignore */ }
+  return "/login?force=1";
+}
 
 function clearAllAuthState() {
   try { document.cookie.split(";").forEach((c) => {
@@ -19,17 +27,9 @@ function clearAllAuthState() {
     }
   }); } catch { /* ignore */ }
   try { window.localStorage.removeItem("ds_auth_user"); } catch { /* ignore */ }
+  try { window.localStorage.removeItem("ds_auth_credentials"); } catch { /* ignore */ }
 }
 
-/**
- * /sign-out — clears Clerk session + auth cookies, then hard-redirects to /login.
- *
- * Strategy:
- *  1. Immediately clear known Clerk cookies and localStorage.
- *  2. Call clerk.signOut() to properly revoke the session server-side.
- *  3. Hard-redirect to /login (never relies on Clerk's internal redirect).
- *  4. A 5s failsafe guarantees redirect even if signOut() hangs.
- */
 export default function SignOutPage() {
   const clerk = useClerk();
   const doneRef = useRef(false);
@@ -39,9 +39,10 @@ export default function SignOutPage() {
     doneRef.current = true;
 
     clearAllAuthState();
+    const target = getRedirectTarget();
 
     const redirect = () => {
-      window.location.replace(REDIRECT_FALLBACK);
+      window.location.replace(target);
     };
 
     const failsafe = window.setTimeout(redirect, FAILSAFE_MS);
