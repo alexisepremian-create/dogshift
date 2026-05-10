@@ -56,7 +56,7 @@ export default function SitterCard({ sitter, priority = false }: { sitter: Sitte
         )}
 
         {sitter.verified && (
-          <div className="absolute right-2.5 top-2.5 flex items-center gap-1 rounded-full bg-white/90 px-1.5 py-0.5 shadow-sm backdrop-blur-sm">
+          <div className="absolute right-2.5 top-2.5 flex items-center gap-1 rounded-full bg-white px-1.5 py-0.5 shadow-sm">
             <BadgeCheck className="h-3 w-3 shrink-0 text-[var(--dogshift-blue)]" aria-hidden="true" />
             <span className="pr-0.5 text-[9px] font-bold uppercase tracking-wide text-[var(--dogshift-blue)]">Vérifié</span>
           </div>

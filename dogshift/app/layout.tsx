@@ -8,7 +8,6 @@ import ConsentScriptLoader from "@/components/ConsentScriptLoader";
 import InitialLoadSplash from "@/components/InitialLoadSplash";
 import InstallPWAPrompt from "@/components/InstallPWAPrompt";
 import ServiceWorkerRegistration from "@/components/ServiceWorkerRegistration";
-import "maplibre-gl/dist/maplibre-gl.css";
 import "./globals.css";
 
 const geistSans = Geist({
