@@ -369,6 +369,7 @@ export default function AdminEmailsPage() {
     Object.fromEntries(CATEGORIES.map((c) => [c.id, true])),
   );
   const [testState, setTestState] = useState<"idle" | "sending" | "sent" | "error">("idle");
+  const [testTo, setTestTo] = useState("");
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   async function loadPreview(templateId: string) {
@@ -416,10 +417,13 @@ export default function AdminEmailsPage() {
     if (!selected || testState === "sending") return;
     setTestState("sending");
     try {
+      const payload: { template: string; to?: string } = { template: selected };
+      const trimmed = testTo.trim();
+      if (trimmed && trimmed.includes("@")) payload.to = trimmed;
       const res = await fetch("/api/admin/email-preview", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ template: selected }),
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
       setTestState(data.ok ? "sent" : "error");
@@ -559,33 +563,42 @@ export default function AdminEmailsPage() {
                   </span>
                 )}
               </div>
-              <button
-                type="button"
-                onClick={() => void sendTestEmail()}
-                disabled={!previewHtml || testState === "sending"}
-                className={`flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-40 ${
-                  testState === "sent"
-                    ? "bg-emerald-100 text-emerald-700"
-                    : testState === "error"
-                      ? "bg-red-100 text-red-600"
-                      : "bg-[#2f4d6b]/10 text-[#2f4d6b] hover:bg-[#2f4d6b]/20"
-                }`}
-              >
-                {testState === "sending" ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : testState === "sent" ? (
-                  <CheckCircle2 className="h-3.5 w-3.5" />
-                ) : (
-                  <SendHorizonal className="h-3.5 w-3.5" />
-                )}
-                {testState === "sending"
-                  ? "Envoi…"
-                  : testState === "sent"
-                    ? "Envoyé ✓"
-                    : testState === "error"
-                      ? "Erreur"
-                      : "Envoyer test"}
-              </button>
+              <div className="flex shrink-0 items-center gap-2">
+                <input
+                  type="email"
+                  value={testTo}
+                  onChange={(e) => setTestTo(e.target.value)}
+                  placeholder="contact@dogshift.ch"
+                  className="w-48 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-700 outline-none placeholder:text-slate-400 focus:border-slate-300 focus:ring-2 focus:ring-slate-100"
+                />
+                <button
+                  type="button"
+                  onClick={() => void sendTestEmail()}
+                  disabled={!previewHtml || testState === "sending"}
+                  className={`flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-40 ${
+                    testState === "sent"
+                      ? "bg-emerald-100 text-emerald-700"
+                      : testState === "error"
+                        ? "bg-red-100 text-red-600"
+                        : "bg-[#2f4d6b]/10 text-[#2f4d6b] hover:bg-[#2f4d6b]/20"
+                  }`}
+                >
+                  {testState === "sending" ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : testState === "sent" ? (
+                    <CheckCircle2 className="h-3.5 w-3.5" />
+                  ) : (
+                    <SendHorizonal className="h-3.5 w-3.5" />
+                  )}
+                  {testState === "sending"
+                    ? "Envoi…"
+                    : testState === "sent"
+                      ? "Envoyé ✓"
+                      : testState === "error"
+                        ? "Erreur"
+                        : "Envoyer test"}
+                </button>
+              </div>
             </div>
 
             {/* Preview body */}
