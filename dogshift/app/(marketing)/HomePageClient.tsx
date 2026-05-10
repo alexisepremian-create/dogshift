@@ -35,6 +35,27 @@ import SitterCard, { type SitterPreview } from "@/components/ui/SitterCard";
 import { DogSmallIcon, DogMediumIcon, DogLargeIcon } from "@/components/DogSizeIcon";
 import { MONTHS_FR, WEEK_FR, calendarDays, toISO, isDatePast, isToday } from "@/components/ui/Calendar";
 
+// ── LAZY SECTION ──────────────────────────────────────────────────────────────
+// Defers mounting of below-the-fold sections until they're 200px from the
+// viewport. This keeps the initial hydration pass light (Hero + Sitters only)
+// so the main thread is free for the user's first taps.
+
+function LazySection({ children, minHeight = 200 }: { children: React.ReactNode; minHeight?: number }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) { setVisible(true); obs.disconnect(); } },
+      { rootMargin: "200px" },
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
+  return <div ref={ref}>{visible ? children : <div style={{ minHeight }} />}</div>;
+}
+
 // ── HOOKS ─────────────────────────────────────────────────────────────────────
 
 function usePrefersReducedMotion() {
@@ -324,7 +345,7 @@ function DatePickerField({
                   disabled={past}
                   onClick={() => { onChange(iso); setOpen(false); }}
                   className={[
-                    "mx-auto flex h-10 w-10 items-center justify-center rounded-full text-sm font-medium transition-all",
+                    "mx-auto flex h-10 w-10 items-center justify-center rounded-full text-sm font-medium transition-[color,background-color,border-color,box-shadow,transform,opacity]",
                     sel
                       ? "bg-[var(--dogshift-blue)] text-white shadow-sm"
                       : "",
@@ -523,7 +544,7 @@ function DateRangeField({
                   onMouseEnter={() => !endDate && setHoverDate(iso)}
                   onMouseLeave={() => setHoverDate(null)}
                   className={[
-                    "relative z-10 flex h-9 w-9 items-center justify-center rounded-full text-sm font-medium transition-all duration-150",
+                    "relative z-10 flex h-9 w-9 items-center justify-center rounded-full text-sm font-medium transition-[color,background-color,border-color,box-shadow,transform,opacity] duration-150",
                     isStart || (isEnd && !isPreview)
                       ? "bg-[var(--dogshift-blue)] text-white shadow-sm"
                       : "",
@@ -841,8 +862,8 @@ function SmartSearchBar({ onSearch }: { onSearch?: () => void } = {}) {
             onClick={() => switchService(s.key)}
             className={
               service === s.key
-                ? "rounded-full px-4 py-2 text-sm font-semibold bg-[var(--dogshift-blue)] text-white shadow-sm transition-all duration-200"
-                : "rounded-full px-4 py-2 text-sm font-medium border border-slate-200 bg-white/90 text-slate-600 transition-all duration-200 hover:border-slate-300 hover:bg-white hover:text-slate-900"
+                ? "rounded-full px-4 py-2 text-sm font-semibold bg-[var(--dogshift-blue)] text-white shadow-sm transition-[color,background-color,border-color,box-shadow,transform,opacity] duration-200"
+                : "rounded-full px-4 py-2 text-sm font-medium border border-slate-200 bg-white/90 text-slate-600 transition-[color,background-color,border-color,box-shadow,transform,opacity] duration-200 hover:border-slate-300 hover:bg-white hover:text-slate-900"
             }
           >
             {s.label}
@@ -972,7 +993,7 @@ function SmartSearchBar({ onSearch }: { onSearch?: () => void } = {}) {
           <button
             type="submit"
             aria-label="Lancer la recherche"
-            className="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--dogshift-blue)] text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_70%)] transition-all duration-200 hover:bg-[var(--dogshift-blue-hover)] hover:shadow-[0_8px_24px_-8px_rgba(47,77,107,0.55)] active:scale-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)]"
+            className="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--dogshift-blue)] text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_70%)] transition-[color,background-color,border-color,box-shadow,transform,opacity] duration-200 hover:bg-[var(--dogshift-blue-hover)] hover:shadow-[0_8px_24px_-8px_rgba(47,77,107,0.55)] active:scale-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)]"
           >
             <Search className="h-5 w-5" aria-hidden="true" />
           </button>
@@ -1036,7 +1057,7 @@ type StickySection = "lieu" | "quand" | "besoin";
 
 function StickySearchBar({ visible = true, hero = false }: { visible?: boolean; hero?: boolean }) {
   const router = useRouter();
-  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const today = React.useMemo(() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; }, []);
 
   // ── Active section (Airbnb 3-section bar) ──
   const [activeSection, setActiveSection] = useState<StickySection | null>(null);
@@ -1377,7 +1398,7 @@ function StickySearchBar({ visible = true, hero = false }: { visible?: boolean; 
                   onMouseEnter={() => { if (startDate && !endDate) setHoverDate(iso); }}
                   onMouseLeave={() => setHoverDate(null)}
                   className={[
-                    "relative z-10 flex h-7 w-7 items-center justify-center rounded-full text-xs transition-all duration-100 sm:h-9 sm:w-9 sm:text-sm",
+                    "relative z-10 flex h-7 w-7 items-center justify-center rounded-full text-xs transition-[color,background-color,border-color,box-shadow,transform,opacity] duration-100 sm:h-9 sm:w-9 sm:text-sm",
                     past ? "cursor-not-allowed text-slate-200" : "cursor-pointer",
                     edge ? "bg-slate-900 font-semibold text-white" : "",
                     !edge && !past ? "hover:bg-slate-200" : "",
@@ -1423,7 +1444,7 @@ function StickySearchBar({ visible = true, hero = false }: { visible?: boolean; 
 
   // ── Shared style helpers ──
   const sectionLabel = "mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-400";
-  const pillBase = "rounded-full border px-3 py-1 sm:px-3.5 sm:py-1.5 text-[11px] sm:text-xs font-medium transition-all duration-150";
+  const pillBase = "rounded-full border px-3 py-1 sm:px-3.5 sm:py-1.5 text-[11px] sm:text-xs font-medium transition-[color,background-color,border-color,box-shadow,transform,opacity] duration-150";
   const pillActive = `${pillBase} border-slate-900 bg-white ring-1 ring-slate-900/10 font-semibold text-slate-900`;
   const pillIdle = `${pillBase} border-slate-200 bg-white text-slate-500 hover:border-slate-300 hover:text-slate-700`;
 
@@ -1496,7 +1517,7 @@ function StickySearchBar({ visible = true, hero = false }: { visible?: boolean; 
                   type="button"
                   onClick={() => { setActiveSection(activeSection === "lieu" ? null : "lieu"); }}
                   className={[
-                    `relative z-10 flex min-w-0 flex-1 sm:flex-[1.4] flex-col justify-center rounded-[28px] ${sz.btnPad} text-left transition-all duration-200 focus-visible:outline-none`,
+                    `relative z-10 flex min-w-0 flex-1 sm:flex-[1.4] flex-col justify-center rounded-[28px] ${sz.btnPad} text-left transition-[color,background-color,border-color,box-shadow,transform,opacity] duration-200 focus-visible:outline-none`,
                     activeSection === "lieu" && !locationError
                       ? "bg-white shadow-[0_2px_12px_-3px_rgba(2,6,23,0.10)]"
                       : locationError
@@ -1531,7 +1552,7 @@ function StickySearchBar({ visible = true, hero = false }: { visible?: boolean; 
                   type="button"
                   onClick={() => { setLocationError(""); setActiveSection(activeSection === "quand" ? null : "quand"); }}
                   className={[
-                    `relative z-10 flex min-w-0 flex-1 flex-col justify-center rounded-[28px] ${sz.btnPad} text-left transition-all duration-200 focus-visible:outline-none`,
+                    `relative z-10 flex min-w-0 flex-1 flex-col justify-center rounded-[28px] ${sz.btnPad} text-left transition-[color,background-color,border-color,box-shadow,transform,opacity] duration-200 focus-visible:outline-none`,
                     activeSection === "quand"
                       ? "bg-white shadow-[0_2px_12px_-3px_rgba(2,6,23,0.10)]"
                       : "hover:bg-white/50",
@@ -1561,7 +1582,7 @@ function StickySearchBar({ visible = true, hero = false }: { visible?: boolean; 
                   type="button"
                   onClick={() => { setLocationError(""); setActiveSection(activeSection === "besoin" ? null : "besoin"); }}
                   className={[
-                    `relative z-10 flex min-w-0 flex-1 flex-col justify-center rounded-[28px] ${sz.btnPad} text-left transition-all duration-200 focus-visible:outline-none`,
+                    `relative z-10 flex min-w-0 flex-1 flex-col justify-center rounded-[28px] ${sz.btnPad} text-left transition-[color,background-color,border-color,box-shadow,transform,opacity] duration-200 focus-visible:outline-none`,
                     activeSection === "besoin"
                       ? "bg-white shadow-[0_2px_12px_-3px_rgba(2,6,23,0.10)]"
                       : "hover:bg-white/50",
@@ -1576,7 +1597,7 @@ function StickySearchBar({ visible = true, hero = false }: { visible?: boolean; 
               <button
                 type="button"
                 onClick={handleSearch}
-                className={`flex shrink-0 items-center gap-1.5 rounded-full bg-slate-900 ${sz.searchPad} ${sz.searchTxt} text-white shadow-[0_4px_16px_-4px_rgba(2,6,23,0.35)] transition-all duration-200 hover:scale-[1.03] hover:bg-slate-800 hover:shadow-[0_8px_24px_-6px_rgba(2,6,23,0.40)] active:scale-95`}
+                className={`flex shrink-0 items-center gap-1.5 rounded-full bg-slate-900 ${sz.searchPad} ${sz.searchTxt} text-white shadow-[0_4px_16px_-4px_rgba(2,6,23,0.35)] transition-[color,background-color,border-color,box-shadow,transform,opacity] duration-200 hover:scale-[1.03] hover:bg-slate-800 hover:shadow-[0_8px_24px_-6px_rgba(2,6,23,0.40)] active:scale-95`}
               >
                 <Search className={hero ? "h-4 w-4 sm:h-5 sm:w-5" : "h-3.5 w-3.5 sm:h-4 sm:w-4"} aria-hidden="true" />
                 <span className="hidden sm:block">Rechercher</span>
@@ -1684,8 +1705,8 @@ function StickySearchBar({ visible = true, hero = false }: { visible?: boolean; 
                           {(["dates", "flexible"] as const).map((t) => (
                             <button key={t} type="button" onClick={() => setCalTab(t)}
                               className={calTab === t
-                                ? "rounded-full bg-white px-4 py-1 text-[11px] font-semibold text-slate-900 shadow-sm transition-all duration-200 sm:px-5 sm:py-1.5 sm:text-xs"
-                                : "rounded-full px-4 py-1 text-[11px] font-medium text-slate-500 transition-all duration-200 hover:text-slate-700 sm:px-5 sm:py-1.5 sm:text-xs"
+                                ? "rounded-full bg-white px-4 py-1 text-[11px] font-semibold text-slate-900 shadow-sm transition-[color,background-color,border-color,box-shadow,transform,opacity] duration-200 sm:px-5 sm:py-1.5 sm:text-xs"
+                                : "rounded-full px-4 py-1 text-[11px] font-medium text-slate-500 transition-[color,background-color,border-color,box-shadow,transform,opacity] duration-200 hover:text-slate-700 sm:px-5 sm:py-1.5 sm:text-xs"
                               }>
                               {t === "dates" ? (isHourlyPanel ? "Date précise" : "Dates précises") : "Flexible"}
                             </button>
@@ -1743,7 +1764,7 @@ function StickySearchBar({ visible = true, hero = false }: { visible?: boolean; 
                               </p>
                             )}
                             <button onClick={() => setActiveSection("besoin")}
-                              className="ml-auto flex items-center gap-1.5 rounded-full bg-slate-900 px-3 py-1.5 text-[11px] font-semibold text-white transition-all hover:bg-slate-700 sm:px-4 sm:py-2 sm:text-xs">
+                              className="ml-auto flex items-center gap-1.5 rounded-full bg-slate-900 px-3 py-1.5 text-[11px] font-semibold text-white transition-[color,background-color,border-color,box-shadow,transform,opacity] hover:bg-slate-700 sm:px-4 sm:py-2 sm:text-xs">
                               Suivant <ArrowRight className="h-3 w-3 sm:h-3.5 sm:w-3.5" aria-hidden="true" />
                             </button>
                           </div>
@@ -1757,7 +1778,7 @@ function StickySearchBar({ visible = true, hero = false }: { visible?: boolean; 
                               {FLEX_DURATION_OPTIONS.map((opt) => (
                                 <button key={opt.key} type="button" onClick={() => setFlexDuration(opt.key)}
                                   className={[
-                                    "group flex flex-col items-center gap-1.5 rounded-xl border py-2 transition-all duration-200 sm:py-3",
+                                    "group flex flex-col items-center gap-1.5 rounded-xl border py-2 transition-[color,background-color,border-color,box-shadow,transform,opacity] duration-200 sm:py-3",
                                     flexDuration === opt.key
                                       ? "border-slate-900 bg-white shadow-md ring-2 ring-slate-900/10"
                                       : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50 hover:shadow-sm",
@@ -1779,7 +1800,7 @@ function StickySearchBar({ visible = true, hero = false }: { visible?: boolean; 
                                 return (
                                   <button key={key} type="button" onClick={() => toggleFlexMonth(key)}
                                     className={[
-                                      "group flex items-center gap-1.5 rounded-xl border px-2 py-1 transition-all duration-150 sm:px-2.5 sm:py-1.5",
+                                      "group flex items-center gap-1.5 rounded-xl border px-2 py-1 transition-[color,background-color,border-color,box-shadow,transform,opacity] duration-150 sm:px-2.5 sm:py-1.5",
                                       sel
                                         ? "border-slate-900 bg-white shadow-sm ring-1 ring-slate-900/10"
                                         : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50 hover:shadow-sm",
@@ -1796,7 +1817,7 @@ function StickySearchBar({ visible = true, hero = false }: { visible?: boolean; 
                           </div>
                           <div className="mt-3 flex justify-end sm:mt-4">
                             <button onClick={() => setActiveSection("besoin")}
-                              className="flex items-center gap-1.5 rounded-full bg-slate-900 px-3 py-1.5 text-[11px] font-semibold text-white transition-all hover:bg-slate-700 sm:px-4 sm:py-2 sm:text-xs">
+                              className="flex items-center gap-1.5 rounded-full bg-slate-900 px-3 py-1.5 text-[11px] font-semibold text-white transition-[color,background-color,border-color,box-shadow,transform,opacity] hover:bg-slate-700 sm:px-4 sm:py-2 sm:text-xs">
                               Suivant <ArrowRight className="h-3 w-3 sm:h-3.5 sm:w-3.5" aria-hidden="true" />
                             </button>
                           </div>
@@ -1857,7 +1878,7 @@ function StickySearchBar({ visible = true, hero = false }: { visible?: boolean; 
                               <div
                                 key={key}
                                 className={[
-                                  "flex flex-col items-center gap-1.5 rounded-2xl border px-2 py-3 transition-all duration-300",
+                                  "flex flex-col items-center gap-1.5 rounded-2xl border px-2 py-3 transition-[color,background-color,border-color,box-shadow,transform,opacity] duration-300",
                                   active
                                     ? "border-slate-800 bg-white shadow-[0_4px_16px_-4px_rgba(2,6,23,0.14)] ring-2 ring-slate-800/10"
                                     : "border-slate-200 bg-white",
@@ -2019,7 +2040,7 @@ function QuickCategoryTiles() {
               <Link
                 key={tile.label}
                 href={tile.href}
-                className="group flex min-w-[118px] shrink-0 flex-col items-center gap-2.5 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition-all duration-200 ease-out hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)] sm:min-w-0 sm:shrink"
+                className="group flex min-w-[118px] shrink-0 flex-col items-center gap-2.5 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition-[color,background-color,border-color,box-shadow,transform,opacity] duration-200 ease-out hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)] sm:min-w-0 sm:shrink"
               >
                 <span
                   className={`inline-flex h-11 w-11 items-center justify-center rounded-xl ring-1 ${tile.bgClass}`}
@@ -2109,7 +2130,7 @@ function SitterCarousel({
               onClick={() => slide("left")}
               disabled={!canLeft}
               aria-label="Précédent"
-              className="flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 shadow-sm transition-all duration-150 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900 active:scale-95 disabled:cursor-not-allowed disabled:opacity-30"
+              className="flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 shadow-sm transition-[color,background-color,border-color,box-shadow,transform,opacity] duration-150 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900 active:scale-95 disabled:cursor-not-allowed disabled:opacity-30"
             >
               <ChevronLeft className="h-3.5 w-3.5" aria-hidden="true" />
             </button>
@@ -2118,7 +2139,7 @@ function SitterCarousel({
               onClick={() => slide("right")}
               disabled={!canRight}
               aria-label="Suivant"
-              className="flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 shadow-sm transition-all duration-150 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900 active:scale-95 disabled:cursor-not-allowed disabled:opacity-30"
+              className="flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 shadow-sm transition-[color,background-color,border-color,box-shadow,transform,opacity] duration-150 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900 active:scale-95 disabled:cursor-not-allowed disabled:opacity-30"
             >
               <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
             </button>
@@ -2147,7 +2168,7 @@ function SitterCarousel({
             className="group flex flex-col items-center gap-2 px-2"
             aria-label={city ? `Voir tous les dogsitters à ${city}` : "Voir tous les profils"}
           >
-            <span className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 shadow-sm transition-all duration-200 group-hover:border-[var(--dogshift-blue)]/50 group-hover:bg-slate-50 group-hover:text-[var(--dogshift-blue)] group-hover:shadow-md">
+            <span className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 shadow-sm transition-[color,background-color,border-color,box-shadow,transform,opacity] duration-200 group-hover:border-[var(--dogshift-blue)]/50 group-hover:bg-slate-50 group-hover:text-[var(--dogshift-blue)] group-hover:shadow-md">
               <ArrowRight className="h-4 w-4" aria-hidden="true" />
             </span>
             <span className="text-[11px] font-medium text-slate-500 transition-colors group-hover:text-[var(--dogshift-blue)]">
@@ -2191,7 +2212,7 @@ function FeaturedSittersSection({ sitters }: { sitters: SitterPreview[] }) {
         <div className="mt-6 px-6 sm:px-8 lg:px-10">
           <Link
             href="/search"
-            className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-900 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:bg-slate-50 hover:shadow-md active:translate-y-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)]"
+            className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-900 shadow-sm transition-[color,background-color,border-color,box-shadow,transform,opacity] duration-200 hover:-translate-y-0.5 hover:bg-slate-50 hover:shadow-md active:translate-y-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)]"
           >
             Voir tous les profils
             <ArrowRight className="h-4 w-4" aria-hidden="true" />
@@ -2256,7 +2277,7 @@ function ReassuranceSection() {
               <div
                 key={title}
                 style={stagger.itemStyle(i)}
-                className="group rounded-3xl border border-slate-200 bg-white p-5 transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] hover:border-slate-300/80 hover:bg-slate-50/50 hover:shadow-[0_8px_30px_rgba(2,6,23,0.06)]"
+                className="group rounded-3xl border border-slate-200 bg-white p-5 transition-[color,background-color,border-color,box-shadow,transform,opacity] duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] hover:border-slate-300/80 hover:bg-slate-50/50 hover:shadow-[0_8px_30px_rgba(2,6,23,0.06)]"
               >
                 <span
                   className={`inline-flex h-10 w-10 items-center justify-center rounded-2xl ring-1 ${iconBg}`}
@@ -2459,7 +2480,7 @@ function HowItWorksSection() {
           <div className="mt-10 flex items-center justify-center">
             <Link
               href="/search"
-              className="inline-flex items-center gap-2 rounded-full bg-[var(--dogshift-blue)] px-6 py-3 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition-all duration-200 hover:bg-[var(--dogshift-blue-hover)] hover:shadow-[0_14px_40px_-26px_rgba(2,6,23,0.35)] active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)]"
+              className="inline-flex items-center gap-2 rounded-full bg-[var(--dogshift-blue)] px-6 py-3 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition-[color,background-color,border-color,box-shadow,transform,opacity] duration-200 hover:bg-[var(--dogshift-blue-hover)] hover:shadow-[0_14px_40px_-26px_rgba(2,6,23,0.35)] active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)]"
             >
               Commencer maintenant
               <ArrowRight className="h-4 w-4" aria-hidden="true" />
@@ -2617,14 +2638,14 @@ function BecomeSitterSection() {
           <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <Link
               href="/devenir-dogsitter"
-              className="inline-flex items-center justify-center gap-2 rounded-full bg-white px-6 py-3 text-sm font-semibold text-[var(--dogshift-blue)] shadow-lg shadow-[rgba(2,6,23,0.25)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl active:translate-y-0 active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+              className="inline-flex items-center justify-center gap-2 rounded-full bg-white px-6 py-3 text-sm font-semibold text-[var(--dogshift-blue)] shadow-lg shadow-[rgba(2,6,23,0.25)] transition-[color,background-color,border-color,box-shadow,transform,opacity] duration-200 hover:-translate-y-0.5 hover:shadow-xl active:translate-y-0 active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
             >
               Postuler maintenant
               <ArrowRight className="h-4 w-4" aria-hidden="true" />
             </Link>
             <Link
               href="/become-sitter/access"
-              className="inline-flex items-center justify-center rounded-full border border-white/25 px-6 py-3 text-sm font-medium text-white/85 transition-all duration-200 hover:border-white/50 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+              className="inline-flex items-center justify-center rounded-full border border-white/25 px-6 py-3 text-sm font-medium text-white/85 transition-[color,background-color,border-color,box-shadow,transform,opacity] duration-200 hover:border-white/50 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
             >
               Déjà dogsitter ? Accès sitter
             </Link>
@@ -2875,7 +2896,7 @@ function CommunitySection() {
             <div className="mt-2">
               <Link
                 href="/contribuer"
-                className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-6 py-3 text-sm font-semibold text-slate-900 shadow-sm transition-all duration-200 hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)] sm:w-auto"
+                className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-6 py-3 text-sm font-semibold text-slate-900 shadow-sm transition-[color,background-color,border-color,box-shadow,transform,opacity] duration-200 hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)] sm:w-auto"
               >
                 Contribuer au lancement
                 <ArrowRight className="h-4 w-4" aria-hidden="true" />
@@ -2929,7 +2950,7 @@ function CareersSection() {
           <div className="mt-10 flex flex-wrap items-center justify-center gap-x-3 gap-y-2 text-sm font-semibold">
             <Link
               href="/help"
-              className="text-[var(--dogshift-blue)] transition-all duration-[250ms] ease-out hover:-translate-y-px hover:text-[var(--dogshift-blue-hover)]"
+              className="text-[var(--dogshift-blue)] transition-[color,background-color,border-color,box-shadow,transform,opacity] duration-[250ms] ease-out hover:-translate-y-px hover:text-[var(--dogshift-blue-hover)]"
             >
               Nous contacter
             </Link>
@@ -2938,7 +2959,7 @@ function CareersSection() {
             </span>
             <Link
               href="/help"
-              className="text-[var(--dogshift-blue)] transition-all duration-[250ms] ease-out hover:-translate-y-px hover:text-[var(--dogshift-blue-hover)]"
+              className="text-[var(--dogshift-blue)] transition-[color,background-color,border-color,box-shadow,transform,opacity] duration-[250ms] ease-out hover:-translate-y-px hover:text-[var(--dogshift-blue-hover)]"
             >
               Découvrir les opportunités
             </Link>
@@ -2976,7 +2997,7 @@ function ZootherapieSection() {
           </p>
           <Link
             href="/zootherapie"
-            className="mt-7 inline-flex items-center gap-2 rounded-2xl bg-white px-6 py-3 text-sm font-semibold text-violet-800 shadow-sm transition-all duration-200 hover:bg-violet-50 active:scale-[0.98]"
+            className="mt-7 inline-flex items-center gap-2 rounded-2xl bg-white px-6 py-3 text-sm font-semibold text-violet-800 shadow-sm transition-[color,background-color,border-color,box-shadow,transform,opacity] duration-200 hover:bg-violet-50 active:scale-[0.98]"
           >
             Faire mon évaluation gratuite
             <ArrowRight className="h-4 w-4" aria-hidden="true" />
@@ -3020,14 +3041,14 @@ function FinalCTASection() {
           <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <Link
               href="/search"
-              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[var(--dogshift-blue)] px-6 py-3 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition-all duration-200 hover:bg-[var(--dogshift-blue-hover)] hover:shadow-[0_14px_40px_-26px_rgba(2,6,23,0.35)] active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)]"
+              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[var(--dogshift-blue)] px-6 py-3 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition-[color,background-color,border-color,box-shadow,transform,opacity] duration-200 hover:bg-[var(--dogshift-blue-hover)] hover:shadow-[0_14px_40px_-26px_rgba(2,6,23,0.35)] active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)]"
             >
               Trouver un dogsitter
               <ArrowRight className="h-4 w-4" aria-hidden="true" />
             </Link>
             <Link
               href="/devenir-dogsitter"
-              className="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white px-6 py-3 text-sm font-semibold text-slate-900 shadow-sm transition-all duration-200 hover:bg-slate-50 hover:shadow-md active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)]"
+              className="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white px-6 py-3 text-sm font-semibold text-slate-900 shadow-sm transition-[color,background-color,border-color,box-shadow,transform,opacity] duration-200 hover:bg-slate-50 hover:shadow-md active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)]"
             >
               Devenir dogsitter
             </Link>
@@ -3082,23 +3103,25 @@ export default function HomePageClient({ sitters = [] }: { sitters?: SitterPrevi
       <main className="pb-24 md:pb-0">
         <HeroSection />
         {sitters.length > 0 && <FeaturedSittersSection sitters={sitters} />}
-        <ReassuranceSection />
-        <ServicesSection />
-        <HowItWorksSection />
-        <SecuritySection />
+        <LazySection><ReassuranceSection /></LazySection>
+        <LazySection><ServicesSection /></LazySection>
+        <LazySection><HowItWorksSection /></LazySection>
+        <LazySection><SecuritySection /></LazySection>
 
-        <div ref={mapReveal.ref} style={mapReveal.style}>
-          <MapSection />
-        </div>
+        <LazySection minHeight={300}>
+          <div ref={mapReveal.ref} style={mapReveal.style}>
+            <MapSection />
+          </div>
+        </LazySection>
 
-        <BecomeSitterSection />
-        <WhyDogShiftSection />
-        <FAQSection />
-        <CitiesSection />
-        <CommunitySection />
-        <CareersSection />
-        <ZootherapieSection />
-        <FinalCTASection />
+        <LazySection><BecomeSitterSection /></LazySection>
+        <LazySection><WhyDogShiftSection /></LazySection>
+        <LazySection><FAQSection /></LazySection>
+        <LazySection><CitiesSection /></LazySection>
+        <LazySection><CommunitySection /></LazySection>
+        <LazySection><CareersSection /></LazySection>
+        <LazySection><ZootherapieSection /></LazySection>
+        <LazySection><FinalCTASection /></LazySection>
       </main>
     </div>
   );

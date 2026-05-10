@@ -109,38 +109,39 @@ export default function DogShiftBot() {
   const dragState = useRef({ active: false, moved: false, startTX: 0, startTY: 0 });
   const justDragged = useRef(false);
 
-  // touchmove non-passif : suit le doigt en temps réel
+  // Touch drag: only attach a non-passive touchmove on document while a drag
+  // is in progress. This avoids blocking native scroll at all other times.
+  const [isDragging, setIsDragging] = useState(false);
   useEffect(() => {
-    const btn = dragBtnRef.current;
-    if (!btn) return;
+    if (!isDragging) return;
     const onMove = (e: TouchEvent) => {
       if (!dragState.current.active) return;
       const t = e.touches[0];
       if (Math.hypot(t.clientX - dragState.current.startTX, t.clientY - dragState.current.startTY) < 8) return;
       dragState.current.moved = true;
       e.preventDefault();
-      // Clamp pour garder le bouton dans l'écran
       const x = Math.max(0, Math.min(window.innerWidth - BTN_SIZE, t.clientX - BTN_SIZE / 2));
       const y = Math.max(0, Math.min(window.innerHeight - BTN_SIZE, t.clientY - BTN_SIZE / 2));
       setLivePos({ x, y });
     };
-    btn.addEventListener("touchmove", onMove, { passive: false });
-    return () => btn.removeEventListener("touchmove", onMove);
-  }, [open]); // re-attache quand le bouton réapparaît après fermeture du panneau
+    document.addEventListener("touchmove", onMove, { passive: false });
+    return () => document.removeEventListener("touchmove", onMove);
+  }, [isDragging]);
 
   function onTouchStart(e: React.TouchEvent<HTMLButtonElement>) {
     if (open) return;
     const t = e.touches[0];
     dragState.current = { active: true, moved: false, startTX: t.clientX, startTY: t.clientY };
+    setIsDragging(true);
   }
 
   function onTouchEnd(e: React.TouchEvent<HTMLButtonElement>) {
     if (!dragState.current.active) return;
     dragState.current.active = false;
-    setLivePos(null); // retire la position live → le corner prend le relais
+    setIsDragging(false);
+    setLivePos(null);
     if (dragState.current.moved) {
       justDragged.current = true;
-      // Snap au coin le plus proche de l'endroit où le doigt est relâché
       const t = e.changedTouches[0];
       const mX = window.innerWidth / 2;
       const mY = window.innerHeight / 2;

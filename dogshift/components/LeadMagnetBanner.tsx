@@ -7,6 +7,8 @@ import { X, Gift, ArrowRight, CheckCircle2 } from "lucide-react";
 
 const PAYMENT_FLOW_PATHS = ["/checkout", "/paiement", "/reservation"];
 
+import { fetchAccountContext } from "@/lib/accountContext";
+
 const DISMISSED_KEY = "ds_lead_magnet_dismissed";
 const SHOW_DELAY_MS = 3_500;
 
@@ -35,9 +37,7 @@ export default function LeadMagnetBanner() {
     async function checkAndSchedule() {
       if (isSignedIn) {
         try {
-          const res = await fetch("/api/account/context");
-          const data = (await res.json()) as { hasSitterProfile?: boolean };
-          // Hide permanently for sitters — they don't need owner-focused lead magnets
+          const data = await fetchAccountContext();
           if (data.hasSitterProfile === true) return;
         } catch {
           // On network error, default to showing (safest UX)

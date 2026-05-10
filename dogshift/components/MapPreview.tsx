@@ -34,7 +34,7 @@ export default function MapPreview({
 
   const modal = open ? (
     <div className="fixed inset-0 z-[2147483647] flex items-center justify-center p-4 pointer-events-none" role="dialog" aria-modal="true" aria-label="Carte">
-      <div className="fixed inset-0 bg-slate-900/30 backdrop-blur-[2px] pointer-events-none" aria-hidden="true" />
+      <div className="fixed inset-0 bg-slate-900/40 pointer-events-none" aria-hidden="true" />
 
       <div className="pointer-events-auto w-full max-w-6xl overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-[0_22px_80px_-54px_rgba(2,6,23,0.6)]">
         <div className="relative z-10 flex items-center justify-between border-b border-slate-200 bg-white px-6 py-4">
