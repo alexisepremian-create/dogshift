@@ -196,9 +196,9 @@ export default function LoginPage() {
 
       {isLoaded && isSignedIn && forceMode && alreadySignedInOnLoad.current === true ? (
         <ForceSignOut clerk={clerk} />
-      ) : null}
-
-      <LoginForm />
+      ) : (
+        <LoginForm />
+      )}
     </AuthLayout>
   );
 }
