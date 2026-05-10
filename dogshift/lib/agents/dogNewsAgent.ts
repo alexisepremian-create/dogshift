@@ -122,7 +122,7 @@ async function synthesizeWithClaude(items: NewsItem[], today: Date): Promise<str
     .join("\n");
 
   const { text } = await generateText({
-    model: anthropic("claude-3-5-haiku-20241022"),
+    model: anthropic("claude-haiku-4-5-20251001"),
     messages: [
       {
         role: "user",
@@ -133,26 +133,26 @@ Voici les actualités canines et animaux du jour trouvées sur le web :
 
 ${newsSummary}
 
-Génère un message Telegram en français avec EXACTEMENT ce format (utilise les emojis) :
+Génère un message Telegram en français avec EXACTEMENT ce format (utilise les emojis et le HTML Telegram) :
 
-🐾 *DogShift News — ${dateStr}*
+🐾 <b>DogShift News — ${dateStr}</b>
 
-🗞️ *Actualités du jour*
+🗞️ <b>Actualités du jour</b>
 • [Résume l'actualité la plus pertinente en 1-2 phrases, inclure l'info clé]
 • [Deuxième actualité pertinente, 1-2 phrases]
 • [Troisième actualité pertinente, 1-2 phrases]
 
-🌿 *Focus ${month}*
+🌿 <b>Focus ${month}</b>
 [Un conseil saisonnier concret pour les propriétaires de chiens en ${month} — parasites, chaleur, météo, etc. 2-3 phrases maximum]
 
-📱 *3 idées de posts réseaux sociaux*
+📱 <b>3 idées de posts réseaux sociaux</b>
 1️⃣ [Idée de post inspirante ou éducative liée à l'actualité ou à la saison — ton DogShift : chaleureux, expert, suisse]
 2️⃣ [Idée de post avec un angle "astuce pratique" ou "fun fact" sur les chiens]
 3️⃣ [Idée de post qui valorise les pet-sitters ou crée de l'engagement avec la communauté]
 
-_Généré automatiquement par DogShift NewsAgent · ${dateStr}_
+<i>Généré automatiquement par DogShift NewsAgent · ${dateStr}</i>
 
-Génère UNIQUEMENT le message Telegram, sans aucun texte avant ou après.`,
+IMPORTANT : utilise UNIQUEMENT les balises HTML Telegram autorisées : &lt;b&gt;, &lt;i&gt;, &lt;code&gt;. N'utilise PAS de Markdown (pas d'astérisques, pas de tirets bas). Génère UNIQUEMENT le message, sans aucun texte avant ou après.`,
       },
     ],
   });
@@ -163,14 +163,15 @@ Génère UNIQUEMENT le message Telegram, sans aucun texte avant ou après.`,
 // ─── Telegram delivery ────────────────────────────────────────────────────────
 
 async function sendTelegram(message: string): Promise<void> {
-  // Try with Markdown first, fall back to plain text if Telegram rejects it.
-  // This avoids silent failures when Claude generates unescaped special chars.
-  const sent = await sendTelegramMessage(message, { bot: "news", parseMode: "Markdown" });
+  // HTML parseMode is more robust than Markdown v1 — no risk of accidental
+  // formatting from underscores or asterisks in news article titles.
+  const sent = await sendTelegramMessage(message, { bot: "news", parseMode: "HTML" });
   if (sent) return;
 
-  console.warn("[dogNewsAgent] Markdown send failed — retrying as plain text");
+  // If HTML is rejected (malformed tags from Claude), fall back to plain text.
+  console.warn("[dogNewsAgent] HTML send failed — retrying as plain text");
   const sentPlain = await sendTelegramMessage(message, { bot: "news" });
-  if (!sentPlain) throw new Error("Impossible d'envoyer le message Telegram (bot news) — both Markdown and plain failed");
+  if (!sentPlain) throw new Error("Impossible d'envoyer le message Telegram (bot news) — HTML and plain both failed");
 }
 
 // ─── Main export ──────────────────────────────────────────────────────────────
@@ -187,7 +188,7 @@ export async function runDogNewsAgent(): Promise<DogNewsReport> {
     const month = MONTHS_FR[today.getMonth()];
     const year = today.getFullYear();
     const dateStr = `${day} ${month} ${year}`;
-    const fallbackMsg = `🐾 *DogShift News — ${dateStr}*\n\n_Aucune actualité disponible aujourd'hui (flux RSS injoignables). Réessai demain automatiquement._`;
+    const fallbackMsg = `🐾 <b>DogShift News — ${dateStr}</b>\n\n<i>Aucune actualité disponible aujourd'hui (flux RSS injoignables). Réessai demain automatiquement.</i>`;
     await sendTelegram(fallbackMsg);
     return { telegramMessage: fallbackMsg, itemCount: 0, date: today.toISOString() };
   }
