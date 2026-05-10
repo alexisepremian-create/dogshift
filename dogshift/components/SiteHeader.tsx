@@ -21,11 +21,7 @@ import { useEffect, useRef, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import BrandLogo from "@/components/BrandLogo";
 import NotificationBell from "@/components/NotificationBell";
-
-type AccountContextPayload = {
-  ok?: boolean;
-  monEspaceHref?: string;
-};
+import { fetchAccountContext } from "@/lib/accountContext";
 
 export default function SiteHeader() {
   const [scrolled, setScrolled] = useState(false);
@@ -132,8 +128,7 @@ export default function SiteHeader() {
     let cancelled = false;
     void (async () => {
       try {
-        const res = await fetch("/api/account/context", { method: "GET", cache: "no-store" });
-        const payload = (await res.json().catch(() => null)) as AccountContextPayload | null;
+        const payload = await fetchAccountContext();
         if (cancelled) return;
         setAccountHref(typeof payload?.monEspaceHref === "string" ? payload.monEspaceHref : "/account");
       } catch {
