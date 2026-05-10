@@ -3,6 +3,7 @@
 import { useAuth } from "@clerk/nextjs";
 import { useEffect, useRef } from "react";
 
+import PageLoader from "@/components/ui/PageLoader";
 import { navigationPublicOrigin } from "@/lib/url/publicOrigin";
 
 function absolutePath(path: string): string {
@@ -74,5 +75,5 @@ export default function PostLoginPage() {
     };
   }, [isLoaded]);
 
-  return null;
+  return <PageLoader label="Connexion…" ready={false} static />;
 }
