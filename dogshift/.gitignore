@@ -48,6 +48,9 @@ next-env.d.ts
 # playwright artifacts
 /playwright-report/
 /test-results/
+
+# PWA icons (generated from dogshift-logo.png via scripts/generate-pwa-icons.js)
+# public/pwa-icons/ — committed to git (stable, rarely change)
 /blob-report/
 /playwright/.cache/
 /tests/e2e/.auth/

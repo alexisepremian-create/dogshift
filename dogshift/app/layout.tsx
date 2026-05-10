@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Suspense } from "react";
 import { ClerkProvider } from "@clerk/nextjs";
@@ -6,6 +6,8 @@ import { frFR } from "@clerk/localizations";
 import SessionAuthProvider from "@/components/SessionAuthProvider";
 import ConsentScriptLoader from "@/components/ConsentScriptLoader";
 import InitialLoadSplash from "@/components/InitialLoadSplash";
+import InstallPWAPrompt from "@/components/InstallPWAPrompt";
+import ServiceWorkerRegistration from "@/components/ServiceWorkerRegistration";
 import "maplibre-gl/dist/maplibre-gl.css";
 import "./globals.css";
 
@@ -19,6 +21,12 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+export const viewport: Viewport = {
+  themeColor: "#2f4d6b",
+  width: "device-width",
+  initialScale: 1,
+};
+
 export const metadata: Metadata = {
   metadataBase: new URL("https://www.dogshift.ch"),
   title: {
@@ -28,6 +36,12 @@ export const metadata: Metadata = {
   description: "DogShift est une plateforme de dog-sitting premium en Suisse. Trouvez un dog-sitter de confiance pour promenade, garde ou pension.",
   alternates: {
     canonical: "/",
+  },
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "DogShift",
   },
   openGraph: {
     type: "website",
@@ -90,6 +104,9 @@ export default async function RootLayout({
 
         {/* Cookie consent banner + conditional Google Ads loading (RGPD/nLPD) */}
         <ConsentScriptLoader />
+
+        <InstallPWAPrompt />
+        <ServiceWorkerRegistration />
       </body>
     </html>
   );
