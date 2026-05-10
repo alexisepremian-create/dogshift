@@ -3,50 +3,58 @@
 import { useClerk } from "@clerk/nextjs";
 import { useEffect, useRef } from "react";
 import PageLoader from "@/components/ui/PageLoader";
-import { withPublicOrigin } from "@/lib/url/publicOrigin";
 
 export const dynamic = "force-dynamic";
 
-const REDIRECT_FALLBACK = "/login?force=1";
-const FAILSAFE_MS = 6000;
+const REDIRECT_FALLBACK = "/login";
+const FAILSAFE_MS = 5000;
+
+function clearAllAuthState() {
+  try { document.cookie.split(";").forEach((c) => {
+    const name = c.split("=")[0].trim();
+    if (name.startsWith("__clerk") || name.startsWith("__session") || name === "__client_uat") {
+      document.cookie = `${name}=;expires=Thu,01 Jan 1970 00:00:00 GMT;path=/`;
+      document.cookie = `${name}=;expires=Thu,01 Jan 1970 00:00:00 GMT;path=/;domain=.dogshift.ch`;
+      document.cookie = `${name}=;expires=Thu,01 Jan 1970 00:00:00 GMT;path=/;domain=dogshift.ch`;
+    }
+  }); } catch { /* ignore */ }
+  try { window.localStorage.removeItem("ds_auth_user"); } catch { /* ignore */ }
+}
 
 /**
- * /sign-out — clears the Clerk session then redirects to /login.
+ * /sign-out — clears Clerk session + auth cookies, then hard-redirects to /login.
  *
- * Waits for clerk.signOut() to actually complete before redirecting so
- * the session cookie is properly invalidated. A 6 s failsafe guarantees
- * a redirect even if the Clerk API hangs.
+ * Strategy:
+ *  1. Immediately clear known Clerk cookies and localStorage.
+ *  2. Call clerk.signOut() to properly revoke the session server-side.
+ *  3. Hard-redirect to /login (never relies on Clerk's internal redirect).
+ *  4. A 5s failsafe guarantees redirect even if signOut() hangs.
  */
 export default function SignOutPage() {
   const clerk = useClerk();
-  const startedRef = useRef(false);
-  const redirectedRef = useRef(false);
+  const doneRef = useRef(false);
 
   useEffect(() => {
-    if (startedRef.current) return;
-    startedRef.current = true;
+    if (doneRef.current) return;
+    doneRef.current = true;
 
-    const search = typeof window !== "undefined" ? window.location.search : "";
-    const rawRedirect = new URLSearchParams(search).get("redirect")?.trim() || REDIRECT_FALLBACK;
-    const target = withPublicOrigin(rawRedirect) || REDIRECT_FALLBACK;
+    clearAllAuthState();
 
-    const goNow = () => {
-      if (redirectedRef.current) return;
-      redirectedRef.current = true;
-      try { window.localStorage.removeItem("ds_auth_user"); } catch { /* ignore */ }
-      window.location.replace(target);
+    const redirect = () => {
+      window.location.replace(REDIRECT_FALLBACK);
     };
 
-    const failsafe = window.setTimeout(goNow, FAILSAFE_MS);
+    const failsafe = window.setTimeout(redirect, FAILSAFE_MS);
 
     void (async () => {
       try {
         await clerk.signOut();
       } catch {
-        /* expired / already-deleted session — cookie is gone either way */
+        // Session may already be expired/deleted — cookies are cleared above.
       }
+      clearAllAuthState();
       window.clearTimeout(failsafe);
-      goNow();
+      redirect();
     })();
 
     return () => window.clearTimeout(failsafe);
