@@ -153,10 +153,10 @@ export default function SiteHeader() {
       {/* ── Header bar ──────────────────────────────────────────────────────── */}
       <header
         className={[
-          "fixed inset-x-0 z-50 h-16 transition-all duration-300 ease-out",
+          "fixed inset-x-0 z-50 h-16 transition-[background-color,box-shadow,transform,opacity] duration-300 ease-out",
           headerHidden ? "pointer-events-none -translate-y-full opacity-0" : "",
           scrolled
-            ? "bg-white/95 shadow-[0_1px_0_0_rgba(2,6,23,0.07)] backdrop-blur-md"
+            ? "bg-white shadow-[0_1px_0_0_rgba(2,6,23,0.07)]"
             : "bg-transparent",
         ].join(" ")}
         style={{ top: "var(--ds-maintenance-banner-height, 0px)" }}
