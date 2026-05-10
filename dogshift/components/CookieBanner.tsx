@@ -47,13 +47,13 @@ export default function CookieBanner({ onConsent }: Props) {
       aria-modal="false"
       className={[
         "fixed bottom-0 left-0 right-0 z-[9998] px-4 pb-4 sm:bottom-5 sm:left-5 sm:right-auto sm:w-full sm:max-w-md sm:px-0",
-        "transition-all duration-500 ease-out",
+        "transition-[transform,opacity] duration-500 ease-out",
         exiting
           ? "translate-y-4 opacity-0"
           : "translate-y-0 opacity-100",
       ].join(" ")}
     >
-      <div className="relative overflow-hidden rounded-3xl border border-slate-200/80 bg-white/95 shadow-[0_32px_80px_-16px_rgba(2,6,23,0.22)] backdrop-blur-xl">
+      <div className="relative overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-[0_32px_80px_-16px_rgba(2,6,23,0.22)]">
 
         {/* Subtle gradient accent */}
         <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[var(--dogshift-blue)]/40 to-transparent" />

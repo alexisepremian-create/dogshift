@@ -279,7 +279,7 @@ export default function DogShiftBot() {
   return (
     <div ref={wrapRef} style={wrapStyle} className={`flex gap-3 ${colDir} ${alignItems}`}>
       {open ? (
-        <div className="w-[360px] max-w-[calc(100vw-2.5rem)] overflow-hidden rounded-3xl border border-white/70 bg-white/80 shadow-[0_24px_80px_-50px_rgba(2,6,23,0.65)] backdrop-blur-xl">
+        <div className="w-[360px] max-w-[calc(100vw-2.5rem)] overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-[0_24px_80px_-50px_rgba(2,6,23,0.65)]">
           <div className="flex items-center justify-between border-b border-slate-200/70 px-4 py-3">
             <div className="flex items-center gap-3">
               <div className="grid h-10 w-10 place-items-center rounded-2xl bg-[var(--dogshift-blue)] shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_65%)] ring-1 ring-white/15">

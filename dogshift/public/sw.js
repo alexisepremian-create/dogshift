@@ -5,7 +5,7 @@
 //   - auth/payment     → NetworkOnly (never cache)
 //   - everything else  → NetworkFirst (10s timeout, 24h fallback)
 
-const CACHE_VERSION = "ds-v1";
+const CACHE_VERSION = "ds-v2";
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
 const ASSETS_CACHE = `${CACHE_VERSION}-assets`;
 const PAGES_CACHE = `${CACHE_VERSION}-pages`;
@@ -75,13 +75,17 @@ self.addEventListener("fetch", (event) => {
   // Auth + payment: always go to the network
   if (isNetworkOnly(url)) return;
 
+  // API routes + Next.js data routes: skip SW entirely to avoid overhead
+  if (url.pathname.startsWith("/api/") || url.pathname.startsWith("/_next/data/")) return;
+
   if (isNextStaticAsset(url)) {
     event.respondWith(cacheFirst(request, STATIC_CACHE));
   } else if (isStaticFile(url)) {
     event.respondWith(cacheFirst(request, ASSETS_CACHE));
-  } else {
+  } else if (request.mode === "navigate") {
     event.respondWith(networkFirst(request, PAGES_CACHE));
   }
+  // Non-navigation, non-static requests (XHR, etc.) go straight to network
 });
 
 // ── Strategies ───────────────────────────────────────────────────────────────

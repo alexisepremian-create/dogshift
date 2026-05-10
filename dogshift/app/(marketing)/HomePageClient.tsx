@@ -1461,7 +1461,7 @@ function StickySearchBar({ visible = true, hero = false }: { visible?: boolean; 
         className={hero
           ? "relative z-[45]"
           : [
-              "fixed left-0 right-0 z-40 w-full transition-all duration-400 ease-out origin-top",
+              "fixed left-0 right-0 z-40 w-full transition-[opacity,transform] duration-400 ease-out origin-top",
               visible ? "opacity-100 scale-100" : "pointer-events-none opacity-0 scale-95",
             ].join(" ")
         }
