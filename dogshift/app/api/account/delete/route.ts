@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { auth, currentUser, clerkClient } from "@clerk/nextjs/server";
@@ -61,6 +62,17 @@ export async function DELETE(req: NextRequest) {
     });
     const now = new Date();
     const activeOwnerBookings = ownerGateBookings.filter((b) => ownerBookingBlocksAccountDeletion(b, now)).length;
+
+    // Auto-archive unpaid bookings (abandoned checkouts) so they don't block cascade delete
+    const unpaidBookingIds = ownerGateBookings
+      .filter((b) => b.status === "PENDING_PAYMENT" || b.status === "DRAFT")
+      .map((b) => b.id);
+    if (unpaidBookingIds.length > 0) {
+      await prisma.booking.updateMany({
+        where: { id: { in: unpaidBookingIds } },
+        data: { archivedAt: now, status: "CANCELLED" as any },
+      });
+    }
 
     if (activeOwnerBookings > 0) {
       return NextResponse.json(

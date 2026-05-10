@@ -35,7 +35,7 @@ test("ownerBookingBlocksAccountDeletion: CONFIRMED future Promenade blocks", () 
   assert.equal(ownerBookingBlocksAccountDeletion(booking, now), true);
 });
 
-test("ownerBookingBlocksAccountDeletion: PENDING_PAYMENT blocks even if dates are past", () => {
+test("ownerBookingBlocksAccountDeletion: PENDING_PAYMENT never blocks (unpaid checkout)", () => {
   const now = new Date("2026-04-18T10:00:00.000Z");
   const booking = {
     status: "PENDING_PAYMENT",
@@ -44,7 +44,19 @@ test("ownerBookingBlocksAccountDeletion: PENDING_PAYMENT blocks even if dates ar
     endAt: null,
     archivedAt: null,
   };
-  assert.equal(ownerBookingBlocksAccountDeletion(booking, now), true);
+  assert.equal(ownerBookingBlocksAccountDeletion(booking, now), false);
+});
+
+test("ownerBookingBlocksAccountDeletion: DRAFT never blocks", () => {
+  const now = new Date("2026-04-18T10:00:00.000Z");
+  const booking = {
+    status: "DRAFT",
+    service: "Promenade",
+    endDate: new Date("2026-06-01T12:00:00.000Z"),
+    endAt: null,
+    archivedAt: null,
+  };
+  assert.equal(ownerBookingBlocksAccountDeletion(booking, now), false);
 });
 
 test("bookingServiceEnd: Garde extends to end of Zurich civil day of checkout", () => {

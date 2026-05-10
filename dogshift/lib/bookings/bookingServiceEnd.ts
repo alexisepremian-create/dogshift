@@ -76,7 +76,8 @@ export function ownerBookingBlocksAccountDeletion(
 ): boolean {
   if (booking.archivedAt) return false;
   const st = String(booking.status ?? "");
-  if (st === "PENDING_PAYMENT" || st === "PENDING_ACCEPTANCE") return true;
+  if (st === "PENDING_PAYMENT" || st === "DRAFT") return false;
+  if (st === "PENDING_ACCEPTANCE") return true;
   if (st !== "PAID" && st !== "CONFIRMED") return false;
   const end = bookingServiceEndUtc(booking);
   if (!end) return true;

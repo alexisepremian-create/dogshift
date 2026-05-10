@@ -1,21 +1,12 @@
 "use client";
 
-import { useClerk } from "@clerk/nextjs";
-import { useEffect, useRef } from "react";
+import { useClerk, useUser } from "@clerk/nextjs";
+import { useEffect, useRef, useState } from "react";
 import PageLoader from "@/components/ui/PageLoader";
 
 export const dynamic = "force-dynamic";
 
-const FAILSAFE_MS = 5000;
-
-function getRedirectTarget(): string {
-  try {
-    const params = new URLSearchParams(window.location.search);
-    const r = (params.get("redirect") ?? "").trim();
-    if (r.startsWith("/") && !r.startsWith("//")) return r;
-  } catch { /* ignore */ }
-  return "/login?force=1";
-}
+const FAILSAFE_MS = 6000;
 
 function clearAllAuthState() {
   try { document.cookie.split(";").forEach((c) => {
@@ -32,34 +23,41 @@ function clearAllAuthState() {
 
 export default function SignOutPage() {
   const clerk = useClerk();
+  const { isLoaded, isSignedIn } = useUser();
   const doneRef = useRef(false);
+  const [signOutDone, setSignOutDone] = useState(false);
 
   useEffect(() => {
     if (doneRef.current) return;
     doneRef.current = true;
 
     clearAllAuthState();
-    const target = getRedirectTarget();
 
-    const redirect = () => {
-      window.location.replace(target);
-    };
-
-    const failsafe = window.setTimeout(redirect, FAILSAFE_MS);
+    const failsafe = window.setTimeout(() => {
+      clearAllAuthState();
+      window.location.replace("/login?force=1");
+    }, FAILSAFE_MS);
 
     void (async () => {
       try {
         await clerk.signOut();
-      } catch {
-        // Session may already be expired/deleted — cookies are cleared above.
-      }
+      } catch { /* ignore */ }
       clearAllAuthState();
-      window.clearTimeout(failsafe);
-      redirect();
+      setSignOutDone(true);
     })();
 
     return () => window.clearTimeout(failsafe);
   }, [clerk]);
+
+  useEffect(() => {
+    if (!signOutDone) return;
+    if (!isLoaded) return;
+    if (isSignedIn) {
+      clearAllAuthState();
+      return;
+    }
+    window.location.replace("/login");
+  }, [signOutDone, isLoaded, isSignedIn]);
 
   return <PageLoader label="Déconnexion…" ready minDuration={300} persist static />;
 }
