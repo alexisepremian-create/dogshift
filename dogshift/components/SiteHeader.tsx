@@ -240,7 +240,7 @@ export default function SiteHeader() {
             aria-label="Fermer le menu"
             onClick={() => setNavOpen(false)}
             className={[
-              "absolute inset-0 cursor-default bg-slate-950/30 backdrop-blur-[2px] transition-opacity duration-[400ms] ease-[cubic-bezier(0.16,1,0.3,1)]",
+              "absolute inset-0 cursor-default bg-slate-950/40 transition-opacity duration-[400ms] ease-[cubic-bezier(0.16,1,0.3,1)]",
               navAnimating ? "opacity-100" : "opacity-0",
             ].join(" ")}
           />
@@ -248,7 +248,7 @@ export default function SiteHeader() {
           {/* Panel — slides from right */}
           <div
             className={[
-              "absolute inset-y-0 right-0 flex w-[320px] max-w-[calc(100vw-2.5rem)] flex-col bg-white shadow-[-20px_0_60px_-20px_rgba(2,6,23,0.20)] transition-all duration-[400ms] ease-[cubic-bezier(0.16,1,0.3,1)]",
+              "absolute inset-y-0 right-0 flex w-[320px] max-w-[calc(100vw-2.5rem)] flex-col bg-white shadow-[-20px_0_60px_-20px_rgba(2,6,23,0.20)] transition-[transform,opacity] duration-[400ms] ease-[cubic-bezier(0.16,1,0.3,1)] will-change-transform",
               navAnimating ? "translate-x-0 opacity-100" : "translate-x-full opacity-0",
             ].join(" ")}
             style={{

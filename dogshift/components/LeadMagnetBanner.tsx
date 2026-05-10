@@ -91,7 +91,7 @@ export default function LeadMagnetBanner() {
     /* Overlay */
     <div
       className="fixed inset-0 z-[70] flex items-end justify-center sm:items-center px-4 pb-6 sm:pb-0"
-      style={{ backgroundColor: "rgba(0,0,0,0.45)", backdropFilter: "blur(3px)" }}
+      style={{ backgroundColor: "rgba(0,0,0,0.58)" }}
       onClick={(e) => {
         if (e.target === e.currentTarget) dismiss();
       }}
