@@ -1258,7 +1258,7 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({ ok: true, html: result.html, subject: result.subject });
 }
 
-const TEST_EMAIL_RECIPIENT = "contact@dogshift.ch";
+const DEFAULT_TEST_RECIPIENT = "contact@dogshift.ch";
 
 export async function POST(req: NextRequest) {
   const admin = await getRequestAdminAccess(req);
@@ -1266,8 +1266,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
   }
 
-  const body = await req.json().catch(() => ({})) as { template?: string };
+  const body = await req.json().catch(() => ({})) as { template?: string; to?: string };
   const template = typeof body.template === "string" ? body.template : "";
+  const to = typeof body.to === "string" && body.to.includes("@") ? body.to.trim() : DEFAULT_TEST_RECIPIENT;
 
   const result = await renderTemplate(template);
   if (!result) {
@@ -1275,11 +1276,11 @@ export async function POST(req: NextRequest) {
   }
 
   await sendEmail({
-    to: TEST_EMAIL_RECIPIENT,
+    to,
     subject: `[TEST] ${result.subject}`,
     text: `Ceci est un email de test pour le template "${template}". Consultez la version HTML.`,
     html: result.html,
   });
 
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, sentTo: to });
 }
