@@ -96,7 +96,7 @@ function StatusHigh({ firstName, calendlyLink }: { firstName: string; calendlyLi
       <Text style={st.greeting}>Bonjour{firstName ? ` ${firstName}` : ""},</Text>
       <Text style={st.text}>
         Bonne nouvelle&nbsp;! Ton profil correspond à ce que nous cherchons pour la phase pilote DogShift. Pour finaliser ta candidature, nous organisons un court entretien de{" "}
-        <strong>15 minutes</strong> — c&apos;est une étape <strong>obligatoire</strong> avant l&apos;activation de ton profil.
+        <strong>15 minutes</strong> — c&apos;est une étape <strong>obligatoire</strong>{" "}avant l&apos;activation de ton profil.
       </Text>
       {calendlyLink ? (
         <>
