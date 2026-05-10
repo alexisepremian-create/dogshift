@@ -1,7 +1,8 @@
 "use client";
-/* eslint-disable react-hooks/set-state-in-effect */
+ 
 
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import {
   Heart,
   HelpCircle,
@@ -20,8 +21,16 @@ import { useUser } from "@clerk/nextjs";
 import { useEffect, useRef, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import BrandLogo from "@/components/BrandLogo";
-import MobileSearchOverlay from "@/components/MobileSearchOverlay";
 import NotificationBell from "@/components/NotificationBell";
+
+// Lazy-loaded: keeping the search overlay's JS out of the initial bundle and
+// out of the hydration pass means the magnifying-glass button responds
+// immediately on first tap and the homepage above-the-fold hydrates faster.
+// Code is fetched + executed only when `searchOpen` flips to true.
+const MobileSearchOverlay = dynamic(() => import("@/components/MobileSearchOverlay"), {
+  ssr: false,
+  loading: () => null,
+});
 
 type AccountContextPayload = {
   ok?: boolean;
@@ -36,6 +45,11 @@ export default function SiteHeader() {
   const [navMounted, setNavMounted] = useState(false);
   const [navAnimating, setNavAnimating] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  // Track whether the user has ever opened the search overlay this session.
+  // We only render the overlay tree (and pay the dynamic-import cost) once
+  // they actually reach for it — so the homepage hydration pass stays light
+  // and the very first tap on the magnifying glass is the only "cold" one.
+  const [searchEverOpened, setSearchEverOpened] = useState(false);
   const [accountHref, setAccountHref] = useState("/account");
   const { isLoaded, isSignedIn, user } = useUser();
   const pathname = usePathname();
@@ -57,6 +71,25 @@ export default function SiteHeader() {
   }
 
   useEffect(() => { setHasMounted(true); }, []);
+
+  // Warm up the lazy-loaded search overlay chunk *after* the homepage finishes
+  // hydrating, when the browser is idle. The initial bundle stays small (so the
+  // hero buttons respond fast on first paint) but the very first tap on the
+  // magnifying glass is also instant because the JS is already cached.
+  useEffect(() => {
+    type IdleWindow = Window & {
+      requestIdleCallback?: (cb: () => void, opts?: { timeout?: number }) => number;
+      cancelIdleCallback?: (id: number) => void;
+    };
+    const w = window as IdleWindow;
+    const prefetch = () => { void import("@/components/MobileSearchOverlay"); };
+    if (typeof w.requestIdleCallback === "function") {
+      const id = w.requestIdleCallback(prefetch, { timeout: 2500 });
+      return () => { if (typeof w.cancelIdleCallback === "function") w.cancelIdleCallback(id); };
+    }
+    const t = window.setTimeout(prefetch, 1500);
+    return () => window.clearTimeout(t);
+  }, []);
 
   // rAF-throttled scroll handler that only writes state when the *boolean
   // outcome* actually changes. Without this, every scroll pixel triggered two
@@ -175,7 +208,7 @@ export default function SiteHeader() {
             {/* Mobile search */}
             <button
               type="button"
-              onClick={() => setSearchOpen(true)}
+              onClick={() => { setSearchEverOpened(true); setSearchOpen(true); }}
               aria-label="Recherche rapide"
               className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 shadow-sm transition-[background-color,transform] duration-150 hover:bg-slate-50 active:scale-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)] md:hidden"
             >
@@ -349,7 +382,9 @@ export default function SiteHeader() {
         </div>
       ) : null}
 
-      <MobileSearchOverlay open={searchOpen} onClose={() => setSearchOpen(false)} />
+      {searchEverOpened ? (
+        <MobileSearchOverlay open={searchOpen} onClose={() => setSearchOpen(false)} />
+      ) : null}
     </>
   );
 }
