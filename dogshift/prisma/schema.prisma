@@ -160,6 +160,7 @@ model User {
   availabilityRules      AvailabilityRule[]
   availabilityExceptions AvailabilityException[]
   serviceConfigs         ServiceConfig[]
+  pushSubscriptions      PushSubscription[]
 }
 
 model Notification {
@@ -1051,4 +1052,20 @@ model AgentConfig {
   parameters   Json     @default("{}")
   updatedAt    DateTime @updatedAt
   createdAt    DateTime @default(now())
+}
+
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  userAgent String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("push_subscriptions")
 }

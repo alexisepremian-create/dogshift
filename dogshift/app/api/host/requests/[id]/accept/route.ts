@@ -7,6 +7,7 @@ import { createNotification } from "@/lib/notifications/inApp";
 import { resolveBookingParticipants } from "@/lib/notifications/sendNotificationEmail";
 import { setBookingStatus } from "@/lib/bookings/setBookingStatus";
 import { CURRENT_TERMS_VERSION } from "@/lib/terms";
+import { sendPushToUser } from "@/lib/push/send";
 
 type PrismaBookingDelegate = {
   findUnique: (args: unknown) => Promise<unknown>;
@@ -101,6 +102,25 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
         } catch (err) {
           console.error("[api][host][requests][accept][POST] in-app notification failed (owner)", err);
         }
+        const ownerId = participants.owner.id;
+        void (async () => {
+          try {
+            const sitterProfile = await prisma.sitterProfile.findUnique({
+              where: { userId: uid },
+              select: { displayName: true },
+            });
+            const sitterName = sitterProfile?.displayName ?? "Ton sitter";
+            await sendPushToUser(ownerId, {
+              title: "Réservation confirmée ✅",
+              body: `${sitterName} a accepté ta demande de réservation.`,
+              url: `/account/bookings?id=${encodeURIComponent(bookingId)}`,
+              tag: `booking-confirmed-${bookingId}`,
+              data: { bookingId, type: "confirmed" },
+            });
+          } catch (err) {
+            console.error("[api][host][requests][accept][POST] push notification failed", err);
+          }
+        })();
       }
       if (participants?.sitter?.id) {
         try {
@@ -122,6 +142,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       console.error("[api][host][requests][accept][POST] notification failed", err);
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const res = await setBookingStatus(bookingId, "CONFIRMED" as any, { req });
     if (!res.ok) {
       return NextResponse.json({ ok: false, error: res.error }, { status: 500 });

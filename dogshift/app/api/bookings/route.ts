@@ -14,6 +14,7 @@ import { createBookingSchema } from "@/lib/validators/bookings";
 import { logAudit } from "@/lib/audit";
 import { recordBookingFinanceEvent } from "@/lib/financeEvents";
 import { isSizeAccepted, checkCapacityForBooking } from "@/lib/bookings/capacityCheck";
+import { sendPushToUser } from "@/lib/push/send";
 import { geocodeAddress } from "@/lib/travel/geocode";
 import { computeTravelFee } from "@/lib/travel/distance";
 
@@ -720,6 +721,28 @@ export async function POST(req: NextRequest) {
       actorId: userId,
       metadata: { service, sitterId },
     });
+
+    // Fire-and-forget: push notification to sitter for new booking request
+    void (async () => {
+      try {
+        const [sitterUser, ownerUser] = await Promise.all([
+          (prisma as any).user.findUnique({ where: { sitterId }, select: { id: true } }),
+          (prisma as any).user.findUnique({ where: { id: userId }, select: { name: true } }),
+        ]);
+        if (sitterUser?.id) {
+          const ownerName = (ownerUser?.name as string | null | undefined) ?? "Un propriétaire";
+          await sendPushToUser(sitterUser.id as string, {
+            title: "Nouvelle demande de réservation 🐾",
+            body: `${ownerName} veut réserver : ${service}`,
+            url: "/host/requests",
+            tag: `booking-req-${booking.id}`,
+            data: { bookingId: booking.id, type: "new_request" },
+          });
+        }
+      } catch (err) {
+        console.error("[api][bookings][POST] push notification failed", err);
+      }
+    })();
 
     return NextResponse.json({ ok: true, bookingId: booking.id }, { status: 200 });
   } catch (err) {
