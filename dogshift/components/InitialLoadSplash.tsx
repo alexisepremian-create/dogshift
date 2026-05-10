@@ -13,6 +13,7 @@ const SPLASH_SKIP_PATHS = [
   "/",
   "/login",
   "/sign-out",
+  "/post-login",
   "/become-sitter",
   "/devenir-dogsitter",
   "/contract/sign",
