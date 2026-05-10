@@ -1436,10 +1436,9 @@ function StickySearchBar({ visible = true, hero = false }: { visible?: boolean; 
       {bodyMounted
         ? createPortal(
             <div
-              className="fixed inset-0 z-[38] pointer-events-none transition-all duration-400"
+              className="fixed inset-0 z-[38] pointer-events-none transition-[background-color] duration-300"
               style={{
-                background: activeSection ? "rgba(2,6,23,0.14)" : "transparent",
-                backdropFilter: activeSection ? "blur(1.5px)" : "none",
+                background: activeSection ? "rgba(2,6,23,0.22)" : "transparent",
               }}
               aria-hidden="true"
             />,
