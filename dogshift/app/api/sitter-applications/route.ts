@@ -37,6 +37,7 @@ import { sendInterviewEmail } from "@/lib/sitterApplication/sendInterviewEmail";
 import { calculateCandidatureScore, buildCandidatureTelegramMessage } from "@/lib/candidature/scoring";
 import { sendTelegramMessage } from "@/lib/telegram/sendTelegramMessage";
 import { logAudit } from "@/lib/audit";
+import { reportApiError } from "@/lib/observability/reportApiError";
 
 export const runtime = "nodejs";
 
@@ -439,9 +440,7 @@ export async function POST(req: NextRequest) {
     const calcomUrl = (process.env.NEXT_PUBLIC_CALCOM_INTERVIEW_URL ?? "https://cal.com/dogshift/entretien-dogshift").trim();
     try {
       if (scoreResult.decision === "HIGH") {
-        // sendInterviewEmail: renders + sends the HIGH template, and records
-        // acceptedEmailSentAt on the DB row if applicationId is present.
-        await sendInterviewEmail({
+        const result = await sendInterviewEmail({
           firstName,
           lastName,
           email,
@@ -450,6 +449,9 @@ export async function POST(req: NextRequest) {
           applicationId: applicationId ?? null,
           source: "agent",
         });
+        console.error("[api][sitter-applications] email sent", {
+          decision: "HIGH", mode: result.mode, messageId: result.messageId, to: email,
+        });
       } else {
         const status = scoreResult.decision === "REVIEW" ? "REVIEW" : "LOW";
         const subject = applicationStatusEmailSubject(status);
@@ -457,10 +459,23 @@ export async function POST(req: NextRequest) {
         const html = await render(
           ApplicationStatusEmail({ baseUrl, firstName, lastName, status })
         );
-        await sendEmail({ to: email, subject, text, html });
+        const result = await sendEmail({ to: email, subject, text, html });
+        console.error("[api][sitter-applications] email sent", {
+          decision: status, mode: result.mode, messageId: result.messageId, to: email,
+        });
       }
     } catch (err) {
-      console.warn("[api][sitter-applications] status email failed", err);
+      console.error("[api][sitter-applications] status email FAILED", {
+        decision: scoreResult.decision,
+        to: email,
+        error: err instanceof Error ? err.message : String(err),
+      });
+      reportApiError({
+        kind: "upstream_error",
+        code: "CANDIDATURE_EMAIL_FAILED",
+        route: "sitter-applications.post",
+        extra: { decision: scoreResult.decision, applicationId },
+      });
     }
 
     return NextResponse.json({ ok: true, id: applicationId, score: scoreResult.score, decision: scoreResult.decision }, { status: 200 });
