@@ -26,6 +26,15 @@ export async function GET(req: Request) {
   const year = now.getFullYear();
   const dateStr = `${day} ${month} ${year}`;
 
+  // Idempotency: skip if today's recap was already sent (Vercel may retry)
+  const todayKey = `maintenance-recap-${year}-${String(now.getMonth() + 1).padStart(2, "0")}-${day}`;
+  const alreadySent = await prisma.agentLog.findFirst({
+    where: { agentName: todayKey, status: "success" },
+  });
+  if (alreadySent) {
+    return NextResponse.json({ success: true, skipped: true, reason: "already sent today" });
+  }
+
   try {
     const [agentLogs, newBookings, confirmedBookings, pendingApps, lastDepsRun] =
       await Promise.all([
@@ -118,6 +127,10 @@ export async function GET(req: Request) {
     await sendTelegramMessage(lines.join("\n"), {
       bot: "maintenance",
       parseMode: "HTML",
+    });
+
+    await prisma.agentLog.create({
+      data: { agentName: todayKey, actionType: "success", status: "success", summary: `Recap sent for ${dateStr}` },
     });
 
     return NextResponse.json({
