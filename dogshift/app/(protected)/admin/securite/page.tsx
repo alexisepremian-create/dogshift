@@ -23,13 +23,13 @@ const categories: SecurityCategory[] = [
     icon: Lock,
     items: [
       {
-        title: "Authentification Clerk",
-        description: "Tous les utilisateurs s'authentifient via Clerk (leader du marché). Gestion des sessions, tokens JWT, et protection contre les attaques par force brute incluse nativement.",
+        title: "Authentification Auth.js v5",
+        description: "Les utilisateurs s'authentifient en interne via Auth.js v5 (Google OAuth + email/mot de passe). Mots de passe stockés sous forme de hash bcrypt cost 12, sessions JWT signées avec AUTH_SECRET (32 octets random).",
         status: "ok",
       },
       {
-        title: "Panel admin — double protection",
-        description: "L'accès admin nécessite (1) une session Clerk active, (2) un code admin fort. Même si quelqu'un devine l'URL, il ne peut pas entrer sans les deux.",
+        title: "Panel admin — triple protection",
+        description: "L'accès admin nécessite (1) une session Auth.js active, (2) le rôle ADMIN en base, (3) email présent dans ADMIN_EMAILS, (4) un code admin fort. Même si quelqu'un devine l'URL, il ne peut pas entrer sans les quatre.",
         status: "ok",
       },
       {
@@ -44,7 +44,7 @@ const categories: SecurityCategory[] = [
       },
       {
         title: "2FA sur tous les services critiques",
-        description: "Double authentification activée sur Clerk, GitHub, Stripe, Vercel et Cloudflare. Même en cas de mot de passe compromis, le compte reste inaccessible.",
+        description: "Double authentification activée sur Google (OAuth), GitHub, Stripe, Vercel et Cloudflare. Même en cas de mot de passe compromis, le compte reste inaccessible.",
         status: "ok",
       },
     ],
@@ -82,7 +82,7 @@ const categories: SecurityCategory[] = [
       },
       {
         title: "Route auth/register désactivée",
-        description: "L'ancien endpoint de création de compte (hors Clerk) est désactivé et répond 410 Gone. L'authentification passe exclusivement par Clerk.",
+        description: "L'ancien endpoint de création de compte (avant Auth.js) est désactivé et répond 410 Gone. L'authentification passe exclusivement par /api/auth/* (Auth.js v5).",
         status: "ok",
       },
     ],
@@ -93,9 +93,9 @@ const categories: SecurityCategory[] = [
     items: [
       {
         title: "Content Security Policy (CSP)",
-        description: "Le navigateur n'autorise le chargement de scripts, styles et requêtes API que depuis les domaines explicitement listés (Clerk, Stripe, MapTiler, Google Ads). Bloque les injections XSS.",
+        description: "Le navigateur n'autorise le chargement de scripts, styles et requêtes API que depuis les domaines explicitement listés (Stripe, MapTiler, Google Ads, Sentry). Bloque les injections XSS.",
         status: "ok",
-        detail: "Services autorisés : Clerk · Stripe · MapTiler · Google Ads · Sentry",
+        detail: "Services autorisés : Stripe · MapTiler · Google Ads · Sentry",
       },
       {
         title: "HSTS — HTTPS forcé",
@@ -168,7 +168,7 @@ const categories: SecurityCategory[] = [
       },
       {
         title: "Secrets non exposés côté client",
-        description: "Seules les variables préfixées NEXT_PUBLIC_ sont envoyées au navigateur. Ce sont des clés publiques par design (Clerk publishable key, Stripe publishable key, DSN Sentry).",
+        description: "Seules les variables préfixées NEXT_PUBLIC_ sont envoyées au navigateur. Ce sont des clés publiques par design (Stripe publishable key, MapTiler key, DSN Sentry).",
         status: "ok",
       },
       {
