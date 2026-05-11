@@ -118,6 +118,32 @@ input[type="radio"] {
   50%      { opacity: 0.85; }
 }
 
+/* Navigation overlay — masks the page-tear-down gap between a Link click
+   and the new route's loading.tsx Suspense fallback committing. The
+   element itself is always in the DOM (rendered by <NavigationOverlay />
+   in app/layout.tsx); we just toggle visibility via a body attribute set
+   synchronously from a click capture handler. See:
+   components/NavigationOverlayController.tsx */
+#ds-nav-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: #ffffff;
+  pointer-events: none;
+}
+
+body[data-navigating="1"] #ds-nav-overlay {
+  display: flex;
+  pointer-events: auto;
+}
+
+body[data-navigating="1"] #ds-nav-overlay svg {
+  animation: brandPulse 1.8s ease-in-out infinite;
+}
+
 /* Search panel tab switch / suggestions animation — premium slower timing */
 @keyframes panelTabEnter {
   from { opacity: 0; transform: translateY(10px); }
