@@ -2,11 +2,14 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { useState } from "react";
-import { useUser } from "@clerk/nextjs";
+import { useSession, signOut } from "next-auth/react";
 
 export default function HelpContactForm() {
-  const { isLoaded, isSignedIn, user } = useUser();
-  const userEmail = user?.primaryEmailAddress?.emailAddress ?? "";
+  const { data: __session, status: __sessionStatus } = useSession();
+  const user = __session?.user ?? null;
+  const isLoaded = __sessionStatus !== "loading";
+  const isSignedIn = __sessionStatus === "authenticated";
+  const userEmail = user?.email ?? "";
 
   const [message, setMessage] = useState("");
   const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useSearchParams } from "next/navigation";
-import { useUser } from "@clerk/nextjs";
+import { useSession, signOut } from "next-auth/react";
 import { CalendarDays, Clock3 } from "lucide-react";
 
 type BookingDetail = {
@@ -232,7 +232,9 @@ export default function AccountBookingDetailPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const sp = useSearchParams();
-  const { isLoaded, isSignedIn } = useUser();
+  const { status: __sessionStatus } = useSession();
+  const isLoaded = __sessionStatus !== "loading";
+  const isSignedIn = __sessionStatus === "authenticated";
 
   const bookingId = typeof params?.id === "string" ? params.id : "";
 

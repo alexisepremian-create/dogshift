@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useUser } from "@clerk/nextjs";
+import { useSession, signOut } from "next-auth/react";
 
 import AuthLayout from "@/components/auth/AuthLayout";
 import SignUpForm from "@/components/auth/SignUpForm";
@@ -12,7 +12,9 @@ export default function SignUpPage() {
   useCanonicalDogshiftHostRedirect();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { isLoaded, isSignedIn } = useUser();
+  const { status: __sessionStatus } = useSession();
+  const isLoaded = __sessionStatus !== "loading";
+  const isSignedIn = __sessionStatus === "authenticated";
 
   const force = (searchParams?.get("force") ?? "").trim();
   const forceMode = force === "1" || force.toLowerCase() === "true";

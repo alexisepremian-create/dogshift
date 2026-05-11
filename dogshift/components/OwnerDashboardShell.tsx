@@ -1,7 +1,7 @@
 "use client";
 
 import { LogOut } from "lucide-react";
-import { useClerk } from "@clerk/nextjs";
+import { useSession, signOut } from "next-auth/react";
 
 import BrandLogo from "@/components/BrandLogo";
 import MobileBottomNav from "@/components/MobileBottomNav";
@@ -23,7 +23,7 @@ const BOTTOM_NAV_LABELS: Record<string, string> = {
 };
 
 export default function OwnerDashboardShell({ children }: { children: React.ReactNode }) {
-  useClerk();
+
   const { items } = useOwnerDashboardNavItems();
 
   const toNavItem = (key: string) => {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { useClerk } from "@clerk/nextjs";
+import { useSession, signOut } from "next-auth/react";
 import { LogOut } from "lucide-react";
 
 import Sidebar from "@/components/Sidebar";
@@ -14,7 +14,7 @@ type HostSidebarProps = {
 };
 
 export default function HostSidebar({ onNavigate, className, forceExpanded }: HostSidebarProps) {
-  useClerk();
+
   const { items: mappedItems, isLoaded } = useHostDashboardNavItems();
 
   if (!isLoaded) {

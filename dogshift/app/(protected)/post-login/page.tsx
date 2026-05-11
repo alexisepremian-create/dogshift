@@ -1,6 +1,6 @@
 "use client";
 
-import { useAuth } from "@clerk/nextjs";
+import { useSession, signOut } from "next-auth/react";
 import { useEffect, useRef } from "react";
 
 import PageLoader from "@/components/ui/PageLoader";
@@ -15,7 +15,9 @@ function absolutePath(path: string): string {
 }
 
 export default function PostLoginPage() {
-  const { isLoaded, userId } = useAuth();
+  const { data: __session, status: __sessionStatus } = useSession();
+  const isLoaded = __sessionStatus !== "loading";
+  const userId = __session?.user?.id ?? null;
   const userIdRef = useRef(userId);
   const runStartedRef = useRef(false);
 

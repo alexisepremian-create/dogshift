@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useUser } from "@clerk/nextjs";
+import { useSession, signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
 
 import PageLoader, { PAGE_LOADER_MIN_DURATION_MS } from "@/components/ui/PageLoader";
@@ -14,7 +14,9 @@ export default function ClerkAuthGate({
   redirectTo?: string;
 }) {
   const router = useRouter();
-  const { isLoaded, isSignedIn } = useUser();
+  const { status: __sessionStatus } = useSession();
+  const isLoaded = __sessionStatus !== "loading";
+  const isSignedIn = __sessionStatus === "authenticated";
   const [readyToRender, setReadyToRender] = useState(false);
   const mountRef = useRef(Date.now());
   const [minElapsed, setMinElapsed] = useState(false);

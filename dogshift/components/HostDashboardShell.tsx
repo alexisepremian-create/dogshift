@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname, useSearchParams } from "next/navigation";
-import { useClerk } from "@clerk/nextjs";
+import { useSession, signOut } from "next-auth/react";
 
 import HostContractAmendmentModal from "@/components/HostContractAmendmentModal";
 import MobileBottomNav from "@/components/MobileBottomNav";
@@ -30,7 +30,7 @@ const BOTTOM_NAV_LABELS: Record<string, string> = {
 
 export default function HostDashboardShell({ children }: { children: React.ReactNode }) {
   const host = useHostUser();
-  useClerk();
+
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { items } = useHostDashboardNavItems();

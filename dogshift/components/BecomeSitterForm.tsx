@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useSignUp, useUser } from "@clerk/nextjs";
+import { useSession, signOut } from "next-auth/react";
 import MiniStepRing from "@/components/MiniStepRing";
 
 const SERVICE_OPTIONS = ["Promenade", "Garde", "Pension"] as const;
@@ -33,9 +33,14 @@ function Spinner({ className }: { className?: string }) {
 
 export default function BecomeSitterForm() {
   const router = useRouter();
-  const { isLoaded, isSignedIn, user } = useUser();
-  const { signUp, fetchStatus: signUpFetchStatus } = useSignUp();
-  const isSignUpLoaded = !!signUp;
+  const { data: __session, status: __sessionStatus } = useSession();
+  const user = __session?.user ?? null;
+  const isLoaded = __sessionStatus !== "loading";
+  const isSignedIn = __sessionStatus === "authenticated";
+  // Auth.js v5 owns the sign-up flow via /api/auth/register — useSignUp removed.
+  const signUp = null as unknown as null | { create: (...args: unknown[]) => Promise<unknown> };
+  const signUpFetchStatus: "idle" | "fetching" = "idle";
+  const isSignUpLoaded = false;
   const sessionStatus = !isLoaded ? "loading" : isSignedIn ? "authenticated" : "unauthenticated";
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [formStatus, setFormStatus] = useState<"idle" | "submitting" | "done" | "error">("idle");
@@ -90,7 +95,7 @@ export default function BecomeSitterForm() {
 
   const sessionEmail = useMemo(() => {
     if (!isLoaded || !isSignedIn) return "";
-    return user?.primaryEmailAddress?.emailAddress ?? "";
+    return user?.email ?? "";
   }, [isLoaded, isSignedIn, user]);
 
   const effectiveEmail = sessionStatus === "authenticated" ? sessionEmail : email;

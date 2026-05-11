@@ -2,14 +2,16 @@
 
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useAuth } from "@clerk/nextjs";
+import { useSession, signOut } from "next-auth/react";
 import Link from "next/link";
 import { CheckCircle2, Dog, Bone, Heart, MapPin } from "lucide-react";
 
 export default function BecomeSitterActivatePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { isLoaded, isSignedIn } = useAuth();
+  const { status: __sessionStatus } = useSession();
+  const isLoaded = __sessionStatus !== "loading";
+  const isSignedIn = __sessionStatus === "authenticated";
 
   const initialCode = searchParams?.get("code") ?? "";
 

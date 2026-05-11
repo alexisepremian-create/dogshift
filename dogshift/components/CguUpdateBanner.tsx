@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { useUser } from "@clerk/nextjs";
+import { useSession, signOut } from "next-auth/react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { X, FileText } from "lucide-react";
@@ -20,7 +20,9 @@ function isPaymentFlow(pathname: string | null) {
 }
 
 export default function CguUpdateBanner() {
-  const { isSignedIn, user } = useUser();
+  const { data: __session, status: __sessionStatus } = useSession();
+  const user = __session?.user ?? null;
+  const isSignedIn = __sessionStatus === "authenticated";
   const pathname = usePathname();
   const [visible, setVisible] = useState(false);
   const [accepting, setAccepting] = useState(false);
@@ -54,15 +56,16 @@ export default function CguUpdateBanner() {
 
   useEffect(() => {
     if (!isSignedIn || !user) return;
-    const accepted = (user.unsafeMetadata as Record<string, string>)?.cguVersion;
-    if (accepted !== CGU_VERSION) setVisible(true);
+    // TODO(PR2): persist + check CGU acceptance server-side (Prisma) instead
+    // of Clerk's unsafeMetadata. For now, always re-show the banner — the
+    // audit endpoint below already records the acceptance.
+    setVisible(true);
   }, [isSignedIn, user]);
 
   async function accept() {
     if (!user) return;
     setAccepting(true);
     try {
-      await user.update({ unsafeMetadata: { ...user.unsafeMetadata, cguVersion: CGU_VERSION } });
       // Trace dans le journal juridique (best-effort)
       void fetch("/api/audit/consent", {
         method: "POST",

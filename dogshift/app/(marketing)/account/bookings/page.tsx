@@ -6,7 +6,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useUser } from "@clerk/nextjs";
+import { useSession, signOut } from "next-auth/react";
 import AccountPageSkeleton from "@/components/ui/AccountPageSkeleton";
 import {
   ArchiveRestore,
@@ -254,7 +254,9 @@ async function copyToClipboard(value: string) {
 function AccountBookingsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { isLoaded, isSignedIn } = useUser();
+  const { status: __sessionStatus } = useSession();
+  const isLoaded = __sessionStatus !== "loading";
+  const isSignedIn = __sessionStatus === "authenticated";
 
   const [bookings, setBookings] = useState<BookingListItem[]>([]);
   const [loading, setLoading] = useState(true);
