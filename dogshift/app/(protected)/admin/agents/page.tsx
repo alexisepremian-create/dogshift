@@ -167,7 +167,7 @@ const AGENTS: AgentDef[] = [
   { id: "candidature_classic",name: "Score classique",description: "Algorithme par règles",             icon: "Calculator" },
   { id: "candidature_ai",     name: "Analyse IA",    description: "Claude qualitatif",                  icon: "Brain" },
   { id: "deps-agent",         name: "Deps Nightly",  description: "MAJ autonome des dépendances — npm outdated → branche → tsc → Claude fix → PR auto-merge", icon: "Package" },
-  { id: "deps-weekly",        name: "Deep Scan",     description: "Rapport hebdo lundi 07h — release notes Clerk/Stripe/Next.js/Prisma analysées par Claude",  icon: "ScanSearch" },
+  { id: "deps-weekly",        name: "Deep Scan",     description: "Rapport hebdo lundi 07h — release notes Auth.js/Stripe/Next.js/Prisma analysées par Claude",  icon: "ScanSearch" },
   { id: "dog-news",           name: "Dog News",      description: "Veille quotidienne 08h — Google News RSS → Claude → 3 idées de posts réseaux sociaux → Telegram", icon: "Newspaper" },
 ];
 

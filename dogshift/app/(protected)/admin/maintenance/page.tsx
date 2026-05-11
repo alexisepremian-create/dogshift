@@ -205,7 +205,7 @@ function LogRow({ log }: { log: MaintenanceLog }) {
 
 const SENSITIVE_PACKAGES = [
   { name: "next", label: "Next.js", icon: "▲" },
-  { name: "@clerk/nextjs", label: "Clerk", icon: "🔐" },
+  { name: "next-auth", label: "Auth.js v5", icon: "🔐" },
   { name: "stripe", label: "Stripe Node", icon: "💳" },
   { name: "@stripe/stripe-js", label: "Stripe.js", icon: "💳" },
   { name: "prisma", label: "Prisma", icon: "🗄" },
@@ -353,7 +353,7 @@ export default function MaintenancePage() {
             <p><strong>Automatisation :</strong> le Deps Agent tourne tous les soirs à 00h30 UTC via GitHub Actions.</p>
             <p><strong>Processus :</strong> npm outdated → branche dédiée → npm install → tsc → Claude (max 3 rounds) → PR avec auto-merge → Telegram.</p>
             <p><strong>Sécurité :</strong> chaque PR est bloquée par CI complet (lint + typecheck + unit tests + Next.js build + Playwright E2E).</p>
-            <p><strong>Rapport hebdo :</strong> chaque lundi, analyse des changelogs Clerk/Stripe/Next.js/Prisma par Claude avec évaluation du risque.</p>
+            <p><strong>Rapport hebdo :</strong> chaque lundi, analyse des changelogs Auth.js/Stripe/Next.js/Prisma par Claude avec évaluation du risque.</p>
           </div>
         </div>
       </div>
