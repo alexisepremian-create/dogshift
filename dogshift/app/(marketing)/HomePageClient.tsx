@@ -2530,8 +2530,9 @@ function SecuritySection() {
 // ── MAP SECTION ───────────────────────────────────────────────────────────────
 
 function MapSection() {
+  const reveal = useRevealOnce();
   return (
-    <section className="bg-white py-16 sm:py-20">
+    <section ref={reveal.ref} style={reveal.style} className="bg-white py-16 sm:py-20">
       <div className="mx-auto max-w-6xl px-6 sm:px-8 lg:px-10">
         <div className="mb-6 text-center">
           <p className="text-xs font-semibold uppercase tracking-wider text-[var(--dogshift-blue)]">
