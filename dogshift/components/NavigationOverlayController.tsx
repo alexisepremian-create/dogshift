@@ -2,15 +2,23 @@
 
 /**
  * Synchronously shows the navigation overlay (rendered statically by
- * <NavigationOverlay /> in the root layout) the moment an internal link is
- * clicked. Hides it once the new pathname is mounted.
+ * <NavigationOverlay /> in the root layout) the moment a navigation starts.
+ * Hides it once the new pathname is mounted.
  *
- * The reason for setting `document.body.dataset.navigating` directly (instead
- * of going through React state) is that React's render → commit cycle
- * happens AFTER the browser has already started laying out the old tree
- * for the next paint. By flipping a body attribute in the click capture
- * handler we let CSS take over before React even schedules a re-render —
- * no 1-frame gap where the footer briefly shows through.
+ * Two trigger paths:
+ *
+ *   1. Click capture on <a href="/...">  — catches every Link click before
+ *      React's bubble-phase handler runs.
+ *
+ *   2. Monkey-patched window.history.pushState / replaceState — catches
+ *      programmatic navigations (`router.push(...)`, `router.replace(...)`)
+ *      that don't originate from an anchor tag (e.g. card onClick handlers,
+ *      form submissions, auth redirects, search filter applies).
+ *
+ * Both flip `document.body.dataset.navigating = "1"` synchronously, so the
+ * CSS rule in globals.css (`body[data-navigating="1"] #ds-nav-overlay
+ * { display: flex }`) takes effect in the same frame the browser is about
+ * to paint — no 1-frame gap where the footer flashes through.
  */
 
 import { useEffect } from "react";
@@ -38,6 +46,29 @@ function isSkippedHref(href: string): boolean {
 function clearOverlay() {
   if (typeof document === "undefined") return;
   document.body.removeAttribute("data-navigating");
+}
+
+/**
+ * Inspect a "next URL" passed to history.pushState / replaceState and decide
+ * whether we should flash the overlay. We mirror the click-handler skip list
+ * here so e.g. a router.replace("/login?force=1") right after sign-out
+ * doesn't trigger an overlay that would feel pointless.
+ */
+function shouldShowOverlayFor(nextUrl: unknown, currentPathname: string | null): boolean {
+  let pathOnly = "";
+  try {
+    if (typeof nextUrl !== "string") return false;
+    // Both absolute (https://…) and relative (/foo?…) inputs are valid.
+    const u = nextUrl.startsWith("/")
+      ? new URL(nextUrl, "https://placeholder.local")
+      : new URL(nextUrl);
+    pathOnly = u.pathname;
+  } catch {
+    return false;
+  }
+  if (!pathOnly.startsWith("/")) return false;
+  if (pathOnly === currentPathname) return false;
+  return !SKIP_PATHS.some((p) => pathOnly === p);
 }
 
 export default function NavigationOverlayController() {
@@ -86,6 +117,27 @@ export default function NavigationOverlayController() {
     // synthetic event handlers attached in bubble phase.
     document.addEventListener("click", onClick, { capture: true });
 
+    // ── Programmatic navigation interception ──────────────────────────────
+    // Next.js's `router.push()` / `router.replace()` go through
+    // window.history.pushState / replaceState. We wrap those so card
+    // onClick handlers, search filters, etc. also trigger the overlay.
+    const origPush = window.history.pushState;
+    const origReplace = window.history.replaceState;
+    const wrappedPush: typeof window.history.pushState = function (data, unused, url) {
+      if (shouldShowOverlayFor(url, pathname)) {
+        document.body.dataset.navigating = "1";
+      }
+      return origPush.call(window.history, data, unused, url);
+    };
+    const wrappedReplace: typeof window.history.replaceState = function (data, unused, url) {
+      if (shouldShowOverlayFor(url, pathname)) {
+        document.body.dataset.navigating = "1";
+      }
+      return origReplace.call(window.history, data, unused, url);
+    };
+    window.history.pushState = wrappedPush;
+    window.history.replaceState = wrappedReplace;
+
     // Defensive: if the user hits Back/Forward, hide the overlay too.
     window.addEventListener("popstate", clearOverlay);
     // If the overlay somehow gets stuck (e.g. failed navigation), failsafe.
@@ -102,6 +154,13 @@ export default function NavigationOverlayController() {
     return () => {
       document.removeEventListener("click", onClick, { capture: true });
       window.removeEventListener("popstate", clearOverlay);
+      // Restore originals — only if we're still the active wrapper (HMR-safe).
+      if (window.history.pushState === wrappedPush) {
+        window.history.pushState = origPush;
+      }
+      if (window.history.replaceState === wrappedReplace) {
+        window.history.replaceState = origReplace;
+      }
       obs.disconnect();
       window.clearTimeout(failsafe);
     };
