@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
-import { auth, currentUser } from "@clerk/nextjs/server";
 
-import { ensureDbUserByClerkUserId } from "@/lib/auth/resolveDbUserId";
+import { getAuthedDbUser } from "@/lib/auth/getAuthedDbUser";
 import { getActiveContractAmendment, getHostContractAmendmentState } from "@/lib/contractAmendments";
 import { prisma } from "@/lib/prisma";
 import { CURRENT_TERMS_VERSION } from "@/lib/terms";
@@ -11,14 +10,14 @@ export const runtime = "nodejs";
 
 export async function POST() {
   try {
-    const { userId } = await auth();
-    if (!userId) {
+    const authedUser = await getAuthedDbUser();
+    if (!authedUser) {
       return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
     }
+    const userId = authedUser.id;
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- clerkUserId not in generated Prisma types
-    let dbUser = await (prisma as any).user.findUnique({
-      where: { clerkUserId: userId },
+    const dbUser = await prisma.user.findUnique({
+      where: { id: authedUser.id },
       select: {
         id: true,
         sitterProfile: {
@@ -30,53 +29,26 @@ export async function POST() {
       },
     });
 
-    if (!dbUser?.id) {
-      const clerkUser = await currentUser();
-      const primaryEmail = clerkUser?.primaryEmailAddress?.emailAddress ?? "";
-      if (!primaryEmail) {
-        return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
-      }
-      const ensured = await ensureDbUserByClerkUserId({
-        clerkUserId: userId,
-        email: primaryEmail,
-        name: typeof clerkUser?.fullName === "string" ? clerkUser.fullName : null,
-      });
-      if (!ensured?.id) {
-        return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
-      }
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- clerkUserId not in generated Prisma types
-      dbUser = await (prisma as any).user.findUnique({
-        where: { id: ensured.id },
-        select: {
-          id: true,
-          sitterProfile: {
-            select: {
-              id: true,
-              contractVersion: true,
-            },
-          },
-        },
-      });
-    }
-
     if (!dbUser?.sitterProfile?.id) {
       return NextResponse.json(
         { ok: false, error: "SITTER_PROFILE_REQUIRED", message: "Créez d’abord votre profil dogsitter." },
         { status: 403 }
       );
     }
+    const sitterProfileId = dbUser.sitterProfile.id;
+    const contractVersion = dbUser.sitterProfile.contractVersion;
 
     const amendment = await getActiveContractAmendment();
     const amendmentState = await getHostContractAmendmentState({
-      sitterProfileId: dbUser.sitterProfile.id,
-      contractVersion: typeof dbUser.sitterProfile.contractVersion === "string" ? dbUser.sitterProfile.contractVersion : null,
+      sitterProfileId,
+      contractVersion: typeof contractVersion === "string" ? contractVersion : null,
     });
 
     const now = new Date();
 
     await prisma.$transaction(async (tx) => {
       await tx.sitterProfile.update({
-        where: { id: dbUser.sitterProfile.id },
+        where: { id: sitterProfileId },
         data: { termsAcceptedAt: now, termsVersion: CURRENT_TERMS_VERSION },
       });
 
@@ -86,12 +58,12 @@ export async function POST() {
           where: {
             amendmentId_sitterProfileId: {
               amendmentId: amendment.id,
-              sitterProfileId: dbUser.sitterProfile.id,
+              sitterProfileId,
             },
           },
           create: {
             amendmentId: amendment.id,
-            sitterProfileId: dbUser.sitterProfile.id,
+            sitterProfileId,
             amendmentVersion: amendment.version,
             amendmentTitle: amendment.title,
             amendmentContent: amendment.content,
@@ -119,7 +91,7 @@ export async function POST() {
         action: "consent.contract_amendment",
         actorType: "user",
         actorId: userId,
-        targetId: dbUser.sitterProfile.id,
+        targetId: sitterProfileId,
         metadata: { amendmentVersion: amendment.version, amendmentId: amendment.id },
       });
     }

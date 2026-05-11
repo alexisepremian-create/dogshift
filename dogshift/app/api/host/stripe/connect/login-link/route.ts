@@ -1,10 +1,9 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { auth, currentUser } from "@clerk/nextjs/server";
 
 import { prisma } from "@/lib/prisma";
 import { stripe } from "@/lib/stripe";
-import { ensureDbUserByClerkUserId } from "@/lib/auth/resolveDbUserId";
+import { getAuthedDbUser } from "@/lib/auth/getAuthedDbUser";
 
 export const runtime = "nodejs";
 
@@ -12,29 +11,14 @@ export async function POST(req: NextRequest) {
   try {
     void req;
 
-    const { userId: clerkUserId } = await auth();
-    if (!clerkUserId) {
-      return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
-    }
-
-    const clerk = await currentUser();
-    const email = clerk?.primaryEmailAddress?.emailAddress ?? "";
-    if (!email) {
-      return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
-    }
-
-    const ensured = await ensureDbUserByClerkUserId({
-      clerkUserId,
-      email,
-      name: typeof clerk?.fullName === "string" ? clerk.fullName : null,
-    });
-    if (!ensured?.id) {
+    const authedUser = await getAuthedDbUser();
+    if (!authedUser?.email) {
       return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
     }
 
     const db = prisma as any;
     const sitterProfile = await db.sitterProfile.findUnique({
-      where: { userId: ensured.id },
+      where: { userId: authedUser.id },
       select: { id: true, stripeAccountId: true },
     });
     if (!sitterProfile?.id) {
