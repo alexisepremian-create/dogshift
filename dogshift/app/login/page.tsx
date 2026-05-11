@@ -3,19 +3,29 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { SignOutButton, useAuth, useClerk, useUser } from "@clerk/nextjs";
+import { signOut, useSession } from "next-auth/react";
 
 import AuthLayout from "@/components/auth/AuthLayout";
 import LoginForm from "@/components/auth/LoginForm";
 import { useCanonicalDogshiftHostRedirect } from "@/lib/url/useCanonicalDogshiftHost";
 
+/**
+ * Login page wrapper.
+ *
+ * Renders `<LoginForm />` (the form is self-contained with Auth.js
+ * signIn() calls). Adds:
+ *  - Auto-redirect to /post-login if the user is already authenticated.
+ *  - `?force=1` mode → tries to sign out, falls back to /sign-out manually.
+ *  - `?debugAuth=1&token=...` mode → debug panel showing session + server view.
+ */
 export default function LoginPage() {
   useCanonicalDogshiftHostRedirect();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const clerk = useClerk();
-  const { isLoaded, isSignedIn } = useUser();
-  const { isLoaded: authLoaded, userId: authUserId, isSignedIn: authIsSignedIn } = useAuth();
+  const { data: session, status } = useSession();
+  const isLoaded = status !== "loading";
+  const isSignedIn = status === "authenticated";
+  const userId = session?.user?.id ?? null;
 
   const force = (searchParams?.get("force") ?? "").trim();
   const forceMode = force === "1" || force.toLowerCase() === "true";
@@ -31,10 +41,7 @@ export default function LoginPage() {
   const [signOutAttempting, setSignOutAttempting] = useState(false);
   const [signOutError, setSignOutError] = useState<string | null>(null);
 
-
   // Track whether the user was ALREADY signed in when the page first loaded.
-  // If they were signed out on load and then signed in via the form → redirect
-  // immediately even in forceMode (don't flash the "already connected" banner).
   const alreadySignedInOnLoad = useRef<boolean | null>(null);
   useEffect(() => {
     if (!isLoaded) return;
@@ -48,8 +55,7 @@ export default function LoginPage() {
   useEffect(() => {
     if (!isLoaded) return;
     if (!isSignedIn) return;
-    // Only block auto-redirect in forceMode if the user was ALREADY signed in
-    // when the page loaded (i.e. they arrived signed in, not just signed in now).
+    // Block auto-redirect only if user landed already-signed-in in forceMode.
     if (forceMode && alreadySignedInOnLoad.current === true) return;
     const dest = next ? `/post-login?next=${encodeURIComponent(next)}` : "/post-login";
     router.replace(dest);
@@ -57,9 +63,9 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (!debugMode) return;
-    if (!authLoaded) return;
-    console.log("[login][debug][client]", { authLoaded, authIsSignedIn, authUserId, userIsSignedIn: isSignedIn });
-  }, [authIsSignedIn, authLoaded, authUserId, debugMode, isSignedIn]);
+    if (!isLoaded) return;
+    console.log("[login][debug][client]", { isLoaded, isSignedIn, userId });
+  }, [debugMode, isLoaded, isSignedIn, userId]);
 
   useEffect(() => {
     if (!debugMode) return;
@@ -89,8 +95,8 @@ export default function LoginPage() {
 
     const onError = (event: ErrorEvent) => {
       setClientErrors((prev) => {
-        const next = [{ ts: Date.now(), type: "error", message: event.message || "UNKNOWN_ERROR" }, ...prev];
-        return next.slice(0, 10);
+        const nextErrs = [{ ts: Date.now(), type: "error", message: event.message || "UNKNOWN_ERROR" }, ...prev];
+        return nextErrs.slice(0, 10);
       });
     };
 
@@ -98,8 +104,8 @@ export default function LoginPage() {
       const reason = event?.reason;
       const message = reason instanceof Error ? reason.message : typeof reason === "string" ? reason : "UNHANDLED_REJECTION";
       setClientErrors((prev) => {
-        const next = [{ ts: Date.now(), type: "unhandledrejection", message }, ...prev];
-        return next.slice(0, 10);
+        const nextErrs = [{ ts: Date.now(), type: "unhandledrejection", message }, ...prev];
+        return nextErrs.slice(0, 10);
       });
     };
 
@@ -120,10 +126,11 @@ export default function LoginPage() {
           <pre className="mt-2 whitespace-pre-wrap break-words rounded-2xl bg-white/70 p-3 text-[11px] text-slate-900 ring-1 ring-amber-200">
             {JSON.stringify(
               {
-                authLoaded,
-                authIsSignedIn,
-                authUserId,
-                userHook: { isLoaded, isSignedIn },
+                isLoaded,
+                isSignedIn,
+                userId,
+                email: session?.user?.email ?? null,
+                role: (session?.user as { role?: string } | undefined)?.role ?? null,
                 url: typeof window !== "undefined" ? window.location.href : null,
               },
               null,
@@ -142,27 +149,6 @@ export default function LoginPage() {
           </pre>
 
           <div className="mt-4">
-            <SignOutButton redirectUrl="/login?force=1">
-              <button
-                type="button"
-                onClick={(e) => {
-                  try {
-                    console.log("[login][debug][native-signout][click]", {
-                      target: (e.target as HTMLElement | null)?.tagName,
-                      url: window.location.href,
-                    });
-                  } catch {
-                    // ignore
-                  }
-                }}
-                className="inline-flex w-full items-center justify-center rounded-full bg-slate-900 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800"
-              >
-                SignOutButton (Clerk natif)
-              </button>
-            </SignOutButton>
-          </div>
-
-          <div className="mt-3">
             <button
               type="button"
               disabled={signOutAttempting}
@@ -171,21 +157,15 @@ export default function LoginPage() {
                 setSignOutAttempting(true);
                 setSignOutError(null);
                 try {
-                  console.log("[login][debug][manual-signout][start]", {
-                    authLoaded,
-                    authIsSignedIn,
-                    authUserId,
-                  });
-                  await clerk.signOut({ redirectUrl: "/login?force=1" });
+                  await signOut({ callbackUrl: "/login?force=1" });
                 } catch (err) {
                   const message = err instanceof Error ? err.message : typeof err === "string" ? err : "SIGN_OUT_FAILED";
                   setSignOutError(message);
-                  console.log("[login][debug][manual-signout][error]", err);
                 } finally {
                   setTimeout(() => setSignOutAttempting(false), 300);
                 }
               }}
-              className="inline-flex w-full items-center justify-center rounded-full border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex w-full items-center justify-center rounded-full bg-slate-900 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {signOutAttempting ? "Sign out…" : "Manual signOut() test"}
             </button>
@@ -195,7 +175,7 @@ export default function LoginPage() {
       ) : null}
 
       {isLoaded && isSignedIn && forceMode && alreadySignedInOnLoad.current === true ? (
-        <ForceSignOut clerk={clerk} />
+        <ForceSignOut />
       ) : (
         <LoginForm />
       )}
@@ -208,7 +188,7 @@ export default function LoginPage() {
  * (sign-out didn't fully clear the session). Automatically retries signOut
  * and shows a manual fallback after 3s.
  */
-function ForceSignOut({ clerk }: { clerk: ReturnType<typeof useClerk> }) {
+function ForceSignOut() {
   const [retrying, setRetrying] = useState(true);
   const triedRef = useRef(false);
 
@@ -218,14 +198,16 @@ function ForceSignOut({ clerk }: { clerk: ReturnType<typeof useClerk> }) {
 
     void (async () => {
       try {
-        await clerk.signOut();
-      } catch { /* ignore */ }
+        await signOut({ redirect: false });
+      } catch {
+        /* ignore */
+      }
       window.location.replace("/login");
     })();
 
     const giveUp = setTimeout(() => setRetrying(false), 3000);
     return () => clearTimeout(giveUp);
-  }, [clerk]);
+  }, []);
 
   if (retrying) {
     return (
