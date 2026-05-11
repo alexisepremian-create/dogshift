@@ -71,6 +71,10 @@ Sentry alerts catch spikes.
 - **Vonage** for transactional SMS
 - **Sentry** with custom PII scrubbing (GDPR/nLPD compliance — emails, names, phones filtered from events)
 
+## Performance
+See [`docs/PERFORMANCE.md`](./docs/PERFORMANCE.md) for mobile homepage optimization rules.
+Key constraints: no `backdrop-blur`, no `transition-all`, no `left`/`width` animation (use `transform`), no duplicate stateful components, single `StickySearchBar` instance only.
+
 ## Tests
 Unit tests live in `tests/availability/` and cover the slot engine (day slots, multi-day status, range validation, boarding ranges). Tests run with `--experimental-strip-types` so TypeScript files execute directly without a build step.
 
