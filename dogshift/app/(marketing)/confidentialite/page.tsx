@@ -7,7 +7,7 @@ export default function ConfidentialitePage() {
             Politique de confidentialité – DogShift
           </h1>
           <p className="mt-3 text-sm text-slate-600">
-            Dernière mise à jour : avril 2025. Cette politique décrit comment DogShift traite les données
+            Dernière mise à jour : mai 2026. Cette politique décrit comment DogShift traite les données
             personnelles dans le cadre de la plateforme, conformément à la loi fédérale suisse sur la
             protection des données (nLPD) et, le cas échéant, au Règlement général sur la protection des
             données (RGPD) de l'Union européenne.
@@ -133,12 +133,6 @@ export default function ConfidentialitePage() {
               </p>
               <div className="mt-4 space-y-3">
                 {[
-                  {
-                    name: "Clerk",
-                    role: "Authentification des utilisateurs (gestion de comptes, sessions, connexion Google)",
-                    location: "États-Unis (certifié SOC 2)",
-                    link: "https://clerk.com/privacy",
-                  },
                   {
                     name: "Stripe",
                     role: "Traitement des paiements, virements aux sitters (Stripe Connect)",
@@ -271,9 +265,9 @@ export default function ConfidentialitePage() {
                 <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                   <p className="font-semibold text-slate-900">Cookies essentiels</p>
                   <p className="mt-1 text-slate-600">
-                    Nécessaires au fonctionnement de la plateforme : session Clerk, session admin, accès
-                    aux réservations. Ces cookies ne peuvent pas être refusés sans impacter l'utilisation
-                    du service.
+                    Nécessaires au fonctionnement de la plateforme : session utilisateur, session admin,
+                    accès aux réservations. Ces cookies ne peuvent pas être refusés sans impacter
+                    l'utilisation du service.
                   </p>
                 </div>
                 <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
@@ -299,8 +293,9 @@ export default function ConfidentialitePage() {
               <p className="mt-3">
                 DogShift met en œuvre des mesures techniques et organisationnelles appropriées pour
                 protéger vos données : chiffrement des communications (HTTPS/TLS), chiffrement des secrets
-                au repos, contrôle d'accès strict, protection réseau via Cloudflare, monitoring des erreurs
-                avec filtrage des données personnelles, et validations côté serveur sur toutes les entrées.
+                au repos, mots de passe utilisateurs stockés sous forme de hash bcrypt (jamais en clair),
+                contrôle d'accès strict, protection réseau via Cloudflare, monitoring des erreurs avec
+                filtrage des données personnelles, et validations côté serveur sur toutes les entrées.
               </p>
               <p className="mt-3">
                 Si vous découvrez une faille de sécurité, vous pouvez nous la signaler de façon
@@ -351,11 +346,6 @@ export default function ConfidentialitePage() {
               </p>
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
                 {[
-                  {
-                    name: "Clerk",
-                    role: "Authentification et gestion des comptes",
-                    dpa: "https://clerk.com/legal/dpa",
-                  },
                   {
                     name: "Stripe",
                     role: "Traitement des paiements",
