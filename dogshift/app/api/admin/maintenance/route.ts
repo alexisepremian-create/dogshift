@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { getAuthedDbUser } from "@/lib/auth/getAuthedDbUser";
 import { prisma } from "@/lib/prisma";
 import { reportApiError } from "@/lib/observability/reportApiError";
 
 /** Returns the last 30 maintenance agent runs for the admin panel. */
 export async function GET() {
-  const { userId } = await auth();
+  const __authed = await getAuthedDbUser();
+    const userId = __authed?.id ?? null;
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   try {

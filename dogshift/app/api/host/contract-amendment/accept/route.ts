@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { auth } from "@clerk/nextjs/server";
+import { getAuthedDbUser } from "@/lib/auth/getAuthedDbUser";
 
 import { getActiveContractAmendment, getHostContractAmendmentState } from "@/lib/contractAmendments";
 import { prisma } from "@/lib/prisma";
@@ -9,7 +9,8 @@ export const runtime = "nodejs";
 
 export async function POST() {
   try {
-    const { userId } = await auth();
+    const __authed = await getAuthedDbUser();
+    const userId = __authed?.id ?? null;
     if (!userId) {
       return NextResponse.json({ ok: false, error: "UNAUTHENTICATED" }, { status: 401 });
     }

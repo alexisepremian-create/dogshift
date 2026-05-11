@@ -6,7 +6,7 @@ import { getHostUserData } from "@/lib/hostUser";
 import { isActivatedStatus } from "@/lib/sitterContract";
 import Link from "next/link";
 import { redirect, notFound } from "next/navigation";
-import { auth } from "@clerk/nextjs/server";
+import { getAuthedDbUser } from "@/lib/auth/getAuthedDbUser";
 import { Suspense } from "react";
 
 export const dynamic = "force-dynamic";
@@ -20,7 +20,8 @@ export default async function HostLayout({
     console.log("[HOST_LAYOUT_RENDER]");
   }
 
-  const { userId } = await auth();
+  const __authed = await getAuthedDbUser();
+    const userId = __authed?.id ?? null;
   console.info("[host-layout][diagnostic] auth state", {
     userId: userId ?? null,
   });
