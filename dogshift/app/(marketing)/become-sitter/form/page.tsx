@@ -1,9 +1,8 @@
 import BecomeSitterForm from "@/components/BecomeSitterForm";
-import { auth, currentUser } from "@clerk/nextjs/server";
+import { getAuthedDbUser } from "@/lib/auth/getAuthedDbUser";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
-import { ensureDbUserByClerkUserId } from "@/lib/auth/resolveDbUserId";
 import { prisma } from "@/lib/prisma";
 
 export default async function BecomeSitterFormPage() {
@@ -16,16 +15,13 @@ export default async function BecomeSitterFormPage() {
     redirect("/devenir-dogsitter");
   }
 
-  const { userId } = await auth();
+  const __authed = await getAuthedDbUser();
+    const userId = __authed?.id ?? null;
   if (userId) {
-    const clerkUser = await currentUser();
-    const primaryEmail = clerkUser?.primaryEmailAddress?.emailAddress ?? "";
+    // (() => null) /* currentUser removed */() removed — use __authed.email / __authed.name
+    const primaryEmail = __authed?.email ?? "";
     const dbUser = primaryEmail
-      ? await ensureDbUserByClerkUserId({
-          clerkUserId: userId,
-          email: primaryEmail,
-          name: typeof clerkUser?.fullName === "string" ? clerkUser.fullName : null,
-        })
+      ? (__authed ? { id: __authed.id, role: __authed.role, sitterId: __authed.sitterId, created: false } : null)
       : null;
 
     if (dbUser?.role === "SITTER") {

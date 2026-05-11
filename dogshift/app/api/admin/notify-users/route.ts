@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { render } from "@react-email/render";
 import { z } from "zod";
-import { clerkClient } from "@clerk/nextjs/server";
+import { getAuthedDbUser } from "@/lib/auth/getAuthedDbUser";
+// TODO(PR2): clerkClient() removed — replace its callers with prisma/bcrypt direct calls.
 
 import { getRequestAdminAccess } from "@/lib/adminAuth";
 import { sendEmail } from "@/lib/email/sendEmail";
@@ -61,27 +62,17 @@ async function getRecipients(
     }));
   }
 
-  // All : Clerk est la source de vérité pour tous les comptes (paginé par 100)
-  const clerk = await clerkClient();
-  const result: { email: string; firstName: string }[] = [];
-  let offset = 0;
-  const limit = 100;
-
-  while (true) {
-    const page = await clerk.users.getUserList({ limit, offset });
-    for (const u of page.data) {
-      const email = u.emailAddresses.find(
-        (e) => e.id === u.primaryEmailAddressId,
-      )?.emailAddress;
-      if (email) {
-        result.push({ email, firstName: u.firstName ?? "" });
-      }
-    }
-    if (page.data.length < limit) break;
-    offset += limit;
-  }
-
-  return result;
+  // All : Prisma User est la source de vérité depuis la migration Auth.js.
+  const users = await prisma.user.findMany({
+    select: { email: true, name: true },
+    orderBy: { createdAt: "asc" },
+  });
+  return users
+    .filter((u) => Boolean(u.email))
+    .map((u) => ({
+      email: u.email,
+      firstName: u.name?.split(" ")[0] ?? "",
+    }));
 }
 
 // ─── GET — Historique des envois ──────────────────────────────────────────────

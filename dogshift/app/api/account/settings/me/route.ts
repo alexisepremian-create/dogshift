@@ -1,9 +1,8 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { auth, currentUser } from "@clerk/nextjs/server";
+import { getAuthedDbUser } from "@/lib/auth/getAuthedDbUser";
 
 import { prisma } from "@/lib/prisma";
-import { ensureDbUserByClerkUserId } from "@/lib/auth/resolveDbUserId";
 import { zodParse } from "@/lib/validators/common";
 import { accountSettingsPatchSchema } from "@/lib/validators/auth";
 
@@ -131,27 +130,25 @@ function mergeSettingsIntoHostProfileJson(hostProfileJson: string | null, next: 
 
 export async function GET(req: NextRequest) {
   try {
-    const { userId } = await auth();
+    const __authed = await getAuthedDbUser();
+    const userId = __authed?.id ?? null;
+    if (!__authed) return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
     if (!userId) {
       return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
     }
 
-    const clerkUser = await currentUser();
-    const primaryEmail = clerkUser?.primaryEmailAddress?.emailAddress ?? "";
+    // (() => null) /* currentUser removed */() removed — use __authed.email / __authed.name
+    const primaryEmail = __authed?.email ?? "";
     if (!primaryEmail) {
       return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
     }
 
-    const ensured = await ensureDbUserByClerkUserId({
-      clerkUserId: userId,
-      email: primaryEmail,
-      name: typeof clerkUser?.fullName === "string" ? clerkUser.fullName : null,
-    });
+    const ensured = (__authed ? { id: __authed.id, role: __authed.role, sitterId: __authed.sitterId, created: false } : null);
     if (!ensured) {
       return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
     }
 
-    const dbUser = await prisma.user.findUnique({ where: { id: ensured.id } });
+    const dbUser = await prisma.user.findUnique({ where: { id: __authed.id } });
     if (!dbUser) {
       return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
     }
@@ -178,13 +175,15 @@ export async function GET(req: NextRequest) {
     const name = typeof user.name === "string" ? user.name : "";
     const { firstName, lastName } = splitName(name);
 
-    const googleConnected = Array.isArray((clerkUser as any)?.externalAccounts)
-      ? (clerkUser as any).externalAccounts.some((a: any) => String(a?.provider ?? "") === "google")
-      : false;
+    // googleConnected / emailVerified now come from Auth.js Account + User rows.
+    const googleAccount = await prisma.account.findFirst({
+      where: { userId: user.id, provider: "google" },
+      select: { id: true },
+    });
+    const googleConnected = Boolean(googleAccount);
 
     const lastVerificationEmailSentAt = readLastEmailVerificationSentAt((user as any).hostProfileJson ?? null);
-    const emailVerified =
-      String((clerkUser as any)?.primaryEmailAddress?.verification?.status ?? "") === "verified" || Boolean((user as any).emailVerified);
+    const emailVerified = Boolean((user as any).emailVerified);
 
     const emailVerificationStatus = (() => {
       if (emailVerified) return "verified" as const;
@@ -209,11 +208,11 @@ export async function GET(req: NextRequest) {
         security: {
           googleConnected,
           emailVerified,
-          passwordSet: Boolean((clerkUser as any)?.passwordEnabled),
+          passwordSet: Boolean((user as any).passwordHash),
         },
         emailVerificationStatus,
         lastVerificationEmailSentAt,
-        provider: googleConnected ? "google" : "clerk",
+        provider: googleConnected ? "google" : "credentials",
         settings,
       },
       { status: 200 }
@@ -234,27 +233,25 @@ type PatchBody = {
 
 export async function PATCH(req: NextRequest) {
   try {
-    const { userId } = await auth();
+    const __authed = await getAuthedDbUser();
+    const userId = __authed?.id ?? null;
+    if (!__authed) return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
     if (!userId) {
       return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
     }
 
-    const clerkUser = await currentUser();
-    const primaryEmail = clerkUser?.primaryEmailAddress?.emailAddress ?? "";
+    // (() => null) /* currentUser removed */() removed — use __authed.email / __authed.name
+    const primaryEmail = __authed?.email ?? "";
     if (!primaryEmail) {
       return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
     }
 
-    const ensured = await ensureDbUserByClerkUserId({
-      clerkUserId: userId,
-      email: primaryEmail,
-      name: typeof clerkUser?.fullName === "string" ? clerkUser.fullName : null,
-    });
+    const ensured = (__authed ? { id: __authed.id, role: __authed.role, sitterId: __authed.sitterId, created: false } : null);
     if (!ensured) {
       return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
     }
 
-    const dbUser = await prisma.user.findUnique({ where: { id: ensured.id } });
+    const dbUser = await prisma.user.findUnique({ where: { id: __authed.id } });
     if (!dbUser) {
       return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
     }

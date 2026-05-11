@@ -1,10 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { auth, currentUser, clerkClient } from "@clerk/nextjs/server";
+import { getAuthedDbUser } from "@/lib/auth/getAuthedDbUser";
+// TODO(PR2): clerkClient() removed — replace its callers with prisma/bcrypt direct calls.
 
 import { prisma } from "@/lib/prisma";
-import { ensureDbUserByClerkUserId } from "@/lib/auth/resolveDbUserId";
 import { logAdminAudit } from "@/lib/audit";
 import { ownerBookingBlocksAccountDeletion } from "@/lib/bookings/bookingServiceEnd";
 
@@ -29,27 +29,23 @@ export async function DELETE(req: NextRequest) {
   try {
     void req;
 
-    const { userId: clerkUserId } = await auth();
+    const __authed = await getAuthedDbUser();
+    const clerkUserId = __authed?.id ?? null;
     if (!clerkUserId) {
       return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
     }
 
-    const clerkUser = await currentUser();
-    const primaryEmail = clerkUser?.primaryEmailAddress?.emailAddress ?? "";
+    // currentUser() removed — use __authed.email / __authed.name
+    const primaryEmail = __authed?.email ?? "";
     if (!primaryEmail) {
       return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
     }
 
-    const ensured = await ensureDbUserByClerkUserId({
-      clerkUserId,
-      email: primaryEmail,
-      name: typeof clerkUser?.fullName === "string" ? clerkUser.fullName : null,
-    });
-    if (!ensured) {
+    if (!__authed) {
       return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
     }
 
-    const uid = ensured.id;
+    const uid = __authed.id;
 
     // Owner-side gate: pending payment/acceptance always block; PAID/CONFIRMED only until service end.
     const ownerGateBookings = await prisma.booking.findMany({
@@ -126,13 +122,14 @@ export async function DELETE(req: NextRequest) {
         },
       });
 
-      // Delete Clerk account
-      const client = await clerkClient();
-      await client.users.deleteUser(clerkUserId);
+      // Auth.js sessions live in the Prisma Session table — onDelete Cascade
+      // wipes them when we delete the User. For anonymize-only flows the user
+      // row stays, so we explicitly purge sessions to log them out.
+      await prisma.session.deleteMany({ where: { userId: uid } });
 
       logAdminAudit({
         action: "account.delete",
-        adminUserId: clerkUserId,
+        adminUserId: uid,
         targetId: uid,
         targetType: "USER",
         detail: { method: "anonymize", reason: "sitter_has_bookings" },
@@ -144,16 +141,13 @@ export async function DELETE(req: NextRequest) {
       );
     }
 
-    // Hard delete: Prisma onDelete Cascade handles all related data
+    // Hard delete: Prisma onDelete Cascade handles all related data,
+    // including Account + Session rows owned by Auth.js.
     await prisma.user.delete({ where: { id: uid } });
-
-    // Delete Clerk account
-    const client = await clerkClient();
-    await client.users.deleteUser(clerkUserId);
 
     logAdminAudit({
       action: "account.delete",
-      adminUserId: clerkUserId,
+      adminUserId: uid,
       targetId: uid,
       targetType: "USER",
       detail: { method: "hard_delete" },

@@ -1,9 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextResponse } from "next/server";
-import { auth, currentUser } from "@clerk/nextjs/server";
 
 import { prisma } from "@/lib/prisma";
-import { ensureDbUserByClerkUserId } from "@/lib/auth/resolveDbUserId";
+import { getAuthedDbUser } from "@/lib/auth/getAuthedDbUser";
 
 export const runtime = "nodejs";
 
@@ -40,30 +39,15 @@ type AccountBookingListItem = {
 
 export async function GET() {
   try {
-    const { userId: clerkUserId } = await auth();
-    if (!clerkUserId) {
+    const authedUser = await getAuthedDbUser();
+    if (!authedUser) {
       if (process.env.NODE_ENV !== "production") {
         console.error("[api][account][bookings][GET] UNAUTHORIZED", { hasUserId: false });
       }
       return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
     }
 
-    const clerkUser = await currentUser();
-    const primaryEmail = clerkUser?.primaryEmailAddress?.emailAddress ?? "";
-    if (!primaryEmail) {
-      return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
-    }
-
-    const ensured = await ensureDbUserByClerkUserId({
-      clerkUserId,
-      email: primaryEmail,
-      name: typeof clerkUser?.fullName === "string" ? clerkUser.fullName : null,
-    });
-    if (!ensured) {
-      return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
-    }
-
-    const userId = ensured.id;
+    const userId = authedUser.id;
 
     const bookings = await (prisma as any).booking.findMany({
       where: {

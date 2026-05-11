@@ -4,7 +4,7 @@ import path from "path";
 import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from "pdf-lib";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { getAuthedDbUser } from "@/lib/auth/getAuthedDbUser";
 
 import { formatSwissDateTimeHuman } from "@/lib/datetime/formatSwissDateTime";
 import { prisma } from "@/lib/prisma";
@@ -441,7 +441,8 @@ export async function POST(req: NextRequest) {
 
     // Mode 3 : session Clerk — l'utilisateur connecté possède ce profil
     if (!authorized) {
-      const { userId: clerkUserId } = await auth();
+      const __authed = await getAuthedDbUser();
+    const clerkUserId = __authed?.id ?? null;
       if (clerkUserId && profile.user?.clerkUserId === clerkUserId) {
         authorized = true;
       }

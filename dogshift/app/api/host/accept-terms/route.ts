@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
-import { auth, currentUser } from "@clerk/nextjs/server";
+import { getAuthedDbUser } from "@/lib/auth/getAuthedDbUser";
 
 import { prisma } from "@/lib/prisma";
-import { ensureDbUserByClerkUserId } from "@/lib/auth/resolveDbUserId";
 import { CURRENT_TERMS_VERSION } from "@/lib/terms";
 import { logAudit } from "@/lib/audit";
 
@@ -10,7 +9,9 @@ export const runtime = "nodejs";
 
 export async function POST() {
   try {
-    const { userId } = await auth();
+    const __authed = await getAuthedDbUser();
+    const userId = __authed?.id ?? null;
+    if (!__authed) return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
     if (!userId) {
       return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
     }
@@ -53,23 +54,19 @@ export async function POST() {
       return NextResponse.json({ ok: true, termsVersion: CURRENT_TERMS_VERSION }, { status: 200 });
     }
 
-    const clerkUser = await currentUser();
-    const primaryEmail = clerkUser?.primaryEmailAddress?.emailAddress ?? "";
+    // (() => null) /* currentUser removed */() removed — use __authed.email / __authed.name
+    const primaryEmail = __authed?.email ?? "";
     if (!primaryEmail) {
       return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
     }
 
-    const ensured = await ensureDbUserByClerkUserId({
-      clerkUserId: userId,
-      email: primaryEmail,
-      name: typeof clerkUser?.fullName === "string" ? clerkUser.fullName : null,
-    });
+    const ensured = (__authed ? { id: __authed.id, role: __authed.role, sitterId: __authed.sitterId, created: false } : null);
     if (!ensured) {
       return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
     }
 
     const sitterProfile = await prisma.sitterProfile.findUnique({
-      where: { userId: ensured.id },
+      where: { userId: __authed.id },
       select: { id: true },
     });
     if (!sitterProfile) {
@@ -80,21 +77,21 @@ export async function POST() {
     }
 
     const now = new Date();
-    console.info("[api][host][accept-terms] before", { clerkUserId: userId, dbUserId: ensured.id, now: now.toISOString() });
+    console.info("[api][host][accept-terms] before", { clerkUserId: userId, dbUserId: __authed.id, now: now.toISOString() });
     await prisma.sitterProfile.update({
-      where: { userId: ensured.id },
+      where: { userId: __authed.id },
       data: { termsAcceptedAt: now, termsVersion: CURRENT_TERMS_VERSION },
       select: { id: true },
     });
 
     console.info("[api][host][accept-terms] after", {
       clerkUserId: userId,
-      dbUserId: ensured.id,
+      dbUserId: __authed.id,
       termsVersion: CURRENT_TERMS_VERSION,
       termsAcceptedAt: now.toISOString(),
     });
 
-    void logAudit({ action: "consent.host_terms", actorType: "user", actorId: userId, targetId: ensured.id, metadata: { termsVersion: CURRENT_TERMS_VERSION } });
+    void logAudit({ action: "consent.host_terms", actorType: "user", actorId: userId, targetId: __authed.id, metadata: { termsVersion: CURRENT_TERMS_VERSION } });
     return NextResponse.json({ ok: true, termsVersion: CURRENT_TERMS_VERSION }, { status: 200 });
   } catch (err) {
     console.error("[api][host][accept-terms] error", err);
