@@ -24,10 +24,13 @@
 import { useEffect } from "react";
 import { usePathname } from "next/navigation";
 
-// Pages where masking is unnecessary (instant marketing landings, the
-// post-login redirector which is itself a loader, etc.).
+// Pages where masking is unnecessary: the auth flow is essentially a sequence
+// of micro-pages (login → check-email → reset-password → login) where each
+// transition is near-instant and showing a brief overlay on each step would
+// feel jittery rather than smooth. Heavy / data-fetching pages (homepage,
+// /sitter/*, /account/*, /host/*, /search, etc.) are intentionally NOT in
+// this list so they get the overlay until their content is painted.
 const SKIP_PATHS = [
-  "/",
   "/login",
   "/signup",
   "/sign-out",
