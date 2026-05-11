@@ -3046,7 +3046,6 @@ function FinalCTASection() {
 // ── ROOT COMPONENT ────────────────────────────────────────────────────────────
 
 export default function HomePageClient({ sitters = [] }: { sitters?: SitterPreview[] }) {
-  const mapReveal = useRevealOnce({ repeat: true });
   const [showSticky, setShowSticky] = useState(false);
 
   useEffect(() => {
@@ -3080,9 +3079,7 @@ export default function HomePageClient({ sitters = [] }: { sitters?: SitterPrevi
         <SecuritySection />
 
         <LazySection minHeight={300}>
-          <div ref={mapReveal.ref} style={mapReveal.style}>
-            <MapSection />
-          </div>
+          <MapSection />
         </LazySection>
 
         <LazySection><BecomeSitterSection /></LazySection>
