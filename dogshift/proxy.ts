@@ -24,45 +24,24 @@ import { NextResponse, type NextRequest } from "next/server";
  *    + search so that post-login we land back where we were.
  */
 
-const PUBLIC_PATH_EXACT = new Set([
-  "/",
-  "/login",
-  "/signup",
-  "/sign-out",
-  "/forgot-password",
-  "/reset-password",
-  "/check-email",
-  "/verify-email",
-  "/post-login",
-  "/become-sitter",
-  "/devenir-dogsitter",
-]);
-
-const PUBLIC_PATH_PREFIX = [
-  "/login/", // login subpages (e.g. /login/[...rest])
-  "/sign-out/",
-  "/auth/", // legacy /auth/google etc.
-  "/sitter/", // public sitter profiles (mode=public default)
-  "/sitters/",
-  "/devenir-dogsitter/",
-  "/zootherapie",
-  "/etiquette-promenade",
-  "/guide-dogsitter",
-  "/blog",
-  "/onboarding", // public welcome page
-  "/sign-out",
-];
-
-const PUBLIC_API_PREFIX = [
-  "/api/auth/", // Auth.js handler, forgot/reset password, register
-  "/api/webhooks/", // Stripe, Clerk legacy (no-op), etc.
-  "/api/clerk/", // legacy Clerk-callback path kept for compat
-  "/api/platform/status",
-  "/api/become-sitter/apply",
-  "/api/invites/verify",
-  "/api/public/",
-  "/api/lead-magnet/",
-  "/api/debug/",
+/**
+ * Protected path prefixes. Anything matching these requires a session cookie
+ * before the request is forwarded. Everything else passes through so:
+ *   - Public marketing pages render normally.
+ *   - Public API endpoints (/api/sitters, /api/auth/*, /api/webhooks/*, …)
+ *     handle their own auth (or don't need any).
+ *   - Unknown routes go through to Next.js and yield a real 404.
+ *
+ * Role-based authorization (owner vs sitter vs admin) is enforced one layer
+ * down in route handlers, layouts, and `lib/adminAuth.ts`.
+ */
+const PROTECTED_PATH_PREFIX = [
+  "/host", // matches "/host" and "/host/*"
+  "/account", // matches "/account" and "/account/*"
+  "/admin", // matches "/admin" and "/admin/*"
+  "/api/host/",
+  "/api/account/",
+  "/api/admin/",
 ];
 
 const REMOVED_EXACT_PATHS = new Set([
@@ -86,23 +65,12 @@ function isRemovedPath(pathname: string): boolean {
   return REMOVED_PATH_PREFIXES.some((prefix) => pathname.startsWith(prefix));
 }
 
-function isPublicSitterRoute(pathname: string, searchParams: URLSearchParams): boolean {
-  if (!pathname.startsWith("/sitter/") && !pathname.startsWith("/sitters/")) return false;
-  const mode = (searchParams.get("mode") ?? "").trim().toLowerCase();
-  return mode === "public" || mode === "";
-}
-
-function isPublic(pathname: string, searchParams: URLSearchParams): boolean {
-  if (PUBLIC_PATH_EXACT.has(pathname)) return true;
-  if (PUBLIC_PATH_PREFIX.some((p) => pathname.startsWith(p))) return true;
-  if (pathname.startsWith("/api/")) {
-    if (PUBLIC_API_PREFIX.some((p) => pathname.startsWith(p))) return true;
-    return false;
-  }
-  if (isPublicSitterRoute(pathname, searchParams)) return true;
-  // Marketing pages without a query: rely on prefixes above. Anything that
-  // isn't whitelisted here drops to the auth check below.
-  return false;
+function isProtected(pathname: string): boolean {
+  return PROTECTED_PATH_PREFIX.some((p) => {
+    // Match both bare prefix ("/host") and child paths ("/host/", "/host/x").
+    if (p.endsWith("/")) return pathname.startsWith(p);
+    return pathname === p || pathname.startsWith(`${p}/`);
+  });
 }
 
 function hasSessionCookie(req: NextRequest): boolean {
@@ -174,17 +142,13 @@ export function proxy(req: NextRequest): NextResponse {
     }
   }
 
-  // Public routes pass straight through (no auth check).
-  if (isPublic(reqPathname, searchParams)) {
-    return addLockHeaders(NextResponse.next());
-  }
+  void searchParams;
 
-  // Everything else needs a session cookie. We do NOT validate the session
-  // against the DB here (Edge runtime + Prisma is unsupported); role checks
-  // are enforced in route handlers + layouts downstream. This proxy only
-  // shields protected pages from anonymous visitors.
-  if (!hasSessionCookie(req)) {
-    // API: respond with JSON 401 — UI handles the "logged out" UX.
+  // Only protected prefixes need a session-cookie check. Everything else
+  // (homepage, marketing pages, /api/sitters, /api/auth/*, …) passes
+  // through; route handlers / layouts enforce auth themselves where they
+  // care.
+  if (isProtected(reqPathname) && !hasSessionCookie(req)) {
     if (reqPathname.startsWith("/api/")) {
       return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
     }
