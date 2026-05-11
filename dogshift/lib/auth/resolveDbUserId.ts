@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import type { NextRequest } from "next/server";
+import type { Role } from "@prisma/client";
 
 import { auth, clerkClient, currentUser } from "@clerk/nextjs/server";
 
@@ -7,7 +8,9 @@ import { prisma } from "@/lib/prisma";
 
 export type DbUserEnsured = {
   id: string;
-  role: "OWNER" | "SITTER";
+  // Mirrors Prisma's Role enum so adding new values (ADMIN, …) doesn't require
+  // touching this type. PR 2 will tighten admin checks on top of this.
+  role: Role;
   sitterId: string | null;
 };
 
