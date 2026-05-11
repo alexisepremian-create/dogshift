@@ -78,20 +78,23 @@ test("POST /api/webhooks/stripe with invalid signature returns 400, not 500", as
 test("Stripe publishable key is present on the checkout page (client config check)", async ({
   page,
 }) => {
-  // Navigate to the checkout page — even with a fake booking ID, the page
-  // HTML should include the Stripe publishable key somewhere in the JS
-  // bundle or inline script, confirming it is configured in the deployment.
-  await page.goto("/checkout/nonexistent-booking-id-xyz", { waitUntil: "domcontentloaded" });
+  // The checkout page loads Stripe lazily inside a useEffect, so we can't
+  // just read page.content() at domcontentloaded — the page may still be
+  // showing its loading spinner. Wait for either a network request to
+  // js.stripe.com (fired by loadStripe), or for the publishable key to
+  // surface in the DOM after hydration.
+  const stripeRequest = page
+    .waitForRequest((req) => req.url().includes("js.stripe.com"), { timeout: 12_000 })
+    .catch(() => null);
 
-  // Listen for Stripe.js to be loaded from Stripe's CDN — this confirms
-  // the Stripe publishable key is wired up on the client.
-  // We check via network request OR by checking the page source contains
-  // the key prefix.
+  await page.goto("/checkout/nonexistent-booking-id-xyz", { waitUntil: "networkidle" });
+
+  const requestSeen = (await stripeRequest) !== null;
   const html = await page.content();
   const hasStripeKey =
+    requestSeen ||
     html.includes("pk_live_") ||
     html.includes("pk_test_") ||
-    // Stripe.js loaded as a script tag
     html.includes("js.stripe.com");
 
   expect(
