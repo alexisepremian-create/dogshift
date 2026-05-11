@@ -3074,10 +3074,10 @@ export default function HomePageClient({ sitters = [] }: { sitters?: SitterPrevi
       <main className="pb-24 md:pb-0">
         <HeroSection searchBar={<StickySearchBar hero={!showSticky} visible={showSticky} />} />
         {sitters.length > 0 && <FeaturedSittersSection sitters={sitters} />}
-        <LazySection><ReassuranceSection /></LazySection>
-        <LazySection><ServicesSection /></LazySection>
-        <LazySection><HowItWorksSection /></LazySection>
-        <LazySection><SecuritySection /></LazySection>
+        <ReassuranceSection />
+        <ServicesSection />
+        <HowItWorksSection />
+        <SecuritySection />
 
         <LazySection minHeight={300}>
           <div ref={mapReveal.ref} style={mapReveal.style}>
