@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useUser } from "@clerk/nextjs";
+import { useSession, signOut } from "next-auth/react";
 
 import {
   AlertTriangle,
@@ -238,9 +238,12 @@ export default function AccountSettingsPage() {
   const basePath = isHost ? "/host/settings" : "/account/settings";
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { isLoaded, isSignedIn, user } = useUser();
+  const { data: __session, status: __sessionStatus } = useSession();
+  const user = __session?.user ?? null;
+  const isLoaded = __sessionStatus !== "loading";
+  const isSignedIn = __sessionStatus === "authenticated";
 
-  const email = user?.primaryEmailAddress?.emailAddress;
+  const email = user?.email;
 
   const [meLoading, setMeLoading] = useState(true);
   const [meError, setMeError] = useState<string | null>(null);

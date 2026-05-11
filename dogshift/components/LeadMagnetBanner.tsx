@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { useUser } from "@clerk/nextjs";
+import { useSession, signOut } from "next-auth/react";
 import { usePathname } from "next/navigation";
 import { X, Gift, ArrowRight, CheckCircle2 } from "lucide-react";
 
@@ -23,7 +23,9 @@ type Status = "idle" | "loading" | "success" | "error";
  *   - Shown to unauthenticated visitors + authenticated owners/visitors
  */
 export default function LeadMagnetBanner() {
-  const { isLoaded, isSignedIn } = useUser();
+  const { status: __sessionStatus } = useSession();
+  const isLoaded = __sessionStatus !== "loading";
+  const isSignedIn = __sessionStatus === "authenticated";
   const pathname = usePathname();
   const [visible, setVisible] = useState(false);
   const [email, setEmail] = useState("");

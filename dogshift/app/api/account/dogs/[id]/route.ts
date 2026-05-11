@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { auth } from "@clerk/nextjs/server";
 import { z } from "zod";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { prisma } from "@/lib/prisma";
+import { getAuthedDbUser } from "@/lib/auth/getAuthedDbUser";
 import { reportApiError } from "@/lib/observability/reportApiError";
 
 const db = prisma as any;
@@ -28,13 +28,8 @@ const patchSchema = z.object({
 });
 
 async function resolveUserId(): Promise<string | null> {
-  const { userId: clerkUserId } = await auth();
-  if (!clerkUserId) return null;
-  const user = await prisma.user.findFirst({
-    where: { clerkUserId },
-    select: { id: true },
-  });
-  return user?.id ?? null;
+  const u = await getAuthedDbUser();
+  return u?.id ?? null;
 }
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {

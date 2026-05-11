@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { getAuthedDbUser } from "@/lib/auth/getAuthedDbUser";
 
 import { getRequestAdminAccess } from "@/lib/adminAuth";
 import { prisma } from "@/lib/prisma";
@@ -101,7 +101,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, error: "NOTE_TOO_LONG" }, { status: 400 });
     }
 
-    const { userId: clerkUserId } = await auth();
+    const __authed = await getAuthedDbUser();
+    const clerkUserId = __authed?.id ?? null;
 
     const db = prisma as unknown as {
       user: {

@@ -1,8 +1,22 @@
-import { auth, clerkClient, currentUser } from "@clerk/nextjs/server";
+/**
+ * Returns the full user context (DB user, sitter status, owner status) for the
+ * currently authenticated Auth.js session.
+ *
+ * Public shape kept identical to the Clerk era — every caller that destructures
+ * `{ userId, primaryEmail, dbUserId, hasSitterProfile, ... }` continues to work
+ * without touching the callsite. Internally, all reads now come from the
+ * Auth.js session + the Prisma User row (which IS the source of truth for
+ * email and identity in PR 2+).
+ *
+ * `userId` historically meant the Clerk userId. To preserve the field name
+ * without semantic confusion, we now populate it with the Prisma User.id (same
+ * as `dbUserId`). All known callers treat it as "an opaque current user
+ * identifier" and pass it to DB queries — so this swap is safe.
+ */
 import { unstable_noStore as noStore } from "next/cache";
 
+import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { ensureDbUserByClerkUserId } from "@/lib/auth/resolveDbUserId";
 import { normalizeSitterLifecycleStatus, type SitterLifecycleStatus } from "@/lib/sitterContract";
 
 export type UserContexts = {
@@ -16,32 +30,29 @@ export type UserContexts = {
 
 export async function getUserContexts(): Promise<UserContexts> {
   noStore();
-  const { userId } = await auth();
-  if (!userId) {
+
+  const session = await auth();
+  const sessionUserId = session?.user?.id;
+  if (!sessionUserId) {
     throw new Error("UNAUTHENTICATED");
   }
 
-  const client = await clerkClient();
-  const clerkUser = (await currentUser()) ?? (await client.users.getUser(userId));
-  const primaryEmail = clerkUser?.primaryEmailAddress?.emailAddress ?? "";
-  if (!primaryEmail) {
-    throw new Error("MISSING_PRIMARY_EMAIL");
-  }
-
-  const rawName = clerkUser?.fullName || clerkUser?.firstName || "";
-
-  const ensured = await ensureDbUserByClerkUserId({ clerkUserId: userId, email: primaryEmail, name: rawName || null });
-  if (!ensured) {
-    throw new Error("DB_USER_UNAVAILABLE");
-  }
-
-  const dbUser = await prisma.user.findUnique({ where: { id: ensured.id }, select: { id: true, role: true, email: true, sitterId: true } });
+  const dbUser = await prisma.user.findUnique({
+    where: { id: sessionUserId },
+    select: { id: true, role: true, email: true, sitterId: true },
+  });
   if (!dbUser) {
     throw new Error("DB_USER_UNAVAILABLE");
   }
+  if (!dbUser.email) {
+    throw new Error("MISSING_PRIMARY_EMAIL");
+  }
 
   const [sitterProfile, ownerBooking, ownerConversation] = await Promise.all([
-    prisma.sitterProfile.findUnique({ where: { userId: dbUser.id }, select: { id: true, lifecycleStatus: true, published: true } }),
+    prisma.sitterProfile.findUnique({
+      where: { userId: dbUser.id },
+      select: { id: true, lifecycleStatus: true, published: true },
+    }),
     prisma.booking.findFirst({ where: { userId: dbUser.id }, select: { id: true } }),
     prisma.conversation.findFirst({ where: { ownerId: dbUser.id }, select: { id: true } }),
   ]);
@@ -51,10 +62,9 @@ export async function getUserContexts(): Promise<UserContexts> {
     : null;
 
   console.info("[role-resolution][getUserContexts]", {
-    clerkUserId: userId,
     dbUserId: dbUser.id,
-    email: primaryEmail,
-    dbRole: (dbUser as { role?: string }).role ?? null,
+    email: dbUser.email,
+    dbRole: dbUser.role,
     hasSitterProfile: Boolean(sitterProfile),
     rawLifecycleStatus: sitterProfile?.lifecycleStatus ?? null,
     published: sitterProfile?.published ?? null,
@@ -63,8 +73,8 @@ export async function getUserContexts(): Promise<UserContexts> {
   });
 
   return {
-    userId,
-    primaryEmail,
+    userId: dbUser.id,
+    primaryEmail: dbUser.email,
     dbUserId: dbUser.id,
     hasSitterProfile: Boolean(sitterProfile),
     sitterLifecycleStatus: normalizedStatus,

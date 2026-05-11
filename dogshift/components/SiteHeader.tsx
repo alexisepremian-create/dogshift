@@ -16,7 +16,7 @@ import {
   UserPlus,
   X,
 } from "lucide-react";
-import { useUser } from "@clerk/nextjs";
+import { useSession, signOut } from "next-auth/react";
 import { useEffect, useRef, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import BrandLogo from "@/components/BrandLogo";
@@ -31,7 +31,10 @@ export default function SiteHeader() {
   const [navMounted, setNavMounted] = useState(false);
   const [navAnimating, setNavAnimating] = useState(false);
   const [accountHref, setAccountHref] = useState("/account");
-  const { isLoaded, isSignedIn, user } = useUser();
+  const { data: __session, status: __sessionStatus } = useSession();
+  const user = __session?.user ?? null;
+  const isLoaded = __sessionStatus !== "loading";
+  const isSignedIn = __sessionStatus === "authenticated";
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const isHomepage = pathname === "/";
@@ -139,7 +142,7 @@ export default function SiteHeader() {
 
   if (isHostArea || isAccountArea || isHostPreview) return null;
 
-  const userInitials = user?.firstName?.[0] ?? user?.username?.[0] ?? "";
+  const userInitials = user?.name?.[0] ?? user?.email?.[0] ?? "";
 
   return (
     <>

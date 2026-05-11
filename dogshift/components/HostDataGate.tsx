@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useUser } from "@clerk/nextjs";
+import { useSession, signOut } from "next-auth/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useHostUser } from "@/components/HostUserProvider";
@@ -11,7 +11,10 @@ const HOST_READY_LATCH_BY_USER_ID = new Map<string, true>();
 export default function HostDataGate({ children }: { children: React.ReactNode }) {
   const host = useHostUser();
   const router = useRouter();
-  const { isLoaded, isSignedIn, user } = useUser();
+  const { data: __session, status: __sessionStatus } = useSession();
+  const user = __session?.user ?? null;
+  const isLoaded = __sessionStatus !== "loading";
+  const isSignedIn = __sessionStatus === "authenticated";
   const [readyToRender, setReadyToRender] = useState(false);
   const [timedOut, setTimedOut] = useState(false);
   const warnedTimeoutRef = useRef(false);

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ArrowLeft, Bone, CheckCircle2, Dog, Heart } from "lucide-react";
-import { auth, currentUser } from "@clerk/nextjs/server";
+import { getAuthedDbUser } from "@/lib/auth/getAuthedDbUser";
 
 import SitterApplicationForm from "@/components/SitterApplicationForm";
 import { clerkUserIsExistingSitter } from "@/lib/sitterApplication/existingSitter";
@@ -13,15 +13,11 @@ export default async function CandidaterPage() {
   let isExistingSitter = false;
   let signedInEmail: string | null = null;
   try {
-    const { userId } = await auth();
-    if (userId) {
-      const [{ isSitter, email }, clerkUser] = await Promise.all([
-        clerkUserIsExistingSitter(userId),
-        currentUser().catch(() => null),
-      ]);
+    const __authed = await getAuthedDbUser();
+    if (__authed) {
+      const { isSitter, email } = await clerkUserIsExistingSitter(__authed.id);
       isExistingSitter = isSitter;
-      signedInEmail =
-        email ?? clerkUser?.primaryEmailAddress?.emailAddress ?? null;
+      signedInEmail = email ?? __authed.email ?? null;
     }
   } catch {
     // Swallow — unauthenticated visitors should still see the form.

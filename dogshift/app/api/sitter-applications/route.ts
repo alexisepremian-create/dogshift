@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { getAuthedDbUser } from "@/lib/auth/getAuthedDbUser";
 
 import { prisma } from "@/lib/prisma";
 import { checkRateLimit } from "@/lib/rateLimit";
@@ -286,7 +286,8 @@ export async function POST(req: NextRequest) {
     // email already belongs to a sitter user. Both paths short-circuit with
     // a French 409 so the client form can display a tailored message.
     try {
-      const { userId: clerkUserId } = await auth();
+      const __authed = await getAuthedDbUser();
+    const clerkUserId = __authed?.id ?? null;
       if (clerkUserId) {
         const { isSitter } = await clerkUserIsExistingSitter(clerkUserId);
         if (isSitter) {

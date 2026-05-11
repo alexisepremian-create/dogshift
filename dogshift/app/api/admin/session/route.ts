@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { auth, currentUser } from "@clerk/nextjs/server";
+import { getAuthedDbUser } from "@/lib/auth/getAuthedDbUser";
 
 import { ADMIN_SESSION_COOKIE, createAdminSessionValue, isAdminEmail, isValidAdminCode } from "@/lib/adminAuth";
 import { checkRateLimit, getClientIp } from "@/lib/rateLimit";
@@ -27,14 +27,15 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { userId } = await auth();
+    const __authed = await getAuthedDbUser();
+    const userId = __authed?.id ?? null;
     if (!userId) {
       return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
     }
 
     // Email whitelist: only allowed emails can access the admin panel
-    const clerkUser = await currentUser();
-    const email = clerkUser?.primaryEmailAddress?.emailAddress ?? "";
+    // currentUser() removed — use __authed.email / __authed.name
+    const email = __authed?.email ?? "";
     if (!email || !isAdminEmail(email)) {
       console.warn("[api][admin][session][POST] email not whitelisted", { email: email || "(none)" });
       return NextResponse.json({ ok: false, error: "FORBIDDEN" }, { status: 403 });

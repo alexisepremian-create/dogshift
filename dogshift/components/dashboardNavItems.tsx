@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useUser } from "@clerk/nextjs";
+import { useSession, signOut } from "next-auth/react";
 import { LayoutDashboard, MessageSquare, Pencil, User, CalendarDays, Settings, Wallet, SlidersHorizontal, Dog } from "lucide-react";
 
 import { useHostUser } from "@/components/HostUserProvider";
@@ -26,7 +26,9 @@ export function useHostDashboardNavItems() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { isLoaded, isSignedIn } = useUser();
+  const { status: __sessionStatus } = useSession();
+  const isLoaded = __sessionStatus !== "loading";
+  const isSignedIn = __sessionStatus === "authenticated";
   const { sitterId } = useHostUser();
 
   const disablePrefetch = useMemo(() => (searchParams?.get("mode") ?? "") === "preview", [searchParams]);

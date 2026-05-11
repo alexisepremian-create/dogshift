@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { auth, currentUser } from "@clerk/nextjs/server";
+import { getAuthedDbUser } from "@/lib/auth/getAuthedDbUser";
 
 import { prisma } from "@/lib/prisma";
 import { CURRENT_TERMS_VERSION } from "@/lib/terms";
@@ -57,11 +57,12 @@ type BookingListItem = {
 };
 
 async function resolveDbUserAndSitterId() {
-  const { userId } = await auth();
+  const __authed = await getAuthedDbUser();
+    const userId = __authed?.id ?? null;
   if (!userId) return { uid: null as string | null, sitterId: null as string | null };
 
-  const clerkUser = await currentUser();
-  const primaryEmail = clerkUser?.primaryEmailAddress?.emailAddress ?? "";
+  // currentUser() removed — use __authed.email / __authed.name
+  const primaryEmail = __authed?.email ?? "";
   if (!primaryEmail) return { uid: null as string | null, sitterId: null as string | null };
 
   const dbUser = await prisma.user.findUnique({ where: { email: primaryEmail }, select: { id: true, sitterId: true } });

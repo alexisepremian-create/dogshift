@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { auth, currentUser } from "@clerk/nextjs/server";
+import { getAuthedDbUser } from "@/lib/auth/getAuthedDbUser";
 
 import { prisma } from "@/lib/prisma";
 import { normalizeSitterLifecycleStatus, isActivatedStatus } from "@/lib/sitterContract";
@@ -14,14 +14,15 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "FORBIDDEN", hint: "Admin access required" }, { status: 403 });
   }
 
-  const { userId: clerkUserId } = await auth();
+  const __authed = await getAuthedDbUser();
+    const clerkUserId = __authed?.id ?? null;
   if (!clerkUserId) {
     return NextResponse.json({ error: "NOT_SIGNED_IN", hint: "Open this URL while signed in" }, { status: 401 });
   }
 
-  const clerkUser = await currentUser();
-  const clerkEmail = clerkUser?.primaryEmailAddress?.emailAddress ?? null;
-  const clerkName = clerkUser?.fullName ?? null;
+  // (() => null) /* currentUser removed */() removed — use __authed.email / __authed.name
+  const clerkEmail = __authed?.email ?? null;
+  const clerkName = __authed?.name ?? null;
 
   const userByClerk = await (prisma as any).user.findUnique({
     where: { clerkUserId },

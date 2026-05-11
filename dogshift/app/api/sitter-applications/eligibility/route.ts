@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { getAuthedDbUser } from "@/lib/auth/getAuthedDbUser";
 
 import {
   clerkUserIsExistingSitter,
@@ -50,7 +50,8 @@ export async function GET(req: NextRequest) {
 
   let signedInEmail: string | null = null;
   try {
-    const { userId: clerkUserId } = await auth();
+    const __authed = await getAuthedDbUser();
+    const clerkUserId = __authed?.id ?? null;
     if (clerkUserId) {
       const { isSitter, email } = await clerkUserIsExistingSitter(clerkUserId);
       signedInEmail = email;

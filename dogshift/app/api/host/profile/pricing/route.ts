@@ -1,10 +1,9 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { auth, currentUser } from "@clerk/nextjs/server";
+import { getAuthedDbUser } from "@/lib/auth/getAuthedDbUser";
 import { Prisma } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
-import { ensureDbUserByClerkUserId } from "@/lib/auth/resolveDbUserId";
 import { buildEffectiveSitterCompletionProfile, computeSitterProfileCompletion } from "@/lib/sitterCompletion";
 import { zodParse } from "@/lib/validators/common";
 import { pricingUpdateSchema } from "@/lib/validators/sitter";
@@ -53,21 +52,19 @@ function serviceTypeForPricingKey(key: string) {
 
 export async function PUT(req: NextRequest) {
   try {
-    const { userId } = await auth();
+    const __authed = await getAuthedDbUser();
+    const userId = __authed?.id ?? null;
+    if (!__authed) return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
     if (!userId) return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
 
-    const clerkUser = await currentUser();
-    const primaryEmail = clerkUser?.primaryEmailAddress?.emailAddress ?? "";
+    // (() => null) /* currentUser removed */() removed — use __authed.email / __authed.name
+    const primaryEmail = __authed?.email ?? "";
     if (!primaryEmail) return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
 
-    const ensured = await ensureDbUserByClerkUserId({
-      clerkUserId: userId,
-      email: primaryEmail,
-      name: typeof clerkUser?.fullName === "string" ? clerkUser.fullName : null,
-    });
+    const ensured = (__authed ? { id: __authed.id, role: __authed.role, sitterId: __authed.sitterId, created: false } : null);
     if (!ensured) return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
 
-    const uid = ensured.id;
+    const uid = __authed.id;
 
     const user = await prisma.user.findUnique({
       where: { id: uid },

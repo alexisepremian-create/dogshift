@@ -1,11 +1,10 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { notFound } from "next/navigation";
-import { auth, currentUser } from "@clerk/nextjs/server";
+import { getAuthedDbUser } from "@/lib/auth/getAuthedDbUser";
 import { cookies } from "next/headers";
 import ReservationClient from "./reservation-client";
 import { prisma } from "@/lib/prisma";
-import { ensureDbUserByClerkUserId } from "@/lib/auth/resolveDbUserId";
 export const runtime = "nodejs";
 
 export default async function ReservationPage({
@@ -27,24 +26,13 @@ export default async function ReservationPage({
 
   let allowPreviewAccess = false;
   if (mode === "preview") {
-    const { userId } = await auth();
-    if (userId) {
-      const clerkUser = await currentUser();
-      const email = clerkUser?.primaryEmailAddress?.emailAddress ?? "";
-      if (email) {
-        const ensured = await ensureDbUserByClerkUserId({
-          clerkUserId: userId,
-          email,
-          name: typeof clerkUser?.fullName === "string" ? clerkUser.fullName : null,
-        });
-        if (ensured?.id) {
-          const ownSitterProfile = await prisma.sitterProfile.findUnique({
-            where: { userId: ensured.id },
-            select: { sitterId: true },
-          });
-          allowPreviewAccess = ownSitterProfile?.sitterId === sitterId;
-        }
-      }
+    const __authed = await getAuthedDbUser();
+    if (__authed?.email) {
+      const ownSitterProfile = await prisma.sitterProfile.findUnique({
+        where: { userId: __authed.id },
+        select: { sitterId: true },
+      });
+      allowPreviewAccess = ownSitterProfile?.sitterId === sitterId;
     }
   }
 

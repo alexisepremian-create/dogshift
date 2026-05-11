@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { getAuthedDbUser } from "@/lib/auth/getAuthedDbUser";
 
 import { logAudit } from "@/lib/audit";
 
@@ -37,7 +37,8 @@ export async function POST(req: NextRequest) {
     // Try to get authenticated user (optional — cookie consent can be anonymous)
     let actorId: string | null = null;
     try {
-      const { userId } = await auth();
+      const __authed = await getAuthedDbUser();
+    const userId = __authed?.id ?? null;
       actorId = userId ?? null;
     } catch {
       // Anonymous visitor — fine

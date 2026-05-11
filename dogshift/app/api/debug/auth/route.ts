@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { getAuthedDbUser } from "@/lib/auth/getAuthedDbUser";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -14,7 +14,9 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ ok: false, error: "FORBIDDEN" }, { status: 403 });
     }
 
-    const { userId, sessionId } = await auth();
+    const authedUser = await getAuthedDbUser();
+    const userId = authedUser?.id ?? null;
+    const sessionId = null; // Auth.js v5 manages session ids internally, not exposed here
 
     const forwardedHost = (req.headers.get("x-forwarded-host") || "").split(",")[0]?.trim();
     const host = (forwardedHost || req.headers.get("host") || "").split(",")[0]?.trim();

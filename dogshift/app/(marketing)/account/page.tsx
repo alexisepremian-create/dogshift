@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { currentUser } from "@clerk/nextjs/server";
+import { getAuthedDbUser } from "@/lib/auth/getAuthedDbUser";
 import type { Prisma } from "@prisma/client";
 import {
   AlertTriangle,
@@ -82,10 +82,9 @@ export default async function AccountDashboardPage({
   const isSitterRole = dbUserRole?.role === "SITTER";
   const hostUser = contexts.hasSitterProfile && isSitterRole ? await getHostUserData().catch(() => null) : null;
 
-  const clerkUser = await currentUser();
-  // Priority: Clerk fullName → Clerk firstName → DB name → email prefix
-  const rawName = clerkUser?.fullName || clerkUser?.firstName || dbUserRole?.name || "";
-  const primaryEmail = clerkUser?.primaryEmailAddress?.emailAddress ?? contexts.primaryEmail ?? "";
+  // Priority: DB name → email prefix (DB is now the source of truth, post-Clerk)
+  const rawName = dbUserRole?.name ?? "";
+  const primaryEmail = contexts.primaryEmail ?? "";
   const firstName = firstNameFromFullName(rawName) || firstNameFromEmail(primaryEmail);
 
   const now = new Date();

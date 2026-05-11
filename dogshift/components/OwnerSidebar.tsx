@@ -1,6 +1,6 @@
 "use client";
 
-import { useClerk } from "@clerk/nextjs";
+import { useSession, signOut } from "next-auth/react";
 import { LogOut } from "lucide-react";
 
 import Sidebar from "@/components/Sidebar";
@@ -13,7 +13,7 @@ type OwnerSidebarProps = {
 };
 
 export default function OwnerSidebar({ onNavigate, className, forceExpanded }: OwnerSidebarProps) {
-  useClerk();
+
   const { items } = useOwnerDashboardNavItems();
 
   const footer = (

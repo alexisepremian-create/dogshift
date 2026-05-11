@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useUser } from "@clerk/nextjs";
+import { useSession, signOut } from "next-auth/react";
 import { Bell, X } from "lucide-react";
 
 const DISMISSED_KEY = "ds_push_prompt_dismissed_until";
@@ -23,7 +23,9 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array<ArrayBuffer> {
 export type PushPermission = "default" | "granted" | "denied";
 
 export function usePushNotifications() {
-  const { isLoaded, isSignedIn } = useUser();
+  const { status: __sessionStatus } = useSession();
+  const isLoaded = __sessionStatus !== "loading";
+  const isSignedIn = __sessionStatus === "authenticated";
   const [isSupported, setIsSupported] = useState(false);
   const [permission, setPermission] = useState<PushPermission>("default");
   const [isSubscribed, setIsSubscribed] = useState(false);
@@ -110,7 +112,9 @@ type Props = {
 };
 
 export default function PushPermissionPrompt({ variant = "owner" }: Props) {
-  const { isLoaded, isSignedIn } = useUser();
+  const { status: __sessionStatus } = useSession();
+  const isLoaded = __sessionStatus !== "loading";
+  const isSignedIn = __sessionStatus === "authenticated";
   const { isSupported, permission, isSubscribed, subscribe } = usePushNotifications();
   const [visible, setVisible] = useState(false);
   const [loading, setLoading] = useState(false);

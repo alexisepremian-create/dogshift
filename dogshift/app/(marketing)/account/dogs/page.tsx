@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
-import { useUser } from "@clerk/nextjs";
+import { useSession, signOut } from "next-auth/react";
 import { Plus, Pencil, Trash2, Star, Dog, X, Check, Camera, Loader2 } from "lucide-react";
 import AccountPageSkeleton from "@/components/ui/AccountPageSkeleton";
 import { publicDogPhotoPath } from "@/lib/dogPhotoMedia";
@@ -70,7 +70,9 @@ function DogAvatar({ photoUrl, name, size = 48 }: { photoUrl: string | null; nam
 }
 
 export default function DogsPage() {
-  const { isLoaded, isSignedIn } = useUser();
+  const { status: __sessionStatus } = useSession();
+  const isLoaded = __sessionStatus !== "loading";
+  const isSignedIn = __sessionStatus === "authenticated";
   const [dogs, setDogs] = useState<DogItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<DogItem | null>(null);

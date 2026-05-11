@@ -1,9 +1,22 @@
+/**
+ * Legacy `/auth/google` callback page.
+ *
+ * Auth.js v5 handles the Google OAuth callback at `/api/auth/callback/google`
+ * automatically. This page exists only because the old Clerk flow stored the
+ * post-OAuth redirect path in sessionStorage and routed through here first.
+ *
+ * Behaviour now: clear the leftover sessionStorage marker, then redirect to
+ * /post-login (which decides /host vs /account based on role).
+ *
+ * Once we're confident no in-flight Clerk OAuth callbacks are hitting this
+ * URL anymore, this file can be deleted (PR 3 cleanup).
+ */
 "use client";
 
-import { AuthenticateWithRedirectCallback } from "@clerk/nextjs";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+
 import PageLoader from "@/components/ui/PageLoader";
-import { withPublicOrigin } from "@/lib/url/publicOrigin";
 
 export const dynamic = "force-dynamic";
 
@@ -22,27 +35,12 @@ function readStoredRedirectPath(): string {
 }
 
 export default function AuthGooglePage() {
-  const [ready, setReady] = useState(false);
-  const [afterPath, setAfterPath] = useState("/post-login");
+  const router = useRouter();
 
   useEffect(() => {
-    if (!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY) return;
-    setAfterPath(readStoredRedirectPath());
-    setReady(true);
-  }, []);
+    const target = readStoredRedirectPath();
+    router.replace(target);
+  }, [router]);
 
-  return (
-    <>
-      <PageLoader label="Connexion…" persist />
-      {ready ? (
-        <AuthenticateWithRedirectCallback
-          signInFallbackRedirectUrl={withPublicOrigin(afterPath)}
-          signUpFallbackRedirectUrl={withPublicOrigin(afterPath)}
-          signInForceRedirectUrl={withPublicOrigin(afterPath)}
-          signUpForceRedirectUrl={withPublicOrigin(afterPath)}
-          continueSignUpUrl={withPublicOrigin("/login?force=1")}
-        />
-      ) : null}
-    </>
-  );
+  return <PageLoader label="Connexion…" persist />;
 }

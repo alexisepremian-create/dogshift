@@ -1,10 +1,9 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { auth, currentUser } from "@clerk/nextjs/server";
+import { getAuthedDbUser } from "@/lib/auth/getAuthedDbUser";
 import { Prisma } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
-import { ensureDbUserByClerkUserId } from "@/lib/auth/resolveDbUserId";
 import { computeSitterProfileCompletion } from "@/lib/sitterCompletion";
 import { maxSitterLifecycleStatus, normalizeSitterLifecycleStatus } from "@/lib/sitterContract";
 import { CURRENT_TERMS_VERSION } from "@/lib/terms";
@@ -21,22 +20,20 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, error: "INVITE_REQUIRED" }, { status: 403 });
     }
 
-    const { userId } = await auth();
+    const __authed = await getAuthedDbUser();
+    const userId = __authed?.id ?? null;
+    if (!__authed) return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
     if (!userId) {
       return NextResponse.json({ ok: false, code: "AUTH_REQUIRED" }, { status: 401 });
     }
 
-    const clerkUser = await currentUser();
-    const primaryEmail = clerkUser?.primaryEmailAddress?.emailAddress ?? "";
+    // (() => null) /* currentUser removed */() removed — use __authed.email / __authed.name
+    const primaryEmail = __authed?.email ?? "";
     if (!primaryEmail) {
       return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
     }
 
-    const ensured = await ensureDbUserByClerkUserId({
-      clerkUserId: userId,
-      email: primaryEmail,
-      name: typeof clerkUser?.fullName === "string" ? clerkUser.fullName : null,
-    });
+    const ensured = (__authed ? { id: __authed.id, role: __authed.role, sitterId: __authed.sitterId, created: false } : null);
 
     if (!ensured) {
       return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
@@ -92,7 +89,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, error: "TERMS_REQUIRED" }, { status: 400 });
     }
 
-    const existingUser = await prisma.user.findUnique({ where: { id: ensured.id }, select: { sitterId: true } });
+    const existingUser = await prisma.user.findUnique({ where: { id: __authed.id }, select: { sitterId: true } });
     const sitterId = (existingUser?.sitterId && existingUser.sitterId.trim())
       ? existingUser.sitterId.trim()
       : `s-${Date.now()}-${Math.random().toString(16).slice(2)}`;
@@ -130,7 +127,7 @@ export async function POST(req: NextRequest) {
 
     console.info("[become-sitter][apply] auto-activating sitter", {
       clerkUserId: userId,
-      dbUserId: ensured.id,
+      dbUserId: __authed.id,
       email: primaryEmail,
       inviteId: invite?.id ?? null,
       inviteType: invite?.type ?? null,
@@ -150,14 +147,14 @@ export async function POST(req: NextRequest) {
       }
 
       await tx.user.update({
-        where: { id: ensured.id },
+        where: { id: __authed.id },
         data: { role: "SITTER", sitterId, hostProfileJson } as unknown as Record<string, unknown>,
         select: { id: true },
       });
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const existingProfile = await (tx as any).sitterProfile.findUnique({
-        where: { userId: ensured.id },
+        where: { userId: __authed.id },
         select: {
           lifecycleStatus: true,
           published: true,
@@ -172,9 +169,9 @@ export async function POST(req: NextRequest) {
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await (tx as any).sitterProfile.upsert({
-        where: { userId: ensured.id },
+        where: { userId: __authed.id },
         create: {
-          userId: ensured.id,
+          userId: __authed.id,
           sitterId,
           published: false,
           publishedAt: null,
@@ -222,7 +219,7 @@ export async function POST(req: NextRequest) {
 
     // Telegram admin notification — best-effort, never blocks the response.
     void sendTelegramMessage(
-      `🐾 *Nouveau dogsitter inscrit !*\n👤 ${firstName || "Inconnu"}\n📍 ${city || "?"}\n📧 ${primaryEmail}\n🆔 ${ensured.id}\n🏠 Services : ${Array.isArray(services) ? services.join(", ") : "?"}`,
+      `🐾 *Nouveau dogsitter inscrit !*\n👤 ${firstName || "Inconnu"}\n📍 ${city || "?"}\n📧 ${primaryEmail}\n🆔 ${__authed.id}\n🏠 Services : ${Array.isArray(services) ? services.join(", ") : "?"}`,
       { bot: "candidatures", parseMode: "Markdown" }
     ).catch((e) => console.warn("[become-sitter][apply] telegram notification failed", e));
 

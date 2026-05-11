@@ -1,8 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Suspense } from "react";
-import { ClerkProvider } from "@clerk/nextjs";
-import { frFR } from "@clerk/localizations";
+
 import SessionAuthProvider from "@/components/SessionAuthProvider";
 import ConsentScriptLoader from "@/components/ConsentScriptLoader";
 import InitialLoadSplash from "@/components/InitialLoadSplash";
@@ -69,9 +68,9 @@ export const metadata: Metadata = {
 // `revalidate` (e.g. the homepage's `revalidate = 300`), forcing every request
 // to re-render server-side and re-run Prisma queries. The post-login redirect
 // flow does not need this — it's powered by:
-//   1. /api/auth/resolve-redirect (route handler, dynamic via `auth()` cookies)
+//   1. /api/auth/resolve-redirect (route handler, dynamic via Auth.js auth())
 //   2. /post-login & /login (client components driving navigation)
-//   3. The Clerk middleware in proxy.ts (handles cookie/session per request)
+//   3. The proxy middleware in proxy.ts (cookie/session check per request)
 // Removing `force-dynamic` here restores the static cache for the homepage
 // and saves significant TTFB + hydration time on mobile.
 
@@ -88,16 +87,9 @@ export default async function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <ClerkProvider
-          signInUrl="/login"
-          signUpUrl="/login"
-          afterSignOutUrl="/login?force=1"
-          localization={frFR}
-        >
-          <Suspense fallback={null}>
-            <SessionAuthProvider>{children}</SessionAuthProvider>
-          </Suspense>
-        </ClerkProvider>
+        <Suspense fallback={null}>
+          <SessionAuthProvider>{children}</SessionAuthProvider>
+        </Suspense>
 
         <InitialLoadSplash />
 

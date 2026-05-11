@@ -3,7 +3,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState, Suspense } from "react";
-import { useUser } from "@clerk/nextjs";
+import { useSession, signOut } from "next-auth/react";
 import { ArrowDownRight, ArrowUpRight, Briefcase, CreditCard, Info, RefreshCw, Wallet, CalendarClock, PlayCircle, ShieldCheck, CheckCircle2, Clock, Landmark } from "lucide-react";
 
 
@@ -295,7 +295,9 @@ function VerticalBarChart({
 
 
 function OwnerWalletContent() {
-  const { isLoaded, isSignedIn } = useUser();
+  const { status: __sessionStatus } = useSession();
+  const isLoaded = __sessionStatus !== "loading";
+  const isSignedIn = __sessionStatus === "authenticated";
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

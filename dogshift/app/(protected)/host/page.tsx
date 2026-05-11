@@ -7,7 +7,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { Suspense, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { useSearchParams } from "next/navigation";
-import { useUser } from "@clerk/nextjs";
+import { useSession, signOut } from "next-auth/react";
 import { X } from "lucide-react";
 
 import SunCornerGlow from "@/components/SunCornerGlow";
@@ -315,7 +315,10 @@ function HostAvatar({ src, alt }: { src: string | null; alt: string }) {
 }
 
 export default function HostDashboardPage() {
-  const { isLoaded, isSignedIn, user } = useUser();
+  const { data: __session, status: __sessionStatus } = useSession();
+  const user = __session?.user ?? null;
+  const isLoaded = __sessionStatus !== "loading";
+  const isSignedIn = __sessionStatus === "authenticated";
   const host = useHostUser();
   const { sitterId, profile: remoteProfile, published: isPublished } = host;
   const [unreadTick, setUnreadTick] = useState(0);
@@ -496,8 +499,8 @@ export default function HostDashboardPage() {
 
   const greetingName =
     (typeof profile.firstName === "string" && profile.firstName.trim() ? profile.firstName.trim() : null) ??
-    (typeof user?.firstName === "string" && user.firstName.trim() ? user.firstName.trim() : null) ??
-    (typeof user?.fullName === "string" && user.fullName.trim() ? user.fullName.trim() : null) ??
+    (typeof user?.name === "string" && user?.name.trim() ? user?.name.trim() : null) ??
+    (typeof user?.name === "string" && user?.name.trim() ? user?.name.trim() : null) ??
     null;
 
   const avatarSrc =

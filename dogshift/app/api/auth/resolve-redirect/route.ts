@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { getAuthedDbUser } from "@/lib/auth/getAuthedDbUser";
 
 import { ensureDbUserFromClerkAuth } from "@/lib/auth/resolveDbUserId";
 import { prisma } from "@/lib/prisma";
@@ -87,7 +87,8 @@ async function runOnboardingOwner({ email, userId, name }: { email: string; user
 }
 
 export async function GET() {
-  const { userId } = await auth();
+  const __authed = await getAuthedDbUser();
+    const userId = __authed?.id ?? null;
   if (!userId) {
     return NextResponse.json({ redirect: "/login" }, { status: 401 });
   }
@@ -101,20 +102,20 @@ export async function GET() {
 
     if (!dbUser?.id) {
       const ensured = await ensureDbUserFromClerkAuth();
-      if (!ensured?.id) {
+      if (!__authed?.id) {
         console.warn("[resolve-redirect] unable to ensure DB user", { clerkUserId: userId });
         return NextResponse.json({ redirect: "/login?force=1" });
       }
       // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Prisma dynamic field.
       dbUser = await (prisma as any).user.findUnique({
-        where: { id: ensured.id },
+        where: { id: __authed.id },
         select: { id: true, role: true, email: true, sitterId: true, name: true },
       });
 
       // Inline onboarding for brand-new OWNER accounts (no HTTP self-call — unreliable on Vercel)
-      if (ensured.created && ensured.role === "OWNER" && dbUser?.email) {
+      if (ensured?.created && __authed.role === "OWNER" && dbUser?.email) {
         try {
-          await runOnboardingOwner({ email: dbUser.email, userId: ensured.id, name: dbUser.name ?? undefined });
+          await runOnboardingOwner({ email: dbUser.email, userId: __authed.id, name: dbUser.name ?? undefined });
         } catch (err) {
           console.warn("[resolve-redirect] onboarding-owner failed", err);
         }

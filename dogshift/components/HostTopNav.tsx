@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useMemo } from "react";
-import { useUser } from "@clerk/nextjs";
+import { useSession, signOut } from "next-auth/react";
 
 import { useHostUser } from "@/components/HostUserProvider";
 
@@ -14,7 +14,9 @@ type HostTopNavProps = {
 export default function HostTopNav({ className }: HostTopNavProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const { isLoaded, isSignedIn } = useUser();
+  const { status: __sessionStatus } = useSession();
+  const isLoaded = __sessionStatus !== "loading";
+  const isSignedIn = __sessionStatus === "authenticated";
   const { sitterId } = useHostUser();
 
   const disablePrefetch = useMemo(() => (searchParams?.get("mode") ?? "") === "preview", [searchParams]);

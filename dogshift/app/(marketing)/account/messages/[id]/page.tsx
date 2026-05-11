@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
-import { useUser } from "@clerk/nextjs";
+import { useSession, signOut } from "next-auth/react";
 import { ChevronDown, Dog, X } from "lucide-react";
 
 type SelectedDog = { id: string; name: string; breed: string | null };
@@ -63,7 +63,9 @@ function dogColor(name: string) {
 
 export default function AccountMessageThreadPage() {
   const params = useParams<{ id: string }>();
-  const { isLoaded, isSignedIn } = useUser();
+  const { status: __sessionStatus } = useSession();
+  const isLoaded = __sessionStatus !== "loading";
+  const isSignedIn = __sessionStatus === "authenticated";
   const conversationId = typeof params?.id === "string" ? params.id : "";
   const threadRef = useRef<HTMLDivElement | null>(null);
 

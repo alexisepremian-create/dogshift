@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { getAuthedDbUser } from "@/lib/auth/getAuthedDbUser";
 
 import { prisma } from "@/lib/prisma";
 import { resolveDbUserId } from "@/lib/auth/resolveDbUserId";
@@ -56,7 +56,8 @@ async function resolveSitterKey(input: string) {
 
 export async function POST(req: NextRequest) {
   try {
-    const { userId: clerkUserId } = await auth();
+    const __authed = await getAuthedDbUser();
+    const clerkUserId = __authed?.id ?? null;
     if (process.env.NODE_ENV !== "production") {
       console.log("[api][messages/conversations] entered", { clerkUserId: clerkUserId ?? null });
     }

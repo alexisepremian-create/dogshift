@@ -1,34 +1,38 @@
 import type { NextRequest } from "next/server";
-import { auth, currentUser } from "@clerk/nextjs/server";
 
+import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { ensureDbUserByClerkUserId } from "@/lib/auth/resolveDbUserId";
 
+/**
+ * Sitter-ownership gate used by `/api/host/**` endpoints.
+ *
+ * Reads the Auth.js session, looks up the linked SitterProfile, and either
+ * lets the request through with `{ ok: true, dbUserId, sitterId }` or returns
+ * the appropriate HTTP status for the caller to forward.
+ *
+ *  - 401 UNAUTHORIZED: no session at all
+ *  - 403 FORBIDDEN: session present but no SitterProfile attached
+ */
 export type RequireSitterOwnerResult =
   | { ok: true; dbUserId: string; sitterId: string }
   | { ok: false; status: 401 | 403; error: "UNAUTHORIZED" | "FORBIDDEN" };
 
 export async function requireSitterOwner(_req: NextRequest): Promise<RequireSitterOwnerResult> {
-  const { userId } = await auth();
-  if (!userId) return { ok: false, status: 401, error: "UNAUTHORIZED" };
+  void _req;
 
-  const clerkUser = await currentUser();
-  const primaryEmail = clerkUser?.primaryEmailAddress?.emailAddress ?? "";
-  if (!primaryEmail) return { ok: false, status: 401, error: "UNAUTHORIZED" };
-
-  const ensured = await ensureDbUserByClerkUserId({
-    clerkUserId: userId,
-    email: primaryEmail,
-    name: typeof clerkUser?.fullName === "string" ? clerkUser.fullName : null,
-  });
-  if (!ensured?.id) return { ok: false, status: 401, error: "UNAUTHORIZED" };
+  const session = await auth();
+  const dbUserId = session?.user?.id ?? "";
+  if (!dbUserId) return { ok: false, status: 401, error: "UNAUTHORIZED" };
 
   const sitterProfile = await prisma.sitterProfile.findUnique({
-    where: { userId: ensured.id },
+    where: { userId: dbUserId },
     select: { sitterId: true },
   });
-  const sitterId = typeof sitterProfile?.sitterId === "string" && sitterProfile.sitterId.trim() ? sitterProfile.sitterId.trim() : "";
+  const sitterId =
+    typeof sitterProfile?.sitterId === "string" && sitterProfile.sitterId.trim()
+      ? sitterProfile.sitterId.trim()
+      : "";
   if (!sitterId) return { ok: false, status: 403, error: "FORBIDDEN" };
 
-  return { ok: true, dbUserId: ensured.id, sitterId };
+  return { ok: true, dbUserId, sitterId };
 }

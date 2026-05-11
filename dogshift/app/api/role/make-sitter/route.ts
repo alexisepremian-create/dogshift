@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { auth, currentUser } from "@clerk/nextjs/server";
+import { getAuthedDbUser } from "@/lib/auth/getAuthedDbUser";
 
 import { prisma } from "@/lib/prisma";
 
@@ -10,11 +10,12 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false }, { status: 403 });
   }
 
-  const { userId } = await auth();
+  const __authed = await getAuthedDbUser();
+    const userId = __authed?.id ?? null;
   if (!userId) return NextResponse.json({ ok: false }, { status: 401 });
 
-  const clerkUser = await currentUser();
-  const email = clerkUser?.primaryEmailAddress?.emailAddress ?? "";
+  // currentUser() removed — use __authed.email / __authed.name
+  const email = __authed?.email ?? "";
   if (!email) return NextResponse.json({ ok: false }, { status: 401 });
 
   const existing = await prisma.user.findUnique({ where: { email } });

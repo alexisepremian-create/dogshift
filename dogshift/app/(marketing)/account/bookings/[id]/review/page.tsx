@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { useUser } from "@clerk/nextjs";
+import { useSession, signOut } from "next-auth/react";
 import { CalendarDays, ChevronLeft, MapPin } from "lucide-react";
 
 
@@ -114,7 +114,9 @@ function reviewLocked(eligibility: ReviewEligibilityPayload | null) {
 export default function AccountBookingReviewPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
-  const { isLoaded, isSignedIn } = useUser();
+  const { status: __sessionStatus } = useSession();
+  const isLoaded = __sessionStatus !== "loading";
+  const isSignedIn = __sessionStatus === "authenticated";
 
   const bookingId = typeof params?.id === "string" ? params.id : "";
 

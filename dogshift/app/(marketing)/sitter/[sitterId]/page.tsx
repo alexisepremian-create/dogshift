@@ -8,7 +8,7 @@
 
 import Link from "next/link";
 import { useParams, usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useUser } from "@clerk/nextjs";
+import { useSession, signOut } from "next-auth/react";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { User, Scissors, Dog, MapPin, Users, MessageSquare, Star, Info, ChevronLeft, ChevronRight, Calendar as CalendarIcon, Shield, CreditCard, MessageCircle } from "lucide-react";
 import { SERVICE_COLORS, getServiceColors } from "@/lib/design/services";
@@ -380,7 +380,10 @@ function SitterPublicProfileContent({
   const id = sitterId;
   if (dbg) console.log("ID used for fetch:", id);
 
-  const { isLoaded, isSignedIn, user } = useUser();
+  const { data: __session, status: __sessionStatus } = useSession();
+  const user = __session?.user ?? null;
+  const isLoaded = __sessionStatus !== "loading";
+  const isSignedIn = __sessionStatus === "authenticated";
   const isLoggedIn = Boolean(isLoaded && isSignedIn);
   const effectivePreviewMode = Boolean(isPreviewMode && isLoggedIn);
 
@@ -416,8 +419,8 @@ function SitterPublicProfileContent({
     return () => window.removeEventListener("keydown", onKey);
   }, [photoLightboxOpen]);
 
-  const sessionName = typeof user?.fullName === "string" ? user.fullName : "";
-  const sessionImage = typeof user?.imageUrl === "string" ? user.imageUrl : null;
+  const sessionName = typeof user?.name === "string" ? user?.name : "";
+  const sessionImage = typeof user?.image === "string" ? user?.image : null;
 
   useEffect(() => {
     if (!isPreviewMode) return;

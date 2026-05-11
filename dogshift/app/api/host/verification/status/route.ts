@@ -1,28 +1,23 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { auth, currentUser } from "@clerk/nextjs/server";
+import { getAuthedDbUser } from "@/lib/auth/getAuthedDbUser";
 
 import { prisma } from "@/lib/prisma";
-import { ensureDbUserByClerkUserId } from "@/lib/auth/resolveDbUserId";
 
 export const runtime = "nodejs";
 
 export async function GET(req: NextRequest) {
   try {
     void req;
-    const { userId } = await auth();
+    const __authed = await getAuthedDbUser();
+    const userId = __authed?.id ?? null;
     if (!userId) return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
 
-    const clerkUser = await currentUser();
-    const email = clerkUser?.primaryEmailAddress?.emailAddress ?? "";
+    // currentUser() removed — use __authed.email / __authed.name
+    const email = __authed?.email ?? "";
     if (!email) return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
 
-    const ensured = await ensureDbUserByClerkUserId({
-      clerkUserId: userId,
-      email,
-      name: typeof clerkUser?.fullName === "string" ? clerkUser.fullName : null,
-    });
-    if (!ensured?.id) return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
+    if (!__authed?.id) return new Response("Unauthorized", { status: 401 });
 
     const db = prisma as unknown as {
       sitterProfile: {
@@ -42,7 +37,7 @@ export async function GET(req: NextRequest) {
     };
 
     const sitterProfile = await db.sitterProfile.findUnique({
-      where: { userId: ensured.id },
+      where: { userId: __authed.id },
       select: {
         sitterId: true,
         verificationStatus: true,

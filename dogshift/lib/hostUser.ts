@@ -1,4 +1,4 @@
-import { auth } from "@clerk/nextjs/server";
+import { getAuthedDbUser } from "@/lib/auth/getAuthedDbUser";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { getHostContractAmendmentState, type HostContractAmendmentState } from "@/lib/contractAmendments";
@@ -64,7 +64,8 @@ export function makeHostUserValuePreview(args: {
 }
 
 export async function getHostUserData(): Promise<HostUserData> {
-  const { userId } = await auth();
+  const __authed = await getAuthedDbUser();
+    const userId = __authed?.id ?? null;
   if (!userId) {
     console.warn("[hostUser][diagnostic] auth returned no userId", {
       reason: "NO_AUTH_USER",
@@ -103,15 +104,12 @@ export async function getHostUserData(): Promise<HostUserData> {
       user = (await (prisma as any).user.findUnique({ where: { id: ensured.id } })) as
         | ({ id: string; sitterId?: string | null; hostProfileJson?: string | null } & Record<string, unknown>)
         | null;
-      console.info("[hostUser] ensured db user from clerk auth", {
-        clerkUserId: userId,
+      console.info("[hostUser] ensured db user from auth", {
         dbUserId: ensured.id,
         created: ensured.created,
       });
     } else {
-      console.warn("[hostUser] failed to ensure db user from clerk auth", {
-        clerkUserId: userId,
-      });
+      console.warn("[hostUser] failed to ensure db user from auth");
     }
   }
 

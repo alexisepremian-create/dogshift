@@ -1,15 +1,34 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+/**
+ * Auth.js v5 — DB user resolution helpers.
+ *
+ * In the Clerk era this file bridged Clerk session → Prisma User by linking
+ * via `clerkUserId`. With Auth.js v5 (database session strategy + PrismaAdapter)
+ * the Auth.js session ALREADY carries the Prisma User.id directly — no bridge
+ * needed at runtime.
+ *
+ * What we keep:
+ *  - The exported function signatures (60+ callsites depend on them) so this
+ *    PR only swaps the implementation, not every caller.
+ *  - `ensureDbUserByClerkUserId` lives on as a legacy helper used by the
+ *    one-shot scripts/migrate-clerk-users.ts to relink existing rows.
+ *
+ * What changes:
+ *  - All runtime paths read from `auth()` (Auth.js) instead of Clerk's
+ *    `auth()` + `currentUser()` + `clerkClient()`.
+ *  - `ensureDbUserFromClerkAuth()` keeps its name (so callers don't break)
+ *    but is now just a thin lookup against `session.user.id`. No creation
+ *    needed — PrismaAdapter or `/api/auth/register` always create the row
+ *    before a session exists.
+ */
 import type { NextRequest } from "next/server";
 import type { Role } from "@prisma/client";
 
-import { auth, clerkClient, currentUser } from "@clerk/nextjs/server";
-
+import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 
 export type DbUserEnsured = {
   id: string;
-  // Mirrors Prisma's Role enum so adding new values (ADMIN, …) doesn't require
-  // touching this type. PR 2 will tighten admin checks on top of this.
   role: Role;
   sitterId: string | null;
 };
@@ -18,22 +37,44 @@ function normalizeEmail(email: string) {
   return email.replace(/\s+/g, "+").trim().toLowerCase();
 }
 
+/**
+ * Look up (or create on the fly) a User by email. Used in places where we
+ * only have the email — e.g. webhooks, contract signing, support tooling.
+ *
+ * No auth context required — caller is responsible for trusting the email
+ * source.
+ */
 export async function ensureDbUserByEmail(params: { email: string; name?: string | null }): Promise<DbUserEnsured | null> {
   const email = normalizeEmail(params.email);
   if (!email) return null;
 
-  const existing = await prisma.user.findUnique({ where: { email }, select: { id: true, role: true, sitterId: true } });
+  const existing = await prisma.user.findUnique({
+    where: { email },
+    select: { id: true, role: true, sitterId: true },
+  });
   if (existing?.id) {
     return { id: existing.id, role: existing.role, sitterId: existing.sitterId ?? null };
   }
 
   const name = typeof params.name === "string" && params.name.trim() ? params.name.trim() : null;
-  const role = "OWNER";
-  const sitterId = null;
-  const created = await prisma.user.create({ data: { email, name, role, sitterId }, select: { id: true, role: true, sitterId: true } });
+  const created = await prisma.user.create({
+    data: { email, name, role: "OWNER", sitterId: null },
+    select: { id: true, role: true, sitterId: true },
+  });
   return { id: created.id, role: created.role, sitterId: created.sitterId ?? null };
 }
 
+/**
+ * Legacy helper kept for one-off migration code (scripts/migrate-clerk-users.ts).
+ *
+ * Resolves a User by the historical `clerkUserId` column. Returns null if
+ * no row has that clerkUserId (post-PR3 this will always be null since the
+ * column gets dropped).
+ *
+ * @deprecated Use the Auth.js session directly: `session.user.id` is the
+ *             Prisma User.id. This function only stays alive long enough to
+ *             let the one-shot migration script relink rows.
+ */
 export async function ensureDbUserByClerkUserId(params: {
   clerkUserId: string;
   email: string;
@@ -47,37 +88,30 @@ export async function ensureDbUserByClerkUserId(params: {
 
   const name = typeof params.name === "string" && params.name.trim() ? params.name.trim() : null;
 
+  // 1) Already linked?
   const byClerk = await (prisma as any).user.findUnique({
     where: { clerkUserId },
     select: { id: true, role: true, sitterId: true, email: true, name: true },
   });
   if (byClerk?.id) {
     const updates: Record<string, unknown> = {};
-    if (!byClerk.email || byClerk.email !== email) {
-      updates.email = email;
-    }
-    if (!byClerk.name && name) {
-      updates.name = name;
-    }
+    if (!byClerk.email || byClerk.email !== email) updates.email = email;
+    if (!byClerk.name && name) updates.name = name;
     if (Object.keys(updates).length > 0) {
       try {
         await (prisma as any).user.update({ where: { id: byClerk.id }, data: updates });
       } catch {
-        // ignore
+        /* swallow — non-critical metadata sync */
       }
     }
-    const result = { id: byClerk.id, role: byClerk.role, sitterId: byClerk.sitterId ?? null, created: false };
-    console.info("[role-resolution][ensureDbUser] found by clerkUserId", {
-      clerkUserId,
-      dbUserId: result.id,
-      role: result.role,
-      sitterId: result.sitterId,
-    });
-    return result;
+    return { id: byClerk.id, role: byClerk.role, sitterId: byClerk.sitterId ?? null, created: false };
   }
 
-  // Migration path: existing users created by email before clerkUserId existed.
-  const byEmail = await prisma.user.findUnique({ where: { email }, select: { id: true, role: true, sitterId: true } });
+  // 2) User exists by email but never linked to Clerk → link in place.
+  const byEmail = await prisma.user.findUnique({
+    where: { email },
+    select: { id: true, role: true, sitterId: true },
+  });
   if (byEmail?.id) {
     try {
       const updated = await (prisma as any).user.update({
@@ -85,110 +119,56 @@ export async function ensureDbUserByClerkUserId(params: {
         data: { clerkUserId, ...(name ? { name } : null) },
         select: { id: true, role: true, sitterId: true },
       });
-      const result = { id: updated.id, role: updated.role, sitterId: updated.sitterId ?? null, created: false };
-      console.info("[role-resolution][ensureDbUser] migrated email→clerk link", {
-        clerkUserId,
-        dbUserId: result.id,
-        role: result.role,
-        sitterId: result.sitterId,
-        email,
-      });
-      return result;
+      return { id: updated.id, role: updated.role, sitterId: updated.sitterId ?? null, created: false };
     } catch {
-      const again = await (prisma as any).user.findUnique({ where: { clerkUserId }, select: { id: true, role: true, sitterId: true } });
+      // Race: another request just linked the same clerkUserId. Re-read.
+      const again = await (prisma as any).user.findUnique({
+        where: { clerkUserId },
+        select: { id: true, role: true, sitterId: true },
+      });
       if (again?.id) {
-        const result = { id: again.id, role: again.role, sitterId: again.sitterId ?? null, created: false };
-        console.info("[role-resolution][ensureDbUser] race recovery", {
-          clerkUserId,
-          dbUserId: result.id,
-          role: result.role,
-        });
-        return result;
+        return { id: again.id, role: again.role, sitterId: again.sitterId ?? null, created: false };
       }
     }
   }
 
-  // Guard: before creating a new OWNER user, double-check no existing user
-  // has a SitterProfile for this email. This prevents accidental duplication.
-  const existingByEmailFinal = await prisma.user.findUnique({ where: { email }, select: { id: true, role: true, sitterId: true } });
-  if (existingByEmailFinal?.id) {
-    console.warn("[role-resolution][ensureDbUser] DUPLICATE_PREVENTION: user already exists for email, linking clerkUserId", {
-      clerkUserId,
-      email,
-      existingUserId: existingByEmailFinal.id,
-      existingRole: existingByEmailFinal.role,
-    });
-    try {
-      await (prisma as any).user.update({
-        where: { id: existingByEmailFinal.id },
-        data: { clerkUserId },
-      });
-    } catch {
-      // unique constraint on clerkUserId — another user already linked
-    }
-    return { id: existingByEmailFinal.id, role: existingByEmailFinal.role, sitterId: existingByEmailFinal.sitterId ?? null, created: false };
-  }
-
-  const role = "OWNER";
-  const sitterId = null;
+  // 3) Brand new — create a fresh OWNER row carrying the clerkUserId.
   const created = await (prisma as any).user.create({
-    data: { clerkUserId, email, name, role, sitterId },
+    data: { clerkUserId, email, name, role: "OWNER", sitterId: null },
     select: { id: true, role: true, sitterId: true },
   });
-  const result = { id: created.id, role: created.role, sitterId: created.sitterId ?? null, created: true };
-  console.info("[role-resolution][ensureDbUser] new user created", {
-    clerkUserId,
-    dbUserId: result.id,
-    role: result.role,
-    email,
-  });
-  return result;
+  return { id: created.id, role: created.role, sitterId: created.sitterId ?? null, created: true };
 }
 
+/**
+ * Returns the DB user for the current Auth.js session. Replaces the former
+ * Clerk-driven version. Name kept for backwards compatibility with callers.
+ *
+ * Returns null when:
+ *  - No active session
+ *  - Session points at a User that no longer exists (race with deletion)
+ */
 export async function ensureDbUserFromClerkAuth(): Promise<(DbUserEnsured & { created: boolean }) | null> {
-  const { userId } = await auth();
+  const session = await auth();
+  const userId = session?.user?.id;
   if (!userId) return null;
 
-  const client = await clerkClient();
-  let email = "";
-  let name: string | null = null;
-  for (let i = 0; i < 8; i += 1) {
-    const fromSession = await currentUser();
-    const clerkUser =
-      fromSession ?? (await client.users.getUser(userId).catch(() => null));
-    email = clerkUser?.primaryEmailAddress?.emailAddress ?? "";
-    name = clerkUser?.fullName || clerkUser?.firstName || null;
-    if (email) break;
-    await new Promise((r) => setTimeout(r, 400));
-  }
-  if (!email) return null;
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { id: true, role: true, sitterId: true },
+  });
+  if (!user) return null;
 
-  return ensureDbUserByClerkUserId({ clerkUserId: userId, email, name });
+  return { id: user.id, role: user.role, sitterId: user.sitterId ?? null, created: false };
 }
 
-export async function resolveDbUserId(req: NextRequest) {
+/**
+ * Returns the Prisma User.id of the current Auth.js session, or null if
+ * unauthenticated. The `req` parameter is kept for API compatibility — Auth.js
+ * v5's `auth()` reads cookies via async storage and does not need the request.
+ */
+export async function resolveDbUserId(req: NextRequest): Promise<string | null> {
   void req;
-
-  const { userId } = await auth();
-  if (!userId) return null;
-
-  const clerkUser = await currentUser();
-  const email = clerkUser?.primaryEmailAddress?.emailAddress ?? "";
-  if (!email) return null;
-
-  const ensured = await ensureDbUserByClerkUserId({
-    clerkUserId: userId,
-    email,
-    name: clerkUser?.fullName || clerkUser?.firstName || null,
-  });
-
-  if (process.env.NODE_ENV !== "production") {
-    console.log("[auth][resolveDbUserId] ensure", {
-      clerkUserId: userId,
-      dbUserId: ensured?.id ?? null,
-      created: ensured?.created ?? null,
-    });
-  }
-
-  return ensured?.id ?? null;
+  const session = await auth();
+  return session?.user?.id ?? null;
 }

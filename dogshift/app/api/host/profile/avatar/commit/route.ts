@@ -1,9 +1,8 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { auth, currentUser } from "@clerk/nextjs/server";
+import { getAuthedDbUser } from "@/lib/auth/getAuthedDbUser";
 
 import { prisma } from "@/lib/prisma";
-import { ensureDbUserByClerkUserId } from "@/lib/auth/resolveDbUserId";
 import { headObject } from "@/lib/r2";
 import { isSitterAvatarR2Key, publicAvatarMediaPath, sitterAvatarObjectPrefix } from "@/lib/sitterAvatarMedia";
 
@@ -11,19 +10,15 @@ export const runtime = "nodejs";
 
 export async function POST(req: NextRequest) {
   try {
-    const { userId } = await auth();
+    const __authed = await getAuthedDbUser();
+    const userId = __authed?.id ?? null;
     if (!userId) return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
 
-    const clerkUser = await currentUser();
-    const email = clerkUser?.primaryEmailAddress?.emailAddress ?? "";
+    // currentUser() removed — use __authed.email / __authed.name
+    const email = __authed?.email ?? "";
     if (!email) return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
 
-    const ensured = await ensureDbUserByClerkUserId({
-      clerkUserId: userId,
-      email,
-      name: typeof clerkUser?.fullName === "string" ? clerkUser.fullName : null,
-    });
-    if (!ensured?.id) return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
+    if (!__authed?.id) return new Response("Unauthorized", { status: 401 });
 
     const body = (await req.json().catch(() => null)) as null | { key?: string };
     const key = typeof body?.key === "string" ? body.key.trim() : "";
@@ -32,7 +27,7 @@ export async function POST(req: NextRequest) {
     }
 
     const sitterProfile = await prisma.sitterProfile.findUnique({
-      where: { userId: ensured.id },
+      where: { userId: __authed.id },
       select: { id: true, sitterId: true },
     });
 
@@ -57,13 +52,13 @@ export async function POST(req: NextRequest) {
     }
 
     await prisma.sitterProfile.update({
-      where: { userId: ensured.id },
+      where: { userId: __authed.id },
       data: { avatarUrl: mediaPath },
       select: { id: true },
     });
 
     const userRow = await prisma.user.findUnique({
-      where: { id: ensured.id },
+      where: { id: __authed.id },
       select: { hostProfileJson: true },
     });
 
@@ -75,7 +70,7 @@ export async function POST(req: NextRequest) {
         parsed.avatarUrl = mediaPath;
         parsed.updatedAt = new Date().toISOString();
         await prisma.user.update({
-          where: { id: ensured.id },
+          where: { id: __authed.id },
           data: { hostProfileJson: JSON.stringify(parsed) },
         });
       } catch {
