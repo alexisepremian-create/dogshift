@@ -6,6 +6,8 @@ import SessionAuthProvider from "@/components/SessionAuthProvider";
 import ConsentScriptLoader from "@/components/ConsentScriptLoader";
 import InitialLoadSplash from "@/components/InitialLoadSplash";
 import InstallPWAPrompt from "@/components/InstallPWAPrompt";
+import NavigationOverlay from "@/components/NavigationOverlay";
+import NavigationOverlayController from "@/components/NavigationOverlayController";
 import ServiceWorkerRegistration from "@/components/ServiceWorkerRegistration";
 import "./globals.css";
 
@@ -90,6 +92,13 @@ export default async function RootLayout({
         <Suspense fallback={null}>
           <SessionAuthProvider>{children}</SessionAuthProvider>
         </Suspense>
+
+        {/* Static overlay always present in the DOM — gets shown synchronously
+            via a body[data-navigating="1"] attribute set in the click capture
+            handler, masking the 1-frame gap before the new route's loading.tsx
+            commits. */}
+        <NavigationOverlay />
+        <NavigationOverlayController />
 
         <InitialLoadSplash />
 
