@@ -1,0 +1,49 @@
+---
+description: Mobile performance rules for homepage and marketing pages — prevents CSS jank, duplicate components, and layout thrashing
+globs: app/(marketing)/**/*.tsx, components/SiteHeader.tsx, components/DogShiftBot.tsx, components/CookieBanner.tsx, components/MapPreview.tsx, components/LeadMagnetBanner.tsx, components/ui/SitterCard.tsx, public/sw.js
+alwaysApply: false
+---
+
+# Mobile Performance Rules
+
+See `docs/PERFORMANCE.md` for full context and root cause analysis.
+
+## Banned Patterns
+
+- **`backdrop-blur`** on any mobile-visible element → use solid `bg-white`
+- **`transition-all`** → list exact properties: `transition-[color,background-color,opacity,transform]`
+- **Animating `left`, `top`, `width`, `height`** → use `transform` (`translateX`, `translateY`, `scale`)
+- **`document.body.style.overflow = "hidden"`** → use `position: fixed` + `top: -scrollY` pattern
+- **Double `requestAnimationFrame`** → single RAF unless provably required
+- **Duplicate stateful components** → never mount two instances of a component with hooks
+
+## StickySearchBar (HomePageClient.tsx)
+
+There must be exactly ONE `<StickySearchBar>` instance. It uses `hero` and `visible` props to switch presentation. Never add a second instance.
+
+```tsx
+// ✅ Single instance passed via render prop
+<HeroSection searchBar={<StickySearchBar hero={!showSticky} visible={showSticky} />} />
+
+// ❌ NEVER do this — two instances = ~40 hooks, double React work
+<StickySearchBar hero />          {/* inside HeroSection */}
+<StickySearchBar visible={show} /> {/* at root level */}
+```
+
+## SiteHeader Hamburger Menu
+
+Body scroll lock must use `position: fixed` pattern:
+
+```tsx
+// ✅ iOS-safe scroll lock
+document.body.style.position = "fixed";
+document.body.style.top = `-${scrollY}px`;
+// On close: restore position and scrollTo(0, savedScrollY)
+
+// ❌ Triggers iOS layout reflow
+document.body.style.overflow = "hidden";
+```
+
+## Heavy Imports
+
+Import `maplibre-gl/dist/maplibre-gl.css` only in `MapPreview.tsx` (lazy-loaded), never in root layout.
