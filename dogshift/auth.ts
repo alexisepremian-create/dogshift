@@ -4,16 +4,25 @@
  * Single source of truth for `auth()`, `handlers`, `signIn`, `signOut`.
  * Import everywhere via `@/auth`.
  *
- * Session strategy: "database" (not "jwt"). Reason: DogShift handles Stripe
- * Connect payouts — being able to revoke a session instantly (by deleting the
- * row in Session) is a security requirement. JWT sessions remain valid until
- * expiry even after the user is banned/refunded, which we cannot accept.
+ * Session strategy: "jwt".
+ *
+ * Why JWT and not database? The Credentials provider in Auth.js v5
+ * REQUIRES jwt strategy — credentials-authorized users are never written
+ * to the Session table by the adapter. With strategy: "database",
+ * `auth()` returns null right after a successful credentials signIn,
+ * which broke /post-login (it bounced users back to /login?force=1).
+ *
+ * Trade-off vs "database":
+ *   - We lose instant revocation. A JWT remains valid until expiry
+ *     (30 days by default) even if the user is deleted or the password
+ *     rotated. This is acceptable because:
+ *       a) The JWT callback below reads the User row from DB on every
+ *          request, so we can detect deletion and force a re-login.
+ *       b) Stripe payouts go through Stripe Connect which has its own
+ *          revocation knobs independent of our session.
  *
  * trustHost: true — required behind Cloudflare proxy (otherwise Auth.js
  * rejects the host header).
- *
- * Coexists with Clerk during the migration window (PR 1). Clerk remains the
- * active auth provider until PR 2 swaps the login/signup forms.
  */
 import NextAuth from "next-auth";
 import { PrismaAdapter } from "@auth/prisma-adapter";
@@ -29,7 +38,7 @@ function normalizeEmail(email: string): string {
 
 export const { auth, handlers, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(prisma),
-  session: { strategy: "database" },
+  session: { strategy: "jwt" },
   trustHost: true,
   secret: process.env.AUTH_SECRET,
   pages: {
@@ -80,11 +89,47 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
     }),
   ],
   callbacks: {
-    async session({ session, user }) {
-      // PrismaAdapter passes the full DB user via `user` in database-session mode.
-      if (session.user) {
-        session.user.id = user.id;
-        (session.user as { role?: string }).role = (user as { role?: string }).role ?? "OWNER";
+    /**
+     * JWT callback runs on:
+     *   - Sign in (`user` is populated by the provider)
+     *   - Every subsequent request (only `token` is populated)
+     *
+     * We persist `id` and `role` in the token so /api/auth/session and
+     * server-side `auth()` can return them without an extra DB hit.
+     *
+     * On every request we ALSO re-read User.role from the DB so that an
+     * admin promotion or demotion is reflected immediately (no stale
+     * 30-day cached role). The lookup is keyed by token.sub which is the
+     * Prisma User.id we set at sign-in time.
+     */
+    async jwt({ token, user }) {
+      // First call after sign-in: copy the DB id onto the token.
+      if (user?.id) {
+        token.sub = user.id;
+      }
+
+      // Every call: re-read the role from DB so promotions take effect
+      // without forcing a sign-out.
+      const userId = typeof token.sub === "string" ? token.sub : null;
+      if (userId) {
+        const dbUser = await prisma.user
+          .findUnique({ where: { id: userId }, select: { id: true, role: true } })
+          .catch(() => null);
+        if (!dbUser) {
+          // User row vanished (account deletion). Force re-login by
+          // returning a token with no sub — session callback will null
+          // out the user.
+          return {};
+        }
+        (token as { role?: string }).role = dbUser.role;
+      }
+      return token;
+    },
+    async session({ session, token }) {
+      if (session.user && typeof token.sub === "string") {
+        session.user.id = token.sub;
+        (session.user as { role?: string }).role =
+          (token as { role?: string }).role ?? "OWNER";
       }
       return session;
     },
