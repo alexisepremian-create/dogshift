@@ -1,326 +1,169 @@
 "use client";
 
 /**
- * Sign-up form using ONLY Clerk v7 documented APIs.
+ * Sign-up form — Auth.js v5 (credentials provider) + Google OAuth.
  *
- * Why no `as any` casts here?
- *  - Casts hide silent breakages: if Clerk renames a method (e.g. v6 had
- *    `signUp.verifications.sendEmailCode()`, v7 has `prepareEmailAddressVerification()`),
- *    a typed call breaks at build time. A cast lets the broken call compile and
- *    fail in production.
- *  - All methods used here are part of the public typed surface of @clerk/nextjs
- *    7.x and won't disappear without a major version bump (which we control via
- *    pinned versions in package.json — no caret, no auto-update).
- *  - The Cloudflare Turnstile widget (`#clerk-captcha`) is mounted ONCE for the
- *    entire component lifetime so its token survives email→password→OTP transitions.
+ * Flow:
+ *   1. POST /api/auth/register with email + password (+ optional name).
+ *      That endpoint creates the User row with a bcrypt-hashed passwordHash
+ *      and sends the email verification link.
+ *   2. We immediately call `signIn("credentials", { redirect: false })` so
+ *      the user is signed in without a second password prompt — this is the
+ *      industry standard "register-then-login" UX. The email verification
+ *      link is independent: clicking it later just flips `emailVerified`.
+ *   3. On success → router.replace("/post-login") which routes to /account
+ *      (default OWNER role) or /host if the user picked the sitter intent.
  *
- * Steps:
- *  - "email"   → user enters email, we call signUp.create + prepareEmailAddressVerification
- *  - "password" → only shown if Clerk dashboard requires a password (user.requiredFields includes "password");
- *               we call signUp.update({ password }) before showing the OTP step
- *  - "otp"     → user enters the 6-digit code, we call signUp.attemptEmailAddressVerification;
- *               on `complete` we setActive + redirect; on `missing_requirements` with password
- *               missing we fall back to the password step (defense-in-depth)
- *
- * Source: https://clerk.com/docs/references/javascript/sign-up
+ * For Google: `signIn("google")` redirects. PrismaAdapter creates the row.
  */
 
-import { useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { signIn } from "next-auth/react";
 import { Eye, EyeOff } from "lucide-react";
-// `@clerk/nextjs/legacy` exports the typed v7 API (`useSignIn`, `useSignUp`
-// returning `UseSignInReturn` / `UseSignUpReturn`). The bare
-// `@clerk/nextjs` exports point to the new "Future" Signal API (still beta)
-// which has a different surface — we stick with the stable typed legacy.
-import { useSignUp } from "@clerk/nextjs/legacy";
-import { useClerk } from "@clerk/nextjs";
 import Link from "next/link";
 
-import { withPublicOrigin } from "@/lib/url/publicOrigin";
-import {
-  clerkErrorCode,
-  clerkErrorMessage,
-  sanitizeVerificationCode,
-} from "@/lib/auth/clerkErrorMessage";
 import { reportApiError } from "@/lib/observability/reportApiError";
-import OtpInput from "@/components/auth/OtpInput";
 
 function normalizeEmail(input: string) {
   return input.replace(/\s+/g, "").trim().toLowerCase();
 }
 
-const RESEND_COOLDOWN_SECONDS = 30;
-const PASSWORD_MIN_LENGTH = 8;
-
-type Step = "email" | "password" | "otp";
+function passwordIsStrong(pw: string): boolean {
+  return pw.length >= 8 && /[A-Z]/.test(pw) && /[0-9]/.test(pw);
+}
 
 export default function SignUpForm() {
-  const { signUp, isLoaded, setActive } = useSignUp();
-  const clerk = useClerk();
-  const searchParams = useSearchParams();
-
-  const next = (searchParams?.get("next") ?? "").trim();
-  const redirectAfterAuth = next ? `/post-login?next=${encodeURIComponent(next)}` : "/post-login";
+  const router = useRouter();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [name, setName] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [emailCode, setEmailCode] = useState("");
-  const [step, setStep] = useState<Step>("email");
+  const [intent, setIntent] = useState<"owner" | "sitter">("owner");
+  const [accepted, setAccepted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [oauthInFlight, setOauthInFlight] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [codeSentAt, setCodeSentAt] = useState<number | null>(null);
-  const [resendCooldownLeft, setResendCooldownLeft] = useState(0);
 
-  const formDisabled = !isLoaded || loading || oauthInFlight;
-  const googleDisabled = !isLoaded || oauthInFlight;
+  const inputDisabled = loading || oauthInFlight;
+  const formDisabled = loading || oauthInFlight || !accepted;
 
-  /**
-   * Decide which step to show next based on Clerk's `requiredFields` /
-   * `missingFields`. Centralized so all paths (after create / update / verify)
-   * route to the same place.
-   */
-  function nextStepFrom(resource: { requiredFields: string[]; missingFields: string[] }): Step {
-    const stillMissing = resource.missingFields ?? [];
-    if (stillMissing.includes("password")) return "password";
-    return "otp";
-  }
-
-  async function handleEmailSignUp(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!isLoaded || !signUp) return;
+    if (loading) return;
 
-    const normalized = normalizeEmail(email);
-    if (!normalized) {
+    const normalizedEmail = normalizeEmail(email);
+    if (!normalizedEmail) {
       setError("Merci d'entrer une adresse email valide.");
       return;
     }
-
-    setError(null);
-    setLoading(true);
-    try {
-      const created = await signUp.create({ emailAddress: normalized });
-      // Always send the verification code now — we'll show the OTP step after
-      // the password step (if any). The code stays valid for 10 minutes.
-      await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
-      setCodeSentAt(Date.now());
-      setStep(nextStepFrom(created));
-    } catch (err) {
-      const code = clerkErrorCode(err);
-      if (code === "form_identifier_exists") {
-        setError("Un compte existe déjà avec cette adresse e-mail. Connecte-toi plutôt.");
-      } else {
-        reportApiError({
-          kind: "upstream_error",
-          code: code ?? "CLERK_SIGN_UP_CREATE_FAILED",
-          route: "auth.signup.create",
-        });
-        setError(clerkErrorMessage(err, "Impossible d'envoyer le code. Réessaie dans un instant."));
-      }
-    } finally {
-      setLoading(false);
+    if (password !== confirm) {
+      setError("Les deux mots de passe ne correspondent pas.");
+      return;
     }
-  }
-
-  async function handlePasswordSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!isLoaded || !signUp || loading) return;
-
-    if (password.length < PASSWORD_MIN_LENGTH) {
-      setError(`Le mot de passe doit faire au moins ${PASSWORD_MIN_LENGTH} caractères.`);
+    if (!passwordIsStrong(password)) {
+      setError("Mot de passe trop faible : 8 caractères minimum, avec au moins une majuscule et un chiffre.");
+      return;
+    }
+    if (!accepted) {
+      setError("Tu dois accepter les conditions d'utilisation pour continuer.");
       return;
     }
 
     setError(null);
     setLoading(true);
-    try {
-      const updated = await signUp.update({ password });
 
-      // If Clerk now considers the sign-up complete (rare — usually email
-      // still needs verification), finalize directly. Otherwise move to OTP.
-      if (updated.status === "complete" && updated.createdSessionId && setActive) {
-        await setActive({ session: updated.createdSessionId });
-        // Force canonical origin (see LoginForm.finalizeIfComplete) so the
-        // session cookie isn't dropped by an apex→www 308 redirect.
-        window.location.replace(withPublicOrigin(redirectAfterAuth));
-        return;
-      }
-      setStep(nextStepFrom(updated));
-    } catch (err) {
-      const code = clerkErrorCode(err);
-      reportApiError({
-        kind: "upstream_error",
-        code: code ?? "CLERK_SIGN_UP_PASSWORD_FAILED",
-        route: "auth.signup.password",
+    try {
+      const registerRes = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: normalizedEmail,
+          password,
+          name: name.trim() || null,
+          intent,
+        }),
       });
-      setError(
-        clerkErrorMessage(
-          err,
-          "Mot de passe refusé. Choisis-en un plus complexe (8 caractères minimum, mélange lettres/chiffres).",
-        ),
-      );
-    } finally {
-      setLoading(false);
-    }
-  }
+      const body = (await registerRes.json().catch(() => ({}))) as {
+        ok?: boolean;
+        error?: string;
+      };
 
-  async function resendEmailCode() {
-    if (!isLoaded || !signUp || loading || resendCooldownLeft > 0) return;
-    setError(null);
-    setLoading(true);
-    try {
-      await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
-      setEmailCode("");
-      setCodeSentAt(Date.now());
-    } catch (err) {
-      reportApiError({
-        kind: "upstream_error",
-        code: clerkErrorCode(err) ?? "CLERK_SIGN_UP_RESEND_CODE_FAILED",
-        route: "auth.signup.resend_code",
-      });
-      setError(
-        clerkErrorMessage(err, "Impossible d'envoyer un nouveau code. Réessaie dans un instant."),
-      );
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  useEffect(() => {
-    if (!codeSentAt) {
-      setResendCooldownLeft(0);
-      return;
-    }
-    const tick = () => {
-      const elapsed = Math.floor((Date.now() - codeSentAt) / 1000);
-      setResendCooldownLeft(Math.max(0, RESEND_COOLDOWN_SECONDS - elapsed));
-    };
-    tick();
-    const id = window.setInterval(tick, 1000);
-    return () => window.clearInterval(id);
-  }, [codeSentAt]);
-
-  async function handleEmailCodeVerify(e: React.FormEvent) {
-    e.preventDefault();
-    if (!isLoaded || !signUp || loading) return;
-
-    // Strip every non-digit character — invisible whitespace from Gmail/Outlook
-    // copy-paste is the #1 cause of "code invalide" bug reports.
-    const code = sanitizeVerificationCode(emailCode);
-    if (!code) {
-      setError("Merci d'entrer le code reçu par e-mail.");
-      return;
-    }
-
-    setError(null);
-    setLoading(true);
-    try {
-      // Read status from the RETURNED resource — not from the stale `signUp`
-      // hook variable which can lag behind by one render and cause a phantom
-      // "already verified" loop on retries.
-      const result = await signUp.attemptEmailAddressVerification({ code });
-
-      if (result.status === "complete" && result.createdSessionId && setActive) {
-        await setActive({ session: result.createdSessionId });
-        // Force canonical origin (see LoginForm.finalizeIfComplete).
-        window.location.replace(withPublicOrigin(redirectAfterAuth));
-        return;
-      }
-
-      // Email is verified but Clerk needs more (typically: password). This is
-      // exactly the case that previously produced a phantom 400 because we
-      // re-attempted verification instead of moving forward. Now we route to
-      // the right next step.
-      if (result.status === "missing_requirements") {
-        const target = nextStepFrom(result);
-        if (target === "otp") {
-          // Should never happen at this point, but be defensive.
-          setError("Inscription incomplète : champs manquants : " + result.missingFields.join(", "));
-          setLoading(false);
-          return;
+      if (!registerRes.ok || !body.ok) {
+        if (body.error === "EMAIL_ALREADY_REGISTERED") {
+          setError(
+            "Un compte existe déjà pour cet email. Va sur la page de connexion (ou utilise « Mot de passe oublié » si tu ne t'en souviens plus).",
+          );
+        } else if (body.error === "WEAK_PASSWORD") {
+          setError("Mot de passe trop faible : 8 caractères, avec majuscule et chiffre.");
+        } else {
+          setError("Inscription impossible. Réessaie dans un instant.");
         }
-        setStep(target);
         setLoading(false);
         return;
       }
 
-      setError("Inscription incomplète. Réessaie.");
-      setLoading(false);
+      const loginRes = await signIn("credentials", {
+        email: normalizedEmail,
+        password,
+        redirect: false,
+      });
+      if (!loginRes || loginRes.error) {
+        router.replace("/login?registered=1");
+        return;
+      }
+
+      router.replace("/post-login");
     } catch (err) {
       reportApiError({
-        kind: "upstream_error",
-        code: clerkErrorCode(err) ?? "CLERK_SIGN_UP_VERIFY_FAILED",
-        route: "auth.signup.verify_code",
+        kind: "internal_error",
+        code: "SIGNUP_EXCEPTION",
+        route: "auth.signup",
+        extra: { message: err instanceof Error ? err.message : String(err) },
       });
-      setError(
-        clerkErrorMessage(err, "Code incorrect ou expiré. Demande un nouveau code puis réessaie."),
-      );
+      setError("Une erreur est survenue. Réessaie dans un instant.");
       setLoading(false);
     }
   }
 
   async function handleGoogle() {
-    if (!isLoaded || !signUp || oauthInFlight) return;
-
+    if (oauthInFlight) return;
     setError(null);
     setOauthInFlight(true);
     try {
-      try {
-        sessionStorage.setItem("ds_oauth_after", redirectAfterAuth);
-      } catch {
-        /* private mode */
-      }
-      // `authenticateWithRedirect` is the typed v7 OAuth entry point.
-      // It throws on error rather than returning { error } — wrap in try/catch.
-      await signUp.authenticateWithRedirect({
-        strategy: "oauth_google",
-        redirectUrl: withPublicOrigin("/auth/google"),
-        redirectUrlComplete: withPublicOrigin(redirectAfterAuth),
-      });
+      await signIn("google", { callbackUrl: "/post-login", redirect: true });
     } catch (err) {
       reportApiError({
         kind: "upstream_error",
-        code: clerkErrorCode(err) ?? "CLERK_SIGN_UP_GOOGLE_FAILED",
+        code: "GOOGLE_OAUTH_FAILED",
         route: "auth.signup.google",
       });
-      setError(clerkErrorMessage(err, "Inscription Google impossible. Réessaie dans un instant."));
+      setError("Connexion Google impossible. Réessaie dans un instant.");
       setOauthInFlight(false);
+      void err;
     }
   }
 
-  function resetToEmail() {
-    if (loading) return;
-    setStep("email");
-    setPassword("");
-    setEmailCode("");
-    setError(null);
-    setCodeSentAt(null);
-  }
-
-  // Touch `clerk` to keep it in scope for future programmatic access (e.g.
-  // sign-out before a fresh sign-up). Avoids dead-code lint warnings without
-  // affecting behavior.
-  void clerk;
-
   return (
     <div className="flex flex-col">
-      {/* Mounted ONCE for the lifetime of the component so the Cloudflare
-          Turnstile widget keeps its token across step transitions. */}
-      <div id="clerk-captcha" className="absolute h-0 w-0 overflow-hidden" aria-hidden />
-
-      <h1 className="text-center text-2xl font-semibold tracking-tight text-slate-900">Créer un compte</h1>
-      <p className="mt-2 text-center text-sm text-slate-600">Rejoins DogShift dès maintenant.</p>
+      <h1 className="text-center text-2xl font-semibold tracking-tight text-slate-900">
+        Créer un compte
+      </h1>
+      <p className="mt-2 text-center text-sm text-slate-600">
+        Rejoins DogShift en moins d&apos;une minute.
+      </p>
 
       <div className="mt-6 flex flex-col gap-6">
         <button
           type="button"
           onClick={() => void handleGoogle()}
-          disabled={googleDisabled}
+          disabled={oauthInFlight}
           aria-busy={oauthInFlight}
           className="inline-flex w-full items-center justify-center rounded-full border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {!isLoaded ? "Chargement…" : oauthInFlight ? "Redirection…" : "S'inscrire avec Google"}
+          {oauthInFlight ? "Redirection…" : "S'inscrire avec Google"}
         </button>
 
         <div className="flex items-center gap-3">
@@ -329,152 +172,180 @@ export default function SignUpForm() {
           <div className="h-px flex-1 bg-slate-200" />
         </div>
 
-        {step === "email" && (
-          <form onSubmit={handleEmailSignUp} className="space-y-5">
-            <div>
-              <label className="block text-sm font-medium text-slate-700" htmlFor="email">
-                E-mail
-              </label>
-              <input
-                id="email"
-                type="email"
-                inputMode="email"
-                autoComplete="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                disabled={formDisabled}
-                className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:ring-4 focus:ring-slate-200 disabled:cursor-not-allowed disabled:opacity-60"
-                placeholder="toi@exemple.com"
-              />
-              {error ? <p className="mt-2 text-center text-sm text-rose-600">{error}</p> : null}
-            </div>
-
-            <button
-              type="submit"
-              disabled={formDisabled}
-              className="inline-flex w-full items-center justify-center rounded-full bg-slate-900 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {loading ? "Envoi…" : "S'inscrire par e-mail"}
-            </button>
-          </form>
-        )}
-
-        {step === "password" && (
-          <form onSubmit={handlePasswordSubmit} className="space-y-6">
-            <div className="text-center space-y-1">
-              <p className="text-sm font-medium text-slate-700">Choisis un mot de passe</p>
-              <p className="text-sm font-semibold text-slate-900">{email}</p>
-              <p className="text-xs text-slate-500">8 caractères minimum, sécurisé.</p>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-slate-700" htmlFor="password">
-                Mot de passe
-              </label>
-              <div className="relative mt-2">
+        <form onSubmit={handleSubmit} className="space-y-5">
+          <fieldset className="space-y-2">
+            <legend className="text-sm font-medium text-slate-700">Je suis…</legend>
+            <div className="grid grid-cols-2 gap-2">
+              <label
+                className={`flex cursor-pointer items-center justify-center rounded-2xl border px-3 py-2.5 text-sm font-medium transition ${
+                  intent === "owner"
+                    ? "border-violet-500 bg-violet-50 text-violet-900"
+                    : "border-slate-300 bg-white text-slate-700 hover:border-slate-400"
+                }`}
+              >
                 <input
-                  id="password"
-                  type={showPassword ? "text" : "password"}
-                  autoComplete="new-password"
-                  autoFocus
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  disabled={formDisabled}
-                  minLength={PASSWORD_MIN_LENGTH}
-                  className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 pr-12 text-sm text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:ring-4 focus:ring-slate-200 disabled:cursor-not-allowed disabled:opacity-60"
-                  placeholder="••••••••"
+                  type="radio"
+                  name="intent"
+                  value="owner"
+                  checked={intent === "owner"}
+                  onChange={() => setIntent("owner")}
+                  className="sr-only"
                 />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword((v) => !v)}
-                  disabled={formDisabled}
-                  aria-label={showPassword ? "Masquer le mot de passe" : "Afficher le mot de passe"}
-                  className="absolute inset-y-0 right-0 flex w-12 items-center justify-center text-slate-400 transition hover:text-slate-600 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  {showPassword ? <EyeOff className="h-4 w-4" aria-hidden /> : <Eye className="h-4 w-4" aria-hidden />}
-                </button>
-              </div>
-              {error ? <p className="mt-2 text-center text-sm text-rose-600">{error}</p> : null}
-            </div>
-
-            <button
-              type="submit"
-              disabled={formDisabled || password.length < PASSWORD_MIN_LENGTH}
-              className="inline-flex w-full items-center justify-center rounded-full bg-slate-900 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {loading ? "Enregistrement…" : "Continuer"}
-            </button>
-
-            <button
-              type="button"
-              disabled={formDisabled}
-              onClick={resetToEmail}
-              className="block w-full text-center text-sm text-slate-400 hover:text-slate-600 transition"
-            >
-              ← Changer d&apos;adresse e-mail
-            </button>
-          </form>
-        )}
-
-        {step === "otp" && (
-          <form onSubmit={handleEmailCodeVerify} className="space-y-6">
-            <div className="text-center space-y-1">
-              <p className="text-sm font-medium text-slate-700">Code envoyé à</p>
-              <p className="text-sm font-semibold text-slate-900">{email}</p>
-              <p className="text-xs text-slate-500">Vérifie ta boîte mail (et les spams) — valable 10 minutes.</p>
-            </div>
-
-            <div className="space-y-3">
-              <OtpInput value={emailCode} onChange={setEmailCode} disabled={formDisabled} />
-              {error ? <p className="text-center text-sm text-rose-600">{error}</p> : null}
-            </div>
-
-            <button
-              type="submit"
-              disabled={formDisabled || emailCode.length < 6}
-              className="inline-flex w-full items-center justify-center rounded-full bg-slate-900 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {loading ? "Vérification…" : "Valider le code"}
-            </button>
-
-            <div className="flex flex-col items-center gap-2">
-              <button
-                type="button"
-                disabled={formDisabled || resendCooldownLeft > 0}
-                onClick={() => void resendEmailCode()}
-                className="text-sm font-medium text-slate-600 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-50 transition"
+                Propriétaire de chien
+              </label>
+              <label
+                className={`flex cursor-pointer items-center justify-center rounded-2xl border px-3 py-2.5 text-sm font-medium transition ${
+                  intent === "sitter"
+                    ? "border-violet-500 bg-violet-50 text-violet-900"
+                    : "border-slate-300 bg-white text-slate-700 hover:border-slate-400"
+                }`}
               >
-                {resendCooldownLeft > 0
-                  ? `Renvoyer un code dans ${resendCooldownLeft}s`
-                  : "Renvoyer un nouveau code"}
-              </button>
+                <input
+                  type="radio"
+                  name="intent"
+                  value="sitter"
+                  checked={intent === "sitter"}
+                  onChange={() => setIntent("sitter")}
+                  className="sr-only"
+                />
+                Je veux devenir sitter
+              </label>
+            </div>
+          </fieldset>
 
+          <div>
+            <label htmlFor="su-name" className="block text-sm font-medium text-slate-700">
+              Prénom (optionnel)
+            </label>
+            <input
+              id="su-name"
+              type="text"
+              autoComplete="given-name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              disabled={inputDisabled}
+              className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:ring-4 focus:ring-slate-200 disabled:cursor-not-allowed disabled:opacity-60"
+              placeholder="Alex"
+              maxLength={80}
+            />
+          </div>
+
+          <div>
+            <label htmlFor="su-email" className="block text-sm font-medium text-slate-700">
+              E-mail
+            </label>
+            <input
+              id="su-email"
+              type="email"
+              inputMode="email"
+              autoComplete="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              disabled={inputDisabled}
+              required
+              className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:ring-4 focus:ring-slate-200 disabled:cursor-not-allowed disabled:opacity-60"
+              placeholder="toi@exemple.com"
+            />
+          </div>
+
+          <div>
+            <label htmlFor="su-password" className="block text-sm font-medium text-slate-700">
+              Mot de passe
+            </label>
+            <div className="relative mt-2">
+              <input
+                id="su-password"
+                type={showPassword ? "text" : "password"}
+                autoComplete="new-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                disabled={inputDisabled}
+                required
+                minLength={8}
+                className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 pr-12 text-sm text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:ring-4 focus:ring-slate-200 disabled:cursor-not-allowed disabled:opacity-60"
+                placeholder="8 caractères, 1 majuscule, 1 chiffre"
+              />
               <button
                 type="button"
+                onClick={() => setShowPassword((v) => !v)}
                 disabled={formDisabled}
-                onClick={resetToEmail}
-                className="text-sm text-slate-400 hover:text-slate-600 transition"
+                aria-label={showPassword ? "Masquer le mot de passe" : "Afficher le mot de passe"}
+                className="absolute inset-y-0 right-0 flex w-12 items-center justify-center text-slate-400 transition hover:text-slate-600 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                ← Changer d&apos;adresse e-mail
+                {showPassword ? (
+                  <EyeOff className="h-4 w-4" aria-hidden />
+                ) : (
+                  <Eye className="h-4 w-4" aria-hidden />
+                )}
               </button>
             </div>
-          </form>
-        )}
+          </div>
+
+          <div>
+            <label htmlFor="su-confirm" className="block text-sm font-medium text-slate-700">
+              Confirme le mot de passe
+            </label>
+            <input
+              id="su-confirm"
+              type={showPassword ? "text" : "password"}
+              autoComplete="new-password"
+              value={confirm}
+              onChange={(e) => setConfirm(e.target.value)}
+              disabled={inputDisabled}
+              required
+              minLength={8}
+              className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:ring-4 focus:ring-slate-200 disabled:cursor-not-allowed disabled:opacity-60"
+            />
+          </div>
+
+          <label className="flex items-start gap-2 text-xs text-slate-600">
+            <input
+              type="checkbox"
+              checked={accepted}
+              onChange={(e) => setAccepted(e.target.checked)}
+              disabled={inputDisabled}
+              className="mt-0.5 h-4 w-4 rounded border-slate-300"
+            />
+            <span>
+              J&apos;accepte les{" "}
+              <Link href="/cgu" className="underline underline-offset-2 hover:text-slate-900">
+                conditions d&apos;utilisation
+              </Link>{" "}
+              et la{" "}
+              <Link
+                href="/politique-confidentialite"
+                className="underline underline-offset-2 hover:text-slate-900"
+              >
+                politique de confidentialité
+              </Link>
+              .
+            </span>
+          </label>
+
+          {error ? (
+            <p className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-center text-sm text-rose-900">
+              {error}
+            </p>
+          ) : null}
+
+          <button
+            type="submit"
+            disabled={formDisabled}
+            className="inline-flex w-full items-center justify-center rounded-full bg-slate-900 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {loading ? "Création du compte…" : "Créer mon compte"}
+          </button>
+        </form>
       </div>
 
       <p className="mt-8 text-center text-sm text-slate-600">
         Déjà un compte ?{" "}
-        <Link href="/login" className="font-semibold text-slate-900 hover:underline underline-offset-2">
+        <Link
+          href="/login"
+          className="font-semibold text-slate-900 hover:underline underline-offset-2"
+        >
           Se connecter
         </Link>
-      </p>
-
-      <p className="mt-6 text-center text-xs text-slate-500">
-        En continuant, tu acceptes nos{" "}
-        <Link href="/cgu" className="underline underline-offset-2 hover:text-slate-700">
-          conditions d&apos;utilisation
-        </Link>
-        .
       </p>
     </div>
   );
