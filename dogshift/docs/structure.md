@@ -26,7 +26,7 @@ dogshift/
 │   │   ├── cgu/                  # Conditions générales d'utilisation
 │   │   └── mentions-legales/     # Mentions légales
 │   │
-│   ├── (protected)/              # Pages authentifiées (Clerk)
+│   ├── (protected)/              # Pages authentifiées (Auth.js v5)
 │   │   ├── layout.tsx            # Mur d'auth
 │   │   ├── admin/                # Outils d'administration
 │   │   │   ├── dashboard/        # Analytics
@@ -63,9 +63,13 @@ dogshift/
 │   │   ├── sitters/              # Profils et disponibilités sitters
 │   │   ├── stripe/               # Webhooks et sessions Stripe
 │   │   ├── support/              # Formulaire de contact
-│   │   └── webhooks/clerk/       # Webhook Clerk (création/suppression utilisateur)
+│   │   └── webhooks/             # Webhooks Stripe (paiements, payouts)
 │   │
-│   ├── login/ signup/            # Pages auth Clerk
+│   ├── login/ signup/            # Pages auth (Auth.js Credentials + Google OAuth)
+│   ├── forgot-password/          # Demande reset password
+│   ├── reset-password/           # Form nouveau password (via lien email)
+│   ├── verify-email/             # Consommation du token de vérification email
+│   ├── check-email/              # Landing "consulte ta boîte mail"
 │   ├── layout.tsx                # Layout racine (providers, styles globaux)
 │   ├── robots.ts                 # Robots.txt dynamique
 │   └── sitemap.ts                # Sitemap XML dynamique
@@ -83,7 +87,7 @@ dogshift/
 │   ├── email/                    # Emails transactionnels + templates
 │   ├── validators/               # Schémas Zod pour toutes les entrées API
 │   ├── sitterApplication/        # Candidature sitter (formulaire, scoring n8n)
-│   ├── auth/                     # Helpers Clerk + NextAuth
+│   ├── auth/                     # Helpers Auth.js v5 (getAuthedDbUser, requireSitterOwner, passwordResetToken…)
 │   ├── notifications/            # Notifications in-app + email
 │   ├── observability/            # reportApiError.ts → Sentry
 │   ├── sitterContract.ts         # Signature, PDF, avenants

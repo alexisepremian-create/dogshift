@@ -86,9 +86,13 @@ Fichier `.env.local` à la racine :
 DATABASE_URL=postgresql://...         # URL poolée (Prisma ORM)
 DIRECT_URL=postgresql://...           # URL directe (migrations)
 
-# Clerk (auth)
-NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_...
-CLERK_SECRET_KEY=sk_...
+# Auth.js v5
+AUTH_SECRET=...                       # 32-byte base64 (npx auth secret)
+AUTH_TRUST_HOST=true                  # required behind Cloudflare
+AUTH_GOOGLE_ID=...                    # Google OAuth Client ID
+AUTH_GOOGLE_SECRET=...                # Google OAuth Client Secret
+ADMIN_EMAILS=alexis@dogshift.ch       # comma-separated whitelist
+HOST_ADMIN_CODE=...                   # admin gate password
 
 # Stripe (paiements)
 STRIPE_SECRET_KEY=sk_...

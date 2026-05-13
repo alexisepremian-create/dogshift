@@ -30,7 +30,7 @@ Sentry alerts catch spikes.
 
 ## Architecture
 
-**DogShift** is a Swiss dog-sitting marketplace: dog owners book verified sitters. Built with Next.js 16 App Router, React 19, TypeScript, Tailwind CSS v4, Prisma + PostgreSQL (Neon), Clerk auth, and Stripe Connect.
+**DogShift** is a Swiss dog-sitting marketplace: dog owners book verified sitters. Built with Next.js 16 App Router, React 19, TypeScript, Tailwind CSS v4, Prisma + PostgreSQL (Neon), **Auth.js v5** for authentication (NOT Clerk — migrated away in May 2026, see [`docs/AUTH.md`](./docs/AUTH.md) for the full auth architecture), and Stripe Connect.
 
 ### Route Groups
 - `app/(marketing)/` — Public pages: homepage with map, SEO sitter city pages, signup/login
@@ -81,7 +81,12 @@ Unit tests live in `tests/availability/` and cover the slot engine (day slots, m
 ## Environment Variables
 Key variables needed in `.env.local`:
 - `DATABASE_URL` + `DIRECT_URL` (Neon pooled + direct)
-- `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` + `CLERK_SECRET_KEY`
+- **Auth.js v5** (see [`docs/AUTH.md`](./docs/AUTH.md) for details):
+  - `AUTH_SECRET` (32-byte base64, sign JWTs — generate with `npx auth secret`)
+  - `AUTH_TRUST_HOST=true` (required behind Cloudflare)
+  - `AUTH_GOOGLE_ID` + `AUTH_GOOGLE_SECRET` (Google OAuth)
+  - `ADMIN_EMAILS` (comma-separated whitelist for `/admin/*`)
+  - `HOST_ADMIN_CODE` (strong password for the admin gate cookie)
 - `STRIPE_SECRET_KEY` + `STRIPE_PUBLISHABLE_KEY` + `STRIPE_WEBHOOK_SECRET`
 - `NEXT_PUBLIC_MAPTILER_KEY` (map display)
 - `RESEND_API_KEY` or SMTP vars for email

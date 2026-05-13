@@ -29,7 +29,7 @@ const MAINTENANCE_API_KEY = process.env.MAINTENANCE_API_KEY ?? "";
 const APP_URL = (process.env.NEXT_PUBLIC_APP_URL ?? "https://www.dogshift.ch").replace(/\/$/, "");
 
 // Packages that require extra care (no special treatment — CI is the safety net — but we flag them in Telegram)
-const SENSITIVE_PACKAGES = new Set(["clerk", "@clerk/nextjs", "next", "prisma", "@prisma/client", "stripe"]);
+const SENSITIVE_PACKAGES = new Set(["next-auth", "next", "prisma", "@prisma/client", "stripe"]);
 
 // Max Claude fix iterations per package
 const MAX_FIX_ROUNDS = 3;

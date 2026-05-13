@@ -20,7 +20,7 @@
 | ORM | Prisma 6 |
 | Base de données | PostgreSQL (Neon — pooled + direct URL) |
 | Validation | Zod |
-| Auth | Clerk v7 (principal) + NextAuth 4 (legacy) |
+| Auth | Auth.js v5 (next-auth@beta) — Google OAuth + Credentials (bcrypt). Voir [`docs/AUTH.md`](./AUTH.md) |
 | Paiements | Stripe (Checkout + Payment Intents + Connect) |
 | Email | Resend (principal) → SMTP (fallback) → console.log (dev) |
 | SMS | Vonage |
@@ -37,7 +37,7 @@
 | Neon | PostgreSQL serverless (connection pooling) |
 | Cloudflare R2 | Stockage PDFs contrats + documents vérification |
 | Stripe | Paiements owners + virements sitters (Connect) |
-| Clerk | Authentification, gestion sessions |
+| Auth.js v5 | Authentification (in-app — pas de service tiers) |
 | Sentry | Monitoring erreurs (PII scrubbing activé) |
 
 ## Outils de développement
