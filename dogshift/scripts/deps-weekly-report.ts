@@ -20,7 +20,7 @@ const APP_URL = (process.env.NEXT_PUBLIC_APP_URL ?? "https://www.dogshift.ch").r
 
 const WATCH_LIST = [
   { pkg: "next", githubRepo: "vercel/next.js" },
-  { pkg: "@clerk/nextjs", githubRepo: "clerk/javascript" },
+  { pkg: "next-auth", githubRepo: "nextauthjs/next-auth" },
   { pkg: "stripe", githubRepo: "stripe/stripe-node" },
   { pkg: "@stripe/stripe-js", githubRepo: "stripe/stripe-js" },
   { pkg: "prisma", githubRepo: "prisma/prisma" },

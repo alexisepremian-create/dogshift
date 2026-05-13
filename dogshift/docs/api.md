@@ -1,6 +1,6 @@
 # API Endpoints
 
-Toutes les routes sont sous `app/api/`. Validation via **Zod**. Auth via **Clerk** (header `Authorization: Bearer <token>` ou cookie session).
+Toutes les routes sont sous `app/api/`. Validation via **Zod**. Auth via **Auth.js v5** (cookie `authjs.session-token` ou `__Secure-authjs.session-token` selon HTTP/HTTPS). Voir [`docs/AUTH.md`](./AUTH.md) pour la stack auth complète.
 
 ---
 
@@ -8,10 +8,12 @@ Toutes les routes sont sous `app/api/`. Validation via **Zod**. Auth via **Clerk
 
 | Méthode | Route | Description |
 |---------|-------|-------------|
-| POST | `/api/auth/register` | Inscription utilisateur |
-| POST | `/api/auth/set-password` | Définir mot de passe |
-| GET | `/api/auth/resolve-redirect` | Redirect post-auth |
-| POST | `/api/webhooks/clerk` | Webhook Clerk (création/suppression user) |
+| POST | `/api/auth/register` | Inscription utilisateur (email + password, envoie email de vérification) |
+| POST | `/api/auth/forgot-password` | Demande reset password (always 200, anti-leak) |
+| POST | `/api/auth/reset-password` | Reset password depuis lien email |
+| POST | `/api/auth/set-password` | Définir/rotater le mot de passe (signed-in) |
+| GET | `/api/auth/resolve-redirect` | Redirect post-auth selon role |
+| ALL | `/api/auth/[...nextauth]` | Catch-all Auth.js : signin / callback / session / csrf / providers |
 | POST | `/api/access` | Vérifier code d'accès booking |
 | POST | `/api/unlock` | Déverrouiller le site (mode pilote) |
 | GET | `/api/site-lock-status` | Statut verrouillage |
@@ -174,7 +176,7 @@ Champs requis pour `POST /api/bookings` :
 
 ## Administration (`/api/admin/`)
 
-Toutes ces routes nécessitent le rôle admin (vérifié via Clerk + code admin).
+Toutes ces routes nécessitent le rôle admin (vérifié via Auth.js session role=ADMIN + email dans `ADMIN_EMAILS` + code admin via cookie `ds_admin_session`).
 
 | Méthode | Route | Description |
 |---------|-------|-------------|

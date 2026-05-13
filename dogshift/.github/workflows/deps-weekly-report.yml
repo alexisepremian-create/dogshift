@@ -32,7 +32,7 @@ jobs:
           node -e "
           const pkg = require('./package.json');
           const deps = { ...pkg.dependencies, ...pkg.devDependencies };
-          const sensitive = ['next', '@clerk/nextjs', 'stripe', '@stripe/stripe-js', 'prisma', '@prisma/client'];
+          const sensitive = ['next', 'next-auth', 'stripe', '@stripe/stripe-js', 'prisma', '@prisma/client'];
           const result = sensitive.map(name => ({
             name,
             installed: (deps[name] ?? '—').replace(/[\^~]/,''),
