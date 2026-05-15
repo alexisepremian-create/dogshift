@@ -1,12 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { sendTelegramMessage } from "@/lib/telegram/sendTelegramMessage";
+import { verifyCalcomSignature } from "@/lib/calcom/verifyCalcomSignature";
 
 // ====================================================================
 // AGENT CALENDRIER (Notifications Cal.com)
 // Remplace le workflow n8n "DogShift — Notifications Cal.com"
 // Reçoit les webhooks Cal.com → notifie Telegram
+//
+// SECURITY: every request must carry a valid HMAC-SHA256 signature from
+// Cal.com in the `X-Cal-Signature-256` header. The signing secret lives in
+// `CALCOM_WEBHOOK_SECRET` and must match the "Secret" field on the Cal.com
+// webhook. Requests without (or with a wrong) signature are rejected with
+// 401 and never reach Telegram / Prisma.
 // ====================================================================
+
+export const runtime = "nodejs";
 
 async function sendTelegram(text: string) {
   await sendTelegramMessage(text, { bot: "candidatures", parseMode: "Markdown" }).catch(() => {});
@@ -32,11 +41,49 @@ function formatDate(iso: string | undefined | null): string {
 export async function POST(req: NextRequest) {
   const start = Date.now();
   try {
-    const body = await req.json();
+    // Read the raw body once — both signature verification and JSON parsing
+    // need it, and req.text() can only be called a single time per request.
+    const rawBody = await req.text();
+    const signatureHeader = req.headers.get("x-cal-signature-256");
+    const verification = verifyCalcomSignature({
+      rawBody,
+      signatureHeader,
+      secret: process.env.CALCOM_WEBHOOK_SECRET,
+    });
+
+    if (!verification.ok) {
+      // Misconfiguration (no secret on the server) is a 503 so it's visible
+      // in monitoring without leaking that the endpoint exists; a bad/missing
+      // signature is a 401 so attackers can't tell whether their guess was
+      // close. Either way we never touch Prisma or Telegram.
+      const status = verification.reason === "MISSING_SECRET" ? 503 : 401;
+      console.warn("[api][agents/calendrier] webhook rejected", {
+        reason: verification.reason,
+        hasSignatureHeader: Boolean(signatureHeader),
+      });
+      return NextResponse.json({ error: "Unauthorized" }, { status });
+    }
+
+    let body: { triggerEvent?: string; payload?: Record<string, unknown> };
+    try {
+      body = JSON.parse(rawBody) as typeof body;
+    } catch {
+      return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+    }
+
     const triggerEvent = body.triggerEvent;
-    const payload = body.payload || {};
-    const attendee = payload.attendees?.[0] || {};
-    const responses = payload.responses || {};
+    const payload = (body.payload ?? {}) as Record<string, unknown> & {
+      attendees?: Array<Record<string, unknown>>;
+      responses?: Record<string, { value?: unknown }>;
+      startTime?: string;
+      length?: number;
+      videoCallData?: { url?: string };
+      additionalNotes?: string;
+      uid?: string;
+      cancellationReason?: string;
+    };
+    const attendee = (payload.attendees?.[0] ?? {}) as { name?: string; email?: string };
+    const responses = (payload.responses ?? {}) as Record<string, { value?: unknown }>;
 
     if (!triggerEvent) {
       return NextResponse.json({ error: "triggerEvent requis" }, { status: 400 });
