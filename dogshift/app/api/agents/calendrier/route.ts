@@ -1,7 +1,19 @@
+import { createHmac } from "node:crypto";
+
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { sendTelegramMessage } from "@/lib/telegram/sendTelegramMessage";
 import { verifyCalcomSignature } from "@/lib/calcom/verifyCalcomSignature";
+
+/**
+ * Returns "abcd…wxyz" for diagnostic logging — enough to recognise the hash
+ * at a glance without leaking enough material to reconstruct it.
+ */
+function fingerprint(value: string | null | undefined): string {
+  if (!value) return "<empty>";
+  if (value.length <= 12) return `${value} (len=${value.length})`;
+  return `${value.slice(0, 8)}…${value.slice(-4)} (len=${value.length})`;
+}
 
 // ====================================================================
 // AGENT CALENDRIER (Notifications Cal.com)
@@ -57,9 +69,25 @@ export async function POST(req: NextRequest) {
       // signature is a 401 so attackers can't tell whether their guess was
       // close. Either way we never touch Prisma or Telegram.
       const status = verification.reason === "MISSING_SECRET" ? 503 : 401;
+
+      // Diagnostic fingerprints (first 8 + last 4 chars of each hash) — enough
+      // to compare visually whether the secrets / encodings line up, without
+      // exposing material that could let an attacker forge a request. The
+      // secret itself is NEVER logged, only its byte length.
+      const secret = (process.env.CALCOM_WEBHOOK_SECRET ?? "").trim();
+      const expected = secret
+        ? createHmac("sha256", secret).update(rawBody).digest("hex")
+        : null;
       console.warn("[api][agents/calendrier] webhook rejected", {
         reason: verification.reason,
         hasSignatureHeader: Boolean(signatureHeader),
+        receivedSignature: fingerprint(signatureHeader),
+        expectedSignature: fingerprint(expected),
+        rawBodyBytes: rawBody.length,
+        secretLength: secret.length,
+        headerKeys: Array.from(req.headers.keys())
+          .filter((k) => k.toLowerCase().includes("cal") || k.toLowerCase().includes("sig"))
+          .sort(),
       });
       return NextResponse.json({ error: "Unauthorized" }, { status });
     }
