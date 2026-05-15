@@ -13,10 +13,25 @@ const MONTHS_FR = [
 ];
 
 export async function GET(req: Request) {
-  const authHeader = req.headers.get("authorization");
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  // Accept either the CRON_SECRET (used by Vercel cron) or the
+  // MAINTENANCE_API_KEY (used by GitHub Actions + by manual ops triggers
+  // when we need to force a re-send for testing).
+  const authHeader = req.headers.get("authorization") ?? "";
+  const cronBearer = `Bearer ${process.env.CRON_SECRET ?? ""}`;
+  const maintBearer = `Bearer ${(process.env.MAINTENANCE_API_KEY ?? "").trim()}`;
+  const isAuthorized =
+    (process.env.CRON_SECRET && authHeader === cronBearer) ||
+    (process.env.MAINTENANCE_API_KEY && authHeader === maintBearer);
+  if (!isAuthorized) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  // ?force=1 bypasses the same-day idempotency guard. Useful for ops to
+  // verify recap formatting changes without waiting 24h, or to re-run after
+  // a partial send. Still requires a valid Bearer above, so this is not
+  // publicly abusable.
+  const url = new URL(req.url);
+  const force = url.searchParams.get("force") === "1";
 
   const now = new Date();
   const since24h = new Date(now.getTime() - 24 * 60 * 60 * 1000);
@@ -28,11 +43,13 @@ export async function GET(req: Request) {
 
   // Idempotency: skip if today's recap was already sent (Vercel may retry)
   const todayKey = `maintenance-recap-${year}-${String(now.getMonth() + 1).padStart(2, "0")}-${day}`;
-  const alreadySent = await prisma.agentLog.findFirst({
-    where: { agentName: todayKey, status: "success" },
-  });
-  if (alreadySent) {
-    return NextResponse.json({ success: true, skipped: true, reason: "already sent today" });
+  if (!force) {
+    const alreadySent = await prisma.agentLog.findFirst({
+      where: { agentName: todayKey, status: "success" },
+    });
+    if (alreadySent) {
+      return NextResponse.json({ success: true, skipped: true, reason: "already sent today" });
+    }
   }
 
   try {
