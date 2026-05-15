@@ -36,36 +36,55 @@ export async function GET(req: Request) {
   }
 
   try {
-    const [agentLogs, newBookings, confirmedBookings, pendingApps, lastDepsRun] =
-      await Promise.all([
-        // Agent runs in last 24h grouped by status
-        prisma.agentLog.groupBy({
-          by: ["status"],
-          where: { createdAt: { gte: since24h } },
-          _count: { status: true },
-        }),
-        // New bookings (any status) in last 24h
-        prisma.booking.count({
-          where: { createdAt: { gte: since24h } },
-        }),
-        // Paid/confirmed bookings in last 24h
-        prisma.booking.count({
-          where: {
-            createdAt: { gte: since24h },
-            status: { in: ["PAID", "CONFIRMED"] },
-          },
-        }),
-        // Pending sitter applications
-        prisma.pilotSitterApplication.count({
-          where: { status: "PENDING" },
-        }),
-        // Last deps-agent run
-        prisma.agentLog.findFirst({
-          where: { agentName: "deps-agent" },
-          orderBy: { createdAt: "desc" },
-          select: { status: true, createdAt: true, summary: true },
-        }),
-      ]);
+    const [
+      agentLogs,
+      agentBreakdown,
+      newBookings,
+      confirmedBookings,
+      pendingApps,
+      lastNightlyRun,
+      lastWeeklyRun,
+    ] = await Promise.all([
+      // Agent runs in last 24h grouped by status (errors / success counter)
+      prisma.agentLog.groupBy({
+        by: ["status"],
+        where: { createdAt: { gte: since24h } },
+        _count: { status: true },
+      }),
+      // Per-agent breakdown for the FR detail line
+      prisma.agentLog.groupBy({
+        by: ["agentName"],
+        where: { createdAt: { gte: since24h } },
+        _count: { agentName: true },
+      }),
+      // New bookings (any status) in last 24h
+      prisma.booking.count({
+        where: { createdAt: { gte: since24h } },
+      }),
+      // Paid/confirmed bookings in last 24h
+      prisma.booking.count({
+        where: {
+          createdAt: { gte: since24h },
+          status: { in: ["PAID", "CONFIRMED"] },
+        },
+      }),
+      // Pending sitter applications
+      prisma.pilotSitterApplication.count({
+        where: { status: "PENDING" },
+      }),
+      // Last NIGHTLY deps run (runs at ~04h30 UTC each day)
+      prisma.agentLog.findFirst({
+        where: { agentName: "deps-agent", actionType: "nightly_update" },
+        orderBy: { createdAt: "desc" },
+        select: { status: true, createdAt: true, summary: true, details: true },
+      }),
+      // Last WEEKLY deps deep scan (Mondays ~07h UTC)
+      prisma.agentLog.findFirst({
+        where: { agentName: "deps-agent", actionType: "weekly_report" },
+        orderBy: { createdAt: "desc" },
+        select: { status: true, createdAt: true, summary: true, details: true },
+      }),
+    ]);
 
     const successCount =
       agentLogs.find((l) => l.status === "success")?._count.status ?? 0;
@@ -84,14 +103,107 @@ export async function GET(req: Request) {
           })
         : [];
 
-    // Format last deps run
-    let depsLine = "— aucun run enregistré";
-    if (lastDepsRun) {
-      const depsAgo = Math.round(
-        (now.getTime() - new Date(lastDepsRun.createdAt).getTime()) / 3_600_000,
+    // ── Per-agent detail line (FR) ────────────────────────────────────────
+    // Lists which agents ran in the last 24h with their run counts. Sorted by
+    // count descending, capped at the 4 most active so the Telegram message
+    // stays scannable on mobile.
+    const HUMAN_AGENT_NAMES: Record<string, string> = {
+      "candidature": "Candidature",
+      "candidature-enriched": "Candidature (enrichie)",
+      "calendrier": "Calendrier",
+      "contrat": "Contrat",
+      "activation": "Activation",
+      "onboarding-owner": "Onboarding owner",
+      "relance-owner": "Relance owner",
+      "lead-magnet": "Lead magnet",
+      "zootherapie-evaluation": "Zoothérapie",
+      "deps-agent": "Deps",
+      "auth-health-check": "Auth health",
+      "dog-news": "Veille canine",
+    };
+    const agentDetailParts = agentBreakdown
+      .filter((a) => !a.agentName.startsWith("maintenance-recap-")) // hide self
+      .sort((a, b) => b._count.agentName - a._count.agentName)
+      .slice(0, 4)
+      .map((a) => `${HUMAN_AGENT_NAMES[a.agentName] ?? a.agentName} (${a._count.agentName})`);
+    const agentDetailLine =
+      agentDetailParts.length > 0
+        ? `<i>${agentDetailParts.join(" · ")}</i>`
+        : `<i>Aucun agent n'a tourné — vérifie les crons Vercel</i>`;
+
+    // ── Deps Agent section: nightly + weekly with actionable FR text ──────
+    // Distinguishes the two cadences: the nightly scan (every night ~04h30
+    // UTC, auto-updates non-sensitive deps) vs the Monday deep scan (weekly
+    // changelog review by Claude with risk levels). Telling the user what
+    // to DO matters more than "il y a Xh", which is unactionable noise.
+    type WeeklyPkg = { pkg: string; risk?: string; releases?: number };
+    type AgentLogDetails = { packages?: WeeklyPkg[] } | null | undefined;
+
+    const depsLines: string[] = [];
+
+    // Nightly status
+    if (lastNightlyRun) {
+      const hoursAgo = Math.round(
+        (now.getTime() - new Date(lastNightlyRun.createdAt).getTime()) / 3_600_000,
       );
-      const depsIcon = lastDepsRun.status === "success" ? "✅" : "❌";
-      depsLine = `${depsIcon} il y a ${depsAgo}h — ${lastDepsRun.summary.slice(0, 50)}`;
+      const summary = lastNightlyRun.summary ?? "";
+      const isUpToDate = /0 outdated/i.test(summary) || /up to date/i.test(summary);
+      if (hoursAgo > 30) {
+        // Nightly is supposed to run every ~24h. Past 30h = something broke.
+        depsLines.push(`⚠️ <b>Scan nocturne</b> : silence depuis ${hoursAgo}h`);
+        depsLines.push(`   👉 Vérifie GitHub Actions → workflow "Deps Nightly"`);
+      } else if (isUpToDate) {
+        depsLines.push(`✅ <b>Scan nocturne</b> (cette nuit) : tout est à jour, rien à faire`);
+      } else {
+        depsLines.push(`📋 <b>Scan nocturne</b> (cette nuit) : ${summary}`);
+        depsLines.push(`   👉 Vérifie les PR ouvertes sur GitHub`);
+      }
+    } else {
+      depsLines.push(`⚠️ <b>Scan nocturne</b> : aucun run enregistré`);
+      depsLines.push(`   👉 Vérifie le secret <code>MAINTENANCE_API_KEY</code> (Vercel ↔ GitHub Actions)`);
+    }
+
+    // Weekly status — only mention if there's data, otherwise it's noise.
+    if (lastWeeklyRun) {
+      const details = lastWeeklyRun.details as AgentLogDetails;
+      const pkgs = Array.isArray(details?.packages) ? details.packages : [];
+      const withUpdates = pkgs.filter((p) => (p.releases ?? 0) > 0);
+      const high = withUpdates.filter((p) => p.risk === "high");
+      const medium = withUpdates.filter((p) => p.risk === "medium");
+      const low = withUpdates.filter((p) => p.risk === "low");
+
+      // Days since last Monday scan (always Monday → reset each week)
+      const daysSinceWeekly = Math.floor(
+        (now.getTime() - new Date(lastWeeklyRun.createdAt).getTime()) / 86_400_000,
+      );
+      const todayDow = now.getUTCDay(); // 0 = Sun, 1 = Mon
+      const isMondayToday = todayDow === 1;
+      const nextScanLabel = isMondayToday
+        ? "(prochain : lundi prochain)"
+        : `(prochain : lundi)`;
+
+      depsLines.push(``);
+      depsLines.push(
+        `🗓️ <b>Rapport hebdo</b> ${daysSinceWeekly === 0 ? "(aujourd'hui)" : `(il y a ${daysSinceWeekly}j)`}`,
+      );
+
+      if (withUpdates.length === 0) {
+        depsLines.push(`✅ Aucun paquet sensible n'a d'update dispo ${nextScanLabel}`);
+      } else {
+        depsLines.push(`${withUpdates.length} paquet${withUpdates.length > 1 ? "s" : ""} sensible${withUpdates.length > 1 ? "s ont" : " a"} des updates :`);
+        if (high.length > 0) {
+          const names = high.map((p) => `<code>${p.pkg}</code>`).join(", ");
+          depsLines.push(`   🔴 ${high.length} risque haut → review manuelle obligatoire : ${names}`);
+        }
+        if (medium.length > 0) {
+          const names = medium.map((p) => `<code>${p.pkg}</code>`).join(", ");
+          depsLines.push(`   🟡 ${medium.length} risque moyen → lis le changelog : ${names}`);
+        }
+        if (low.length > 0) {
+          depsLines.push(`   🟢 ${low.length} risque faible → ok à auto-merger`);
+        }
+        depsLines.push(`   👉 Détails sur <a href="https://www.dogshift.ch/admin/maintenance">/admin/maintenance</a>`);
+      }
     }
 
     const agentLine =
@@ -104,6 +216,7 @@ export async function GET(req: Request) {
       ``,
       `⚙️ <b>Agents (24h)</b>`,
       agentLine,
+      agentDetailLine,
       ``,
       `📅 <b>Réservations (24h)</b>`,
       `${newBookings} nouvelle${newBookings !== 1 ? "s" : ""} · ${confirmedBookings} confirmée${confirmedBookings !== 1 ? "s" : ""}/payée${confirmedBookings !== 1 ? "s" : ""}`,
@@ -112,7 +225,7 @@ export async function GET(req: Request) {
       `${pendingApps} en attente de traitement`,
       ``,
       `📦 <b>Deps Agent</b>`,
-      depsLine,
+      ...depsLines,
     ];
 
     if (recentErrors.length > 0) {
