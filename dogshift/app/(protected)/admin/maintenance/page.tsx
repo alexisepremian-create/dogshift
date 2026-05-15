@@ -324,11 +324,18 @@ export default function MaintenancePage() {
     latestByPkg.set(p.pkg, p);
   }
 
-  // Sort sensitive packages by *attention needed first*, then base priority.
-  // Tier 0: failed or PR exists (needs action now)
-  // Tier 1: has updates available / outdated (review when you have time)
-  // Tier 2: up to date (no action)
-  // Tier 3: never scanned (no data yet — sort to end)
+  // Sort sensitive packages so the row reads top-to-bottom as "most urgent →
+  // least urgent". Three layers, applied in order:
+  //
+  // 1. Status tier — actually-broken stuff beats "just has an update available"
+  //    beats "up to date" beats "no data yet".
+  // 2. Risk level (within a tier) — high > medium > low > unknown. This is the
+  //    field surfaced by the Monday weekly Claude scan, so a Prisma major
+  //    sitting at `high` will outrank a Stripe minor at `medium`, even though
+  //    Stripe has a higher *base* priority.
+  // 3. Base business priority — used only as a tie-breaker when status + risk
+  //    are equal.
+  const RISK_ORDER: Record<string, number> = { high: 0, medium: 1, low: 2 };
   const sortedPackages = [...SENSITIVE_PACKAGES].sort((a, b) => {
     const tier = (name: string): number => {
       const found = latestByPkg.get(name);
@@ -340,6 +347,15 @@ export default function MaintenancePage() {
     const ta = tier(a.name);
     const tb = tier(b.name);
     if (ta !== tb) return ta - tb;
+
+    const riskRank = (name: string) => {
+      const r = latestByPkg.get(name)?.risk;
+      return r && r in RISK_ORDER ? RISK_ORDER[r] : 99;
+    };
+    const ra = riskRank(a.name);
+    const rb = riskRank(b.name);
+    if (ra !== rb) return ra - rb;
+
     return a.priority - b.priority;
   });
 
@@ -419,25 +435,65 @@ export default function MaintenancePage() {
             {sortedPackages.map(({ name, label, icon }) => {
               const found = latestByPkg.get(name);
               const isExpanded = expandedPkg === name;
-              const ok = !found
-                ? null
-                : found.status === "up_to_date" || found.status === "updated";
-              const pillStyles =
-                found == null
-                  ? "border-gray-100 bg-white text-gray-600 hover:bg-gray-50"
-                  : ok
-                    ? "border-emerald-100 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
-                    : "border-red-100 bg-red-50 text-red-700 hover:bg-red-100";
+
+              // Pill colour: failed/blocked = red bold; otherwise mirror the
+              // weekly risk level (high/medium/low) so the user spots Prisma
+              // sitting on a major bump (red) vs Stripe sitting on a minor
+              // (amber) at a glance, without needing to open the card.
+              type Tone = "gray" | "emerald" | "amber" | "red" | "redBold";
+              let tone: Tone;
+              if (!found) {
+                tone = "gray";
+              } else if (found.status === "failed" || found.status === "ts_fix_failed") {
+                tone = "redBold";
+              } else if (found.status === "up_to_date" || found.status === "updated") {
+                tone = "emerald";
+              } else if (found.risk === "high") {
+                tone = "red";
+              } else if (found.risk === "medium") {
+                tone = "amber";
+              } else if (found.risk === "low") {
+                tone = "emerald";
+              } else {
+                // pr_exists / has updates with unknown risk → neutral amber so
+                // it still reads as "needs attention" without screaming.
+                tone = "amber";
+              }
+
+              const toneClass: Record<Tone, { pill: string; meta: string }> = {
+                gray: {
+                  pill: "border-gray-200 bg-white text-gray-600 hover:bg-gray-50",
+                  meta: "text-gray-300",
+                },
+                emerald: {
+                  pill: "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100",
+                  meta: "text-emerald-500",
+                },
+                amber: {
+                  pill: "border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100",
+                  meta: "text-amber-600",
+                },
+                red: {
+                  pill: "border-red-200 bg-red-50 text-red-700 hover:bg-red-100",
+                  meta: "text-red-500",
+                },
+                redBold: {
+                  pill: "border-red-300 bg-red-100 text-red-800 hover:bg-red-200",
+                  meta: "text-red-600",
+                },
+              };
+              const styles = toneClass[tone];
+
               return (
                 <button
                   key={name}
                   type="button"
                   onClick={() => setExpandedPkg(isExpanded ? null : name)}
-                  className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition ${pillStyles} ${isExpanded ? "ring-2 ring-blue-300" : ""}`}
+                  className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition ${styles.pill} ${isExpanded ? "ring-2 ring-blue-300" : ""}`}
                 >
                   <span>{icon}</span>
                   <span>{label}</span>
-                  <span className={found == null ? "text-gray-300" : ok ? "text-emerald-500" : "text-red-500"}>
+                  <span className={styles.meta}>
                     {found ? (found.latest ?? found.current ?? "?") : "—"}
                   </span>
                   {isExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
