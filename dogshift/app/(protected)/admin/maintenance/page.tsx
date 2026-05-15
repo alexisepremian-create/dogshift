@@ -67,14 +67,23 @@ function pkgStatusBadge(status: PackageResult["status"]) {
 
 function riskBadge(risk?: string) {
   if (!risk || risk === "none") return null;
-  const map: Record<string, string> = {
-    low: "bg-emerald-100 text-emerald-700",
-    medium: "bg-amber-100 text-amber-700",
-    high: "bg-red-100 text-red-700",
+  // The agent emits a "risk of breaking your app if you update" score, not
+  // a "you should do this now" score. Reading "high" in red was making
+  // Alexis think his prod was on fire when it wasn't. Map the raw level to
+  // a plain-French label oriented around USER ACTION:
+  //   low risk → safe to auto-update, the agent is handling it
+  //   medium  → there's a PR worth a glance when you have time
+  //   high    → breaking changes — INFO ONLY, do NOT rush this, the agent
+  //             won't touch it and neither should you without a plan
+  const map: Record<string, { className: string; label: string }> = {
+    low: { className: "bg-emerald-100 text-emerald-700", label: "auto-update OK" },
+    medium: { className: "bg-amber-100 text-amber-700", label: "à examiner" },
+    high: { className: "bg-gray-100 text-gray-600 border border-gray-200", label: "info — pas urgent" },
   };
+  const entry = map[risk] ?? { className: "bg-gray-100 text-gray-500", label: risk };
   return (
-    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${map[risk] ?? "bg-gray-100 text-gray-500"}`}>
-      {risk}
+    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${entry.className}`}>
+      {entry.label}
     </span>
   );
 }
@@ -324,38 +333,37 @@ export default function MaintenancePage() {
     latestByPkg.set(p.pkg, p);
   }
 
-  // Sort sensitive packages so the row reads top-to-bottom as "most urgent →
-  // least urgent". Three layers, applied in order:
+  // Sort sensitive packages so the row reads top-to-bottom as "needs your
+  // attention → doesn't need anything". Action-oriented, not risk-oriented:
   //
-  // 1. Status tier — actually-broken stuff beats "just has an update available"
-  //    beats "up to date" beats "no data yet".
-  // 2. Risk level (within a tier) — high > medium > low > unknown. This is the
-  //    field surfaced by the Monday weekly Claude scan, so a Prisma major
-  //    sitting at `high` will outrank a Stripe minor at `medium`, even though
-  //    Stripe has a higher *base* priority.
-  // 3. Base business priority — used only as a tie-breaker when status + risk
-  //    are equal.
-  const RISK_ORDER: Record<string, number> = { high: 0, medium: 1, low: 2 };
+  // Tier 0: actually broken (failed install / failed tsc) — fix now
+  // Tier 1: a PR is open waiting for your review
+  // Tier 2: medium-risk update available (worth a glance when you have time)
+  // Tier 3: up to date OR low-risk (the agent has it / nothing to do)
+  // Tier 4: high-risk major bump available — *info only*, don't rush
+  // Tier 5: never scanned — no data yet
+  //
+  // Note: high-risk is deliberately ranked LAST among actionable tiers
+  // because it's the kind of update the user should *not* be pressured to
+  // do. Placing it before "à examiner" gave the wrong impression that it
+  // was urgent.
   const sortedPackages = [...SENSITIVE_PACKAGES].sort((a, b) => {
     const tier = (name: string): number => {
       const found = latestByPkg.get(name);
-      if (!found) return 3;
-      if (found.status === "failed" || found.status === "ts_fix_failed" || found.status === "pr_exists") return 0;
-      if (found.status === "updated" || (found.releases ?? 0) > 0) return 1;
+      if (!found) return 5;
+      if (found.status === "failed" || found.status === "ts_fix_failed") return 0;
+      if (found.status === "pr_exists") return 1;
+      if (found.status === "up_to_date" || found.status === "updated") return 3;
+      // Has releases available — split by risk level.
+      if (found.risk === "high") return 4;
+      if (found.risk === "medium") return 2;
+      if (found.risk === "low") return 3;
+      // Unknown risk with updates → treat as "à examiner".
       return 2;
     };
     const ta = tier(a.name);
     const tb = tier(b.name);
     if (ta !== tb) return ta - tb;
-
-    const riskRank = (name: string) => {
-      const r = latestByPkg.get(name)?.risk;
-      return r && r in RISK_ORDER ? RISK_ORDER[r] : 99;
-    };
-    const ra = riskRank(a.name);
-    const rb = riskRank(b.name);
-    if (ra !== rb) return ra - rb;
-
     return a.priority - b.priority;
   });
 
@@ -429,41 +437,52 @@ export default function MaintenancePage() {
         <div className="mb-6">
           <h2 className="mb-1 text-sm font-semibold text-gray-700">Paquets sensibles</h2>
           <p className="mb-3 text-xs text-gray-500">
-            Triés par priorité — clique sur une pastille pour voir ce qu&apos;il faut faire.
+            Triés par urgence pour toi — clique sur une pastille pour les détails.
+            Tu n&apos;es <strong>jamais obligé</strong> de mettre à jour : tant que ton site marche, ignore les pastilles grises.
           </p>
           <div className="flex flex-wrap gap-2">
             {sortedPackages.map(({ name, label, icon }) => {
               const found = latestByPkg.get(name);
               const isExpanded = expandedPkg === name;
 
-              // Pill colour: failed/blocked = red bold; otherwise mirror the
-              // weekly risk level (high/medium/low) so the user spots Prisma
-              // sitting on a major bump (red) vs Stripe sitting on a minor
-              // (amber) at a glance, without needing to open the card.
-              type Tone = "gray" | "emerald" | "amber" | "red" | "redBold";
+              // Pill colour: oriented around USER ACTION, not raw risk score.
+              //
+              //   red       → actually broken (failed npm install, failed tsc)
+              //   amber     → has a PR open OR medium-risk update available;
+              //               worth a glance when the user has time
+              //   emerald   → up to date, OR low-risk auto-update will handle
+              //   gray      → high-risk "info only" update exists (Prisma v7,
+              //               Next major). The agent won't touch it and the
+              //               user shouldn't rush it either — flagging this
+              //               red was scaring the user into thinking prod
+              //               was on fire when it wasn't.
+              type Tone = "gray" | "emerald" | "amber" | "red";
               let tone: Tone;
               if (!found) {
                 tone = "gray";
               } else if (found.status === "failed" || found.status === "ts_fix_failed") {
-                tone = "redBold";
+                tone = "red";
               } else if (found.status === "up_to_date" || found.status === "updated") {
                 tone = "emerald";
+              } else if (found.status === "pr_exists") {
+                tone = "amber";
               } else if (found.risk === "high") {
-                tone = "red";
+                // Major bump available but breaking — info only, NOT urgent.
+                tone = "gray";
               } else if (found.risk === "medium") {
                 tone = "amber";
               } else if (found.risk === "low") {
                 tone = "emerald";
               } else {
-                // pr_exists / has updates with unknown risk → neutral amber so
-                // it still reads as "needs attention" without screaming.
+                // Has updates with unknown risk → neutral amber so it still
+                // reads as "needs a glance" without screaming.
                 tone = "amber";
               }
 
               const toneClass: Record<Tone, { pill: string; meta: string }> = {
                 gray: {
-                  pill: "border-gray-200 bg-white text-gray-600 hover:bg-gray-50",
-                  meta: "text-gray-300",
+                  pill: "border-gray-200 bg-gray-50 text-gray-600 hover:bg-gray-100",
+                  meta: "text-gray-400",
                 },
                 emerald: {
                   pill: "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100",
@@ -474,10 +493,6 @@ export default function MaintenancePage() {
                   meta: "text-amber-600",
                 },
                 red: {
-                  pill: "border-red-200 bg-red-50 text-red-700 hover:bg-red-100",
-                  meta: "text-red-500",
-                },
-                redBold: {
                   pill: "border-red-300 bg-red-100 text-red-800 hover:bg-red-200",
                   meta: "text-red-600",
                 },
@@ -528,6 +543,11 @@ export default function MaintenancePage() {
               stateBanner = { tone: "red", text: "L'update casse TypeScript et Claude n'a pas pu fixer. À faire à la main." };
             } else if (found.status === "failed") {
               stateBanner = { tone: "red", text: "L'update a échoué (npm install ou tsc). À investiguer." };
+            } else if (found.risk === "high") {
+              stateBanner = {
+                tone: "gray",
+                text: `${found.releases ?? "Plusieurs"} release(s) majeure(s) dispo(s), mais avec des breaking changes. **Ton site marche très bien sur la version actuelle — tu n'es PAS obligé de mettre à jour.** Garde ça en tête, on s'y mettra ensemble quand t'auras du temps tranquille.`,
+              };
             } else if ((found.releases ?? 0) > 0) {
               stateBanner = { tone: "amber", text: `${found.releases} release(s) dispo(s) depuis ta version actuelle. À examiner.` };
             } else {
@@ -556,7 +576,15 @@ export default function MaintenancePage() {
                 </div>
 
                 <div className={`mb-3 rounded-lg border px-3 py-2 text-xs ${banners[stateBanner.tone]}`}>
-                  {stateBanner.text}
+                  {/* Render simple **bold** markdown inline so the high-risk
+                      banner can emphasise the "not obligatoire" reassurance. */}
+                  {stateBanner.text.split(/(\*\*[^*]+\*\*)/g).map((part, i) =>
+                    part.startsWith("**") && part.endsWith("**") ? (
+                      <strong key={i}>{part.slice(2, -2)}</strong>
+                    ) : (
+                      <span key={i}>{part}</span>
+                    ),
+                  )}
                 </div>
 
                 <div className="space-y-2 text-xs text-gray-700">
