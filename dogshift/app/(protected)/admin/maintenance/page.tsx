@@ -203,12 +203,86 @@ function LogRow({ log }: { log: MaintenanceLog }) {
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-const SENSITIVE_PACKAGES = [
-  { name: "next", label: "Next.js", icon: "▲" },
-  { name: "next-auth", label: "Auth.js v5", icon: "🔐" },
-  { name: "stripe", label: "Stripe Node", icon: "💳" },
-  { name: "@stripe/stripe-js", label: "Stripe.js", icon: "💳" },
-  { name: "prisma", label: "Prisma", icon: "🗄" },
+// Sensitive packages, in **base priority order** (most business-critical first).
+// The actual display order combines this base priority with the current state of
+// each package (failing / has-updates / up-to-date) — see `sortedPackages` below.
+//
+// `guidance` is the short French explainer that opens when the pill is clicked.
+// Keep these to ~2 sentences max so the panel stays scannable. The "que faire"
+// line answers the only question that matters: what do I do *now*?
+const SENSITIVE_PACKAGES: Array<{
+  name: string;
+  label: string;
+  icon: string;
+  priority: number;
+  guidance: { what: string; action: string };
+}> = [
+  {
+    name: "stripe",
+    label: "Stripe Node",
+    icon: "💳",
+    priority: 1,
+    guidance: {
+      what: "SDK serveur Stripe — paiements, Stripe Connect, payouts sitters.",
+      action:
+        "Patches & minors : laisse l'auto-merge faire. Majeurs : lis le changelog d'abord (les noms d'API peuvent changer), surtout côté PaymentIntent et Connect.",
+    },
+  },
+  {
+    name: "prisma",
+    label: "Prisma",
+    icon: "🗄",
+    priority: 2,
+    guidance: {
+      what: "ORM + CLI de migration DB. Couplé à @prisma/client.",
+      action:
+        "Toujours updater `prisma` ET `@prisma/client` ensemble (même version). Majeurs : suivre l'UPGRADE.md officiel + tester `prisma migrate deploy` sur une branche Neon avant prod.",
+    },
+  },
+  {
+    name: "@prisma/client",
+    label: "@prisma/client",
+    icon: "🗄",
+    priority: 3,
+    guidance: {
+      what: "Runtime Prisma (TypeScript types + query engine).",
+      action:
+        "Bump en même temps que `prisma`. Si les types Prisma changent (`@prisma/client/runtime`), le `tsc` du CI catchera les incompatibilités.",
+    },
+  },
+  {
+    name: "next-auth",
+    label: "Auth.js v5",
+    icon: "🔐",
+    priority: 4,
+    guidance: {
+      what: "Auth.js v5 (next-auth@beta) — sessions JWT, providers Google + Credentials.",
+      action:
+        "Sur la version beta, attention aux breaking en patch. Vérifier `auth.ts`, callbacks `jwt` et `session`, et tester le login Google + Credentials sur preview avant prod.",
+    },
+  },
+  {
+    name: "next",
+    label: "Next.js",
+    icon: "▲",
+    priority: 5,
+    guidance: {
+      what: "Framework App Router (Turbopack). Coeur du serveur, SSR, routing.",
+      action:
+        "Patches : OK auto. Mineurs : lire les release notes (App Router évolue vite). Majors : tester le build + Playwright E2E avant de merger.",
+    },
+  },
+  {
+    name: "@stripe/stripe-js",
+    label: "Stripe.js",
+    icon: "💳",
+    priority: 6,
+    guidance: {
+      what: "SDK navigateur Stripe (Elements, redirect to Checkout).",
+      action:
+        "Risque faible — frontend uniquement, les caches CDN absorbent les régressions visuelles. Auto-merge OK pour patches & minors.",
+    },
+  },
 ];
 
 const POLL_INTERVAL_MS = 30_000;
@@ -218,6 +292,8 @@ export default function MaintenancePage() {
   const [loading, setLoading] = useState(true);
   const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  // Which sensitive package's detail card is currently expanded. Null = none.
+  const [expandedPkg, setExpandedPkg] = useState<string | null>(null);
 
   const fetchLogs = async (silent = false) => {
     if (!silent) setRefreshing(true);
@@ -247,6 +323,25 @@ export default function MaintenancePage() {
   for (const p of [...allPackages].reverse()) {
     latestByPkg.set(p.pkg, p);
   }
+
+  // Sort sensitive packages by *attention needed first*, then base priority.
+  // Tier 0: failed or PR exists (needs action now)
+  // Tier 1: has updates available / outdated (review when you have time)
+  // Tier 2: up to date (no action)
+  // Tier 3: never scanned (no data yet — sort to end)
+  const sortedPackages = [...SENSITIVE_PACKAGES].sort((a, b) => {
+    const tier = (name: string): number => {
+      const found = latestByPkg.get(name);
+      if (!found) return 3;
+      if (found.status === "failed" || found.status === "ts_fix_failed" || found.status === "pr_exists") return 0;
+      if (found.status === "updated" || (found.releases ?? 0) > 0) return 1;
+      return 2;
+    };
+    const ta = tier(a.name);
+    const tb = tier(b.name);
+    if (ta !== tb) return ta - tb;
+    return a.priority - b.priority;
+  });
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
@@ -313,35 +408,131 @@ export default function MaintenancePage() {
         </div>
       </div>
 
-      {/* Sensitive packages status */}
+      {/* Sensitive packages status — clickable pills with inline detail card */}
       {latestByPkg.size > 0 && (
         <div className="mb-6">
-          <h2 className="mb-3 text-sm font-semibold text-gray-700">Paquets sensibles</h2>
+          <h2 className="mb-1 text-sm font-semibold text-gray-700">Paquets sensibles</h2>
+          <p className="mb-3 text-xs text-gray-500">
+            Triés par priorité — clique sur une pastille pour voir ce qu&apos;il faut faire.
+          </p>
           <div className="flex flex-wrap gap-2">
-            {SENSITIVE_PACKAGES.map(({ name, label, icon }) => {
+            {sortedPackages.map(({ name, label, icon }) => {
               const found = latestByPkg.get(name);
-              if (!found) return (
-                <div key={name} className="flex items-center gap-1.5 rounded-lg border border-gray-100 bg-white px-3 py-1.5">
-                  <span>{icon}</span>
-                  <span className="text-xs font-medium text-gray-600">{label}</span>
-                  <span className="text-xs text-gray-300">—</span>
-                </div>
-              );
-              const ok = found.status === "up_to_date" || found.status === "updated" || found.status === "pr_exists";
+              const isExpanded = expandedPkg === name;
+              const ok = !found
+                ? null
+                : found.status === "up_to_date" || found.status === "updated";
+              const pillStyles =
+                found == null
+                  ? "border-gray-100 bg-white text-gray-600 hover:bg-gray-50"
+                  : ok
+                    ? "border-emerald-100 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+                    : "border-red-100 bg-red-50 text-red-700 hover:bg-red-100";
               return (
-                <div
+                <button
                   key={name}
-                  className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 ${ok ? "border-emerald-100 bg-emerald-50" : "border-red-100 bg-red-50"}`}
+                  type="button"
+                  onClick={() => setExpandedPkg(isExpanded ? null : name)}
+                  className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition ${pillStyles} ${isExpanded ? "ring-2 ring-blue-300" : ""}`}
                 >
                   <span>{icon}</span>
-                  <span className={`text-xs font-medium ${ok ? "text-emerald-700" : "text-red-700"}`}>{label}</span>
-                  <span className={`text-xs ${ok ? "text-emerald-500" : "text-red-500"}`}>
-                    {found.latest ?? found.current ?? "?"}
+                  <span>{label}</span>
+                  <span className={found == null ? "text-gray-300" : ok ? "text-emerald-500" : "text-red-500"}>
+                    {found ? (found.latest ?? found.current ?? "?") : "—"}
                   </span>
-                </div>
+                  {isExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                </button>
               );
             })}
           </div>
+
+          {/* Inline detail card for the currently expanded pkg */}
+          {expandedPkg && (() => {
+            const cfg = sortedPackages.find(p => p.name === expandedPkg);
+            if (!cfg) return null;
+            const found = latestByPkg.get(expandedPkg);
+            const versionLine = found
+              ? found.current && found.latest && found.current !== found.latest
+                ? `Installée : ${found.current} → dispo : ${found.latest}`
+                : `Installée : ${found.current ?? found.latest ?? "?"}`
+              : "Pas encore scanné par l'agent.";
+
+            // Action recommandation — derived from current state, falls back
+            // to the static `guidance.action` when nothing actionable.
+            let stateBanner: { tone: "emerald" | "amber" | "red" | "gray"; text: string };
+            if (!found) {
+              stateBanner = { tone: "gray", text: "Aucune donnée — attends le prochain scan (nuit prochaine ou rapport hebdo de lundi)." };
+            } else if (found.status === "up_to_date") {
+              stateBanner = { tone: "emerald", text: "À jour. Rien à faire." };
+            } else if (found.status === "updated") {
+              stateBanner = { tone: "emerald", text: "Mis à jour automatiquement. Vérifie juste que le déploiement Vercel est passé." };
+            } else if (found.status === "pr_exists") {
+              stateBanner = { tone: "amber", text: "Une PR est ouverte avec la nouvelle version. À review + merger manuellement." };
+            } else if (found.status === "ts_fix_failed") {
+              stateBanner = { tone: "red", text: "L'update casse TypeScript et Claude n'a pas pu fixer. À faire à la main." };
+            } else if (found.status === "failed") {
+              stateBanner = { tone: "red", text: "L'update a échoué (npm install ou tsc). À investiguer." };
+            } else if ((found.releases ?? 0) > 0) {
+              stateBanner = { tone: "amber", text: `${found.releases} release(s) dispo(s) depuis ta version actuelle. À examiner.` };
+            } else {
+              stateBanner = { tone: "gray", text: "Statut inconnu." };
+            }
+
+            const banners = {
+              emerald: "border-emerald-200 bg-emerald-50 text-emerald-800",
+              amber: "border-amber-200 bg-amber-50 text-amber-800",
+              red: "border-red-200 bg-red-50 text-red-800",
+              gray: "border-gray-200 bg-gray-50 text-gray-700",
+            };
+
+            return (
+              <div className="mt-3 rounded-xl border border-gray-200 bg-white p-4">
+                <div className="flex items-start justify-between gap-3 mb-3">
+                  <div>
+                    <h3 className="font-semibold text-gray-900 flex items-center gap-2">
+                      <span>{cfg.icon}</span>
+                      <span>{cfg.label}</span>
+                      <code className="text-xs font-mono font-normal text-gray-500">{cfg.name}</code>
+                    </h3>
+                    <p className="mt-0.5 text-xs text-gray-500">{versionLine}</p>
+                  </div>
+                  {found?.risk && riskBadge(found.risk)}
+                </div>
+
+                <div className={`mb-3 rounded-lg border px-3 py-2 text-xs ${banners[stateBanner.tone]}`}>
+                  {stateBanner.text}
+                </div>
+
+                <div className="space-y-2 text-xs text-gray-700">
+                  <div>
+                    <p className="font-semibold text-gray-900">À quoi ça sert</p>
+                    <p className="mt-0.5">{cfg.guidance.what}</p>
+                  </div>
+                  <div>
+                    <p className="font-semibold text-gray-900">Que faire</p>
+                    <p className="mt-0.5">{cfg.guidance.action}</p>
+                  </div>
+                  {found?.summary && (
+                    <div>
+                      <p className="font-semibold text-gray-900">Note du dernier scan</p>
+                      <p className="mt-0.5 italic text-gray-600">{found.summary}</p>
+                    </div>
+                  )}
+                  {found?.prUrl && (
+                    <a
+                      href={found.prUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1 text-blue-600 hover:underline mt-1"
+                    >
+                      Voir la PR sur GitHub
+                      <ExternalLink className="h-3 w-3" />
+                    </a>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
         </div>
       )}
 
