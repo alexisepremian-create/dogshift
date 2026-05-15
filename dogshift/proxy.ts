@@ -57,6 +57,17 @@ const REMOVED_PATH_PREFIXES = ["/etiquette-produit/"];
 
 const INVITE_PROTECTED_PATHS = new Set(["/become-sitter/form", "/api/become-sitter/apply"]);
 
+/**
+ * API routes that authenticate via Bearer token in their own handler (not via
+ * the Auth.js session cookie). They live under a `PROTECTED_PATH_PREFIX` so
+ * the prefix match below would 401 them before they ever reach the handler.
+ * Listing them here exempts them from the session-cookie check; the route
+ * handler is responsible for validating the Bearer token itself.
+ */
+const BEARER_AUTH_API_PATHS = new Set([
+  "/api/admin/maintenance/report", // POST from GitHub Actions deps-agent
+]);
+
 // Auth.js v5 session cookie name. Differs between HTTP (dev) and HTTPS (prod).
 const AUTHJS_SESSION_COOKIES = ["authjs.session-token", "__Secure-authjs.session-token"];
 
@@ -148,7 +159,11 @@ export function proxy(req: NextRequest): NextResponse {
   // (homepage, marketing pages, /api/sitters, /api/auth/*, …) passes
   // through; route handlers / layouts enforce auth themselves where they
   // care.
-  if (isProtected(reqPathname) && !hasSessionCookie(req)) {
+  if (
+    isProtected(reqPathname) &&
+    !hasSessionCookie(req) &&
+    !BEARER_AUTH_API_PATHS.has(reqPathname)
+  ) {
     if (reqPathname.startsWith("/api/")) {
       return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
     }

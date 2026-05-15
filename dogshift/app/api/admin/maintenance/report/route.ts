@@ -9,17 +9,6 @@ export async function POST(req: Request) {
   const expectedKey = (process.env.MAINTENANCE_API_KEY ?? "").trim();
 
   if (!expectedKey || token !== expectedKey) {
-    // Diagnostic fingerprints — never logs the actual secret material, only
-    // enough metadata to spot whitespace / partial paste / wrong-env issues
-    // when the GitHub Actions secret and the Vercel env var disagree.
-    const fp = (v: string) =>
-      v.length === 0 ? "<empty>" : v.length <= 8 ? `${v} (len=${v.length})` : `${v.slice(0, 4)}…${v.slice(-4)} (len=${v.length})`;
-    console.warn("[api][admin/maintenance/report] auth rejected", {
-      tokenFp: fp(token),
-      expectedKeyFp: fp(expectedKey),
-      match: token === expectedKey,
-      sameLength: token.length === expectedKey.length,
-    });
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
