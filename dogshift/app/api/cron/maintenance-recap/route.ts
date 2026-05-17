@@ -12,6 +12,40 @@ const MONTHS_FR = [
   "jul", "aoû", "sep", "oct", "nov", "déc",
 ];
 
+/**
+ * Wakes the Neon DB up before issuing the real recap queries.
+ *
+ * The recap cron fires at 07:00 UTC after a quiet European night, when Neon
+ * has typically autosuspended the compute. The first connection then races
+ * against the wake-up and times out with PrismaClientInitializationError. We
+ * issue a deliberately tiny query, retry it a few times with backoff, and
+ * only then let the rest of the handler run.
+ *
+ * Retries are intentionally synchronous-looking: 3 attempts spaced 1.5s
+ * apart covers ~5s of Neon wake-up budget. If all three fail, we surface
+ * the error to the caller so Vercel marks the cron as failed (visible in
+ * monitoring), instead of pretending success and silently dropping the
+ * day's Telegram recap.
+ */
+async function ensurePrismaWarm(): Promise<void> {
+  let lastErr: unknown = null;
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      await prisma.$queryRawUnsafe("SELECT 1");
+      return;
+    } catch (err) {
+      lastErr = err;
+      const isInitErr =
+        err instanceof Error &&
+        (err.name === "PrismaClientInitializationError" ||
+          /can't reach database|connection|timeout/i.test(err.message));
+      if (!isInitErr) throw err; // unrelated error → don't retry
+      if (attempt < 3) await new Promise((r) => setTimeout(r, 1500));
+    }
+  }
+  throw lastErr ?? new Error("Prisma warm-up failed");
+}
+
 export async function GET(req: Request) {
   // Accept either the CRON_SECRET (used by Vercel cron) or the
   // MAINTENANCE_API_KEY (used by GitHub Actions + by manual ops triggers
@@ -24,6 +58,20 @@ export async function GET(req: Request) {
     (process.env.MAINTENANCE_API_KEY && authHeader === maintBearer);
   if (!isAuthorized) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  // Wake Neon up before any real query (see ensurePrismaWarm comment).
+  try {
+    await ensurePrismaWarm();
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error("[cron][maintenance-recap] Prisma warm-up failed after retries", { message });
+    reportApiError({
+      kind: "internal_error",
+      route: "cron/maintenance-recap",
+      extra: { stage: "warmup", error: message },
+    });
+    return NextResponse.json({ success: false, error: "DB unreachable" }, { status: 503 });
   }
 
   // ?force=1 bypasses the same-day idempotency guard. Useful for ops to
