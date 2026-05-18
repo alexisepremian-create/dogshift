@@ -1,25 +1,25 @@
-import PageLoader from "@/components/ui/PageLoader";
-
 /**
  * Marketing route loading state.
  *
- * Renders <PageLoader static /> as the Suspense fallback while the page
- * tree is being rendered. Without this (when we returned `null`), client-
- * side navigations briefly revealed the marketing layout chrome (header +
- * empty content + footer) before any per-page content committed — which
- * the user perceived as a "footer flash" before the loading logo appeared.
+ * Returns `null` intentionally — see `docs/bugs/e2e-smoke-body-text-too-short.md`
+ * for the full post-mortem. Short version:
  *
- * Historical note: this previously returned `null` to avoid a Clerk-era
- * SSR-bailout-to-CSR that kept the loader stuck for 2–5 s on mobile during
- * initial hydration. With Auth.js v5 + JWT sessions there is no such bailout,
- * so the loader unmounts the moment the page commits.
+ *  - PR #359 set this to `<PageLoader static />` to bullet-proof the footer-flash
+ *    fix. That worked visually in prod, but on Vercel preview deployments the
+ *    Suspense boundary on the homepage doesn't resolve within 15 s (Neon cold
+ *    start + initial sitter query latency), so Playwright always sees just the
+ *    loader (~63 chars) and the smoke test asserting >100 chars always fails.
+ *  - The footer flash is now handled by the layered defense in
+ *    `components/NavigationOverlayController.tsx` (static <NavigationOverlay />
+ *    + MutationObserver handoff to PageLoader if any) + the CSS rules in
+ *    `app/globals.css`. The Suspense fallback was belt-and-suspenders only.
+ *  - Returning `null` here unblocks CI on every PR.
  *
- * The PageLoader carries `data-page-loader="1"` which the
- * NavigationOverlayController uses to hand off from the static
- * <NavigationOverlay /> with zero visual gap. The CSS rule
- * `body:has([data-page-loader="1"]) footer { visibility: hidden }` in
- * globals.css also hides the footer for the full loader lifetime.
+ * If the footer flash regresses (3-frame reveal between Link click and the
+ * page content), see `docs/bugs/footer-flash-during-navigation.md` — the
+ * playbook there covers the layered fix without bringing the PageLoader back
+ * to the Suspense fallback.
  */
 export default function Loading() {
-  return <PageLoader static />;
+  return null;
 }
