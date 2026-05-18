@@ -209,10 +209,11 @@ async function main() {
   indexLines.push("- Sources de vérité techniques : [[data-models]], [[AUTH]]");
   indexLines.push("");
 
-  // The index lives alongside the folder, not inside — it's the "parent note"
-  // for the folder, following Obsidian's folder-note convention. Clicking on
-  // it gives the overview; expanding the folder gives the individual fiches.
-  const indexPath = join(process.cwd(), "brain", "👥 Pilote", "Tous les sitters actifs.md");
+  // The index lives INSIDE the folder, as the "folder note" in Obsidian
+  // terminology (a file whose name is the same as — or describes — the
+  // parent folder). Naming it "Sitters actifs.md" gives short, readable
+  // wikilinks (`[[Sitters actifs]]`) in every per-sitter fiche.
+  const indexPath = join(folderPath, "Sitters actifs.md");
   writeFileSync(indexPath, indexLines.join("\n"), "utf8");
   console.log(`✓ Index écrit : ${indexPath}`);
 
@@ -272,7 +273,7 @@ async function main() {
     lines.push("- *(Aucune note manuelle. Supprime `auto_synced: true` du frontmatter pour préserver tes ajouts au prochain sync.)*", "");
 
     lines.push("## Liens", "");
-    lines.push("- [[Tous les sitters actifs]]");
+    lines.push("- [[Sitters actifs]]");
     lines.push("- [[DogShift Brain]]");
     lines.push("");
 
