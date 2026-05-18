@@ -131,6 +131,7 @@ export async function GET(req: NextRequest) {
         activationCodeIssuedAt: true,
         stripeAccountStatus: true,
         avatarUrl: true,
+        address: true,
         maxDogsBySize: true,
         acceptanceCriteria: true,
       },
@@ -164,6 +165,7 @@ export async function GET(req: NextRequest) {
     const mergedProfile: Record<string, unknown> = {
       ...(builtCompletionProfile && typeof builtCompletionProfile === "object" ? builtCompletionProfile : {}),
       stripeAccountStatus: typeof sitterProfile?.stripeAccountStatus === "string" ? sitterProfile.stripeAccountStatus : null,
+      address: typeof (sitterProfile as any)?.address === "string" ? (sitterProfile as any).address : null,
     };
     if ((sitterProfile as any)?.maxDogsBySize) mergedProfile.maxDogsBySize = (sitterProfile as any).maxDogsBySize;
     if ((sitterProfile as any)?.acceptanceCriteria) mergedProfile.acceptanceCriteria = (sitterProfile as any).acceptanceCriteria;
@@ -375,6 +377,7 @@ export async function POST(req: NextRequest) {
         contractSignedAt: true,
         contractVersion: true,
         stripeAccountStatus: true,
+        address: true,
       },
     });
 
@@ -391,6 +394,10 @@ export async function POST(req: NextRequest) {
           }
         : null),
       stripeAccountStatus: existingProfile?.stripeAccountStatus ?? null,
+      // Address is required to publish (Phase 3 completion check). Pull from
+      // existing DB row — the host profile edit page doesn't write the address
+      // field today, only the public application form does.
+      address: typeof existingProfile?.address === "string" ? existingProfile.address : null,
     });
 
     if (pricingObj && typeof pricingObj === "object" && Object.keys(pricingObj).length > 0) {

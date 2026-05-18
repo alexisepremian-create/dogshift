@@ -3,6 +3,7 @@ type HostLikeProfile = {
   avatarUrl?: unknown;
   firstName?: unknown;
   city?: unknown;
+  address?: unknown;
   bio?: unknown;
   services?: unknown;
   pricing?: unknown;
@@ -77,6 +78,7 @@ export function buildEffectiveSitterCompletionProfile(args: {
 export type ProfileCompletionChecks = {
   avatar: boolean;
   identity: boolean;
+  address: boolean;
   bio: boolean;
   services: boolean;
   pricing: boolean;
@@ -92,6 +94,10 @@ export function computeSitterProfileCompletionDetails(profile: unknown): {
 
   const avatar = Boolean(toStringOrEmpty(p.avatarDataUrl)) || Boolean(toStringOrEmpty(p.avatarUrl as string));
   const identity = Boolean(toStringOrEmpty(p.firstName)) && Boolean(toStringOrEmpty(p.city));
+  // Postal address (rue + numéro). Required to publish the profile because
+  // travel-fee computation and contract PDF generation both depend on it.
+  // 5-char minimum mirrors the validator at lib/sitterApplication/schema.ts.
+  const address = toStringOrEmpty(p.address).length >= 5;
   const bio = Boolean(toStringOrEmpty(p.bio));
 
   const svcRecord = toRecord(p.services);
@@ -110,7 +116,7 @@ export function computeSitterProfileCompletionDetails(profile: unknown): {
 
   const stripeConnected = typeof p.stripeAccountStatus === "string" && p.stripeAccountStatus === "ENABLED";
 
-  const checks: ProfileCompletionChecks = { avatar, identity, bio, services, pricing, dogSizes, stripeConnected };
+  const checks: ProfileCompletionChecks = { avatar, identity, address, bio, services, pricing, dogSizes, stripeConnected };
   const values = Object.values(checks);
   const percent = Math.round((values.filter(Boolean).length / values.length) * 100);
   return { percent, checks };
