@@ -144,23 +144,26 @@ body[data-navigating="1"] #ds-nav-overlay svg {
   animation: brandPulse 1.8s ease-in-out infinite;
 }
 
-/* Hide the footer while a navigation is in progress. Three orthogonal
-   triggers — any one is enough:
+/* Hide the layout chrome (header + footer) while a navigation is in
+   progress. Three orthogonal triggers — any one is enough:
      - data-navigating: set on click, cleared when the controller hands off
-       (PageLoader appears) OR after the soft RAF failsafe.
+       OR after MIN_OVERLAY_MS (whichever is later).
      - data-nav-cooldown: set on click, cleared after a FIXED window
-       (FOOTER_HIDE_MS in NavigationOverlayController.tsx). This is the one
-       that covers the post-overlay-clear gap on pages without an internal
-       PageLoader (most marketing routes after loading.tsx was reverted to
-       return null in PR #372).
+       (FOOTER_HIDE_MS in NavigationOverlayController.tsx). Covers the
+       post-overlay-clear gap on pages without an internal PageLoader.
      - :has(PageLoader): covers the full lifetime of any PageLoader
-       (including 350 ms fade-out), so the footer never peeks through the
-       loader.
+       (including 350 ms fade-out), so chrome never peeks through the loader.
+   Both header and footer are targeted because both belong to the marketing
+   layout (preserved across SPA navigations) and both visibly re-render
+   under fast hydration, producing a flicker if not masked.
    See components/NavigationOverlayController.tsx and
    docs/bugs/footer-flash-during-navigation.md. */
 body[data-navigating="1"] footer,
 body[data-nav-cooldown="1"] footer,
-body:has([data-page-loader="1"]) footer {
+body:has([data-page-loader="1"]) footer,
+body[data-navigating="1"] header,
+body[data-nav-cooldown="1"] header,
+body:has([data-page-loader="1"]) header {
   visibility: hidden;
 }
 
