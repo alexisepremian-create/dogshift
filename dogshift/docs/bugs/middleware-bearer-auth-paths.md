@@ -51,3 +51,24 @@ the whitelist only bypasses the cookie check.
 
 - PR #329 — `/api/admin/maintenance/report` whitelisted
 - PR #335 — `/api/host/activation-code` whitelisted
+
+## 🤖 Automated detection
+
+```json
+{
+  "type": "http",
+  "url": "https://www.dogshift.ch/api/host/activation-code",
+  "expect_status": 405,
+  "expect_not_contains": "UNAUTHORIZED",
+  "auto_fix": { "complexity": "simple" }
+}
+```
+
+GET on `/api/host/activation-code` (a Bearer-auth route) without any cookie
+or Authorization header. Expected: 405 Method Not Allowed (the handler exists,
+middleware let the request through, only POST is supported). If the middleware
+regressed and started blocking again, we'd see 401 `UNAUTHORIZED` instead.
+
+Auto-fix **simple**: the patch is always "add the missing path back to
+`BEARER_AUTH_API_PATHS` in `proxy.ts`". A future patch script could grep the
+recent diff for the removed path and restore it.

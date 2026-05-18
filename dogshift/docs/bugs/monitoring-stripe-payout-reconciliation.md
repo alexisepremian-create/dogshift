@@ -20,3 +20,12 @@ cron (`reconcile-payouts`) detects these divergences and re-tries / flags.
 - Sitter complains about a payout they should have received
 - DB shows `payoutStatus: PAID` but Stripe shows no transfer
 - Or: Stripe shows transfer but DB ledger doesn't reflect it
+
+## 🤖 Automated detection
+
+```json
+{
+  "type": "none",
+  "reason": "Requires reconciliation pass against the live Stripe API — too expensive for a nightly probe. Use the dedicated /api/cron/reconcile-payouts cron + Sentry alerts tagged error_kind=payout_reconciliation_mismatch."
+}
+```

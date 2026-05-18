@@ -214,6 +214,7 @@ Ces routes sont appelées par Vercel selon le planning de `vercel.json`. Protég
 | `/api/cron/audit-cleanup` | `0 4 1 * *` (4h UTC, 1er du mois) | Tronquer les anciens logs d'audit |
 | `/api/cron/booking-reminders` | — | Rappels réservations à venir |
 | `/api/cron/expire-pending-bookings` | — | Expirer les PENDING_ACCEPTANCE après délai |
+| `/api/cron/bug-regression-check` | `7 2 * * *` | Lit `docs/bugs/*.md`, exécute le bloc `## 🤖 Automated detection` de chaque fiche, envoie un récap Telegram (bot maintenance). Idempotent par jour, bypass avec `?force=1`. Voir `brain/🐛 Bugs/Workflow.md`. |
 
 ---
 

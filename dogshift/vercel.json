@@ -59,6 +59,10 @@
     {
       "path": "/api/cron/auth-health-check",
       "schedule": "0 7 * * *"
+    },
+    {
+      "path": "/api/cron/bug-regression-check",
+      "schedule": "7 2 * * *"
     }
   ],
   "buildCommand": "npm run build",
