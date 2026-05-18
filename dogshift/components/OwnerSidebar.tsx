@@ -1,6 +1,5 @@
 "use client";
 
-import { useSession, signOut } from "next-auth/react";
 import { LogOut } from "lucide-react";
 
 import Sidebar from "@/components/Sidebar";
@@ -21,7 +20,7 @@ export default function OwnerSidebar({ onNavigate, className, forceExpanded }: O
       <button
         type="button"
         onClick={() => {
-          window.location.assign("/sign-out?redirect=%2Flogin%3Fforce%3D1");
+          window.location.assign("/sign-out?redirect=%2Flogin");
         }}
         className={
           "group/item relative flex items-center rounded-2xl text-sm font-medium text-slate-600 transition hover:bg-slate-50 hover:text-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)] " +

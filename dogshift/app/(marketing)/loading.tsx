@@ -1,26 +1,25 @@
+import PageLoader from "@/components/ui/PageLoader";
+
 /**
  * Marketing route loading state.
  *
- * Why `null`?
- * The homepage (and most marketing pages) are statically prerendered with
- * `revalidate = 300`. However, ClerkProvider in the root layout opts the tree
- * into dynamic features (cookies/headers) which can cause Next.js to bail
- * the page tree out to client-side rendering during SSR
- * (`BAILOUT_TO_CLIENT_SIDE_RENDERING`).
+ * Renders <PageLoader static /> as the Suspense fallback while the page
+ * tree is being rendered. Without this (when we returned `null`), client-
+ * side navigations briefly revealed the marketing layout chrome (header +
+ * empty content + footer) before any per-page content committed — which
+ * the user perceived as a "footer flash" before the loading logo appeared.
  *
- * When that happens, this `loading.tsx` is rendered as the Suspense fallback.
- * If we render a fullscreen `<PageLoader />`, it covers the entire viewport
- * with a spinner that only disappears once React finishes hydrating
- * client-side. On slow mobile devices that can be 2–5 seconds — long enough
- * that users perceive it as "infinite loading" (the splash never going away
- * even though the network is fine).
+ * Historical note: this previously returned `null` to avoid a Clerk-era
+ * SSR-bailout-to-CSR that kept the loader stuck for 2–5 s on mobile during
+ * initial hydration. With Auth.js v5 + JWT sessions there is no such bailout,
+ * so the loader unmounts the moment the page commits.
  *
- * Returning `null` means: during the SSR bailout, the user immediately sees
- * the marketing layout chrome (header, footer) with an empty content area,
- * which gets filled in the moment hydration completes. No fullscreen overlay
- * blocking interaction. No false "loading…" cue when the page is actually
- * already loaded.
+ * The PageLoader carries `data-page-loader="1"` which the
+ * NavigationOverlayController uses to hand off from the static
+ * <NavigationOverlay /> with zero visual gap. The CSS rule
+ * `body:has([data-page-loader="1"]) footer { visibility: hidden }` in
+ * globals.css also hides the footer for the full loader lifetime.
  */
 export default function Loading() {
-  return null;
+  return <PageLoader static />;
 }

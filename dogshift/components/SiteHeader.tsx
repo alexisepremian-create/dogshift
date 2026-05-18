@@ -16,7 +16,7 @@ import {
   UserPlus,
   X,
 } from "lucide-react";
-import { useSession, signOut } from "next-auth/react";
+import { useSession } from "next-auth/react";
 import { useEffect, useRef, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import BrandLogo from "@/components/BrandLogo";
@@ -48,9 +48,13 @@ export default function SiteHeader() {
       isSignedIn,
   );
 
-  const signOutRedirectUrl = "/login?force=1";
+  // Redirect to plain /login after sign-out. We used to pass ?force=1 which
+  // triggered the ForceSignOut fallback popup ("Déconnexion en cours…") on
+  // arrival — that was only needed when sign-out could fail mid-way. Now
+  // that /sign-out is reliable (always hard-redirects after clearing the
+  // JWT cookie), there's no reason to flash that popup.
   async function handleSignOut() {
-    window.location.assign(`/sign-out?redirect=${encodeURIComponent(signOutRedirectUrl)}`);
+    window.location.assign("/sign-out?redirect=%2Flogin");
   }
 
   useEffect(() => { setHasMounted(true); }, []);

@@ -1,7 +1,6 @@
 "use client";
 
 import { LogOut } from "lucide-react";
-import { useSession, signOut } from "next-auth/react";
 
 import BrandLogo from "@/components/BrandLogo";
 import MobileBottomNav from "@/components/MobileBottomNav";
@@ -42,7 +41,7 @@ export default function OwnerDashboardShell({ children }: { children: React.Reac
   const signOutItem: import("@/components/MobileBottomNav").BottomNavItem = {
     key: "signout",
     label: "Déconnexion",
-    href: "/sign-out?redirect=%2Flogin%3Fforce%3D1",
+    href: "/sign-out?redirect=%2Flogin",
     icon: <LogOut className="h-5 w-5" aria-hidden="true" />,
     active: false,
   };
