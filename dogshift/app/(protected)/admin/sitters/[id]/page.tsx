@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any -- existing `as any` Prisma escape hatches predate the address field added in this commit; refactoring them out of scope here. */
 import { notFound } from "next/navigation";
 
 import AdminShell from "@/components/admin/AdminShell";
@@ -46,6 +47,7 @@ export default async function AdminSitterDetailPage({ params }: { params: Promis
           displayName: true,
           city: true,
           postalCode: true,
+          address: true,
           bio: true,
           published: true,
           verificationStatus: true,
@@ -128,6 +130,7 @@ export default async function AdminSitterDetailPage({ params }: { params: Promis
               <div className="mt-4 grid gap-3 text-sm text-slate-600 sm:grid-cols-2">
                 <p><span className="font-semibold text-slate-900">Publié :</span> {sitter.sitterProfile?.published ? "Oui" : "Non"}</p>
                 <p><span className="font-semibold text-slate-900">Code postal :</span> {sitter.sitterProfile?.postalCode || "—"}</p>
+                <p className="sm:col-span-2"><span className="font-semibold text-slate-900">Adresse :</span> {sitter.sitterProfile?.address || "—"}</p>
                 <p><span className="font-semibold text-slate-900">Soumis le :</span> {formatDate(sitter.sitterProfile?.verificationSubmittedAt || null)}</p>
                 <p><span className="font-semibold text-slate-900">Relu le :</span> {formatDate(sitter.sitterProfile?.verificationReviewedAt || null)}</p>
               </div>

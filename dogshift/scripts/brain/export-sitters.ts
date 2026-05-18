@@ -41,6 +41,7 @@ type ActiveSitter = {
   displayName: string | null;
   city: string | null;
   postalCode: string | null;
+  address: string | null;
   published: boolean;
   lifecycleStatus: string;
   activatedAt: Date | null;
@@ -147,7 +148,7 @@ async function main() {
   // Overview table
   lines.push("## Vue d'ensemble", "");
   lines.push(
-    "| Sitter | Ville | Services | Tarifs | Activé | Dispos | Bookings | Stripe | Profil |",
+    "| Sitter | Adresse | Services | Tarifs | Activé | Dispos | Bookings | Stripe | Profil |",
   );
   lines.push("|---|---|---|---|---|---|---|---|---|");
   for (const s of sitters) {
@@ -160,8 +161,9 @@ async function main() {
     const bookings = s._bookingsCount ?? 0;
     const stripe = s.stripeAccountStatus ?? "—";
     const published = s.published ? "🟢" : "⚪";
+    const addrOrCity = s.address || s.city || "—";
     lines.push(
-      `| [[${label}]] | ${s.city ?? "—"} | ${services} | ${pricing} | ${activated} | ${availIcon} | ${bookings} | ${stripe} | ${published} |`,
+      `| [[${label}]] | ${addrOrCity} | ${services} | ${pricing} | ${activated} | ${availIcon} | ${bookings} | ${stripe} | ${published} |`,
     );
   }
   lines.push("");
@@ -173,6 +175,7 @@ async function main() {
     lines.push(`### [[${label}]]`, "");
     lines.push("- **Email** : " + (s.user.email || "—"));
     lines.push("- **Téléphone** : " + (s.user.phone || "—"));
+    lines.push("- **Adresse** : " + (s.address || "—"));
     lines.push("- **Ville** : " + (s.city || "—") + (s.postalCode ? ` (${s.postalCode})` : ""));
     lines.push("- **Sitter ID** : `" + s.sitterId + "`");
     lines.push("- **Activée le** : " + formatDate(s.activatedAt));
@@ -199,7 +202,7 @@ async function main() {
     process.cwd(),
     "brain",
     "👥 Pilote",
-    "_Tous les sitters actifs.md",
+    "Tous les sitters actifs.md",
   );
   mkdirSync(dirname(outPath), { recursive: true });
   writeFileSync(outPath, lines.join("\n"), "utf8");

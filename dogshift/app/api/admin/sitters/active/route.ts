@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any -- existing `as any` Prisma escape hatches predate the address field added in this commit; refactoring them out of scope here. */
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
@@ -57,6 +58,7 @@ export async function GET(req: NextRequest) {
             displayName: true,
             city: true,
             postalCode: true,
+            address: true,
             published: true,
             verificationStatus: true,
             verificationNotes: true,
@@ -102,6 +104,7 @@ export async function GET(req: NextRequest) {
               displayName: typeof s.sitterProfile.displayName === "string" ? s.sitterProfile.displayName : null,
               city: typeof s.sitterProfile.city === "string" ? s.sitterProfile.city : null,
               postalCode: typeof s.sitterProfile.postalCode === "string" ? s.sitterProfile.postalCode : null,
+              address: typeof s.sitterProfile.address === "string" ? s.sitterProfile.address : null,
               published: Boolean(s.sitterProfile.published),
               verificationStatus: typeof s.sitterProfile.verificationStatus === "string" ? s.sitterProfile.verificationStatus : null,
               verificationNotes: typeof s.sitterProfile.verificationNotes === "string" ? s.sitterProfile.verificationNotes : null,
