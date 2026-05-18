@@ -41,7 +41,10 @@ Si le hint contient une catégorie (`/save idée Programme parrainage`) → resp
   > Sauvegardé depuis une session Claude le <YYYY-MM-DD>
   > Contexte : <1-2 lignes pour situer>
   ```
-- Termine par une section `## Liens` avec des wikilinks vers les notes existantes mentionnées (`[[Sonia Morges]]`, `[[AUTH]]`, etc.)
+- **POLITIQUE ZÉRO ORPHELIN** — termine par une section `## Liens` qui contient :
+  1. `[[🏠 Home]]` obligatoirement (pour que la note ne soit jamais orpheline en outbound)
+  2. Wikilinks vers toutes les notes existantes mentionnées (`[[Sonia Morges]]`, `[[AUTH]]`, etc.)
+- **MISE À JOUR DE HOME** — ajoute la nouvelle note à la liste correspondante dans `brain/🏠 Home.md` (👥 Pilote / 💡 Idées / 🧠 Décisions / etc.) à l'ordre alphabétique
 
 ### 5. Mentionne dans le journal du jour
 Ajoute une ligne à `brain/📓 Journal/<YYYY-MM-DD>.md` du style :
