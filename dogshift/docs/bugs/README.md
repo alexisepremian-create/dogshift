@@ -36,6 +36,10 @@ When adding a NEW fiche, also add the detection block. Schema in
 - [`footer-flash-during-navigation.md`](./footer-flash-during-navigation.md) — the 1-frame footer reveal between Link click and PageLoader (3+ regressions, latest fix 2026-05-18)
 - [`logout-bounce-back-to-dashboard.md`](./logout-bounce-back-to-dashboard.md) — `/sign-out` cleared the cookie but `/login` auto-redirected back to `/post-login` because `useSession()` cache lagged
 
+## CI / Tests
+
+- [`e2e-smoke-body-text-too-short.md`](./e2e-smoke-body-text-too-short.md) — smoke test reads body at domcontentloaded → sees only the PageLoader → fails. False positive blocking all queued PRs.
+
 ## Auth & middleware
 
 - [`middleware-bearer-auth-paths.md`](./middleware-bearer-auth-paths.md) — new `/api/{admin,host,account}/*` routes that auth via Bearer token must be whitelisted in `proxy.ts` or they 401 at the middleware
