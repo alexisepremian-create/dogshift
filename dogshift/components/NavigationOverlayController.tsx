@@ -77,15 +77,69 @@ function shouldShowOverlayFor(nextUrl: unknown, currentPathname: string | null):
 export default function NavigationOverlayController() {
   const pathname = usePathname();
 
-  // Whenever the pathname actually changes, the new page (or its loading.tsx
-  // Suspense fallback) is in the DOM. We give the browser one frame to paint
-  // it, then hide the static overlay.
+  // After the pathname changes, we need to hand off the static overlay to
+  // either:
+  //   a) the new page's `loading.tsx` <PageLoader /> (it carries
+  //      data-page-loader="1") — handoff is instant, no visual gap.
+  //   b) the new page's actual content if it rendered fast enough that no
+  //      loader was needed.
+  //
+  // The previous implementation cleared after 2 RAFs (~32 ms) which was
+  // before the Suspense fallback had a chance to commit, producing a
+  // 1-frame footer flash. We now wait for an actual signal:
+  //   - MutationObserver fires the moment PageLoader is added → clear.
+  //   - Otherwise, after 6 RAFs (~100 ms — enough for fast pages to paint
+  //     real content), clear as a soft failsafe.
+  //   - 2 s hard upper bound to avoid getting permanently stuck.
   useEffect(() => {
     if (typeof document === "undefined") return;
-    const id = requestAnimationFrame(() => {
-      requestAnimationFrame(clearOverlay);
+
+    // If the loader is already there (fast HMR / same-route mount), clear
+    // immediately.
+    if (document.querySelector('[data-page-loader="1"]')) {
+      clearOverlay();
+      return;
+    }
+
+    let cleared = false;
+    let rafCount = 0;
+    let rafId = 0;
+    let hardTimeout = 0;
+
+    function finish() {
+      if (cleared) return;
+      cleared = true;
+      observer.disconnect();
+      cancelAnimationFrame(rafId);
+      window.clearTimeout(hardTimeout);
+      clearOverlay();
+    }
+
+    // (a) PageLoader appeared → hand off.
+    const observer = new MutationObserver(() => {
+      if (document.querySelector('[data-page-loader="1"]')) finish();
     });
-    return () => cancelAnimationFrame(id);
+    observer.observe(document.body, { childList: true, subtree: true });
+
+    // (b) Soft failsafe — page rendered without needing a PageLoader.
+    function tick() {
+      if (cleared) return;
+      if (++rafCount >= 6) {
+        finish();
+        return;
+      }
+      rafId = requestAnimationFrame(tick);
+    }
+    rafId = requestAnimationFrame(tick);
+
+    // (c) Hard upper bound — never leave the overlay stuck.
+    hardTimeout = window.setTimeout(finish, 2000);
+
+    return () => {
+      observer.disconnect();
+      cancelAnimationFrame(rafId);
+      window.clearTimeout(hardTimeout);
+    };
   }, [pathname]);
 
   useEffect(() => {

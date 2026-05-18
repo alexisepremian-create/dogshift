@@ -144,6 +144,16 @@ body[data-navigating="1"] #ds-nav-overlay svg {
   animation: brandPulse 1.8s ease-in-out infinite;
 }
 
+/* Belt-and-suspenders: even during the millisecond it takes for the
+   MutationObserver to hand off to <PageLoader />, ensure the layout's
+   bottom footer can never peek through. The static overlay already covers
+   the viewport, but if the handoff is mid-tick we don't want a footer
+   flash. See components/NavigationOverlayController.tsx for the handoff
+   strategy. */
+body[data-navigating="1"] footer {
+  visibility: hidden;
+}
+
 /* Search panel tab switch / suggestions animation — premium slower timing */
 @keyframes panelTabEnter {
   from { opacity: 0; transform: translateY(10px); }

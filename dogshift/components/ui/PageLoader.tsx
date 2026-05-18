@@ -106,6 +106,11 @@ export default function PageLoader({
 
   return (
     <div
+      // Marker used by NavigationOverlayController to hand off the static
+      // navigation overlay to this animated PageLoader once it commits.
+      // Without it, the controller might tear down the static overlay
+      // before this loader mounts, causing a 1-frame footer flash.
+      data-page-loader="1"
       className="ds-viewport fixed inset-0 z-50 flex w-full items-center justify-center bg-white font-sans"
       style={{
         transition: phase === "fadeOut" ? `opacity ${FADE_MS}ms ease` : undefined,
