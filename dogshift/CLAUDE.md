@@ -19,7 +19,7 @@ Other docs are not auto-loaded but should be opened on demand when relevant:
 - [`docs/stack.md`](./docs/stack.md) — full tech stack inventory
 - [`docs/structure.md`](./docs/structure.md) — repo folder map
 - [`docs/commands.md`](./docs/commands.md) — dev/ship/debug commands reference
-- [`docs/bugs.md`](./docs/bugs.md) — known bugs + fix history
+- [`docs/bugs/README.md`](./docs/bugs/README.md) — **🐛 Bug playbook.** One file per bug we ever shipped a fix for, with symptom / root cause / fix / what NOT to do again. **Before fixing anything in auth, navigation, Prisma, or the marketing layout, grep this folder for the symptom first** — most of these bugs have recurred ≥ once. New bugs you fix should get their own fiche here.
 - [`docs/agents.md`](./docs/agents.md) — extended agent instructions
 - [`docs/telegram.md`](./docs/telegram.md) — Telegram bots setup + troubleshooting
 - [`docs/emails/EMAIL_SYSTEM.md`](./docs/emails/EMAIL_SYSTEM.md) — **READ FIRST before touching any email** (templates, sender, conventions)
