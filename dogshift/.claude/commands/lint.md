@@ -23,8 +23,11 @@ Lis tous les `.md` du périmètre. **Ne lis pas le code du repo, ni `node_module
 Deux notes qui se contredisent factuellement (ex : sitter listé activé dans une fiche mais marqué "pending" dans une autre). Liste-les avec quote + lien.
 
 #### B. Notes orphelines
-Notes qui ne sont liées par rien (zéro backlink entrant) ET qui ne sont pas dans `📥 Inbox` (= les Inbox ont le droit d'être orphelines).
-→ Suggère : "Lier à X" ou "Archiver / supprimer"
+**Politique zéro orphelin du vault : aucune note ne doit être orpheline, sauf templates et README repo.**
+- Une note orpheline = zéro backlink entrant (personne ne la lie)
+- Liste TOUTES les notes orphelines, sans exception (sauf `brain/⚙️ Templates/`, `README.md` racine, et le `brain/🏠 Home.md` lui-même)
+- Pour chaque orpheline, propose **l'action exacte** : *« Ajouter `- [[<titre>]]` dans `brain/🏠 Home.md` section [👥/💡/🧠/📓/🗺️/📥] »*
+- Détecte aussi les notes qui n'ont pas de section `## Liens` à la fin (orphelines en *outbound*) → suggère d'ajouter `[[🏠 Home]]` au minimum
 
 #### C. Données stales
 - Fiches sitters avec `Activée le: YYYY-MM-DD` > 30 jours mais checklist non complétée
