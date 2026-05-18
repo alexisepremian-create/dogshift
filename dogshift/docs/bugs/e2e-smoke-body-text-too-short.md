@@ -1,6 +1,6 @@
-# E2E smoke "body too short" — false positive due to Suspense fallback
+# E2E smoke "body too short" — Suspense fallback never resolves on preview
 
-**Status:** Fixed (PR #368, 2026-05-18)
+**Status:** Fixed by reverting the trigger (loading.tsx → null), PR after #371.
 
 ## Symptom
 
@@ -13,42 +13,60 @@ Error: expected / to render >100 chars of body text, got 63
 
 CI blocks auto-merge on all queued PRs.
 
-## Root cause
+## Root cause (final understanding)
 
-The smoke test does `page.goto(route, { waitUntil: "domcontentloaded" })`
-then reads `body.innerText`. After PR #359, `app/(marketing)/loading.tsx`
-renders `<PageLoader static />` instead of returning `null` — so at the
-moment `domcontentloaded` fires, the only thing in the DOM is the loader
-(~63 chars: "Chargement…" + alt text). The >100 chars assertion fails
-even though the page is healthy.
+PR #359 changed `app/(marketing)/loading.tsx` to render `<PageLoader static />`
+instead of returning `null`. **On prod this is fine** — Suspense resolves in
+a few hundred ms and the user sees the page.
 
-This is a CI-only regression — production behavior is fine (and actually
-improved, see [`footer-flash-during-navigation.md`](./footer-flash-during-navigation.md)).
+**On Vercel preview deployments it never resolves within Playwright's 15 s
+wait.** Combination of Neon cold start (preview Neon branches autosuspend
+aggressively) + initial sitter query latency means the homepage Suspense
+boundary stays unresolved for the whole test. Playwright sees only the
+PageLoader's content (~63 chars) and the >100 chars assertion fails.
 
-## Fix (final form, PR #371)
+Crucially, the bypass header `x-vercel-protection-bypass` IS working — the
+test reaches the real DogShift page. The 63 chars are the genuine PageLoader
+content, not Vercel's auth page (which would also be ~63 chars but with
+different text — verified by curl).
 
-Wait for `document.body.innerText.trim().length > 100` directly before
-asserting. PageLoader's content is well under 100 chars (~63), so the
-wait only resolves once the actual page has committed past the
-Suspense boundary. 15 s timeout.
+## Fix (actual)
 
-### First attempt that DID NOT work (PR #368)
+**Revert the trigger.** Both `app/(marketing)/loading.tsx` and
+`app/(marketing)/sitter/[sitterId]/loading.tsx` return `null` again. The
+PageLoader fallback was a belt-and-suspenders for the footer flash that
+the static `<NavigationOverlay />` + MutationObserver handoff
+(`components/NavigationOverlayController.tsx`) already handles in 99 % of
+cases.
 
-I initially used `[data-page-loader="1"]` as a proxy — wait for the
-attribute to disappear from the DOM. **That didn't work** because
-`<PageLoader />` is a client component (`"use client"`) and React adds
-the `data-page-loader` attribute on the wrapping `<div>` **after
-hydration**, not in the SSR HTML. So
-`document.querySelector('[data-page-loader="1"]')` was null at
-`domcontentloaded`, the wait resolved instantly, and body was still
-just the loader SVG (~63 chars).
+If the footer flash regresses after this revert, the next attempt should
+target the controller / overlay layer, NOT bring the Suspense fallback
+back. See [`footer-flash-during-navigation.md`](./footer-flash-during-navigation.md).
 
-**Lesson for future-Claude**: never use a client-component-added DOM
-attribute as a wait condition in an e2e test that runs at
-`domcontentloaded`. The attribute isn't there yet. Either:
-- Wait for the assertion content directly (what we do now)
-- Use `waitUntil: "networkidle"` or `"load"` instead of `"domcontentloaded"`
-- Wait for a known SSR'd element specific to the destination page
+### Attempts that DID NOT work (and why)
+
+**PR #368** — added a Playwright helper that waited for
+`[data-page-loader="1"]` to disappear before reading body.innerText.
+Failed because `<PageLoader />` is a client component (`"use client"`)
+and React adds the marker attribute on the wrapping `<div>` **after
+hydration**. At `domcontentloaded` the attribute isn't there yet, the
+wait resolved instantly, and body was still the loader SVG (~63 chars).
+
+**PR #371** — replaced the marker wait with `await waitForFunction(() =>
+document.body.innerText.length > 100, { timeout: 15_000 })`. Failed
+because the Suspense boundary on the preview really doesn't resolve in
+15 s. The wait timed out and the assertion still saw ~63 chars.
+
+**Lessons for future-Claude**:
+- Never use a client-component-added DOM attribute as a wait condition
+  in a test that runs at `domcontentloaded` — the attribute isn't there
+  yet.
+- Don't assume "wait longer" fixes a Suspense fallback that the preview
+  environment can't resolve. If prod-vs-preview parity matters for a
+  test, ensure the preview can actually render the page (warm DB,
+  proper env vars, no protection wall on top).
+- The cheap fix is usually to remove the Suspense fallback content
+  (return `null` from loading.tsx) rather than make the test smarter.
 
 ## How to recognize a regression of this
 
