@@ -16,20 +16,25 @@ const PUBLIC_ROUTES = [
 ] as const;
 
 /**
- * Wait until the `<PageLoader />` (Suspense fallback for marketing routes)
- * has unmounted, so body.innerText reflects real content — not just the
- * loader. Added after PR #359 made `app/(marketing)/loading.tsx` render a
- * <PageLoader static /> instead of returning null: the loader is in the DOM
- * at `domcontentloaded`, body has only ~63 chars, and the >100 char check
- * fails. PageLoader is identified by `data-page-loader="1"` (see
- * components/ui/PageLoader.tsx).
+ * Wait for the real page content to commit past any Suspense fallback
+ * (e.g. <PageLoader />). We can't rely on the data-page-loader marker
+ * because PageLoader is a "use client" component — the attribute only
+ * appears AFTER hydration, so an SSR-only check on
+ * `!document.querySelector('[data-page-loader="1"]')` returns true
+ * immediately even when the loader's SVG markup is in the DOM (which
+ * is why PR #368's first attempt still left body at ~63 chars).
+ *
+ * The pragmatic robust signal is "body has enough text to be a real
+ * page". Waits up to 15 s; if the page is truly broken it'll fail the
+ * subsequent assertion. PageLoader's content is well under 100 chars,
+ * so this only resolves once the actual page commits.
  */
-async function waitForPageLoaderGone(page: import("@playwright/test").Page) {
+async function waitForPageContent(page: import("@playwright/test").Page) {
   await page
-    .waitForFunction(() => !document.querySelector('[data-page-loader="1"]'), {
-      timeout: 10_000,
+    .waitForFunction(() => document.body.innerText.trim().length > 100, {
+      timeout: 15_000,
     })
-    .catch(() => undefined); // tolerate routes that never mount a loader
+    .catch(() => undefined); // let the assertion below produce the real error
 }
 
 for (const route of PUBLIC_ROUTES) {
@@ -44,7 +49,7 @@ for (const route of PUBLIC_ROUTES) {
     ).toBeLessThan(400);
 
     await expect(page.locator("body")).toBeVisible();
-    await waitForPageLoaderGone(page);
+    await waitForPageContent(page);
 
     const bodyText = (await page.locator("body").innerText()).trim();
     expect(
@@ -56,7 +61,7 @@ for (const route of PUBLIC_ROUTES) {
 
 test("homepage mentions DogShift", async ({ page }) => {
   await page.goto("/", { waitUntil: "domcontentloaded" });
-  await waitForPageLoaderGone(page);
+  await waitForPageContent(page);
   await expect(page.locator("body")).toContainText(/DogShift/i);
 });
 
