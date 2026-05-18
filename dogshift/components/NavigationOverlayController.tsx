@@ -46,25 +46,55 @@ function isSkippedHref(href: string): boolean {
   return SKIP_PATHS.some((p) => path === p);
 }
 
-function clearOverlay() {
+/**
+ * Minimum duration the navigation overlay stays visible. Even if content
+ * commits faster (e.g. a 50 ms route change), the overlay holds for at
+ * least this long so:
+ *   - The animated logo (brandPulse, 1.8 s loop) has time to feel
+ *     intentional rather than flicker-and-gone
+ *   - Layout-chrome elements (header buttons, footer) don't visibly
+ *     re-render under it during the in-between paints
+ *
+ * 600 ms is the sweet spot: imperceptible delay on fast nav, full
+ * coverage of the messy "layout shell visible but new children not
+ * yet committed" window on slow pages.
+ */
+const MIN_OVERLAY_MS = 600;
+
+/**
+ * Footer-hide cooldown. Set on click, cleared after a fixed window so
+ * the footer stays hidden even after the overlay has cleared. Matched
+ * to MIN_OVERLAY_MS so the two windows align.
+ */
+const FOOTER_HIDE_MS = MIN_OVERLAY_MS;
+
+/** Tracks when the current navigation started, used to enforce MIN_OVERLAY_MS. */
+let navigationStartedAt = 0;
+
+function clearOverlayNow() {
   if (typeof document === "undefined") return;
   document.body.removeAttribute("data-navigating");
 }
 
 /**
- * Minimum duration the footer stays hidden after a navigation starts.
- * Decoupled from the overlay clear so that:
- *   - The overlay can disappear quickly (responsive feel) once content commits
- *   - The footer stays hidden a bit longer to bridge any "layout chrome visible
- *     but new page children not yet painted" gap on pages without a PageLoader.
- *
- * 400 ms is invisible on fast navigations (no flash) but covers slow homepage
- * data loads. See docs/bugs/footer-flash-during-navigation.md.
+ * Clear the overlay, but never sooner than MIN_OVERLAY_MS after the
+ * navigation started. If we're past that already, clear immediately;
+ * otherwise schedule the clear for the remaining window.
  */
-const FOOTER_HIDE_MS = 400;
+function clearOverlay() {
+  if (typeof window === "undefined") return;
+  const elapsed = Date.now() - navigationStartedAt;
+  const remaining = MIN_OVERLAY_MS - elapsed;
+  if (remaining <= 0) {
+    clearOverlayNow();
+  } else {
+    window.setTimeout(clearOverlayNow, remaining);
+  }
+}
 
 function setNavigating() {
   if (typeof document === "undefined") return;
+  navigationStartedAt = Date.now();
   document.body.dataset.navigating = "1";
   document.body.dataset.navCooldown = "1";
   window.setTimeout(() => {
