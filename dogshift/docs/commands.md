@@ -49,7 +49,7 @@ La PR se merge automatiquement si **tous** les checks CI passent :
 - Build Next.js
 - Tests Playwright smoke
 
-Voir `WORKFLOW.md` pour les cas où il faut s'écarter du happy path (changements risqués, drafts, urgences prod).
+Voir [`docs/workflow.md`](./workflow.md) pour les cas où il faut s'écarter du happy path (changements risqués, drafts, urgences prod).
 
 ## Git (manuel)
 
