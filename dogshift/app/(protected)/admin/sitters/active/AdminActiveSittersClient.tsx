@@ -23,6 +23,7 @@ type ActiveSitterRow = {
     displayName: string | null;
     city: string | null;
     postalCode: string | null;
+    address: string | null;
     published: boolean;
     verificationStatus: VerificationStatus | null;
     verificationNotes: string | null;
@@ -240,6 +241,7 @@ export default function AdminActiveSittersClient() {
                     <div className="mt-3 grid gap-1 text-sm text-slate-700">
                       {selected.email ? <p><span className="font-semibold text-slate-900">Email :</span> {selected.email}</p> : null}
                       {selected.phone ? <p><span className="font-semibold text-slate-900">Téléphone :</span> {selected.phone}</p> : <p><span className="font-semibold text-slate-900">Téléphone :</span> —</p>}
+                      <p><span className="font-semibold text-slate-900">Adresse :</span> {selected.profile?.address || "—"}</p>
                       <p><span className="font-semibold text-slate-900">Sitter ID :</span> {selected.sitterId || "—"}</p>
                     </div>
                     <Link
