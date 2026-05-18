@@ -171,7 +171,13 @@ export async function GET(req: NextRequest) {
   const db = prisma as any;
   const now = new Date();
 
-  // Fetch all published + activated sitters
+  // Fetch all published + activated sitters.
+  //
+  // NOTE: `availabilityRules` is a relation on `User` (via User.sitterId),
+  // NOT on `SitterProfile`. The earlier version of this query put
+  // `_count: { availabilityRules }` directly on SitterProfile, which made
+  // Prisma throw PrismaClientValidationError at runtime — the daily cron
+  // was 500ing silently. We now nest the count under the user relation.
   const sitters = await db.sitterProfile.findMany({
     where: {
       published: true,
@@ -185,9 +191,13 @@ export async function GET(req: NextRequest) {
       inactivityNudgeAt: true,
       inactivityWarning1At: true,
       inactivityWarning2At: true,
-      user: { select: { email: true, name: true } },
-      // Count availability rules inline
-      _count: { select: { availabilityRules: true } },
+      user: {
+        select: {
+          email: true,
+          name: true,
+          _count: { select: { availabilityRules: true } },
+        },
+      },
     },
   });
 
@@ -203,7 +213,7 @@ export async function GET(req: NextRequest) {
   for (const sitter of sitters) {
     const email = sitter.user?.email ?? "";
     const name = (sitter.displayName ?? sitter.user?.name ?? "").trim() || "Dogsitter";
-    const hasAvailability = sitter._count.availabilityRules > 0;
+    const hasAvailability = (sitter.user?._count?.availabilityRules ?? 0) > 0;
 
     try {
       // ── Has availability → reset inactivity tracking ──────────────────
