@@ -7,6 +7,7 @@ import { signOut, useSession } from "next-auth/react";
 
 import AuthLayout from "@/components/auth/AuthLayout";
 import LoginForm from "@/components/auth/LoginForm";
+import { consumeSignoutHandoff } from "@/lib/auth/signoutHandoff";
 import { useCanonicalDogshiftHostRedirect } from "@/lib/url/useCanonicalDogshiftHost";
 
 /**
@@ -50,6 +51,16 @@ export default function LoginPage() {
     }
   }, [isLoaded, isSignedIn]);
 
+  // Detect "arrived from /sign-out" and consume the one-shot flag. If true,
+  // we suppress the auto-redirect for this mount only — without this, the
+  // brief window where useSession() still returns the cached "authenticated"
+  // state (before the post-signOut /api/auth/session fetch resolves) would
+  // bounce the user straight back to /post-login.
+  const justSignedOutRef = useRef<boolean | null>(null);
+  if (justSignedOutRef.current === null) {
+    justSignedOutRef.current = consumeSignoutHandoff();
+  }
+
   const next = (searchParams?.get("next") ?? "").trim();
 
   useEffect(() => {
@@ -57,6 +68,10 @@ export default function LoginPage() {
     if (!isSignedIn) return;
     // Block auto-redirect only if user landed already-signed-in in forceMode.
     if (forceMode && alreadySignedInOnLoad.current === true) return;
+    // Block auto-redirect when the user just signed out — useSession can
+    // briefly report authenticated while the cookie-clear roundtrip is
+    // settling client-side.
+    if (justSignedOutRef.current === true) return;
     const dest = next ? `/post-login?next=${encodeURIComponent(next)}` : "/post-login";
     router.replace(dest);
   }, [forceMode, isLoaded, isSignedIn, next, router]);

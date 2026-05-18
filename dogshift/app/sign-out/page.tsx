@@ -5,6 +5,7 @@ import { useEffect, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 
 import PageLoader from "@/components/ui/PageLoader";
+import { SIGNOUT_HANDOFF_KEY } from "@/lib/auth/signoutHandoff";
 
 export const dynamic = "force-dynamic";
 
@@ -62,11 +63,26 @@ export default function SignOutPage() {
 
     clearLegacyAuthCookies();
 
+    function markHandoff() {
+      // Tell the destination page (typically /login) that we just signed out.
+      // Without this, if the SessionProvider on the next page mounts before
+      // /api/auth/session reflects the cookie clear, the auto-redirect on
+      // /login can bounce the user straight back to /post-login. The flag
+      // lives in sessionStorage so it survives the hard navigation but is
+      // tab-scoped (no cross-tab leakage).
+      try {
+        window.sessionStorage.setItem(SIGNOUT_HANDOFF_KEY, String(Date.now()));
+      } catch {
+        /* sessionStorage may be unavailable in private mode — ignore */
+      }
+    }
+
     const failsafe = window.setTimeout(() => {
       // signOut hung (unlikely). Force the redirect anyway — Auth.js may
       // still complete cookie clearing on the next request because
       // /api/auth/signout is idempotent.
       clearLegacyAuthCookies();
+      markHandoff();
       window.location.replace(safeRedirect);
     }, FAILSAFE_MS);
 
@@ -83,6 +99,7 @@ export default function SignOutPage() {
         /* swallow: even if signOut failed, we still try to redirect */
       }
       clearLegacyAuthCookies();
+      markHandoff();
       window.clearTimeout(failsafe);
       window.location.replace(safeRedirect);
     })();
