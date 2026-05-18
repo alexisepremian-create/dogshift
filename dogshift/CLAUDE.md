@@ -22,6 +22,8 @@ Other docs are not auto-loaded but should be opened on demand when relevant:
 - [`docs/bugs.md`](./docs/bugs.md) — known bugs + fix history
 - [`docs/agents.md`](./docs/agents.md) — extended agent instructions
 - [`docs/telegram.md`](./docs/telegram.md) — Telegram bots setup + troubleshooting
+- [`docs/emails/EMAIL_SYSTEM.md`](./docs/emails/EMAIL_SYSTEM.md) — **READ FIRST before touching any email** (templates, sender, conventions)
+- [`docs/emails/EMAIL_CATALOG.md`](./docs/emails/EMAIL_CATALOG.md) — catalogue of every transactional email currently sent in prod, with triggers + payload
 
 ## Commands
 
