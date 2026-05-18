@@ -217,6 +217,7 @@ export default function SitterApplicationForm({
       city: "" as unknown as SitterApplicationV2["city"],
       cityOther: "",
       npa: "",
+      address: "",
       linkAnimalProfession: "" as unknown as SitterApplicationV2["linkAnimalProfession"],
       linkAnimalProfessionOther: "",
       gardeExperienceLevel: "" as unknown as SitterApplicationV2["gardeExperienceLevel"],
@@ -381,6 +382,7 @@ export default function SitterApplicationForm({
         city: data.city,
         cityOther: data.city === CITY_OTHER_VALUE ? (data.cityOther ?? "").trim() : null,
         npa: data.npa.trim(),
+        address: data.address.trim(),
 
         linkAnimalProfession: data.linkAnimalProfession,
         linkAnimalProfessionOther:
@@ -665,6 +667,21 @@ export default function SitterApplicationForm({
                 />
               </Field>
             </div>
+
+            <Field
+              label="Adresse postale"
+              required
+              error={errs.address?.message}
+              hint="Rue + numéro. Visible uniquement par les propriétaires après une réservation confirmée — jamais publique."
+            >
+              <TextInput
+                placeholder="ex. Rue du Lac 35"
+                autoComplete="street-address"
+                maxLength={200}
+                invalid={Boolean(errs.address)}
+                {...register("address")}
+              />
+            </Field>
 
             {cityValue === CITY_OTHER_VALUE ? (
               <Field
