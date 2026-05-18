@@ -154,6 +154,15 @@ body[data-navigating="1"] footer {
   visibility: hidden;
 }
 
+/* Extend the same protection for the entire lifetime of a <PageLoader />,
+   including its 350ms fade-out phase. Without this, the loader fading
+   would reveal the footer behind it for a brief moment, which the user
+   reads as a "leger footer au chargement". `:has()` is supported in all
+   modern browsers (Safari 15.4+, Chrome 105+, FF 121+). */
+body:has([data-page-loader="1"]) footer {
+  visibility: hidden;
+}
+
 /* Search panel tab switch / suggestions animation — premium slower timing */
 @keyframes panelTabEnter {
   from { opacity: 0; transform: translateY(10px); }
