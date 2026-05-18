@@ -75,6 +75,11 @@ export async function POST(req: NextRequest) {
         firstName: true,
         lastName: true,
         city: true,
+        // The postal address collected on the form (Phase 1A). May be null for
+        // applications submitted before this column existed — in that case the
+        // SitterProfile.address stays null until the sitter fills it in their
+        // edit page (or until ops backfills it via scripts/brain/).
+        address: true,
       },
     });
 
@@ -124,6 +129,9 @@ export async function POST(req: NextRequest) {
         published: true,
         lifecycleStatus: true,
         contractVersion: true,
+        // Needed by the address back-fill logic below — we never overwrite an
+        // address the sitter may have edited from their profile page.
+        address: true,
       },
     });
     const currentLifecycleStatus = existingProfile
@@ -147,6 +155,23 @@ export async function POST(req: NextRequest) {
           : "contract_to_sign";
     const keepPublicationState = alreadyActivated;
 
+     
+    // Promote `application.address` → `sitterProfile.address` on create so
+    // the new SitterProfile already has the postal address the sitter typed
+    // into the form. On update we only set the address if it's still null on
+    // the existing profile — never overwrite a value the sitter may have
+    // edited from their own profile page after the initial application.
+    const applicationAddress =
+      typeof application.address === "string" && application.address.trim().length > 0
+        ? application.address.trim()
+        : null;
+    const existingProfileAddress =
+      typeof existingProfile?.address === "string" && existingProfile.address.trim().length > 0
+        ? existingProfile.address.trim()
+        : null;
+    const shouldBackfillAddressOnUpdate =
+      Boolean(applicationAddress) && !existingProfileAddress;
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Prisma client cast while generated types lag the pilot schema.
     const persisted = await (prisma as any).sitterProfile.upsert({
       where: { userId: ensured.id },
@@ -156,6 +181,7 @@ export async function POST(req: NextRequest) {
         published: false,
         publishedAt: null,
         lifecycleStatus: "contract_to_sign",
+        ...(applicationAddress ? { address: applicationAddress } : {}),
         contractAccessTokenHash: hashContractAccessToken(rawToken, secret),
         contractAccessTokenVersion: issuedContractVersion,
         contractAccessTokenIssuedAt: issuedAt,
@@ -165,6 +191,7 @@ export async function POST(req: NextRequest) {
       update: {
         sitterId,
         ...(keepPublicationState ? {} : { published: false, publishedAt: null }),
+        ...(shouldBackfillAddressOnUpdate ? { address: applicationAddress } : {}),
         lifecycleStatus: nextLifecycleStatus,
         contractAccessTokenHash: hashContractAccessToken(rawToken, secret),
         contractAccessTokenVersion: issuedContractVersion,
