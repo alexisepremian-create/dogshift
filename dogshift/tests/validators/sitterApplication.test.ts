@@ -117,6 +117,7 @@ function baseValidPayload() {
     city: "Lausanne" as const,
     cityOther: "",
     npa: "1004",
+    address: "Rue du Lac 35",
 
     linkAnimalProfession: "asa" as const,
     linkAnimalProfessionOther: "",
@@ -223,4 +224,25 @@ test("sitterApplicationSchemaV2 requires dog count when dogs=true", () => {
   payload.otherAnimalsDogCount = null;
   const res = sitterApplicationSchemaV2.safeParse(payload);
   assert.equal(res.success, false);
+});
+
+test("sitterApplicationSchemaV2 rejects missing address", () => {
+  const payload = baseValidPayload() as Record<string, unknown>;
+  delete payload.address;
+  const res = sitterApplicationSchemaV2.safeParse(payload);
+  assert.equal(res.success, false);
+});
+
+test("sitterApplicationSchemaV2 rejects too-short address", () => {
+  const payload = baseValidPayload();
+  payload.address = "Rue";
+  const res = sitterApplicationSchemaV2.safeParse(payload);
+  assert.equal(res.success, false);
+});
+
+test("sitterApplicationSchemaV2 accepts a typical Swiss postal address", () => {
+  const payload = baseValidPayload();
+  payload.address = "Chemin de la Vaux 21B";
+  const res = sitterApplicationSchemaV2.safeParse(payload);
+  assert.equal(res.success, true);
 });
