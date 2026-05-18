@@ -33,6 +33,9 @@ Format : « J'ai identifié ces points clés : [...]. Je vais créer/mettre à j
 - Utilise des wikilinks `[[Sonia Morges]]`, `[[Auth Clerk vs Auth.js v5]]` (Obsidian résout via le nom court)
 - Si tu mentionnes un sitter / une idée / une décision déjà existante dans `brain/`, lie-la
 - Si tu mentionnes une partie technique du repo, lie le doc `[[CLAUDE]]`, `[[AUTH]]`, `[[api]]`, etc.
+- **POLITIQUE ZÉRO ORPHELIN** — chaque nouvelle note doit :
+  1. Avoir une section `## Liens` à la fin qui contient `[[🏠 Home]]` au minimum + d'autres wikilinks pertinents
+  2. Être ajoutée à la liste correspondante dans `brain/🏠 Home.md` (👥 Pilote / 💡 Idées / 🧠 Décisions / etc.) — ouvre Home, trouve la bonne section, insère `- [[<titre>]]` à l'ordre alphabétique
 
 ### 5. Mets à jour la note liée existante
 - Si la source enrichit une fiche sitter existante → ajoute une entrée dans la section "Notes / Interactions" avec la date du jour
