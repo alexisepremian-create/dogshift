@@ -69,8 +69,7 @@ const INVITE_PROTECTED_PATHS = new Set(["/become-sitter/form", "/api/become-sitt
  */
 const BEARER_AUTH_API_PATHS = new Set([
   "/api/admin/maintenance/report", // Bearer MAINTENANCE_API_KEY (GitHub Actions)
-  "/api/host/activation-code",     // Sitter activation — the DS-XXXX-XXXX code itself is the proof
-  "/api/host/activation-code/issue", // Bearer N8N_WEBHOOK_SECRET (n8n contract-signed workflow)
+  "/api/host/activation-code",     // Sitter activation — the DS-XXXX-XXXX code itself is the proof of identity
 ]);
 
 // Auth.js v5 session cookie name. Differs between HTTP (dev) and HTTPS (prod).
