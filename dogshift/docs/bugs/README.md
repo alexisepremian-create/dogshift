@@ -27,10 +27,6 @@ fiche itself records the symptom, root cause, fix, PR link, and any
 
 - [`penthaz-geocoding.md`](./penthaz-geocoding.md) — MapTiler doesn't return coordinates for small Swiss villages. Hardcoded fallback in place; root cause not solved.
 
-## Auth (historical, pre-Clerk-migration)
-
-- [`clerk-v7-silent-errors.md`](./clerk-v7-silent-errors.md) — Clerk v7 changed the error shape; legacy `catch` blocks swallowed messages. Kept for historical context — DogShift now uses Auth.js v5.
-
 ## Mobile
 
 - [`mobile-first-touch-delay.md`](./mobile-first-touch-delay.md) — first-touch on splash/modals/header needed two taps on iOS — `touch-action: manipulation` regression.
