@@ -37,3 +37,22 @@ Typically 2–3 retries with exponential backoff covers the worst case.
 ## Related PRs
 
 - PR #334 — `ensurePrismaWarm()` introduced for maintenance-recap cron
+
+## 🤖 Automated detection
+
+```json
+{
+  "type": "http",
+  "url": "https://www.dogshift.ch/api/health",
+  "expect_status": 200,
+  "timeout_ms": 8000,
+  "auto_fix": { "complexity": "complex" }
+}
+```
+
+GET `/api/health` with an 8 s timeout. If Neon is too slow to warm, the
+request times out → `fail`. Note: this is a flaky check by nature (Neon cold
+starts are intermittent), so the nightly run at 02:07 UTC may catch the
+worst-case latency. False positives are expected occasionally. Auto-fix
+**complex** — the fix isn't a code patch but a config tune
+(`ensurePrismaWarm` retry budget, or paying Neon for warm pool).

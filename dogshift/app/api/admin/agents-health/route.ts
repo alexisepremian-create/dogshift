@@ -30,6 +30,7 @@ const ROUTE_MAP: Record<string, string | null> = {
   "deps-agent":              "/api/agents/deps-agent",
   "deps-weekly":             "/api/agents/deps-weekly",
   "dog-news":                "/api/agents/dog-news",
+  "bug-regression-check":    "/api/cron/bug-regression-check",
   // No dedicated route yet
   auth:                null,
   reservations:        null,

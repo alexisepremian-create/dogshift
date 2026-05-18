@@ -38,3 +38,19 @@ matches "Penthaz" or NPA matches "1303", inject
 ## Related commits
 
 - `087e74c`, `0c9abf0` (branch `fix/map`)
+
+## 🤖 Automated detection
+
+```json
+{
+  "type": "sql",
+  "query": "SELECT COUNT(*)::int AS value FROM \"SitterProfile\" WHERE \"published\" = true AND (\"lat\" IS NULL OR \"lng\" IS NULL)",
+  "expect_max": 0,
+  "auto_fix": { "complexity": "simple" }
+}
+```
+
+Counts published sitters with missing GPS coordinates. Any > 0 means a new
+sitter slipped through without geocoding. Auto-fix **simple** in principle
+(re-run `POST /api/admin/geocode-sitters` for the affected rows), but for now
+we mark the regression and let a human kick it off.
