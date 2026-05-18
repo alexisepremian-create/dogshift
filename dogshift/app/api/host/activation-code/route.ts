@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
 import { hashActivationCode, normalizeSitterLifecycleStatus } from "@/lib/sitterContract";
+import { sendSitterOnboardingNudge } from "@/lib/sitterOnboardingNudge";
 import { sendTelegramMessage } from "@/lib/telegram/sendTelegramMessage";
 
 export const runtime = "nodejs";
@@ -86,6 +87,59 @@ export async function POST(req: Request) {
       `🚀 Sitter activé !${namePart}${emailPart}\n🆔 ${sitterProfile.userId}`,
       { bot: "candidatures" }
     );
+
+    // Best-effort onboarding welcome email — sends the "welcome" stage of the
+    // progressive nudge sequence right after activation. Subsequent stages
+    // (J+1, J+3, J+7, J+14) are fired by /api/cron/sitter-onboarding-nudge.
+    // Wrapped in try/catch so a failing send never breaks activation itself.
+    if (email) {
+      try {
+        // Re-fetch the profile snapshot needed by the completion calculation
+        // (the .findFirst() above only selected a subset of fields).
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Prisma client cast while generated types lag the pilot schema.
+        const sp = await (prisma as any).sitterProfile.findUnique({
+          where: { id: sitterProfile.id },
+          select: {
+            avatarUrl: true,
+            displayName: true,
+            city: true,
+            address: true,
+            bio: true,
+            services: true,
+            pricing: true,
+            acceptsSmall: true,
+            acceptsMedium: true,
+            acceptsLarge: true,
+            stripeAccountStatus: true,
+          },
+        });
+        const firstName = name.split(" ")[0] || "Dogsitter";
+        await sendSitterOnboardingNudge({
+          stage: "welcome",
+          sitterUserId: sitterProfile.userId,
+          email,
+          firstName,
+          profile: {
+            avatarUrl: sp?.avatarUrl ?? null,
+            firstName: sp?.displayName ?? name,
+            city: sp?.city ?? null,
+            address: sp?.address ?? null,
+            bio: sp?.bio ?? null,
+            services: sp?.services ?? null,
+            pricing: sp?.pricing ?? null,
+            acceptsSmall: sp?.acceptsSmall ?? false,
+            acceptsMedium: sp?.acceptsMedium ?? false,
+            acceptsLarge: sp?.acceptsLarge ?? false,
+            stripeAccountStatus: sp?.stripeAccountStatus ?? null,
+          },
+        });
+      } catch (welcomeErr) {
+        console.warn(
+          "[api][host][activation-code] welcome email failed (non-blocking)",
+          welcomeErr,
+        );
+      }
+    }
 
     const hasClerkAccount = Boolean(sitterProfile.user?.clerkUserId);
     const sevenDays = 7 * 24 * 60 * 60;
