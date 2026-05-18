@@ -145,8 +145,7 @@ Champs requis pour `POST /api/bookings` :
 | GET | `/api/host/contract` | Consulter le contrat |
 | POST | `/api/host/accept-terms` | Accepter les CGU |
 | POST | `/api/host/accept-compliance` | Accepter la conformité |
-| GET | `/api/host/activation-code` | Statut du code d'activation |
-| POST | `/api/host/activation-code/issue` | Émettre un code d'activation |
+| POST | `/api/host/activation-code` | Activer le compte avec le code DS-XXXX-XXXX |
 | GET | `/api/host/contract-amendment/current` | Avenant actif |
 | POST | `/api/host/contract-amendment/accept` | Accepter l'avenant |
 

@@ -36,7 +36,7 @@ import {
 
 /**
  * Best-effort: generate a fresh activation code for the signed sitter and
- * persist it on the SitterProfile (same shape as POST /api/host/activation-code/issue).
+ * persist it on the SitterProfile.
  *
  * Returns the code + expiry so the caller can send the activation email directly.
  * Returns null on any failure — callers MUST treat that as non-fatal and log.
@@ -72,8 +72,8 @@ async function issueActivationCodeForSignedSitter(args: {
 }
 
 /**
- * Sends the "contrat signé — voici ton code d'activation" email directly,
- * without going through n8n. Best-effort: never throws to the caller.
+ * Sends the "contrat signé — voici ton code d'activation" email directly.
+ * Best-effort: never throws to the caller.
  */
 async function sendActivationCodeEmailDirect(params: {
   email: string;
@@ -450,12 +450,11 @@ export async function POST(req: NextRequest, context: { params: Promise<{ token:
       metadata: { contractVersion: access.accessVersion, sitterId: access.profile.sitterId },
     });
 
-    // Post-signature side effects: issue a fresh activation code on the same
-    // SitterProfile (reuses lib/sitterActivationCode, same source of truth as
-    // POST /api/host/activation-code/issue) and forward it to n8n so the
-    // workflow can send the activation email. Both steps are best-effort:
-    // failures are logged and swallowed because the contract is already
-    // persisted and must never appear un-signed to the sitter.
+    // Post-signature side effects: issue a fresh activation code on the
+    // SitterProfile (reuses lib/sitterActivationCode) and email it to the
+    // sitter. Both steps are best-effort: failures are logged and swallowed
+    // because the contract is already persisted and must never appear
+    // un-signed to the sitter.
     const activationCode = await issueActivationCodeForSignedSitter({
       sitterProfileId: access.profile.id,
     });
@@ -469,7 +468,6 @@ export async function POST(req: NextRequest, context: { params: Promise<{ token:
     const baseUrl = (process.env.NEXT_PUBLIC_APP_URL ?? "https://www.dogshift.ch").replace(/\/$/, "");
 
     if (activationCode && sitterEmail) {
-      // Send activation email directly — no n8n intermediary
       const firstName = sitterName?.split(" ")[0] ?? "";
       await sendActivationCodeEmailDirect({
         email: sitterEmail,
