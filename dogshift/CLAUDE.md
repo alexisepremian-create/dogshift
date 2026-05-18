@@ -12,7 +12,7 @@ The files below are imported automatically into context at session start. They c
 @docs/api.md
 @docs/data-models.md
 @docs/workflow.md
-@brain/🏠 Home.md
+@brain/DogShift Brain.md
 
 Other docs are not auto-loaded but should be opened on demand when relevant:
 - [`docs/PERFORMANCE.md`](./docs/PERFORMANCE.md) — homepage perf rules (read before touching homepage / SitterCard / map)
