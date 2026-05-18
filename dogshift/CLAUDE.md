@@ -2,94 +2,261 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+> Read this entire file at the start of every session. It is the project's source of truth for conventions, anti-patterns and architecture decisions. When in doubt, prefer the rules here over generic best practices.
+
 ## Commands
 
 ```bash
 npm run dev              # Start dev server (localhost:3000, webpack mode)
 npm run build            # prisma generate + Next.js build
-npm run lint             # ESLint
+npm run lint             # ESLint (--max-warnings=0 via husky lint-staged)
 
 npm test                 # Run unit tests (Node native test runner)
 npm run test:watch       # Watch mode
 
 npm run migrate:deploy   # Deploy pending Prisma migrations
+npm run migrate:deploy:prod  # Same + prisma generate (for direct prod ops)
 
 npm run ship -- "msg"    # Commit all changes, push, open PR, enable auto-merge (see WORKFLOW.md)
 ```
 
-## Shipping changes
+## Working with this repo
 
-See [`WORKFLOW.md`](./WORKFLOW.md). Happy path is `npm run ship -- "commit msg"`
-— CI (lint + typecheck + unit tests + Next build + Playwright smoke tests)
-gates every merge, so the script is safe to fire and forget.
+### Shipping changes
 
-Every bug fix **must** add at least one regression test in `tests/` (see
-existing examples in `tests/validators/`, `tests/availability/`). API errors
-must call `reportApiError()` from `lib/observability/reportApiError.ts` so
-Sentry alerts catch spikes.
+See [`WORKFLOW.md`](./WORKFLOW.md). Happy path is `npm run ship -- "commit msg"` — CI (lint + typecheck + unit tests + Next build + Playwright smoke tests) gates every merge, so the script is safe to fire and forget.
+
+**Always go through a PR.** `main` is branch-protected; direct pushes are rejected. Use `gh pr create` + `gh pr merge --auto --squash`.
+
+### Bug-fix discipline
+
+Every bug fix **must** add at least one regression test in `tests/` (see existing examples in `tests/validators/`, `tests/availability/`, `tests/integrations/`). API errors must call `reportApiError()` from `lib/observability/reportApiError.ts` so Sentry alerts catch spikes.
+
+### When `--no-verify` is acceptable
+
+**Almost never.** Husky lint-staged blocks commits on lint errors and warnings. If you hit a wall:
+- Fix the lint issue (preferred — usually `<a href>` → `<Link>` or unused imports)
+- If the issue is **pre-existing** lint debt in a file you're editing, fix it as a drive-by in the same commit (don't dodge it)
+- Never use `--no-verify` unless the user explicitly authorizes it for that specific commit
+
+### Personal notes layer (gitignored)
+
+The `brain/` folder at the repo root is the founder's Obsidian vault — sitter fiches, daily journal, ideas, decisions. Gitignored. You can read it for context (e.g. *"there's a sitter Sonia who reported X"*) but never assume its content reflects production state — it's first-person notes, not source of truth.
+
+Slash commands in `.claude/commands/` (`/ingest`, `/lint`, `/query`, `/save`) operate on `brain/` — use them when the user asks to capture, audit, query or archive personal knowledge. They never touch code.
+
+---
 
 ## Architecture
 
 **DogShift** is a Swiss dog-sitting marketplace: dog owners book verified sitters. Built with Next.js 16 App Router, React 19, TypeScript, Tailwind CSS v4, Prisma + PostgreSQL (Neon), **Auth.js v5** for authentication (NOT Clerk — migrated away in May 2026, see [`docs/AUTH.md`](./docs/AUTH.md) for the full auth architecture), and Stripe Connect.
 
+### Glossary (domain vocabulary)
+
+Easy to confuse. Be precise:
+
+| Word in code | What it actually means |
+|---|---|
+| `User` | Any account on the platform. Has `role: OWNER \| ADMIN`. Owners can also become sitters. |
+| `SitterProfile` | A `User`'s sitter side. Exists only if the user has applied + been activated. |
+| `owner` / `dog owner` | Person who books a sitter for their dog (the client) |
+| `sitter` / `host` | Person providing the dogsitting service (the supplier). **In the UI we say "dogsitter" or "hôte" in French; in code mostly `sitter`.** |
+| `application` (PilotSitterApplication) | Initial sitter signup form, pre-approval, pre-account |
+| `lifecycleStatus` (on SitterProfile) | `application_received → application_approved → contract_signed → activated → published` |
+| `activation code` | DS-XXXX-XXXX one-time code emailed to a sitter after contract sign. Used at `/become-sitter/activate` to flip lifecycle to `activated`. |
+| `Booking` | A reservation. Status flow: `draft → confirmed → paid → completed \| cancelled` |
+| `Promenade` | Hourly dog walking |
+| `Garde` (or `Dogsitting` in old code) | Hourly dog care |
+| `Pension` (or `Boarding`) | Multi-day boarding at sitter's home |
+
 ### Route Groups
-- `app/(marketing)/` — Public pages: homepage with map, SEO sitter city pages, signup/login
-- `app/(protected)/` — Authenticated dashboards for owners (bookings) and sitters (profile management)
-- `app/(admin)/` — Internal tools for sitter verification and support
-- `app/api/` — REST endpoints organized by resource (sitters, bookings, messages, stripe, admin, cron)
+
+- `app/(marketing)/` — Public pages: homepage with map, SEO sitter city pages, signup/login, sitter activation flow
+- `app/(protected)/` — Authenticated dashboards (owners: bookings; sitters: profile management, availability, requests, messages; admin: full panel)
+- `app/api/` — REST endpoints organized by resource:
+  - `app/api/auth/` — register, forgot-password, reset-password, set-password (Auth.js's own routes are at `/api/auth/[...nextauth]`)
+  - `app/api/account/` — owner-facing actions (bookings, dogs, messages, wallet, settings)
+  - `app/api/host/` — sitter-facing actions (profile, availability, requests, verification, Stripe Connect, activation code)
+  - `app/api/admin/` — internal tools (verifications, applications, finance, maintenance)
+  - `app/api/cron/` — Vercel-cron-only routes (Bearer `CRON_SECRET`)
+  - `app/api/webhooks/stripe/` — Stripe Connect + payment webhooks
+  - `app/api/agents/` — Background agent webhooks (candidature, calendrier, contrat, activation)
 
 ### Key Libraries (`/lib`)
+
+- **`lib/auth/`** — Auth.js helpers. Use `getAuthedDbUser()` 90% of the time (returns `{ id, role, sitterId, email, name }` for the current session). `resolveDbUserId(req)` for request-bound contexts. See [`docs/AUTH.md`](./docs/AUTH.md).
 - **`lib/availability/`** — Slot computation engine: computes available windows from recurring rules + date exceptions + existing bookings. Three service types with different constraints: Promenade (hourly), Dogsitting (daily), Pension (multi-day boarding).
 - **`lib/stripe/`** — Payment intents, Stripe Connect onboarding for sitters, payout release, fee calculations.
 - **`lib/email/`** — Transactional emails via Resend (primary) or SMTP (fallback). Falls back to `console.log` in dev if neither is configured.
+- **`lib/email/templates/`** — React Email components. Always import the template + render at the call site (no HTTP indirection — the `/api/email/*` HTTP routes that used to exist are gone, deleted in PR #337).
 - **`lib/validators/`** — Zod schemas for all API inputs (bookings, auth, contact forms).
-- **`lib/prisma.ts`** — Prisma client singleton.
+- **`lib/prisma.ts`** — Prisma client singleton. **Do not call `new PrismaClient()` anywhere else.**
+- **`lib/calcom/`** — Cal.com webhook signature verification (HMAC-SHA256 against `CALCOM_WEBHOOK_SECRET`).
+- **`lib/telegram/`** — Multi-bot Telegram sender (`sendTelegramMessage(text, { bot: "candidatures" })`). Six bot channels: `candidatures`, `verifications`, `relances`, `maintenance`, `news`, `reservations` — each has its own `TELEGRAM_BOT_TOKEN_<SUFFIX>` env var.
+- **`lib/observability/reportApiError.ts`** — Send structured errors to Sentry. **Always call this in `catch` blocks on API routes.**
 
 ### Data Model Highlights
-- **Users** have a dual role (owner and/or sitter). "Sitter" in the DB = dog owner; "host" = the sitter providing services.
-- **Bookings** flow: `draft → confirmed → paid` with Stripe webhooks driving status transitions.
-- **SitterProfile** tracks verification status + contract state; profiles only appear in search once fully verified and contract signed.
-- **Availability** = weekly Rules + date-specific Exceptions, resolved against existing Bookings at query time (no pre-computed slots).
+
+- **Users** have a dual role (owner and/or sitter). `role: OWNER | ADMIN`. Admin is a hard whitelist (`ADMIN_EMAILS` env var). Sitter is implicit (a `User` with a non-null `SitterProfile`).
+- **Bookings** flow: `draft → confirmed → paid → completed` (or `cancelled` at various stages). Stripe webhooks drive `paid` and `completed` transitions.
+- **SitterProfile** tracks verification status + contract state + activation. Profiles only appear in `/sitters` search once `published: true` (which happens after verification + contract sign + activation).
+- **Availability** = weekly `AvailabilityRule`s (on `User`, not `SitterProfile` — important Prisma-level distinction, see PR #336 for the bug it caused) + date-specific `AvailabilityException`s, resolved against existing Bookings at query time (no pre-computed slots).
 - **InviteCode / PilotSitterApplication** — pilot mode gating for controlled rollout.
+- **Inactivity tracking** — `inactivityStatus` (null | nudge_sent | warning_1 | warning_2 | suspended) on SitterProfile. Daily cron `/api/cron/inactivity-check` runs the state machine.
 
 ### Booking Flow
-1. Owner selects sitter + dates → checkout page validates via slot engine
+
+1. Owner selects sitter + dates → checkout page validates via slot engine (`lib/availability/`)
 2. `POST /api/bookings` creates booking + Stripe payment intent
-3. Owner completes Stripe Checkout
-4. `POST /api/stripe/webhooks` updates booking status → sends confirmation email + SMS
+3. Owner completes Stripe Checkout (Stripe Connect — funds go to the sitter's account, minus the platform fee)
+4. `POST /api/webhooks/stripe` updates booking status → sends confirmation email + SMS
+5. After service completion, `POST /api/cron/release-booking-payouts` releases the payout to the sitter (T+24h policy)
 
 ### Sitter Onboarding Flow
+
 1. Application at `/become-sitter` → stored in `PilotSitterApplication`
-2. Admin approves at `/admin/sitter-applications`
-3. Sitter signs contract at `/contract/sign/[token]` → PDF saved to Cloudflare R2
-4. Sitter completes Stripe Connect onboarding
-5. Profile published and appears in `/sitters` search
+2. AI scoring via `/api/agents/candidature` → HIGH → automated invite email with Cal.com interview link
+3. Cal.com booking → webhook to `/api/agents/calendrier` → Telegram notification (HMAC-verified)
+4. Admin approves at `/admin/sitter-applications` → emails the contract link
+5. Sitter signs contract at `/contract/sign/[token]` → PDF saved to Cloudflare R2 + activation code DS-XXXX-XXXX emailed
+6. Sitter activates at `/become-sitter/activate` (via `POST /api/host/activation-code`) → flips lifecycle to `activated`
+7. Sitter completes `/become-sitter/form` (3 steps: identity + auth, services + pricing, bio) → creates session via `POST /api/auth/register` + `signIn("credentials")`
+8. Sitter completes Stripe Connect onboarding → profile published → appears in `/sitters` search
+
+---
+
+## Conventions & Anti-patterns (read carefully)
+
+These are non-obvious rules learned from real bugs. **Violating them tends to break production.**
+
+### Auth & middleware
+
+- **`proxy.ts` (Next.js middleware) protects `/host/*`, `/account/*`, `/admin/*`, `/api/host/*`, `/api/account/*`, `/api/admin/*`** with the Auth.js session cookie. If you add a new route under these prefixes that authenticates via a Bearer token (e.g. for GitHub Actions, n8n, cron), **you must whitelist it in `BEARER_AUTH_API_PATHS` in `proxy.ts`** — otherwise it 401s at the middleware before reaching your handler.
+  - Bugs caused by this: PR #329 (maintenance-recap), PR #335 (sitter activation).
+  - **Tell-tale symptom:** route returns `{"ok":false,"error":"UNAUTHORIZED"}` instead of the route handler's expected error shape.
+- **Session strategy is JWT, not database** (`auth.ts`). Auth.js v5 + Credentials provider is incompatible with `strategy: "database"`. The JWT callback re-reads `User.role` from DB so role changes propagate.
+- **Use `getAuthedDbUser()`** from `lib/auth/getAuthedDbUser.ts` in route handlers. Don't call `await auth()` directly or roll your own session lookup.
+- **Admin gating is two-layer**: (1) Auth.js session + (2) `ADMIN_EMAILS` whitelist + (3) `HOST_ADMIN_CODE` cookie (`ds_admin_session`). See `lib/adminAuth.ts → getRequestAdminAccess()`.
+
+### Prisma
+
+- **`AvailabilityRule` belongs to `User`, not `SitterProfile`** (via `User.sitterId`). To count availability for a sitter, do `_count` inside the `user` relation, not directly on SitterProfile. (PR #336 bug.)
+- **Never instantiate `new PrismaClient()` outside `lib/prisma.ts`**. Reuse the singleton.
+- The route file `app/api/cron/inactivity-check/route.ts` uses `prisma as any` — that's why `tsc` didn't catch the bug. Avoid this pattern in new code.
+- **Neon autosuspends the DB after idle**. Crons that run at quiet hours (07:00 UTC) may hit `PrismaClientInitializationError` on first connection. Wrap with `ensurePrismaWarm()` retry pattern — see `app/api/cron/maintenance-recap/route.ts`.
+
+### Cron jobs
+
+- Schedule in `vercel.json` (5-field cron in UTC). Auth via `Bearer ${process.env.CRON_SECRET}` in the `authorization` header.
+- Always make them **idempotent** — Vercel may retry. Pattern: write an `AgentLog` row at the end and check for it at the start (see `maintenance-recap` for the `todayKey` pattern).
+- For ops/manual triggering, accept `MAINTENANCE_API_KEY` as alternative bearer + optional `?force=1` to bypass idempotency.
+- Vercel cron logs the request as `User-Agent: vercel-cron/1.0`.
+
+### Telegram bots
+
+- Six dedicated bots (one per concern). Always specify `{ bot: "<channel>" }` — don't fall back to the generic `TELEGRAM_BOT_TOKEN`.
+- Use `parseMode: "HTML"` for rich formatting in long messages (recaps), `"Markdown"` for short alerts.
+- Calls are fire-and-forget (`.catch(() => {})`) — never block a request on Telegram.
+
+### Cal.com integration
+
+- Webhook URL: `https://www.dogshift.ch/api/agents/calendrier`. Three triggers subscribed: `BOOKING_CREATED`, `BOOKING_CANCELLED`, `BOOKING_RESCHEDULED`.
+- HMAC verification via `lib/calcom/verifyCalcomSignature.ts`. Secret in Cal.com webhook + `CALCOM_WEBHOOK_SECRET` env var **must match exactly**. If Cal.com sends `no-secret-provided` as signature → the secret is missing on Cal.com side (not on Vercel).
+
+### API error handling
+
+- **Always call `reportApiError({ kind, code, route, extra })`** in `catch` blocks. Don't just `console.error`. Sentry is configured to alert on spikes — bypassing reportApiError makes the alert blind.
+- **Return JSON with consistent shape**: `{ ok: false, error: "ERROR_CODE" }` (uppercase snake case) for app errors. The middleware uses this same shape, so app-level errors stay distinguishable from middleware errors.
+- **Don't leak** internal details in error responses. Map to user-facing messages in the UI layer (`lib/errors/apiErrorMessage.ts`).
+
+### React / Next.js / UI
+
+- App Router only (no Pages Router).
+- Server Components by default. Add `"use client"` only when needed (hooks, browser APIs).
+- **Performance constraints on the homepage**: no `backdrop-blur`, no `transition-all`, no `left`/`width` animation (use `transform`), no duplicate stateful components, single `StickySearchBar` instance only. See [`docs/PERFORMANCE.md`](./docs/PERFORMANCE.md).
+- Use `<Link>` from `next/link` for in-app navigation. `<a>` triggers full page reload + ESLint error.
+- `next-auth/react` for client-side session: `useSession()`, `signIn()`, `signOut()`. See `components/auth/SignUpForm.tsx` for the canonical credentials signup flow.
+
+### Forms
+
+- Use Zod schemas in `lib/validators/` for both client + API validation. Single source of truth.
+- For multi-step forms (e.g. `BecomeSitterForm`), wire inline sign-up via `/api/auth/register` then `signIn("credentials", { redirect: false })`. **Do not roll your own session creation.** See PR #338 for the gotcha.
+
+### Email
+
+- Templates in `lib/email/templates/` (React Email). Render with `@react-email/render` → call `sendEmail({ to, subject, text, html })`.
+- **Don't add new `/api/email/*` HTTP routes.** Those were a relic of the n8n era (removed PR #337). Always call the lib function inline.
+
+---
 
 ## Infrastructure
-- **Vercel** hosting with cron jobs defined in `vercel.json` (review request emails, payout releases, audit log cleanup)
+
+- **Vercel** hosting with cron jobs defined in `vercel.json` (review request emails, payout releases, audit log cleanup, maintenance recap, inactivity check, lead nurturing)
+- **Neon** for Postgres — pooled connection (`DATABASE_URL`) + direct (`DIRECT_URL` for migrations). Autosuspends after idle (see Prisma section above).
 - **Cloudflare R2** for contract PDFs and verification documents (S3-compatible via AWS SDK)
 - **Vonage** for transactional SMS
 - **Sentry** with custom PII scrubbing (GDPR/nLPD compliance — emails, names, phones filtered from events)
+- **GitHub Actions** runs `Deps Nightly` at 00:30 UTC daily + `Deps Weekly Report` Monday 07:00 UTC. The agent opens PRs for outdated packages, posts results to `/api/admin/maintenance/report` (Bearer `MAINTENANCE_API_KEY`), and pings the maintenance Telegram bot.
 
-## Performance
-See [`docs/PERFORMANCE.md`](./docs/PERFORMANCE.md) for mobile homepage optimization rules.
-Key constraints: no `backdrop-blur`, no `transition-all`, no `left`/`width` animation (use `transform`), no duplicate stateful components, single `StickySearchBar` instance only.
+---
 
 ## Tests
-Unit tests live in `tests/availability/` and cover the slot engine (day slots, multi-day status, range validation, boarding ranges). Tests run with `--experimental-strip-types` so TypeScript files execute directly without a build step.
+
+Unit tests live in `tests/{availability,validators,integrations,emails,...}/` and run with `--experimental-strip-types` so TypeScript files execute directly without a build step.
+
+```bash
+npm test                # all
+npx tsx --test tests/integrations/foo.test.ts   # single file
+```
+
+Playwright E2E tests live in `tests/e2e/`, run only in CI (not on `npm test`).
+
+---
 
 ## Environment Variables
+
 Key variables needed in `.env.local`:
+
+### Core
 - `DATABASE_URL` + `DIRECT_URL` (Neon pooled + direct)
-- **Auth.js v5** (see [`docs/AUTH.md`](./docs/AUTH.md) for details):
-  - `AUTH_SECRET` (32-byte base64, sign JWTs — generate with `npx auth secret`)
-  - `AUTH_TRUST_HOST=true` (required behind Cloudflare)
-  - `AUTH_GOOGLE_ID` + `AUTH_GOOGLE_SECRET` (Google OAuth)
-  - `ADMIN_EMAILS` (comma-separated whitelist for `/admin/*`)
-  - `HOST_ADMIN_CODE` (strong password for the admin gate cookie)
-- `STRIPE_SECRET_KEY` + `STRIPE_PUBLISHABLE_KEY` + `STRIPE_WEBHOOK_SECRET`
-- `NEXT_PUBLIC_MAPTILER_KEY` (map display)
-- `RESEND_API_KEY` or SMTP vars for email
-- `PILOT_MODE=true` + `PILOT_ADMIN_CODE` for invite-gated access
-- `CONTRACT_TOKEN_SECRET` for contract signing tokens
 - `NEXT_PUBLIC_APP_URL` for absolute URL generation
+- `CRON_SECRET` — Vercel cron Bearer auth
+- `MAINTENANCE_API_KEY` — GitHub Actions deps-agent auth (must match the GitHub Actions secret exactly)
+
+### Auth.js v5 (see [`docs/AUTH.md`](./docs/AUTH.md))
+- `AUTH_SECRET` (32-byte base64, sign JWTs — generate with `npx auth secret`)
+- `AUTH_TRUST_HOST=true` (required behind Cloudflare/Vercel)
+- `AUTH_GOOGLE_ID` + `AUTH_GOOGLE_SECRET` (Google OAuth)
+- `ADMIN_EMAILS` (comma-separated whitelist for `/admin/*`)
+- `HOST_ADMIN_CODE` (strong password for the admin gate cookie)
+
+### Stripe
+- `STRIPE_SECRET_KEY` + `STRIPE_PUBLISHABLE_KEY` + `STRIPE_WEBHOOK_SECRET`
+
+### Email & comms
+- `RESEND_API_KEY` (primary) or `SMTP_HOST`/`SMTP_USER`/`SMTP_PASS` (fallback)
+- `EMAIL_FROM` (e.g. `DogShift <no-reply@dogshift.ch>`)
+- `TELEGRAM_BOT_TOKEN_<SUFFIX>` + `TELEGRAM_CHAT_ID_<SUFFIX>` for each of: `CANDIDATURES`, `VERIFICATIONS`, `RELANCES`, `MAINTENANCE`, `NEWS`, `RESERVATIONS`
+
+### Integrations
+- `NEXT_PUBLIC_MAPTILER_KEY` (map display)
+- `CALCOM_WEBHOOK_SECRET` (HMAC verification of Cal.com webhooks → /api/agents/calendrier)
+- `CLOUDFLARE_R2_*` (Account ID, Access Key, Secret Key, Bucket — for contracts + verifs)
+- `VONAGE_API_KEY` + `VONAGE_API_SECRET` (SMS)
+- `SENTRY_DSN` + `SENTRY_AUTH_TOKEN` (errors)
+- `ANTHROPIC_API_KEY` (used by scripts/deps-weekly-report.ts + n8n-mcp + agents)
+
+### Operations
+- `PILOT_MODE=true` + `PILOT_ADMIN_CODE` for invite-gated public access
+- `CONTRACT_TOKEN_SECRET` for contract signing tokens
+- `NEXT_PUBLIC_CALCOM_INTERVIEW_URL` (defaults to `https://cal.com/dogshift/entretien-dogshift`)
+
+---
+
+## Recent lessons (last 30 days, in case patterns repeat)
+
+- **Clerk → Auth.js migration** (mid-May 2026, PRs #316 → #323). Anything that imports `@clerk/*` is dead — Clerk is gone. If you see Clerk stubs (`isSignUpLoaded = false`, `signUp = null`), it's a half-migrated file that needs to be wired to the Auth.js pattern (see `components/auth/SignUpForm.tsx`).
+- **Middleware regression** (PRs #329, #335): adding new `/api/{admin,host,account}/*` routes that auth via Bearer token requires whitelisting in `proxy.ts`. Otherwise 401 at middleware before the route runs.
+- **Prisma cold-start on Neon** (PR #334): scheduled crons firing at quiet hours (07:00 UTC) need `ensurePrismaWarm()` retry — Neon autosuspends and the first connection times out.
+- **Prisma relation gotcha** (PR #336): `AvailabilityRule` is on `User`, not `SitterProfile`. The `as any` cast in `inactivity-check` route hid the type error.
+- **n8n removed in April**: any code mentioning n8n is stale. The `/api/host/activation-code/issue` and `/api/email/send-activation-code` routes were dead; deleted PR #337. Comments referencing n8n should be updated when touched.
