@@ -29,24 +29,38 @@ Three failure modes converged into the same visible symptom:
    handed off, the PageLoader's 350 ms opacity fade revealed the footer
    behind it.
 
-## Fix (the only correct combination)
+## Fix (the only correct combination, post-#372)
 
-All three pieces must be present:
+The Suspense-fallback PageLoader was a dead end (broke e2e on every
+preview, see [`e2e-smoke-body-text-too-short.md`](./e2e-smoke-body-text-too-short.md)).
+The footer flash is now handled entirely by the layered defense in the
+controller + CSS.
 
-1. **Every reachable Suspense fallback MUST render `<PageLoader static />`.**
-   Never `return null` from a `loading.tsx` file the user can hit. The
-   Clerk-era reason for returning null no longer applies.
-2. **`NavigationOverlayController` hands off to PageLoader via MutationObserver**
-   (`components/NavigationOverlayController.tsx`). Soft failsafe at 6 RAFs
-   (~100 ms) for static pages without a loader, hard upper bound 2 s.
-   `<PageLoader />` itself carries `data-page-loader="1"` (added in PR #357).
-3. **Two CSS rules in `app/globals.css` work together — never remove either:**
+1. **`loading.tsx` files return `null`.** Do NOT render `<PageLoader static />`
+   as a Suspense fallback on routes the smoke test hits — the Suspense
+   boundary doesn't resolve fast enough on Vercel preview and the
+   smoke test always sees ~63 chars.
+2. **`NavigationOverlayController` hands off to internal PageLoader via
+   MutationObserver** (`components/NavigationOverlayController.tsx`).
+   Soft failsafe at 6 RAFs (~100 ms), hard upper bound 2 s.
+   `<PageLoader />` carries `data-page-loader="1"` so pages that DO render
+   their own loader (sitter detail page) get instant handoff.
+3. **Footer hide has THREE orthogonal triggers in `app/globals.css`:**
    ```css
-   body[data-navigating="1"] footer { visibility: hidden; }
-   body:has([data-page-loader="1"]) footer { visibility: hidden; }
+   body[data-navigating="1"] footer,
+   body[data-nav-cooldown="1"] footer,
+   body:has([data-page-loader="1"]) footer {
+     visibility: hidden;
+   }
    ```
-   The first covers the static-overlay phase, the second covers the entire
-   PageLoader lifetime including its 350 ms fade-out.
+   - `data-navigating` — overlay-aligned, cleared when controller hands off
+   - `data-nav-cooldown` — set on click + **cleared after a fixed 400 ms**
+     (`FOOTER_HIDE_MS` in the controller). This is the new piece that
+     covers pages with NO internal PageLoader: even after the overlay
+     clears at 100 ms, the footer stays hidden long enough for React to
+     commit the new children.
+   - `:has(PageLoader)` — entire PageLoader lifetime including 350 ms
+     fade-out.
 
 ## How to recognize a regression of this
 
