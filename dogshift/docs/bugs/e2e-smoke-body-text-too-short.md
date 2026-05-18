@@ -25,12 +25,30 @@ even though the page is healthy.
 This is a CI-only regression — production behavior is fine (and actually
 improved, see [`footer-flash-during-navigation.md`](./footer-flash-during-navigation.md)).
 
-## Fix
+## Fix (final form, PR #371)
 
-Add a small helper in the smoke test that waits for
-`[data-page-loader="1"]` to disappear from the DOM before reading body
-text. 10 s timeout, silently expires on routes that never mount the
-loader (login, signup, cgu, etc.) so static pages stay fast.
+Wait for `document.body.innerText.trim().length > 100` directly before
+asserting. PageLoader's content is well under 100 chars (~63), so the
+wait only resolves once the actual page has committed past the
+Suspense boundary. 15 s timeout.
+
+### First attempt that DID NOT work (PR #368)
+
+I initially used `[data-page-loader="1"]` as a proxy — wait for the
+attribute to disappear from the DOM. **That didn't work** because
+`<PageLoader />` is a client component (`"use client"`) and React adds
+the `data-page-loader` attribute on the wrapping `<div>` **after
+hydration**, not in the SSR HTML. So
+`document.querySelector('[data-page-loader="1"]')` was null at
+`domcontentloaded`, the wait resolved instantly, and body was still
+just the loader SVG (~63 chars).
+
+**Lesson for future-Claude**: never use a client-component-added DOM
+attribute as a wait condition in an e2e test that runs at
+`domcontentloaded`. The attribute isn't there yet. Either:
+- Wait for the assertion content directly (what we do now)
+- Use `waitUntil: "networkidle"` or `"load"` instead of `"domcontentloaded"`
+- Wait for a known SSR'd element specific to the destination page
 
 ## How to recognize a regression of this
 
@@ -52,7 +70,8 @@ loader (login, signup, cgu, etc.) so static pages stay fast.
 ## Related PRs
 
 - PR #359 — marketing `loading.tsx` → `<PageLoader static />` (introduced the regression)
-- PR #368 — smoke test waits for loader to unmount (this fix)
+- PR #368 — first (failed) attempt: wait for `data-page-loader` to disappear
+- PR #371 — actual fix: wait for `body.innerText.length > 100` directly
 
 ## 🤖 Automated detection
 
