@@ -4,6 +4,25 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 > Read this entire file at the start of every session. It is the project's source of truth for conventions, anti-patterns and architecture decisions. When in doubt, prefer the rules here over generic best practices.
 
+## Auto-loaded sub-memories
+
+The files below are imported automatically into context at session start. They contain the project's deep knowledge — Claude Code reads them so you don't have to re-explain.
+
+@docs/AUTH.md
+@docs/api.md
+@docs/data-models.md
+@docs/workflow.md
+@brain/🏠 Home.md
+
+Other docs are not auto-loaded but should be opened on demand when relevant:
+- [`docs/PERFORMANCE.md`](./docs/PERFORMANCE.md) — homepage perf rules (read before touching homepage / SitterCard / map)
+- [`docs/stack.md`](./docs/stack.md) — full tech stack inventory
+- [`docs/structure.md`](./docs/structure.md) — repo folder map
+- [`docs/commands.md`](./docs/commands.md) — dev/ship/debug commands reference
+- [`docs/bugs.md`](./docs/bugs.md) — known bugs + fix history
+- [`docs/agents.md`](./docs/agents.md) — extended agent instructions
+- [`docs/telegram.md`](./docs/telegram.md) — Telegram bots setup + troubleshooting
+
 ## Commands
 
 ```bash
@@ -17,14 +36,14 @@ npm run test:watch       # Watch mode
 npm run migrate:deploy   # Deploy pending Prisma migrations
 npm run migrate:deploy:prod  # Same + prisma generate (for direct prod ops)
 
-npm run ship -- "msg"    # Commit all changes, push, open PR, enable auto-merge (see WORKFLOW.md)
+npm run ship -- "msg"    # Commit all changes, push, open PR, enable auto-merge (see docs/workflow.md)
 ```
 
 ## Working with this repo
 
 ### Shipping changes
 
-See [`WORKFLOW.md`](./WORKFLOW.md). Happy path is `npm run ship -- "commit msg"` — CI (lint + typecheck + unit tests + Next build + Playwright smoke tests) gates every merge, so the script is safe to fire and forget.
+See [`docs/workflow.md`](./docs/workflow.md). Happy path is `npm run ship -- "commit msg"` — CI (lint + typecheck + unit tests + Next build + Playwright smoke tests) gates every merge, so the script is safe to fire and forget.
 
 **Always go through a PR.** `main` is branch-protected; direct pushes are rejected. Use `gh pr create` + `gh pr merge --auto --squash`.
 

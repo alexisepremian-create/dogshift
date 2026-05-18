@@ -107,9 +107,8 @@ dogshift/
 │
 ├── public/                       # Assets statiques
 │
-├── CLAUDE.md                     # Instructions pour Claude Code
-├── WORKFLOW.md                   # Workflow de livraison (npm run ship)
-├── AGENT.md                      # Instructions étendues pour agents IA
+├── CLAUDE.md                     # Instructions pour Claude Code (lu auto)
+├── README.md                     # README repo (lu par GitHub)
 ├── package.json
 ├── tsconfig.json
 └── vercel.json                   # Config Vercel (crons, redirects)

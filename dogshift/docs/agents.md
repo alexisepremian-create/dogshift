@@ -1,4 +1,4 @@
-# AGENT.md — Instructions pour agents IA
+# agents.md — Instructions pour agents IA
 
 Ce fichier complète `CLAUDE.md` avec des instructions plus détaillées destinées aux agents IA (Claude Code, sous-agents, etc.) travaillant sur ce projet.
 
