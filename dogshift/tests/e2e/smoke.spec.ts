@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 // Public route smoke tests — no auth required.
-// These run against the Vercel preview URL with real Clerk/DB/Stripe secrets.
+// These run against the Vercel preview URL with real Auth.js/DB/Stripe secrets.
 // If any public page returns a 4xx/5xx or renders a blank body, CI fails
 // before the PR can auto-merge.
 
@@ -15,6 +15,23 @@ const PUBLIC_ROUTES = [
   { path: "/confidentialite", name: "privacy" },
 ] as const;
 
+/**
+ * Wait until the `<PageLoader />` (Suspense fallback for marketing routes)
+ * has unmounted, so body.innerText reflects real content — not just the
+ * loader. Added after PR #359 made `app/(marketing)/loading.tsx` render a
+ * <PageLoader static /> instead of returning null: the loader is in the DOM
+ * at `domcontentloaded`, body has only ~63 chars, and the >100 char check
+ * fails. PageLoader is identified by `data-page-loader="1"` (see
+ * components/ui/PageLoader.tsx).
+ */
+async function waitForPageLoaderGone(page: import("@playwright/test").Page) {
+  await page
+    .waitForFunction(() => !document.querySelector('[data-page-loader="1"]'), {
+      timeout: 10_000,
+    })
+    .catch(() => undefined); // tolerate routes that never mount a loader
+}
+
 for (const route of PUBLIC_ROUTES) {
   test(`${route.name} (${route.path}) renders without server error`, async ({ page }) => {
     const response = await page.goto(route.path, { waitUntil: "domcontentloaded" });
@@ -27,6 +44,7 @@ for (const route of PUBLIC_ROUTES) {
     ).toBeLessThan(400);
 
     await expect(page.locator("body")).toBeVisible();
+    await waitForPageLoaderGone(page);
 
     const bodyText = (await page.locator("body").innerText()).trim();
     expect(
@@ -38,6 +56,7 @@ for (const route of PUBLIC_ROUTES) {
 
 test("homepage mentions DogShift", async ({ page }) => {
   await page.goto("/", { waitUntil: "domcontentloaded" });
+  await waitForPageLoaderGone(page);
   await expect(page.locator("body")).toContainText(/DogShift/i);
 });
 
