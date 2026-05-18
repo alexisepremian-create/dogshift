@@ -101,6 +101,16 @@ export const sitterApplicationSchemaV2 = z
       .trim()
       .regex(SWISS_NPA_REGEX, "NPA suisse invalide (4 chiffres)."),
 
+    // Postal address — rue + numéro (city + NPA captured separately above).
+    // Required at the form layer so we can: compute travel fees, ship the
+    // contract PDF, and reveal the address to owners after a confirmed
+    // booking. Min 5 chars catches "Rue X" but rejects empty/whitespace.
+    address: z
+      .string()
+      .trim()
+      .min(5, "Adresse requise (rue + numéro, min. 5 caractères).")
+      .max(200, "Adresse trop longue (max. 200 caractères)."),
+
     // ----- Step 2: sitter profile -------------------------------------------
     linkAnimalProfession: z.enum(LINK_ANIMAL_PROFESSION_VALUES, {
       message: "Merci de choisir une option.",
@@ -307,6 +317,7 @@ export const sitterApplicationApiSchema = z.object({
 
   // Structured (all optional for backward compat)
   npa: z.string().trim().optional().nullable(),
+  address: z.string().trim().max(200).optional().nullable(),
   cityOther: z.string().trim().max(120).optional().nullable(),
   linkAnimalProfession: z.string().trim().max(60).optional().nullable(),
   linkAnimalProfessionOther: z.string().trim().max(200).optional().nullable(),

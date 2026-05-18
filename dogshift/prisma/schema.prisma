@@ -124,6 +124,11 @@ model PilotSitterApplication {
   calendlyLink              String?
   acceptedEmailSentAt       DateTime?
   acceptedEmailSource       String?
+  /// Postal address (rue + numéro, e.g. "Rue du Lac 35"). Combined with city + npa
+  /// at display time. Required by the new sitter form so we can compute travel
+  /// fees and ship the contract PDF — nullable in schema for backward compat
+  /// with applications submitted before this field existed.
+  address                   String?
 
   @@index([createdAt])
   @@index([status, createdAt])

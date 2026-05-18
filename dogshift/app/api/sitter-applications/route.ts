@@ -208,6 +208,11 @@ export async function POST(req: NextRequest) {
     const npaRaw = normalizeNullableString(payload.npa, 4);
     const npa = npaRaw && SWISS_NPA_REGEX.test(npaRaw) ? npaRaw : null;
 
+    // Postal address (rue + numéro). New required field — kept nullable here
+    // for backward compat with payloads from older clients; the Zod validator
+    // V2 enforces it for new submissions.
+    const address = normalizeNullableString(payload.address, 200);
+
     const cityOther = normalizeNullableString(payload.cityOther, 120);
     const linkAnimalProfession = pickEnum(
       payload.linkAnimalProfession,
@@ -340,6 +345,7 @@ export async function POST(req: NextRequest) {
       const created = await db.pilotSitterApplication.create({
         data: {
           firstName, lastName, city, email, phone, age,
+          address,
           experienceText, hasDogExperience, motivationText, availabilityText,
           consentInterview, consentPrivacy,
           npa, cityOther, linkAnimalProfession, linkAnimalProfessionOther,
