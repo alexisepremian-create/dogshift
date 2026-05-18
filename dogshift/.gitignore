@@ -72,3 +72,9 @@ config.json
 n8n-mcp/node_modules/
 n8n-mcp/build/
 n8n-mcp/.env
+
+# Obsidian — local-only personal knowledge base + editor config.
+# brain/ holds founder notes (sitter fiches, ideas, daily journal, decisions).
+# Claude Code reads it as additional context but git never tracks it.
+brain/
+.obsidian/
