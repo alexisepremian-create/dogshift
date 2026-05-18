@@ -29,6 +29,7 @@ import {
   Package,
   ScanSearch,
   Newspaper,
+  Bug,
 } from "lucide-react";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -118,6 +119,7 @@ const COLORS: Record<string, { icon: ElementType; color: string; bg: string }> =
   "deps-agent":               { icon: Package,       color: "#0e7490", bg: "#ecfeff" },
   "deps-weekly":              { icon: ScanSearch,    color: "#6d28d9", bg: "#f5f3ff" },
   "dog-news":                 { icon: Newspaper,     color: "#b45309", bg: "#fffbeb" },
+  "bug-regression-check":     { icon: Bug,           color: "#dc2626", bg: "#fef2f2" },
 };
 
 const DEFAULT_COLOR = { icon: Bot, color: "#64748b", bg: "rgba(100,116,139,0.12)" };
@@ -139,7 +141,7 @@ const Y_MAESTRO_CHILDREN   = 460;
 const Y_CANDIDATURE_CHILDREN = 640;
 
 // X centers for each row
-const FREE_CX        = [-450, -350, -250, -150, -50, 50, 150, 250, 350, 450] as const;
+const FREE_CX        = [-500, -400, -300, -200, -100, 0, 100, 200, 300, 400, 500] as const;
 const MAESTRO_CX     = 0;
 const MAESTRO_CHILDREN_CX = [-280, -140, 0, 140, 280] as const;
 const CANDIDATURE_CX = 0; // candidature is index 2 of MAESTRO_CHILDREN → cx=0
@@ -169,10 +171,11 @@ const AGENTS: AgentDef[] = [
   { id: "deps-agent",         name: "Deps Nightly",  description: "MAJ autonome des dépendances — npm outdated → branche → tsc → Claude fix → PR auto-merge", icon: "Package" },
   { id: "deps-weekly",        name: "Deep Scan",     description: "Rapport hebdo lundi 07h — release notes Auth.js/Stripe/Next.js/Prisma analysées par Claude",  icon: "ScanSearch" },
   { id: "dog-news",           name: "Dog News",      description: "Veille quotidienne 08h — Google News RSS → Claude → 3 idées de posts réseaux sociaux → Telegram", icon: "Newspaper" },
+  { id: "bug-regression-check", name: "Bug Regression", description: "Nuit 02h07 — lit docs/bugs/*.md → exécute chaque bloc 🤖 Automated detection (http/sql) → AgentLog + récap Telegram maintenance (toujours envoyé, preuve de travail)", icon: "Bug" },
 ];
 
 // Zone membership
-const FREE_AGENTS          = ["auth", "reservations", "calendrier", "contrat", "activation", "assistant", "lead-magnet", "onboarding-owner", "zootherapie-evaluation", "dog-news"] as const;
+const FREE_AGENTS          = ["auth", "reservations", "calendrier", "contrat", "activation", "assistant", "lead-magnet", "onboarding-owner", "zootherapie-evaluation", "dog-news", "bug-regression-check"] as const;
 const MAESTRO_CHILDREN     = ["deps-agent", "booking", "candidature", "notifications", "deps-weekly"] as const;
 const CANDIDATURE_CHILDREN = ["candidature_classic", "candidature_ai"] as const;
 
