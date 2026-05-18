@@ -1,13 +1,17 @@
 "use client";
 
-import { signOut, useSession } from "next-auth/react";
-import { useEffect, useRef, useState } from "react";
+import { signOut } from "next-auth/react";
+import { useEffect, useRef } from "react";
+import { useSearchParams } from "next/navigation";
 
 import PageLoader from "@/components/ui/PageLoader";
 
 export const dynamic = "force-dynamic";
 
-const FAILSAFE_MS = 6000;
+// Hard cap: even if signOut hangs (network drop, blocked endpoint), the user
+// must not stay stuck staring at the loader. 3 s is generous — signOut
+// normally returns in <200 ms.
+const FAILSAFE_MS = 3000;
 
 /**
  * Aggressively wipe any leftover legacy Clerk cookies. The Auth.js session
@@ -40,46 +44,51 @@ function clearLegacyAuthCookies() {
 }
 
 export default function SignOutPage() {
-  const { status } = useSession();
+  const searchParams = useSearchParams();
   const doneRef = useRef(false);
-  const [signOutDone, setSignOutDone] = useState(false);
 
   useEffect(() => {
     if (doneRef.current) return;
     doneRef.current = true;
 
+    // Where to land after sign-out. Defaults to /login if no redirect was
+    // requested. We only accept same-origin relative paths to avoid being
+    // turned into an open redirect.
+    const rawRedirect = searchParams?.get("redirect") ?? "/login";
+    const safeRedirect =
+      rawRedirect.startsWith("/") && !rawRedirect.startsWith("//")
+        ? rawRedirect
+        : "/login";
+
     clearLegacyAuthCookies();
 
     const failsafe = window.setTimeout(() => {
+      // signOut hung (unlikely). Force the redirect anyway — Auth.js may
+      // still complete cookie clearing on the next request because
+      // /api/auth/signout is idempotent.
       clearLegacyAuthCookies();
-      window.location.replace("/login?force=1");
+      window.location.replace(safeRedirect);
     }, FAILSAFE_MS);
 
     void (async () => {
       try {
         // signOut({ redirect: false }) returns once Auth.js has cleared its
-        // session cookie. We then do a hard navigation so the SessionProvider
-        // re-reads the (now-empty) session.
+        // JWT cookie via /api/auth/signout. We then do a HARD navigation
+        // (not router.push) so the SessionProvider re-reads the now-empty
+        // session from a fresh request — there's no point waiting on
+        // useSession() to update because the cookie is gone server-side
+        // and any client-state lag would just freeze the screen.
         await signOut({ redirect: false });
       } catch {
-        /* ignore */
+        /* swallow: even if signOut failed, we still try to redirect */
       }
       clearLegacyAuthCookies();
-      setSignOutDone(true);
+      window.clearTimeout(failsafe);
+      window.location.replace(safeRedirect);
     })();
 
     return () => window.clearTimeout(failsafe);
-  }, []);
-
-  useEffect(() => {
-    if (!signOutDone) return;
-    if (status === "loading") return;
-    if (status === "authenticated") {
-      clearLegacyAuthCookies();
-      return;
-    }
-    window.location.replace("/login");
-  }, [signOutDone, status]);
+  }, [searchParams]);
 
   return <PageLoader label="Déconnexion…" ready minDuration={300} persist static />;
 }
