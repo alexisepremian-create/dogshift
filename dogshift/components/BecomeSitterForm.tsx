@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useSession, signOut } from "next-auth/react";
+import { useSession, signIn } from "next-auth/react";
 import MiniStepRing from "@/components/MiniStepRing";
 
 const SERVICE_OPTIONS = ["Promenade", "Garde", "Pension"] as const;
@@ -37,10 +37,6 @@ export default function BecomeSitterForm() {
   const user = __session?.user ?? null;
   const isLoaded = __sessionStatus !== "loading";
   const isSignedIn = __sessionStatus === "authenticated";
-  // Auth.js v5 owns the sign-up flow via /api/auth/register — useSignUp removed.
-  const signUp = null as unknown as null | { create: (...args: unknown[]) => Promise<unknown> };
-  const signUpFetchStatus: "idle" | "fetching" = "idle";
-  const isSignUpLoaded = false;
   const sessionStatus = !isLoaded ? "loading" : isSignedIn ? "authenticated" : "unauthenticated";
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [formStatus, setFormStatus] = useState<"idle" | "submitting" | "done" | "error">("idle");
@@ -48,8 +44,11 @@ export default function BecomeSitterForm() {
   const [termsAccepted, setTermsAccepted] = useState(false);
 
   const [authError, setAuthError] = useState<string | null>(null);
-  const [authInlineStatus, setAuthInlineStatus] = useState<"idle" | "creating" | "needs_code" | "verifying">("idle");
-  const [emailCode, setEmailCode] = useState("");
+  // After the Clerk → Auth.js migration there is no email-code verification
+  // step on this form — Auth.js sends a verification *link* via
+  // /api/auth/register but lets the user proceed immediately. So the inline
+  // status only has two states now: "idle" or "creating".
+  const [authInlineStatus, setAuthInlineStatus] = useState<"idle" | "creating">("idle");
 
   const [firstName, setFirstName] = useState("");
   const [city, setCity] = useState("");
@@ -67,8 +66,7 @@ export default function BecomeSitterForm() {
   const [avatarDataUrl, setAvatarDataUrl] = useState<string | null>(null);
   const [avatarError, setAvatarError] = useState<string | null>(null);
 
-  const isAuthBusy = authInlineStatus === "creating" || authInlineStatus === "verifying";
-  const showEmailCode = authInlineStatus === "needs_code" || authInlineStatus === "verifying";
+  const isAuthBusy = authInlineStatus === "creating";
 
   const showPasswordMismatch = useMemo(() => {
     if (sessionStatus === "authenticated") return false;
@@ -80,7 +78,7 @@ export default function BecomeSitterForm() {
     if (formStatus === "submitting") return true;
     if (step !== 1) return false;
     if (sessionStatus === "authenticated") return false;
-    return authInlineStatus === "creating" || authInlineStatus === "verifying";
+    return authInlineStatus === "creating";
   }, [authInlineStatus, formStatus, sessionStatus, step]);
 
   const [step2Attempted, setStep2Attempted] = useState(false);
@@ -100,12 +98,20 @@ export default function BecomeSitterForm() {
 
   const effectiveEmail = sessionStatus === "authenticated" ? sessionEmail : email;
 
+  /**
+   * Creates the user's Auth.js account inline (register → credentials login)
+   * so the rest of the multi-step form can call session-gated APIs (e.g.
+   * /api/become-sitter/apply) without bouncing the user to /signup.
+   *
+   * Mirrors the canonical flow in components/auth/SignUpForm.tsx:
+   *   1. POST /api/auth/register — bcrypt password, sends verify-email link
+   *   2. signIn("credentials", { redirect: false }) — establishes the session
+   *
+   * Returns true once the session is established. Sitter applies don't need
+   * the email link to be clicked first.
+   */
   async function ensureInlineSignUp(): Promise<boolean> {
     if (sessionStatus === "authenticated") return true;
-    if (!isSignUpLoaded || !signUp) {
-      setAuthError("Chargement… Réessaie dans un instant.");
-      return false;
-    }
 
     const emailTrimmed = email.trim();
     if (!emailTrimmed || !password) {
@@ -120,140 +126,59 @@ export default function BecomeSitterForm() {
     setAuthError(null);
     setAuthInlineStatus("creating");
 
-    const clerkErrorMessages: Record<string, string> = {
-      form_password_pwned: "Ce mot de passe a été trouvé dans une fuite de données. Choisis-en un autre plus unique.",
-      form_identifier_exists: "__EMAIL_TAKEN__",
-      form_identifier_not_available: "__EMAIL_TAKEN__",
-      email_address_taken: "__EMAIL_TAKEN__",
-      identifier_already_signed_in: "__EMAIL_TAKEN__",
-      form_identifier_already_signed_in: "__EMAIL_TAKEN__",
-      verification_failed: "Code de vérification incorrect. Réessaie.",
-      verification_expired: "Le code de vérification a expiré. Demande un nouveau code.",
-      form_password_length_too_short: "Le mot de passe est trop court (minimum 8 caractères).",
-      form_password_not_strong_enough: "Le mot de passe n’est pas assez fort. Ajoute des chiffres, majuscules ou symboles.",
-      form_param_format_invalid: "Format invalide. Vérifie ton adresse email.",
-      form_param_nil: "Email et mot de passe requis.",
-    };
-
-    type ClerkErrorLike = { code?: string; longMessage?: string; message?: string } | null | undefined;
-
-    // Clerk can throw a ClerkAPIResponseError: { errors: [{code, message}] }
-    // or return { error: {code} } on some SDK paths. Try all shapes.
-    function extractClerkCode(err: unknown): string | null {
-      if (!err || typeof err !== "object") return null;
-      const e = err as Record<string, unknown>;
-      if (Array.isArray(e.errors) && e.errors.length > 0) {
-        const first = e.errors[0] as Record<string, unknown>;
-        if (typeof first?.code === "string") return first.code;
-      }
-      if (typeof e.code === "string") return e.code;
-      return null;
-    }
-
-    const describe = (e: ClerkErrorLike | unknown, fallback: string): string => {
-      const code = e && typeof e === "object"
-        ? (e as Record<string, unknown>).code as string | undefined
-        : undefined;
-      const fr = code ? clerkErrorMessages[code] : undefined;
-      return fr ?? fallback;
-    };
-
     try {
-      const createRes = await (signUp as any).create({ emailAddress: emailTrimmed, password });
-      if (createRes?.error) {
+      const registerRes = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: emailTrimmed,
+          password,
+          name: firstName.trim() || null,
+          intent: "sitter",
+        }),
+      });
+      const body = (await registerRes.json().catch(() => ({}))) as {
+        ok?: boolean;
+        error?: string;
+      };
+
+      if (!registerRes.ok || !body.ok) {
         setAuthInlineStatus("idle");
-        // Default to __EMAIL_TAKEN__ since a createRes.error at this stage is almost always a duplicate email.
-        const msg = describe(createRes.error, "__EMAIL_TAKEN__");
-        setAuthError(msg);
+        if (body.error === "EMAIL_ALREADY_REGISTERED") {
+          // Sentinel value — the UI renders a dedicated "déjà utilisé" block
+          // with a link to /login when authError === "__EMAIL_TAKEN__".
+          setAuthError("__EMAIL_TAKEN__");
+        } else if (body.error === "WEAK_PASSWORD") {
+          setAuthError(
+            "Mot de passe trop faible : 8 caractères minimum, avec au moins une majuscule et un chiffre.",
+          );
+        } else {
+          setAuthError("Impossible de créer le compte. Réessaie dans un instant.");
+        }
         return false;
       }
 
-      if ((signUp as any).status === "complete") {
-        await (signUp as any).finalize({ navigate: () => {} });
+      // Account exists in DB; now sign the user in so the session cookie is
+      // set before they advance to step 2.
+      const loginRes = await signIn("credentials", {
+        email: emailTrimmed,
+        password,
+        redirect: false,
+      });
+      if (!loginRes || loginRes.error) {
         setAuthInlineStatus("idle");
-        return true;
-      }
-
-      const sendRes = await (signUp as any).verifications.sendEmailCode();
-      if (sendRes?.error) {
-        setAuthInlineStatus("idle");
-        console.error("[BecomeSitterForm] sendEmailCode error:", sendRes.error);
-        setAuthError(describe(sendRes.error, "Impossible d’envoyer le code par email. Réessaie dans un instant."));
+        setAuthError(
+          "Compte créé mais connexion échouée. Va sur la page de connexion pour te connecter manuellement.",
+        );
         return false;
       }
 
-      setAuthInlineStatus("needs_code");
-      return false;
+      setAuthInlineStatus("idle");
+      return true;
     } catch (err) {
       setAuthInlineStatus("idle");
-      // Log the full error so we can inspect the exact Clerk code in the console.
-      console.error("[BecomeSitterForm] ensureInlineSignUp error:", JSON.stringify(err), err);
-      const code = extractClerkCode(err);
-      const mapped = code ? clerkErrorMessages[code] : undefined;
-      // A 422 from Clerk’s sign_ups endpoint almost always means the email already exists.
-      const status = err && typeof err === "object" ? (err as Record<string,unknown>).status : undefined;
-      const is422 = status === 422 || status === "422";
-      if (mapped) {
-        setAuthError(mapped);
-      } else if (is422) {
-        setAuthError("__EMAIL_TAKEN__");
-      } else {
-        setAuthError("Impossible de créer le compte. Vérifie l’email et le mot de passe.");
-      }
-      return false;
-    }
-  }
-
-  async function resendInlineEmailCode(): Promise<void> {
-    if (sessionStatus === "authenticated") return;
-    if (!isSignUpLoaded || !signUp) return;
-    if (authInlineStatus === "verifying") return;
-    setAuthError(null);
-    try {
-      const res = await (signUp as any).verifications.sendEmailCode();
-      if (res?.error) {
-        console.error("[BecomeSitterForm] resendEmailCode error:", res.error);
-        setAuthError("Impossible d’envoyer un nouveau code. Réessaie dans un instant.");
-        return;
-      }
-      setAuthError("Nouveau code envoyé. Vérifie ta boîte mail (et les spams).");
-    } catch (err) {
-      console.error("[BecomeSitterForm] resendEmailCode error:", err);
-      setAuthError("Impossible d’envoyer un nouveau code. Réessaie dans un instant.");
-    }
-  }
-
-  async function verifyInlineEmailCode(): Promise<boolean> {
-    if (sessionStatus === "authenticated") return true;
-    if (!isSignUpLoaded || !signUp) return false;
-    const codeTrimmed = emailCode.trim();
-    if (!codeTrimmed) {
-      setAuthError("Entre le code reçu par email.");
-      return false;
-    }
-
-    setAuthError(null);
-    setAuthInlineStatus("verifying");
-    try {
-      const verifyRes = await (signUp as any).verifications.verifyEmailCode({ code: codeTrimmed });
-      if (verifyRes?.error) {
-        setAuthInlineStatus("needs_code");
-        setAuthError("Code invalide. Réessaie.");
-        return false;
-      }
-      if ((signUp as any).status === "complete") {
-        await (signUp as any).finalize({ navigate: () => {} });
-        setAuthInlineStatus("idle");
-        setStep(2);
-        return true;
-      }
-      setAuthInlineStatus("needs_code");
-      setAuthError("Code invalide. Réessaie.");
-      return false;
-    } catch (err) {
-      console.error("[BecomeSitterForm] verifyEmailCode error:", err);
-      setAuthInlineStatus("needs_code");
-      setAuthError("Code invalide. Réessaie.");
+      console.error("[BecomeSitterForm] ensureInlineSignUp error:", err);
+      setAuthError("Une erreur est survenue. Réessaie dans un instant.");
       return false;
     }
   }
@@ -494,9 +419,9 @@ export default function BecomeSitterForm() {
             {sessionStatus !== "authenticated" ? (
               <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-600">
                 Déjà un compte DogShift ?{" "}
-                <a href="/login?next=%2Fbecome-sitter%2Fform" className="font-semibold text-[var(--dogshift-blue)] underline">
+                <Link href="/login?next=%2Fbecome-sitter%2Fform" className="font-semibold text-[var(--dogshift-blue)] underline">
                   Connecte-toi d&apos;abord
-                </a>
+                </Link>
                 {" "}— le formulaire reconnaîtra ta session automatiquement.
               </div>
             ) : null}
@@ -628,48 +553,12 @@ export default function BecomeSitterForm() {
               authError === "__EMAIL_TAKEN__" ? (
                 <p className="text-sm font-medium text-rose-600">
                   Cet email est déjà utilisé.{" "}
-                  <a href="/login?next=%2Fbecome-sitter%2Fform" className="underline">Connecte-toi</a>{" "}
+                  <Link href="/login?next=%2Fbecome-sitter%2Fform" className="underline">Connecte-toi</Link>{" "}
                   ou utilise une autre adresse.
                 </p>
               ) : (
                 <p className="text-sm font-medium text-rose-600">{authError}</p>
               )
-            ) : null}
-
-            {sessionStatus !== "authenticated" && showEmailCode ? (
-              <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5">
-                <p className="text-sm font-semibold text-slate-900">Vérifie ton email</p>
-                <p className="mt-2 text-sm text-slate-600">
-                  Un code vient d’être envoyé à <span className="font-medium text-slate-900">{email}</span>. Entre-le ci-dessous (vérifie aussi tes spams).
-                </p>
-                <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">
-                  <input
-                    value={emailCode}
-                    onChange={(e) => setEmailCode(e.target.value)}
-                    className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:ring-4 focus:ring-slate-200"
-                    placeholder="Code email"
-                    inputMode="numeric"
-                    autoComplete="one-time-code"
-                    disabled={isAuthBusy}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => void verifyInlineEmailCode()}
-                    disabled={isAuthBusy}
-                    className="inline-flex w-full items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-6 py-3 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition hover:bg-[var(--dogshift-blue-hover)] disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    {authInlineStatus === "verifying" ? "Vérification…" : "Valider"}
-                  </button>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => void resendInlineEmailCode()}
-                  disabled={isAuthBusy}
-                  className="mt-3 text-xs font-semibold text-slate-600 underline underline-offset-2 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  Renvoyer le code
-                </button>
-              </div>
             ) : null}
 
             <div className="grid gap-4 sm:grid-cols-2">
@@ -1013,12 +902,6 @@ export default function BecomeSitterForm() {
                   <Spinner className="h-4 w-4" />
                   Chargement…
                 </span>
-              ) : step === 1 && sessionStatus !== "authenticated" ? (
-                authInlineStatus === "needs_code" || authInlineStatus === "verifying" ? (
-                  "Vérifier l’email"
-                ) : (
-                  "Continuer"
-                )
               ) : (
                 "Continuer"
               )}
