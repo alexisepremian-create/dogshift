@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useSession, signOut } from "next-auth/react";
 
 import BrandLogo from "@/components/BrandLogo";
 import HostTopNav from "@/components/HostTopNav";
@@ -29,7 +28,7 @@ export default function HostShell({ children }: { children: React.ReactNode }) {
           <button
             type="button"
             onClick={() => {
-              window.location.assign("/sign-out?redirect=%2Flogin%3Fforce%3D1");
+              window.location.assign("/sign-out?redirect=%2Flogin");
             }}
             className={logoutBtn}
           >

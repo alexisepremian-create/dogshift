@@ -1,12 +1,13 @@
+import PageLoader from "@/components/ui/PageLoader";
+
 /**
- * Sitter detail loading state.
- *
- * Same rationale as `app/(marketing)/loading.tsx`: a fullscreen `<PageLoader>`
- * during an SSR bailout covers the page header for several seconds and reads
- * as "infinite loading" on slow mobile. Returning `null` lets the surrounding
- * marketing layout (header/footer) render immediately and the sitter content
- * fills in as soon as hydration completes.
+ * Sitter detail loading state. Same rationale as the parent
+ * `app/(marketing)/loading.tsx`: returning `null` here caused a brief
+ * footer flash between the layout commit and the sitter page's internal
+ * <PageLoader static />. By returning <PageLoader static /> from the
+ * Suspense fallback the loader is in place from the very first commit
+ * and the handoff to the page's internal loader is invisible.
  */
 export default function Loading() {
-  return null;
+  return <PageLoader static />;
 }
