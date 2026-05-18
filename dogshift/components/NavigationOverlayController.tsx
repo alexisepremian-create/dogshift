@@ -52,6 +52,29 @@ function clearOverlay() {
 }
 
 /**
+ * Minimum duration the footer stays hidden after a navigation starts.
+ * Decoupled from the overlay clear so that:
+ *   - The overlay can disappear quickly (responsive feel) once content commits
+ *   - The footer stays hidden a bit longer to bridge any "layout chrome visible
+ *     but new page children not yet painted" gap on pages without a PageLoader.
+ *
+ * 400 ms is invisible on fast navigations (no flash) but covers slow homepage
+ * data loads. See docs/bugs/footer-flash-during-navigation.md.
+ */
+const FOOTER_HIDE_MS = 400;
+
+function setNavigating() {
+  if (typeof document === "undefined") return;
+  document.body.dataset.navigating = "1";
+  document.body.dataset.navCooldown = "1";
+  window.setTimeout(() => {
+    if (typeof document !== "undefined") {
+      document.body.removeAttribute("data-nav-cooldown");
+    }
+  }, FOOTER_HIDE_MS);
+}
+
+/**
  * Inspect a "next URL" passed to history.pushState / replaceState and decide
  * whether we should flash the overlay. We mirror the click-handler skip list
  * here so e.g. a router.replace("/login?force=1") right after sign-out
@@ -166,8 +189,10 @@ export default function NavigationOverlayController() {
       if (targetPath === currentPath) return;
       if (isSkippedHref(href)) return;
 
-      // SYNCHRONOUSLY flip the body attribute → CSS shows the overlay.
-      document.body.dataset.navigating = "1";
+      // SYNCHRONOUSLY flip the body attributes → CSS shows the overlay AND
+      // hides the footer for FOOTER_HIDE_MS (covers the gap between overlay
+      // clear and new page children commit on pages without a PageLoader).
+      setNavigating();
     }
 
     // Capture phase so we run before the link's default action / React's
@@ -181,15 +206,11 @@ export default function NavigationOverlayController() {
     const origPush = window.history.pushState;
     const origReplace = window.history.replaceState;
     const wrappedPush: typeof window.history.pushState = function (data, unused, url) {
-      if (shouldShowOverlayFor(url, pathname)) {
-        document.body.dataset.navigating = "1";
-      }
+      if (shouldShowOverlayFor(url, pathname)) setNavigating();
       return origPush.call(window.history, data, unused, url);
     };
     const wrappedReplace: typeof window.history.replaceState = function (data, unused, url) {
-      if (shouldShowOverlayFor(url, pathname)) {
-        document.body.dataset.navigating = "1";
-      }
+      if (shouldShowOverlayFor(url, pathname)) setNavigating();
       return origReplace.call(window.history, data, unused, url);
     };
     window.history.pushState = wrappedPush;
