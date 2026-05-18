@@ -1,14 +1,19 @@
-# Footer flash during route transitions
+# Footer / header flash during route transitions
 
-**Status:** Fixed (latest fix 2026-05-18, PR #359 + foundations PR #320, #357)
-**Recurrence count:** 3+ times. Treat as a long-standing sensitivity.
+**Status:** Fixed (latest stable form: PR #374, 2026-05-19). User-confirmed working.
+**Recurrence count:** 4 times across 2026. Treat as a long-standing sensitivity.
 
 ## Symptom
 
 When the user clicks a `<Link>` (especially in the marketing area), the
-footer of the layout briefly flashes through for ~1 frame before the
-animated `<PageLoader />` appears. The user reads this as "the loading
-isn't clean". Most visible on slower mobile devices.
+footer (and sometimes header elements) briefly flash through during the
+route transition. Users describe it as "loading isn't clean" or "le footer
+apparaît puis disparaît". Most visible on slow mobile devices and on
+homepage navigations (heavy initial data load).
+
+A related symptom: the animated logo in the navigation overlay sometimes
+gets cut off mid-animation on fast navigations because the overlay
+disappears before the brand pulse completes.
 
 ## Root cause (final form)
 
@@ -29,65 +34,94 @@ Three failure modes converged into the same visible symptom:
    handed off, the PageLoader's 350 ms opacity fade revealed the footer
    behind it.
 
-## Fix (the only correct combination, post-#372)
+## Fix (final stable form, PR #374)
 
-The Suspense-fallback PageLoader was a dead end (broke e2e on every
-preview, see [`e2e-smoke-body-text-too-short.md`](./e2e-smoke-body-text-too-short.md)).
-The footer flash is now handled entirely by the layered defense in the
-controller + CSS.
+Four moving parts. **All four must be in place** — removing any one
+brings back at least one variant of the flash:
 
-1. **`loading.tsx` files return `null`.** Do NOT render `<PageLoader static />`
-   as a Suspense fallback on routes the smoke test hits — the Suspense
-   boundary doesn't resolve fast enough on Vercel preview and the
-   smoke test always sees ~63 chars.
+1. **`loading.tsx` files return `null`** for routes hit by the e2e smoke
+   test (marketing + sitter detail). Do NOT render `<PageLoader static />`
+   as a Suspense fallback — the Suspense boundary doesn't resolve fast
+   enough on Vercel preview and the smoke test always sees ~63 chars
+   (see [`e2e-smoke-body-text-too-short.md`](./e2e-smoke-body-text-too-short.md)).
 2. **`NavigationOverlayController` hands off to internal PageLoader via
    MutationObserver** (`components/NavigationOverlayController.tsx`).
-   Soft failsafe at 6 RAFs (~100 ms), hard upper bound 2 s.
-   `<PageLoader />` carries `data-page-loader="1"` so pages that DO render
-   their own loader (sitter detail page) get instant handoff.
-3. **Footer hide has THREE orthogonal triggers in `app/globals.css`:**
+   Pages that render their own loader (sitter detail when
+   `sitter === undefined`) get instant handoff via `data-page-loader="1"`.
+   Soft failsafe 6 RAFs (~100 ms), hard upper bound 2 s.
+3. **Minimum overlay duration `MIN_OVERLAY_MS = 600 ms`.** Even if
+   content commits faster, the overlay holds for at least this long so:
+   - The brandPulse SVG animation completes one cycle instead of
+     flicker-and-gone (fixes the user-reported "animation cut off" issue)
+   - All layout chrome (header + footer) stays masked through any
+     re-render storm during hydration
+4. **CSS hide covers BOTH header and footer**, with three orthogonal
+   triggers — any one is enough:
    ```css
    body[data-navigating="1"] footer,
    body[data-nav-cooldown="1"] footer,
-   body:has([data-page-loader="1"]) footer {
+   body:has([data-page-loader="1"]) footer,
+   body[data-navigating="1"] header,
+   body[data-nav-cooldown="1"] header,
+   body:has([data-page-loader="1"]) header {
      visibility: hidden;
    }
    ```
    - `data-navigating` — overlay-aligned, cleared when controller hands off
-   - `data-nav-cooldown` — set on click + **cleared after a fixed 400 ms**
-     (`FOOTER_HIDE_MS` in the controller). This is the new piece that
-     covers pages with NO internal PageLoader: even after the overlay
-     clears at 100 ms, the footer stays hidden long enough for React to
-     commit the new children.
+     AND `MIN_OVERLAY_MS` has elapsed (whichever is later)
+   - `data-nav-cooldown` — set on click + cleared after a fixed window
+     (`FOOTER_HIDE_MS = MIN_OVERLAY_MS = 600 ms`). Aliased to keep the
+     two windows aligned.
    - `:has(PageLoader)` — entire PageLoader lifetime including 350 ms
      fade-out.
 
 ## How to recognize a regression of this
 
-- Footer is visible for ~1 frame between Link click and the animated logo
-- "Loading isn't clean" complaint
-- Most visible on `/(marketing)/*` routes, especially `/sitter/[id]`
+- Footer or header elements visible for ~1 frame between Link click and
+  the animated logo
+- "Loading isn't clean" / "le logo bug / footer apparaît" complaint
+- Animation cut off mid-cycle on fast navigations (logo barely renders
+  before disappearing)
+- Most visible on `/(marketing)/*` routes, especially navigating
+  between homepage and `/sitter/[id]`
 
 ## What NOT to do when fixing it again
 
-- Do NOT make `loading.tsx` return `null` "to speed things up" — that
-  recreates the bug.
+- Do NOT render `<PageLoader static />` from `app/(marketing)/loading.tsx`
+  or any other Suspense fallback hit by smoke. It breaks e2e on every
+  Vercel preview (Suspense doesn't resolve in 15 s on cold Neon).
 - Do NOT replace the MutationObserver with a fixed RAF count — that was
-  the May 2026 regression.
-- Do NOT remove the `:has([data-page-loader="1"])` CSS rule — the fade-out
-  phase needs it.
+  the May 2026 regression that flashed the footer in 1 frame.
+- Do NOT remove any of the THREE CSS triggers (`data-navigating`,
+  `data-nav-cooldown`, `:has([data-page-loader="1"])`). They each cover
+  a different window; removing one reopens that gap.
+- Do NOT drop `MIN_OVERLAY_MS` below ~400 ms — the brand pulse animation
+  needs time to render and the post-overlay-clear gap reopens.
 - Do NOT change `<PageLoader />` to render conditionally without
   `data-page-loader="1"`. If you write a NEW page-level loader, give it
   this marker.
+- Do NOT add new "fast" routes to `SKIP_PATHS` in the controller — the
+  overlay is part of the consistent feel.
 
-## Related PRs
+## Related PRs (full chronology)
 
 - PR #284 — first attempt (lazy-mount overlay)
 - PR #308 — perf: remove transition-all on footer icons (partial relief)
-- PR #320 — static NavigationOverlay introduced
-- PR #357 — controller handoff via MutationObserver
+- PR #320 — static `<NavigationOverlay />` introduced
+- PR #357 — controller handoff via MutationObserver on `data-page-loader`
 - PR #358 — sign-out reliability (related but distinct)
-- PR #359 — marketing `loading.tsx` returns `<PageLoader static />`
+- PR #359 — marketing `loading.tsx` → `<PageLoader static />` (introduced
+  the e2e regression — see `e2e-smoke-body-text-too-short.md`)
+- PR #368 — first failed attempt at fixing the e2e (waited for marker
+  attribute that's added post-hydration)
+- PR #371 — second failed attempt (waited for body text growth, Suspense
+  never resolved in the 15 s window)
+- PR #372 — revert `loading.tsx` to `null`, fixed e2e but resurrected
+  the flash
+- PR #373 — added `data-nav-cooldown` attribute (fixed flash for pages
+  without internal PageLoader)
+- PR #374 — added `MIN_OVERLAY_MS = 600 ms` + extended hide to header
+  (fixed animation cut-off + header flicker, **current stable form**)
 
 ## 🤖 Automated detection
 
