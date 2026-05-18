@@ -21,6 +21,7 @@ Other docs are not auto-loaded but should be opened on demand when relevant:
 - [`docs/commands.md`](./docs/commands.md) — dev/ship/debug commands reference
 - [`docs/bugs/README.md`](./docs/bugs/README.md) — **🐛 Bug playbook.** One file per bug we ever shipped a fix for, with symptom / root cause / fix / what NOT to do again. **Before fixing anything in auth, navigation, Prisma, or the marketing layout, grep this folder for the symptom first** — most of these bugs have recurred ≥ once. **Every new bug you fix MUST get a fiche here**, including a `## 🤖 Automated detection` JSON block (http / sql / none) — the nightly cron at 02:07 UTC reads every fiche, runs the detection, and posts a recap to the maintenance Telegram bot. Full workflow in `brain/🐛 Bugs/Workflow.md`.
 - [`docs/agents.md`](./docs/agents.md) — extended agent instructions
+- [`docs/agents-convention.md`](./docs/agents-convention.md) — **🤖 Rule: every autonomous agent MUST appear in `/admin/agents`.** Cron, webhook, hybrid — same rule. When adding a new agent, follow the checklist (route + ROUTE_MAP + AGENTS array + brain fiche). Detailed inventory of the 19 existing agents lives in `brain/🤖 Agents/`.
 - [`docs/telegram.md`](./docs/telegram.md) — Telegram bots setup + troubleshooting
 - [`docs/emails/EMAIL_SYSTEM.md`](./docs/emails/EMAIL_SYSTEM.md) — **READ FIRST before touching any email** (templates, sender, conventions)
 - [`docs/emails/EMAIL_CATALOG.md`](./docs/emails/EMAIL_CATALOG.md) — catalogue of every transactional email currently sent in prod, with triggers + payload
