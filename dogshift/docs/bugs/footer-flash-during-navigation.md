@@ -74,3 +74,20 @@ All three pieces must be present:
 - PR #357 — controller handoff via MutationObserver
 - PR #358 — sign-out reliability (related but distinct)
 - PR #359 — marketing `loading.tsx` returns `<PageLoader static />`
+
+## 🤖 Automated detection
+
+```json
+{
+  "type": "http",
+  "url": "https://www.dogshift.ch/",
+  "expect_status": 200,
+  "expect_contains": "ds-nav-overlay",
+  "auto_fix": { "complexity": "complex" }
+}
+```
+
+Fetches the homepage and asserts the static `<NavigationOverlay />` element is
+in the SSR HTML. If it disappears (someone removed it from the root layout, or
+its id was renamed), the cron flags a regression. Auto-fix marked **complex**
+because the right repair depends on what was removed — humans only.

@@ -32,3 +32,12 @@ both iOS Safari and Android Chrome.
 - PR #79 — revert
 - Reintegrated later
 - Commits: `de38b9a` (fix), `716502b` (revert)
+
+## 🤖 Automated detection
+
+```json
+{
+  "type": "none",
+  "reason": "Mobile-specific UX issue — cannot be probed from a server-side cron. Detected only through real-device QA (manual)."
+}
+```

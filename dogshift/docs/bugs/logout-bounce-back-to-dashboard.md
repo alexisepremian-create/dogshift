@@ -77,3 +77,21 @@ happens before any `useEffect` that could race against it.
 - PR #358 — make `/sign-out` reliable (immediate redirect after `signOut()`)
 - PR #359 — drop `?force=1` from logout URLs (introduced the bounce regression)
 - PR #360 — handoff flag (this fix)
+
+## 🤖 Automated detection
+
+```json
+{
+  "type": "http",
+  "url": "https://www.dogshift.ch/sign-out",
+  "expect_status": 200,
+  "expect_contains": "ds_signout_handoff_ts",
+  "auto_fix": { "complexity": "complex" }
+}
+```
+
+The handoff flag string `ds_signout_handoff_ts` must appear in the /sign-out
+page bundle. If someone deletes `lib/auth/signoutHandoff.ts` or removes the
+`markHandoff()` call, this check fails because the flag string is gone from
+the shipped JS. Auto-fix **complex** because the right repair involves
+restoring the helper + both call sites.

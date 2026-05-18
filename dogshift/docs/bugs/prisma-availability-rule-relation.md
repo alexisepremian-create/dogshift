@@ -70,3 +70,20 @@ Then read the count via `s.user._count.availabilityRules`.
 ## Related PRs
 
 - PR #336 — fix the cron query
+
+## 🤖 Automated detection
+
+```json
+{
+  "type": "sql",
+  "query": "SELECT COUNT(*)::int AS value FROM \"SitterProfile\" sp WHERE sp.\"lifecycleStatus\" = 'activated' AND NOT EXISTS (SELECT 1 FROM \"User\" u WHERE u.\"sitterId\" = sp.\"sitterId\")",
+  "expect_max": 0,
+  "auto_fix": { "complexity": "complex" }
+}
+```
+
+Counts activated `SitterProfile` rows whose `sitterId` doesn't resolve to a
+`User.sitterId`. This is the schema invariant the bug violated. If it's > 0,
+something has decoupled the relation (a missing migration, a backfill bug,
+etc.). Auto-fix **complex** — needs a human to investigate where the orphan
+came from before patching.
