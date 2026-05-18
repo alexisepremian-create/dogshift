@@ -74,7 +74,8 @@ n8n-mcp/build/
 n8n-mcp/.env
 
 # Obsidian — local-only personal knowledge base + editor config.
-# brain/ holds founder notes (sitter fiches, ideas, daily journal, decisions).
+# /brain/ holds founder notes (sitter fiches, ideas, daily journal, decisions).
 # Claude Code reads it as additional context but git never tracks it.
-brain/
+# Leading slash → only the brain/ folder at the repo root, NOT scripts/brain/ etc.
+/brain/
 .obsidian/
