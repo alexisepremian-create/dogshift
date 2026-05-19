@@ -200,9 +200,11 @@ These are non-obvious rules learned from real bugs. **Violating them tends to br
 
 ### Telegram bots
 
-- Six dedicated bots (one per concern). Always specify `{ bot: "<channel>" }` — don't fall back to the generic `TELEGRAM_BOT_TOKEN`.
-- Use `parseMode: "HTML"` for rich formatting in long messages (recaps), `"Markdown"` for short alerts.
-- Calls are fire-and-forget (`.catch(() => {})`) — never block a request on Telegram.
+- Six dedicated bots (one per concern). Always specify `{ bot: "<channel>" }` — don't fall back to the generic `TELEGRAM_BOT_TOKEN`. Per-bot guidance in `brain/🤖 Agents/Telegram bots/`.
+- **Use `parseMode: "HTML"` everywhere** — Markdown breaks on user input with underscores (emails!). HTML mode + `escapeHtml()` from `lib/telegram/format.ts` is the safe default.
+- **The DogShift Maintenance daily recap is the visual source of truth.** Every Telegram message should mirror its style: `<emoji> <b>Titre — 19 mai 2026</b>` header, French abbreviated date, blank line between sections, `<i>Généré automatiquement · 19 mai 2026</i>` footer, color emojis 🔴 🟡 🟢 ✅ ⚠️ 🚨 with the same meaning everywhere. Use the helpers in `lib/telegram/format.ts` (`tgHeader`, `tgSection`, `tgMessage`, `tgFooter`, `formatDateFR`, `pluralFR`, `riskEmoji`, `escapeHtml`). Don't roll your own date format or section layout — copy the maintenance-recap pattern.
+- **Calls in user-facing routes can be fire-and-forget** (`.catch(() => {})`) — never block a request on Telegram. **Calls in cron routes MUST be `await`ed** (see "Cron jobs" section — Vercel kills fire-and-forget after response is sent). Always persist the boolean return value to `AgentLog.details.telegramSent` so silent bot failures (missing env vars, network drops) are auditable. Pattern: `app/api/agents/relance-owner/route.ts`, `app/api/cron/bug-regression-check/route.ts`.
+- **Sort by urgency, not by group** in any list of items with severity (high / medium / low). One line per item with its color emoji, sorted high → medium → low → alphabetical within tier. Don't bucket "all reds, then all yellows" — see `app/api/cron/maintenance-recap/route.ts` deps section for the canonical sort.
 
 ### Cal.com integration
 
