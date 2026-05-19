@@ -12,6 +12,10 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Community-vendored Claude skills (UI UX Pro Max, stop-slop, etc).
+    // Not DogShift code, not maintained here — their scripts/.cjs files
+    // would otherwise trip @typescript-eslint/no-require-imports.
+    ".claude/skills/**",
   ]),
 ]);
 
