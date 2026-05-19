@@ -81,14 +81,20 @@ export function formatRecap(results: FicheResult[], runDate: Date = new Date()):
       : null;
 
   // Detail of intentional skips — show only on green nights so you can
-  // see which fiches are intentionally not probed (and why) at a glance.
+  // see which fiches are intentionally not probed (and the reason) at a
+  // glance. Reason is inlined from the JSON `reason` field (truncated to
+  // 1 sentence / 140 chars) so the user doesn't have to open each fiche.
   const intentionalBlock =
     isClean && intentionallySkipped.length > 0
       ? [
           tgSection("⏭", pluralFR(intentionallySkipped.length, "fiche non auto-checkable", "fiches non auto-checkables")),
-          ...intentionallySkipped.map(
-            (r) => `⚪ <code>${escapeHtml(r.slug)}</code> — raison documentée dans la fiche`,
-          ),
+          ...intentionallySkipped.map((r) => {
+            const reason = r.detection?.type === "none" ? (r.detection.reason ?? "") : "";
+            const shortReason = firstSentence(reason, 140);
+            return shortReason
+              ? `⚪ <code>${escapeHtml(r.slug)}</code>\n   ${escapeHtml(shortReason)}`
+              : `⚪ <code>${escapeHtml(r.slug)}</code> — raison non précisée dans la fiche`;
+          }),
         ]
       : null;
 
@@ -101,6 +107,23 @@ export function formatRecap(results: FicheResult[], runDate: Date = new Date()):
     hintBlock,
     tgFooter(runDate),
   ]);
+}
+
+/**
+ * Trim a multi-sentence string to its first sentence, capped at `max`
+ * chars (default 140). Falls back to a hard truncate with `…` if the
+ * first sentence itself is too long.
+ */
+function firstSentence(s: string, max = 140): string {
+  const trimmed = s.trim();
+  if (!trimmed) return "";
+  // Take everything up to the first period / question / exclamation
+  // that is followed by a space or end-of-string. Avoids cutting at
+  // dotted file names like `lib/foo.ts`.
+  const match = trimmed.match(/^.+?[.!?](?:\s|$)/);
+  const sentence = (match ? match[0] : trimmed).trim().replace(/[.!?]$/, ".");
+  if (sentence.length <= max) return sentence;
+  return sentence.slice(0, max - 1).trimEnd() + "…";
 }
 
 /** Exposed for callers that already have an ISO string and don't want to re-parse. */
