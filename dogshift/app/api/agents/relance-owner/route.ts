@@ -15,9 +15,49 @@ import { renderEmailLayout } from "@/lib/email/templates/layout";
 export const runtime = "nodejs";
 
 import { sendTelegramMessage } from "@/lib/telegram/sendTelegramMessage";
+import { escapeHtml, formatDateFR, tgHeader, tgMessage, tgSection } from "@/lib/telegram/format";
 
-async function sendTelegram(text: string) {
-  await sendTelegramMessage(text, { bot: "relances" }).catch(() => {});
+/**
+ * Send the relance recap to the `relances` bot. Returns `true` on
+ * apparent success, `false` if Telegram refused or the env vars are
+ * missing — caller persists this to AgentLog so we can detect silent
+ * bot drops (the same gotcha as bug-regression-check, see CLAUDE.md
+ * "Cron jobs" section).
+ */
+async function sendTelegram(text: string): Promise<boolean> {
+  try {
+    return await sendTelegramMessage(text, { bot: "relances", parseMode: "HTML" });
+  } catch {
+    return false;
+  }
+}
+
+function formatRelanceMessage(args: {
+  email: string;
+  prenom?: string | null;
+  sitterPrenom?: string | null;
+  sitterVille?: string | null;
+  daysSinceLastMessage?: number | null;
+}): string {
+  const sitterLabel = args.sitterVille
+    ? `${args.sitterPrenom ?? "un sitter"} (${args.sitterVille})`
+    : args.sitterPrenom ?? "un sitter";
+
+  return tgMessage([
+    tgHeader("💌", "Relance owner", new Date()),
+    [
+      tgSection("👤", "Propriétaire"),
+      `${args.prenom ? escapeHtml(args.prenom) + " · " : ""}<code>${escapeHtml(args.email)}</code>`,
+    ],
+    [
+      tgSection("🐕", "Contexte"),
+      `Sitter contacté : ${escapeHtml(sitterLabel)}`,
+      args.daysSinceLastMessage != null
+        ? `Dernier message il y a ${args.daysSinceLastMessage} jour${args.daysSinceLastMessage > 1 ? "s" : ""}`
+        : `Délai depuis le dernier message non disponible`,
+    ],
+    `<i>Généré automatiquement · ${formatDateFR()}</i>`,
+  ]);
 }
 
 export async function POST(req: NextRequest) {
@@ -133,12 +173,21 @@ Réponds UNIQUEMENT avec le JSON brut : { "subject": "...", "bodyHtml": "<p>...<
       },
     });
 
-    // 4. AgentLog
+    // 4. Telegram — sent BEFORE AgentLog so the boolean ends up in
+    // the audit details. `sendTelegram` returns false on missing env
+    // vars (TELEGRAM_BOT_TOKEN_RELANCES / TELEGRAM_CHAT_ID_RELANCES not
+    // set) or any non-2xx response — that's how we detect a silently
+    // misconfigured bot. Same audit trail as bug-regression-check.
+    const telegramSent = await sendTelegram(
+      formatRelanceMessage({ email, prenom, sitterPrenom, sitterVille, daysSinceLastMessage }),
+    );
+
+    // 5. AgentLog (with telegramSent flag for audit + ops debugging)
     await prisma.agentLog.create({
       data: {
         agentName: "relance-owner",
         actionType: "relance_sent",
-        summary: `Relance envoyée à ${email} — sitter: ${sitterPrenom ?? "?"} (${sitterVille ?? "?"})`,
+        summary: `Relance envoyée à ${email} — sitter: ${sitterPrenom ?? "?"} (${sitterVille ?? "?"}). Telegram ${telegramSent ? "sent" : "DROPPED"}.`,
         details: {
           userId,
           email,
@@ -147,6 +196,7 @@ Réponds UNIQUEMENT avec le JSON brut : { "subject": "...", "bodyHtml": "<p>...<
           sitterVille: sitterVille ?? null,
           daysSinceLastMessage: daysSinceLastMessage ?? null,
           subject: emailContent.subject,
+          telegramSent,
         },
         targetId: userId,
         durationMs: Date.now() - start,
@@ -154,12 +204,7 @@ Réponds UNIQUEMENT avec le JSON brut : { "subject": "...", "bodyHtml": "<p>...<
       },
     });
 
-    // 5. Telegram
-    await sendTelegram(
-      `💌 Relance envoyée à ${email} — sitter: ${sitterPrenom ?? "?"} (${sitterVille ?? "?"})`
-    );
-
-    return NextResponse.json({ success: true, agent: "relance-owner" });
+    return NextResponse.json({ success: true, agent: "relance-owner", telegramSent });
   } catch (error) {
     const durationMs = Date.now() - start;
     await prisma.agentLog

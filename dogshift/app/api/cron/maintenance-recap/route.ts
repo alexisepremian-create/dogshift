@@ -233,9 +233,6 @@ export async function GET(req: Request) {
       const details = lastWeeklyRun.details as AgentLogDetails;
       const pkgs = Array.isArray(details?.packages) ? details.packages : [];
       const withUpdates = pkgs.filter((p) => (p.releases ?? 0) > 0);
-      const high = withUpdates.filter((p) => p.risk === "high");
-      const medium = withUpdates.filter((p) => p.risk === "medium");
-      const low = withUpdates.filter((p) => p.risk === "low");
 
       // Days since last Monday scan (always Monday → reset each week)
       const daysSinceWeekly = Math.floor(
@@ -255,17 +252,37 @@ export async function GET(req: Request) {
       if (withUpdates.length === 0) {
         depsLines.push(`✅ Aucun paquet sensible n'a d'update dispo ${nextScanLabel}`);
       } else {
-        depsLines.push(`${withUpdates.length} paquet${withUpdates.length > 1 ? "s" : ""} sensible${withUpdates.length > 1 ? "s ont" : " a"} des updates :`);
-        if (high.length > 0) {
-          const names = high.map((p) => `<code>${p.pkg}</code>`).join(", ");
-          depsLines.push(`   🔴 ${high.length} risque haut → review manuelle obligatoire : ${names}`);
-        }
-        if (medium.length > 0) {
-          const names = medium.map((p) => `<code>${p.pkg}</code>`).join(", ");
-          depsLines.push(`   🟡 ${medium.length} risque moyen → lis le changelog : ${names}`);
-        }
-        if (low.length > 0) {
-          depsLines.push(`   🟢 ${low.length} risque faible → ok à auto-merger`);
+        // Per-package list, sorted by urgency (high → medium → low),
+        // alphabetical within each tier. Mirrors the admin panel view —
+        // one line per package, color emoji + name + recommended action.
+        const actionByRisk = (risk: string): string => {
+          if (risk === "high") return "review manuelle obligatoire";
+          if (risk === "medium") return "lis le changelog";
+          if (risk === "low") return "ok à auto-merger";
+          return "";
+        };
+        const emojiByRisk = (risk: string): string => {
+          if (risk === "high") return "🔴";
+          if (risk === "medium") return "🟡";
+          if (risk === "low") return "🟢";
+          return "⚪";
+        };
+        const rankByRisk = (risk: string): number =>
+          risk === "high" ? 0 : risk === "medium" ? 1 : risk === "low" ? 2 : 3;
+
+        const sorted = [...withUpdates].sort((a, b) => {
+          const r = rankByRisk(a.risk ?? "") - rankByRisk(b.risk ?? "");
+          return r !== 0 ? r : a.pkg.localeCompare(b.pkg);
+        });
+
+        depsLines.push(
+          `${withUpdates.length} paquet${withUpdates.length > 1 ? "s" : ""} sensible${withUpdates.length > 1 ? "s ont" : " a"} des updates (par urgence) :`,
+        );
+        for (const pkg of sorted) {
+          const risk = pkg.risk ?? "low";
+          depsLines.push(
+            `   ${emojiByRisk(risk)} <code>${pkg.pkg}</code> — ${actionByRisk(risk)}`,
+          );
         }
         depsLines.push(`   👉 Détails sur <a href="https://www.dogshift.ch/admin/maintenance">/admin/maintenance</a>`);
       }

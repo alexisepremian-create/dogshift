@@ -113,7 +113,7 @@ export async function GET(req: Request) {
   // complete before the route returns, even if it costs ~500 ms.
   // `sendTelegramMessage` returns `false` on failure (never throws) so we
   // capture the boolean and persist it for audit.
-  const message = formatRecap(results, todayKey);
+  const message = formatRecap(results, new Date());
   let telegramSent = false;
   try {
     telegramSent = await sendTelegramMessage(message, {
