@@ -96,6 +96,6 @@ because the Suspense boundary on the preview really doesn't resolve in
 ```json
 {
   "type": "none",
-  "reason": "CI test logic — not a runtime production bug. Detected by CI itself failing on every PR."
+  "reason": "Bug de logique côté CI — pas un problème de prod runtime. Détecté directement par la CI qui plante sur chaque PR."
 }
 ```

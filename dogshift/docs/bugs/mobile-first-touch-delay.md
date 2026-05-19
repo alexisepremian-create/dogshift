@@ -38,6 +38,6 @@ both iOS Safari and Android Chrome.
 ```json
 {
   "type": "none",
-  "reason": "Mobile-specific UX issue — cannot be probed from a server-side cron. Detected only through real-device QA (manual)."
+  "reason": "Bug UX spécifique mobile (iOS Safari, Android Chrome) — pas testable depuis un cron server-side. Détectable uniquement par QA manuel sur un vrai téléphone."
 }
 ```

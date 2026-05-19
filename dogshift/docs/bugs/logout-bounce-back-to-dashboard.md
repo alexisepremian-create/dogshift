@@ -83,6 +83,6 @@ happens before any `useEffect` that could race against it.
 ```json
 {
   "type": "none",
-  "reason": "The original idea was to grep for `ds_signout_handoff_ts` in the /sign-out HTML, but Next.js splits client code into JS chunks that aren't referenced inline in the SSR HTML — the string is in the deployed bundle but not in the page response. So the http probe was a false positive every night. The real scenario (sign-in → click logout → land on /login without bounce to /post-login) requires a Playwright session, which lives in tests/e2e/auth.spec.ts. Detection here would be redundant + flaky."
+  "reason": "Non détectable par probe HTTP. Next.js splitte le code client en chunks JS séparés du HTML SSR — la string `ds_signout_handoff_ts` est bien dans le bundle déployé mais pas dans la réponse HTML de /sign-out. Le vrai scénario (login → logout → atterrir sur /login sans bounce vers /post-login) nécessite une session Playwright, couvert par tests/e2e/auth.spec.ts."
 }
 ```
