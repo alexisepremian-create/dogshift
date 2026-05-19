@@ -14,6 +14,7 @@
 
 import {
   escapeHtml,
+  formatDateFR,
   pluralFR,
   tgFooter,
   tgHeader,
@@ -106,3 +107,6 @@ export function formatRecap(results: FicheResult[], runDate: Date = new Date()):
 export function todayKeyToDate(todayKey: string): Date {
   return new Date(`${todayKey}T00:00:00`);
 }
+
+/** Re-exported for backwards compat with callers passing a string. */
+export { formatDateFR };
