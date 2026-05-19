@@ -1,11 +1,15 @@
 /**
  * Format the nightly bug-regression-check Telegram recap.
  *
- * Visual style is aligned with the `DogShift Maintenance` daily recap
- * (the founder-approved source of truth for all Telegram messages):
- * French abbreviated date in the header + footer, one blank line
- * between sections, bold section titles, color emoji for severity.
- * See lib/telegram/format.ts for the shared helpers.
+ * Visual style aligned with the `DogShift Maintenance` daily recap (the
+ * founder-approved source of truth for all Telegram messages): French
+ * abbreviated date in the header + footer, one blank line between
+ * sections, bold section titles, color emoji for severity. Helpers in
+ * lib/telegram/format.ts.
+ *
+ * Title is in French ("Audit nocturne des bugs") and so are all the
+ * labels — the message goes to a French-speaking founder, no reason
+ * to mix English status names like "pass / fail / error".
  */
 
 import {
@@ -26,10 +30,17 @@ export function formatRecap(results: FicheResult[], runDate: Date = new Date()):
   const skipped = results.filter((r) => r.outcome.status === "skipped");
   const passes = results.filter((r) => r.outcome.status === "pass");
 
-  const headerEmoji = failures.length === 0 && errors.length === 0 ? "🌙" : "🚨";
-  const headerTitle = "Bug regression check";
+  // Split skipped into "intentionally not auto-checkable" (type: none with
+  // documented reason) vs "fiche has no detection block at all" — the
+  // first is fine, the second is a real TODO.
+  const intentionallySkipped = skipped.filter((r) => r.detection?.type === "none");
+  const missingBlock = skipped.filter((r) => r.detection === null);
 
-  // Regressions section (only if any).
+  const isClean = failures.length === 0 && errors.length === 0;
+  const headerEmoji = isClean ? "🌙" : "🚨";
+  const headerTitle = "Audit nocturne des bugs";
+
+  // Régressions (only if any)
   const regressionsBlock =
     failures.length > 0
       ? [
@@ -41,7 +52,7 @@ export function formatRecap(results: FicheResult[], runDate: Date = new Date()):
         ]
       : null;
 
-  // Errors section (the check itself broke).
+  // Checks en erreur (only if any)
   const errorsBlock =
     errors.length > 0
       ? [
@@ -53,18 +64,31 @@ export function formatRecap(results: FicheResult[], runDate: Date = new Date()):
         ]
       : null;
 
-  // Summary section — always present.
+  // Résumé — toujours présent
   const summaryBlock = [
     tgSection("📊", "Résumé"),
     `${pluralFR(results.length, "fiche", "fiches")} checkée${results.length !== 1 ? "s" : ""}`,
-    `✅ ${passes.length} pass · 🚨 ${failures.length} fail · ⚠️ ${errors.length} error · ⏭ ${skipped.length} skipped`,
+    `✅ ${pluralFR(passes.length, "OK")} · 🚨 ${pluralFR(failures.length, "régression")} · ⚠️ ${pluralFR(errors.length, "erreur")} · ⏭ ${pluralFR(skipped.length, "ignorée")}`,
   ];
 
-  // Hint when nothing tripped AND some fiches still have no detection.
+  // Hint — only show if there's a REAL TODO (missing block). Intentional
+  // type:none skips don't deserve a hint.
   const hintBlock =
-    failures.length === 0 && errors.length === 0 && skipped.length > 0
+    missingBlock.length > 0
       ? [
-          `<i>💡 ${pluralFR(skipped.length, "fiche sans", "fiches sans")} bloc <code>## 🤖 Automated detection</code> — ajoute du JSON dans la fiche pour activer le check.</i>`,
+          `<i>💡 ${pluralFR(missingBlock.length, "fiche sans", "fiches sans")} bloc <code>## 🤖 Automated detection</code> — ajoute du JSON dans ces fiches pour activer le check.</i>`,
+        ]
+      : null;
+
+  // Detail of intentional skips — show only on green nights so you can
+  // see which fiches are intentionally not probed (and why) at a glance.
+  const intentionalBlock =
+    isClean && intentionallySkipped.length > 0
+      ? [
+          tgSection("⏭", pluralFR(intentionallySkipped.length, "fiche non auto-checkable", "fiches non auto-checkables")),
+          ...intentionallySkipped.map(
+            (r) => `⚪ <code>${escapeHtml(r.slug)}</code> — raison documentée dans la fiche`,
+          ),
         ]
       : null;
 
@@ -73,6 +97,7 @@ export function formatRecap(results: FicheResult[], runDate: Date = new Date()):
     regressionsBlock,
     errorsBlock,
     summaryBlock,
+    intentionalBlock,
     hintBlock,
     tgFooter(runDate),
   ]);

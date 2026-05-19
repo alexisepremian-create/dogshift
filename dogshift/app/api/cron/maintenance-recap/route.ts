@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
 import { sendTelegramMessage } from "@/lib/telegram/sendTelegramMessage";
+import { pluralFR } from "@/lib/telegram/format";
 import { reportApiError } from "@/lib/observability/reportApiError";
 
 export const runtime = "nodejs";
@@ -202,26 +203,55 @@ export async function GET(req: Request) {
     // changelog review by Claude with risk levels). Telling the user what
     // to DO matters more than "il y a Xh", which is unactionable noise.
     type WeeklyPkg = { pkg: string; risk?: string; releases?: number };
-    type AgentLogDetails = { packages?: WeeklyPkg[] } | null | undefined;
+    type NightlyPkg = { pkg: string; current?: string; latest?: string; status?: string; prUrl?: string };
+    // Same shape from the caller, two flavours at runtime. Cast at each
+    // use site instead of unioning the types — TS narrows poorly across
+    // an `Array<A | B>` even when we know which actionType we're reading.
+    type AgentLogDetails =
+      | { packages?: Array<WeeklyPkg & NightlyPkg>; durationMs?: number }
+      | null
+      | undefined;
 
     const depsLines: string[] = [];
 
-    // Nightly status
+    // Nightly status — show packages checked / updated / errors with the
+    // exact run time so the user has receipts even on a "nothing to do"
+    // night. Source data from POST /api/admin/maintenance/report
+    // (`details.packages`).
     if (lastNightlyRun) {
-      const hoursAgo = Math.round(
-        (now.getTime() - new Date(lastNightlyRun.createdAt).getTime()) / 3_600_000,
-      );
-      const summary = lastNightlyRun.summary ?? "";
-      const isUpToDate = /0 outdated/i.test(summary) || /up to date/i.test(summary);
+      const ranAt = new Date(lastNightlyRun.createdAt);
+      const hoursAgo = Math.round((now.getTime() - ranAt.getTime()) / 3_600_000);
+      const ranAtLabel = new Intl.DateTimeFormat("fr-CH", {
+        hour: "2-digit", minute: "2-digit", timeZone: "UTC",
+      }).format(ranAt);
+
+      const details = lastNightlyRun.details as AgentLogDetails;
+      const pkgs = Array.isArray(details?.packages) ? (details.packages as NightlyPkg[]) : [];
+      const total = pkgs.length;
+      const updated = pkgs.filter((p) => p.status === "updated").length;
+      const upToDate = pkgs.filter((p) => p.status === "up_to_date").length;
+      const failed = pkgs.filter((p) => p.status === "failed" || p.status === "ts_fix_failed").length;
+      const prExists = pkgs.filter((p) => p.status === "pr_exists").length;
+      const durationS = details?.durationMs ? Math.round(details.durationMs / 1000) : null;
+
       if (hoursAgo > 30) {
         // Nightly is supposed to run every ~24h. Past 30h = something broke.
         depsLines.push(`⚠️ <b>Scan nocturne</b> : silence depuis ${hoursAgo}h`);
         depsLines.push(`   👉 Vérifie GitHub Actions → workflow "Deps Nightly"`);
-      } else if (isUpToDate) {
-        depsLines.push(`✅ <b>Scan nocturne</b> (cette nuit) : tout est à jour, rien à faire`);
       } else {
-        depsLines.push(`📋 <b>Scan nocturne</b> (cette nuit) : ${summary}`);
-        depsLines.push(`   👉 Vérifie les PR ouvertes sur GitHub`);
+        const verdict = updated === 0 && failed === 0 && prExists === 0
+          ? `✅ tout est à jour, rien à faire`
+          : `📋 ${pluralFR(updated, "mise à jour", "mises à jour")}${prExists > 0 ? `, ${prExists} PR déjà ouverte${prExists > 1 ? "s" : ""}` : ""}${failed > 0 ? `, ⚠️ ${failed} échec${failed > 1 ? "s" : ""}` : ""}`;
+        depsLines.push(`<b>Scan nocturne</b> (lancé à ${ranAtLabel} UTC)`);
+        if (total > 0) {
+          depsLines.push(`   ${total} paquet${total > 1 ? "s" : ""} checké${total > 1 ? "s" : ""} · ${upToDate} déjà à jour${durationS !== null ? ` · durée ${durationS}s` : ""}`);
+        } else if (durationS !== null) {
+          depsLines.push(`   Durée ${durationS}s`);
+        }
+        depsLines.push(`   ${verdict}`);
+        if (updated > 0 || failed > 0 || prExists > 0) {
+          depsLines.push(`   👉 Vérifie les PR ouvertes sur GitHub`);
+        }
       }
     } else {
       depsLines.push(`⚠️ <b>Scan nocturne</b> : aucun run enregistré`);
