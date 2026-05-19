@@ -26,6 +26,6 @@ cron (`reconcile-payouts`) detects these divergences and re-tries / flags.
 ```json
 {
   "type": "none",
-  "reason": "Requires reconciliation pass against the live Stripe API — too expensive for a nightly probe. Use the dedicated /api/cron/reconcile-payouts cron + Sentry alerts tagged error_kind=payout_reconciliation_mismatch."
+  "reason": "Nécessite une réconciliation contre l'API Stripe live — trop coûteux pour un probe nocturne. Couvert par le cron dédié /api/cron/reconcile-payouts + les alertes Sentry tagguées error_kind=payout_reconciliation_mismatch."
 }
 ```
