@@ -31,6 +31,7 @@ const ROUTE_MAP: Record<string, string | null> = {
   "deps-weekly":             "/api/agents/deps-weekly",
   "dog-news":                "/api/agents/dog-news",
   "bug-regression-check":    "/api/cron/bug-regression-check",
+  "prisma-migration-status": "/api/cron/prisma-migration-status",
   // No dedicated route yet
   auth:                null,
   reservations:        null,
