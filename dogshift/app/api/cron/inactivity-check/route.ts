@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { sendEmail } from "@/lib/email/sendEmail";
 import { renderEmailLayout } from "@/lib/email/templates/layout";
 import { sendTelegramMessage } from "@/lib/telegram/sendTelegramMessage";
+import { pluralFR, tgFooter, tgHeader, tgMessage, tgSection } from "@/lib/telegram/format";
 
 export const runtime = "nodejs";
 // Vercel cron can take longer than the default 10s
@@ -336,6 +337,30 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  console.log("[inactivity-check] done", results);
-  return NextResponse.json({ ok: true, ...results });
+  // Recap Telegram bot relances — 1 message par run si quelque chose a
+  // bougé. Évite le spam d'un message par sitter. AWAITED (cron + fire-
+  // and-forget = dropped par Vercel, voir CLAUDE.md "Cron jobs").
+  let telegramRecapSent = false;
+  const hadActivity =
+    results.reset + results.nudge + results.warning1 + results.warning2 + results.suspended > 0;
+  if (hadActivity) {
+    const lines: string[] = [];
+    if (results.reset > 0) lines.push(`♻️ ${pluralFR(results.reset, "sitter réactivé", "sitters réactivés")} (a ajouté des dispos)`);
+    if (results.nudge > 0) lines.push(`👋 ${pluralFR(results.nudge, "nudge initial envoyé", "nudges initiaux envoyés")}`);
+    if (results.warning1 > 0) lines.push(`🟡 ${pluralFR(results.warning1, "warning 1 envoyé", "warnings 1 envoyés")}`);
+    if (results.warning2 > 0) lines.push(`🟠 ${pluralFR(results.warning2, "warning 2 envoyé", "warnings 2 envoyés")} (suspension imminente)`);
+    if (results.suspended > 0) lines.push(`🔴 ${pluralFR(results.suspended, "compte suspendu", "comptes suspendus")}`);
+    const message = tgMessage([
+      tgHeader("⏳", "Inactivité sitters — transitions du jour"),
+      [tgSection("📊", "Transitions"), ...lines],
+      tgFooter(),
+    ]);
+    telegramRecapSent = await sendTelegramMessage(message, {
+      bot: "relances",
+      parseMode: "HTML",
+    });
+  }
+
+  console.log("[inactivity-check] done", { ...results, telegramRecapSent });
+  return NextResponse.json({ ok: true, telegramRecapSent, ...results });
 }

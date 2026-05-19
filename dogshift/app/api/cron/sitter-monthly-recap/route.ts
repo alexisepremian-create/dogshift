@@ -4,6 +4,8 @@ import type { NextRequest } from "next/server";
 
 import { prisma } from "@/lib/prisma";
 import { sendNotificationEmail } from "@/lib/notifications/sendNotificationEmail";
+import { sendTelegramMessage } from "@/lib/telegram/sendTelegramMessage";
+import { pluralFR, tgFooter, tgHeader, tgMessage, tgSection } from "@/lib/telegram/format";
 
 export const runtime = "nodejs";
 
@@ -134,8 +136,27 @@ export async function GET(req: NextRequest) {
       }
     }
 
+    // Telegram récap vers bot relances — 1 message par mois, low noise.
+    // AWAITED (cron + fire-and-forget = dropped par Vercel).
+    let telegramSent = false;
+    if (processed > 0) {
+      const message = tgMessage([
+        tgHeader("📊", `Recap mensuel sitters — ${monthName} ${prevYear}`),
+        [
+          tgSection("📤", "Envoi"),
+          `${pluralFR(processed, "sitter publié", "sitters publiés")} examiné${processed !== 1 ? "s" : ""}`,
+          `✅ ${pluralFR(sent, "recap envoyé", "recaps envoyés")}${skipped > 0 ? ` · ⏭ ${pluralFR(skipped, "ignoré")} (0 booking sur la période)` : ""}`,
+        ],
+        tgFooter(),
+      ]);
+      telegramSent = await sendTelegramMessage(message, {
+        bot: "relances",
+        parseMode: "HTML",
+      });
+    }
+
     return NextResponse.json(
-      { ok: true, month: monthName, year: prevYear, processed, sent, skipped },
+      { ok: true, month: monthName, year: prevYear, processed, sent, skipped, telegramSent },
       { status: 200 },
     );
   } catch (err) {

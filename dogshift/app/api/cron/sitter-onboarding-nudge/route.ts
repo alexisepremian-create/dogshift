@@ -27,6 +27,15 @@ import {
 } from "@/lib/sitterOnboardingNudge";
 import { computeSitterProfileCompletion } from "@/lib/sitterCompletion";
 import { reportApiError } from "@/lib/observability/reportApiError";
+import { sendTelegramMessage } from "@/lib/telegram/sendTelegramMessage";
+import {
+  escapeHtml,
+  pluralFR,
+  tgFooter,
+  tgHeader,
+  tgMessage,
+  tgSection,
+} from "@/lib/telegram/format";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -98,6 +107,9 @@ export async function GET(req: Request) {
       errors: 0,
     };
 
+    // Track per-sitter what was sent for the recap Telegram at the end.
+    const sentDetails: Array<{ name: string; email: string; stage: string }> = [];
+
     for (const sp of candidates) {
       if (!sp.activatedAt) {
         results.skippedNoActivationDate++;
@@ -144,13 +156,54 @@ export async function GET(req: Request) {
       });
       if (send.ok) {
         results.sent++;
+        sentDetails.push({
+          name: firstName,
+          email: sp.user.email,
+          stage,
+        });
       } else {
         results.errors++;
       }
     }
 
-    console.log("[cron][sitter-onboarding-nudge] done", results);
-    return NextResponse.json({ ok: true, ...results });
+    // Telegram recap to `relances` bot — only if anything actually happened,
+    // otherwise the bot stays quiet. AWAITED (cron + fire-and-forget = dropped
+    // by Vercel, see CLAUDE.md "Cron jobs" gotcha).
+    let telegramSent = false;
+    if (results.sent > 0 || results.errors > 0) {
+      const stageEmoji: Record<string, string> = {
+        welcome: "👋",
+        day_1: "📅",
+        day_3: "📅",
+        day_7: "📅",
+        day_14: "🚨",
+      };
+      const message = tgMessage([
+        tgHeader("💌", "Onboarding sitters — nudges du jour"),
+        [
+          tgSection("📊", "Résumé"),
+          `${pluralFR(results.candidatesFound, "candidat", "candidats")} examiné${results.candidatesFound !== 1 ? "s" : ""}`,
+          `✅ ${pluralFR(results.sent, "nudge envoyé", "nudges envoyés")} · ⏭ ${pluralFR(results.skippedAlreadyComplete + results.skippedNoStageDue, "skip")}${results.errors > 0 ? ` · ⚠️ ${pluralFR(results.errors, "erreur")}` : ""}`,
+        ],
+        sentDetails.length > 0
+          ? [
+              tgSection("📤", "Détail"),
+              ...sentDetails.map(
+                (d) =>
+                  `${stageEmoji[d.stage] ?? "📨"} <code>${escapeHtml(d.stage)}</code> → ${escapeHtml(d.name)} (${escapeHtml(d.email)})`,
+              ),
+            ]
+          : null,
+        tgFooter(),
+      ]);
+      telegramSent = await sendTelegramMessage(message, {
+        bot: "relances",
+        parseMode: "HTML",
+      });
+    }
+
+    console.log("[cron][sitter-onboarding-nudge] done", { ...results, telegramSent });
+    return NextResponse.json({ ok: true, telegramSent, ...results });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     console.error("[cron][sitter-onboarding-nudge] fatal", message);
