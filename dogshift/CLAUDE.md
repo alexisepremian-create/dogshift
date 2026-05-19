@@ -196,6 +196,7 @@ These are non-obvious rules learned from real bugs. **Violating them tends to br
 - Always make them **idempotent** — Vercel may retry. Pattern: write an `AgentLog` row at the end and check for it at the start (see `maintenance-recap` for the `todayKey` pattern).
 - For ops/manual triggering, accept `MAINTENANCE_API_KEY` as alternative bearer + optional `?force=1` to bypass idempotency.
 - Vercel cron logs the request as `User-Agent: vercel-cron/1.0`.
+- **Fire-and-forget does NOT work on Vercel Functions.** Anything after `return NextResponse.json(...)` runs inside a frozen execution context and is often dropped. If a cron has to call Telegram, send an email, or do any async side-effect, **`await` it before returning**. Even if `sendTelegramMessage` returns a Promise that resolves with `false` on failure (never throws), still await it and persist the boolean result to `AgentLog` for audit. Bug example: PR #365's bug-regression-check silently dropped its Telegram for days because `void sendTelegramMessage(...)` returned before Vercel finished the HTTP call.
 
 ### Telegram bots
 

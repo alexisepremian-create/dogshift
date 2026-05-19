@@ -107,15 +107,51 @@ export async function GET(req: Request) {
   const passes = results.filter((r) => r.outcome.status === "pass").length;
   const skipped = results.filter((r) => r.outcome.status === "skipped").length;
 
-  // Persist for audit + idempotency.
+  // Telegram recap — ALWAYS AWAITED. Fire-and-forget does not work on Vercel
+  // Functions: anything after `return NextResponse.json(…)` runs inside a
+  // frozen execution context and is often dropped. The Telegram call MUST
+  // complete before the route returns, even if it costs ~500 ms.
+  // `sendTelegramMessage` returns `false` on failure (never throws) so we
+  // capture the boolean and persist it for audit.
+  const message = formatRecap(results, todayKey);
+  let telegramSent = false;
+  try {
+    telegramSent = await sendTelegramMessage(message, {
+      bot: "maintenance",
+      parseMode: "HTML",
+    });
+  } catch (err) {
+    // Defensive — sendTelegramMessage catches internally but just in case.
+    reportApiError({
+      kind: "upstream_error",
+      code: "BUG_REGRESSION_TELEGRAM_FAILED",
+      route: "/api/cron/bug-regression-check",
+      extra: { error: String(err) },
+    });
+  }
+  if (!telegramSent) {
+    reportApiError({
+      kind: "upstream_error",
+      code: "BUG_REGRESSION_TELEGRAM_DROPPED",
+      route: "/api/cron/bug-regression-check",
+      extra: {
+        runDate: todayKey,
+        summary: { total: results.length, passes, failures, errors, skipped },
+      },
+    });
+  }
+
+  // Persist for audit + idempotency. Done AFTER Telegram so the row carries
+  // the telegram status — easier to debug "did the message go out?" later.
   await (prisma as any).agentLog.create({
     data: {
       agentName: "bug-regression-check",
       actionType: todayKey,
-      summary: `Ran ${results.length} fiche checks: ${passes} pass, ${failures} fail, ${errors} error, ${skipped} skipped.`,
+      summary: `Ran ${results.length} fiche checks: ${passes} pass, ${failures} fail, ${errors} error, ${skipped} skipped. Telegram ${telegramSent ? "sent" : "DROPPED"}.`,
       status: failures > 0 || errors > 0 ? "warning" : "success",
       details: {
         runDate: todayKey,
+        telegramSent,
         results: results.map((r) => ({
           slug: r.slug,
           status: r.outcome.status,
@@ -126,20 +162,10 @@ export async function GET(req: Request) {
     },
   });
 
-  // Telegram recap — always sent. Fire-and-forget.
-  const message = formatRecap(results, todayKey);
-  void sendTelegramMessage(message, { bot: "maintenance", parseMode: "HTML" }).catch((err) => {
-    reportApiError({
-      kind: "upstream_error",
-      code: "BUG_REGRESSION_TELEGRAM_FAILED",
-      route: "/api/cron/bug-regression-check",
-      extra: { error: String(err) },
-    });
-  });
-
   return NextResponse.json({
     ok: true,
     runDate: todayKey,
+    telegramSent,
     summary: { total: results.length, passes, failures, errors, skipped },
     results: results.map((r) => ({
       slug: r.slug,
