@@ -82,16 +82,7 @@ happens before any `useEffect` that could race against it.
 
 ```json
 {
-  "type": "http",
-  "url": "https://www.dogshift.ch/sign-out",
-  "expect_status": 200,
-  "expect_contains": "ds_signout_handoff_ts",
-  "auto_fix": { "complexity": "complex" }
+  "type": "none",
+  "reason": "The original idea was to grep for `ds_signout_handoff_ts` in the /sign-out HTML, but Next.js splits client code into JS chunks that aren't referenced inline in the SSR HTML — the string is in the deployed bundle but not in the page response. So the http probe was a false positive every night. The real scenario (sign-in → click logout → land on /login without bounce to /post-login) requires a Playwright session, which lives in tests/e2e/auth.spec.ts. Detection here would be redundant + flaky."
 }
 ```
-
-The handoff flag string `ds_signout_handoff_ts` must appear in the /sign-out
-page bundle. If someone deletes `lib/auth/signoutHandoff.ts` or removes the
-`markHandoff()` call, this check fails because the flag string is gone from
-the shipped JS. Auto-fix **complex** because the right repair involves
-restoring the helper + both call sites.
