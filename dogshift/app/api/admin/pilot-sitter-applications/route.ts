@@ -130,7 +130,16 @@ export async function GET(req: NextRequest) {
       { status: 200 },
     );
   } catch (err) {
-    console.error("[api][admin][pilot-sitter-applications][GET] error", err);
+    const e = err as { message?: string; code?: string; meta?: unknown; name?: string };
+    console.error(
+      "[api][admin][pilot-sitter-applications][GET] error",
+      JSON.stringify({
+        name: e?.name ?? null,
+        code: e?.code ?? null,
+        message: e?.message ?? String(err),
+        meta: e?.meta ?? null,
+      }),
+    );
     return NextResponse.json({ ok: false, error: "INTERNAL_ERROR" }, { status: 500 });
   }
 }
