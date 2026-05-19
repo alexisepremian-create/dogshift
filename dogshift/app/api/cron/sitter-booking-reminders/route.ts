@@ -4,6 +4,8 @@ import type { NextRequest } from "next/server";
 
 import { prisma } from "@/lib/prisma";
 import { resolveBookingParticipants, sendNotificationEmail } from "@/lib/notifications/sendNotificationEmail";
+import { sendTelegramMessage } from "@/lib/telegram/sendTelegramMessage";
+import { pluralFR, tgFooter, tgHeader, tgMessage, tgSection } from "@/lib/telegram/format";
 
 export const runtime = "nodejs";
 
@@ -79,8 +81,28 @@ export async function GET(req: NextRequest) {
       }
     }
 
+    // Telegram récap groupé vers le bot relances — uniquement si quelque
+    // chose s'est passé (sinon silence). AWAITED (cron + fire-and-forget
+    // = dropped par Vercel, voir CLAUDE.md "Cron jobs").
+    let telegramSent = false;
+    if (sent > 0 || (processed > 0 && skipped > 0)) {
+      const message = tgMessage([
+        tgHeader("📅", "Rappels J-1 — bookings sitters"),
+        [
+          tgSection("📊", "Résumé"),
+          `${pluralFR(processed, "booking", "bookings")} dans la fenêtre 18-30h`,
+          `✅ ${pluralFR(sent, "rappel envoyé", "rappels envoyés")} aux sitters${skipped > 0 ? ` · ⏭ ${pluralFR(skipped, "ignoré")}` : ""}`,
+        ],
+        tgFooter(),
+      ]);
+      telegramSent = await sendTelegramMessage(message, {
+        bot: "relances",
+        parseMode: "HTML",
+      });
+    }
+
     return NextResponse.json(
-      { ok: true, window: { start: windowStart.toISOString(), end: windowEnd.toISOString() }, processed, sent, skipped },
+      { ok: true, window: { start: windowStart.toISOString(), end: windowEnd.toISOString() }, processed, sent, skipped, telegramSent },
       { status: 200 },
     );
   } catch (err) {
