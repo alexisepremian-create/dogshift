@@ -92,7 +92,15 @@ export default async function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <Suspense fallback={null}>
-          <SessionAuthProvider>{children}</SessionAuthProvider>
+          <SessionAuthProvider>
+            {children}
+
+            {/* Native-only bottom tab bar. Renders only inside the Capacitor
+                shell, skipped on /host /account /admin (which have their own)
+                and on auth micro-pages. Must live INSIDE SessionAuthProvider
+                because it calls useSession(). */}
+            <GlobalNativeBottomNav />
+          </SessionAuthProvider>
         </Suspense>
 
         {/* Static overlay always present in the DOM — gets shown synchronously
@@ -112,11 +120,6 @@ export default async function RootLayout({
           <InstallPWAPrompt />
         </WebOnly>
         <ServiceWorkerRegistration />
-
-        {/* Native-only bottom tab bar. Renders only inside the Capacitor
-            shell, skipped on /host /account /admin (which have their own)
-            and on auth micro-pages. */}
-        <GlobalNativeBottomNav />
       </body>
     </html>
   );
