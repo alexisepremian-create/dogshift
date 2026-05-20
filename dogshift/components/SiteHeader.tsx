@@ -22,6 +22,7 @@ import { usePathname, useSearchParams } from "next/navigation";
 import BrandLogo from "@/components/BrandLogo";
 import NotificationBell from "@/components/NotificationBell";
 import { fetchAccountContext } from "@/lib/accountContext";
+import { useIsNativeApp } from "@/lib/native/useIsNativeApp";
 
 export default function SiteHeader() {
   const [scrolled, setScrolled] = useState(false);
@@ -33,6 +34,7 @@ export default function SiteHeader() {
   const [accountHref, setAccountHref] = useState("/account");
   const { data: __session, status: __sessionStatus } = useSession();
   const user = __session?.user ?? null;
+  const isNative = useIsNativeApp();
   const isLoaded = __sessionStatus !== "loading";
   const isSignedIn = __sessionStatus === "authenticated";
   const pathname = usePathname();
@@ -145,6 +147,10 @@ export default function SiteHeader() {
   }, [isLoaded, isSignedIn]);
 
   if (isHostArea || isAccountArea || isHostPreview) return null;
+  // Inside the Capacitor native shell, the bottom tab bar provides
+  // navigation — no need for a top header with logo + hamburger which
+  // would feel un-native and waste vertical space on the home screen.
+  if (isNative) return null;
 
   const userInitials = user?.name?.[0] ?? user?.email?.[0] ?? "";
 

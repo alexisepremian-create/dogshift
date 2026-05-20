@@ -9,6 +9,7 @@ import InstallPWAPrompt from "@/components/InstallPWAPrompt";
 import NavigationOverlay from "@/components/NavigationOverlay";
 import NavigationOverlayController from "@/components/NavigationOverlayController";
 import ServiceWorkerRegistration from "@/components/ServiceWorkerRegistration";
+import WebOnly from "@/components/native/WebOnly";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -102,10 +103,13 @@ export default async function RootLayout({
 
         <InitialLoadSplash />
 
-        {/* Cookie consent banner + conditional Google Ads loading (RGPD/nLPD) */}
-        <ConsentScriptLoader />
-
-        <InstallPWAPrompt />
+        {/* Cookie consent banner + Add-to-Home-Screen prompt — web-only,
+            hidden inside the Capacitor native shell where cookies aren't
+            tracked the same way and the user already installed the app. */}
+        <WebOnly>
+          <ConsentScriptLoader />
+          <InstallPWAPrompt />
+        </WebOnly>
         <ServiceWorkerRegistration />
       </body>
     </html>
