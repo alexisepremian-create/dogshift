@@ -40,6 +40,7 @@ model User {
   sitterApplications     SitterApplication[]
   sitterProfile          SitterProfile?
   pushSubscriptions      PushSubscription[]
+  nativePushTokens       NativePushToken[]
 }
 
 model Notification {
@@ -790,19 +791,19 @@ model PushSubscription {
 /// Native push tokens for iOS (APNs) and Android (FCM), used by the Capacitor app.
 /// Distinct from PushSubscription (which is the web push / VAPID registration).
 model NativePushToken {
-  id        String                @id @default(cuid())
-  userId    String
+  id            String             @id @default(cuid())
+  userId        String
   /// "ios" for APNs, "android" for FCM
-  platform  NativePushPlatform
+  platform      NativePushPlatform
   /// APNs device token (hex string) or FCM registration token
-  token     String                @unique
+  token         String             @unique
   /// Bundle identifier (helps with multi-env: dev/staging/prod APNs sandbox)
-  bundleId  String?
+  bundleId      String?
   /// Helps identify dead/invalid tokens after 410 Gone / NotRegistered errors
   invalidatedAt DateTime?
-  createdAt DateTime              @default(now())
-  updatedAt DateTime              @updatedAt
-  user      User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+  user          User               @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([platform])
