@@ -5,6 +5,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 
 import HomePageClient from "./HomePageClient";
+import NativeHomeSwitch from "@/components/native/NativeHomeSwitch";
 import type { SitterPreview } from "@/components/ui/SitterCard";
 import { prisma } from "@/lib/prisma";
 import { resolvePublicEnabledServices, normalizePersistedPublicPricing } from "@/lib/sitterEnabledServices";
@@ -164,7 +165,7 @@ export default async function Home() {
   const sitters = await getFeaturedSitters();
 
   return (
-    <>
+    <NativeHomeSwitch>
       <HomePageClient sitters={sitters} />
       <section className="bg-slate-50 pb-16 pt-14 sm:pb-20 sm:pt-16">
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
@@ -215,6 +216,6 @@ export default async function Home() {
           </div>
         </div>
       </section>
-    </>
+    </NativeHomeSwitch>
   );
 }
