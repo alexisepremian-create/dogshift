@@ -99,6 +99,14 @@ input[type="radio"] {
   }
 }
 
+/* When running inside the Capacitor native shell (iOS / Android), reserve
+   the bottom safe area so content doesn't sit behind the fixed tab bar.
+   `--ds-bottom-nav-h` is set dynamically by <MobileBottomNav> as it measures
+   its own height (see components/MobileBottomNav.tsx). */
+body[data-native="true"] {
+  padding-bottom: var(--ds-bottom-nav-h, 0px);
+}
+
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
