@@ -10,6 +10,7 @@ import NavigationOverlay from "@/components/NavigationOverlay";
 import NavigationOverlayController from "@/components/NavigationOverlayController";
 import ServiceWorkerRegistration from "@/components/ServiceWorkerRegistration";
 import WebOnly from "@/components/native/WebOnly";
+import GlobalNativeBottomNav from "@/components/native/GlobalNativeBottomNav";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -111,6 +112,11 @@ export default async function RootLayout({
           <InstallPWAPrompt />
         </WebOnly>
         <ServiceWorkerRegistration />
+
+        {/* Native-only bottom tab bar. Renders only inside the Capacitor
+            shell, skipped on /host /account /admin (which have their own)
+            and on auth micro-pages. */}
+        <GlobalNativeBottomNav />
       </body>
     </html>
   );
