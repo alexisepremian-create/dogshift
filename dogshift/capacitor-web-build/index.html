@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#7c3aed" />
+  <title>DogShift</title>
+  <style>
+    body { margin: 0; background: #7c3aed; display: flex; align-items: center; justify-content: center; min-height: 100vh; font-family: -apple-system, sans-serif; color: white; }
+    .splash { text-align: center; }
+    .spinner { width: 60px; height: 60px; border: 4px solid rgba(255,255,255,0.3); border-top-color: white; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 24px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <div class="splash">
+    <div class="spinner"></div>
+    <div style="font-size: 18px;">Chargement de DogShift…</div>
+  </div>
+  <script>
+    // Capacitor mode B : redirect to live site after init.
+    // The native shell takes over from here.
+    setTimeout(() => { window.location.href = "https://www.dogshift.ch"; }, 100);
+  </script>
+</body>
+</html>

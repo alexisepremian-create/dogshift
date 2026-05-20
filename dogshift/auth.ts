@@ -27,6 +27,7 @@
 import NextAuth from "next-auth";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import Google from "next-auth/providers/google";
+import Apple from "next-auth/providers/apple";
 import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 
@@ -55,6 +56,19 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
       allowDangerousEmailAccountLinking: true,
       authorization: { params: { prompt: "consent select_account" } },
     }),
+    // Apple Sign-In is MANDATORY on iOS App Store as soon as another third-party
+    // OAuth provider (Google here) is offered. See native-app.md for the Apple
+    // Developer setup (Service ID, Key ID, Team ID, private key .p8 file).
+    // Falls back to no-op when env vars are missing (e.g. dev without Apple setup).
+    ...(process.env.AUTH_APPLE_ID && process.env.AUTH_APPLE_SECRET
+      ? [
+          Apple({
+            clientId: process.env.AUTH_APPLE_ID,
+            clientSecret: process.env.AUTH_APPLE_SECRET,
+            allowDangerousEmailAccountLinking: true,
+          }),
+        ]
+      : []),
     Credentials({
       name: "Credentials",
       credentials: {

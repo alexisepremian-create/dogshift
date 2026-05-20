@@ -124,6 +124,17 @@ const nextConfig: NextConfig = {
         source: "/(.*)",
         headers: securityHeaders,
       },
+      // Native app association files — Apple Universal Links + Android App Links.
+      // Required for the native DogShift app (Capacitor) to claim deep links
+      // pointing to www.dogshift.ch. See docs/native-app.md.
+      {
+        source: "/.well-known/apple-app-site-association",
+        headers: [{ key: "content-type", value: "application/json" }],
+      },
+      {
+        source: "/.well-known/assetlinks.json",
+        headers: [{ key: "content-type", value: "application/json" }],
+      },
     ];
   },
 };

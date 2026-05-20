@@ -79,3 +79,19 @@ n8n-mcp/.env
 # Leading slash → only the brain/ folder at the repo root, NOT scripts/brain/ etc.
 /brain/
 .obsidian/
+
+# Capacitor native app build artifacts
+android/.gradle/
+android/.idea/
+android/build/
+android/app/build/
+android/local.properties
+android/capacitor-cordova-android-plugins/build/
+ios/build/
+ios/DerivedData/
+ios/Pods/
+ios/.cxx/
+ios/App/Pods/
+
+# Auto-generated icon master folder
+/assets/
