@@ -1,0 +1,43 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appIDs": ["REPLACE_WITH_TEAM_ID.ch.dogshift.app"],
+        "components": [
+          {
+            "/": "/sitters/*",
+            "comment": "Sitter profile pages open in native app"
+          },
+          {
+            "/": "/account/*",
+            "comment": "User account pages open in native app"
+          },
+          {
+            "/": "/host/*",
+            "comment": "Sitter host pages open in native app"
+          },
+          {
+            "/": "/host-checkout/*",
+            "comment": "Booking checkout opens in native app"
+          },
+          {
+            "/": "/booking/*",
+            "comment": "Booking management opens in native app"
+          },
+          {
+            "/": "/messages/*",
+            "comment": "Messaging opens in native app"
+          },
+          {
+            "/": "/become-sitter/*",
+            "comment": "Sitter onboarding opens in native app"
+          }
+        ]
+      }
+    ]
+  },
+  "webcredentials": {
+    "apps": ["REPLACE_WITH_TEAM_ID.ch.dogshift.app"]
+  }
+}
