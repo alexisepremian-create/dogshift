@@ -25,7 +25,7 @@ import {
   pickNudgeStage,
   sendSitterOnboardingNudge,
 } from "@/lib/sitterOnboardingNudge";
-import { computeSitterProfileCompletion } from "@/lib/sitterCompletion";
+import { computeSitterProfileCompletionDetails } from "@/lib/sitterCompletion";
 import { reportApiError } from "@/lib/observability/reportApiError";
 import { sendTelegramMessage } from "@/lib/telegram/sendTelegramMessage";
 import {
@@ -130,8 +130,22 @@ export async function GET(req: Request) {
         stripeAccountStatus: sp.stripeAccountStatus,
       };
 
-      const completion = computeSitterProfileCompletion(profileSnapshot);
+      const { percent: completion, checks } = computeSitterProfileCompletionDetails(profileSnapshot);
       if (completion >= 100) {
+        results.skippedAlreadyComplete++;
+        continue;
+      }
+      // Skip when the ONLY remaining check is Stripe Connect and everything
+      // else (7/8) is done. Stripe Connect is an external step (bank account
+      // verification) that the sitter mentally separates from "filling out
+      // the profile". Pushing a "you're at 87 % — finish your profile" email
+      // is misleading and frustrating. The dashboard's getHostTodos() still
+      // surfaces "Configurer le compte de paiement" → /host/wallet, which is
+      // the right place for that nudge. See:
+      // docs/bugs/onboarding-nudge-stripe-only.md
+      const checksList = Object.entries(checks);
+      const missing = checksList.filter(([, ok]) => !ok).map(([key]) => key);
+      if (missing.length === 1 && missing[0] === "stripeConnected") {
         results.skippedAlreadyComplete++;
         continue;
       }

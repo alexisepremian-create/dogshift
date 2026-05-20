@@ -1474,13 +1474,21 @@ export default function HostProfileEditPage() {
                   <button
                     type="button"
                     onClick={() => {
+                      // Guard the action inside the handler instead of using the
+                      // HTML `disabled` attribute — on iOS Safari, a `disabled`
+                      // <button> blocks touch events from reaching React,
+                      // making the toggle unresponsive on mobile. The same
+                      // pattern is used in /account/settings notification
+                      // toggles which work correctly on mobile.
+                      // See docs/bugs/publish-toggle-mobile-disabled.md.
                       if (!canTogglePublish) return;
                       setPublished((v) => !v);
                     }}
-                    disabled={!canTogglePublish}
-                    className={`inline-flex h-9 w-14 shrink-0 items-center rounded-full p-1 transition disabled:cursor-not-allowed disabled:opacity-50 ${
-                      published ? "bg-[var(--dogshift-blue)]" : "bg-slate-200"
-                    }`}
+                    aria-disabled={!canTogglePublish}
+                    style={{ touchAction: "manipulation" }}
+                    className={`inline-flex h-9 w-14 shrink-0 items-center rounded-full p-1 transition ${
+                      !canTogglePublish ? "cursor-not-allowed opacity-50" : ""
+                    } ${published ? "bg-[var(--dogshift-blue)]" : "bg-slate-200"}`}
                     aria-label={published ? "Désactiver la publication de l'annonce" : "Activer la publication de l'annonce"}
                     aria-checked={published}
                     role="switch"
