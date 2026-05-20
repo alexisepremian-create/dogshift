@@ -85,10 +85,17 @@ async function setupPushNotifications() {
   try {
     const { PushNotifications } = await import("@capacitor/push-notifications");
 
-    // Ask permission
-    const perm = await PushNotifications.requestPermissions();
+    // DO NOT auto-prompt at boot — that's the App Store reject + UX anti-pattern.
+    // Only register listeners here ; the actual `requestPermissions()` call is
+    // exposed via `requestNativePushPermission()` below and must be triggered
+    // by a user action (e.g. "Activer les notifications" button in account
+    // settings, or right after creating a booking).
+    //
+    // If the user has already granted permission in a previous session,
+    // checkPermissions() will return "granted" and we proceed to register.
+    const perm = await PushNotifications.checkPermissions();
     if (perm.receive !== "granted") {
-      console.warn("[native][push] permission not granted", perm.receive);
+      // Not granted yet — wait for the user to opt-in via the UI.
       return;
     }
 
@@ -140,6 +147,30 @@ async function setupPushNotifications() {
     });
   } catch (err) {
     console.warn("[native][push] setup failed", err);
+  }
+}
+
+/**
+ * Prompts the user for push notification permission and registers with
+ * APNs/FCM if granted. Must be called from a user action (button click)
+ * to avoid the cold-boot popup which looks like spam and triggers
+ * App Store reject (guideline 4.5.4).
+ *
+ * Returns `true` if permission was granted (or already granted), `false`
+ * otherwise. No-op on web.
+ */
+export async function requestNativePushPermission(): Promise<boolean> {
+  try {
+    const { Capacitor } = await import("@capacitor/core");
+    if (!Capacitor.isNativePlatform()) return false;
+    const { PushNotifications } = await import("@capacitor/push-notifications");
+    const perm = await PushNotifications.requestPermissions();
+    if (perm.receive !== "granted") return false;
+    await PushNotifications.register();
+    return true;
+  } catch (err) {
+    console.warn("[native][push] requestNativePushPermission failed", err);
+    return false;
   }
 }
 

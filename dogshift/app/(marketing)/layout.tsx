@@ -8,17 +8,26 @@ import SiteHeader from "@/components/SiteHeader";
 import CookieSettingsButton from "@/components/CookieSettingsButton";
 import CguUpdateBanner from "@/components/CguUpdateBanner";
 import LeadMagnetBanner from "@/components/LeadMagnetBanner";
+import WebOnly from "@/components/native/WebOnly";
 import { VisaLogo, MastercardLogo, ApplePayLogo, TwintLogo } from "@/components/ui/PaymentIcons";
 
 export default function MarketingLayout({ children }: { children: React.ReactNode }) {
   return (
     <>
       <CguUpdateBanner />
-      <LeadMagnetBanner />
+      {/* Web-only popups : lead magnet (email capture) + chat widget feel
+          out of place inside a real native app where the user has already
+          installed us. Both hidden in the Capacitor shell. */}
+      <WebOnly>
+        <LeadMagnetBanner />
+      </WebOnly>
       <SiteHeader />
       <PageTopOffset>{children}</PageTopOffset>
-      <DogShiftBot />
-      <footer className="border-t border-slate-200/70 bg-white">
+      <WebOnly>
+        <DogShiftBot />
+      </WebOnly>
+      <WebOnly>
+        <footer className="border-t border-slate-200/70 bg-white">
         <div className="mx-auto w-full max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-5 lg:gap-12">
             {/* Colonne Marque (Prend 2 colonnes sur grand écran) */}
@@ -130,7 +139,8 @@ export default function MarketingLayout({ children }: { children: React.ReactNod
             <p className="text-xs text-slate-500">© 2026 DogShift. Tous droits réservés.</p>
           </div>
         </div>
-      </footer>
+        </footer>
+      </WebOnly>
     </>
   );
 }
