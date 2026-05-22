@@ -74,7 +74,6 @@ async function main() {
       email: true,
       name: true,
       sitterId: true,
-      // @ts-expect-error — hostProfileJson is on the model but generated types may lag
       hostProfileJson: true,
     },
     take: 5,
