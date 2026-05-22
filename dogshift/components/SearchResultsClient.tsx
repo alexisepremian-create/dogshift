@@ -3,7 +3,7 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Check, ChevronDown, PawPrint, Search } from "lucide-react";
+import { Check, ChevronDown, PawPrint, Search, SlidersHorizontal } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import {
@@ -243,6 +243,12 @@ export default function SearchResultsClient() {
   const [dogSize, setDogSize] = useState<(typeof DOG_SIZE_OPTIONS)[number]>("");
   const isProximitySearch = initialLocation.trim() === "À proximité";
   const [sort, setSort] = useState<SortKey>(isProximitySearch ? "distance_asc" : "rating_desc");
+  // Mobile-only: hide secondary filters behind a "Filtres" toggle so the
+  // top of the search page isn't dominated by 5 stacked rows on a phone.
+  // Audit 2026-05-22: full-width stacked filters pushed the actual sitter
+  // cards entirely below the fold on iPhone-class screens.
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
+  const activeFilterCount = (service ? 1 : 0) + (dogSize ? 1 : 0);
   const [userGeoCoords] = useState<{ lat: number; lng: number } | null>(() => {
     const latStr = sp.get("lat");
     const lngStr = sp.get("lng");
@@ -361,8 +367,42 @@ export default function SearchResultsClient() {
           </div>
         </div>
 
-        <div className="mt-6 rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_12px_40px_-30px_rgba(2,6,23,0.22)] sm:p-6">
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-6">
+        <div className="mt-6 rounded-3xl border border-slate-200 bg-white p-4 shadow-[0_12px_40px_-30px_rgba(2,6,23,0.22)] sm:p-6">
+          {/* Mobile-compact bar: location input + "Filtres" toggle on one row.
+              Lg+ : revert to the original 6-column grid. */}
+          <div className="flex items-center gap-2 lg:hidden">
+            <div className="flex-1">
+              <input
+                id="filter-location-mobile"
+                value={location}
+                onChange={(e) => setLocation(e.target.value)}
+                placeholder="Ville ou code postal"
+                aria-label="Ville ou code postal"
+                className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition focus:border-[var(--dogshift-blue)] focus:ring-4 focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_85%)]"
+                autoComplete="off"
+                inputMode="text"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() => setMobileFiltersOpen((v) => !v)}
+              aria-expanded={mobileFiltersOpen}
+              aria-controls="search-filters-extra"
+              className="relative inline-flex shrink-0 items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-3 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 active:scale-[.98]"
+              style={{ touchAction: "manipulation" }}
+            >
+              <SlidersHorizontal className="h-4 w-4" aria-hidden="true" />
+              <span>Filtres</span>
+              {activeFilterCount > 0 ? (
+                <span className="ml-0.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-[var(--dogshift-blue)] px-1.5 text-[11px] font-semibold text-white">
+                  {activeFilterCount}
+                </span>
+              ) : null}
+            </button>
+          </div>
+
+          {/* Desktop grid (lg+) — unchanged behaviour for big screens. */}
+          <div className="hidden gap-4 lg:grid lg:grid-cols-6">
             <div className="lg:col-span-2">
               <label className="block text-xs font-semibold text-slate-700" htmlFor="filter-location">
                 Ville / code postal
@@ -447,6 +487,68 @@ export default function SearchResultsClient() {
               <p className="mt-2 text-xs text-slate-400">Filtre par dates disponible prochainement</p>
             </div>
           </div>
+
+          {/* Mobile expanded panel — only the meaningful filters (no disabled
+              date pickers — they confuse users and waste real estate). */}
+          {mobileFiltersOpen ? (
+            <div id="search-filters-extra" className="mt-3 grid gap-3 sm:grid-cols-2 lg:hidden">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700" htmlFor="filter-service-mobile">
+                  Service
+                </label>
+                <div className="relative mt-2">
+                  <select
+                    id="filter-service-mobile"
+                    value={service}
+                    onChange={(e) => setService(e.target.value as (typeof SERVICE_OPTIONS)[number])}
+                    className={SELECT_BASE_CLASS}
+                  >
+                    <option value="">Tous</option>
+                    <option value="Promenade">Promenade</option>
+                    <option value="Garde">Garde</option>
+                    <option value="Pension">Pension</option>
+                  </select>
+                  <span className="pointer-events-none absolute inset-y-0 right-4 inline-flex items-center text-slate-400" aria-hidden="true">
+                    <ChevronDown className="h-4 w-4" />
+                  </span>
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-700" htmlFor="filter-dogsize-mobile">
+                  Taille du chien
+                </label>
+                <div className="relative mt-2">
+                  <select
+                    id="filter-dogsize-mobile"
+                    value={dogSize}
+                    onChange={(e) => setDogSize(e.target.value as (typeof DOG_SIZE_OPTIONS)[number])}
+                    className={SELECT_BASE_CLASS}
+                  >
+                    <option value="">Toutes</option>
+                    <option value="Petit">Petit</option>
+                    <option value="Moyen">Moyen</option>
+                    <option value="Grand">Grand</option>
+                  </select>
+                  <span className="pointer-events-none absolute inset-y-0 right-4 inline-flex items-center text-slate-400" aria-hidden="true">
+                    <ChevronDown className="h-4 w-4" />
+                  </span>
+                </div>
+              </div>
+              {(service || dogSize) ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setService("");
+                    setDogSize("");
+                  }}
+                  className="sm:col-span-2 inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 transition hover:bg-slate-50"
+                  style={{ touchAction: "manipulation" }}
+                >
+                  Réinitialiser les filtres
+                </button>
+              ) : null}
+            </div>
+          ) : null}
   
           <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm text-slate-600">

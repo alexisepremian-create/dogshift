@@ -33,22 +33,28 @@ function formatRating(rating: number) {
   return rating % 1 === 0 ? rating.toFixed(0) : rating.toFixed(1);
 }
 
-const HOST_COMPLETION_CARD_DISMISSED_KEY_PREFIX = "ds_host_completion_card_dismissed_v1";
+// Audit 2026-05-22 follow-up: the dashboard banners ("Compte activé" /
+// "Complète ton profil pour publier") used localStorage keys suffixed by
+// `sitterId`. On page navigation back to /host the component remounted and
+// briefly read with `sitterId === null` (different key) → returned "not
+// dismissed" → the banner flashed back even though the user had closed it
+// moments earlier. localStorage is already per-origin (= per-browser
+// session = effectively per-sitter once they're signed in), so suffixing by
+// sitterId added zero security and a lot of brittleness. We use a single
+// stable key now. v2 suffix forces a clean dismissal state for users coming
+// from the buggy v1 keys.
+const HOST_COMPLETION_CARD_DISMISSED_KEY = "ds_host_completion_card_dismissed_v2";
 const HOST_COMPLETION_CARD_DISMISSED_EVENT = "ds_host_completion_card_dismissed";
 
-function hostCompletionCardDismissedKey(sitterId: string | null): string {
-  return sitterId
-    ? `${HOST_COMPLETION_CARD_DISMISSED_KEY_PREFIX}:${sitterId}`
-    : HOST_COMPLETION_CARD_DISMISSED_KEY_PREFIX;
+function hostCompletionCardDismissedKey(_sitterId: string | null): string {
+  return HOST_COMPLETION_CARD_DISMISSED_KEY;
 }
 
-const DOGSHIFT_BANNER_ACCOUNT_ACTIVATED_CLOSED_KEY_PREFIX = "dogshift_banner_account_activated_closed";
+const DOGSHIFT_BANNER_ACCOUNT_ACTIVATED_CLOSED_KEY = "ds_banner_account_activated_closed_v2";
 const DOGSHIFT_BANNER_ACCOUNT_ACTIVATED_CLOSED_EVENT = "dogshift:banner_account_activated_closed";
 
-function accountActivatedBannerClosedKey(sitterId: string | null): string {
-  return sitterId
-    ? `${DOGSHIFT_BANNER_ACCOUNT_ACTIVATED_CLOSED_KEY_PREFIX}:${sitterId}`
-    : DOGSHIFT_BANNER_ACCOUNT_ACTIVATED_CLOSED_KEY_PREFIX;
+function accountActivatedBannerClosedKey(_sitterId: string | null): string {
+  return DOGSHIFT_BANNER_ACCOUNT_ACTIVATED_CLOSED_KEY;
 }
 
 function subscribeAccountActivatedBannerClosed(sitterId: string | null) {
@@ -95,10 +101,10 @@ function AccountActivatedBanner({ sitterId }: { sitterId: string | null }) {
     }
   }, [searchParams]);
 
-  useEffect(() => {
-    setSessionDismissed(false);
-    setExiting(false);
-  }, [sitterId]);
+  // Audit 2026-05-22: removed the `[sitterId]` reset effect that re-armed
+  // the banner on every navigation back to /host. localStorage already
+  // tracks the persistent dismissal state — the in-component
+  // `sessionDismissed` only needs to be reset by `showBanner=1` query.
 
   const shouldShow = !sessionDismissed && (debugShow || !persistedClosed || exiting);
   if (!shouldShow) return null;
