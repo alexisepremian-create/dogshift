@@ -129,9 +129,11 @@ export default function HostProfileEditPage() {
     };
   }, [sitterId]);
 
-  const completionPercent = useMemo(() => {
-    return getHostCompletion({ ...profile, stripeAccountStatus: host.stripeAccountStatus }).percent;
+  const completionDetails = useMemo(() => {
+    return getHostCompletion({ ...profile, stripeAccountStatus: host.stripeAccountStatus });
   }, [profile, host.stripeAccountStatus]);
+  const completionPercent = completionDetails.percent;
+  const completionChecks = completionDetails.checks;
 
   const canPublish = termsOk && completionPercent >= 100 && isActivatedStatus(lifecycleStatus);
   const canTogglePublish = published || canPublish;
@@ -1466,9 +1468,38 @@ export default function HostProfileEditPage() {
                       {published ? "Votre annonce est visible dans la recherche." : "Votre annonce est cachée (brouillon)."}
                     </p>
                     {!canPublish && !published ? (
-                      <p className="mt-1.5 text-sm text-slate-500">
-                        Complète ton profil et accepte le règlement pour publier.
-                      </p>
+                      <div className="mt-1.5 text-sm text-slate-500">
+                        <p>Avant de publier ton annonce, il te reste à&nbsp;:</p>
+                        <ul className="mt-1 space-y-0.5">
+                          {!completionChecks.stripeConnected && (
+                            <li>⚠️ Connecter ton compte Stripe (encaisser tes paiements)</li>
+                          )}
+                          {!completionChecks.address && (
+                            <li>⚠️ Renseigner ton adresse postale complète (rue, NPA, ville)</li>
+                          )}
+                          {!completionChecks.avatar && (
+                            <li>⚠️ Ajouter une photo de profil</li>
+                          )}
+                          {!completionChecks.identity && (
+                            <li>⚠️ Compléter ton prénom et ta ville</li>
+                          )}
+                          {!completionChecks.bio && (
+                            <li>⚠️ Rédiger une courte biographie</li>
+                          )}
+                          {!completionChecks.services && (
+                            <li>⚠️ Activer au moins un service (promenade, garde, pension)</li>
+                          )}
+                          {!completionChecks.pricing && (
+                            <li>⚠️ Définir les tarifs des services activés</li>
+                          )}
+                          {!completionChecks.dogSizes && (
+                            <li>⚠️ Indiquer les tailles de chiens que tu acceptes</li>
+                          )}
+                          {!termsOk && (
+                            <li>⚠️ Accepter le règlement DogShift</li>
+                          )}
+                        </ul>
+                      </div>
                     ) : null}
                   </div>
                   <button

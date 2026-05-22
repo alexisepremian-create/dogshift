@@ -1,6 +1,6 @@
 # Mobile : "Publier mon annonce" toggle unresponsive on iOS Safari
 
-**Status:** Fixed (PR `fix/prod-bugs-may-20`, May 20 2026)
+**Status:** Fixed (PR `fix/prod-bugs-may-20`, May 20 2026) — extended 2026-05-22 with a clearer "what's blocking" message after a Playwright audit showed the *symptom* still reaches users for a different reason (Stripe Connect gate).
 
 ## Symptom
 
@@ -84,6 +84,33 @@ This mirrors the pattern used by the notification toggles in
 
 - `docs/bugs/mobile-first-touch-delay.md` — same `touch-action: manipulation`
   story, on a different surface (splash, modals, header).
+
+## 2026-05-22 update — silent Stripe gate
+
+After the May 20 fix shipped, **users kept reporting "the publish button does
+nothing on my phone"**. The Playwright audit in `docs/audits/2026-05-22-audit-prod-authenticated.md`
+showed the iOS Safari touch fix is intact (aria-disabled + touch-action +
+early-return are all there). The new culprit is the **completion gate** itself:
+
+`canPublish = termsOk && completionPercent >= 100 && isActivatedStatus(lifecycleStatus)`
+
+`completionPercent` reaches 100% only when *all eight* checks in
+`lib/sitterCompletion.ts` are true — including `stripeConnected` (Stripe
+Connect onboarded to ENABLED). A sitter who hasn't finished Stripe Connect
+will see the toggle stay `aria-disabled` forever, with no clue why. The
+previous message was generic :
+
+> Complète ton profil et accepte le règlement pour publier.
+
+This left users guessing. Fix : surface the *exact* failing checks under the
+toggle using `completionChecks` from `getHostCompletion()` (each missing piece
+becomes a dedicated bullet "⚠️ Connecter ton compte Stripe", "⚠️ Renseigner ton
+adresse postale complète", etc.). The toggle's behaviour didn't change — only
+the help copy beneath it.
+
+This was tested via the Playwright MCP audit reproducing Sysy Montreux's case
+(activated sitter, postal address incomplete, Stripe not connected — see
+`brain/👥 Pilote/Tous les sitters actifs/Sysy Montreux.md`).
 
 ## 🤖 Automated detection
 

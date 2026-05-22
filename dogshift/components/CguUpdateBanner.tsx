@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { useSession, signOut } from "next-auth/react";
+import { useSession } from "next-auth/react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { X, FileText } from "lucide-react";
@@ -13,6 +13,12 @@ import { CGU_VERSION } from "@/lib/cguVersion";
 // Le banner se positionne AVANT le SiteHeader dans le DOM et ajuste la CSS
 // variable --ds-maintenance-banner-height dont le header dépend pour son top offset.
 const PAYMENT_FLOW_PATHS = ["/checkout", "/paiement", "/reservation"];
+
+// sessionStorage key used to silence the banner for the rest of the session
+// after the user clicks "Fermer". Reset on full reload / new session.
+// Audit 2026-05-22 (bug I6): without this flag the banner re-appeared on
+// every navigation even after the user dismissed it.
+const CGU_DISMISS_KEY = "ds_cgu_dismissed_v";
 
 function isPaymentFlow(pathname: string | null) {
   if (!pathname) return false;
@@ -56,11 +62,33 @@ export default function CguUpdateBanner() {
 
   useEffect(() => {
     if (!isSignedIn || !user) return;
-    // TODO(PR2): persist + check CGU acceptance server-side (Prisma) instead
-    // of Clerk's unsafeMetadata. For now, always re-show the banner — the
-    // audit endpoint below already records the acceptance.
+    // TODO(PR2): persist + check CGU acceptance server-side (Prisma).
+    // Until then we use a sessionStorage flag (versioned by CGU_VERSION) so
+    // dismissing the banner sticks for the rest of the session.
+    if (typeof window !== "undefined") {
+      try {
+        const dismissed = window.sessionStorage.getItem(CGU_DISMISS_KEY);
+        if (dismissed === String(CGU_VERSION)) {
+          setVisible(false);
+          return;
+        }
+      } catch {
+        // sessionStorage may be unavailable (private mode, SSR) — fall through.
+      }
+    }
     setVisible(true);
   }, [isSignedIn, user]);
+
+  function dismissForSession() {
+    if (typeof window !== "undefined") {
+      try {
+        window.sessionStorage.setItem(CGU_DISMISS_KEY, String(CGU_VERSION));
+      } catch {
+        // ignore — best-effort only
+      }
+    }
+    setVisible(false);
+  }
 
   async function accept() {
     if (!user) return;
@@ -72,9 +100,9 @@ export default function CguUpdateBanner() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ type: "cgu", version: CGU_VERSION }),
       }).catch(() => {});
-      setVisible(false);
+      dismissForSession();
     } catch {
-      setVisible(false);
+      dismissForSession();
     } finally {
       setAccepting(false);
     }
@@ -114,7 +142,7 @@ export default function CguUpdateBanner() {
           </button>
           <button
             type="button"
-            onClick={() => setVisible(false)}
+            onClick={dismissForSession}
             aria-label="Fermer"
             className="rounded-lg p-1 opacity-70 transition hover:opacity-100"
           >

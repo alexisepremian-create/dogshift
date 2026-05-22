@@ -313,7 +313,7 @@ export default function SignUpForm() {
               </Link>{" "}
               et la{" "}
               <Link
-                href="/politique-confidentialite"
+                href="/confidentialite"
                 className="underline underline-offset-2 hover:text-slate-900"
               >
                 politique de confidentialité

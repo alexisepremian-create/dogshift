@@ -39,12 +39,12 @@ export default function NotFound() {
         >
           Retour à l&apos;accueil
         </Link>
-        <Link
-          href="/support"
+        <a
+          href="mailto:contact@dogshift.ch"
           className="inline-flex h-11 items-center justify-center rounded-2xl border border-slate-300 bg-white px-7 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 active:scale-[.98]"
         >
           Contacter le support
-        </Link>
+        </a>
       </div>
 
       {/* Brand footer */}
