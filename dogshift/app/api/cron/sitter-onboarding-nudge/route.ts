@@ -185,6 +185,9 @@ export async function GET(req: Request) {
     // by Vercel, see CLAUDE.md "Cron jobs" gotcha).
     let telegramSent = false;
     if (results.sent > 0 || results.errors > 0) {
+      // Human-readable labels (French, plain words) — the Telegram message
+      // goes to the founder, not engineers. "day_3" is a code, "rappel J+3"
+      // is what a human reads.
       const stageEmoji: Record<string, string> = {
         welcome: "👋",
         day_1: "📅",
@@ -192,20 +195,36 @@ export async function GET(req: Request) {
         day_7: "📅",
         day_14: "🚨",
       };
+      const stageLabel: Record<string, string> = {
+        welcome: "Email de bienvenue",
+        day_1: "Rappel J+1",
+        day_3: "Rappel J+3",
+        day_7: "Rappel J+7",
+        day_14: "Dernier rappel (J+14)",
+      };
+      const actionLine =
+        results.errors > 0
+          ? `⚠️ <b>Action requise : OUI</b> — ${pluralFR(results.errors, "envoi a échoué", "envois ont échoué")}, regarde le détail.`
+          : `✅ <b>Action requise : NON</b> — ${pluralFR(results.sent, "email de relance envoyé", "emails de relance envoyés")} aux sitters activés mais pas encore publiés.`;
       const message = tgMessage([
-        tgHeader("💌", "Onboarding sitters — nudges du jour"),
+        tgHeader("💌", "Emails de relance envoyés aux sitters"),
+        actionLine,
         [
           tgSection("📊", "Résumé"),
-          `${pluralFR(results.candidatesFound, "candidat", "candidats")} examiné${results.candidatesFound !== 1 ? "s" : ""}`,
-          `✅ ${pluralFR(results.sent, "nudge envoyé", "nudges envoyés")} · ⏭ ${pluralFR(results.skippedAlreadyComplete + results.skippedNoStageDue, "skip")}${results.errors > 0 ? ` · ⚠️ ${pluralFR(results.errors, "erreur")}` : ""}`,
+          `${pluralFR(results.candidatesFound, "sitter", "sitters")} sans profil publié examiné${results.candidatesFound !== 1 ? "s" : ""}`,
+          `✅ ${pluralFR(results.sent, "email envoyé", "emails envoyés")} · ⏭ ${pluralFR(results.skippedAlreadyComplete + results.skippedNoStageDue, "sitter pas relancé aujourd'hui", "sitters pas relancés aujourd'hui")}${results.errors > 0 ? ` · ⚠️ ${pluralFR(results.errors, "erreur")}` : ""}`,
         ],
         sentDetails.length > 0
           ? [
-              tgSection("📤", "Détail"),
+              tgSection("📤", "Détail des envois"),
               ...sentDetails.map(
-                (d) =>
-                  `${stageEmoji[d.stage] ?? "📨"} <code>${escapeHtml(d.stage)}</code> → ${escapeHtml(d.name)} (${escapeHtml(d.email)})`,
+                (d) => {
+                  const label = stageLabel[d.stage] ?? d.stage;
+                  return `${stageEmoji[d.stage] ?? "📨"} <b>${escapeHtml(label)}</b> → ${escapeHtml(d.name)} (${escapeHtml(d.email)})`;
+                },
               ),
+              "",
+              `<i>Les rappels s'arrêtent automatiquement dès que le sitter complète son profil à 100 % et publie son annonce.</i>`,
             ]
           : null,
         tgFooter(),
