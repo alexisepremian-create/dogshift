@@ -23,6 +23,36 @@ function toRecord(v: unknown): Record<string, unknown> {
   return v as Record<string, unknown>;
 }
 
+/**
+ * Normalize a `services` value into the canonical boolean-record shape used
+ * by the dashboard. Two shapes appear in real data (audit 2026-05-22):
+ *
+ *   A) Dashboard / hostProfileJson : `{ Promenade: true, Garde: true, Pension: false }`
+ *   B) SitterProfile.services column : `["Promenade", "Garde"]`  (only enabled names)
+ *
+ * Without normalization, calling computeSitterProfileCompletionDetails with
+ * shape (B) makes `Object.keys` return numeric string indices `"0", "1"` and
+ * the `pricing` check breaks (pricingRecord["0"] is undefined). This caused
+ * sitters with a published-eligible profile to be flagged as 88% by the cron.
+ */
+function normalizeServiceFlags(v: unknown): Record<string, boolean> {
+  if (Array.isArray(v)) {
+    const out: Record<string, boolean> = {};
+    for (const k of v) {
+      if (typeof k === "string" && k.trim()) out[k.trim()] = true;
+    }
+    return out;
+  }
+  if (v && typeof v === "object") {
+    const out: Record<string, boolean> = {};
+    for (const [k, val] of Object.entries(v as Record<string, unknown>)) {
+      out[k] = Boolean(val);
+    }
+    return out;
+  }
+  return {};
+}
+
 export function normalizeCompletionPricing(raw: unknown) {
   if (!raw || typeof raw !== "object") return {} as Record<string, number>;
   const obj = raw as Record<string, unknown>;
@@ -100,8 +130,10 @@ export function computeSitterProfileCompletionDetails(profile: unknown): {
   const address = toStringOrEmpty(p.address).length >= 5;
   const bio = Boolean(toStringOrEmpty(p.bio));
 
-  const svcRecord = toRecord(p.services);
-  const enabledServices = Object.keys(svcRecord).filter((k) => Boolean(svcRecord[k]));
+  // `services` is tolerated in two shapes (boolean record OR array of names).
+  // See normalizeServiceFlags() for context. Same logic applies to `dogSizes`.
+  const svcRecord = normalizeServiceFlags(p.services);
+  const enabledServices = Object.keys(svcRecord).filter((k) => svcRecord[k]);
   const services = enabledServices.length > 0;
 
   const pricingRecord = toRecord(p.pricing);
@@ -110,8 +142,8 @@ export function computeSitterProfileCompletionDetails(profile: unknown): {
     : false;
 
   const hasNewAccepts = p.acceptsSmall === true || p.acceptsMedium === true || p.acceptsLarge === true;
-  const dogSizeRecord = toRecord(p.dogSizes);
-  const hasLegacyDogSizes = Object.keys(dogSizeRecord).some((k) => Boolean(dogSizeRecord[k]));
+  const dogSizeRecord = normalizeServiceFlags(p.dogSizes);
+  const hasLegacyDogSizes = Object.values(dogSizeRecord).some(Boolean);
   const dogSizes = hasNewAccepts || hasLegacyDogSizes;
 
   const stripeConnected = typeof p.stripeAccountStatus === "string" && p.stripeAccountStatus === "ENABLED";
