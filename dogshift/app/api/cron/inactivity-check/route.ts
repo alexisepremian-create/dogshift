@@ -179,6 +179,16 @@ export async function GET(req: NextRequest) {
   // `_count: { availabilityRules }` directly on SitterProfile, which made
   // Prisma throw PrismaClientValidationError at runtime — the daily cron
   // was 500ing silently. We now nest the count under the user relation.
+  //
+  // Audit 2026-05-22 (false-positive on Céline): we also need to count
+  // future AvailabilityException rows with status != UNAVAILABLE — a sitter
+  // who only adds a one-off open slot for next week (no recurring rule)
+  // was incorrectly flagged as inactive and received a suspension warning.
+  // And we add a safety net: any active future booking (PENDING_ACCEPTANCE,
+  // PAID, CONFIRMED) is an unambiguous signal that the sitter is engaged,
+  // regardless of what AvailabilityRule says. Refusing to send a nudge
+  // when an obvious engagement signal exists is cheap insurance against
+  // pissed-off real users.
   const sitters = await db.sitterProfile.findMany({
     where: {
       published: true,
@@ -211,13 +221,78 @@ export async function GET(req: NextRequest) {
     errors: 0,
   };
 
+  // Build a "has engagement" signal per sitter. The bar is intentionally
+  // LOW — any of the four signals below is enough to keep us silent. This
+  // intentionally tolerates some sitters who should be reminded; that's
+  // the right side of the trade-off (false negatives are invisible, false
+  // positives generate pissed-off support emails).
+  const sitterIds = sitters
+    .map((s: any) => s.sitterId)
+    .filter((id: any): id is string => typeof id === "string" && id.length > 0);
+
+  const futureExceptionGroups = sitterIds.length
+    ? await db.availabilityException.groupBy({
+        by: ["sitterId"],
+        where: {
+          sitterId: { in: sitterIds },
+          date: { gte: now },
+          // UNAVAILABLE exceptions cancel a recurring rule — they are NOT
+          // evidence that the sitter is active. Only AVAILABLE / ON_REQUEST
+          // count.
+          status: { in: ["AVAILABLE", "ON_REQUEST"] as any },
+        },
+        _count: { _all: true },
+      })
+    : [];
+  const futureExceptionsBySitter = new Map<string, number>(
+    futureExceptionGroups.map((g: any) => [g.sitterId as string, g._count?._all ?? 0]),
+  );
+
+  // Future bookings = unambiguous "this sitter is active" signal.
+  const futureBookingGroups = sitterIds.length
+    ? await db.booking.groupBy({
+        by: ["sitterId"],
+        where: {
+          sitterId: { in: sitterIds },
+          status: { in: ["PENDING_ACCEPTANCE", "PAID", "CONFIRMED"] },
+          OR: [
+            { endAt: { gte: now } },
+            { endDate: { gte: now } },
+            // Catch bookings that haven't filled endAt/endDate yet
+            { startAt: { gte: now } },
+            { startDate: { gte: now } },
+          ],
+        },
+        _count: { _all: true },
+      })
+    : [];
+  const futureBookingsBySitter = new Map<string, number>(
+    futureBookingGroups.map((g: any) => [g.sitterId as string, g._count?._all ?? 0]),
+  );
+
+  // Per-sitter decision log (verbose). Surfaced in the API response so a
+  // single manual cron hit gives the operator the full audit trail.
+  const decisions: Array<{
+    sitterId: string;
+    email: string;
+    rules: number;
+    exceptions: number;
+    bookings: number;
+    decision: "reset" | "skip:already_suspended" | "skip:has_engagement" | "transition";
+    note?: string;
+  }> = [];
+
   for (const sitter of sitters) {
     const email = sitter.user?.email ?? "";
     const name = (sitter.displayName ?? sitter.user?.name ?? "").trim() || "Dogsitter";
-    const hasAvailability = (sitter.user?._count?.availabilityRules ?? 0) > 0;
+    const ruleCount = sitter.user?._count?.availabilityRules ?? 0;
+    const exceptionCount = futureExceptionsBySitter.get(sitter.sitterId) ?? 0;
+    const bookingCount = futureBookingsBySitter.get(sitter.sitterId) ?? 0;
+    const hasAvailability = ruleCount > 0 || exceptionCount > 0 || bookingCount > 0;
 
     try {
-      // ── Has availability → reset inactivity tracking ──────────────────
+      // ── Has availability (rule | future exception | future booking) →
+      //    reset inactivity tracking and skip ───────────────────────────
       if (hasAvailability) {
         if (sitter.inactivityStatus) {
           await db.sitterProfile.update({
@@ -231,6 +306,24 @@ export async function GET(req: NextRequest) {
             },
           });
           results.reset++;
+          decisions.push({
+            sitterId: sitter.sitterId,
+            email,
+            rules: ruleCount,
+            exceptions: exceptionCount,
+            bookings: bookingCount,
+            decision: "reset",
+            note: "tracking cleared, sitter has engagement signal",
+          });
+        } else {
+          decisions.push({
+            sitterId: sitter.sitterId,
+            email,
+            rules: ruleCount,
+            exceptions: exceptionCount,
+            bookings: bookingCount,
+            decision: "skip:has_engagement",
+          });
         }
         continue;
       }
@@ -241,6 +334,14 @@ export async function GET(req: NextRequest) {
 
       if (status === "suspended") {
         // Already suspended — nothing to do
+        decisions.push({
+          sitterId: sitter.sitterId,
+          email,
+          rules: ruleCount,
+          exceptions: exceptionCount,
+          bookings: bookingCount,
+          decision: "skip:already_suspended",
+        });
         continue;
       }
 
@@ -362,5 +463,5 @@ export async function GET(req: NextRequest) {
   }
 
   console.log("[inactivity-check] done", { ...results, telegramRecapSent });
-  return NextResponse.json({ ok: true, telegramRecapSent, ...results });
+  return NextResponse.json({ ok: true, telegramRecapSent, ...results, decisions });
 }

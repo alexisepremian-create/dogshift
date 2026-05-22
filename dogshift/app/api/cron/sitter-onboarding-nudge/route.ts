@@ -40,6 +40,26 @@ import {
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
+// Helpers used by the JSON-vs-column merge logic below.
+function emptyOrMissing(v: unknown): boolean {
+  if (v === null || v === undefined) return true;
+  if (Array.isArray(v)) return v.length === 0;
+  if (typeof v === "object") return Object.keys(v as Record<string, unknown>).length === 0;
+  return false;
+}
+
+function jsonHasDogSize(json: Record<string, unknown> | null, label: "Petit" | "Moyen" | "Grand"): boolean {
+  if (!json) return false;
+  const dogSizes = json.dogSizes;
+  if (Array.isArray(dogSizes)) {
+    return dogSizes.some((s) => typeof s === "string" && s.trim() === label);
+  }
+  if (dogSizes && typeof dogSizes === "object") {
+    return Boolean((dogSizes as Record<string, unknown>)[label]);
+  }
+  return false;
+}
+
 export async function GET(req: Request) {
   const authHeader = req.headers.get("authorization") ?? "";
   const cronBearer = `Bearer ${process.env.CRON_SECRET ?? ""}`;
@@ -78,7 +98,17 @@ export async function GET(req: Request) {
         acceptsMedium: true,
         acceptsLarge: true,
         stripeAccountStatus: true,
-        user: { select: { email: true, name: true } },
+        user: {
+          select: {
+            email: true,
+            name: true,
+            // The dashboard-side source of truth for service pricing &
+            // legacy dogSize toggles. Read so we can double-check the cron
+            // never sends "tarifs non définis" while the JSON proves they
+            // are. Audit 2026-05-22 — Sylvana case.
+            hostProfileJson: true,
+          },
+        },
       },
     })) as Array<{
       id: string;
@@ -95,7 +125,7 @@ export async function GET(req: Request) {
       acceptsMedium: boolean | null;
       acceptsLarge: boolean | null;
       stripeAccountStatus: string | null;
-      user: { email: string; name: string | null };
+      user: { email: string; name: string | null; hostProfileJson: string | null };
     }>;
 
     const results = {
@@ -109,6 +139,10 @@ export async function GET(req: Request) {
 
     // Track per-sitter what was sent for the recap Telegram at the end.
     const sentDetails: Array<{ name: string; email: string; stage: string }> = [];
+    // Audit 2026-05-22: when the column-only completion < 100 % but the
+    // merged-with-JSON completion = 100 %, the column was lagging behind
+    // the dashboard. We skip the email AND flag it so we can investigate.
+    const divergent: Array<{ name: string; email: string; columnPercent: number; mergedPercent: number }> = [];
 
     for (const sp of candidates) {
       if (!sp.activatedAt) {
@@ -116,7 +150,7 @@ export async function GET(req: Request) {
         continue;
       }
 
-      const profileSnapshot = {
+      const columnSnapshot = {
         avatarUrl: sp.avatarUrl,
         firstName: sp.displayName ?? sp.user.name,
         city: sp.city,
@@ -130,11 +164,95 @@ export async function GET(req: Request) {
         stripeAccountStatus: sp.stripeAccountStatus,
       };
 
-      const { percent: completion, checks } = computeSitterProfileCompletionDetails(profileSnapshot);
-      if (completion >= 100) {
+      // Merge with the dashboard JSON blob. The dashboard saves rich data
+      // there; the column may lag if the POST handler only wrote part of
+      // the payload. Strategy: column values take precedence for fields
+      // the column actually owns (address, stripeAccountStatus), JSON
+      // wins for everything else (the dashboard is the source of truth
+      // for services/pricing/dogSizes when the column is empty/missing).
+      let jsonParsed: Record<string, unknown> | null = null;
+      const rawJson = sp.user.hostProfileJson;
+      if (typeof rawJson === "string" && rawJson.trim().length > 0) {
+        try {
+          const parsed = JSON.parse(rawJson) as unknown;
+          if (parsed && typeof parsed === "object") {
+            jsonParsed = parsed as Record<string, unknown>;
+          }
+        } catch {
+          // Corrupted JSON — treat as no JSON. Telegram alert later if it
+          // changed the decision.
+        }
+      }
+      const mergedSnapshot = jsonParsed
+        ? {
+            ...columnSnapshot,
+            // Soft fields where JSON should win when present (preserves
+            // user-typed data that didn't make it to the column).
+            firstName: columnSnapshot.firstName ?? (jsonParsed.firstName as string | null) ?? null,
+            bio: columnSnapshot.bio ?? (jsonParsed.bio as string | null) ?? null,
+            services: emptyOrMissing(columnSnapshot.services) ? jsonParsed.services : columnSnapshot.services,
+            pricing: emptyOrMissing(columnSnapshot.pricing) ? jsonParsed.pricing : columnSnapshot.pricing,
+            // Dog-size toggles: column wins if any of accepts* is true,
+            // otherwise fallback to the JSON's dogSizes record.
+            acceptsSmall: columnSnapshot.acceptsSmall || jsonHasDogSize(jsonParsed, "Petit"),
+            acceptsMedium: columnSnapshot.acceptsMedium || jsonHasDogSize(jsonParsed, "Moyen"),
+            acceptsLarge: columnSnapshot.acceptsLarge || jsonHasDogSize(jsonParsed, "Grand"),
+            // Stripe + address — column wins (always written by the
+            // canonical writers, never via the JSON blob).
+          }
+        : columnSnapshot;
+
+      const columnResult = computeSitterProfileCompletionDetails(columnSnapshot);
+      const mergedResult = computeSitterProfileCompletionDetails(mergedSnapshot);
+
+      // GUARD-RAIL #1: if either source says 100 %, the sitter is done.
+      // We trust the optimistic side because the cost of sending one
+      // false-positive nudge to a real completed sitter is unacceptable
+      // (audit case Sylvana). The pessimistic side is allowed to be
+      // wrong; the optimistic side is not.
+      if (columnResult.percent >= 100 || mergedResult.percent >= 100) {
         results.skippedAlreadyComplete++;
+        if (columnResult.percent < 100 && mergedResult.percent >= 100) {
+          divergent.push({
+            name: (sp.displayName ?? sp.user.name ?? "").trim() || "Dogsitter",
+            email: sp.user.email,
+            columnPercent: columnResult.percent,
+            mergedPercent: mergedResult.percent,
+          });
+        }
         continue;
       }
+
+      // GUARD-RAIL #2: if the merged source disagrees with the column on
+      // ANY check (e.g. column says pricing missing, JSON says pricing
+      // filled), we abstain from sending. The sitter would receive a
+      // contradictory message; better to stay silent and flag for review.
+      const columnMissing = Object.entries(columnResult.checks)
+        .filter(([, ok]) => !ok)
+        .map(([key]) => key)
+        .sort()
+        .join(",");
+      const mergedMissing = Object.entries(mergedResult.checks)
+        .filter(([, ok]) => !ok)
+        .map(([key]) => key)
+        .sort()
+        .join(",");
+      if (columnMissing !== mergedMissing) {
+        results.skippedAlreadyComplete++;
+        divergent.push({
+          name: (sp.displayName ?? sp.user.name ?? "").trim() || "Dogsitter",
+          email: sp.user.email,
+          columnPercent: columnResult.percent,
+          mergedPercent: mergedResult.percent,
+        });
+        continue;
+      }
+
+      // From here we use the merged snapshot — both sources agree, so
+      // there's no risk of the email contradicting the dashboard.
+      const completion = mergedResult.percent;
+      const checks = mergedResult.checks;
+
       // Skip when the ONLY remaining check is Stripe Connect and everything
       // else (7/8) is done. Stripe Connect is an external step (bank account
       // verification) that the sitter mentally separates from "filling out
@@ -149,6 +267,7 @@ export async function GET(req: Request) {
         results.skippedAlreadyComplete++;
         continue;
       }
+      void completion;
 
       const alreadySent = await getAlreadySentStages(sp.userId);
       const stage = pickNudgeStage({
@@ -166,7 +285,9 @@ export async function GET(req: Request) {
         sitterUserId: sp.userId,
         email: sp.user.email,
         firstName,
-        profile: profileSnapshot,
+        // Email body is built from the MERGED snapshot — same data the
+        // dashboard shows, so the checklist matches what the sitter sees.
+        profile: mergedSnapshot,
       });
       if (send.ok) {
         results.sent++;
@@ -235,8 +356,40 @@ export async function GET(req: Request) {
       });
     }
 
-    console.log("[cron][sitter-onboarding-nudge] done", { ...results, telegramSent });
-    return NextResponse.json({ ok: true, telegramSent, ...results });
+    // Surface JSON-vs-column divergences to the maintenance bot so the
+    // operator can investigate. Each entry is a sitter whose email we
+    // suppressed because the two sources disagreed. AWAITED.
+    let telegramDivergenceSent = false;
+    if (divergent.length > 0) {
+      const lines = divergent.map(
+        (d) =>
+          `🟡 ${escapeHtml(d.name)} (${escapeHtml(d.email)}) — colonne ${d.columnPercent}% vs merge ${d.mergedPercent}%`,
+      );
+      const message = tgMessage([
+        tgHeader("⚠️", "Onboarding nudge — emails évités (divergence JSON / colonnes)"),
+        `🟢 <b>Action requise : NON</b> — ${pluralFR(divergent.length, "sitter a évité un email injuste", "sitters ont évité un email injuste")} grâce au guard-rail. À investiguer côté écriture du profil quand tu auras 5 min.`,
+        [tgSection("📋", "Détail"), ...lines],
+        tgFooter(),
+      ]);
+      telegramDivergenceSent = await sendTelegramMessage(message, {
+        bot: "maintenance",
+        parseMode: "HTML",
+      });
+    }
+
+    console.log("[cron][sitter-onboarding-nudge] done", {
+      ...results,
+      telegramSent,
+      telegramDivergenceSent,
+      divergentCount: divergent.length,
+    });
+    return NextResponse.json({
+      ok: true,
+      telegramSent,
+      telegramDivergenceSent,
+      ...results,
+      divergentCount: divergent.length,
+    });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     console.error("[cron][sitter-onboarding-nudge] fatal", message);
