@@ -20,9 +20,9 @@ import {
   tgHeader,
   tgMessage,
   tgSection,
-} from "@/lib/telegram/format";
+} from "../telegram/format.ts";
 
-import type { FicheResult } from "./runDetections";
+import type { FicheResult } from "./runDetections.ts";
 
 export function formatRecap(results: FicheResult[], runDate: Date = new Date()): string {
   const failures = results.filter((r) => r.outcome.status === "fail");
