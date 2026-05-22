@@ -197,6 +197,7 @@ export default function SiteHeader() {
               ) : (
                 <Link
                   href="/login"
+                  prefetch={false}
                   className="hidden text-sm font-semibold text-slate-700 transition-colors hover:text-slate-900 md:inline-block"
                 >
                   Se connecter
@@ -329,6 +330,7 @@ export default function SiteHeader() {
                   ) : (
                     <Link
                       href="/login"
+                      prefetch={false}
                       onClick={() => setNavOpen(false)}
                       className="flex items-center gap-3 rounded-xl bg-[var(--dogshift-blue)] px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-[var(--dogshift-blue-hover)]"
                     >

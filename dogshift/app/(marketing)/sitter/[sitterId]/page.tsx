@@ -382,9 +382,14 @@ function SitterPublicProfileContent({
 
   const { data: __session, status: __sessionStatus } = useSession();
   const user = __session?.user ?? null;
+  const sessionRole = (user as { role?: string } | null)?.role ?? null;
   const isLoaded = __sessionStatus !== "loading";
   const isSignedIn = __sessionStatus === "authenticated";
   const isLoggedIn = Boolean(isLoaded && isSignedIn);
+  // Only sitters have a host profile (/api/host/* is sitter-only — 403 for owners).
+  // Audit 2026-05-22: this fetch used to fire for owners viewing a sitter page,
+  // producing a noisy 403 in console. Gate on role.
+  const isSitterViewer = sessionRole === "SITTER" || sessionRole === "ADMIN";
   const effectivePreviewMode = Boolean(isPreviewMode && isLoggedIn);
 
   const [hydrated, setHydrated] = useState(false);
@@ -643,6 +648,18 @@ function SitterPublicProfileContent({
       setProfileData(null);
       return;
     }
+    // Skip the host-profile fetch entirely for owners (no sitter side) — endpoint
+    // is sitter-only and returns 403, polluting the console for every owner who
+    // views a sitter page. Owners don't need preview mode nor completion state.
+    if (!isSitterViewer) {
+      setCurrentHostId(null);
+      setHostProfileCompletion(null);
+      setHostProfileCompletionLoaded(true);
+      setPreviewLoaded(false);
+      setPreviewSitter(null);
+      setProfileData(null);
+      return;
+    }
     void (async () => {
       try {
         if (dbg) console.log("[ProfileContent] fetch start");
@@ -715,7 +732,7 @@ function SitterPublicProfileContent({
         if (dbg) console.log("[ProfileContent] fetch finally");
       }
     })();
-  }, [effectivePreviewMode, id, isLoaded, isSignedIn]);
+  }, [effectivePreviewMode, id, isLoaded, isSignedIn, isSitterViewer]);
 
   useEffect(() => {
     // handled above

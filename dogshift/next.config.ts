@@ -137,6 +137,17 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  async redirects() {
+    return [
+      // /sitters → /search (audit 2026-05-22: external links/SEO/bookmarks pointed to /sitters,
+      // which 404'd. Canonical search route is /search.)
+      {
+        source: "/sitters",
+        destination: "/search",
+        permanent: true,
+      },
+    ];
+  },
 };
 
 export default withSentryConfig(nextConfig, {

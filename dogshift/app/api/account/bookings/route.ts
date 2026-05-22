@@ -52,8 +52,10 @@ export async function GET() {
     const bookings = await (prisma as any).booking.findMany({
       where: {
         userId,
-        // Hide checkout-abandoned bookings — only show once payment has been initiated/confirmed
-        status: { notIn: ["DRAFT", "PENDING_PAYMENT"] },
+        // Hide pure drafts only. PENDING_PAYMENT bookings stay visible so an owner who
+        // abandoned the Stripe checkout (or had a payment intent expire) can find their
+        // reservation again and retry payment. Audit 2026-05-22 (bug I5).
+        status: { notIn: ["DRAFT"] },
       },
       orderBy: { createdAt: "desc" },
       select: {
