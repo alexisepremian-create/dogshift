@@ -40,6 +40,27 @@ export function formatRecap(results: FicheResult[], runDate: Date = new Date()):
   const headerEmoji = isClean ? "🌙" : "🚨";
   const headerTitle = "Audit nocturne des bugs";
 
+  // Tout en haut du message, une ligne unique qui te dit en clair si tu dois
+  // agir ou pas. Le détail vient en dessous. Si tu vois "Action requise : NON",
+  // tu peux fermer le message tranquille.
+  const actionBlock = (() => {
+    if (failures.length > 0) {
+      return `🚨 <b>Action requise : OUI</b> — ${pluralFR(
+        failures.length,
+        "ancien bug est revenu",
+        "anciens bugs sont revenus",
+      )}. Voir le détail ci-dessous.`;
+    }
+    if (errors.length > 0) {
+      return `⚠️ <b>À investiguer</b> — ${pluralFR(
+        errors.length,
+        "vérification a planté",
+        "vérifications ont planté",
+      )} (problème du test lui-même, pas forcément un bug). Voir détail.`;
+    }
+    return `✅ <b>Action requise : NON</b> — tout est OK, aucun ancien bug ne refait surface. Tu peux ignorer ce message.`;
+  })();
+
   // Régressions (only if any)
   const regressionsBlock =
     failures.length > 0
@@ -64,11 +85,13 @@ export function formatRecap(results: FicheResult[], runDate: Date = new Date()):
         ]
       : null;
 
-  // Résumé — toujours présent
+  // Résumé — toujours présent. Le compte "vérifications manuelles" remplace
+  // l'ancien libellé "ignorée" qui faisait croire à un problème alors que
+  // c'est par design (certains bugs ne sont vérifiables qu'à la main).
   const summaryBlock = [
     tgSection("📊", "Résumé"),
     `${pluralFR(results.length, "fiche", "fiches")} checkée${results.length !== 1 ? "s" : ""}`,
-    `✅ ${pluralFR(passes.length, "OK")} · 🚨 ${pluralFR(failures.length, "régression")} · ⚠️ ${pluralFR(errors.length, "erreur")} · ⏭ ${pluralFR(skipped.length, "ignorée")}`,
+    `✅ ${pluralFR(passes.length, "OK")} · 🚨 ${pluralFR(failures.length, "régression")} · ⚠️ ${pluralFR(errors.length, "erreur")} · ⏭ ${pluralFR(skipped.length, "vérification manuelle", "vérifications manuelles")}`,
   ];
 
   // Hint — only show if there's a REAL TODO (missing block). Intentional
@@ -87,7 +110,10 @@ export function formatRecap(results: FicheResult[], runDate: Date = new Date()):
   const intentionalBlock =
     isClean && intentionallySkipped.length > 0
       ? [
-          tgSection("⏭", pluralFR(intentionallySkipped.length, "fiche non auto-checkable", "fiches non auto-checkables")),
+          tgSection(
+            "⏭",
+            `${pluralFR(intentionallySkipped.length, "bug à vérifier à la main", "bugs à vérifier à la main")} (pas testable automatiquement)`,
+          ),
           ...intentionallySkipped.map((r) => {
             const reason = r.detection?.type === "none" ? (r.detection.reason ?? "") : "";
             const shortReason = firstSentence(reason, 140);
@@ -100,6 +126,7 @@ export function formatRecap(results: FicheResult[], runDate: Date = new Date()):
 
   return tgMessage([
     tgHeader(headerEmoji, headerTitle, runDate),
+    actionBlock,
     regressionsBlock,
     errorsBlock,
     summaryBlock,

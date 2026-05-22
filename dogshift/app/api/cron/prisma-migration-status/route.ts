@@ -95,16 +95,18 @@ export async function GET(req: Request) {
       const message = [
         tgHeader("🚨", "Migrations Prisma en attente", now),
         "",
+        `🚨 <b>Action requise : OUI</b> — la prod tourne avec un schéma DB désynchronisé du code. Risque de 500 sur les routes touchant ces tables.`,
+        "",
         tgSection(
           "📦",
           `${pending.length} migration(s) sur disque non appliquée(s) en prod`,
         ),
         ...lines,
         "",
-        tgSection("ℹ️", "Quoi faire"),
-        "1. Vérifier <code>_prisma_migrations</code> sur la prod DB",
-        "2. Appliquer manuellement ou relancer <code>prisma migrate deploy</code>",
-        "3. Voir <code>docs/bugs/prisma-migration-not-applied-on-prod.md</code>",
+        tgSection("ℹ️", "Quoi faire (par ordre du plus simple au plus risqué)"),
+        "1. <b>Relancer un déploiement Vercel</b> (souvent suffisant) — push un commit vide ou redéploie via le dashboard. Le build refait <code>prisma migrate deploy</code>.",
+        "2. <b>Si ça revient au check suivant</b> : appliquer manuellement via Neon SQL Editor (copier le SQL de <code>prisma/migrations/&lt;nom&gt;/migration.sql</code>) puis insérer la ligne dans <code>_prisma_migrations</code>.",
+        "3. <b>Playbook complet</b> : <code>docs/bugs/prisma-migration-not-applied-on-prod.md</code> (avec le script tsx d'application manuelle).",
         "",
         tgFooter(now),
       ].join("\n");
