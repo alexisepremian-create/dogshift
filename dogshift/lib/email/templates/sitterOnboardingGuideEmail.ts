@@ -67,7 +67,10 @@ type ChecklistItem = {
 
 const CHECKLIST: ChecklistItem[] = [
   { key: "identity", label: "Prénom + ville renseignés", href: "/host/profile/edit" },
-  { key: "address", label: "Adresse postale renseignée", href: "/host/profile/edit" },
+  // Audit 2026-05-22 follow-up: previously "Adresse postale renseignée", which
+  // led sitters with just a street (no NPA/ville) to think they were done. We
+  // now spell out the requirement explicitly to match the dashboard wording.
+  { key: "address", label: "Adresse postale complète (rue, NPA, ville)", href: "/host/profile/edit" },
   { key: "avatar", label: "Photo de profil ajoutée", href: "/host/profile/edit" },
   { key: "bio", label: "Bio rédigée", href: "/host/profile/edit" },
   { key: "services", label: "Services activés (Promenade / Garde / Pension)", href: "/host/profile/edit" },
