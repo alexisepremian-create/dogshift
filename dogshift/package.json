@@ -65,7 +65,7 @@
     "react-hook-form": "^7.71.2",
     "react-leaflet": "^5.0.0",
     "react-map-gl": "^8.1.0",
-    "stripe": "^20.1.0",
+    "stripe": "^22.1.1",
     "svix": "^1.92.2",
     "uuid": "^13.0.0",
     "web-push": "^3.6.7",
