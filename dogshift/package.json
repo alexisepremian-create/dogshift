@@ -58,7 +58,7 @@
     "maplibre-gl": "^5.14.0",
     "next": "^16.2.6",
     "next-auth": "5.0.0-beta.31",
-    "nodemailer": "^7.0.12",
+    "nodemailer": "^8.0.8",
     "pdf-lib": "^1.17.1",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
