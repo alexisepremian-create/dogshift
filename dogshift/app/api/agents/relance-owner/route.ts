@@ -154,12 +154,20 @@ Réponds UNIQUEMENT avec le JSON brut : { "subject": "...", "bodyHtml": "<p>...<
       `Finalisez votre réservation : ${baseUrl}/sitters\n\n— L'équipe DogShift`;
 
     // 3. Send email via Resend
-    await sendEmail({
-      to: email,
-      subject: emailContent.subject,
-      html,
-      text: fallbackText,
-    });
+    await sendEmail(
+      {
+        to: email,
+        subject: emailContent.subject,
+        html,
+        text: fallbackText,
+      },
+      {
+        templateName: "relance-owner-day-3",
+        context: "agent:relance-owner",
+        targetUserId: userId,
+        metadata: { daysSinceLastMessage: daysSinceLastMessage ?? null },
+      },
+    );
 
     // 3. Log ScheduledEmail (cron already deduped — just stamp as sent)
     await prisma.scheduledEmail.create({

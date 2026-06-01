@@ -98,7 +98,13 @@ async function sendActivationCodeEmailDirect(params: {
         expiresAt: params.expiresAt,
       }),
     );
-    await sendEmail({ to: params.email, subject, text, html });
+    await sendEmail(
+      { to: params.email, subject, text, html },
+      {
+        templateName: "sitter-contract-signed",
+        context: "api:contract/sign",
+      },
+    );
     console.info("[contract-sign][email] activation code sent", { to: params.email });
   } catch (err) {
     console.error("[contract-sign][email] activation code send failed", {

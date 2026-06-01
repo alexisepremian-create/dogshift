@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { render } from "@react-email/render";
 import { z } from "zod";
-import { getAuthedDbUser } from "@/lib/auth/getAuthedDbUser";
 // TODO(PR2): clerkClient() removed — replace its callers with prisma/bcrypt direct calls.
 
 import { getRequestAdminAccess } from "@/lib/adminAuth";
@@ -83,7 +82,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
   }
 
-  const logs = await (prisma as any).auditLog.findMany({
+  const logs = await prisma.auditLog.findMany({
     where: { action: "communications.email_sent" },
     orderBy: { createdAt: "desc" },
     take: 50,
@@ -167,16 +166,23 @@ export async function POST(req: NextRequest) {
       });
 
       const unsubscribeMailto = `mailto:support@dogshift.ch?subject=D%C3%A9sabonnement%20aux%20communications%20DogShift`;
-      await sendEmail({
-        to: user.email,
-        subject,
-        html,
-        text,
-        headers: {
-          "List-Unsubscribe": `<${unsubscribeMailto}>`,
-          "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+      await sendEmail(
+        {
+          to: user.email,
+          subject,
+          html,
+          text,
+          headers: {
+            "List-Unsubscribe": `<${unsubscribeMailto}>`,
+            "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+          },
         },
-      });
+        {
+          templateName: "admin-notify-users-broadcast",
+          context: "api:admin/notify-users",
+          metadata: { target, subject },
+        },
+      );
       sent++;
     } catch (err) {
       failed++;

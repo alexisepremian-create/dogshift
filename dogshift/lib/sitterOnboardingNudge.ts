@@ -56,12 +56,20 @@ export async function sendSitterOnboardingNudge(args: {
   });
 
   try {
-    const result = await sendEmail({
-      to: args.email,
-      subject,
-      text,
-      html,
-    });
+    const result = await sendEmail(
+      {
+        to: args.email,
+        subject,
+        text,
+        html,
+      },
+      {
+        templateName: `sitter-onboarding-nudge-${args.stage.replace(/_/g, "-")}`,
+        context: "lib:sitterOnboardingNudge",
+        targetUserId: args.sitterUserId,
+        metadata: { stage: args.stage, completionPercent: completion },
+      },
+    );
 
     // Log the send so the cron doesn't repeat the same stage.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- AgentLog details is Json.

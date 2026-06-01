@@ -73,12 +73,19 @@ export async function POST(req: Request) {
 
     const rendered = renderPasswordResetEmail({ name: user.name ?? null, ctaUrl });
 
-    await sendEmail({
-      to: email,
-      subject: rendered.subject,
-      text: rendered.text,
-      html: rendered.html,
-    });
+    await sendEmail(
+      {
+        to: email,
+        subject: rendered.subject,
+        text: rendered.text,
+        html: rendered.html,
+      },
+      {
+        templateName: "reset-password",
+        context: "api:auth/forgot-password",
+        targetUserId: user.id,
+      },
+    );
 
     return NextResponse.json(GENERIC_OK);
   } catch (err) {

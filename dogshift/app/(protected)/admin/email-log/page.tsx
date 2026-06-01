@@ -29,18 +29,78 @@ function formatDateTime(d: Date) {
 }
 
 // Human-readable French label for each known template id. Unknown templates
-// keep their raw id (still searchable but obviously "not labelled yet").
+// keep their raw id in the UI (still searchable, but a soft signal that the
+// caller should be tagged).
 const TEMPLATE_LABELS: Record<string, string> = {
+  // ── Auth ─────────────────────────────────────────────────────────────────
+  "reset-password": "Mot de passe oublié",
+  "email-verification": "Vérification d'email (signup)",
+  "email-verification-resend": "Vérification d'email (re-envoi)",
+  "signup-welcome": "Bienvenue (signup réussi)",
+
+  // ── Inactivité (cron) ────────────────────────────────────────────────────
   "inactivity-nudge": "Inactivité — premier rappel",
   "inactivity-warning-1": "Inactivité — avertissement 1",
   "inactivity-warning-2": "Inactivité — avertissement 2 (suspension imminente)",
   "inactivity-suspended": "Inactivité — compte suspendu",
-  "reset-password": "Mot de passe oublié",
-  "email-verification": "Vérification d'email",
-  "booking-confirmed": "Réservation confirmée",
-  "booking-cancelled": "Réservation annulée",
-  "review-request": "Demande d'avis post-réservation",
-  "sitter-onboarding-nudge": "Relance onboarding sitter",
+
+  // ── Réservations / avis ──────────────────────────────────────────────────
+  "booking-review-request": "Demande d'avis post-réservation",
+
+  // ── Lead magnet & nurturing ──────────────────────────────────────────────
+  "lead-magnet-guide": "Guide dogsitter (lead magnet)",
+  "lead-nurturing-step-1": "Lead nurturing — étape 1",
+  "lead-nurturing-step-2": "Lead nurturing — étape 2",
+  "lead-nurturing-step-3": "Lead nurturing — étape 3",
+
+  // ── Relances + onboarding agents ────────────────────────────────────────
+  "relance-owner-day-3": "Relance propriétaire — J+3",
+  "onboarding-owner-step-1": "Onboarding propriétaire — étape 1",
+  "zootherapie-evaluation": "Évaluation zoothérapie (Claude)",
+
+  // ── Onboarding sitter ────────────────────────────────────────────────────
+  "sitter-onboarding-nudge-welcome": "Onboarding sitter — bienvenue",
+  "sitter-onboarding-nudge-day-1": "Onboarding sitter — J+1",
+  "sitter-onboarding-nudge-day-3": "Onboarding sitter — J+3",
+  "sitter-onboarding-nudge-day-7": "Onboarding sitter — J+7",
+  "sitter-onboarding-nudge-day-14": "Onboarding sitter — J+14",
+
+  // ── Candidatures sitter ──────────────────────────────────────────────────
+  "sitter-application-received": "Candidature reçue (REVIEW/LOW)",
+  "sitter-application-interview": "Candidature acceptée — interview Cal.com",
+  "sitter-contract-issued": "Contrat émis par l'admin",
+  "sitter-contract-signed": "Contrat signé — code d'activation",
+
+  // ── Vérifications ────────────────────────────────────────────────────────
+  "sitter-verification-submitted": "Vérification d'identité — soumise",
+  "sitter-verification-approved": "Vérification d'identité — approuvée",
+  "sitter-verification-rejected": "Vérification d'identité — refusée",
+  "sitter-max-dogs-cert-submitted": "Certificat max chiens — soumis",
+  "sitter-max-dogs-cert-reviewed": "Certificat max chiens — revu",
+  "sitter-pension-verification-submitted": "Vérif pension — soumise",
+  "sitter-pension-verification-reviewed": "Vérif pension — revue",
+
+  // ── Notifications transactionnelles ──────────────────────────────────────
+  "notification-new-message": "Notif — nouveau message",
+  "notification-booking-request": "Notif — nouvelle demande de réservation",
+  "notification-booking-confirmed": "Notif — réservation confirmée",
+  "notification-payment-received": "Notif — paiement reçu",
+  "notification-booking-reminder": "Notif — rappel de réservation",
+  "notification-booking-cancelled": "Notif — réservation annulée",
+  "notification-booking-refunded": "Notif — réservation remboursée",
+  "notification-booking-auto-expired-refunded": "Notif — réservation expirée + remboursée",
+  "notification-booking-refund-failed": "Notif — échec du remboursement",
+  "notification-sitter-booking-confirmed": "Notif sitter — réservation confirmée",
+  "notification-sitter-booking-reminder": "Notif sitter — rappel de réservation",
+  "notification-sitter-payout-received": "Notif sitter — virement reçu",
+  "notification-sitter-booking-modified": "Notif sitter — réservation modifiée",
+  "notification-sitter-refund-triggered": "Notif sitter — remboursement déclenché",
+  "notification-sitter-review-received": "Notif sitter — nouvel avis",
+  "notification-sitter-monthly-recap": "Notif sitter — récap mensuel",
+
+  // ── Communications admin ────────────────────────────────────────────────
+  "admin-notify-users-broadcast": "Broadcast admin → utilisateurs",
+  "admin-notify-pension-legacy": "Notif admin — pension legacy",
 };
 
 function labelTemplate(name: string | null): string {

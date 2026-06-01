@@ -68,7 +68,17 @@ export async function sendInterviewEmail(
     }),
   );
 
-  const delivery = await sendEmail({ to: email, subject, text, html });
+  const delivery = await sendEmail(
+    { to: email, subject, text, html },
+    {
+      templateName: "sitter-application-interview",
+      context: "lib:sitterApplication/sendInterviewEmail",
+      metadata: {
+        applicationId: params.applicationId ?? null,
+        source: params.source,
+      },
+    },
+  );
 
   let acceptedEmailSentAt: Date | null = null;
   if (params.applicationId) {

@@ -123,14 +123,21 @@ export async function POST(req: NextRequest) {
         ctaUrl: `${APP_URL}/host/profile/edit`,
         footerText: "DogShift · Dog-sitting premium en Suisse · support@dogshift.ch",
       });
-      await sendEmail({
-        to: sitterEmail,
-        subject,
-        html,
-        text: isApproved
-          ? `Bonne nouvelle ${firstName} ! Votre identité a été vérifiée avec succès.`
-          : `Bonjour ${firstName}, votre vérification n'a pas pu être validée. ${notes ?? ""}`,
-      }).catch((e) => console.error("[admin][verifications][review] email failed", e));
+      await sendEmail(
+        {
+          to: sitterEmail,
+          subject,
+          html,
+          text: isApproved
+            ? `Bonne nouvelle ${firstName} ! Votre identité a été vérifiée avec succès.`
+            : `Bonjour ${firstName}, votre vérification n'a pas pu être validée. ${notes ?? ""}`,
+        },
+        {
+          templateName: isApproved ? "sitter-verification-approved" : "sitter-verification-rejected",
+          context: "api:admin/verifications/review",
+          metadata: { sitterId, decision },
+        },
+      ).catch((e) => console.error("[admin][verifications][review] email failed", e));
     }
 
     // Telegram confirmation

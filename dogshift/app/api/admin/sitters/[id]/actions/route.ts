@@ -204,12 +204,20 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       );
       const emailText = activationCodeEmailPlainText({ firstName, activationCode: rawCode, expiresAt, baseUrl });
 
-      await sendEmail({
-        to: sitter.email,
-        subject: activationCodeEmailSubject(),
-        text: emailText,
-        html: emailHtml,
-      });
+      await sendEmail(
+        {
+          to: sitter.email,
+          subject: activationCodeEmailSubject(),
+          text: emailText,
+          html: emailHtml,
+        },
+        {
+          templateName: "sitter-contract-signed",
+          context: "api:admin/sitters/actions/send_activation_code",
+          targetUserId: sitter.id,
+          metadata: { sitterProfileId: sitter.sitterProfile.id },
+        },
+      );
 
       logAdminAudit({
         action: "sitter.send_activation_code" as Parameters<typeof logAdminAudit>[0]["action"],
@@ -467,7 +475,12 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
           to: contractEmail.to,
           tokenFingerprint: generatedContractFingerprint,
         });
-        await sendEmail(contractEmail);
+        await sendEmail(contractEmail, {
+          templateName: "sitter-contract-issued",
+          context: "api:admin/sitters/actions/generate_contract_link",
+          targetUserId: sitter.id,
+          metadata: { sitterProfileId: updatedProfile.id },
+        });
         console.info("[contract-email][send][ok]", {
           route: "admin/sitters/actions/generate_contract_link",
           sitterId: sitter.id,
