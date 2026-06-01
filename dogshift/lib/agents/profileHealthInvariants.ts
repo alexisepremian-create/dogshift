@@ -32,6 +32,76 @@ export type ProfileHealthIssue = Invariant & {
   fixDetails?: Record<string, unknown>;
 };
 
+/**
+ * Human-readable French labels for each invariant ID — used by the Telegram
+ * recap and the /admin/profile-health UI so the founder doesn't have to read
+ * CONSTANT_CASE IDs to understand what's actually broken.
+ *
+ * Adding a new check : also add a label here.
+ */
+export const ISSUE_LABELS: Record<string, { title: string; explain: string; action: string }> = {
+  TERMS_MISSING_BUT_PUBLISHED: {
+    title: "Profil publié sans avoir accepté le règlement DogShift",
+    explain: "Le sitter voit l'avertissement mais ne peut pas accepter — le toggle est bloqué côté serveur.",
+    action: "Va sur /admin/profile-health, clique « Voir comme », accepte le règlement à sa place.",
+  },
+  TERMS_OUTDATED: {
+    title: "Règlement DogShift à re-signer (nouvelle version)",
+    explain: "Le sitter a accepté une version périmée. Sera bloqué pour les actions sensibles.",
+    action: "Le modal s'affichera à son prochain login. Pas d'action requise.",
+  },
+  STRIPE_NOT_ENABLED_BUT_PUBLISHED: {
+    title: "Profil publié mais Stripe Connect pas activé",
+    explain: "Le sitter peut recevoir des réservations mais le payout échouera.",
+    action: "Contacte le sitter et fais-lui finaliser son onboarding Stripe.",
+  },
+  LIFECYCLE_MISMATCH_PUBLISHED: {
+    title: "Profil publié alors que l'activation n'est pas terminée",
+    explain: "Cohérence interne cassée (lifecycle != activated). Probable revert.",
+    action: "Vérifie /admin/sitters/[id] et corrige le lifecycleStatus.",
+  },
+  VERIFICATION_NOT_APPROVED_PUBLISHED: {
+    title: "Profil publié sans vérification d'identité validée",
+    explain: "Trust & Safety — le profil est visible alors que les pièces d'identité ne sont pas approuvées.",
+    action: "Va sur /admin/verifications et statue sur le dossier.",
+  },
+  COMPLETION_CACHE_STALE: {
+    title: "Pourcentage de profil obsolète",
+    explain: "Le cache affichait un % qui ne matche plus la réalité.",
+    action: "Auto-corrigé. Rien à faire.",
+  },
+  SERVICES_DESYNC: {
+    title: "Services proposés désynchronisés (UI vs base)",
+    explain: "Mineur, mais peut prêter à confusion côté affichage.",
+    action: "Auto-corrigé. Rien à faire.",
+  },
+  DOG_SIZES_DESYNC: {
+    title: "Tailles de chiens acceptées désynchronisées (UI vs base)",
+    explain: "Pareil que pour les services, côté affichage seulement.",
+    action: "Auto-corrigé. Rien à faire.",
+  },
+  SITTER_PROFILE_ORPHAN: {
+    title: "Compte sitter sans fiche rattachée",
+    explain: "Bug critique : l'utilisateur est marqué comme sitter mais aucune fiche n'existe en base.",
+    action: "À investiguer dans /admin/users — probablement un crash pendant l'onboarding.",
+  },
+  EMAIL_MISSING: {
+    title: "Email manquant sur le compte",
+    explain: "Compte cassé — impossible d'envoyer un email, login, reset password…",
+    action: "À investiguer dans /admin/users immédiatement.",
+  },
+};
+
+export function getIssueLabel(id: string) {
+  return (
+    ISSUE_LABELS[id] ?? {
+      title: id,
+      explain: "Aucune description disponible pour ce check.",
+      action: "À investiguer manuellement.",
+    }
+  );
+}
+
 // ── Input shape ──────────────────────────────────────────────────────────────
 //
 // We deliberately accept a "loose" shape rather than full Prisma types so the

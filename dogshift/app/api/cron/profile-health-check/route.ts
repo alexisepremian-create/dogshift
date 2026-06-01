@@ -20,6 +20,7 @@
 import { NextResponse } from "next/server";
 
 import {
+  getIssueLabel,
   planAutoFix,
   runProfileHealthChecks,
   type ProfileHealthIssue,
@@ -36,7 +37,6 @@ import { reportApiError } from "@/lib/observability/reportApiError";
 import { prisma } from "@/lib/prisma";
 import {
   pluralFR,
-  riskEmoji,
   riskRank,
   tgFooter,
   tgHeader,
@@ -49,7 +49,14 @@ export const runtime = "nodejs";
 export const maxDuration = 300;
 
 const AGENT_NAME = "profile-health";
-const BASE_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://www.dogshift.ch";
+// Force the www subdomain — the apex (dogshift.ch) is redirected/blocked by
+// the proxy in prod, which would make every probe fail with a 308/403 even
+// though the user-facing site works fine.
+function normalizeBaseUrl(raw: string | undefined): string {
+  const url = (raw ?? "").trim() || "https://www.dogshift.ch";
+  return url.replace(/^https?:\/\/dogshift\.ch/i, "https://www.dogshift.ch").replace(/\/+$/, "");
+}
+const BASE_URL = normalizeBaseUrl(process.env.NEXT_PUBLIC_APP_URL);
 
 async function ensurePrismaWarm(): Promise<void> {
   let lastErr: unknown = null;
@@ -183,10 +190,17 @@ export async function GET(req: Request) {
           const plan = planAutoFix(iss, snap);
           if (plan) {
             try {
+              // Round-trip through JSON so the data shape is `InputJsonValue`
+              // -compatible. Prisma's strict Json type rejects raw
+              // `Record<string, unknown>` even when the contents are valid JSON
+              // — same reason we did this for the AuditLog metadata field.
+              // This is what was causing SERVICES_DESYNC fixes to fail silently
+              // in the very first prod run (15 issues reported instead of 0).
+              const safeData = JSON.parse(JSON.stringify(plan.data));
               if (plan.table === "sitterProfile") {
-                await prisma.sitterProfile.update({ where: plan.where, data: plan.data });
+                await prisma.sitterProfile.update({ where: plan.where, data: safeData });
               } else {
-                await prisma.user.update({ where: plan.where, data: plan.data });
+                await prisma.user.update({ where: plan.where, data: safeData });
               }
               await prisma.auditLog.create({
                 data: {
@@ -195,18 +209,21 @@ export async function GET(req: Request) {
                   actorId: "system",
                   targetId: u.id,
                   targetType: "USER",
-                  // Stringify the plan to keep Prisma's strict Json input type happy
-                  // — the plan can contain nested JSON values that don't satisfy
-                  // InputJsonValue directly.
-                  metadata: { check: iss.id, plan: JSON.parse(JSON.stringify(plan.data)) },
+                  metadata: { check: iss.id, plan: safeData },
                 },
               });
               iss.fixed = true;
               fixedCounts[iss.id] = (fixedCounts[iss.id] ?? 0) + 1;
             } catch (err) {
-              // Auto-fix failed — leave the issue in the recap.
+              // Auto-fix failed — leave the issue in the recap with the reason
+              // exposed so we can debug the next run.
               iss.fixed = false;
               iss.fixDetails = { error: err instanceof Error ? err.message : String(err) };
+              console.error("[profile-health] autofix failed", {
+                userId: u.id,
+                check: iss.id,
+                error: iss.fixDetails.error,
+              });
             }
           }
         }
@@ -234,50 +251,96 @@ export async function GET(req: Request) {
     }
 
     // ── Build the Telegram recap ─────────────────────────────────────────
+    // Goal : a founder can scan this in 10 seconds. No CONSTANT_CASE IDs, no
+    // "hostProfileJson" jargon, no JSON in the body. Auto-fixed issues get
+    // a one-liner. Remaining issues are grouped by check (15 sitters with the
+    // same problem = one section, not 15 lines), sorted by urgency, with a
+    // concrete next step.
     const unfixedIssues = allIssues.filter((i) => !i.fixed);
-    const sortedIssues = [...unfixedIssues].sort((a, b) => riskRank(a.severity) - riskRank(b.severity));
     const failedProbes = probes.filter((p) => !p.ok);
-
+    const fixedTotal = Object.values(fixedCounts).reduce((a, b) => a + b, 0);
     const durationMs = Date.now() - startedAt;
-    const durationStr = `${Math.floor(durationMs / 60000)}m ${Math.floor((durationMs % 60000) / 1000)}s`;
+
+    // Group remaining issues by check ID so 15 SERVICES_DESYNC don't make
+    // the message a wall of text.
+    const grouped = new Map<string, ProfileHealthIssue[]>();
+    for (const iss of unfixedIssues) {
+      const list = grouped.get(iss.id) ?? [];
+      list.push(iss);
+      grouped.set(iss.id, list);
+    }
+    const groupedSorted = Array.from(grouped.entries()).sort(([a], [b]) => {
+      const sa = grouped.get(a)![0].severity;
+      const sb = grouped.get(b)![0].severity;
+      return riskRank(sa) - riskRank(sb);
+    });
+
+    const overall = unfixedIssues.length === 0 && failedProbes.length === 0 ? "🟢" : unfixedIssues.some((i) => i.severity === "high") || failedProbes.length > 0 ? "🔴" : "🟡";
+    const headline =
+      unfixedIssues.length === 0 && failedProbes.length === 0
+        ? "Tout va bien."
+        : unfixedIssues.some((i) => i.severity === "high")
+          ? "Action requise."
+          : "Quelques points à surveiller.";
 
     const sections: Array<string | string[] | null> = [
-      tgHeader("🩺", "DogShift Profile Health", new Date()),
+      tgHeader("🩺", "DogShift — santé des profils", new Date()),
+      `${overall} <b>${headline}</b>`,
 
       [
-        tgSection("📊", "Couverture"),
-        `• ${pluralFR(sittersScanned, "profil sitter scanné", "profils sitters scannés")}`,
-        `• ${pluralFR(ownersScanned, "owner scanné", "owners scannés")}`,
-        `• Durée totale : ${durationStr}`,
+        tgSection("📊", "Résumé"),
+        `• ${pluralFR(sittersScanned, "dogsitter scanné", "dogsitters scannés")}`,
+        `• ${pluralFR(ownersScanned, "propriétaire scanné", "propriétaires scannés")}`,
+        fixedTotal > 0
+          ? `• ${pluralFR(fixedTotal, "correction auto", "corrections auto")} appliquée${fixedTotal > 1 ? "s" : ""}`
+          : "• Aucune correction automatique nécessaire",
+        `• ${pluralFR(unfixedIssues.length, "point à regarder", "points à regarder")}`,
+        `• Durée : ${Math.max(1, Math.round(durationMs / 1000))}s`,
       ],
 
-      Object.keys(fixedCounts).length === 0
+      fixedTotal === 0
         ? null
         : [
-            tgSection("✅", `Auto-corrigés (${Object.values(fixedCounts).reduce((a, b) => a + b, 0)})`),
-            ...Object.entries(fixedCounts).map(([id, n]) => `• ${id} : ${n}`),
+            tgSection("✅", `Corrections automatiques (${fixedTotal})`),
+            ...Object.entries(fixedCounts).map(([id, n]) => {
+              const lbl = getIssueLabel(id);
+              return `• ${lbl.title} — ${pluralFR(n, "compte concerné", "comptes concernés")}`;
+            }),
           ],
 
-      sortedIssues.length === 0
-        ? [tgSection("🟢", "Aucun problème détecté"), `Tout est aligné.`]
-        : [
-            tgSection("🔴", `Issues (${sortedIssues.length})`),
-            ...sortedIssues
-              .slice(0, 30)
-              .map((iss) => `${riskEmoji(iss.severity)} ${iss.targetEmail ?? iss.userId} — ${iss.id}: ${iss.message}`),
-            sortedIssues.length > 30
-              ? `… et ${sortedIssues.length - 30} de plus, voir /admin/profile-health`
-              : null,
-          ].filter((s): s is string => Boolean(s)),
-
-      probes.length === 0
+      groupedSorted.length === 0
         ? null
-        : failedProbes.length === 0
-          ? [tgSection("🌐", `Probes HTTP (${probes.length} URLs)`), `✅ Tous les probes sont verts.`]
-          : [
-              tgSection("🌐", `Probes HTTP — ${failedProbes.length} échec${failedProbes.length > 1 ? "s" : ""}`),
-              ...failedProbes.map((p) => `🔴 ${p.name} (${p.url}) — ${p.error ?? `HTTP ${p.status}`}`),
-            ],
+        : groupedSorted.flatMap(([id, list]) => {
+            const lbl = getIssueLabel(id);
+            const sev = list[0].severity;
+            const emoji = sev === "high" ? "🔴" : sev === "medium" ? "🟡" : "🟢";
+            const emails = list
+              .map((i) => i.targetEmail ?? i.userId)
+              .slice(0, 8)
+              .join(", ");
+            const more = list.length > 8 ? ` (+${list.length - 8})` : "";
+            return [
+              `${emoji} <b>${lbl.title}</b>`,
+              `<i>${lbl.explain}</i>`,
+              `👤 ${pluralFR(list.length, "compte concerné", "comptes concernés")} : ${emails}${more}`,
+              `👉 ${lbl.action}`,
+              "", // blank line between groups for readability
+            ];
+          }),
+
+      failedProbes.length === 0
+        ? null
+        : [
+            tgSection("🌐", `Pages publiques en erreur (${failedProbes.length})`),
+            ...failedProbes.map((p) => `🔴 ${p.url} — ${p.error ?? `HTTP ${p.status}`}`),
+            `👉 Vérifier la page dans le navigateur et regarder les logs Vercel.`,
+          ],
+
+      probes.length > 0 && failedProbes.length === 0
+        ? [`🌐 ${pluralFR(probes.length, "page publique vérifiée", "pages publiques vérifiées")} — toutes OK.`]
+        : null,
+
+      [`🔗 Détails et actions : ${BASE_URL}/admin/profile-health`],
 
       tgFooter(new Date()),
     ];
@@ -291,13 +354,13 @@ export async function GET(req: Request) {
         agentName: AGENT_NAME,
         actionType: key,
         status: "success",
-        summary: `${sittersScanned + ownersScanned} profils scannés, ${Object.values(fixedCounts).reduce((a, b) => a + b, 0)} auto-corrigés, ${sortedIssues.length} issues restantes, ${failedProbes.length} probes en échec`,
+        summary: `${sittersScanned + ownersScanned} profils scannés, ${fixedTotal} auto-corrigés, ${unfixedIssues.length} issues restantes, ${failedProbes.length} probes en échec`,
         durationMs,
         details: {
           sittersScanned,
           ownersScanned,
           fixedCounts,
-          unfixedIssues: sortedIssues.slice(0, 100).map((i) => ({
+          unfixedIssues: unfixedIssues.slice(0, 100).map((i) => ({
             userId: i.userId,
             targetEmail: i.targetEmail,
             check: i.id,
@@ -322,7 +385,7 @@ export async function GET(req: Request) {
       sittersScanned,
       ownersScanned,
       fixed: Object.values(fixedCounts).reduce((a, b) => a + b, 0),
-      issues: sortedIssues.length,
+      issues: unfixedIssues.length,
       probesFailed: failedProbes.length,
       telegramSent,
       durationMs,
