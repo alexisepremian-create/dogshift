@@ -151,12 +151,20 @@ export async function POST(req: NextRequest) {
       ctaUrl: `${APP_URL}/host/profile/edit`,
       footerText: "DogShift · Dog-sitting premium en Suisse · support@dogshift.ch",
     });
-    await sendEmail({
-      to: email,
-      subject,
-      html,
-      text: `Bonjour ${firstName}, nous avons bien reçu vos documents. Notre équipe va les examiner sous 24–48h ouvrées.`,
-    }).catch((e) => console.error("[verification-submit] receipt email failed", e));
+    await sendEmail(
+      {
+        to: email,
+        subject,
+        html,
+        text: `Bonjour ${firstName}, nous avons bien reçu vos documents. Notre équipe va les examiner sous 24–48h ouvrées.`,
+      },
+      {
+        templateName: "sitter-verification-submitted",
+        context: "api:host/verification/submit",
+        targetUserId: __authed.id,
+        metadata: { sitterId: sitterProfile.sitterId },
+      },
+    ).catch((e) => console.error("[verification-submit] receipt email failed", e));
 
     return NextResponse.json({ ok: true }, { status: 200 });
   } catch (err) {

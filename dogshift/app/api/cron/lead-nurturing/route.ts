@@ -80,12 +80,19 @@ export async function GET(req: NextRequest) {
       try {
         const rendered = renderStep(1, { baseUrl: base, prenom: lead.prenom ?? undefined });
         if (!rendered) continue;
-        await sendEmail({
-          to: lead.email,
-          subject: SUBJECTS[1],
-          html: rendered.html,
-          text: `Bonjour${lead.prenom ? ` ${lead.prenom}` : ""},\n\nAvez-vous eu le temps de lire votre guide DogShift ?\n\nVoir les sitters : ${base}/sitters\n\n— DogShift\n`,
-        });
+        await sendEmail(
+          {
+            to: lead.email,
+            subject: SUBJECTS[1],
+            html: rendered.html,
+            text: `Bonjour${lead.prenom ? ` ${lead.prenom}` : ""},\n\nAvez-vous eu le temps de lire votre guide DogShift ?\n\nVoir les sitters : ${base}/sitters\n\n— DogShift\n`,
+          },
+          {
+            templateName: "lead-nurturing-step-1",
+            context: "cron:lead-nurturing",
+            metadata: { leadId: lead.id, step: 1 },
+          },
+        );
         await (prisma as any).leadMagnet.update({
           where: { id: lead.id },
           data: { nurturingStep: 1, lastNurturingAt: new Date() },
@@ -112,12 +119,19 @@ export async function GET(req: NextRequest) {
       try {
         const rendered = renderStep(2, { baseUrl: base, prenom: lead.prenom ?? undefined });
         if (!rendered) continue;
-        await sendEmail({
-          to: lead.email,
-          subject: SUBJECTS[2],
-          html: rendered.html,
-          text: `Bonjour${lead.prenom ? ` ${lead.prenom}` : ""},\n\nVoici ce que pensent les autres propriétaires de DogShift.\n\nTrouver un sitter : ${base}/sitters\n\n— DogShift\n`,
-        });
+        await sendEmail(
+          {
+            to: lead.email,
+            subject: SUBJECTS[2],
+            html: rendered.html,
+            text: `Bonjour${lead.prenom ? ` ${lead.prenom}` : ""},\n\nVoici ce que pensent les autres propriétaires de DogShift.\n\nTrouver un sitter : ${base}/sitters\n\n— DogShift\n`,
+          },
+          {
+            templateName: "lead-nurturing-step-2",
+            context: "cron:lead-nurturing",
+            metadata: { leadId: lead.id, step: 2 },
+          },
+        );
         await (prisma as any).leadMagnet.update({
           where: { id: lead.id },
           data: { nurturingStep: 2, lastNurturingAt: new Date() },
@@ -144,12 +158,19 @@ export async function GET(req: NextRequest) {
       try {
         const rendered = renderStep(3, { baseUrl: base, prenom: lead.prenom ?? undefined });
         if (!rendered) continue;
-        await sendEmail({
-          to: lead.email,
-          subject: SUBJECTS[3],
-          html: rendered.html,
-          text: `Bonjour${lead.prenom ? ` ${lead.prenom}` : ""},\n\nVotre chien mérite le meilleur sitter. Retrouvez nos sitters vérifiés sur DogShift.\n\n${base}/sitters\n\n— DogShift\n`,
-        });
+        await sendEmail(
+          {
+            to: lead.email,
+            subject: SUBJECTS[3],
+            html: rendered.html,
+            text: `Bonjour${lead.prenom ? ` ${lead.prenom}` : ""},\n\nVotre chien mérite le meilleur sitter. Retrouvez nos sitters vérifiés sur DogShift.\n\n${base}/sitters\n\n— DogShift\n`,
+          },
+          {
+            templateName: "lead-nurturing-step-3",
+            context: "cron:lead-nurturing",
+            metadata: { leadId: lead.id, step: 3 },
+          },
+        );
         await (prisma as any).leadMagnet.update({
           where: { id: lead.id },
           data: { nurturingStep: 3, lastNurturingAt: new Date() },

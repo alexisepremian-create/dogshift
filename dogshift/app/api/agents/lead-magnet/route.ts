@@ -80,12 +80,19 @@ export async function POST(req: NextRequest) {
       `Accédez au guide : ${baseUrl}/guide-dogsitter\n\n` +
       `— L'équipe DogShift\nsupport@dogshift.ch\n`;
 
-    await sendEmail({
-      to: email,
-      subject: "Votre guide DogShift est arrivé 🐾",
-      text,
-      html,
-    });
+    await sendEmail(
+      {
+        to: email,
+        subject: "Votre guide DogShift est arrivé 🐾",
+        text,
+        html,
+      },
+      {
+        templateName: "lead-magnet-guide",
+        context: "agent:lead-magnet",
+        metadata: { source },
+      },
+    );
 
     // 4. Log
     await prisma.agentLog.create({

@@ -205,12 +205,20 @@ export async function GET(req: NextRequest) {
           `Votre avis aide la communauté DogShift.\n\n` +
           `— DogShift\n`;
 
-        await sendEmail({
-          to: ownerEmail,
-          subject,
-          html: rendered.html,
-          text,
-        });
+        await sendEmail(
+          {
+            to: ownerEmail,
+            subject,
+            html: rendered.html,
+            text,
+          },
+          {
+            templateName: "booking-review-request",
+            context: "cron:review-requests",
+            targetUserId: typeof b.user?.id === "string" ? b.user.id : null,
+            metadata: { bookingId },
+          },
+        );
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         await (prisma as any).booking.update({

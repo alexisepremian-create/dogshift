@@ -141,12 +141,19 @@ export async function POST(req: Request) {
     const ctaUrl = `${appUrl}/verify-email?token=${plaintext}&email=${encodeURIComponent(email)}`;
 
     const rendered = renderEmailVerificationEmail({ name, ctaUrl });
-    await sendEmail({
-      to: email,
-      subject: rendered.subject,
-      text: rendered.text,
-      html: rendered.html,
-    }).catch((err) => {
+    await sendEmail(
+      {
+        to: email,
+        subject: rendered.subject,
+        text: rendered.text,
+        html: rendered.html,
+      },
+      {
+        templateName: "email-verification",
+        context: "api:auth/register",
+        targetUserId: userId,
+      },
+    ).catch((err) => {
       // Don't fail the registration just because the email didn't go out —
       // the user is already signed in and we can resend later.
       reportApiError({

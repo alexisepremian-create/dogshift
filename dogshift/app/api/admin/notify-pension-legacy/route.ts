@@ -87,12 +87,19 @@ export async function GET(req: NextRequest) {
     });
 
     try {
-      await sendEmail({
-        to: email,
-        subject: "Action requise : vérifiez votre logement pour la Pension (30 jours)",
-        text: `Bonjour ${firstName},\n\nNous avons mis en place un nouveau système de vérification pour le service Pension.\n\nVous avez 30 jours pour uploader 3 à 6 photos de votre logement via votre espace sitter : ${APP_URL}/host/profile/edit\n\nDogShift`,
-        html,
-      });
+      await sendEmail(
+        {
+          to: email,
+          subject: "Action requise : vérifiez votre logement pour la Pension (30 jours)",
+          text: `Bonjour ${firstName},\n\nNous avons mis en place un nouveau système de vérification pour le service Pension.\n\nVous avez 30 jours pour uploader 3 à 6 photos de votre logement via votre espace sitter : ${APP_URL}/host/profile/edit\n\nDogShift`,
+          html,
+        },
+        {
+          templateName: "admin-notify-pension-legacy",
+          context: "api:admin/notify-pension-legacy",
+          metadata: { sitterId: sitter.sitterId },
+        },
+      );
       results.push({ email, status: "sent" });
     } catch (err) {
       results.push({ email, status: "failed", error: String(err) });

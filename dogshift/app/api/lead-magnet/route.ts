@@ -37,12 +37,19 @@ export async function POST(req: Request) {
     if (isNew) {
       const baseUrl = (process.env.NEXT_PUBLIC_APP_URL ?? process.env.NEXT_PUBLIC_BASE_URL ?? "https://dogshift.ch").replace(/\/$/, "");
       const { html, text } = renderLeadMagnetEmail({ baseUrl });
-      await sendEmail({
-        to: email,
-        subject: "Votre guide gratuit DogShift 🐕",
-        text,
-        html,
-      });
+      await sendEmail(
+        {
+          to: email,
+          subject: "Votre guide gratuit DogShift 🐕",
+          text,
+          html,
+        },
+        {
+          templateName: "lead-magnet-guide",
+          context: "api:lead-magnet",
+          metadata: { source },
+        },
+      );
     }
 
     return NextResponse.json({ ok: true });
