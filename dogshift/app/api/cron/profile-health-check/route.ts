@@ -1,0 +1,353 @@
+/**
+ * Daily profile health check — autonomous agent.
+ *
+ * Walks every (User, SitterProfile?) pair in three phases:
+ *
+ *   1. Data invariants (lib/agents/profileHealthInvariants.ts)
+ *   2. Safe auto-fixes for the few invariants flagged autoFixable
+ *   3. Synthetic HTTP probes against public routes (lib/agents/profileHealthProbes.ts)
+ *
+ * Every run produces a Telegram recap (maintenance bot) using the canonical
+ * format helpers — sorted by severity, with auto-fix counts and the full
+ * list of remaining critical issues. The recap is sent unconditionally
+ * (even when everything is green — "proof of work" pattern, matches
+ * bug-regression-check at 02:07 UTC).
+ *
+ * One AgentLog row per UTC day, keyed by `actionType: <YYYY-MM-DD>`. Bypass
+ * with `?force=1` plus a valid CRON_SECRET or MAINTENANCE_API_KEY bearer.
+ */
+
+import { NextResponse } from "next/server";
+
+import {
+  planAutoFix,
+  runProfileHealthChecks,
+  type ProfileHealthIssue,
+  type ProfileSnapshot,
+} from "@/lib/agents/profileHealthInvariants";
+import {
+  MAX_SITTER_PROBES,
+  buildPublicProbes,
+  buildSitterProfileProbes,
+  runProbe,
+  type ProbeResult,
+} from "@/lib/agents/profileHealthProbes";
+import { reportApiError } from "@/lib/observability/reportApiError";
+import { prisma } from "@/lib/prisma";
+import {
+  pluralFR,
+  riskEmoji,
+  riskRank,
+  tgFooter,
+  tgHeader,
+  tgMessage,
+  tgSection,
+} from "@/lib/telegram/format";
+import { sendTelegramMessage } from "@/lib/telegram/sendTelegramMessage";
+
+export const runtime = "nodejs";
+export const maxDuration = 300;
+
+const AGENT_NAME = "profile-health";
+const BASE_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://www.dogshift.ch";
+
+async function ensurePrismaWarm(): Promise<void> {
+  let lastErr: unknown = null;
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      await prisma.$queryRawUnsafe("SELECT 1");
+      return;
+    } catch (err) {
+      lastErr = err;
+      const isInitErr =
+        err instanceof Error &&
+        (err.name === "PrismaClientInitializationError" ||
+          /can't reach database|connection|timeout/i.test(err.message));
+      if (!isInitErr) throw err;
+      if (attempt < 3) await new Promise((r) => setTimeout(r, 1500));
+    }
+  }
+  throw lastErr ?? new Error("Prisma warm-up failed");
+}
+
+function todayKey(): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    timeZone: "UTC",
+  }).format(new Date());
+}
+
+export async function GET(req: Request) {
+  const authHeader = req.headers.get("authorization") ?? "";
+  const cronBearer = `Bearer ${process.env.CRON_SECRET ?? ""}`;
+  const maintBearer = `Bearer ${(process.env.MAINTENANCE_API_KEY ?? "").trim()}`;
+  const isAuthorized =
+    (process.env.CRON_SECRET && authHeader === cronBearer) ||
+    (process.env.MAINTENANCE_API_KEY && authHeader === maintBearer);
+  if (!isAuthorized) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  try {
+    await ensurePrismaWarm();
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    reportApiError({
+      kind: "internal_error",
+      route: "cron/profile-health-check",
+      extra: { stage: "warmup", error: message },
+    });
+    return NextResponse.json({ success: false, error: "DB unreachable" }, { status: 503 });
+  }
+
+  const url = new URL(req.url);
+  const force = url.searchParams.get("force") === "1";
+  const key = todayKey();
+
+  if (!force) {
+    const already = await prisma.agentLog.findFirst({
+      where: { agentName: AGENT_NAME, actionType: key, status: "success" },
+    });
+    if (already) {
+      return NextResponse.json({ success: true, skipped: true, reason: "already-ran-today" });
+    }
+  }
+
+  const startedAt = Date.now();
+
+  try {
+    // ── Phase 1 + 2 : invariants + auto-fix ──────────────────────────────
+    const users = await prisma.user.findMany({
+      where: { role: { not: "ADMIN" } },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+        sitterId: true,
+        hostProfileJson: true,
+        sitterProfile: {
+          select: {
+            id: true,
+            sitterId: true,
+            published: true,
+            lifecycleStatus: true,
+            verificationStatus: true,
+            stripeAccountStatus: true,
+            termsAcceptedAt: true,
+            termsVersion: true,
+            services: true,
+            dogSizes: true,
+            pricing: true,
+            avatarUrl: true,
+            profileCompletion: true,
+            city: true,
+            displayName: true,
+            bio: true,
+          },
+        },
+      },
+    });
+
+    let ownersScanned = 0;
+    let sittersScanned = 0;
+    const allIssues: ProfileHealthIssue[] = [];
+    const fixedCounts: Record<string, number> = {};
+
+    for (const u of users) {
+      if (u.sitterProfile) sittersScanned++;
+      else ownersScanned++;
+
+      const snap: ProfileSnapshot = {
+        user: {
+          id: u.id,
+          email: u.email,
+          name: u.name,
+          role: u.role,
+          sitterId: u.sitterId,
+          hostProfileJson: u.hostProfileJson,
+        },
+        sitterProfile: u.sitterProfile
+          ? {
+              ...u.sitterProfile,
+              profileCompletion: u.sitterProfile.profileCompletion ?? null,
+            }
+          : null,
+      };
+
+      const issues = runProfileHealthChecks(snap);
+      for (const iss of issues) {
+        if (iss.autoFixable) {
+          const plan = planAutoFix(iss, snap);
+          if (plan) {
+            try {
+              if (plan.table === "sitterProfile") {
+                await prisma.sitterProfile.update({ where: plan.where, data: plan.data });
+              } else {
+                await prisma.user.update({ where: plan.where, data: plan.data });
+              }
+              await prisma.auditLog.create({
+                data: {
+                  action: "system.profile_health_autofix",
+                  actorType: "system",
+                  actorId: "system",
+                  targetId: u.id,
+                  targetType: "USER",
+                  // Stringify the plan to keep Prisma's strict Json input type happy
+                  // — the plan can contain nested JSON values that don't satisfy
+                  // InputJsonValue directly.
+                  metadata: { check: iss.id, plan: JSON.parse(JSON.stringify(plan.data)) },
+                },
+              });
+              iss.fixed = true;
+              fixedCounts[iss.id] = (fixedCounts[iss.id] ?? 0) + 1;
+            } catch (err) {
+              // Auto-fix failed — leave the issue in the recap.
+              iss.fixed = false;
+              iss.fixDetails = { error: err instanceof Error ? err.message : String(err) };
+            }
+          }
+        }
+        allIssues.push(iss);
+      }
+    }
+
+    // ── Phase 3 : synthetic HTTP probes ──────────────────────────────────
+    // Only run probes in production to avoid hammering preview environments
+    // and to keep the probe URL stable across runs.
+    const isProd = process.env.VERCEL_ENV === "production" || process.env.NODE_ENV === "production";
+
+    let probes: ProbeResult[] = [];
+    if (isProd) {
+      const publishedSitterIds = users
+        .filter((u) => u.sitterProfile?.published && u.sitterProfile.sitterId)
+        .map((u) => u.sitterProfile!.sitterId)
+        .slice(0, MAX_SITTER_PROBES);
+
+      const allProbes = [
+        ...buildPublicProbes(BASE_URL),
+        ...buildSitterProfileProbes(BASE_URL, publishedSitterIds),
+      ];
+      probes = await Promise.all(allProbes.map((p) => runProbe(p)));
+    }
+
+    // ── Build the Telegram recap ─────────────────────────────────────────
+    const unfixedIssues = allIssues.filter((i) => !i.fixed);
+    const sortedIssues = [...unfixedIssues].sort((a, b) => riskRank(a.severity) - riskRank(b.severity));
+    const failedProbes = probes.filter((p) => !p.ok);
+
+    const durationMs = Date.now() - startedAt;
+    const durationStr = `${Math.floor(durationMs / 60000)}m ${Math.floor((durationMs % 60000) / 1000)}s`;
+
+    const sections: Array<string | string[] | null> = [
+      tgHeader("🩺", "DogShift Profile Health", new Date()),
+
+      [
+        tgSection("📊", "Couverture"),
+        `• ${pluralFR(sittersScanned, "profil sitter scanné", "profils sitters scannés")}`,
+        `• ${pluralFR(ownersScanned, "owner scanné", "owners scannés")}`,
+        `• Durée totale : ${durationStr}`,
+      ],
+
+      Object.keys(fixedCounts).length === 0
+        ? null
+        : [
+            tgSection("✅", `Auto-corrigés (${Object.values(fixedCounts).reduce((a, b) => a + b, 0)})`),
+            ...Object.entries(fixedCounts).map(([id, n]) => `• ${id} : ${n}`),
+          ],
+
+      sortedIssues.length === 0
+        ? [tgSection("🟢", "Aucun problème détecté"), `Tout est aligné.`]
+        : [
+            tgSection("🔴", `Issues (${sortedIssues.length})`),
+            ...sortedIssues
+              .slice(0, 30)
+              .map((iss) => `${riskEmoji(iss.severity)} ${iss.targetEmail ?? iss.userId} — ${iss.id}: ${iss.message}`),
+            sortedIssues.length > 30
+              ? `… et ${sortedIssues.length - 30} de plus, voir /admin/profile-health`
+              : null,
+          ].filter((s): s is string => Boolean(s)),
+
+      probes.length === 0
+        ? null
+        : failedProbes.length === 0
+          ? [tgSection("🌐", `Probes HTTP (${probes.length} URLs)`), `✅ Tous les probes sont verts.`]
+          : [
+              tgSection("🌐", `Probes HTTP — ${failedProbes.length} échec${failedProbes.length > 1 ? "s" : ""}`),
+              ...failedProbes.map((p) => `🔴 ${p.name} (${p.url}) — ${p.error ?? `HTTP ${p.status}`}`),
+            ],
+
+      tgFooter(new Date()),
+    ];
+
+    const message = tgMessage(sections);
+    const telegramSent = await sendTelegramMessage(message, { bot: "maintenance" });
+
+    // ── Persist AgentLog ─────────────────────────────────────────────────
+    await prisma.agentLog.create({
+      data: {
+        agentName: AGENT_NAME,
+        actionType: key,
+        status: "success",
+        summary: `${sittersScanned + ownersScanned} profils scannés, ${Object.values(fixedCounts).reduce((a, b) => a + b, 0)} auto-corrigés, ${sortedIssues.length} issues restantes, ${failedProbes.length} probes en échec`,
+        durationMs,
+        details: {
+          sittersScanned,
+          ownersScanned,
+          fixedCounts,
+          unfixedIssues: sortedIssues.slice(0, 100).map((i) => ({
+            userId: i.userId,
+            targetEmail: i.targetEmail,
+            check: i.id,
+            severity: i.severity,
+            message: i.message,
+          })),
+          probes: probes.map((p) => ({
+            name: p.name,
+            ok: p.ok,
+            status: p.status,
+            durationMs: p.durationMs,
+            error: p.error,
+          })),
+          telegramSent,
+          today: key,
+        },
+      },
+    });
+
+    return NextResponse.json({
+      success: true,
+      sittersScanned,
+      ownersScanned,
+      fixed: Object.values(fixedCounts).reduce((a, b) => a + b, 0),
+      issues: sortedIssues.length,
+      probesFailed: failedProbes.length,
+      telegramSent,
+      durationMs,
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    reportApiError({
+      kind: "internal_error",
+      code: "PROFILE_HEALTH_FAILED",
+      route: "cron/profile-health-check",
+      extra: { error: message },
+    });
+    await prisma.agentLog.create({
+      data: {
+        agentName: AGENT_NAME,
+        actionType: key,
+        status: "error",
+        summary: `Erreur: ${message.slice(0, 200)}`,
+        durationMs: Date.now() - startedAt,
+        details: { error: message, today: key },
+      },
+    });
+    return NextResponse.json({ success: false, error: message }, { status: 500 });
+  }
+}
+
+// Allow POST too — convenient for ops triggers via curl without a header.
+export const POST = GET;

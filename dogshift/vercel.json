@@ -67,6 +67,10 @@
     {
       "path": "/api/cron/prisma-migration-status",
       "schedule": "53 6 * * *"
+    },
+    {
+      "path": "/api/cron/profile-health-check",
+      "schedule": "13 4 * * *"
     }
   ],
   "buildCommand": "npm run build",
