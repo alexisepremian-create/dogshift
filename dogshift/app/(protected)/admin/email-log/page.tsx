@@ -11,6 +11,7 @@
 import Link from "next/link";
 
 import AdminShell from "@/components/admin/AdminShell";
+import InstantSearchForm from "@/components/admin/InstantSearchForm";
 import { requireAdminPageAccess } from "@/lib/adminAuth";
 import { prisma } from "@/lib/prisma";
 
@@ -208,8 +209,11 @@ export default async function AdminEmailLogPage({
           </div>
         </div>
 
-        {/* ── Filtres ──────────────────────────────────────────── */}
-        <form className="flex flex-wrap items-center gap-3" method="get" action="/admin/email-log">
+        {/* ── Filtres (instantanés, debounce 250ms) ─────────────── */}
+        <InstantSearchForm
+          action="/admin/email-log"
+          className="flex flex-wrap items-center gap-3"
+        >
           <input
             type="search"
             name="q"
@@ -243,18 +247,12 @@ export default async function AdminEmailLogPage({
             <option value="failed">Échoués</option>
             <option value="skipped">Ignorés</option>
           </select>
-          <button
-            type="submit"
-            className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
-          >
-            Filtrer
-          </button>
           {(q || template || status) ? (
             <Link href="/admin/email-log" className="text-sm text-slate-500 underline">
               Réinitialiser
             </Link>
           ) : null}
-        </form>
+        </InstantSearchForm>
 
         {/* ── Tableau ──────────────────────────────────────────── */}
         <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
