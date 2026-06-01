@@ -18,6 +18,7 @@ import Link from "next/link";
 import { Role } from "@prisma/client";
 
 import AdminShell from "@/components/admin/AdminShell";
+import InstantSearchForm from "@/components/admin/InstantSearchForm";
 import { requireAdminPageAccess } from "@/lib/adminAuth";
 import { prisma } from "@/lib/prisma";
 
@@ -189,9 +190,8 @@ export default async function AdminUsersPage({
           />
         </section>
 
-        {/* ── Filtres ──────────────────────────────────────────────── */}
-        <form
-          method="GET"
+        {/* ── Filtres (instantanés, debounce 250ms) ─────────────────── */}
+        <InstantSearchForm
           action="/admin/users"
           className="flex flex-wrap items-end gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
         >
@@ -240,12 +240,6 @@ export default async function AdminUsersPage({
               <option value="no-password">Aucune méthode</option>
             </select>
           </div>
-          <button
-            type="submit"
-            className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-slate-800"
-          >
-            Filtrer
-          </button>
           {(q || validRole || authMethod !== "all") && (
             <Link
               href="/admin/users"
@@ -254,7 +248,7 @@ export default async function AdminUsersPage({
               Réinitialiser
             </Link>
           )}
-        </form>
+        </InstantSearchForm>
 
         {/* ── Tableau ──────────────────────────────────────────────── */}
         <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">

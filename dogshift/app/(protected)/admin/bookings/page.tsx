@@ -2,6 +2,7 @@ import Link from "next/link";
 import { BookingStatus } from "@prisma/client";
 
 import AdminShell from "@/components/admin/AdminShell";
+import InstantSearchForm from "@/components/admin/InstantSearchForm";
 import AdminBookingArchiveButton from "@/components/admin/AdminBookingArchiveButton";
 import { requireAdminPageAccess } from "@/lib/adminAuth";
 import { prisma } from "@/lib/prisma";
@@ -282,7 +283,10 @@ export default async function AdminBookingsPage({
         </section>
 
         <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.12)] sm:p-8">
-          <form className="grid gap-5 lg:grid-cols-2 xl:grid-cols-12 xl:items-end">
+          <InstantSearchForm
+            action="/admin/bookings"
+            className="grid gap-5 lg:grid-cols-2 xl:grid-cols-12 xl:items-end"
+          >
             <div className="flex min-w-0 flex-col gap-2 xl:col-span-3">
               <label htmlFor="q" className="text-sm font-medium text-slate-700">Recherche</label>
               <input
@@ -340,12 +344,6 @@ export default async function AdminBookingsPage({
             <div className="flex min-w-0 flex-col gap-2 xl:col-span-3">
               <span className="text-sm font-medium text-slate-700">Actions</span>
               <div className="flex flex-col gap-3 sm:flex-row xl:justify-end">
-                <button
-                  type="submit"
-                  className="inline-flex h-11 items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-5 text-sm font-semibold text-white shadow-sm transition hover:bg-[var(--dogshift-blue-hover)]"
-                >
-                  Filtrer
-                </button>
                 <Link
                   href="/admin/bookings"
                   className="inline-flex h-11 items-center justify-center rounded-2xl border border-slate-300 bg-white px-5 text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50"
@@ -354,7 +352,7 @@ export default async function AdminBookingsPage({
                 </Link>
               </div>
             </div>
-          </form>
+          </InstantSearchForm>
         </section>
 
         <section className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">

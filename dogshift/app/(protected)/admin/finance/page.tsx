@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import AdminShell from "@/components/admin/AdminShell";
+import InstantSearchForm from "@/components/admin/InstantSearchForm";
 import { requireAdminPageAccess } from "@/lib/adminAuth";
 import { prisma } from "@/lib/prisma";
 
@@ -119,7 +120,7 @@ export default async function AdminFinancePage({
       : {}),
   };
 
-  const bookings = await (prisma as any).booking.findMany({
+  const bookings = await prisma.booking.findMany({
     where,
     orderBy: { createdAt: "desc" },
     take: 200,
@@ -143,25 +144,25 @@ export default async function AdminFinancePage({
   });
 
   const now = new Date();
-  const totalPaidVolume = bookings.reduce((sum: number, b: any) => sum + (b.status === "PAID" || b.status === "CONFIRMED" ? b.amount : 0), 0);
+  const totalPaidVolume = bookings.reduce((sum, b) => sum + (b.status === "PAID" || b.status === "CONFIRMED" ? b.amount : 0), 0);
   const volumeStripe = bookings.reduce(
-    (sum: number, b: any) => sum + (b.payoutMethod === "STRIPE" && (b.status === "PAID" || b.status === "CONFIRMED") ? b.amount : 0),
+    (sum, b) => sum + (b.payoutMethod === "STRIPE" && (b.status === "PAID" || b.status === "CONFIRMED") ? b.amount : 0),
     0
   );
   const volumeManual = bookings.reduce(
-    (sum: number, b: any) => sum + (b.payoutMethod === "MANUAL" && (b.status === "PAID" || b.status === "CONFIRMED") ? b.amount : 0),
+    (sum, b) => sum + (b.payoutMethod === "MANUAL" && (b.status === "PAID" || b.status === "CONFIRMED") ? b.amount : 0),
     0
   );
-  const payoutsPending = bookings.filter((b: any) => b.payoutStatus === "PENDING").length;
-  const payoutsPaid = bookings.filter((b: any) => b.payoutStatus === "PAID").length;
-  const totalPayoutPaid = bookings.reduce((sum: number, b: any) => sum + (b.payoutStatus === "PAID" ? payoutAmountCents(b) : 0), 0);
+  const payoutsPending = bookings.filter((b) => b.payoutStatus === "PENDING").length;
+  const payoutsPaid = bookings.filter((b) => b.payoutStatus === "PAID").length;
+  const totalPayoutPaid = bookings.reduce((sum, b) => sum + (b.payoutStatus === "PAID" ? payoutAmountCents(b) : 0), 0);
   const totalPayoutManual = bookings.reduce(
-    (sum: number, b: any) => sum + (b.payoutMethod === "MANUAL" && b.payoutStatus === "PAID" ? payoutAmountCents(b) : 0),
+    (sum, b) => sum + (b.payoutMethod === "MANUAL" && b.payoutStatus === "PAID" ? payoutAmountCents(b) : 0),
     0
   );
-  const manualCount = bookings.filter((b: any) => b.payoutMethod === "MANUAL").length;
-  const stripeCount = bookings.filter((b: any) => b.payoutMethod === "STRIPE").length;
-  const amountToVerify = bookings.reduce((sum: number, b: any) => {
+  const manualCount = bookings.filter((b) => b.payoutMethod === "MANUAL").length;
+  const stripeCount = bookings.filter((b) => b.payoutMethod === "STRIPE").length;
+  const amountToVerify = bookings.reduce((sum, b) => {
     if (b.payoutStatus !== "PENDING") return sum;
     if (b.status !== "PAID" && b.status !== "CONFIRMED") return sum;
     const ended = b.endDate instanceof Date && b.endDate.getTime() <= now.getTime();
@@ -177,7 +178,7 @@ export default async function AdminFinancePage({
           <p className="mt-3 text-sm text-slate-600">Vue consolidee des paiements et payouts pour le suivi operationnel admin.</p>
           <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
             <span className="font-semibold">Note:</span> <span className="font-semibold">Payout status = PENDING</span> signifie en general
-            que le client a pu payer la reservation, mais que le paiement sitter n'est pas encore marque comme verse.
+            que le client a pu payer la reservation, mais que le paiement sitter n&apos;est pas encore marque comme verse.
           </div>
         </section>
 
@@ -195,7 +196,10 @@ export default async function AdminFinancePage({
         </section>
 
         <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.12)] sm:p-8">
-          <form className="grid gap-4 lg:grid-cols-2 xl:grid-cols-12 xl:items-end">
+          <InstantSearchForm
+            action="/admin/finance"
+            className="grid gap-4 lg:grid-cols-2 xl:grid-cols-12 xl:items-end"
+          >
             <div className="flex flex-col gap-2 xl:col-span-3">
               <label htmlFor="q" className="text-sm font-medium text-slate-700">Recherche</label>
               <input id="q" name="q" defaultValue={q} placeholder="Booking / owner / sitter" className="h-11 rounded-2xl border border-slate-300 px-4 text-sm" />
@@ -229,10 +233,9 @@ export default async function AdminFinancePage({
               <input id="endDate" name="endDate" type="date" defaultValue={endDate} className="h-11 rounded-2xl border border-slate-300 px-4 text-sm" />
             </div>
             <div className="xl:col-span-1 flex gap-2">
-              <button type="submit" className="inline-flex h-11 items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-4 text-sm font-semibold text-white">Filtrer</button>
               <Link href="/admin/finance" className="inline-flex h-11 items-center justify-center rounded-2xl border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-900">Reset</Link>
             </div>
-          </form>
+          </InstantSearchForm>
         </section>
 
         <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-[0_18px_60px_-46px_rgba(2,6,23,0.12)]">
@@ -255,7 +258,7 @@ export default async function AdminFinancePage({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 bg-white">
-                {bookings.map((booking: any) => (
+                {bookings.map((booking) => (
                   <tr key={booking.id}>
                     <td className="px-4 py-3 text-slate-600 whitespace-nowrap">
                       <div>{formatDateParts(booking.createdAt).day}</div>
