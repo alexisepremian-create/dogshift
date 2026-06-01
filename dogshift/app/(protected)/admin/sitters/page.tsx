@@ -3,6 +3,7 @@ import { VerificationStatus } from "@prisma/client";
 
 import AdminSitterActions from "@/components/admin/AdminSitterActions";
 import AdminShell from "@/components/admin/AdminShell";
+import InstantSearchForm from "@/components/admin/InstantSearchForm";
 import { requireAdminPageAccess } from "@/lib/adminAuth";
 import { getActiveContractAmendment, isContractVersionAtLeast } from "@/lib/contractAmendments";
 import { prisma } from "@/lib/prisma";
@@ -75,7 +76,7 @@ export default async function AdminSittersPage({
   const activeAmendment = await getActiveContractAmendment();
 
   const [sitters, totalSitters, publishedCount, pendingCount, approvedCount] = await Promise.all([
-    (prisma as any).user.findMany({
+    prisma.user.findMany({
       where,
       orderBy: [{ createdAt: "desc" }],
       take: 100,
@@ -153,7 +154,10 @@ export default async function AdminSittersPage({
         </section>
 
         <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.12)] sm:p-8">
-          <form className="grid gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)_auto]">
+          <InstantSearchForm
+            action="/admin/sitters"
+            className="grid gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)_auto]"
+          >
             <div className="grid gap-2">
               <label htmlFor="q" className="text-sm font-medium text-slate-700">Recherche</label>
               <input
@@ -205,12 +209,6 @@ export default async function AdminSittersPage({
               </div>
             </div>
             <div className="flex items-end gap-3">
-              <button
-                type="submit"
-                className="inline-flex h-11 items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-5 text-sm font-semibold text-white shadow-sm transition hover:bg-[var(--dogshift-blue-hover)]"
-              >
-                Filtrer
-              </button>
               <Link
                 href="/admin/sitters"
                 className="inline-flex h-11 items-center justify-center rounded-2xl border border-slate-300 bg-white px-5 text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50"
@@ -218,7 +216,7 @@ export default async function AdminSittersPage({
                 Réinitialiser
               </Link>
             </div>
-          </form>
+          </InstantSearchForm>
         </section>
 
         <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-[0_18px_60px_-46px_rgba(2,6,23,0.12)]">
@@ -239,7 +237,7 @@ export default async function AdminSittersPage({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 bg-white">
-                {sitters.map((sitter: any) => (
+                {sitters.map((sitter) => (
                   <tr key={sitter.id} className="align-top">
                     {(() => {
                       const acceptance = Array.isArray(sitter.sitterProfile?.contractAmendmentAcceptances)

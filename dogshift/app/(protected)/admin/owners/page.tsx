@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Role } from "@prisma/client";
 
 import AdminShell from "@/components/admin/AdminShell";
+import InstantSearchForm from "@/components/admin/InstantSearchForm";
 import { requireAdminPageAccess } from "@/lib/adminAuth";
 import { prisma } from "@/lib/prisma";
 
@@ -114,7 +115,10 @@ export default async function AdminOwnersPage({
         </section>
 
         <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.12)] sm:p-8">
-          <form className="grid gap-4 lg:grid-cols-[minmax(0,1.4fr)_260px_auto]">
+          <InstantSearchForm
+            action="/admin/owners"
+            className="grid gap-4 lg:grid-cols-[minmax(0,1.4fr)_260px_auto]"
+          >
             <div className="grid gap-2">
               <label htmlFor="q" className="text-sm font-medium text-slate-700">Recherche</label>
               <input
@@ -139,12 +143,6 @@ export default async function AdminOwnersPage({
               />
             </div>
             <div className="flex items-end gap-3">
-              <button
-                type="submit"
-                className="inline-flex h-11 items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-5 text-sm font-semibold text-white shadow-sm transition hover:bg-[var(--dogshift-blue-hover)]"
-              >
-                Filtrer
-              </button>
               <Link
                 href="/admin/owners"
                 className="inline-flex h-11 items-center justify-center rounded-2xl border border-slate-300 bg-white px-5 text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50"
@@ -152,7 +150,7 @@ export default async function AdminOwnersPage({
                 Réinitialiser
               </Link>
             </div>
-          </form>
+          </InstantSearchForm>
         </section>
 
         <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-[0_18px_60px_-46px_rgba(2,6,23,0.12)]">
