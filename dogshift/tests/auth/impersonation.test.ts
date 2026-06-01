@@ -63,10 +63,15 @@ test("token signed with secret A is rejected by secret B", async () => {
 
 test("tampered MAC is rejected", async () => {
   const token = await signImpersonationToken(makePayload(), SECRET);
-  // Flip the last char of the MAC portion.
+  // Flip a char in the MIDDLE of the MAC portion. Flipping the last char of
+  // a base64url string is unreliable because trailing bits can round-trip to
+  // the same bytes; a middle char always lands inside a full sextet.
   const [body, sig] = token.split(".");
-  const flipped = sig.slice(0, -1) + (sig.endsWith("A") ? "B" : "A");
-  const verified = await verifyImpersonationToken(`${body}.${flipped}`, SECRET);
+  const i = Math.floor(sig.length / 2);
+  const original = sig[i];
+  const flipped = original === "A" ? "B" : "A";
+  const tampered = sig.slice(0, i) + flipped + sig.slice(i + 1);
+  const verified = await verifyImpersonationToken(`${body}.${tampered}`, SECRET);
   assert.equal(verified, null);
 });
 
