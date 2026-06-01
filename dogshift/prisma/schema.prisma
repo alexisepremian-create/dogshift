@@ -815,6 +815,51 @@ enum NativePushPlatform {
   android
 }
 
+/// Append-only audit of every transactional email the platform sends.
+/// Populated by `lib/email/sendEmail.ts` on every call (success OR failure),
+/// so the admin can answer "did Sonia really receive a suspension warning
+/// on Tuesday at 3pm?" without grepping Vercel logs or Resend's dashboard.
+///
+/// PII rules : `to` and `subject` are stored verbatim (we need them to
+/// search). `metadata` MUST stay PII-free — IDs only.
+model EmailLog {
+  id           String   @id @default(cuid())
+  to           String
+  fromAddress  String?
+  subject      String
+  /// Logical template name set by the caller, e.g. "inactivity-warning-1",
+  /// "reset-password", "booking-confirmed". Optional but strongly preferred —
+  /// it's what makes the admin page filterable.
+  templateName String?
+  /// Where the email was triggered from, e.g. "cron:inactivity-check",
+  /// "api:auth/forgot-password", "agent:relance-owners". Free text but
+  /// kebab-case prefix convention.
+  context      String?
+  /// "sent" when the provider returned 2xx, "failed" on any throw, "skipped"
+  /// when the caller pre-emptively decided not to send (rare).
+  status       String
+  /// Provider used: "resend" | "smtp" | "log" (dev fallback).
+  mode         String?
+  /// Provider-assigned message id (Resend). Useful for cross-checking with
+  /// the Resend dashboard or bounce webhooks.
+  messageId    String?
+  /// When status=failed, the error message. Truncated at 500 chars.
+  errorMessage String?
+  /// FK-like reference to User.id when the recipient is a known account.
+  /// Not a hard FK to keep this table writable even if the user is later
+  /// deleted (audit must survive deletions).
+  targetUserId String?
+  /// Small, PII-free extra context. e.g. { bookingId, sitterId, stage }.
+  metadata     Json?
+  createdAt    DateTime @default(now())
+
+  @@index([to, createdAt])
+  @@index([templateName, createdAt])
+  @@index([status, createdAt])
+  @@index([targetUserId, createdAt])
+  @@index([createdAt])
+}
+
 enum Role {
   OWNER
   SITTER

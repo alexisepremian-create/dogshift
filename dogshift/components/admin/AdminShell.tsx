@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { BarChart3, Bot, CalendarDays, Eye, FileText, GitMerge, GripVertical, LayoutDashboard, LogOut, Mail, MailOpen, ReceiptText, Scale, ScrollText, Settings, ShieldAlert, ShieldCheck, ShieldPlus, Users, Wrench } from "lucide-react";
+import { BarChart3, Bot, CalendarDays, Eye, FileText, GitMerge, GripVertical, LayoutDashboard, LogOut, Mail, MailOpen, ReceiptText, Scale, ScrollText, SendHorizonal, Settings, ShieldAlert, ShieldCheck, ShieldPlus, Users, Wrench } from "lucide-react";
 import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
 
 const NAV_ORDER_KEY = "admin_nav_order_v1";
@@ -26,6 +26,7 @@ const DEFAULT_NAV = [
   { href: "/admin/juridique", label: "Journal juridique", icon: Scale },
   { href: "/admin/communications", label: "Communications", icon: Mail },
   { href: "/admin/emails", label: "Aperçu emails", icon: MailOpen },
+  { href: "/admin/email-log", label: "Emails envoyés", icon: SendHorizonal },
   { href: "/admin/maintenance", label: "Santé technique", icon: Wrench },
   { href: "/admin/changelog", label: "Changelog", icon: GitMerge },
 ];
