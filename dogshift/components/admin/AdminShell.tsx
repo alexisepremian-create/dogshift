@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { BarChart3, Bot, CalendarDays, FileText, GitMerge, GripVertical, LayoutDashboard, LogOut, Mail, MailOpen, ReceiptText, Scale, ScrollText, Settings, ShieldAlert, ShieldCheck, ShieldPlus, Users, Wrench } from "lucide-react";
+import { BarChart3, Bot, CalendarDays, Eye, FileText, GitMerge, GripVertical, LayoutDashboard, LogOut, Mail, MailOpen, ReceiptText, Scale, ScrollText, Settings, ShieldAlert, ShieldCheck, ShieldPlus, Users, Wrench } from "lucide-react";
 import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
 
 const NAV_ORDER_KEY = "admin_nav_order_v1";
@@ -10,6 +10,7 @@ const NAV_ORDER_KEY = "admin_nav_order_v1";
 const DEFAULT_NAV = [
   { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/admin/users", label: "Utilisateurs", icon: Users },
+  { href: "/admin/impersonate", label: "Voir comme…", icon: Eye },
   { href: "/admin/sitters/applications", label: "Candidatures", icon: Users },
   { href: "/admin/sitters/active", label: "Dogsitters actifs", icon: Users },
   { href: "/admin/verifications", label: "Vérifications", icon: ShieldCheck },
