@@ -466,7 +466,14 @@ export async function POST(req: NextRequest) {
         const html = await render(
           ApplicationStatusEmail({ baseUrl, firstName, lastName, status })
         );
-        const result = await sendEmail({ to: email, subject, text, html });
+        const result = await sendEmail(
+          { to: email, subject, text, html },
+          {
+            templateName: "sitter-application-received",
+            context: "api:sitter-applications",
+            metadata: { applicationId, decision: status },
+          },
+        );
         console.error("[api][sitter-applications] email sent", {
           decision: status, mode: result.mode, messageId: result.messageId, to: email,
         });

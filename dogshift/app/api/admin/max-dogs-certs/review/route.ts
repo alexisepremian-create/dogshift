@@ -93,7 +93,14 @@ export async function POST(req: NextRequest) {
         ctaUrl: `${APP_URL}/host/profile/edit`,
         footerText: "DogShift · Dog-sitting premium en Suisse · support@dogshift.ch",
       });
-      await sendEmail({ to: sitterEmail, subject, html, text: subject }).catch((e) =>
+      await sendEmail(
+        { to: sitterEmail, subject, html, text: subject },
+        {
+          templateName: "sitter-max-dogs-cert-reviewed",
+          context: "api:admin/max-dogs-certs/review",
+          metadata: { sitterId, decision },
+        },
+      ).catch((e) =>
         console.error("[admin][max-dogs-certs][review] email failed", e)
       );
     }

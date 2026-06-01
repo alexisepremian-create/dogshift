@@ -142,12 +142,18 @@ export async function POST(req: NextRequest) {
       `${evaluation.conclusion}\n\n` +
       `— L'équipe DogShift\n${baseUrl}\n`;
 
-    await sendEmail({
-      to: email,
-      subject: "Votre évaluation bien-être personnalisée",
-      text,
-      html,
-    });
+    await sendEmail(
+      {
+        to: email,
+        subject: "Votre évaluation bien-être personnalisée",
+        text,
+        html,
+      },
+      {
+        templateName: "zootherapie-evaluation",
+        context: "agent:zootherapie-evaluation",
+      },
+    );
 
     const durationMs = Date.now() - start;
 

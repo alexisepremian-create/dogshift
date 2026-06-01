@@ -333,5 +333,12 @@ export async function sendPensionResultEmail(params: {
     footerText: "DogShift · Dog-sitting premium en Suisse · support@dogshift.ch",
   });
 
-  await sendEmail({ to: sitterEmail, subject, html, text: bodyText });
+  await sendEmail(
+    { to: sitterEmail, subject, html, text: bodyText },
+    {
+      templateName: "sitter-pension-verification-reviewed",
+      context: "lib:pensionVerificationAgent",
+      metadata: { finalStatus, score: params.score ?? null },
+    },
+  );
 }

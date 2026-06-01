@@ -60,12 +60,19 @@ async function runOnboardingOwner({ email, userId, name }: { email: string; user
     ],
   });
 
-  await sendEmail({
-    to: email,
-    subject: firstName ? `Bienvenue ${firstName} — DogShift` : "Bienvenue sur DogShift",
-    text: `${greeting} — la plateforme de dog-sitting premium en Suisse romande.\n\nSitters vérifiés manuellement par notre équipe\nRéservation simple en 2 clics\nSupport réactif — Lausanne & Riviera vaudoise\n\nTrouvez votre sitter : ${baseUrl}/search\n\n— L'équipe DogShift\nsupport@dogshift.ch`,
-    html,
-  });
+  await sendEmail(
+    {
+      to: email,
+      subject: firstName ? `Bienvenue ${firstName} — DogShift` : "Bienvenue sur DogShift",
+      text: `${greeting} — la plateforme de dog-sitting premium en Suisse romande.\n\nSitters vérifiés manuellement par notre équipe\nRéservation simple en 2 clics\nSupport réactif — Lausanne & Riviera vaudoise\n\nTrouvez votre sitter : ${baseUrl}/search\n\n— L'équipe DogShift\nsupport@dogshift.ch`,
+      html,
+    },
+    {
+      templateName: "signup-welcome",
+      context: "api:auth/resolve-redirect",
+      targetUserId: userId,
+    },
+  );
 
   await prisma.scheduledEmail.create({
     data: { userId, email, type: "owner_followup_j3", sendAfter: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000), sent: false },

@@ -90,12 +90,20 @@ export async function POST(req: NextRequest) {
         ctaUrl: `${APP_URL}/host/profile/edit`,
         footerText: "DogShift · Dog-sitting premium en Suisse · support@dogshift.ch",
       });
-      await sendEmail({
-        to: profile.user.email,
-        subject,
-        html,
-        text: `Bonjour ${firstName}, nous avons bien reçu votre document OPAn. Notre équipe va l'examiner sous 24–48h ouvrées.`,
-      }).catch((e) => console.error("[max-dogs-cert][submit] receipt email failed", e));
+      await sendEmail(
+        {
+          to: profile.user.email,
+          subject,
+          html,
+          text: `Bonjour ${firstName}, nous avons bien reçu votre document OPAn. Notre équipe va l'examiner sous 24–48h ouvrées.`,
+        },
+        {
+          templateName: "sitter-max-dogs-cert-submitted",
+          context: "api:host/max-dogs-cert/submit",
+          targetUserId: userId,
+          metadata: { sitterId: profile.sitterId },
+        },
+      ).catch((e) => console.error("[max-dogs-cert][submit] receipt email failed", e));
     }
 
     return NextResponse.json({ ok: true });

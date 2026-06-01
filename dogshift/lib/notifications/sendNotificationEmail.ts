@@ -1718,12 +1718,20 @@ Notification DogShift.
   })();
 
   try {
-    const res = await sendEmail({
-      to: recipient.email,
-      subject,
-      text,
-      html,
-    });
+    const res = await sendEmail(
+      {
+        to: recipient.email,
+        subject,
+        text,
+        html,
+      },
+      {
+        templateName: `notification-${key.replace(/([A-Z])/g, "-$1").toLowerCase()}`,
+        context: "lib:notifications/sendNotificationEmail",
+        targetUserId: recipientUserId,
+        metadata: { notificationKey: key, entityId },
+      },
+    );
 
     await markNotificationSent(recipientUserId, key, entityId, nowIso());
 

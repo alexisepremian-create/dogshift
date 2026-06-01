@@ -13,6 +13,7 @@ import { Role } from "@prisma/client";
 
 import AdminShell from "@/components/admin/AdminShell";
 import ImpersonateRowButton from "@/components/admin/ImpersonateRowButton";
+import InstantSearchForm from "@/components/admin/InstantSearchForm";
 import { requireAdminPageAccess } from "@/lib/adminAuth";
 import { prisma } from "@/lib/prisma";
 
@@ -90,12 +91,16 @@ export default async function AdminImpersonatePage({
           </p>
         </header>
 
-        <form className="flex flex-wrap items-center gap-3" method="get" action="/admin/impersonate">
+        <InstantSearchForm
+          action="/admin/impersonate"
+          className="flex flex-wrap items-center gap-3"
+        >
           <input
             type="search"
             name="q"
             defaultValue={q}
             placeholder="Email ou nom"
+            autoFocus
             className="w-72 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm outline-none focus:border-slate-500"
           />
           <select
@@ -107,13 +112,10 @@ export default async function AdminImpersonatePage({
             <option value="OWNER">Owners</option>
             <option value="SITTER">Sitters</option>
           </select>
-          <button
-            type="submit"
-            className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
-          >
-            Filtrer
-          </button>
-        </form>
+          <span className="text-xs text-slate-400">
+            Recherche instantanée — pas besoin de cliquer
+          </span>
+        </InstantSearchForm>
 
         <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
           <table className="min-w-full divide-y divide-slate-200 text-sm">

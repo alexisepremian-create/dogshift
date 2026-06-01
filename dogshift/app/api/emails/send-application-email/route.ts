@@ -131,7 +131,14 @@ export async function POST(req: NextRequest) {
       })
     );
 
-    const result = await sendEmail({ to: email, subject, text, html });
+    const result = await sendEmail(
+      { to: email, subject, text, html },
+      {
+        templateName: "sitter-application-received",
+        context: "api:emails/send-application-email",
+        metadata: { applicationId: applicationId ?? null, decision: status },
+      },
+    );
 
     console.log("[api][emails][send-application-email] sent", {
       to: email,
