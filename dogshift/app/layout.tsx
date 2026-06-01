@@ -4,6 +4,7 @@ import { Suspense } from "react";
 
 import SessionAuthProvider from "@/components/SessionAuthProvider";
 import ConsentScriptLoader from "@/components/ConsentScriptLoader";
+import ImpersonationBanner from "@/components/ImpersonationBanner";
 import InitialLoadSplash from "@/components/InitialLoadSplash";
 import InstallPWAPrompt from "@/components/InstallPWAPrompt";
 import NavigationOverlay from "@/components/NavigationOverlay";
@@ -91,6 +92,12 @@ export default async function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
+        {/* Persistent banner shown ONLY when an admin is impersonating another
+            user. Server-rendered (no client-side flash). MUST stay at the very
+            top of <body> so its `position: fixed` overlay sits above all other
+            layers including modals + the Capacitor native bottom nav. */}
+        <ImpersonationBanner />
+
         <Suspense fallback={null}>
           <SessionAuthProvider>
             {children}

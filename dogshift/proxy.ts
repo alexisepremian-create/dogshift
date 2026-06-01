@@ -1,5 +1,10 @@
 import { NextResponse, type NextRequest } from "next/server";
 
+import {
+  IMPERSONATION_COOKIE,
+  isBlockedInImpersonation,
+} from "@/lib/auth/impersonation";
+
 /**
  * Edge-level routing proxy (Next.js 16 `proxy.ts`, replaces the old
  * `middleware.ts` naming).
@@ -175,6 +180,34 @@ export function proxy(req: NextRequest): NextResponse {
     url.pathname = "/login";
     url.search = `?next=${encodeURIComponent(buildNextParam(reqPathname, reqSearch))}`;
     return addLockHeaders(NextResponse.redirect(url));
+  }
+
+  // ── Impersonation safety net ──────────────────────────────────────────────
+  // When an admin is in impersonation mode (cookie present), the middleware
+  // hard-blocks any sensitive write operation (messages, Stripe, account
+  // deletion, etc.) BEFORE the route handler runs. Two reasons we enforce it
+  // here in addition to/instead of inside each handler:
+  //
+  //   1. It's centralised — adding a new sensitive route only requires
+  //      updating IMPERSONATION_BLOCKED_ROUTES (in lib/auth/impersonation.ts),
+  //      not every handler.
+  //   2. Edge-runtime fast path — we reject in <1ms before any Prisma query.
+  //
+  // We deliberately do NOT cryptographically verify the cookie here (Edge can't
+  // import Node crypto). Cookie presence + route match is enough for the block;
+  // a forged cookie just locks the attacker out of their own POSTs, which is
+  // self-DoS, not a privilege escalation. The cryptographic gate lives in
+  // `getAuthedDbUser()` (Node runtime) — that's where the cookie is honored to
+  // switch identity.
+  if (req.cookies.get(IMPERSONATION_COOKIE)?.value && isBlockedInImpersonation(req.method, reqPathname)) {
+    return NextResponse.json(
+      {
+        ok: false,
+        error: "IMPERSONATION_FORBIDDEN_ACTION",
+        message: "Cette action est désactivée pendant une session d'impersonation.",
+      },
+      { status: 403 },
+    );
   }
 
   return addLockHeaders(NextResponse.next());
