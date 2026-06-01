@@ -1,9 +1,8 @@
 "use client";
 
 import { usePathname, useSearchParams } from "next/navigation";
-import { useSession, signOut } from "next-auth/react";
 
-import HostContractAmendmentModal from "@/components/HostContractAmendmentModal";
+import HostComplianceBlockingModal from "@/components/HostComplianceBlockingModal";
 import MobileBottomNav from "@/components/MobileBottomNav";
 import HostSidebar from "@/components/HostSidebar";
 import BrandLogo from "@/components/BrandLogo";
@@ -48,7 +47,26 @@ export default function HostDashboardShell({ children }: { children: React.React
 
   return (
     <div className="min-h-screen w-full max-w-[100vw] overflow-x-hidden bg-white text-slate-900">
-      {isPublicPreview || !host.sitterId ? null : <HostContractAmendmentModal />}
+      {/*
+       * Sitter compliance gate — blocking modal that surfaces when the sitter
+       * has either (1) not accepted the current CGU version, or (2) has not
+       * accepted the active contract amendment. Calls `/api/host/accept-terms`,
+       * `/api/host/accept-compliance`, or `/api/host/contract-amendment/accept`
+       * depending on what's missing.
+       *
+       * MUST stay rendered here. The server-side gate in `lib/sitterGuards.ts`
+       * blocks publish + sensitive actions with HTTP 403 + `TERMS_NOT_ACCEPTED`
+       * when terms are stale, and without this modal the sitter sees the
+       * warning ("Accepter le règlement DogShift") but has no way to fulfill
+       * it — Sonia's recurring bug. Commit fef3977f7 (2026-03-24) removed it
+       * mistakenly during a "separate sitter compliance from owner terms"
+       * refactor; rewired by this fix. See docs/bugs/sitter-terms-modal-missing.md.
+       *
+       * This modal is a superset of HostContractAmendmentModal — it covers
+       * both terms and amendment in one UI, so we deliberately don't render
+       * the older single-purpose modal here anymore.
+       */}
+      {isPublicPreview || !host.sitterId ? null : <HostComplianceBlockingModal host={host} />}
 
       <div className="flex min-h-screen">
         {/* ── Desktop sidebar — always expanded ── */}
