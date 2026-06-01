@@ -6,6 +6,23 @@ export type SendEmailInput = {
   headers?: Record<string, string>;
 };
 
+/**
+ * Optional second argument to `sendEmail()`. EVERY new call site should pass
+ * `templateName` + `context` so the /admin/emails audit log is searchable.
+ * Existing callers stay valid (it's optional) but they'll appear as
+ * "(template inconnu)" in the admin UI — that's a soft signal to migrate them.
+ */
+export type SendEmailAudit = {
+  /** Logical template id, e.g. "inactivity-warning-1", "reset-password" */
+  templateName?: string;
+  /** Where the email was triggered from, e.g. "cron:inactivity-check" */
+  context?: string;
+  /** DB id of the recipient when known (lets admin filter "all emails sent to user X"). */
+  targetUserId?: string | null;
+  /** Small PII-free extra context (IDs only). */
+  metadata?: Record<string, unknown>;
+};
+
 export type SendEmailResult = {
   mode: "resend" | "smtp" | "log";
   /**
@@ -129,27 +146,74 @@ async function sendWithSmtp(input: SendEmailInput): Promise<SendEmailResult> {
   return { mode: "smtp", messageId };
 }
 
-export async function sendEmail(input: SendEmailInput): Promise<SendEmailResult> {
+export async function sendEmail(
+  input: SendEmailInput,
+  audit?: SendEmailAudit,
+): Promise<SendEmailResult> {
   const resendKey = (process.env.RESEND_API_KEY || "").trim();
-  if (resendKey) return sendWithResend(input);
+
+  let result: SendEmailResult | null = null;
+  let caught: unknown = null;
 
   try {
-    return await sendWithSmtp(input);
-  } catch {
-    const isProd = process.env.NODE_ENV === "production";
-    if (isProd) {
-      console.error("[email] no provider configured in production", {
-        hasResendKey: Boolean((process.env.RESEND_API_KEY || "").trim()),
-        hasSmtpHost: Boolean((process.env.SMTP_HOST || "").trim()),
-      });
-      throw new Error("EMAIL_PROVIDER_NOT_CONFIGURED");
+    if (resendKey) {
+      result = await sendWithResend(input);
+    } else {
+      try {
+        result = await sendWithSmtp(input);
+      } catch {
+        const isProd = process.env.NODE_ENV === "production";
+        if (isProd) {
+          console.error("[email] no provider configured in production", {
+            hasResendKey: Boolean((process.env.RESEND_API_KEY || "").trim()),
+            hasSmtpHost: Boolean((process.env.SMTP_HOST || "").trim()),
+          });
+          throw new Error("EMAIL_PROVIDER_NOT_CONFIGURED");
+        }
+        console.log("[email] no provider configured. Email payload:", {
+          to: input.to,
+          subject: input.subject,
+          text: input.text,
+        });
+        result = { mode: "log" };
+      }
     }
+  } catch (err) {
+    caught = err;
+  }
 
-    console.log("[email] no provider configured. Email payload:", {
+  // Persist EVERY attempt (success + failure) into EmailLog. The write is
+  // best-effort : if Prisma is unavailable we don't want to mask the original
+  // outcome of the email send. Lazy-import keeps `sendEmail` usable in
+  // contexts where Prisma isn't bundled (none today, but cheap insurance).
+  try {
+    const { prisma } = await import("@/lib/prisma");
+    await prisma.emailLog.create({
+      data: {
+        to: input.to,
+        fromAddress: baseFromEnv(),
+        subject: input.subject,
+        templateName: audit?.templateName ?? null,
+        context: audit?.context ?? null,
+        targetUserId: audit?.targetUserId ?? null,
+        status: caught ? "failed" : "sent",
+        mode: result?.mode ?? null,
+        messageId: result?.messageId ?? null,
+        errorMessage: caught
+          ? String(caught instanceof Error ? caught.message : caught).slice(0, 500)
+          : null,
+        metadata: audit?.metadata ? JSON.parse(JSON.stringify(audit.metadata)) : undefined,
+      },
+    });
+  } catch (logErr) {
+    console.error("[email] EmailLog write failed (non-fatal)", {
       to: input.to,
       subject: input.subject,
-      text: input.text,
+      err: logErr instanceof Error ? logErr.message : String(logErr),
     });
-    return { mode: "log" };
   }
+
+  if (caught) throw caught;
+  // result is guaranteed non-null on the success path.
+  return result as SendEmailResult;
 }

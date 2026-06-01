@@ -358,12 +358,19 @@ export async function GET(req: NextRequest) {
             },
           });
           if (email) {
-            await sendEmail({
-              to: email,
-              subject: "Votre compte DogShift a été suspendu",
-              text: `Bonjour ${name},\n\nVotre compte a été suspendu pour inactivité. Contactez support@dogshift.ch pour le réactiver.`,
-              html: buildSuspendedEmail(name).html,
-            }).catch((e) => console.error("[inactivity-check] suspend email failed", e));
+            await sendEmail(
+              {
+                to: email,
+                subject: "Votre compte DogShift a été suspendu",
+                text: `Bonjour ${name},\n\nVotre compte a été suspendu pour inactivité. Contactez support@dogshift.ch pour le réactiver.`,
+                html: buildSuspendedEmail(name).html,
+              },
+              {
+                templateName: "inactivity-suspended",
+                context: "cron:inactivity-check",
+                metadata: { sitterId: sitter.sitterId },
+              },
+            ).catch((e) => console.error("[inactivity-check] suspend email failed", e));
           }
           await sendTelegramMessage(
             `[DogShift] Compte suspendu (inactivité)\n\nSitter : ${name} (${email})\nID : ${sitter.sitterId}\nAucune disponibilité depuis trop longtemps.`,
@@ -383,12 +390,19 @@ export async function GET(req: NextRequest) {
             data: { inactivityStatus: "warning_2", inactivityWarning2At: now },
           });
           if (email) {
-            await sendEmail({
-              to: email,
-              subject: "Dernier avertissement — suspension imminente — DogShift",
-              text: `Bonjour ${name},\n\nDernier avertissement : votre compte sera suspendu dans ${WARNING2_TO_SUSPEND_DAYS} jours si vous n'ajoutez pas de disponibilités.`,
-              html: buildWarning2Email(name, WARNING2_TO_SUSPEND_DAYS).html,
-            }).catch((e) => console.error("[inactivity-check] warning2 email failed", e));
+            await sendEmail(
+              {
+                to: email,
+                subject: "Dernier avertissement — suspension imminente — DogShift",
+                text: `Bonjour ${name},\n\nDernier avertissement : votre compte sera suspendu dans ${WARNING2_TO_SUSPEND_DAYS} jours si vous n'ajoutez pas de disponibilités.`,
+                html: buildWarning2Email(name, WARNING2_TO_SUSPEND_DAYS).html,
+              },
+              {
+                templateName: "inactivity-warning-2",
+                context: "cron:inactivity-check",
+                metadata: { sitterId: sitter.sitterId, daysUntilSuspend: WARNING2_TO_SUSPEND_DAYS },
+              },
+            ).catch((e) => console.error("[inactivity-check] warning2 email failed", e));
           }
           results.warning2++;
         }
@@ -404,12 +418,19 @@ export async function GET(req: NextRequest) {
             data: { inactivityStatus: "warning_1", inactivityWarning1At: now },
           });
           if (email) {
-            await sendEmail({
-              to: email,
-              subject: "Votre compte sera suspendu — ajoutez vos disponibilités — DogShift",
-              text: `Bonjour ${name},\n\nAvertissement : votre compte sera suspendu dans ${WARNING1_TO_WARNING2_DAYS} jours si vous n'ajoutez pas de disponibilités.`,
-              html: buildWarning1Email(name, WARNING1_TO_WARNING2_DAYS).html,
-            }).catch((e) => console.error("[inactivity-check] warning1 email failed", e));
+            await sendEmail(
+              {
+                to: email,
+                subject: "Votre compte sera suspendu — ajoutez vos disponibilités — DogShift",
+                text: `Bonjour ${name},\n\nAvertissement : votre compte sera suspendu dans ${WARNING1_TO_WARNING2_DAYS} jours si vous n'ajoutez pas de disponibilités.`,
+                html: buildWarning1Email(name, WARNING1_TO_WARNING2_DAYS).html,
+              },
+              {
+                templateName: "inactivity-warning-1",
+                context: "cron:inactivity-check",
+                metadata: { sitterId: sitter.sitterId, daysUntilWarning2: WARNING1_TO_WARNING2_DAYS },
+              },
+            ).catch((e) => console.error("[inactivity-check] warning1 email failed", e));
           }
           results.warning1++;
         }
@@ -423,12 +444,19 @@ export async function GET(req: NextRequest) {
           data: { inactivityStatus: "nudge_sent", inactivityNudgeAt: now },
         });
         if (email) {
-          await sendEmail({
-            to: email,
-            subject: "Ajoutez vos disponibilités pour recevoir des réservations — DogShift",
-            text: `Bonjour ${name},\n\nVotre profil est publié mais aucune disponibilité n'est renseignée. Connectez-vous pour en ajouter : ${APP_URL}/host/availability`,
+          await sendEmail(
+            {
+              to: email,
+              subject: "Ajoutez vos disponibilités pour recevoir des réservations — DogShift",
+              text: `Bonjour ${name},\n\nVotre profil est publié mais aucune disponibilité n'est renseignée. Connectez-vous pour en ajouter : ${APP_URL}/host/availability`,
               html: buildNudgeEmail(name).html,
-          }).catch((e) => console.error("[inactivity-check] nudge email failed", e));
+            },
+            {
+              templateName: "inactivity-nudge",
+              context: "cron:inactivity-check",
+              metadata: { sitterId: sitter.sitterId },
+            },
+          ).catch((e) => console.error("[inactivity-check] nudge email failed", e));
         }
         results.nudge++;
       }
