@@ -12,6 +12,7 @@ import NavigationOverlayController from "@/components/NavigationOverlayControlle
 import ServiceWorkerRegistration from "@/components/ServiceWorkerRegistration";
 import WebOnly from "@/components/native/WebOnly";
 import GlobalNativeBottomNav from "@/components/native/GlobalNativeBottomNav";
+import NativeOnboarding from "@/components/native/NativeOnboarding";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -97,6 +98,10 @@ export default async function RootLayout({
             top of <body> so its `position: fixed` overlay sits above all other
             layers including modals + the Capacitor native bottom nav. */}
         <ImpersonationBanner />
+
+        {/* 3-screen welcome shown only the first time the Capacitor app is
+            launched. Self-dismisses via localStorage; web users never see it. */}
+        <NativeOnboarding />
 
         <Suspense fallback={null}>
           <SessionAuthProvider>
