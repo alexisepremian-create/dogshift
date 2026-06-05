@@ -50,8 +50,24 @@ const config: CapacitorConfig = {
   },
 
   plugins: {
+    // Native launch splash — purple background + white DogShift logo (generated
+    // by `node scripts/generate-native-splash.mjs`). Stays visible until the
+    // bridge in `lib/native/capacitorBridge.ts` calls `SplashScreen.hide()`
+    // after React hydration + NativeMapHome mount. The 30 s `launchShowDuration`
+    // is a SAFETY NET only — covers the worst-case Neon cold start + slow
+    // device hydration window. In normal operation the splash hides in
+    // 1-3 s as soon as the bridge init resolves.
+    //
+    // We keep `launchAutoHide: true` (vs. false) so a catastrophic JS load
+    // failure (offline, syntax error before bridge mounts) still drops the
+    // splash within 30 s — the user can then see the WebView and react,
+    // instead of being stuck on a frozen splash forever.
+    //
+    // The CSS overlay in `app/globals.css` (html[data-native]::before) takes
+    // over from the native splash without a colour seam — both are exactly
+    // #7c3aed, so the transition is invisible.
     SplashScreen: {
-      launchShowDuration: 1500,
+      launchShowDuration: 30000,
       launchAutoHide: true,
       backgroundColor: "#7c3aedff",
       androidScaleType: "CENTER_CROP",
