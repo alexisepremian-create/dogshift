@@ -255,6 +255,11 @@ body[data-native="true"] [data-auth-layout] {
   min-height: 0;
   overflow: hidden;
 }
+/* Hide the "DogShift" separator footer below the form in native — it looks
+   out of place inside an app. */
+body[data-native="true"] [data-auth-footer] {
+  display: none;
+}
 
 /* Hide the layout chrome (header + footer) while a navigation is in
    progress. Three orthogonal triggers — any one is enough:
