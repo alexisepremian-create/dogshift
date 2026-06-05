@@ -41,8 +41,12 @@ type SitterRow = {
   verified?: boolean;
   averageRating?: number | null;
   countReviews?: number | null;
+  services: unknown;
   pricing: unknown;
 };
+
+type Service = "Promenade" | "Garde" | "Pension";
+const ALL_SERVICES: readonly Service[] = ["Promenade", "Garde", "Pension"] as const;
 
 type UiSitter = {
   id: string;
@@ -52,10 +56,26 @@ type UiSitter = {
   rating: number | null;
   reviews: number;
   minPrice: number;
+  services: Service[];
   lat: number;
   lng: number;
   verified: boolean;
 };
+
+function parseServices(value: unknown): Service[] {
+  if (Array.isArray(value)) {
+    const out: Service[] = [];
+    for (const v of value) {
+      if (v === "Promenade" || v === "Garde" || v === "Pension") out.push(v);
+    }
+    return out;
+  }
+  if (value && typeof value === "object") {
+    const obj = value as Record<string, unknown>;
+    return ALL_SERVICES.filter((s) => obj[s] === true);
+  }
+  return [];
+}
 
 function parseMinPrice(pricing: unknown): number {
   if (!pricing || typeof pricing !== "object") return 0;
@@ -80,6 +100,7 @@ function toUi(row: SitterRow): UiSitter | null {
     rating: typeof row.averageRating === "number" ? row.averageRating : null,
     reviews: typeof row.countReviews === "number" ? row.countReviews : 0,
     minPrice: parseMinPrice(row.pricing),
+    services: parseServices(row.services),
     lat,
     lng,
     verified: row.verified === true,
@@ -131,6 +152,7 @@ export default function NativeMapHome() {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [geoLoading, setGeoLoading] = useState(false);
   const [query, setQuery] = useState("");
+  const [serviceFilter, setServiceFilter] = useState<Service | null>(null);
 
   // Fetch published sitters once on mount.
   useEffect(() => {
@@ -153,11 +175,12 @@ export default function NativeMapHome() {
 
   const filteredSitters = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return sitters;
-    return sitters.filter((s) =>
-      s.name.toLowerCase().includes(q) || s.city.toLowerCase().includes(q),
-    );
-  }, [sitters, query]);
+    return sitters.filter((s) => {
+      if (serviceFilter && !s.services.includes(serviceFilter)) return false;
+      if (!q) return true;
+      return s.name.toLowerCase().includes(q) || s.city.toLowerCase().includes(q);
+    });
+  }, [sitters, query, serviceFilter]);
 
   const activeSitter = useMemo(
     () => sitters.find((s) => s.id === activeId) ?? null,
@@ -234,9 +257,9 @@ export default function NativeMapHome() {
         )}
       </div>
 
-      {/* ── Floating search bar (top, safe-area aware) ───────────────────── */}
+      {/* ── Floating search bar + service filter chips (top) ─────────────── */}
       <div
-        className="absolute left-0 right-0 z-20 px-4"
+        className="absolute left-0 right-0 z-20 space-y-2 px-4"
         style={{ top: "calc(env(safe-area-inset-top, 0px) + 12px)" }}
       >
         <div className="flex items-center gap-2 rounded-full bg-white/95 px-4 py-3 shadow-[0_8px_24px_rgba(2,6,23,0.18)] backdrop-blur">
@@ -251,6 +274,30 @@ export default function NativeMapHome() {
             enterKeyHint="search"
             autoComplete="off"
           />
+        </div>
+
+        {/* Horizontal-scroll service filter chips. Tap to apply, tap the
+            active chip again to clear. Same UX pattern as Airbnb / HoneyPaws. */}
+        <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
+          {ALL_SERVICES.map((s) => {
+            const active = serviceFilter === s;
+            return (
+              <button
+                key={s}
+                type="button"
+                onClick={() => setServiceFilter(active ? null : s)}
+                aria-pressed={active}
+                style={{ touchAction: "manipulation" }}
+                className={
+                  active
+                    ? "flex-shrink-0 rounded-full bg-[var(--dogshift-blue)] px-4 py-2 text-sm font-semibold text-white shadow-[0_6px_18px_rgba(47,77,107,0.35)] active:scale-95"
+                    : "flex-shrink-0 rounded-full bg-white/95 px-4 py-2 text-sm font-medium text-slate-700 shadow-[0_4px_12px_rgba(2,6,23,0.12)] backdrop-blur active:scale-95"
+                }
+              >
+                {s}
+              </button>
+            );
+          })}
         </div>
       </div>
 
