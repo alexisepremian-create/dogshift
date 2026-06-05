@@ -149,6 +149,18 @@ body[data-native="true"] footer {
   display: none !important;
 }
 
+/* Body background fallback in native mode. Belt-and-suspenders for the
+   cold-launch handoff: if the overlay's bg fade ever races the React
+   commit that mounts <NativeMapHome> (or any other native-variant page
+   that fills the viewport), the area exposed in the iOS safe-area zones
+   shows brand purple — never the marketing layout's default white,
+   never a white band. NativeMapHome's outer `bg-slate-100` covers this
+   in normal operation; this rule only matters during the splash → app
+   transition. */
+html[data-native="true"] body {
+  background-color: #7c3aed;
+}
+
 html[data-native="true"]::before {
   content: "";
   position: fixed;

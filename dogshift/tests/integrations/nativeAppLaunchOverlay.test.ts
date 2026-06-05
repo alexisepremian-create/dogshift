@@ -103,6 +103,34 @@ test("lib/native/capacitorBridge.ts sets data-native-ready after splash hide to 
   );
 });
 
+test("lib/native/capacitorBridge.ts waits for React to mount native-variant pages before triggering the splash fade", () => {
+  const src = readFileSync(
+    join(repoRoot, "lib/native/capacitorBridge.ts"),
+    "utf8",
+  );
+
+  const match = src.match(/SPLASH_REACT_MOUNT_BUFFER_MS\s*=\s*(\d+)/);
+  assert.ok(
+    match,
+    "Expected a `SPLASH_REACT_MOUNT_BUFFER_MS` delay constant in capacitorBridge.ts. Without this buffer between `SplashScreen.hide()` and the `data-native-ready` flip, the overlay's bg fade can race React's commit of <NativeMapHome> and briefly expose the marketing layout's white body in the iOS safe-area zones — exact regression founder reported after PR #432.",
+  );
+  const value = Number(match![1]);
+  assert.ok(
+    value >= 300,
+    `Expected SPLASH_REACT_MOUNT_BUFFER_MS >= 300 ms (got ${value} ms). Anything shorter has been observed to race cold-Neon-connection hydration in production.`,
+  );
+});
+
+test("app/globals.css paints the body purple in native mode as a safe-area fallback", () => {
+  const src = readFileSync(join(repoRoot, "app/globals.css"), "utf8");
+
+  assert.match(
+    src,
+    /html\[data-native="true"\] body[\s\S]*?background-color:\s*#7c3aed/,
+    "Expected `html[data-native='true'] body { background-color: #7c3aed }` in globals.css. This is the belt-and-suspenders for the splash overlay fade: even if React hasn't yet mounted <NativeMapHome> by the time the overlay fades, the safe-area zones show brand purple — never white. Don't drop it without re-testing the founder's 'bandes blanches pendant l'animation' regression.",
+  );
+});
+
 test("capacitor.config.ts uses an extended launchShowDuration so the native splash covers the WebView load window", () => {
   const src = readFileSync(join(repoRoot, "capacitor.config.ts"), "utf8");
 

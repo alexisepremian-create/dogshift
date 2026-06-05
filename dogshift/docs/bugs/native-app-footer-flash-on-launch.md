@@ -114,12 +114,17 @@ final grow-and-fade animation that reveals NativeMapHome.
 
 4. **Bridge orchestrates the handoff** (`lib/native/capacitorBridge.ts`).
    On init: (a) `await SplashScreen.hide()` — native splash drops, CSS
-   overlay underneath is revealed and looks identical; (b) `requestAnimationFrame(() => documentElement.setAttribute('data-native-ready', 'true'))`
-   on the next compositor frame, triggering the keyframe animation
-   `ds-native-splash-paw-grow` (paw scales 1 → 1.6, fades over 700 ms,
-   `cubic-bezier(.25,.1,.25,1)` for an Apple-like ease-out — the "grow"
-   the founder asked for). The background fades on a slightly delayed
-   ramp via `ds-native-splash-bg-fade`. 700 ms later the user is on
+   overlay underneath is revealed and looks identical; (b) sleep
+   `SPLASH_REACT_MOUNT_BUFFER_MS` (500 ms) so React has time to commit
+   `<NativeMapHome>` (or whatever native-variant page the user landed
+   on) — without this the overlay fade can race the React commit and
+   briefly expose the marketing layout's white body in the iOS
+   safe-area zones; (c) set `data-native-ready` on `<html>`, triggering
+   the keyframe animation `ds-native-splash-paw-grow` (paw scales 1 →
+   1.6, fades over 700 ms, `cubic-bezier(.25,.1,.25,1)` for an
+   Apple-like ease-out — the "grow" the founder asked for). The
+   background fades on a slightly delayed ramp via
+   `ds-native-splash-bg-fade`. 700 ms later the user is on
    `<NativeMapHome>`.
 
 5. **Inline `<head>` script** (`app/layout.tsx`). Capacitor injects
@@ -134,6 +139,17 @@ final grow-and-fade animation that reveals NativeMapHome.
    reason, the footer never reaches the user in native mode. The
    footer is also wrapped in `<WebOnly>` in
    `app/(marketing)/layout.tsx` for the post-hydration state.
+
+7. **Body-bg fallback in native mode**
+   (`app/globals.css → html[data-native] body { background-color: #7c3aed }`).
+   Pure safety net. If anything ever goes wrong — buffer too short,
+   React hung mid-commit, overlay z-index regression — the body's
+   background paints brand purple in native mode, so the worst case
+   is the user sees a slightly-too-purple screen for a moment. Never
+   a white band. The various per-page outer wrappers (NativeMapHome
+   `bg-slate-100`, dashboards' own backgrounds) cover this rule the
+   moment they mount, so it's only visible during the cold-launch
+   window.
 
 ## How to recognize a regression
 
@@ -224,14 +240,21 @@ so we shipped the native-splash fix first.
   native iOS LaunchScreen so the safe-area zones were also covered.
   Lost the in-WebView splash; founder fed back that the cut to
   NativeMapHome felt abrupt and the paw should grow on launch.
-- This PR (2026-06-05) — final form. Native splash now uses the
-  app icon's paw silhouette (extracted from
-  `public/apple-touch-icon.png`), CSS overlay restored with
-  identical artwork (`public/dogshift-paw-white.png`),
-  `viewport-fit=cover` added so the overlay paints into safe-areas,
-  bridge orchestrates a hide-splash → next-frame → `data-native-ready`
-  sequence that triggers a 700 ms scale-up + fade animation on the
-  paw.
+- PR #432 (2026-06-05) — added back the in-WebView CSS overlay with
+  matching paw artwork from `apple-touch-icon.png`, set
+  `viewport-fit=cover` so the overlay covers safe-areas, added the
+  scale-up grow animation triggered after a RAF. The animation worked
+  but exposed an ugly safe-area band regression in the rare case
+  where React hadn't yet committed `<NativeMapHome>` by the time the
+  overlay's bg fade started.
+- This PR (2026-06-05) — fixes that bg-fade race. Added
+  `SPLASH_REACT_MOUNT_BUFFER_MS = 500` between `SplashScreen.hide()`
+  and the `data-native-ready` flip in `capacitorBridge.ts` so React
+  has time to mount the active page's native variant before the
+  overlay fades. Added a body background fallback
+  (`html[data-native] body { background-color: #7c3aed }`) as a
+  pure safety net so the worst case is "splash lingers a moment too
+  long" rather than "white band flashes".
 
 ## 🤖 Automated detection
 
