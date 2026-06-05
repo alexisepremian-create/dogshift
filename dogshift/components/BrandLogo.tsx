@@ -33,22 +33,19 @@ export default function BrandLogo({ href, priority }: BrandLogoProps) {
         DOGSHIFT
       </span>
 
-      {/* Native variant — purple square + white paw. Hidden in web via globals.css */}
-      <span
-        data-brand-logo-native=""
-        className="hidden flex-col items-center"
-      >
+      {/* Native variant — the actual app icon (apple-touch-icon.png) clipped
+          to a perfect circle. No DOGSHIFT wordmark below — the icon alone is
+          enough (founder feedback : "faut faire un truc plus simple et propre
+          sans bcp de texte juste ce qu'il faut"). Hidden on web via CSS. */}
+      <span data-brand-logo-native="" className="hidden">
         <Image
-          src="/dogshift-paw-square.svg"
+          src="/apple-touch-icon.png"
           alt="DogShift"
           width={88}
           height={88}
-          className="h-20 w-20 rounded-[22px] shadow-[0_14px_32px_-12px_rgba(124,58,237,0.55)]"
+          className="h-20 w-20 rounded-full object-cover shadow-[0_14px_32px_-12px_rgba(124,58,237,0.55)]"
           priority={Boolean(priority)}
         />
-        <span className="mt-3 text-[13px] font-bold tracking-[0.22em] text-slate-700">
-          DOGSHIFT
-        </span>
       </span>
     </Link>
   );

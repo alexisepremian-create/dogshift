@@ -1,5 +1,5 @@
 "use client";
-/* eslint-disable react-hooks/set-state-in-effect */
+/* eslint-disable react-hooks/set-state-in-effect, @next/next/no-img-element */
 
 import { useEffect, useState, type ReactNode } from "react";
 
@@ -7,20 +7,21 @@ import { useIsNativeApp } from "@/lib/native/useIsNativeApp";
 
 const STORAGE_KEY = "ds_native_onboarding_v1";
 
-// White-on-purple SVGs so the 3 circles stay coherent with the DogShift app
-// icon (purple square + white paw). Founder feedback : "je veux que les
-// icones soient violettes comme mon logo comme ca c'est cohérent". No image
-// asset — keeps the onboarding bundle tiny and styling pixel-perfect.
-function PawIcon() {
+// Slide 1 = the actual app icon (public/apple-touch-icon.png) clipped to a
+// perfect circle. Founder feedback : "le logo c'est apple-touch-icon.png dans
+// le fichier public c'est ca que tu dois mettre" + "les icones doivent etre
+// rondes pas carrés a bords arrondis". The Apple icon is itself a rounded
+// square purple+paw; clipping to a full circle gives a clean ring around the
+// paw — no white outer ring, no rounded-square edges, just one round mark.
+function AppIcon() {
   return (
-    <svg width="76" height="76" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true">
-      <ellipse cx="80" cy="100" rx="22" ry="28" />
-      <ellipse cx="124" cy="86" rx="20" ry="26" />
-      <ellipse cx="168" cy="100" rx="22" ry="28" />
-      <ellipse cx="200" cy="138" rx="18" ry="22" />
-      <ellipse cx="56" cy="138" rx="18" ry="22" />
-      <path d="M128 142c-32 0-56 26-56 52 0 22 18 38 56 38s56-16 56-38c0-26-24-52-56-52z" />
-    </svg>
+    <img
+      src="/apple-touch-icon.png"
+      alt="DogShift"
+      width={144}
+      height={144}
+      className="h-36 w-36 rounded-full object-cover"
+    />
   );
 }
 
@@ -49,21 +50,29 @@ type Slide = {
 
 // All 3 circles share the same purple as the app icon (#7c3aed). Variety is
 // in the SVG inside (paw / shield / bolt), not the colour.
-const SLIDES: readonly Slide[] = [
+type Slide2 = Slide & { ringed: boolean };
+
+// Slide 1 already IS the full app icon (no extra ring needed). Slides 2 + 3
+// use the same purple ring as the icon background, with a white inline SVG
+// inside. All 3 are PERFECT CIRCLES (rounded-full, no rounded-square corners).
+const SLIDES_V2: readonly Slide2[] = [
   {
-    visual: <PawIcon />,
+    visual: <AppIcon />,
     title: "Bienvenue sur DogShift",
     body: "Trouve un dogsitter de confiance près de chez toi, en quelques secondes.",
+    ringed: false,
   },
   {
     visual: <ShieldCheckIcon />,
     title: "Des profils vérifiés",
     body: "Tous les dogsitters DogShift passent une vérification d'identité et un entretien.",
+    ringed: true,
   },
   {
     visual: <BoltIcon />,
     title: "Réserve en 3 taps",
     body: "Promenade, garde à domicile ou pension : choisis ton service, ton horaire, et c'est parti.",
+    ringed: true,
   },
 ] as const;
 
@@ -102,7 +111,7 @@ export default function NativeOnboarding() {
   }
 
   function next() {
-    if (index >= SLIDES.length - 1) {
+    if (index >= SLIDES_V2.length - 1) {
       dismiss();
       return;
     }
@@ -146,21 +155,30 @@ export default function NativeOnboarding() {
           setIndex(Math.round(x / w));
         }}
       >
-        {SLIDES.map((s, i) => (
+        {SLIDES_V2.map((s, i) => (
           <section
             key={i}
             id={`ds-ob-slide-${i}`}
             className="flex w-full flex-shrink-0 snap-center flex-col items-center justify-center px-8 text-center"
           >
-            <div
-              className="mb-8 flex h-36 w-36 items-center justify-center rounded-[36px] text-white shadow-[0_20px_50px_-20px_rgba(124,58,237,0.55)]"
-              style={{
-                background: "linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%)",
-              }}
-              aria-hidden="true"
-            >
-              {s.visual}
-            </div>
+            {s.ringed ? (
+              <div
+                className="mb-8 flex h-36 w-36 items-center justify-center rounded-full text-white shadow-[0_20px_50px_-20px_rgba(124,58,237,0.55)]"
+                style={{
+                  background: "linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%)",
+                }}
+                aria-hidden="true"
+              >
+                {s.visual}
+              </div>
+            ) : (
+              <div
+                className="mb-8 shadow-[0_20px_50px_-20px_rgba(124,58,237,0.55)] rounded-full"
+                aria-hidden="true"
+              >
+                {s.visual}
+              </div>
+            )}
             <h2 className="mb-3 text-balance text-2xl font-bold text-slate-900">{s.title}</h2>
             <p className="max-w-sm text-balance text-base leading-relaxed text-slate-600">
               {s.body}
@@ -172,12 +190,12 @@ export default function NativeOnboarding() {
       {/* Dots indicator + CTA */}
       <div className="flex items-center justify-between gap-4 px-6 pb-6 pt-4">
         <div className="flex items-center gap-2" aria-hidden="true">
-          {SLIDES.map((_, i) => (
+          {SLIDES_V2.map((_, i) => (
             <div
               key={i}
               className={
                 i === index
-                  ? "h-2 w-8 rounded-full bg-[var(--dogshift-blue)] transition-all"
+                  ? "h-2 w-8 rounded-full bg-[#7c3aed] transition-all"
                   : "h-2 w-2 rounded-full bg-slate-300 transition-all"
               }
             />
@@ -187,9 +205,9 @@ export default function NativeOnboarding() {
           type="button"
           onClick={next}
           style={{ touchAction: "manipulation" }}
-          className="rounded-full bg-[var(--dogshift-blue)] px-6 py-3 text-sm font-semibold text-white shadow-[0_8px_20px_-8px_rgba(47,77,107,0.6)] active:scale-95"
+          className="rounded-full bg-[#7c3aed] px-6 py-3 text-sm font-semibold text-white shadow-[0_8px_20px_-8px_rgba(124,58,237,0.6)] active:scale-95 hover:bg-[#6d28d9]"
         >
-          {index === SLIDES.length - 1 ? "Commencer" : "Suivant"}
+          {index === SLIDES_V2.length - 1 ? "Commencer" : "Suivant"}
         </button>
       </div>
     </div>

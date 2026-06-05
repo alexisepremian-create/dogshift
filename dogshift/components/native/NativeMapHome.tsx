@@ -314,7 +314,7 @@ export default function NativeMapHome() {
         style={{
           bottom: sheetOpen
             ? "calc(70vh + 16px)"
-            : "calc(200px + 16px + var(--ds-bottom-nav-h, 0px))",
+            : "calc(160px + 24px + var(--ds-bottom-nav-h, 0px))",
           touchAction: "manipulation",
         }}
       >
@@ -328,7 +328,7 @@ export default function NativeMapHome() {
         <div
           className="absolute left-4 right-4 z-30"
           style={{
-            bottom: "calc(200px + 16px + var(--ds-bottom-nav-h, 0px))",
+            bottom: "calc(160px + 24px + var(--ds-bottom-nav-h, 0px))",
           }}
         >
           <Link
@@ -382,15 +382,17 @@ export default function NativeMapHome() {
           bottom-nav already accounts for the safe-area home indicator, so we
           don't add env(safe-area-inset-bottom) here — otherwise we'd double
           up the offset. */}
-      {/* Collapsed height bumped from 140 → 200 so the horizontal card row
-          isn't cropped (founder feedback : "les annonces de dogsitters sont
-          coupées"). Expanded height is 70vh minus the bottom-nav so the
-          inner list can scroll without disappearing under the tab bar. */}
+      {/* Sheet floats as a card with side margins (mx-3) above the nav bar
+          (founder feedback : "tu l'as juste rallongé moi je voulais que tu
+          la montes un peu c'est tout pour pas qu'elle empiete sur la nav
+          barre et elle est trop large"). 160px collapsed, 12px gap above
+          the nav so the rounded card never touches it. Side margins mirror
+          the bottom-nav's own inset (mx-3) for visual alignment. */}
       <div
-        className={`absolute left-0 right-0 z-30 rounded-t-3xl bg-white shadow-[0_-12px_30px_rgba(2,6,23,0.18)] transition-transform duration-300 ease-out`}
+        className={`absolute left-3 right-3 z-30 rounded-3xl bg-white shadow-[0_-8px_24px_rgba(2,6,23,0.14)] transition-transform duration-300 ease-out`}
         style={{
-          bottom: "var(--ds-bottom-nav-h, 0px)",
-          height: sheetOpen ? "calc(70vh - var(--ds-bottom-nav-h, 0px))" : "200px",
+          bottom: "calc(var(--ds-bottom-nav-h, 0px) + 12px)",
+          height: sheetOpen ? "calc(70vh - var(--ds-bottom-nav-h, 0px))" : "160px",
           transform: "translateY(0)",
         }}
       >
