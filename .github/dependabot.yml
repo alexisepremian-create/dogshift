@@ -16,15 +16,20 @@ updates:
           - "minor"
           - "patch"
     ignore:
-      # next-auth and nodemailer have known low-risk vulns in unused features — reviewed manually
+      # ── Block ALL major bumps platform-wide ──────────────────────────────
+      # Pattern observed every Monday : Dependabot opens 3-5 PRs for major
+      # bumps (Stripe v22, Capacitor v8, lucide-react v1, nodemailer v8,
+      # typescript v6, prisma v7…). They consistently fail CI because of
+      # breaking changes, and the founder closes them by hand. Same waste
+      # every week. Majors are now opt-in : when we actually want one, we
+      # run `npm install <pkg>@latest` manually and ship the migration in
+      # a deliberate PR.
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+      # next-auth patches are noise (the v5 betas churn frequently and we
+      # validate auth changes manually anyway).
       - dependency-name: "next-auth"
         update-types: ["version-update:semver-patch"]
-      # Prisma v7 is a major breaking change (url/directUrl must move to prisma.config.ts)
-      # — requires a full migration effort, do NOT auto-bump major versions
-      - dependency-name: "prisma"
-        update-types: ["version-update:semver-major"]
-      - dependency-name: "@prisma/client"
-        update-types: ["version-update:semver-major"]
     labels:
       - "dependencies"
       - "security"
