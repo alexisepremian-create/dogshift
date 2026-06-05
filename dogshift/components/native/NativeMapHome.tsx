@@ -314,7 +314,7 @@ export default function NativeMapHome() {
         style={{
           bottom: sheetOpen
             ? "calc(70vh + 16px)"
-            : "calc(140px + 16px + var(--ds-bottom-nav-h, 0px))",
+            : "calc(200px + 16px + var(--ds-bottom-nav-h, 0px))",
           touchAction: "manipulation",
         }}
       >
@@ -328,7 +328,7 @@ export default function NativeMapHome() {
         <div
           className="absolute left-4 right-4 z-30"
           style={{
-            bottom: "calc(140px + 16px + var(--ds-bottom-nav-h, 0px))",
+            bottom: "calc(200px + 16px + var(--ds-bottom-nav-h, 0px))",
           }}
         >
           <Link
@@ -382,11 +382,15 @@ export default function NativeMapHome() {
           bottom-nav already accounts for the safe-area home indicator, so we
           don't add env(safe-area-inset-bottom) here — otherwise we'd double
           up the offset. */}
+      {/* Collapsed height bumped from 140 → 200 so the horizontal card row
+          isn't cropped (founder feedback : "les annonces de dogsitters sont
+          coupées"). Expanded height is 70vh minus the bottom-nav so the
+          inner list can scroll without disappearing under the tab bar. */}
       <div
         className={`absolute left-0 right-0 z-30 rounded-t-3xl bg-white shadow-[0_-12px_30px_rgba(2,6,23,0.18)] transition-transform duration-300 ease-out`}
         style={{
           bottom: "var(--ds-bottom-nav-h, 0px)",
-          height: sheetOpen ? "70vh" : "140px",
+          height: sheetOpen ? "calc(70vh - var(--ds-bottom-nav-h, 0px))" : "200px",
           transform: "translateY(0)",
         }}
       >
@@ -416,8 +420,12 @@ export default function NativeMapHome() {
         </div>
 
         <div
-          className={`overflow-y-auto px-4 ${sheetOpen ? "pb-32" : "pb-2"}`}
-          style={{ maxHeight: sheetOpen ? "calc(70vh - 80px)" : "60px" }}
+          className={`overflow-y-auto px-4 ${sheetOpen ? "pb-32" : "pb-3"}`}
+          style={{
+            maxHeight: sheetOpen
+              ? "calc(70vh - 80px - var(--ds-bottom-nav-h, 0px))"
+              : "120px",
+          }}
         >
           {!loading && filteredSitters.length === 0 && (
             <div className="py-6 text-center text-sm text-slate-500">

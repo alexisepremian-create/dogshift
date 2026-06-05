@@ -233,6 +233,29 @@ body[data-native="true"] [data-page-loader="1"]::after {
   opacity: 0.6;
 }
 
+/* ── BrandLogo : web vs native variant swap ─────────────────────────────
+   The component renders BOTH variants; CSS picks the right one at zero
+   re-render cost based on body[data-native]. */
+[data-brand-logo-native] { display: none; }
+body[data-native="true"] [data-brand-logo-web],
+body[data-native="true"] [data-brand-logo-web-text] {
+  display: none;
+}
+body[data-native="true"] [data-brand-logo-native] {
+  display: flex;
+}
+
+/* ── Auth pages in native : no scroll, full-height card ─────────────────
+   Founder feedback : "dans l'onglet connexion on doit pas pouvoir scroll
+   ça doit être une page statique". We lock the auth container to the
+   visible viewport (minus the bottom-nav) and disable overflow so the
+   form sits in a single static screen. */
+body[data-native="true"] [data-auth-layout] {
+  height: calc(100dvh - var(--ds-bottom-nav-h, 0px));
+  min-height: 0;
+  overflow: hidden;
+}
+
 /* Hide the layout chrome (header + footer) while a navigation is in
    progress. Three orthogonal triggers — any one is enough:
      - data-navigating: set on click, cleared when the controller hands off
