@@ -88,6 +88,21 @@ export default async function RootLayout({
   return (
     <html lang="fr">
       <head>
+        {/* Capacitor early-detection — synchronous so it runs BEFORE the first
+            paint of the WebView. Capacitor injects its bridge at
+            `documentStart` (WKUserScript on iOS, equivalent on Android), so
+            `window.Capacitor` is already defined when this inline script
+            runs. Setting `data-native` on <html> at this point lets the CSS
+            in globals.css hide the marketing footer + show a splash overlay
+            BEFORE React hydrates and `useIsNativeApp()` flips. Fixes the
+            "header + footer with nothing in between" flash on cold launch
+            (see docs/bugs/native-app-footer-flash-on-launch.md). */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              "(function(){try{var c=window.Capacitor;if(c&&typeof c.isNativePlatform==='function'&&c.isNativePlatform()){var h=document.documentElement;h.setAttribute('data-native','true');var p=typeof c.getPlatform==='function'?c.getPlatform():'';if(p)h.setAttribute('data-native-platform',p);var apply=function(){if(document.body){document.body.setAttribute('data-native','true');if(p)document.body.setAttribute('data-native-platform',p);}else{requestAnimationFrame(apply);}};apply();}}catch(e){}})();",
+          }}
+        />
         <link rel="icon" href="/favicon.ico" />
       </head>
       <body

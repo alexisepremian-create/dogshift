@@ -61,6 +61,20 @@ async function initNativeBridge() {
     console.warn("[native] splash-screen hide failed", err);
   }
 
+  // ── Reveal the WebView ─────────────────────────────────────────────────
+  // The inline <head> script in app/layout.tsx painted a purple overlay (CSS
+  // ::before pseudo-element on <html>, same colour as the native launch
+  // screen) to hide the SSR-streamed marketing layout from the user during
+  // the WebView's initial paint + React hydration window. Once we get here
+  // the React tree has hydrated and NativeHomeSwitch has flipped to
+  // NativeMapHome, so it's safe to fade the overlay out and reveal the
+  // native UI. See docs/bugs/native-app-footer-flash-on-launch.md.
+  try {
+    document.documentElement.setAttribute("data-native-ready", "true");
+  } catch (err) {
+    console.warn("[native] data-native-ready flip failed", err);
+  }
+
   // ── Push notifications ─────────────────────────────────────────────────
   await setupPushNotifications();
 

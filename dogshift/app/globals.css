@@ -107,6 +107,49 @@ body[data-native="true"] {
   padding-bottom: var(--ds-bottom-nav-h, 0px);
 }
 
+/* ── Native app cold-launch splash ─────────────────────────────────────────
+   The Capacitor WebView loads https://www.dogshift.ch, so the SSR streams the
+   regular marketing layout (SiteHeader + Suspense(children) + footer). On a
+   cold Neon connection the homepage page.tsx await blocks for 2-5 s while the
+   browser already has the layout chrome painted — the user sees header +
+   empty content + footer until `useIsNativeApp()` flips in a useEffect and
+   <NativeHomeSwitch> swaps in <NativeMapHome>.
+
+   Fix: an inline <head> script in app/layout.tsx sets `data-native` on <html>
+   synchronously (Capacitor's bridge is available at documentStart). The rules
+   below then:
+   - Hide the web marketing footer entirely (it's already wrapped in <WebOnly>
+     but that's client-side only — by the time it unmounts the user has
+     already seen it).
+   - Paint a purple splash overlay (same colour as the native launch screen,
+     #7c3aed) over the body until `data-native-ready` is also set. The
+     capacitorBridge sets that flag right after `SplashScreen.hide()`, which
+     means the overlay seamlessly takes over from the native splash and
+     stays in place until the React tree (incl. NativeMapHome) has had a
+     chance to commit. Avoids the FOUC entirely.
+
+   See docs/bugs/native-app-footer-flash-on-launch.md for the full post-mortem.
+*/
+html[data-native="true"] footer,
+body[data-native="true"] footer {
+  display: none !important;
+}
+
+html[data-native="true"]::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 2147483646;
+  background: #7c3aed;
+  opacity: 1;
+  pointer-events: none;
+  transition: opacity 200ms ease-out;
+}
+
+html[data-native="true"][data-native-ready]::before {
+  opacity: 0;
+}
+
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
