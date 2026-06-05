@@ -52,6 +52,57 @@ test("app/globals.css hides the marketing footer in native mode", () => {
   );
 });
 
+test("app/globals.css paints the in-WebView splash overlay with the same paw + purple as the native splash", () => {
+  const src = readFileSync(join(repoRoot, "app/globals.css"), "utf8");
+
+  assert.match(
+    src,
+    /html\[data-native="true"\]::before[\s\S]*?background:\s*#7c3aed/,
+    "Expected the html[data-native='true']::before purple #7c3aed background overlay — it's what covers the WebView's safe-area zones at the handoff from native splash to NativeMapHome.",
+  );
+  assert.match(
+    src,
+    /html\[data-native="true"\]::after[\s\S]*?dogshift-paw-white\.png/,
+    "Expected the html[data-native='true']::after rule to reference /dogshift-paw-white.png as background-image. This must match the white paw silhouette baked into the iOS LaunchScreen so the handoff is seamless. Regenerate both with `node scripts/generate-native-splash.mjs`.",
+  );
+  assert.match(
+    src,
+    /@keyframes ds-native-splash-paw-grow/,
+    "Expected the @keyframes ds-native-splash-paw-grow animation — this is the 'grow' gesture the founder asked for at cold launch. If it's gone the splash → app transition becomes a hard cut.",
+  );
+});
+
+test("app/layout.tsx exports viewportFit cover so the splash overlay can paint into safe-areas", () => {
+  const src = readFileSync(join(repoRoot, "app/layout.tsx"), "utf8");
+
+  assert.match(
+    src,
+    /viewportFit:\s*"cover"/,
+    "Expected `viewportFit: \"cover\"` on the exported viewport. Without it the html-level ::before/::after pseudo-elements are bounded by the safe-area-respecting viewport on iOS, and the status-bar / home-indicator zones show through as white bands during the splash overlay (this was the regression in PR #430).",
+  );
+});
+
+test("public/dogshift-paw-white.png exists and matches the splash artwork", () => {
+  const path = join(repoRoot, "public/dogshift-paw-white.png");
+  assert.ok(
+    existsSync(path),
+    `Missing ${path}. Regenerate it (along with the iOS splash) by running \`node scripts/generate-native-splash.mjs\`. This PNG is sourced from public/apple-touch-icon.png via a luminance-driven alpha extraction — the script is the single source of truth.`,
+  );
+});
+
+test("lib/native/capacitorBridge.ts sets data-native-ready after splash hide to trigger the grow animation", () => {
+  const src = readFileSync(
+    join(repoRoot, "lib/native/capacitorBridge.ts"),
+    "utf8",
+  );
+
+  assert.match(
+    src,
+    /setAttribute\("data-native-ready",\s*"true"\)/,
+    "Expected the bridge to set data-native-ready='true' on <html> AFTER calling SplashScreen.hide(). Without it the CSS overlay never fades out and the user is stuck looking at the static purple+paw screen forever.",
+  );
+});
+
 test("capacitor.config.ts uses an extended launchShowDuration so the native splash covers the WebView load window", () => {
   const src = readFileSync(join(repoRoot, "capacitor.config.ts"), "utf8");
 
