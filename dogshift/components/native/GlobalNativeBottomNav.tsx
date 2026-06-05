@@ -78,10 +78,11 @@ export default function GlobalNativeBottomNav() {
     return null;
   }
 
-  // Skip on auth landing pages too — micro pages where a tab bar is noise.
+  // Skip only on the micro-redirect / verification screens — keeping the tab
+  // bar on /login and /signup so a user opening the auth tab from the nav
+  // doesn't suddenly lose all navigation. (Earlier UX feedback : "quand je vais
+  // dans la section de connexion ya plus la nav barre en bas" — fixed here.)
   if (
-    pathname === "/login" ||
-    pathname === "/signup" ||
     pathname === "/post-login" ||
     pathname === "/check-email" ||
     pathname.startsWith("/forgot-password") ||

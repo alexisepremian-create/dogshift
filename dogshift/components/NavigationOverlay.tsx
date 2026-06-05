@@ -45,7 +45,13 @@ const LETTERS = [
 export default function NavigationOverlay() {
   return (
     <div id="ds-nav-overlay" aria-hidden="true">
-      <svg viewBox="70 190 870 610" width="208" height="146">
+      {/* Web variant : animated dog wordmark, brand-y. */}
+      <svg
+        id="ds-nav-overlay-web"
+        viewBox="70 190 870 610"
+        width="208"
+        height="146"
+      >
         <g transform="translate(0,1024) scale(0.1,-0.1)" fill="#0f172a" stroke="none">
           <path d={DOG_BODY} />
           <path d={DOG_EYE} />
@@ -54,6 +60,25 @@ export default function NavigationOverlay() {
           ))}
         </g>
       </svg>
+
+      {/* Native variant : shimmering skeleton blocks, à la Airbnb. Hidden on
+          web via CSS. The blocks roughly mirror a content-heavy page shape
+          (avatar circle + 2 text lines + several card rows) so the transition
+          feels like the page itself is loading, not a generic spinner. */}
+      <div
+        id="ds-nav-overlay-native"
+        className="absolute inset-0 flex flex-col gap-3 px-4 py-6"
+        aria-hidden="true"
+      >
+        <div className="ds-skel ds-skel-circle" />
+        <div className="ds-skel ds-skel-line ds-skel-line-1" />
+        <div className="ds-skel ds-skel-line ds-skel-line-2" />
+        <div className="mt-4 flex flex-col gap-3">
+          <div className="ds-skel ds-skel-card" />
+          <div className="ds-skel ds-skel-card" />
+          <div className="ds-skel ds-skel-card" />
+        </div>
+      </div>
     </div>
   );
 }

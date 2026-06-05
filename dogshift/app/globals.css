@@ -152,6 +152,87 @@ body[data-navigating="1"] #ds-nav-overlay svg {
   animation: brandPulse 1.8s ease-in-out infinite;
 }
 
+/* ── Native skeleton variant ──────────────────────────────────────────────
+   In the Capacitor shell we don't want the branded dog wordmark on every
+   route transition — feedback from the founder was that it looks unpolished
+   compared to Airbnb-style content skeletons. So when running native we
+   swap the SVG for shimmering skeleton blocks. */
+#ds-nav-overlay-native { display: none; }
+
+body[data-native="true"] #ds-nav-overlay-web { display: none; }
+body[data-native="true"][data-navigating="1"] #ds-nav-overlay-native {
+  display: flex;
+  /* Push below the impersonation banner + map status bar so the skeleton
+     blocks sit where actual content would appear. */
+  padding-top: calc(env(safe-area-inset-top, 0px) + 12px);
+}
+
+@keyframes dsSkelShimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position:  200% 0; }
+}
+
+.ds-skel {
+  border-radius: 12px;
+  background-color: #e2e8f0;
+  background-image: linear-gradient(
+    90deg,
+    #e2e8f0 0%,
+    #f1f5f9 50%,
+    #e2e8f0 100%
+  );
+  background-size: 200% 100%;
+  animation: dsSkelShimmer 1.4s ease-in-out infinite;
+}
+.ds-skel-circle { height: 56px; width: 56px; border-radius: 9999px; }
+.ds-skel-line { height: 14px; }
+.ds-skel-line-1 { width: 60%; }
+.ds-skel-line-2 { width: 40%; }
+.ds-skel-card { height: 96px; border-radius: 18px; }
+
+/* Same skeleton-vs-logo swap for the PageLoader Suspense fallback. The
+   PageLoader is rendered by loading.tsx files when data is still streaming —
+   slower than a click → first paint, so the skeleton is what the user sees
+   for the bulk of the wait. */
+body[data-native="true"] [data-page-loader="1"] svg,
+body[data-native="true"] [data-page-loader="1"] p {
+  display: none;
+}
+body[data-native="true"] [data-page-loader="1"]::before {
+  content: "";
+  position: absolute;
+  inset: calc(env(safe-area-inset-top, 0px) + 24px) 16px auto 16px;
+  height: 56px;
+  border-radius: 9999px;
+  background-color: #e2e8f0;
+  background-image: linear-gradient(90deg, #e2e8f0 0%, #f1f5f9 50%, #e2e8f0 100%);
+  background-size: 200% 100%;
+  animation: dsSkelShimmer 1.4s ease-in-out infinite;
+  width: 56px;
+}
+body[data-native="true"] [data-page-loader="1"]::after {
+  content: "";
+  position: absolute;
+  top: calc(env(safe-area-inset-top, 0px) + 100px);
+  left: 16px;
+  right: 16px;
+  bottom: 16px;
+  background:
+    repeating-linear-gradient(
+      to bottom,
+      transparent 0,
+      transparent 12px,
+      #e2e8f0 12px,
+      #e2e8f0 96px,
+      transparent 96px,
+      transparent 108px
+    );
+  border-radius: 6px;
+  animation: dsSkelShimmer 1.4s ease-in-out infinite;
+  background-size: 200% 100%;
+  opacity: 0.6;
+}
+
 /* Hide the layout chrome (header + footer) while a navigation is in
    progress. Three orthogonal triggers — any one is enough:
      - data-navigating: set on click, cleared when the controller hands off

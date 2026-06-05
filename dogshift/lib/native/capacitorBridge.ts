@@ -41,11 +41,14 @@ async function initNativeBridge() {
   }
   if (!isNative) return;
 
-  // ── Status bar (purple theme) ──────────────────────────────────────────
+  // ── Status bar (white theme — matches the in-app page background) ─────
+  // We deliberately use a white status bar (dark icons on white) instead of
+  // purple so the safe-area at the top doesn't paint a coloured band over the
+  // content. Purple only appears during the launch splash.
   try {
     const { StatusBar, Style } = await import("@capacitor/status-bar");
     await StatusBar.setStyle({ style: Style.Dark });
-    await StatusBar.setBackgroundColor({ color: "#7c3aed" });
+    await StatusBar.setBackgroundColor({ color: "#ffffff" });
   } catch (err) {
     console.warn("[native] status-bar setup failed", err);
   }

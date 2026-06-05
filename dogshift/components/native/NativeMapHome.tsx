@@ -302,6 +302,10 @@ export default function NativeMapHome() {
       </div>
 
       {/* ── Geolocate button (bottom-right above sheet) ──────────────────── */}
+      {/* Bottom offset adds : 140px (sheet collapsed) + 16px breathing room +
+          the native bottom-nav height (--ds-bottom-nav-h, exposed by
+          MobileBottomNav). The sheet itself sits above the nav too, so it
+          all stacks cleanly. */}
       <button
         type="button"
         onClick={handleLocate}
@@ -310,7 +314,7 @@ export default function NativeMapHome() {
         style={{
           bottom: sheetOpen
             ? "calc(70vh + 16px)"
-            : "calc(140px + env(safe-area-inset-bottom, 0px))",
+            : "calc(140px + 16px + var(--ds-bottom-nav-h, 0px))",
           touchAction: "manipulation",
         }}
       >
@@ -324,7 +328,7 @@ export default function NativeMapHome() {
         <div
           className="absolute left-4 right-4 z-30"
           style={{
-            bottom: "calc(140px + env(safe-area-inset-bottom, 0px))",
+            bottom: "calc(140px + 16px + var(--ds-bottom-nav-h, 0px))",
           }}
         >
           <Link
@@ -374,12 +378,15 @@ export default function NativeMapHome() {
       )}
 
       {/* ── Bottom sheet : sitter list ───────────────────────────────────── */}
+      {/* Sits ABOVE the native bottom-nav (offset by --ds-bottom-nav-h). The
+          bottom-nav already accounts for the safe-area home indicator, so we
+          don't add env(safe-area-inset-bottom) here — otherwise we'd double
+          up the offset. */}
       <div
         className={`absolute left-0 right-0 z-30 rounded-t-3xl bg-white shadow-[0_-12px_30px_rgba(2,6,23,0.18)] transition-transform duration-300 ease-out`}
         style={{
-          bottom: 0,
+          bottom: "var(--ds-bottom-nav-h, 0px)",
           height: sheetOpen ? "70vh" : "140px",
-          paddingBottom: "env(safe-area-inset-bottom, 0px)",
           transform: "translateY(0)",
         }}
       >
