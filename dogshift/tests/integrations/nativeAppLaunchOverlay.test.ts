@@ -1,15 +1,13 @@
 /**
  * Regression test for docs/bugs/native-app-footer-flash-on-launch.md.
  *
- * The fix has three independent layers that MUST all be present, otherwise
- * the Capacitor cold launch shows the marketing footer instead of the
- * native map home. This test asserts each layer's signature is still in the
- * source code. If a future refactor accidentally removes one, this test
- * fails immediately and CI blocks the merge.
+ * The cold-launch fix has four moving parts. This test asserts each
+ * layer's signature is still present in source so a future refactor can't
+ * silently undo any of them.
  */
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 
 const repoRoot = process.cwd();
@@ -39,27 +37,39 @@ test("app/layout.tsx contains the synchronous Capacitor detection inline script"
   );
 });
 
-test("app/globals.css contains the native cold-launch overlay rule", () => {
+test("app/globals.css hides the marketing footer in native mode", () => {
   const src = readFileSync(join(repoRoot, "app/globals.css"), "utf8");
 
   assert.match(
     src,
-    /html\[data-native="true"\]::before/,
-    "Expected the purple cold-launch overlay rule (html[data-native='true']::before) in globals.css.",
+    /html\[data-native="true"\] footer[\s\S]*?display: none/,
+    "Expected the native footer hide rule (html[data-native='true'] footer { display: none ... }) in globals.css. Without it, the marketing footer flashes through during the WebView's SSR streaming window before <WebOnly> can unmount it client-side.",
   );
   assert.match(
     src,
-    /html\[data-native="true"\]\[data-native-ready\]::before/,
-    "Expected the overlay fade rule (html[data-native='true'][data-native-ready]::before) in globals.css. Without it the overlay never disappears and the user is stuck on a purple screen.",
-  );
-  assert.match(
-    src,
-    /html\[data-native="true"\] footer[\s\S]*display: none/,
-    "Expected the native footer hide rule (html[data-native='true'] footer { display: none ... }) in globals.css.",
+    /body\[data-native="true"\] footer[\s\S]*?display: none/,
+    "Expected the body-level fallback rule too (body[data-native='true'] footer { display: none ... }) — covers post-hydration when useIsNativeApp() has flipped the body attribute.",
   );
 });
 
-test("lib/native/capacitorBridge.ts flips data-native-ready after bridge init", () => {
+test("capacitor.config.ts uses an extended launchShowDuration so the native splash covers the WebView load window", () => {
+  const src = readFileSync(join(repoRoot, "capacitor.config.ts"), "utf8");
+
+  const match = src.match(/launchShowDuration:\s*(\d+)/);
+  assert.ok(match, "Expected SplashScreen.launchShowDuration in capacitor.config.ts");
+  const value = Number(match![1]);
+  assert.ok(
+    value >= 20000,
+    `Expected SplashScreen.launchShowDuration to be >= 20000ms so the native iOS splash covers the worst-case Neon cold start + React hydration window. Got ${value}ms. The 1500ms default revealed the WebView while it was still showing the SSR-streamed marketing layout (header + empty + footer).`,
+  );
+  assert.match(
+    src,
+    /launchAutoHide:\s*true/,
+    "Expected launchAutoHide: true as the safety net for the catastrophic-JS-failure case. Keep it true — if the bridge ever fails to call SplashScreen.hide() manually, the user must escape the splash eventually.",
+  );
+});
+
+test("lib/native/capacitorBridge.ts hides the splash manually after bridge init", () => {
   const src = readFileSync(
     join(repoRoot, "lib/native/capacitorBridge.ts"),
     "utf8",
@@ -67,7 +77,26 @@ test("lib/native/capacitorBridge.ts flips data-native-ready after bridge init", 
 
   assert.match(
     src,
-    /setAttribute\(\s*"data-native-ready"\s*,\s*"true"\s*\)/,
-    "Expected capacitorBridge.ts to set data-native-ready='true' on documentElement once SplashScreen.hide() and status-bar init have resolved. Without it, the CSS overlay stays opaque forever in the native app.",
+    /SplashScreen\.hide\(\)/,
+    "Expected capacitorBridge.ts to call SplashScreen.hide() after init. Without it the splash stays up until the 30 s safety auto-hide, which makes the app feel frozen on every cold launch.",
+  );
+});
+
+test("iOS Splash asset is the purple+logo image, not the default Capacitor placeholder", () => {
+  const path = join(
+    repoRoot,
+    "ios/App/App/Assets.xcassets/Splash.imageset/splash-2732x2732.png",
+  );
+  assert.ok(existsSync(path), `Missing ${path}`);
+
+  const stats = statSync(path);
+  assert.ok(
+    stats.size > 100_000,
+    `Expected the purple+logo splash to be >100 KB (the default Capacitor placeholder is ~41 KB). Got ${stats.size} bytes. Regenerate with \`node scripts/generate-native-splash.mjs\`.`,
+  );
+
+  assert.ok(
+    existsSync(join(repoRoot, "scripts/generate-native-splash.mjs")),
+    "Expected scripts/generate-native-splash.mjs to exist (source of truth for the splash image — regenerate after any rebrand).",
   );
 });
