@@ -32,7 +32,10 @@ const config: CapacitorConfig = {
 
   ios: {
     contentInset: "always",
-    backgroundColor: "#7c3aed",
+    // WebView background must match the in-app page (white) so the safe-area
+    // zones around the WebView don't show purple bars at top/bottom when the
+    // status bar / home indicator overlay. Purple is only used during splash.
+    backgroundColor: "#ffffff",
     // Universal Links — the apple-app-site-association file must be served
     // at https://www.dogshift.ch/.well-known/apple-app-site-association
     scheme: "DogShift",
@@ -40,7 +43,7 @@ const config: CapacitorConfig = {
   },
 
   android: {
-    backgroundColor: "#7c3aed",
+    backgroundColor: "#ffffff",
     allowMixedContent: false,
     captureInput: true,
     webContentsDebuggingEnabled: false,
@@ -60,8 +63,10 @@ const config: CapacitorConfig = {
       presentationOptions: ["badge", "sound", "alert"],
     },
     StatusBar: {
+      // style: DARK means DARK content (icons/text) on a light background —
+      // which is what we want now that the safe-area is white.
       style: "DARK",
-      backgroundColor: "#7c3aed",
+      backgroundColor: "#ffffff",
     },
   },
 };
