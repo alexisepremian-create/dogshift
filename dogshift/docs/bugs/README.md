@@ -56,6 +56,7 @@ When adding a NEW fiche, also add the detection block. Schema in
 ## Mobile
 
 - [`mobile-first-touch-delay.md`](./mobile-first-touch-delay.md) — first-touch on splash/modals/header needed two taps on iOS — `touch-action: manipulation` regression.
+- [`native-app-footer-flash-on-launch.md`](./native-app-footer-flash-on-launch.md) — Capacitor iOS/Android cold launch showed the web marketing footer instead of NativeMapHome (post-splash 200 ms-5 s window). Fixed via inline `<head>` Capacitor detect + CSS purple overlay until bridge init completes.
 
 ## Monitoring (not bugs, just things to watch)
 
