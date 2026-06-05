@@ -32,10 +32,15 @@ const config: CapacitorConfig = {
 
   ios: {
     contentInset: "always",
-    // WebView background must match the in-app page (white) so the safe-area
-    // zones around the WebView don't show purple bars at top/bottom when the
-    // status bar / home indicator overlay. Purple is only used during splash.
-    backgroundColor: "#ffffff",
+    // WebView background = brand purple. The safe-area zones around the WebView
+    // (status-bar at top, home-indicator at bottom) previously showed white
+    // bands during the splash → app handoff because the WebView's own bg was
+    // white. Painting it #7c3aed here means even before the body's bg rule
+    // applies (or if `viewport-fit=cover` ever fails), the user sees brand
+    // purple in those zones — never a white band. After the splash animation
+    // finishes, individual pages can paint over with their own bg
+    // (NativeMapHome → slate-100, login form card → white, etc.).
+    backgroundColor: "#7c3aed",
     // Universal Links — the apple-app-site-association file must be served
     // at https://www.dogshift.ch/.well-known/apple-app-site-association
     scheme: "DogShift",
@@ -43,7 +48,7 @@ const config: CapacitorConfig = {
   },
 
   android: {
-    backgroundColor: "#ffffff",
+    backgroundColor: "#7c3aed",
     allowMixedContent: false,
     captureInput: true,
     webContentsDebuggingEnabled: false,
@@ -79,10 +84,11 @@ const config: CapacitorConfig = {
       presentationOptions: ["badge", "sound", "alert"],
     },
     StatusBar: {
-      // style: DARK means DARK content (icons/text) on a light background —
-      // which is what we want now that the safe-area is white.
-      style: "DARK",
-      backgroundColor: "#ffffff",
+      // style: LIGHT = light content (white icons/text) on the DARK purple
+      // background. Matches the WebView bg (#7c3aed) so the status-bar zone
+      // is one seamless purple band with white time/battery icons.
+      style: "LIGHT",
+      backgroundColor: "#7c3aed",
     },
   },
 };

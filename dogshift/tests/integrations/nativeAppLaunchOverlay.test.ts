@@ -161,6 +161,49 @@ test("lib/native/capacitorBridge.ts hides the splash manually after bridge init"
   );
 });
 
+test("capacitor.config.ts paints the WebView background brand purple so safe-area zones are never white", () => {
+  const src = readFileSync(join(repoRoot, "capacitor.config.ts"), "utf8");
+
+  assert.match(
+    src,
+    /ios:\s*\{[\s\S]*?backgroundColor:\s*"#7c3aed"/,
+    "Expected `ios.backgroundColor: \"#7c3aed\"` in capacitor.config.ts. The WebView's own bg shows through in the iOS safe-area zones (status bar + home indicator) — making it purple guarantees no white band during the splash → app handoff even if the body bg / overlay logic ever fails. Don't revert without testing the 'bandes blanches' regression.",
+  );
+  assert.match(
+    src,
+    /android:\s*\{[\s\S]*?backgroundColor:\s*"#7c3aed"/,
+    "Expected `android.backgroundColor: \"#7c3aed\"` in capacitor.config.ts for the same reason as iOS — keeps both platforms in lockstep.",
+  );
+});
+
+test("capacitor.config.ts pairs the purple WebView with a LIGHT-style purple status bar", () => {
+  const src = readFileSync(join(repoRoot, "capacitor.config.ts"), "utf8");
+
+  assert.match(
+    src,
+    /StatusBar:\s*\{[\s\S]*?style:\s*"LIGHT"[\s\S]*?backgroundColor:\s*"#7c3aed"/,
+    "Expected the StatusBar plugin block to use `style: \"LIGHT\"` (white icons) with `backgroundColor: \"#7c3aed\"`. Style DARK on a purple bg makes the time/battery icons unreadable, and a white status-bar bg would re-introduce the white band at the top of the screen.",
+  );
+});
+
+test("lib/native/capacitorBridge.ts sets the StatusBar to LIGHT + purple at runtime", () => {
+  const src = readFileSync(
+    join(repoRoot, "lib/native/capacitorBridge.ts"),
+    "utf8",
+  );
+
+  assert.match(
+    src,
+    /setStyle\(\{\s*style:\s*Style\.Light\s*\}\)/,
+    "Expected the bridge to call `StatusBar.setStyle({ style: Style.Light })` at runtime — the static config is one source of truth, this is the other; both must agree or the status bar flickers on app boot.",
+  );
+  assert.match(
+    src,
+    /setBackgroundColor\(\{\s*color:\s*"#7c3aed"\s*\}\)/,
+    "Expected the bridge to call `StatusBar.setBackgroundColor({ color: \"#7c3aed\" })` at runtime.",
+  );
+});
+
 test("iOS Splash asset is the purple+logo image, not the default Capacitor placeholder", () => {
   const path = join(
     repoRoot,

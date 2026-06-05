@@ -247,14 +247,27 @@ so we shipped the native-splash fix first.
   but exposed an ugly safe-area band regression in the rare case
   where React hadn't yet committed `<NativeMapHome>` by the time the
   overlay's bg fade started.
-- This PR (2026-06-05) — fixes that bg-fade race. Added
+- PR #433 (2026-06-05) — fixed the bg-fade race. Added
   `SPLASH_REACT_MOUNT_BUFFER_MS = 500` between `SplashScreen.hide()`
   and the `data-native-ready` flip in `capacitorBridge.ts` so React
   has time to mount the active page's native variant before the
   overlay fades. Added a body background fallback
-  (`html[data-native] body { background-color: #7c3aed }`) as a
-  pure safety net so the worst case is "splash lingers a moment too
-  long" rather than "white band flashes".
+  (`html[data-native] body { background-color: #7c3aed }`).
+- This PR (2026-06-05) — **the bands kept coming back during the
+  animation despite the body bg fallback.** Root cause: the WebView's
+  *own* background (`ios.backgroundColor` / `android.backgroundColor`
+  in `capacitor.config.ts`) was set to `#ffffff`. The body bg only
+  paints inside the body's layout box; the iOS safe-area zones
+  outside it show the WebView's bg directly. **Fixed by painting the
+  WebView purple too** (`ios.backgroundColor: "#7c3aed"`,
+  `android.backgroundColor: "#7c3aed"`) and switching the StatusBar
+  to `style: "LIGHT"` + `backgroundColor: "#7c3aed"` (config + bridge
+  runtime call). Now every layer the user could possibly see during
+  the splash → app transition is brand purple — native LaunchScreen,
+  WebView, body bg, CSS overlay, status-bar bg. **No white band can
+  exist by construction.** Pages that need a white bg (login,
+  dashboards) paint over the body purple inside their own layout box,
+  exactly as before — only the safe-area zones differ visually.
 
 ## 🤖 Automated detection
 
