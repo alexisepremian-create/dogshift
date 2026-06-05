@@ -137,13 +137,16 @@ export default function NativeOnboarding() {
       aria-modal="true"
       aria-label="Onboarding DogShift"
     >
-      {/* Skip link top-right (always reachable) */}
-      <div className="flex items-center justify-end px-4 pt-3">
+      {/* Skip link top-right (always reachable). pt-0 (vs. pt-3) puts it
+          flush against the safe-area-top padding the outer container already
+          applies — founder asked "le bouton passer tu peux le mettre plus
+          haut". */}
+      <div className="flex items-center justify-end px-4 pt-0">
         <button
           type="button"
           onClick={dismiss}
           style={{ touchAction: "manipulation" }}
-          className="text-sm font-medium text-slate-500 active:scale-95"
+          className="-mr-1 px-2 py-2 text-sm font-medium text-slate-500 active:scale-95"
         >
           Passer
         </button>

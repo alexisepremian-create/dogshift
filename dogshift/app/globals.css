@@ -362,13 +362,21 @@ body[data-native="true"] [data-brand-logo-native] {
 
 /* ── Auth pages in native : no scroll, full-height card ─────────────────
    Founder feedback : "dans l'onglet connexion on doit pas pouvoir scroll
-   ça doit être une page statique". We lock the auth container to the
-   visible viewport (minus the bottom-nav) and disable overflow so the
-   form sits in a single static screen. */
+   ça doit être une page statique". We extend the auth container to the
+   FULL viewport (not minus the nav height — the floating bottom-nav
+   visually floats over the bottom of the card without leaving a coloured
+   gap, which is what the founder reported on screenshot of /login as
+   "page de connexion c'est buggé"). The form is centered via `justify-
+   center` inside `min-h-[100dvh]` so it never sits behind the nav in
+   practice — the form is ~600 px tall, viewport is 800+ on every shipping
+   device. */
 body[data-native="true"] [data-auth-layout] {
-  height: calc(100dvh - var(--ds-bottom-nav-h, 0px));
-  min-height: 0;
+  height: 100dvh;
+  min-height: 100dvh;
   overflow: hidden;
+  /* Reserve breathing room above the floating nav so the form's bottom
+     elements (CGU footer) never sit behind it. */
+  padding-bottom: var(--ds-bottom-nav-h, 0px);
 }
 /* Hide the "DogShift" separator footer below the form in native — it looks
    out of place inside an app. */

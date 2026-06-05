@@ -8,6 +8,7 @@ import HostSidebar from "@/components/HostSidebar";
 import BrandLogo from "@/components/BrandLogo";
 import { useHostUser } from "@/components/HostUserProvider";
 import { useHostDashboardNavItems } from "@/components/dashboardNavItems";
+import { useIsNativeApp } from "@/lib/native/useIsNativeApp";
 
 /** Primary tabs shown directly in the bottom bar (max 4 + "More") */
 const PRIMARY_NAV_KEYS = ["dashboard", "requests", "messages", "availability"] as const;
@@ -33,6 +34,9 @@ export default function HostDashboardShell({ children }: { children: React.React
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { items } = useHostDashboardNavItems();
+  // Capacitor shell uses <GlobalNativeBottomNav> from app/layout.tsx so the
+  // bottom bar persists across all section navigations.
+  const isNative = useIsNativeApp();
 
   const mode = (searchParams?.get("mode") ?? "").trim();
   const isPublicPreview = pathname?.startsWith("/sitter/") && mode === "preview";
@@ -109,8 +113,10 @@ export default function HostDashboardShell({ children }: { children: React.React
         </div>
       </div>
 
-      {/* ── Mobile bottom navigation ── */}
-      <MobileBottomNav items={primaryNavItems} moreItems={moreNavItems} />
+      {/* ── Mobile bottom navigation (web only — native uses the global nav) ── */}
+      {!isNative && (
+        <MobileBottomNav items={primaryNavItems} moreItems={moreNavItems} />
+      )}
     </div>
   );
 }

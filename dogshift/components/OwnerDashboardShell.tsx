@@ -6,6 +6,7 @@ import BrandLogo from "@/components/BrandLogo";
 import MobileBottomNav from "@/components/MobileBottomNav";
 import OwnerSidebar from "@/components/OwnerSidebar";
 import { useOwnerDashboardNavItems } from "@/components/dashboardNavItems";
+import { useIsNativeApp } from "@/lib/native/useIsNativeApp";
 
 /** Primary tabs in the bottom bar (max 4 + « Plus »), owner-specific labels */
 const PRIMARY_NAV_KEYS = ["dashboard", "bookings", "messages", "dogs"] as const;
@@ -24,6 +25,11 @@ const BOTTOM_NAV_LABELS: Record<string, string> = {
 export default function OwnerDashboardShell({ children }: { children: React.ReactNode }) {
 
   const { items } = useOwnerDashboardNavItems();
+  // In the Capacitor shell we let <GlobalNativeBottomNav> (rendered from
+  // app/layout.tsx) handle the bottom nav — it stays mounted across all
+  // section transitions, so the user never sees the bar disappear /
+  // reappear. Web keeps the per-section nav for richer dashboard tabs.
+  const isNative = useIsNativeApp();
 
   const toNavItem = (key: string) => {
     const found = items.find((i) => i.key === key);
@@ -81,7 +87,9 @@ export default function OwnerDashboardShell({ children }: { children: React.Reac
         </div>
       </div>
 
-      <MobileBottomNav items={primaryNavItems} moreItems={moreNavItems} />
+      {!isNative && (
+        <MobileBottomNav items={primaryNavItems} moreItems={moreNavItems} />
+      )}
     </div>
   );
 }

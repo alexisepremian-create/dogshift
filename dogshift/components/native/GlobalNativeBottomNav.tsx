@@ -67,16 +67,16 @@ export default function GlobalNativeBottomNav() {
 
   if (!isNative) return null;
 
-  // /host and /account already render their own MobileBottomNav.
-  // /admin doesn't have a bottom nav but we don't want one there either
-  // (admin tooling is desktop-first).
-  if (
-    pathname.startsWith("/host") ||
-    pathname.startsWith("/account") ||
-    pathname.startsWith("/admin")
-  ) {
+  // /admin tooling is desktop-first; keep the global nav off there.
+  if (pathname.startsWith("/admin")) {
     return null;
   }
+  // For /host and /account we DELIBERATELY render the global nav too — the
+  // per-section MobileBottomNav inside OwnerDashboardShell / HostDashboardShell
+  // is hidden in native mode (`hidden` class via isNative), so this one stays
+  // mounted across page transitions and never disappears/reappears. Founder
+  // feedback : "la nav barre doit rester immobile et affichée même lorsque
+  // je navigue sur les différentes sections".
 
   // Skip only on the micro-redirect / verification screens — keeping the tab
   // bar on /login and /signup so a user opening the auth tab from the nav

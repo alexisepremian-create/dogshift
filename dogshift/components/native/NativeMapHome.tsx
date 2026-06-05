@@ -258,9 +258,13 @@ export default function NativeMapHome() {
       </div>
 
       {/* ── Floating search bar + service filter chips (top) ─────────────── */}
+      {/* Founder feedback : "la search barre il faut la mettre plus vers les
+          bords" — closer to the screen edge. Reduced top offset 12 → 4 and
+          horizontal padding px-4 → px-2 to push it flush with the safe-area
+          and screen sides. */}
       <div
-        className="absolute left-0 right-0 z-20 space-y-2 px-4"
-        style={{ top: "calc(env(safe-area-inset-top, 0px) + 12px)" }}
+        className="absolute left-0 right-0 z-20 space-y-2 px-2"
+        style={{ top: "calc(env(safe-area-inset-top, 0px) + 4px)" }}
       >
         <div className="flex items-center gap-2 rounded-full bg-white/95 px-4 py-3 shadow-[0_8px_24px_rgba(2,6,23,0.18)] backdrop-blur">
           <Search className="h-5 w-5 text-slate-500" />
@@ -382,16 +386,14 @@ export default function NativeMapHome() {
           bottom-nav already accounts for the safe-area home indicator, so we
           don't add env(safe-area-inset-bottom) here — otherwise we'd double
           up the offset. */}
-      {/* Sheet floats as a card with side margins (mx-3) above the nav bar
-          (founder feedback : "tu l'as juste rallongé moi je voulais que tu
-          la montes un peu c'est tout pour pas qu'elle empiete sur la nav
-          barre et elle est trop large"). 160px collapsed, 12px gap above
-          the nav so the rounded card never touches it. Side margins mirror
-          the bottom-nav's own inset (mx-3) for visual alignment. */}
+      {/* Sheet floats as a card with side margins (mx-2 = 8px) above the nav
+          bar — aligns with the new bottom-nav inset (also mx-2) for visual
+          consistency. 160px collapsed, 8px gap above the nav so the rounded
+          card never touches it. */}
       <div
-        className={`absolute left-3 right-3 z-30 rounded-3xl bg-white shadow-[0_-8px_24px_rgba(2,6,23,0.14)] transition-transform duration-300 ease-out`}
+        className={`absolute left-2 right-2 z-30 rounded-3xl bg-white shadow-[0_-8px_24px_rgba(2,6,23,0.14)] transition-transform duration-300 ease-out`}
         style={{
-          bottom: "calc(var(--ds-bottom-nav-h, 0px) + 12px)",
+          bottom: "calc(var(--ds-bottom-nav-h, 0px) + 8px)",
           height: sheetOpen ? "calc(70vh - var(--ds-bottom-nav-h, 0px))" : "160px",
           transform: "translateY(0)",
         }}

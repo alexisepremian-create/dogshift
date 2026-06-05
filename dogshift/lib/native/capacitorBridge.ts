@@ -41,14 +41,16 @@ async function initNativeBridge() {
   }
   if (!isNative) return;
 
-  // ── Status bar (white theme — matches the in-app page background) ─────
-  // We deliberately use a white status bar (dark icons on white) instead of
-  // purple so the safe-area at the top doesn't paint a coloured band over the
-  // content. Purple only appears during the launch splash.
+  // ── Status bar (brand purple — matches the WebView bg + cold-launch splash) ─
+  // Style.Light = white icons/text on a DARK background — paired with the
+  // brand purple #7c3aed so the status-bar zone is seamless with the
+  // splash + safe-area background. Switching back to a white status bar
+  // here would re-introduce the white band founder bug at the top of the
+  // screen (see docs/bugs/native-app-footer-flash-on-launch.md).
   try {
     const { StatusBar, Style } = await import("@capacitor/status-bar");
-    await StatusBar.setStyle({ style: Style.Dark });
-    await StatusBar.setBackgroundColor({ color: "#ffffff" });
+    await StatusBar.setStyle({ style: Style.Light });
+    await StatusBar.setBackgroundColor({ color: "#7c3aed" });
   } catch (err) {
     console.warn("[native] status-bar setup failed", err);
   }
