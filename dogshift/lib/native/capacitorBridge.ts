@@ -72,20 +72,24 @@ async function initNativeBridge() {
   // WebView is already painted with the CSS overlay at the exact same
   // pixels, so the user perceives no transition.
   //
-  // Then on the NEXT animation frame we set `data-native-ready` on
-  // <html>, which triggers the CSS keyframe animation: the paw scales up
-  // and fades out (the "grow" gesture), background fades shortly after.
-  // 700 ms later the user is on NativeMapHome.
+  // Then we wait `SPLASH_REACT_MOUNT_BUFFER_MS` so React has had a beat
+  // to mount the active page's native variant (typically
+  // `<NativeMapHome>` on the homepage, swapped in by `useIsNativeApp()`
+  // in `<NativeHomeSwitch>`). Without this buffer, the overlay's bg
+  // fade can race the React commit and briefly expose the marketing
+  // layout's white body in the iOS safe-area zones (status bar + home
+  // indicator). 500 ms is the empirical safe value for the worst case
+  // cold Neon connection — in the happy path the user just sees the
+  // splash linger 500 ms longer, which is unnoticeable.
   //
-  // The intermediate RAF is important: setting `data-native-ready` in
-  // the same tick as `SplashScreen.hide()` would race the animation
-  // start against the native splash's drop frame, sometimes showing a
-  // 1-frame gap between "static native splash" and "animating CSS
-  // overlay". The RAF guarantees the WebView has had at least one
-  // compositor frame to paint the static state before we kick off the
-  // animation.
+  // Finally we set `data-native-ready` on <html>, which triggers the
+  // CSS keyframe animation: the paw scales up and fades out (the "grow"
+  // gesture), background fades shortly after. 700 ms later the user is
+  // on NativeMapHome.
   //
   // See docs/bugs/native-app-footer-flash-on-launch.md.
+  const SPLASH_REACT_MOUNT_BUFFER_MS = 500;
+
   try {
     const { SplashScreen } = await import("@capacitor/splash-screen");
     await SplashScreen.hide();
@@ -93,10 +97,12 @@ async function initNativeBridge() {
     console.warn("[native] splash-screen hide failed", err);
   }
 
+  await new Promise<void>((resolve) =>
+    setTimeout(resolve, SPLASH_REACT_MOUNT_BUFFER_MS),
+  );
+
   try {
-    requestAnimationFrame(() => {
-      document.documentElement.setAttribute("data-native-ready", "true");
-    });
+    document.documentElement.setAttribute("data-native-ready", "true");
   } catch (err) {
     console.warn("[native] data-native-ready flip failed", err);
   }
