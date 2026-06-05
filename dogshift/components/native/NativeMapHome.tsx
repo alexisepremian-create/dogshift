@@ -5,7 +5,7 @@ import maplibregl from "maplibre-gl";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Map, { Marker, type MapRef } from "react-map-gl/maplibre";
-import { Search, Locate, Star, Heart } from "lucide-react";
+import { Search, Locate, Star } from "lucide-react";
 
 import { resolveCoordsForPublishedSitterMap } from "@/lib/sitterMapGeo";
 
@@ -429,57 +429,93 @@ export default function NativeMapHome() {
               : "120px",
           }}
         >
+          {/* Skeleton shimmer while the /api/sitters fetch is in flight —
+              shown for BOTH collapsed and expanded states so the founder
+              never sees a "popping in" gap between the page skeleton and
+              the actual cards. */}
+          {loading && (
+            sheetOpen ? (
+              <div className="grid grid-cols-2 gap-3">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="flex flex-col items-center gap-2 rounded-2xl border border-slate-100 bg-white p-3"
+                  >
+                    <div className="ds-skel h-14 w-14 rounded-full" />
+                    <div className="ds-skel ds-skel-line w-3/4" />
+                    <div className="ds-skel ds-skel-line w-1/2" />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="flex gap-3 overflow-x-hidden -mx-4 px-4">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="flex-shrink-0 w-[160px] flex items-center gap-2 rounded-2xl border border-slate-100 bg-white p-2"
+                  >
+                    <div className="ds-skel h-10 w-10 rounded-full" />
+                    <div className="flex-1 space-y-1">
+                      <div className="ds-skel ds-skel-line w-full" />
+                      <div className="ds-skel ds-skel-line w-2/3" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )
+          )}
+
           {!loading && filteredSitters.length === 0 && (
             <div className="py-6 text-center text-sm text-slate-500">
               Aucun dogsitter trouvé
             </div>
           )}
 
-          {/* Horizontal cards when collapsed, vertical when expanded */}
-          <div className={sheetOpen ? "space-y-3" : "flex gap-3 overflow-x-auto -mx-4 px-4"}>
-            {filteredSitters.map((s) => (
-              <Link
-                key={s.id}
-                href={`/sitters/${s.id}`}
-                onClick={(e) => {
-                  if (!sheetOpen) {
-                    e.preventDefault();
-                    setActiveId(s.id);
-                    try {
-                      mapRef.current?.flyTo({ center: [s.lng, s.lat], zoom: 13, duration: 600 });
-                    } catch {}
+          {/* Expanded = 2-col grid (cards "côte à côte", like the web home).
+              Collapsed = horizontal scroll of small cards. */}
+          {!loading && (
+            <div className={sheetOpen ? "grid grid-cols-2 gap-3" : "flex gap-3 overflow-x-auto -mx-4 px-4"}>
+              {filteredSitters.map((s) => (
+                <Link
+                  key={s.id}
+                  href={`/sitters/${s.id}`}
+                  onClick={(e) => {
+                    if (!sheetOpen) {
+                      e.preventDefault();
+                      setActiveId(s.id);
+                      try {
+                        mapRef.current?.flyTo({ center: [s.lng, s.lat], zoom: 13, duration: 600 });
+                      } catch {}
+                    }
+                  }}
+                  className={
+                    sheetOpen
+                      ? "flex flex-col items-center gap-1 rounded-2xl border border-slate-200 bg-white p-3 text-center active:scale-[0.99]"
+                      : "flex-shrink-0 w-[160px] flex items-center gap-2 rounded-2xl border border-slate-200 bg-white p-2"
                   }
-                }}
-                className={
-                  sheetOpen
-                    ? "flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-3 active:scale-[0.99]"
-                    : "flex-shrink-0 w-[200px] flex items-center gap-2 rounded-2xl border border-slate-200 bg-white p-2"
-                }
-                style={{ touchAction: "manipulation" }}
-              >
-                <img
-                  src={s.avatar}
-                  alt=""
-                  className={sheetOpen ? "h-14 w-14 rounded-full object-cover" : "h-10 w-10 rounded-full object-cover"}
-                />
-                <div className="min-w-0 flex-1">
-                  <div className="truncate text-sm font-semibold text-slate-900">
-                    {s.name}
-                  </div>
-                  <div className="truncate text-xs text-slate-500">{s.city}</div>
-                  {s.rating !== null && (
-                    <div className="mt-0.5 flex items-center gap-0.5 text-xs text-slate-600">
-                      <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-                      {s.rating.toFixed(1)}
+                  style={{ touchAction: "manipulation" }}
+                >
+                  <img
+                    src={s.avatar}
+                    alt=""
+                    className={sheetOpen ? "h-14 w-14 rounded-full object-cover" : "h-10 w-10 rounded-full object-cover"}
+                  />
+                  <div className={sheetOpen ? "min-w-0 w-full" : "min-w-0 flex-1"}>
+                    <div className="truncate text-sm font-semibold text-slate-900">
+                      {s.name}
                     </div>
-                  )}
-                </div>
-                {sheetOpen && (
-                  <Heart className="h-5 w-5 text-slate-300" />
-                )}
-              </Link>
-            ))}
-          </div>
+                    <div className="truncate text-xs text-slate-500">{s.city}</div>
+                    {s.rating !== null && (
+                      <div className={`mt-0.5 flex items-center gap-0.5 text-xs text-slate-600 ${sheetOpen ? "justify-center" : ""}`}>
+                        <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+                        {s.rating.toFixed(1)}
+                      </div>
+                    )}
+                  </div>
+                </Link>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>

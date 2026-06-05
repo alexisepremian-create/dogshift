@@ -18,7 +18,13 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
           <div className="mt-2 w-full">{children}</div>
         </div>
 
-        <div className="mt-10 border-t border-slate-200 pt-4 text-center text-xs text-slate-500">
+        {/* Footer separator is web-only — looks out of place in the native
+            shell (founder feedback : "enlever le texte dogshift tout en bas
+            avec la ligne c'est moche sur appli"). */}
+        <div
+          data-auth-footer=""
+          className="mt-10 border-t border-slate-200 pt-4 text-center text-xs text-slate-500"
+        >
           <p>DogShift</p>
         </div>
       </div>

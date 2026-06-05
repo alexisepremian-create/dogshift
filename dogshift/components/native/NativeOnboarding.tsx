@@ -34,10 +34,13 @@ function ShieldCheckIcon() {
   );
 }
 
-function BoltIcon() {
+function HourglassIcon() {
   return (
-    <svg width="64" height="64" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-      <path d="M13 2 4.5 13.5h7L11 22l8.5-11.5h-7L13 2z" />
+    <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M5 22h14" />
+      <path d="M5 2h14" />
+      <path d="M17 22v-4.172a2 2 0 0 0-.586-1.414L12 12l-4.414 4.414A2 2 0 0 0 7 17.828V22" />
+      <path d="M7 2v4.172a2 2 0 0 0 .586 1.414L12 12l4.414-4.414A2 2 0 0 0 17 6.172V2" />
     </svg>
   );
 }
@@ -69,8 +72,8 @@ const SLIDES_V2: readonly Slide2[] = [
     ringed: true,
   },
   {
-    visual: <BoltIcon />,
-    title: "Réserve en 3 taps",
+    visual: <HourglassIcon />,
+    title: "Réserve en 3 clics",
     body: "Promenade, garde à domicile ou pension : choisis ton service, ton horaire, et c'est parti.",
     ringed: true,
   },

@@ -3,10 +3,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 
+import { useIsNativeApp } from "@/lib/native/useIsNativeApp";
+
 export default function PageTopOffset({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [scrolled, setScrolled] = useState(false);
+  const isNative = useIsNativeApp();
 
   const isHostArea = Boolean(pathname && pathname.startsWith("/host"));
   const isAccountArea = Boolean(pathname && pathname.startsWith("/account"));
@@ -26,8 +29,13 @@ export default function PageTopOffset({ children }: { children: React.ReactNode 
     if (!pathname) return false;
     if (pathname === "/") return false;
     if (isHostArea || isAccountArea || isHostPreview) return false;
+    // In the Capacitor shell the marketing SiteHeader is hidden — adding the
+    // 120px top offset just leaves a huge blank gap above text pages (CGU,
+    // confidentialité, mentions, …). Founder feedback : "le texte est trop
+    // bas faut le monter bcp plus haut".
+    if (isNative) return false;
     return true;
-  }, [isAccountArea, isHostArea, isHostPreview, pathname]);
+  }, [isAccountArea, isHostArea, isHostPreview, isNative, pathname]);
 
   useEffect(() => {
     if (!needsOffset) return;

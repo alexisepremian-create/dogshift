@@ -27,6 +27,12 @@ function syncNavHeight(px: number) {
 export default function MobileBottomNav({ items, moreItems = [] }: MobileBottomNavProps) {
   const [moreOpen, setMoreOpen] = useState(false);
   const navRef = useRef<HTMLElement>(null);
+  // Separate ref to measure ONLY the bar (the visible tab strip), not the
+  // Plus overlay sheet. Without this, opening "..." inflates --ds-bottom-nav-h
+  // and shoves the content above (auth page logo, map sheet, …) upward —
+  // founder bug : "quand je clique sur les 3 petits points ca fait bouger
+  // la page de connexion vers le haut ca devrait pas".
+  const barRef = useRef<HTMLDivElement>(null);
 
   const hasMore = moreItems.length > 0;
   const moreIsActive = moreItems.some((i) => i.active);
@@ -39,9 +45,17 @@ export default function MobileBottomNav({ items, moreItems = [] }: MobileBottomN
   const count = allTabs.length;
 
   useEffect(() => {
-    const el = navRef.current;
+    const el = barRef.current;
     if (!el) return;
-    const measure = () => syncNavHeight(el.offsetHeight);
+    // Measure the bar only. Add the safe-area inset manually since the bar
+    // is rendered inside the <nav> which carries that padding.
+    const measure = () => {
+      const safeArea = parseFloat(
+        getComputedStyle(navRef.current ?? document.body).paddingBottom || "0",
+      );
+      const navMargin = 12; // mb-3 on the bar wrapper
+      syncNavHeight(el.offsetHeight + safeArea + navMargin);
+    };
     measure();
     const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(measure) : null;
     ro?.observe(el);
@@ -101,7 +115,7 @@ export default function MobileBottomNav({ items, moreItems = [] }: MobileBottomN
       )}
 
       {/* ── Frosted glass bar ── */}
-      <div className="mx-3 mb-3 overflow-hidden rounded-[28px] border border-white/30 bg-white/70 shadow-[0_-2px_24px_rgba(2,6,23,0.08),0_8px_32px_-8px_rgba(2,6,23,0.12)] backdrop-blur-xl">
+      <div ref={barRef} className="mx-3 mb-3 overflow-hidden rounded-[28px] border border-white/30 bg-white/70 shadow-[0_-2px_24px_rgba(2,6,23,0.08),0_8px_32px_-8px_rgba(2,6,23,0.12)] backdrop-blur-xl">
         <div className="relative flex h-[60px]">
 
           {/* ── Sliding background pill ── */}
