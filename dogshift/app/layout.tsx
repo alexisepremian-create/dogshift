@@ -29,6 +29,16 @@ export const viewport: Viewport = {
   themeColor: "#2f4d6b",
   width: "device-width",
   initialScale: 1,
+  // `viewport-fit=cover` lets the rendered HTML viewport extend into the iOS
+  // status-bar and home-indicator safe-area zones, which is necessary for the
+  // native cold-launch splash overlay in app/globals.css to paint edge-to-edge
+  // (otherwise the CSS pseudo-element on <html> is bounded by the
+  // safe-area-respecting viewport and the zones show through as white bands).
+  // Safe for web: every UI surface that touches a screen edge in this app
+  // already uses `env(safe-area-inset-*)` for positioning (SiteHeader,
+  // MobileBottomNav, ImpersonationBanner, dashboards, NativeMapHome…), so
+  // content stays clear of the notch / home indicator on iOS Safari mobile.
+  viewportFit: "cover",
 };
 
 export const metadata: Metadata = {
@@ -94,9 +104,11 @@ export default async function RootLayout({
             `window.Capacitor` is already defined when this inline script
             runs. Setting `data-native` on <html> at this point lets the CSS
             in globals.css hide the marketing footer + show a splash overlay
-            BEFORE React hydrates and `useIsNativeApp()` flips. Fixes the
-            "header + footer with nothing in between" flash on cold launch
-            (see docs/bugs/native-app-footer-flash-on-launch.md). */}
+            BEFORE React hydrates and `useIsNativeApp()` flips. We also
+            mirror to <body> (via RAF once it exists) and stamp
+            `data-native-platform` (`ios` / `android`) for platform-specific
+            hooks. Fixes the "header + footer with nothing in between" flash
+            on cold launch (see docs/bugs/native-app-footer-flash-on-launch.md). */}
         <script
           dangerouslySetInnerHTML={{
             __html:
