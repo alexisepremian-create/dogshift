@@ -1,5 +1,5 @@
 "use client";
-/* eslint-disable react-hooks/set-state-in-effect, @next/next/no-img-element */
+/* eslint-disable react-hooks/set-state-in-effect */
 
 import { useEffect, useState, type ReactNode } from "react";
 
@@ -7,18 +7,20 @@ import { useIsNativeApp } from "@/lib/native/useIsNativeApp";
 
 const STORAGE_KEY = "ds_native_onboarding_v1";
 
-// SVG icons inlined so they pick up the slide's accent colour via currentColor
-// — no extra fetch, no flicker, and the gradient ring stays consistent across
-// all three screens.
-function LogoVisual() {
+// White-on-purple SVGs so the 3 circles stay coherent with the DogShift app
+// icon (purple square + white paw). Founder feedback : "je veux que les
+// icones soient violettes comme mon logo comme ca c'est cohérent". No image
+// asset — keeps the onboarding bundle tiny and styling pixel-perfect.
+function PawIcon() {
   return (
-    <img
-      src="/dogshift-logo.svg"
-      alt="DogShift"
-      width={96}
-      height={96}
-      className="drop-shadow-[0_8px_20px_rgba(124,58,237,0.35)]"
-    />
+    <svg width="76" height="76" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true">
+      <ellipse cx="80" cy="100" rx="22" ry="28" />
+      <ellipse cx="124" cy="86" rx="20" ry="26" />
+      <ellipse cx="168" cy="100" rx="22" ry="28" />
+      <ellipse cx="200" cy="138" rx="18" ry="22" />
+      <ellipse cx="56" cy="138" rx="18" ry="22" />
+      <path d="M128 142c-32 0-56 26-56 52 0 22 18 38 56 38s56-16 56-38c0-26-24-52-56-52z" />
+    </svg>
   );
 }
 
@@ -43,32 +45,25 @@ type Slide = {
   visual: ReactNode;
   title: string;
   body: string;
-  accent: string;
-  /** True = a flat coloured circle with white-tinted icon. False = white circle (used for the logo). */
-  filled: boolean;
 };
 
+// All 3 circles share the same purple as the app icon (#7c3aed). Variety is
+// in the SVG inside (paw / shield / bolt), not the colour.
 const SLIDES: readonly Slide[] = [
   {
-    visual: <LogoVisual />,
+    visual: <PawIcon />,
     title: "Bienvenue sur DogShift",
     body: "Trouve un dogsitter de confiance près de chez toi, en quelques secondes.",
-    accent: "#7c3aed",
-    filled: false,
   },
   {
     visual: <ShieldCheckIcon />,
     title: "Des profils vérifiés",
     body: "Tous les dogsitters DogShift passent une vérification d'identité et un entretien.",
-    accent: "#0891b2",
-    filled: true,
   },
   {
     visual: <BoltIcon />,
     title: "Réserve en 3 taps",
     body: "Promenade, garde à domicile ou pension : choisis ton service, ton horaire, et c'est parti.",
-    accent: "#2f4d6b",
-    filled: true,
   },
 ] as const;
 
@@ -158,15 +153,10 @@ export default function NativeOnboarding() {
             className="flex w-full flex-shrink-0 snap-center flex-col items-center justify-center px-8 text-center"
           >
             <div
-              className="mb-8 flex h-36 w-36 items-center justify-center rounded-full shadow-[0_20px_50px_-20px_rgba(2,6,23,0.35)]"
-              style={
-                s.filled
-                  ? {
-                      background: `linear-gradient(135deg, ${s.accent} 0%, ${s.accent}cc 100%)`,
-                      color: "#ffffff",
-                    }
-                  : { background: "#ffffff", border: "1px solid rgba(124,58,237,0.18)" }
-              }
+              className="mb-8 flex h-36 w-36 items-center justify-center rounded-[36px] text-white shadow-[0_20px_50px_-20px_rgba(124,58,237,0.55)]"
+              style={{
+                background: "linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%)",
+              }}
               aria-hidden="true"
             >
               {s.visual}
