@@ -175,6 +175,15 @@ const splash = await sharp({
   .png({ compressionLevel: 9 })
   .toBuffer();
 
+// ALSO write the full 2732² splash to /public so the in-WebView CSS
+// overlay can use it with `background-size: cover` — that's the exact
+// CSS equivalent of UIKit's `scaleAspectFill`, so the LaunchScreen and
+// the WebView splash render the same artwork, at the same scale, at the
+// same screen position. Pixel-perfect handoff (no more "le logo se joue
+// en deux fois" / paw shrinking at the moment of takeover).
+await sharp(splash).toFile(join(root, "public/native-splash.png"));
+console.log("✓ public/native-splash.png (full splash for WebView overlay)");
+
 const iosSplashDir = join(root, "ios/App/App/Assets.xcassets/Splash.imageset");
 mkdirSync(iosSplashDir, { recursive: true });
 
