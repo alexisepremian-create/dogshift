@@ -160,9 +160,8 @@ export default function NativeMapHome() {
 
   // ── Search sheet state ──────────────────────────────────────────────────
   // Sober bottom-sheet that slides up over the map (backdrop semi-transparent
-  // so the map stays visible). Replaces the full-screen StickySearchBar dump
-  // (founder feedback : "très sobre pas trop chargé qu'on voit toujours
-  // l'arrière plan").
+  // so the map stays visible). Founder feedback : "très sobre pas trop chargé
+  // qu'on voit toujours l'arrière plan".
   const router = useRouter();
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchService, setSearchService] = useState<Service>("Promenade");
