@@ -165,6 +165,7 @@ export default function NativeMapHome() {
   // intuitif" (and the bottom-sheet had the purple submit button hidden
   // behind the nav).
   const router = useRouter();
+  const lieuInputRef = useRef<HTMLInputElement>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchService, setSearchService] = useState<Service>("Promenade");
   const [searchLocation, setSearchLocation] = useState("");
@@ -612,15 +613,22 @@ export default function NativeMapHome() {
           gets a 2-tap range (arrivée → départ), other services single date. */}
       {searchOpen && (
         <>
+          {/* Backdrop — no backdrop-filter; iOS WKWebView has documented
+              issues with backdrop-filter on or near focusable inputs that
+              prevent the keyboard from appearing even though focus fires. */}
           <button
             type="button"
             aria-label="Fermer la recherche"
             onClick={() => setSearchOpen(false)}
-            className="fixed inset-0 z-[990] bg-black/20 backdrop-blur-[2px]"
+            className="fixed inset-0 z-[990] bg-black/30"
             style={{ touchAction: "manipulation" }}
           />
+          {/* Panel — no overflow-hidden, no inner overflow-y-auto. The combo
+              of position:fixed + overflow on an ancestor of an input is a
+              known iOS WKWebView keyboard blocker. Inner content is sized to
+              fit the typical phone viewport without scrolling. */}
           <div
-            className="fixed left-2 right-2 z-[1000] flex flex-col overflow-hidden rounded-3xl bg-white shadow-[0_20px_60px_rgba(2,6,23,0.30)]"
+            className="fixed left-2 right-2 z-[1000] flex flex-col rounded-3xl bg-white shadow-[0_20px_60px_rgba(2,6,23,0.30)]"
             style={{
               top: "calc(env(safe-area-inset-top, 0px) + 70px)",
               bottom: "calc(var(--ds-bottom-nav-h, 0px) + 8px)",
@@ -639,7 +647,7 @@ export default function NativeMapHome() {
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto space-y-4 px-5 py-4">
+            <div className="flex-1 space-y-3 px-5 py-3">
               {/* Service chips */}
               <div className="flex gap-2">
                 {ALL_SERVICES.map((s) => {
@@ -667,23 +675,28 @@ export default function NativeMapHome() {
                 })}
               </div>
 
-              {/* Lieu — no <label> wrapper because WKWebView sometimes
-                  swallows the focus event when the input is inside a label
-                  in a fixed-position container, which blocks the keyboard. */}
+              {/* Lieu — explicit ref + onTouchEnd focus(). iOS WKWebView with
+                  fixed-position parents often fires the focus event WITHOUT
+                  showing the keyboard. A manual focus call inside a touch
+                  event handler is the documented workaround that forces the
+                  keyboard to appear. */}
               <div>
                 <div className="mb-1 flex items-center gap-1.5 text-xs font-medium text-slate-500">
                   <MapPin className="h-3.5 w-3.5" />
                   Lieu
                 </div>
                 <input
+                  ref={lieuInputRef}
                   type="text"
                   value={searchLocation}
                   onChange={(e) => setSearchLocation(e.target.value)}
+                  onTouchEnd={() => { lieuInputRef.current?.focus(); }}
                   placeholder="Lausanne, Genève, Montreux…"
                   className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-base text-slate-900 placeholder:text-slate-400 outline-none focus:border-[#7c3aed]"
                   autoComplete="off"
                   inputMode="text"
                   enterKeyHint="next"
+                  style={{ fontSize: "16px" }}
                 />
               </div>
 
