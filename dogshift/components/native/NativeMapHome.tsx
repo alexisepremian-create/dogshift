@@ -162,21 +162,29 @@ export default function NativeMapHome() {
   // Opened by tapping "Filtres" in the sitter sheet. Refines the map +
   // sheet results in-place (no /search redirect — founder feedback).
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [filterMinRating, setFilterMinRating] = useState(0);   // 0 = no filter, else 4 / 4.5 / 4.8
-  const [filterMaxPrice, setFilterMaxPrice] = useState(0);     // 0 = no filter, else 25 / 50 / 75 / 100
+  const [filterMinRating, setFilterMinRating] = useState(0);  // 0 = no filter, else 4 / 4.5 / 4.8
+  const PRICE_MIN = 0;
+  const PRICE_MAX = 150;
+  const [filterPriceMin, setFilterPriceMin] = useState(PRICE_MIN);
+  const [filterPriceMax, setFilterPriceMax] = useState(PRICE_MAX);
   const [filterVerifiedOnly, setFilterVerifiedOnly] = useState(false);
+  const [filterWithReviewsOnly, setFilterWithReviewsOnly] = useState(false);
   const [filterSort, setFilterSort] = useState<"default" | "rating" | "reviews" | "price">("default");
 
+  const priceFiltered = filterPriceMin > PRICE_MIN || filterPriceMax < PRICE_MAX;
   const activeFilterCount =
     (filterMinRating > 0 ? 1 : 0) +
-    (filterMaxPrice > 0 ? 1 : 0) +
+    (priceFiltered ? 1 : 0) +
     (filterVerifiedOnly ? 1 : 0) +
+    (filterWithReviewsOnly ? 1 : 0) +
     (filterSort !== "default" ? 1 : 0);
 
   const resetFilters = useCallback(() => {
     setFilterMinRating(0);
-    setFilterMaxPrice(0);
+    setFilterPriceMin(PRICE_MIN);
+    setFilterPriceMax(PRICE_MAX);
     setFilterVerifiedOnly(false);
+    setFilterWithReviewsOnly(false);
     setFilterSort("default");
   }, []);
 
@@ -278,8 +286,9 @@ export default function NativeMapHome() {
     const list = sitters.filter((s) => {
       if (serviceFilter && !s.services.includes(serviceFilter)) return false;
       if (filterMinRating > 0 && (s.rating ?? 0) < filterMinRating) return false;
-      if (filterMaxPrice > 0 && s.minPrice > filterMaxPrice) return false;
+      if (s.minPrice < filterPriceMin || s.minPrice > filterPriceMax) return false;
       if (filterVerifiedOnly && !s.verified) return false;
+      if (filterWithReviewsOnly && s.reviews === 0) return false;
       if (q && !(s.name.toLowerCase().includes(q) || s.city.toLowerCase().includes(q))) return false;
       return true;
     });
@@ -287,7 +296,7 @@ export default function NativeMapHome() {
     if (filterSort === "reviews") return list.slice().sort((a, b) => b.reviews - a.reviews);
     if (filterSort === "price") return list.slice().sort((a, b) => a.minPrice - b.minPrice);
     return list;
-  }, [sitters, query, serviceFilter, filterMinRating, filterMaxPrice, filterVerifiedOnly, filterSort]);
+  }, [sitters, query, serviceFilter, filterMinRating, filterPriceMin, filterPriceMax, filterVerifiedOnly, filterWithReviewsOnly, filterSort]);
 
   const activeSitter = useMemo(
     () => sitters.find((s) => s.id === activeId) ?? null,
@@ -863,7 +872,9 @@ export default function NativeMapHome() {
             </div>
 
             <div className="flex-1 space-y-5 overflow-y-auto px-5 py-4">
-              {/* Note minimale */}
+              {/* Note minimale — Airbnb-style chips : black border on active,
+                  not solid purple (founder feedback : "ya déjà du violet
+                  partout, peut etre un truc plus discret"). */}
               <div>
                 <div className="mb-2 text-xs font-medium text-slate-500">Note minimale</div>
                 <div className="flex flex-wrap gap-2">
@@ -873,76 +884,51 @@ export default function NativeMapHome() {
                     { v: 4.5, label: "4.5★+" },
                     { v: 4.8, label: "4.8★+" },
                   ].map((opt) => (
-                    <button
+                    <FilterChip
                       key={opt.v}
-                      type="button"
+                      active={filterMinRating === opt.v}
                       onClick={() => setFilterMinRating(opt.v)}
-                      className={
-                        filterMinRating === opt.v
-                          ? "rounded-full bg-[#7c3aed] px-4 py-2 text-sm font-semibold text-white"
-                          : "rounded-full bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700"
-                      }
-                      style={{ touchAction: "manipulation" }}
                     >
                       {opt.label}
-                    </button>
+                    </FilterChip>
                   ))}
                 </div>
               </div>
 
-              {/* Prix max */}
+              {/* Prix — dual-range slider (Airbnb-style). */}
               <div>
-                <div className="mb-2 text-xs font-medium text-slate-500">Prix maximum</div>
-                <div className="flex flex-wrap gap-2">
-                  {[
-                    { v: 0,   label: "Tous" },
-                    { v: 25,  label: "≤ 25 CHF" },
-                    { v: 50,  label: "≤ 50 CHF" },
-                    { v: 75,  label: "≤ 75 CHF" },
-                    { v: 100, label: "≤ 100 CHF" },
-                  ].map((opt) => (
-                    <button
-                      key={opt.v}
-                      type="button"
-                      onClick={() => setFilterMaxPrice(opt.v)}
-                      className={
-                        filterMaxPrice === opt.v
-                          ? "rounded-full bg-[#7c3aed] px-4 py-2 text-sm font-semibold text-white"
-                          : "rounded-full bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700"
-                      }
-                      style={{ touchAction: "manipulation" }}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
+                <div className="mb-2 flex items-baseline justify-between">
+                  <span className="text-xs font-medium text-slate-500">Prix par jour</span>
+                  <span className="text-sm font-semibold text-slate-900">
+                    {filterPriceMin} – {filterPriceMax === PRICE_MAX ? `${PRICE_MAX}+` : filterPriceMax} CHF
+                  </span>
                 </div>
+                <DualRangeSlider
+                  min={PRICE_MIN}
+                  max={PRICE_MAX}
+                  step={5}
+                  valueMin={filterPriceMin}
+                  valueMax={filterPriceMax}
+                  onChangeMin={setFilterPriceMin}
+                  onChangeMax={setFilterPriceMax}
+                />
               </div>
 
               {/* Vérifiés uniquement */}
-              <button
-                type="button"
-                onClick={() => setFilterVerifiedOnly((v) => !v)}
-                className="flex w-full items-center justify-between rounded-2xl border border-slate-200 px-4 py-3"
-                style={{ touchAction: "manipulation" }}
-              >
-                <div className="text-left">
-                  <div className="text-sm font-semibold text-slate-900">Vérifiés uniquement</div>
-                  <div className="text-xs text-slate-500">Profils avec pièce d&apos;identité validée</div>
-                </div>
-                <div
-                  className={
-                    filterVerifiedOnly
-                      ? "relative h-6 w-11 rounded-full bg-[#7c3aed] transition"
-                      : "relative h-6 w-11 rounded-full bg-slate-200 transition"
-                  }
-                  aria-hidden="true"
-                >
-                  <div
-                    className="absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition"
-                    style={{ left: filterVerifiedOnly ? "22px" : "2px" }}
-                  />
-                </div>
-              </button>
+              <FilterToggle
+                title="Vérifiés uniquement"
+                subtitle="Profils avec pièce d'identité validée"
+                value={filterVerifiedOnly}
+                onChange={setFilterVerifiedOnly}
+              />
+
+              {/* Avec avis */}
+              <FilterToggle
+                title="Avec avis"
+                subtitle="Au moins une évaluation laissée par un propriétaire"
+                value={filterWithReviewsOnly}
+                onChange={setFilterWithReviewsOnly}
+              />
 
               {/* Tri */}
               <div>
@@ -954,19 +940,13 @@ export default function NativeMapHome() {
                     { v: "reviews", label: "Plus d'avis" },
                     { v: "price",   label: "Prix croissant" },
                   ] as const).map((opt) => (
-                    <button
+                    <FilterChip
                       key={opt.v}
-                      type="button"
+                      active={filterSort === opt.v}
                       onClick={() => setFilterSort(opt.v)}
-                      className={
-                        filterSort === opt.v
-                          ? "rounded-full bg-[#7c3aed] px-4 py-2 text-sm font-semibold text-white"
-                          : "rounded-full bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700"
-                      }
-                      style={{ touchAction: "manipulation" }}
                     >
                       {opt.label}
-                    </button>
+                    </FilterChip>
                   ))}
                 </div>
               </div>
@@ -1107,6 +1087,126 @@ function InlineCalendar({
           );
         })}
       </div>
+    </div>
+  );
+}
+
+// ── FilterChip ────────────────────────────────────────────────────────────
+// Airbnb-style chip : black-outlined when active (subtle), light gray border
+// when not. Replaces the previous solid-purple active state — founder
+// feedback : "ya déjà du violet partout, peut etre un truc plus discret".
+function FilterChip({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{ touchAction: "manipulation" }}
+      className={
+        active
+          ? "rounded-full border-2 border-slate-900 bg-white px-4 py-2 text-sm font-semibold text-slate-900"
+          : "rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700"
+      }
+    >
+      {children}
+    </button>
+  );
+}
+
+// ── FilterToggle ──────────────────────────────────────────────────────────
+function FilterToggle({
+  title,
+  subtitle,
+  value,
+  onChange,
+}: {
+  title: string;
+  subtitle: string;
+  value: boolean;
+  onChange: (v: boolean) => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={() => onChange(!value)}
+      className="flex w-full items-center justify-between rounded-2xl border border-slate-200 px-4 py-3"
+      style={{ touchAction: "manipulation" }}
+    >
+      <div className="text-left">
+        <div className="text-sm font-semibold text-slate-900">{title}</div>
+        <div className="text-xs text-slate-500">{subtitle}</div>
+      </div>
+      <div
+        className={
+          value
+            ? "relative h-6 w-11 rounded-full bg-[#7c3aed] transition"
+            : "relative h-6 w-11 rounded-full bg-slate-200 transition"
+        }
+        aria-hidden="true"
+      >
+        <div
+          className="absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition"
+          style={{ left: value ? "22px" : "2px" }}
+        />
+      </div>
+    </button>
+  );
+}
+
+// ── DualRangeSlider ───────────────────────────────────────────────────────
+// Two stacked <input type="range"> with custom thumbs. Track + filled range
+// painted by overlaid <div>s. The trick : track gets pointer-events: none on
+// the input itself, only the ::-webkit-slider-thumb / ::-moz-range-thumb
+// catch pointer events. Standard Airbnb-style dual slider in ~50 lines, no
+// library.
+function DualRangeSlider({
+  min,
+  max,
+  step,
+  valueMin,
+  valueMax,
+  onChangeMin,
+  onChangeMax,
+}: {
+  min: number;
+  max: number;
+  step: number;
+  valueMin: number;
+  valueMax: number;
+  onChangeMin: (v: number) => void;
+  onChangeMax: (v: number) => void;
+}) {
+  const minPct = ((valueMin - min) / (max - min)) * 100;
+  const maxPct = ((valueMax - min) / (max - min)) * 100;
+  const thumbClass =
+    "[&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-[#7c3aed] [&::-webkit-slider-thumb]:shadow [&::-webkit-slider-thumb]:cursor-pointer " +
+    "[&::-moz-range-thumb]:appearance-none [&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:h-5 [&::-moz-range-thumb]:w-5 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-white [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-[#7c3aed] [&::-moz-range-thumb]:shadow [&::-moz-range-thumb]:cursor-pointer";
+  return (
+    <div className="relative h-8 select-none">
+      <div className="absolute top-1/2 left-0 right-0 h-1 -translate-y-1/2 rounded-full bg-slate-200" />
+      <div
+        className="absolute top-1/2 h-1 -translate-y-1/2 rounded-full bg-[#7c3aed]"
+        style={{ left: `${minPct}%`, right: `${100 - maxPct}%` }}
+      />
+      <input
+        type="range"
+        min={min}
+        max={max}
+        step={step}
+        value={valueMin}
+        onChange={(e) => onChangeMin(Math.min(Number(e.target.value), valueMax - step))}
+        aria-label="Prix minimum"
+        className={`absolute inset-0 w-full appearance-none bg-transparent pointer-events-none ${thumbClass}`}
+      />
+      <input
+        type="range"
+        min={min}
+        max={max}
+        step={step}
+        value={valueMax}
+        onChange={(e) => onChangeMax(Math.max(Number(e.target.value), valueMin + step))}
+        aria-label="Prix maximum"
+        className={`absolute inset-0 w-full appearance-none bg-transparent pointer-events-none ${thumbClass}`}
+      />
     </div>
   );
 }
