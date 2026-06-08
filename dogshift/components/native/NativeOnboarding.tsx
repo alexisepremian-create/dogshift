@@ -26,21 +26,21 @@ type Slide = { imgSrc: string; step: string; title: string; body: string };
 const SLIDES: readonly Slide[] = [
   {
     imgSrc: ILLUSTRATION_SRCS[0],
-    step: "01 \u00b7 LE CONCEPT",
-    title: "Le dogsitting,\nr\u00e9invent\u00e9",
-    body: "Trouve un dogsitter de confiance pr\u00e8s de chez toi. R\u00e9serve en quelques clics, en toute s\u00e9r\u00e9nit\u00e9.",
+    step: "01 · LE CONCEPT",
+    title: "Le dogsitting,\nréinventé",
+    body: "Trouve un dogsitter de confiance près de chez toi. Réserve en quelques clics, en toute sérénité.",
   },
   {
     imgSrc: ILLUSTRATION_SRCS[1],
-    step: "02 \u00b7 LA CONFIANCE",
-    title: "100% v\u00e9rifi\u00e9",
-    body: "Chaque dogsitter passe un entretien et une v\u00e9rification d'identit\u00e9 avant d'\u00eatre publi\u00e9 sur la plateforme.",
+    step: "02 · LA CONFIANCE",
+    title: "100% vérifié",
+    body: "Chaque dogsitter passe un entretien et une vérification d\u2019identité avant d\u2019être publié sur la plateforme.",
   },
   {
     imgSrc: ILLUSTRATION_SRCS[2],
-    step: "03 \u00b7 LA R\u00c9SERVATION",
-    title: "R\u00e9serve en\n3 clics",
-    body: "Promenade, garde \u00e0 domicile ou pension : choisis ton service, ton cr\u00e9neau, et c'est parti.",
+    step: "03 · LA RÉSERVATION",
+    title: "Réserve en\n3 clics",
+    body: "Promenade, garde à domicile ou pension : choisis ton service, ton créneau, et c\u2019est parti.",
   },
 ] as const;
 
@@ -161,19 +161,24 @@ export default function NativeOnboarding() {
             id={`ds-ob-slide-${i}`}
             className="flex w-full flex-shrink-0 snap-center flex-col"
           >
-            {/* Illustration area (top half) */}
-            <div className="flex flex-1 items-center justify-center px-10">
+            {/* Illustration area (top half) — fixed height so card stays
+                at the same position across all 3 slides regardless of
+                image aspect ratio. */}
+            <div
+              className="flex items-center justify-center px-10"
+              style={{ height: "48vh" }}
+            >
               <img
                 src={s.imgSrc}
                 alt=""
-                className="max-h-[55vh] w-auto object-contain drop-shadow-lg"
+                className="max-h-full w-auto object-contain drop-shadow-lg"
                 aria-hidden="true"
               />
             </div>
 
             {/* Content card (bottom half) — white rounded top */}
             <div
-              className="px-8 pb-2 pt-7"
+              className="flex-1 px-8 pb-2 pt-7"
               style={{
                 background: "white",
                 borderTopLeftRadius: "32px",
@@ -231,13 +236,13 @@ export default function NativeOnboarding() {
           style={{ touchAction: "manipulation" }}
           className="flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-900 px-6 py-4 text-[16px] font-semibold text-white shadow-lg active:scale-[0.98]"
         >
-          {isLast ? "Cr\u00e9er mon compte" : "Continuer"}
+          {isLast ? "Créer mon compte" : "Continuer"}
           <span aria-hidden="true">{"\u2192"}</span>
         </button>
 
         {/* Login link */}
         <p className="mt-4 text-center text-[14px] text-slate-500">
-          Vous avez d\u00e9j\u00e0 un compte ?{" "}
+          {"Vous avez déjà un compte ? "}
           <button
             type="button"
             onClick={goLogin}
