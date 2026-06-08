@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any -- ServiceConfig + Prisma client casts predate the strict typing; covered by the drive-by lint rule in CLAUDE.md (audit 2026-06-08). */
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
@@ -6,6 +7,7 @@ import { requireSitterOwner } from "@/lib/auth/requireSitterOwner";
 import { SERVICE_DEFAULTS, type ServiceType } from "@/lib/availability/slotEngine";
 import { writeAvailabilityAuditLog } from "@/lib/availability/auditLog";
 import { buildEffectiveSitterCompletionProfile, computeSitterProfileCompletion } from "@/lib/sitterCompletion";
+import { syncSitterServices } from "@/lib/sitter/serviceSync";
 
 export const runtime = "nodejs";
 
@@ -101,6 +103,35 @@ export async function PUT(req: NextRequest) {
       enabled,
     },
     update: data,
+  });
+
+  // Read every ServiceConfig row so we can rebuild the canonical service
+  // state and propagate it to SitterProfile.services + User.hostProfileJson.
+  // Audit 2026-06-08 Layer 2 fix: until now this endpoint only wrote
+  // ServiceConfig, leaving the column + JSON stale until the nightly
+  // profile-health auto-fix caught it. Now it's atomic.
+  const allConfigs = (await (prisma as any).serviceConfig.findMany({
+    where: { sitterId: auth.sitterId },
+    select: { serviceType: true, enabled: true },
+  })) as Array<{ serviceType: string; enabled: boolean }>;
+  const serviceLabelByEnum: Record<string, "Promenade" | "Garde" | "Pension"> = {
+    PROMENADE: "Promenade",
+    DOGSITTING: "Garde",
+    PENSION: "Pension",
+  };
+  const canonicalBoolRecord: Record<"Promenade" | "Garde" | "Pension", boolean> = {
+    Promenade: false,
+    Garde: false,
+    Pension: false,
+  };
+  for (const row of allConfigs) {
+    const label = serviceLabelByEnum[row.serviceType];
+    if (label && row.enabled) canonicalBoolRecord[label] = true;
+  }
+  await syncSitterServices(prisma, {
+    sitterId: auth.sitterId,
+    userId: auth.dbUserId,
+    services: canonicalBoolRecord,
   });
 
   const [userRow, sitterProfile, serviceConfigs] = await Promise.all([
