@@ -62,8 +62,8 @@ test("app/globals.css paints the in-WebView splash overlay with the same paw + p
   );
   assert.match(
     src,
-    /html\[data-native="true"\]::after[\s\S]*?dogshift-paw-white\.png/,
-    "Expected the html[data-native='true']::after rule to reference /dogshift-paw-white.png as background-image. This must match the white paw silhouette baked into the iOS LaunchScreen so the handoff is seamless. Regenerate both with `node scripts/generate-native-splash.mjs`.",
+    /html\[data-native="true"\]::after[\s\S]*?native-splash\.png[\s\S]*?background-size:\s*cover/,
+    "Expected the html[data-native='true']::after rule to reference /native-splash.png as background-image with background-size: cover. This is the CSS equivalent of UIKit's scaleAspectFill — using the SAME full 2732² splash PNG ensures the LaunchScreen → WebView handoff is pixel-identical (previous vmin/vmax sizing of a smaller mark drifted 3-5% across devices). Regenerate the PNG with `node scripts/generate-native-splash.mjs`.",
   );
   assert.match(
     src,
@@ -87,6 +87,14 @@ test("public/dogshift-paw-white.png exists and matches the splash artwork", () =
   assert.ok(
     existsSync(path),
     `Missing ${path}. Regenerate it (along with the iOS splash) by running \`node scripts/generate-native-splash.mjs\`. This PNG is sourced from public/apple-touch-icon.png via a luminance-driven alpha extraction — the script is the single source of truth.`,
+  );
+});
+
+test("public/native-splash.png exists for the WebView background-cover overlay", () => {
+  const path = join(repoRoot, "public/native-splash.png");
+  assert.ok(
+    existsSync(path),
+    `Missing ${path}. This is the FULL 2732² splash PNG (purple bg + paw + DOGSHIFT) used by the WebView CSS overlay with background-size: cover — the exact CSS equivalent of UIKit's scaleAspectFill, so the LaunchScreen → WebView handoff is pixel-identical. Regenerate by running \`node scripts/generate-native-splash.mjs\`.`,
   );
 });
 
