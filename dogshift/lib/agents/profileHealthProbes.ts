@@ -102,11 +102,22 @@ export function buildPublicProbes(baseUrl: string): Array<{
   expectStatus?: number;
   expectContains?: string;
 }> {
+  // Note (audit 2026-06-08): `/login` and `/signup` are gated by Cloudflare's
+  // Managed Challenge to deter credential-stuffing. The challenge inspects the
+  // User-Agent and returns 403 to anything that doesn't look like a real
+  // browser — including our `DogShift-ProfileHealth/1.0` probe. We removed
+  // them from the public probes because they generated a persistent
+  // false-positive 🔴 every night despite the pages working fine for real
+  // users. The real coverage for auth lives in
+  // `/api/cron/auth-health-check` (it exercises sign-in end-to-end with a
+  // real session cookie, which bypasses the challenge).
+  //
+  // The homepage and /devenir-dogsitter remain probed because they're
+  // permissive (no Cloudflare challenge) and a 4xx/5xx there means the site
+  // is actually down for everyone.
   return [
     { name: "homepage", url: `${baseUrl}/`, expectStatus: 200 },
     { name: "sitters-list", url: `${baseUrl}/sitters`, expectStatus: 200 },
-    { name: "login", url: `${baseUrl}/login`, expectStatus: 200 },
-    { name: "signup", url: `${baseUrl}/signup`, expectStatus: 200 },
     { name: "become-sitter", url: `${baseUrl}/devenir-dogsitter`, expectStatus: 200 },
   ];
 }
