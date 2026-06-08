@@ -1055,7 +1055,7 @@ type DogSizeKey = typeof DOG_SIZES[number]["key"];
 
 type StickySection = "lieu" | "quand" | "besoin";
 
-function StickySearchBar({ visible = true, hero = false }: { visible?: boolean; hero?: boolean }) {
+export function StickySearchBar({ visible = true, hero = false }: { visible?: boolean; hero?: boolean }) {
   const router = useRouter();
   const today = React.useMemo(() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; }, []);
 
