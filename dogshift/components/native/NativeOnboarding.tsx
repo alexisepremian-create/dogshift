@@ -114,7 +114,7 @@ export default function NativeOnboarding() {
       style={{
         paddingTop: "env(safe-area-inset-top, 0px)",
         paddingBottom: "env(safe-area-inset-bottom, 0px)",
-        background: "linear-gradient(180deg, #f8f7ff 0%, #f1f0fb 50%, #ffffff 50%)",
+        background: "#ffffff",
       }}
       role="dialog"
       aria-modal="true"
@@ -161,17 +161,17 @@ export default function NativeOnboarding() {
             id={`ds-ob-slide-${i}`}
             className="flex w-full flex-shrink-0 snap-center flex-col"
           >
-            {/* Illustration area (top half) — fixed height so card stays
-                at the same position across all 3 slides regardless of
-                image aspect ratio. */}
+            {/* Illustration area — edge-to-edge, image fills the space.
+                Background matches the images' own beige (#f5f0ea) so
+                they blend seamlessly with no visible border. */}
             <div
-              className="flex items-center justify-center px-10"
-              style={{ height: "48vh" }}
+              className="flex items-center justify-center overflow-hidden"
+              style={{ height: "48vh", background: "#f5f0ea" }}
             >
               <img
                 src={s.imgSrc}
                 alt=""
-                className="max-h-full w-auto object-contain drop-shadow-lg"
+                className="h-full w-full object-cover"
                 aria-hidden="true"
               />
             </div>
@@ -183,7 +183,6 @@ export default function NativeOnboarding() {
                 background: "white",
                 borderTopLeftRadius: "32px",
                 borderTopRightRadius: "32px",
-                boxShadow: "0 -8px 40px rgba(124, 58, 237, 0.04)",
               }}
             >
               {/* Step label */}
