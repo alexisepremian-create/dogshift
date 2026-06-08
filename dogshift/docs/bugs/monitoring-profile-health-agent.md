@@ -21,12 +21,25 @@ complains". Critical to keep this one running.
 ```json
 {
   "type": "sql",
-  "description": "Last successful profile-health run must be within the last 26 hours.",
-  "query": "SELECT 1 FROM \"AgentLog\" WHERE \"agentName\" = 'profile-health' AND status = 'success' AND \"createdAt\" > NOW() - INTERVAL '26 hours' LIMIT 1",
-  "expect_rows": 1,
+  "description": "Last profile-health run must be within the last 26 hours.",
+  "query": "SELECT (CASE WHEN EXISTS (SELECT 1 FROM \"AgentLog\" WHERE \"agentName\" = 'profile-health' AND \"createdAt\" > NOW() - INTERVAL '26 hours') THEN 0 ELSE 1 END)::int AS value",
+  "expect_max": 0,
   "auto_fix": { "complexity": "complex" }
 }
 ```
+
+Convention rappelée : le runner de `lib/bugRegression/runDetections.ts` attend
+une requête qui retourne **une seule ligne avec une colonne `value` numérique**
+et compare à `expect_max` (par défaut 0). L'ancien format `expect_rows: 1`
+n'est pas supporté — il faisait `SQL returned non-numeric value: undefined`
+chaque nuit dans le récap maintenance (audit 2026-06-08).
+
+La requête ci-dessus inverse la logique :
+
+- profile-health a tourné dans les dernières 26 h → `value = 0` → ✅ pass.
+- profile-health n'a PAS tourné dans les dernières 26 h → `value = 1` → 🚨
+  fail. C'est exactement la signature d'une régression (cron silencieusement
+  cassé), ce que cette fiche est censée détecter.
 
 If the query returns zero rows, the daily cron either failed or never ran.
 Likely causes :
