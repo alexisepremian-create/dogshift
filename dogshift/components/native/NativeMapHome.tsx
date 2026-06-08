@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Map, { Marker, type MapRef } from "react-map-gl/maplibre";
 import { useRouter } from "next/navigation";
-import { Search, Locate, Star, X, Minus, Plus, MapPin, Calendar } from "lucide-react";
+import { Search, Locate, Star, X, Minus, Plus, MapPin, Calendar, ArrowLeft, SlidersHorizontal } from "lucide-react";
 
 import { resolveCoordsForPublishedSitterMap } from "@/lib/sitterMapGeo";
 
@@ -197,6 +197,11 @@ export default function NativeMapHome() {
   const router = useRouter();
   const lieuInputRef = useRef<HTMLInputElement>(null);
   const [searchOpen, setSearchOpen] = useState(false);
+  // "main" = search form ; "filters" = filter form (same panel, slides in
+  // like a second page). Founder request : "rajoute une option filtre aussi
+  // la dans le pop up de recherche … genre que ca fasse comme une deuxieme
+  // page".
+  const [searchPanelView, setSearchPanelView] = useState<"main" | "filters">("main");
   const [searchService, setSearchService] = useState<Service>("Promenade");
   const [searchLocation, setSearchLocation] = useState("");
   const [searchDate, setSearchDate] = useState<string | null>(null);          // single date (Promenade/Garde)
@@ -680,10 +685,26 @@ export default function NativeMapHome() {
             }}
           >
             <div className="flex items-center justify-between px-5 py-3 border-b border-slate-100 shrink-0">
-              <h2 className="text-base font-semibold text-slate-900">Rechercher</h2>
+              {/* Left slot : back arrow when in filters subview, else the
+                  title. The header swap makes the filter view feel like a
+                  "second page" (founder request : "comme une deuxieme page"). */}
+              {searchPanelView === "filters" ? (
+                <button
+                  type="button"
+                  onClick={() => setSearchPanelView("main")}
+                  className="flex items-center gap-1.5 text-base font-semibold text-slate-900 active:opacity-70"
+                  aria-label="Retour à la recherche"
+                  style={{ touchAction: "manipulation" }}
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                  Filtres
+                </button>
+              ) : (
+                <h2 className="text-base font-semibold text-slate-900">Rechercher</h2>
+              )}
               <button
                 type="button"
-                onClick={() => setSearchOpen(false)}
+                onClick={() => { setSearchOpen(false); setSearchPanelView("main"); }}
                 className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 active:scale-95"
                 aria-label="Fermer"
                 style={{ touchAction: "manipulation" }}
@@ -692,7 +713,8 @@ export default function NativeMapHome() {
               </button>
             </div>
 
-            <div className="flex-1 space-y-3 px-5 py-3">
+            {searchPanelView === "main" ? (
+            <div className="flex-1 overflow-y-auto space-y-3 px-5 py-3">
               {/* Service chips */}
               <div className="flex gap-2">
                 {ALL_SERVICES.map((s) => {
@@ -820,19 +842,77 @@ export default function NativeMapHome() {
                   ))}
                 </div>
               </div>
-            </div>
 
-            {/* Submit — anchored at panel bottom, always visible */}
-            <div className="border-t border-slate-100 px-5 py-3 shrink-0">
+              {/* "Filtres avancés" trigger — slides to the filter subview */}
               <button
                 type="button"
-                onClick={handleSearchSubmit}
-                className="flex w-full items-center justify-center gap-2 rounded-full bg-[#7c3aed] py-3 text-base font-semibold text-white shadow-[0_8px_24px_rgba(124,58,237,0.35)] active:scale-[0.98]"
+                onClick={() => setSearchPanelView("filters")}
+                className="mt-1 flex w-full items-center justify-between rounded-2xl border border-slate-200 px-4 py-3 active:scale-[0.99]"
                 style={{ touchAction: "manipulation" }}
               >
-                <Search className="h-4 w-4" />
-                Rechercher
+                <div className="flex items-center gap-2.5 text-left">
+                  <SlidersHorizontal className="h-4 w-4 text-slate-500" />
+                  <div>
+                    <div className="text-sm font-semibold text-slate-900">Filtres avancés</div>
+                    <div className="text-xs text-slate-500">
+                      {activeFilterCount > 0
+                        ? `${activeFilterCount} filtre${activeFilterCount > 1 ? "s" : ""} actif${activeFilterCount > 1 ? "s" : ""}`
+                        : "Note, prix, vérification, tri…"}
+                    </div>
+                  </div>
+                </div>
+                {activeFilterCount > 0 && (
+                  <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-[#7c3aed] px-1.5 text-[11px] font-semibold text-white">
+                    {activeFilterCount}
+                  </span>
+                )}
               </button>
+            </div>
+            ) : (
+              <FilterBody
+                filterMinRating={filterMinRating}        setFilterMinRating={setFilterMinRating}
+                priceMin={PRICE_MIN}                     priceMax={PRICE_MAX}
+                filterPriceMin={filterPriceMin}          setFilterPriceMin={setFilterPriceMin}
+                filterPriceMax={filterPriceMax}          setFilterPriceMax={setFilterPriceMax}
+                filterVerifiedOnly={filterVerifiedOnly}  setFilterVerifiedOnly={setFilterVerifiedOnly}
+                filterWithReviewsOnly={filterWithReviewsOnly} setFilterWithReviewsOnly={setFilterWithReviewsOnly}
+                filterSort={filterSort}                  setFilterSort={setFilterSort}
+              />
+            )}
+
+            {/* Footer — Submit (search view) OR Apply (filters view) */}
+            <div className="border-t border-slate-100 px-5 py-3 shrink-0">
+              {searchPanelView === "main" ? (
+                <button
+                  type="button"
+                  onClick={handleSearchSubmit}
+                  className="flex w-full items-center justify-center gap-2 rounded-full bg-[#7c3aed] py-3 text-base font-semibold text-white shadow-[0_8px_24px_rgba(124,58,237,0.35)] active:scale-[0.98]"
+                  style={{ touchAction: "manipulation" }}
+                >
+                  <Search className="h-4 w-4" />
+                  Rechercher
+                </button>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={resetFilters}
+                    disabled={activeFilterCount === 0}
+                    className="rounded-full border border-slate-200 px-4 py-3 text-sm font-medium text-slate-700 disabled:opacity-40"
+                    style={{ touchAction: "manipulation" }}
+                  >
+                    Réinitialiser
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSearchPanelView("main")}
+                    className="flex-1 rounded-full bg-[#7c3aed] py-3 text-base font-semibold text-white shadow-[0_8px_24px_rgba(124,58,237,0.35)] active:scale-[0.98]"
+                    style={{ touchAction: "manipulation" }}
+                  >
+                    Appliquer
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </>
@@ -871,86 +951,15 @@ export default function NativeMapHome() {
               </button>
             </div>
 
-            <div className="flex-1 space-y-5 overflow-y-auto px-5 py-4">
-              {/* Note minimale — Airbnb-style chips : black border on active,
-                  not solid purple (founder feedback : "ya déjà du violet
-                  partout, peut etre un truc plus discret"). */}
-              <div>
-                <div className="mb-2 text-xs font-medium text-slate-500">Note minimale</div>
-                <div className="flex flex-wrap gap-2">
-                  {[
-                    { v: 0,   label: "Toutes" },
-                    { v: 4,   label: "4★+" },
-                    { v: 4.5, label: "4.5★+" },
-                    { v: 4.8, label: "4.8★+" },
-                  ].map((opt) => (
-                    <FilterChip
-                      key={opt.v}
-                      active={filterMinRating === opt.v}
-                      onClick={() => setFilterMinRating(opt.v)}
-                    >
-                      {opt.label}
-                    </FilterChip>
-                  ))}
-                </div>
-              </div>
-
-              {/* Prix — dual-range slider (Airbnb-style). */}
-              <div>
-                <div className="mb-2 flex items-baseline justify-between">
-                  <span className="text-xs font-medium text-slate-500">Prix par jour</span>
-                  <span className="text-sm font-semibold text-slate-900">
-                    {filterPriceMin} – {filterPriceMax === PRICE_MAX ? `${PRICE_MAX}+` : filterPriceMax} CHF
-                  </span>
-                </div>
-                <DualRangeSlider
-                  min={PRICE_MIN}
-                  max={PRICE_MAX}
-                  step={5}
-                  valueMin={filterPriceMin}
-                  valueMax={filterPriceMax}
-                  onChangeMin={setFilterPriceMin}
-                  onChangeMax={setFilterPriceMax}
-                />
-              </div>
-
-              {/* Vérifiés uniquement */}
-              <FilterToggle
-                title="Vérifiés uniquement"
-                subtitle="Profils avec pièce d'identité validée"
-                value={filterVerifiedOnly}
-                onChange={setFilterVerifiedOnly}
-              />
-
-              {/* Avec avis */}
-              <FilterToggle
-                title="Avec avis"
-                subtitle="Au moins une évaluation laissée par un propriétaire"
-                value={filterWithReviewsOnly}
-                onChange={setFilterWithReviewsOnly}
-              />
-
-              {/* Tri */}
-              <div>
-                <div className="mb-2 text-xs font-medium text-slate-500">Trier par</div>
-                <div className="flex flex-wrap gap-2">
-                  {([
-                    { v: "default", label: "Par défaut" },
-                    { v: "rating",  label: "Mieux notés" },
-                    { v: "reviews", label: "Plus d'avis" },
-                    { v: "price",   label: "Prix croissant" },
-                  ] as const).map((opt) => (
-                    <FilterChip
-                      key={opt.v}
-                      active={filterSort === opt.v}
-                      onClick={() => setFilterSort(opt.v)}
-                    >
-                      {opt.label}
-                    </FilterChip>
-                  ))}
-                </div>
-              </div>
-            </div>
+            <FilterBody
+              filterMinRating={filterMinRating}        setFilterMinRating={setFilterMinRating}
+              priceMin={PRICE_MIN}                     priceMax={PRICE_MAX}
+              filterPriceMin={filterPriceMin}          setFilterPriceMin={setFilterPriceMin}
+              filterPriceMax={filterPriceMax}          setFilterPriceMax={setFilterPriceMax}
+              filterVerifiedOnly={filterVerifiedOnly}  setFilterVerifiedOnly={setFilterVerifiedOnly}
+              filterWithReviewsOnly={filterWithReviewsOnly} setFilterWithReviewsOnly={setFilterWithReviewsOnly}
+              filterSort={filterSort}                  setFilterSort={setFilterSort}
+            />
 
             <div className="flex items-center gap-2 border-t border-slate-100 px-5 py-3 shrink-0">
               <button
@@ -1086,6 +1095,109 @@ function InlineCalendar({
             </button>
           );
         })}
+      </div>
+    </div>
+  );
+}
+
+// ── FilterBody ────────────────────────────────────────────────────────────
+// Shared filter form used by BOTH (a) the in-search-panel "Filtres" subview
+// and (b) the standalone filter popup (opened from the sitter sheet). All
+// state lives in the parent (NativeMapHome) so closing one entry point and
+// opening the other shows the same selections.
+function FilterBody({
+  filterMinRating, setFilterMinRating,
+  priceMin, priceMax,
+  filterPriceMin, setFilterPriceMin,
+  filterPriceMax, setFilterPriceMax,
+  filterVerifiedOnly, setFilterVerifiedOnly,
+  filterWithReviewsOnly, setFilterWithReviewsOnly,
+  filterSort, setFilterSort,
+}: {
+  filterMinRating: number;     setFilterMinRating: (v: number) => void;
+  priceMin: number;            priceMax: number;
+  filterPriceMin: number;      setFilterPriceMin: (v: number) => void;
+  filterPriceMax: number;      setFilterPriceMax: (v: number) => void;
+  filterVerifiedOnly: boolean; setFilterVerifiedOnly: (v: boolean) => void;
+  filterWithReviewsOnly: boolean; setFilterWithReviewsOnly: (v: boolean) => void;
+  filterSort: "default" | "rating" | "reviews" | "price";
+  setFilterSort: (v: "default" | "rating" | "reviews" | "price") => void;
+}) {
+  return (
+    <div className="flex-1 space-y-5 overflow-y-auto px-5 py-4">
+      {/* Note minimale */}
+      <div>
+        <div className="mb-2 text-xs font-medium text-slate-500">Note minimale</div>
+        <div className="flex flex-wrap gap-2">
+          {[
+            { v: 0,   label: "Toutes" },
+            { v: 4,   label: "4★+" },
+            { v: 4.5, label: "4.5★+" },
+            { v: 4.8, label: "4.8★+" },
+          ].map((opt) => (
+            <FilterChip
+              key={opt.v}
+              active={filterMinRating === opt.v}
+              onClick={() => setFilterMinRating(opt.v)}
+            >
+              {opt.label}
+            </FilterChip>
+          ))}
+        </div>
+      </div>
+
+      {/* Prix par jour */}
+      <div>
+        <div className="mb-2 flex items-baseline justify-between">
+          <span className="text-xs font-medium text-slate-500">Prix par jour</span>
+          <span className="text-sm font-semibold text-slate-900">
+            {filterPriceMin} – {filterPriceMax === priceMax ? `${priceMax}+` : filterPriceMax} CHF
+          </span>
+        </div>
+        <DualRangeSlider
+          min={priceMin}
+          max={priceMax}
+          step={5}
+          valueMin={filterPriceMin}
+          valueMax={filterPriceMax}
+          onChangeMin={setFilterPriceMin}
+          onChangeMax={setFilterPriceMax}
+        />
+      </div>
+
+      <FilterToggle
+        title="Vérifiés uniquement"
+        subtitle="Profils avec pièce d'identité validée"
+        value={filterVerifiedOnly}
+        onChange={setFilterVerifiedOnly}
+      />
+
+      <FilterToggle
+        title="Avec avis"
+        subtitle="Au moins une évaluation laissée par un propriétaire"
+        value={filterWithReviewsOnly}
+        onChange={setFilterWithReviewsOnly}
+      />
+
+      {/* Tri */}
+      <div>
+        <div className="mb-2 text-xs font-medium text-slate-500">Trier par</div>
+        <div className="flex flex-wrap gap-2">
+          {([
+            { v: "default", label: "Par défaut" },
+            { v: "rating",  label: "Mieux notés" },
+            { v: "reviews", label: "Plus d'avis" },
+            { v: "price",   label: "Prix croissant" },
+          ] as const).map((opt) => (
+            <FilterChip
+              key={opt.v}
+              active={filterSort === opt.v}
+              onClick={() => setFilterSort(opt.v)}
+            >
+              {opt.label}
+            </FilterChip>
+          ))}
+        </div>
       </div>
     </div>
   );
