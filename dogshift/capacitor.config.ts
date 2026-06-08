@@ -31,7 +31,16 @@ const config: CapacitorConfig = {
   },
 
   ios: {
-    contentInset: "always",
+    // `never` (was "always") — let the WKWebView extend edge-to-edge under
+    // status bar + home indicator. With `viewport-fit=cover` + page-level
+    // env(safe-area-inset-*) usage (SiteHeader, MobileBottomNav, etc.), this
+    // is the modern iOS pattern. `always` reduced 100vh by the inset values,
+    // which made the in-WebView splash overlay scale ~9% smaller than the
+    // native LaunchScreen (founder bug : "il devient plus petit avant le
+    // lancement de l'animation"). Switching to `never` aligns the layout
+    // viewport with the device screen so background-size: cover matches
+    // scaleAspectFill exactly.
+    contentInset: "never",
     // WebView background = brand purple. The safe-area zones around the WebView
     // (status-bar at top, home-indicator at bottom) previously showed white
     // bands during the splash → app handoff because the WebView's own bg was
