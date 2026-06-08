@@ -33,6 +33,7 @@
     "@capacitor/cli": "^7.6.5",
     "@capacitor/core": "^7.6.5",
     "@capacitor/ios": "^7.6.5",
+    "@capacitor/keyboard": "^7.0.6",
     "@capacitor/push-notifications": "^7.0.6",
     "@capacitor/splash-screen": "^7.0.5",
     "@capacitor/status-bar": "^7.0.6",

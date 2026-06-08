@@ -99,6 +99,18 @@ const config: CapacitorConfig = {
       style: "LIGHT",
       backgroundColor: "#7c3aed",
     },
+    Keyboard: {
+      // `resize: "none"` — iOS keyboard appears WITHOUT resizing the WebView.
+      // Required because our search panel uses position:fixed (top-anchored).
+      // With the default "native" mode, iOS tries to shrink the WebView when
+      // the keyboard appears, which trips the WKWebView's focus auto-scroll
+      // logic and the keyboard ends up not showing at all on the Lieu input
+      // (founder bug : "le clavier ne sort toujours pas snif"). `none` means
+      // the app is responsible for its own keyboard avoidance — fine here
+      // because the panel scrolls internally.
+      resize: "none",
+      resizeOnFullScreen: false,
+    },
   },
 };
 
