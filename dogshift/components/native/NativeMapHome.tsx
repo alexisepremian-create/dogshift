@@ -1101,10 +1101,13 @@ function FilterChip({ active, onClick, children }: { active: boolean; onClick: (
       type="button"
       onClick={onClick}
       style={{ touchAction: "manipulation" }}
+      // border-2 on BOTH states (transparent when inactive) so the chip
+      // doesn't jitter by 1px when toggled — founder feedback : "elles
+      // bougent un peu moi je veux que ca reste statique".
       className={
         active
           ? "rounded-full border-2 border-slate-900 bg-white px-4 py-2 text-sm font-semibold text-slate-900"
-          : "rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700"
+          : "rounded-full border-2 border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700"
       }
     >
       {children}
@@ -1128,18 +1131,21 @@ function FilterToggle({
     <button
       type="button"
       onClick={() => onChange(!value)}
-      className="flex w-full items-center justify-between rounded-2xl border border-slate-200 px-4 py-3"
+      className="flex w-full items-center justify-between gap-3 rounded-2xl border border-slate-200 px-4 py-3"
       style={{ touchAction: "manipulation" }}
     >
-      <div className="text-left">
+      <div className="min-w-0 flex-1 text-left">
         <div className="text-sm font-semibold text-slate-900">{title}</div>
         <div className="text-xs text-slate-500">{subtitle}</div>
       </div>
+      {/* flex-shrink-0 so the toggle keeps its full 44×24 size even when the
+          subtitle wraps to two lines (founder bug : "yen a un le 2e qui est
+          un peu coupé"). */}
       <div
         className={
           value
-            ? "relative h-6 w-11 rounded-full bg-[#7c3aed] transition"
-            : "relative h-6 w-11 rounded-full bg-slate-200 transition"
+            ? "relative h-6 w-11 shrink-0 rounded-full bg-[#7c3aed] transition"
+            : "relative h-6 w-11 shrink-0 rounded-full bg-slate-200 transition"
         }
         aria-hidden="true"
       >
