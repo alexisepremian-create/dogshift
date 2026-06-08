@@ -5,10 +5,10 @@ import maplibregl from "maplibre-gl";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Map, { Marker, type MapRef } from "react-map-gl/maplibre";
-import { Search, Locate, Star, X } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Search, Locate, Star, X, Minus, Plus, MapPin, Calendar } from "lucide-react";
 
 import { resolveCoordsForPublishedSitterMap } from "@/lib/sitterMapGeo";
-import { StickySearchBar } from "@/app/(marketing)/HomePageClient";
 
 import "maplibre-gl/dist/maplibre-gl.css";
 
@@ -157,20 +157,36 @@ export default function NativeMapHome() {
   // in the StickySearchBar modal which redirects to /sitters with params.
   const [query] = useState("");
   const [serviceFilter, setServiceFilter] = useState<Service | null>(null);
-  // Full-screen search modal — opened when the user taps the floating search
-  // bar. Mounts the StickySearchBar from the marketing homepage (LIEU / QUAND
-  // / SERVICE multi-section bar with calendar + dog counter). Founder feedback :
-  // "je veux que la search barre soit la meme que sur le site web mobile".
-  const [searchOpen, setSearchOpen] = useState(false);
 
-  // Lock body scroll while the modal is open so the StickySearchBar's own
-  // floating panels don't fight with the page scroll behind.
-  useEffect(() => {
-    if (!searchOpen) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => { document.body.style.overflow = prev; };
-  }, [searchOpen]);
+  // ── Search sheet state ──────────────────────────────────────────────────
+  // Sober bottom-sheet that slides up over the map (backdrop semi-transparent
+  // so the map stays visible). Replaces the full-screen StickySearchBar dump
+  // (founder feedback : "très sobre pas trop chargé qu'on voit toujours
+  // l'arrière plan").
+  const router = useRouter();
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchService, setSearchService] = useState<Service>("Promenade");
+  const [searchLocation, setSearchLocation] = useState("");
+  const [searchDate, setSearchDate] = useState("");
+  const [dogPetit, setDogPetit] = useState(0);
+  const [dogMoyen, setDogMoyen] = useState(1);
+  const [dogGrand, setDogGrand] = useState(0);
+
+  const handleSearchSubmit = useCallback(() => {
+    const params = new URLSearchParams();
+    if (searchLocation.trim()) params.set("q", searchLocation.trim());
+    if (searchDate) params.set("date", searchDate);
+    params.set("service", searchService);
+    const totalDogs = dogPetit + dogMoyen + dogGrand;
+    if (totalDogs > 0) {
+      params.set("dogs", String(totalDogs));
+      if (dogPetit) params.set("petit", String(dogPetit));
+      if (dogMoyen) params.set("moyen", String(dogMoyen));
+      if (dogGrand) params.set("grand", String(dogGrand));
+    }
+    setSearchOpen(false);
+    router.push(`/sitters?${params.toString()}`);
+  }, [router, searchService, searchLocation, searchDate, dogPetit, dogMoyen, dogGrand]);
 
   // Fetch published sitters once on mount.
   useEffect(() => {
@@ -545,36 +561,151 @@ export default function NativeMapHome() {
         </div>
       </div>
 
-      {/* ── Full-screen search modal ─────────────────────────────────────── */}
-      {/* Mounts the StickySearchBar exported from the marketing homepage so
-          the native search UX is identical to the web mobile experience
-          (LIEU / QUAND / SERVICE with calendar + dog counter + autocomplete).
-          Founder request : "je veux que la search barre soit la meme que sur
-          le site web mobile". */}
+      {/* ── Sober search sheet ──────────────────────────────────────────── */}
+      {/* Bottom sheet with a semi-transparent backdrop so the map stays
+          visible behind (founder : "très sobre pas trop chargé qu'on voit
+          toujours l'arrière plan"). Inline fields, no nested floating panels —
+          just service chips, a location text input, a date input, and a
+          per-size dog counter, ending in a single purple search button. */}
       {searchOpen && (
-        <div
-          className="fixed inset-0 z-[1000] bg-white"
-          style={{
-            paddingTop: "env(safe-area-inset-top, 0px)",
-            paddingBottom: "env(safe-area-inset-bottom, 0px)",
-          }}
-        >
-          <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
-            <h2 className="text-base font-semibold text-slate-900">Rechercher</h2>
-            <button
-              type="button"
-              onClick={() => setSearchOpen(false)}
-              className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 active:scale-95"
-              aria-label="Fermer la recherche"
-              style={{ touchAction: "manipulation" }}
-            >
-              <X className="h-5 w-5 text-slate-700" />
-            </button>
+        <>
+          <button
+            type="button"
+            aria-label="Fermer la recherche"
+            onClick={() => setSearchOpen(false)}
+            className="fixed inset-0 z-[990] bg-black/30 backdrop-blur-[2px]"
+            style={{ touchAction: "manipulation" }}
+          />
+          <div
+            className="fixed left-0 right-0 bottom-0 z-[1000] rounded-t-3xl bg-white shadow-[0_-12px_40px_rgba(2,6,23,0.25)]"
+            style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
+          >
+            <div className="flex flex-col items-center pt-2 pb-1">
+              <div className="h-1.5 w-12 rounded-full bg-slate-300" />
+            </div>
+            <div className="flex items-center justify-between px-5 pb-3">
+              <h2 className="text-lg font-semibold text-slate-900">Rechercher</h2>
+              <button
+                type="button"
+                onClick={() => setSearchOpen(false)}
+                className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 active:scale-95"
+                aria-label="Fermer"
+                style={{ touchAction: "manipulation" }}
+              >
+                <X className="h-4 w-4 text-slate-700" />
+              </button>
+            </div>
+
+            <div className="space-y-4 px-5 pb-5">
+              {/* Service chips */}
+              <div className="flex gap-2">
+                {ALL_SERVICES.map((s) => {
+                  const active = searchService === s;
+                  return (
+                    <button
+                      key={s}
+                      type="button"
+                      onClick={() => setSearchService(s)}
+                      className={
+                        active
+                          ? "flex-1 rounded-full bg-[#7c3aed] py-2 text-sm font-semibold text-white"
+                          : "flex-1 rounded-full bg-slate-100 py-2 text-sm font-medium text-slate-700"
+                      }
+                      style={{ touchAction: "manipulation" }}
+                    >
+                      {s}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Lieu */}
+              <label className="block">
+                <span className="mb-1 flex items-center gap-1.5 text-xs font-medium text-slate-500">
+                  <MapPin className="h-3.5 w-3.5" />
+                  Lieu
+                </span>
+                <input
+                  type="text"
+                  value={searchLocation}
+                  onChange={(e) => setSearchLocation(e.target.value)}
+                  placeholder="Lausanne, Genève, Montreux…"
+                  className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-base text-slate-900 placeholder:text-slate-400 outline-none focus:border-[#7c3aed]"
+                  autoComplete="off"
+                  inputMode="text"
+                  enterKeyHint="next"
+                />
+              </label>
+
+              {/* Quand */}
+              <label className="block">
+                <span className="mb-1 flex items-center gap-1.5 text-xs font-medium text-slate-500">
+                  <Calendar className="h-3.5 w-3.5" />
+                  Quand
+                </span>
+                <input
+                  type="date"
+                  value={searchDate}
+                  onChange={(e) => setSearchDate(e.target.value)}
+                  className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-base text-slate-900 outline-none focus:border-[#7c3aed]"
+                  min={new Date().toISOString().slice(0, 10)}
+                />
+              </label>
+
+              {/* Chiens */}
+              <div>
+                <span className="mb-2 block text-xs font-medium text-slate-500">Chiens</span>
+                <div className="space-y-2">
+                  {([
+                    { label: "Petit", sub: "< 10 kg", count: dogPetit, set: setDogPetit },
+                    { label: "Moyen", sub: "10–25 kg", count: dogMoyen, set: setDogMoyen },
+                    { label: "Grand", sub: "> 25 kg", count: dogGrand, set: setDogGrand },
+                  ] as const).map((row) => (
+                    <div key={row.label} className="flex items-center justify-between rounded-2xl border border-slate-200 px-4 py-2.5">
+                      <div>
+                        <div className="text-sm font-semibold text-slate-900">{row.label}</div>
+                        <div className="text-xs text-slate-500">{row.sub}</div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <button
+                          type="button"
+                          onClick={() => row.set(Math.max(0, row.count - 1))}
+                          disabled={row.count === 0}
+                          aria-label={`Retirer un chien ${row.label}`}
+                          className="flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 text-slate-700 disabled:opacity-30 active:scale-95"
+                          style={{ touchAction: "manipulation" }}
+                        >
+                          <Minus className="h-4 w-4" />
+                        </button>
+                        <span className="w-5 text-center text-sm font-semibold text-slate-900">{row.count}</span>
+                        <button
+                          type="button"
+                          onClick={() => row.set(row.count + 1)}
+                          aria-label={`Ajouter un chien ${row.label}`}
+                          className="flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 text-slate-700 active:scale-95"
+                          style={{ touchAction: "manipulation" }}
+                        >
+                          <Plus className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Submit */}
+              <button
+                type="button"
+                onClick={handleSearchSubmit}
+                className="mt-2 flex w-full items-center justify-center gap-2 rounded-full bg-[#7c3aed] py-3.5 text-base font-semibold text-white shadow-[0_8px_24px_rgba(124,58,237,0.35)] active:scale-[0.98]"
+                style={{ touchAction: "manipulation" }}
+              >
+                <Search className="h-4 w-4" />
+                Rechercher
+              </button>
+            </div>
           </div>
-          <div className="overflow-y-auto px-4 py-6" style={{ maxHeight: "calc(100vh - 60px)" }}>
-            <StickySearchBar visible hero={false} />
-          </div>
-        </div>
+        </>
       )}
     </div>
   );
