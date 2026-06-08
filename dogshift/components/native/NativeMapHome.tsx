@@ -5,9 +5,10 @@ import maplibregl from "maplibre-gl";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Map, { Marker, type MapRef } from "react-map-gl/maplibre";
-import { Search, Locate, Star } from "lucide-react";
+import { Search, Locate, Star, X } from "lucide-react";
 
 import { resolveCoordsForPublishedSitterMap } from "@/lib/sitterMapGeo";
+import { StickySearchBar } from "@/app/(marketing)/HomePageClient";
 
 import "maplibre-gl/dist/maplibre-gl.css";
 
@@ -151,8 +152,25 @@ export default function NativeMapHome() {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [geoLoading, setGeoLoading] = useState(false);
-  const [query, setQuery] = useState("");
+  // `query` is kept (used by filteredSitters) but no longer set from the UI —
+  // the inline search input was replaced by a modal trigger; full search lives
+  // in the StickySearchBar modal which redirects to /sitters with params.
+  const [query] = useState("");
   const [serviceFilter, setServiceFilter] = useState<Service | null>(null);
+  // Full-screen search modal — opened when the user taps the floating search
+  // bar. Mounts the StickySearchBar from the marketing homepage (LIEU / QUAND
+  // / SERVICE multi-section bar with calendar + dog counter). Founder feedback :
+  // "je veux que la search barre soit la meme que sur le site web mobile".
+  const [searchOpen, setSearchOpen] = useState(false);
+
+  // Lock body scroll while the modal is open so the StickySearchBar's own
+  // floating panels don't fight with the page scroll behind.
+  useEffect(() => {
+    if (!searchOpen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = prev; };
+  }, [searchOpen]);
 
   // Fetch published sitters once on mount.
   useEffect(() => {
@@ -266,19 +284,23 @@ export default function NativeMapHome() {
         className="absolute left-0 right-0 z-20 space-y-2 px-2"
         style={{ top: "calc(env(safe-area-inset-top, 0px) + 4px)" }}
       >
-        <div className="flex items-center gap-2 rounded-full bg-white/95 px-4 py-3 shadow-[0_8px_24px_rgba(2,6,23,0.18)] backdrop-blur">
+        {/* Trigger button — opens the full-screen modal with the
+            multi-section StickySearchBar (Lieu / Quand / Service). Reads as
+            an input visually but is actually a button : the WKWebView keyboard
+            on a single map-overlay input was unreliable, and a 3-section bar
+            is the right UX for booking-intent searches anyway. */}
+        <button
+          type="button"
+          onClick={() => setSearchOpen(true)}
+          className="flex w-full items-center gap-2 rounded-full bg-white/95 px-4 py-3 text-left shadow-[0_8px_24px_rgba(2,6,23,0.18)] backdrop-blur active:scale-[0.99]"
+          style={{ touchAction: "manipulation" }}
+          aria-label="Ouvrir la recherche détaillée"
+        >
           <Search className="h-5 w-5 text-slate-500" />
-          <input
-            type="search"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Lieu, nom du dogsitter…"
-            className="flex-1 bg-transparent text-base text-slate-900 placeholder:text-slate-400 outline-none"
-            inputMode="search"
-            enterKeyHint="search"
-            autoComplete="off"
-          />
-        </div>
+          <span className="flex-1 truncate text-base text-slate-400">
+            Lieu, dates, service…
+          </span>
+        </button>
 
         {/* Horizontal-scroll service filter chips. Tap to apply, tap the
             active chip again to clear. Same UX pattern as Airbnb / HoneyPaws. */}
@@ -522,6 +544,38 @@ export default function NativeMapHome() {
           )}
         </div>
       </div>
+
+      {/* ── Full-screen search modal ─────────────────────────────────────── */}
+      {/* Mounts the StickySearchBar exported from the marketing homepage so
+          the native search UX is identical to the web mobile experience
+          (LIEU / QUAND / SERVICE with calendar + dog counter + autocomplete).
+          Founder request : "je veux que la search barre soit la meme que sur
+          le site web mobile". */}
+      {searchOpen && (
+        <div
+          className="fixed inset-0 z-[1000] bg-white"
+          style={{
+            paddingTop: "env(safe-area-inset-top, 0px)",
+            paddingBottom: "env(safe-area-inset-bottom, 0px)",
+          }}
+        >
+          <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
+            <h2 className="text-base font-semibold text-slate-900">Rechercher</h2>
+            <button
+              type="button"
+              onClick={() => setSearchOpen(false)}
+              className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 active:scale-95"
+              aria-label="Fermer la recherche"
+              style={{ touchAction: "manipulation" }}
+            >
+              <X className="h-5 w-5 text-slate-700" />
+            </button>
+          </div>
+          <div className="overflow-y-auto px-4 py-6" style={{ maxHeight: "calc(100vh - 60px)" }}>
+            <StickySearchBar visible hero={false} />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
