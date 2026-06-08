@@ -12,6 +12,7 @@ import { isActivatedStatus, normalizeSitterLifecycleStatus } from "@/lib/sitterC
 import { CURRENT_TERMS_VERSION } from "@/lib/terms";
 import { geocodeSwissLocation } from "@/lib/geocode";
 import { isPersistedAvatarMediaPath } from "@/lib/sitterAvatarMedia";
+import { syncSitterServices } from "@/lib/sitter/serviceSync";
 import { zodParse } from "@/lib/validators/common";
 import { hostProfileUpdateSchema } from "@/lib/validators/sitter";
 
@@ -584,6 +585,27 @@ export async function POST(req: NextRequest) {
         update: updateData,
         select: { id: true },
       });
+    }
+
+    // Audit 2026-06-08 Layer 2 fix: until this PR, POST /api/host/profile
+    // wrote SitterProfile.services (array) + User.hostProfileJson.services
+    // (record) but NEVER touched ServiceConfig.{*}.enabled. A sitter who
+    // saved their profile with `services: { Garde: false }` would still
+    // have ServiceConfig.DOGSITTING.enabled = true if the toggle had been
+    // flipped that way previously. The booking engine reads ServiceConfig
+    // → owners could see "Garde disponible" and try to book it. Now the
+    // helper rewrites all three sources atomically from the same input.
+    try {
+      await syncSitterServices(prisma, {
+        sitterId,
+        userId: uid,
+        services: servicesObj,
+      });
+    } catch (syncErr) {
+      console.error("[api][host][profile][POST] syncSitterServices failed", syncErr);
+      // Don't fail the whole save — the SitterProfile + hostProfileJson
+      // writes already landed, and the nightly profile-health auto-fix
+      // catches any remaining desync. Just log so Sentry can spike.
     }
 
     return NextResponse.json(
