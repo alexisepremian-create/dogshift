@@ -318,7 +318,7 @@ export default function NativeMapHome() {
         style={{
           bottom: sheetOpen
             ? "calc(70vh + 16px)"
-            : "calc(160px + 24px + var(--ds-bottom-nav-h, 0px))",
+            : "calc(160px + 32px + var(--ds-bottom-nav-h, 0px))",
           touchAction: "manipulation",
         }}
       >
@@ -332,7 +332,7 @@ export default function NativeMapHome() {
         <div
           className="absolute left-4 right-4 z-30"
           style={{
-            bottom: "calc(160px + 24px + var(--ds-bottom-nav-h, 0px))",
+            bottom: "calc(160px + 32px + var(--ds-bottom-nav-h, 0px))",
           }}
         >
           <Link
@@ -388,12 +388,14 @@ export default function NativeMapHome() {
           up the offset. */}
       {/* Sheet floats as a card with side margins (mx-2 = 8px) above the nav
           bar — aligns with the new bottom-nav inset (also mx-2) for visual
-          consistency. 160px collapsed, 8px gap above the nav so the rounded
-          card never touches it. */}
+          consistency. 160px collapsed, 16px gap above the nav so the rounded
+          card is CLEARLY separated from the nav and never visually overlaps
+          it (founder bug : "il passe sous la nav barre ca doit etre séparé
+          distinctement"). */}
       <div
         className={`absolute left-2 right-2 z-30 rounded-3xl bg-white shadow-[0_-8px_24px_rgba(2,6,23,0.14)] transition-transform duration-300 ease-out`}
         style={{
-          bottom: "calc(var(--ds-bottom-nav-h, 0px) + 8px)",
+          bottom: "calc(var(--ds-bottom-nav-h, 0px) + 16px)",
           height: sheetOpen ? "calc(70vh - var(--ds-bottom-nav-h, 0px))" : "160px",
           transform: "translateY(0)",
         }}

@@ -53,7 +53,7 @@ export default function MobileBottomNav({ items, moreItems = [] }: MobileBottomN
       const safeArea = parseFloat(
         getComputedStyle(navRef.current ?? document.body).paddingBottom || "0",
       );
-      const navMargin = 8; // mb-2 on the bar wrapper (was mb-3 / 12px)
+      const navMargin = 4; // mb-1 on the bar wrapper (was mb-2 / 8px) — lower
       syncNavHeight(el.offsetHeight + safeArea + navMargin);
     };
     measure();
@@ -81,7 +81,7 @@ export default function MobileBottomNav({ items, moreItems = [] }: MobileBottomN
     >
       {/* ── "More" overlay sheet ── */}
       {moreOpen && hasMore && (
-        <div className="mx-2 mb-2 overflow-hidden rounded-[22px] border border-white/20 bg-white/80 shadow-[0_-4px_30px_rgba(2,6,23,0.10)] backdrop-blur-xl">
+        <div className="mx-2 mb-1 overflow-hidden rounded-[18px] border border-white/20 bg-white/80 shadow-[0_-4px_30px_rgba(2,6,23,0.10)] backdrop-blur-xl">
           <div className="flex items-center justify-between border-b border-slate-100/60 px-5 py-3">
             <span className="text-[13px] font-semibold text-slate-700">Plus</span>
             <button
@@ -119,15 +119,15 @@ export default function MobileBottomNav({ items, moreItems = [] }: MobileBottomN
           of mx-3/mb-3. The founder asked for "search bar et la nav barre il
           faut les mettre plus vers les bords" — this is the bottom-nav half
           of that change (search bar fix is in NativeMapHome). */}
-      <div ref={barRef} className="mx-2 mb-2 overflow-hidden rounded-[28px] border border-white/30 bg-white/70 shadow-[0_-2px_24px_rgba(2,6,23,0.08),0_8px_32px_-8px_rgba(2,6,23,0.12)] backdrop-blur-xl">
-        <div className="relative flex h-[60px]">
+      <div ref={barRef} className="mx-2 mb-1 overflow-hidden rounded-[24px] border border-white/30 bg-white/70 shadow-[0_-2px_24px_rgba(2,6,23,0.08),0_8px_32px_-8px_rgba(2,6,23,0.12)] backdrop-blur-xl">
+        <div className="relative flex h-[52px]">
 
           {/* ── Sliding background pill ── */}
           {/* #7c3aed = brand DogShift purple. Founder feedback : "les boutons
               de la nav barre doivent etre en violet comme le bouton dogshift". */}
           <div
             aria-hidden="true"
-            className="pointer-events-none absolute inset-y-[5px] rounded-[22px] backdrop-blur-sm"
+            className="pointer-events-none absolute inset-y-[4px] rounded-[18px] backdrop-blur-sm"
             style={{
               width: `calc(${100 / count}% - 6px)`,
               left: `calc(${(100 / count) * activeIndex}% + 3px)`,
