@@ -158,6 +158,28 @@ export default function NativeMapHome() {
   const [query] = useState("");
   const [serviceFilter, setServiceFilter] = useState<Service | null>(null);
 
+  // ── Filter popup state ────────────────────────────────────────────────
+  // Opened by tapping "Filtres" in the sitter sheet. Refines the map +
+  // sheet results in-place (no /search redirect — founder feedback).
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [filterMinRating, setFilterMinRating] = useState(0);   // 0 = no filter, else 4 / 4.5 / 4.8
+  const [filterMaxPrice, setFilterMaxPrice] = useState(0);     // 0 = no filter, else 25 / 50 / 75 / 100
+  const [filterVerifiedOnly, setFilterVerifiedOnly] = useState(false);
+  const [filterSort, setFilterSort] = useState<"default" | "rating" | "reviews" | "price">("default");
+
+  const activeFilterCount =
+    (filterMinRating > 0 ? 1 : 0) +
+    (filterMaxPrice > 0 ? 1 : 0) +
+    (filterVerifiedOnly ? 1 : 0) +
+    (filterSort !== "default" ? 1 : 0);
+
+  const resetFilters = useCallback(() => {
+    setFilterMinRating(0);
+    setFilterMaxPrice(0);
+    setFilterVerifiedOnly(false);
+    setFilterSort("default");
+  }, []);
+
   // ── Search panel state ──────────────────────────────────────────────────
   // Top-anchored panel that slides DOWN under the search bar and extends to
   // just above the bottom nav. Founder feedback : "le pop up de recherche
@@ -253,12 +275,19 @@ export default function NativeMapHome() {
 
   const filteredSitters = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return sitters.filter((s) => {
+    const list = sitters.filter((s) => {
       if (serviceFilter && !s.services.includes(serviceFilter)) return false;
-      if (!q) return true;
-      return s.name.toLowerCase().includes(q) || s.city.toLowerCase().includes(q);
+      if (filterMinRating > 0 && (s.rating ?? 0) < filterMinRating) return false;
+      if (filterMaxPrice > 0 && s.minPrice > filterMaxPrice) return false;
+      if (filterVerifiedOnly && !s.verified) return false;
+      if (q && !(s.name.toLowerCase().includes(q) || s.city.toLowerCase().includes(q))) return false;
+      return true;
     });
-  }, [sitters, query, serviceFilter]);
+    if (filterSort === "rating") return list.slice().sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0));
+    if (filterSort === "reviews") return list.slice().sort((a, b) => b.reviews - a.reviews);
+    if (filterSort === "price") return list.slice().sort((a, b) => a.minPrice - b.minPrice);
+    return list;
+  }, [sitters, query, serviceFilter, filterMinRating, filterMaxPrice, filterVerifiedOnly, filterSort]);
 
   const activeSitter = useMemo(
     () => sitters.find((s) => s.id === activeId) ?? null,
@@ -498,12 +527,19 @@ export default function NativeMapHome() {
             <h2 className="text-base font-semibold text-slate-900">
               {loading ? "Chargement…" : `${filteredSitters.length} dogsitter${filteredSitters.length > 1 ? "s" : ""}`}
             </h2>
-            <Link
-              href="/search"
-              className="text-sm font-medium text-[var(--dogshift-blue)]"
+            <button
+              type="button"
+              onClick={() => setFiltersOpen(true)}
+              className="flex items-center gap-1 text-sm font-medium text-[var(--dogshift-blue)]"
+              style={{ touchAction: "manipulation" }}
             >
               Filtres
-            </Link>
+              {activeFilterCount > 0 && (
+                <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-[#7c3aed] px-1.5 text-[11px] font-semibold text-white">
+                  {activeFilterCount}
+                </span>
+              )}
+            </button>
           </div>
         </div>
 
@@ -787,6 +823,172 @@ export default function NativeMapHome() {
               >
                 <Search className="h-4 w-4" />
                 Rechercher
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* ── Filter popup ───────────────────────────────────────────────── */}
+      {/* Triggered by the "Filtres" link in the sitter sheet. Refines the
+          map + sheet results in place (no /search redirect). Same top-
+          anchored layout as the search panel for visual consistency. */}
+      {filtersOpen && (
+        <>
+          <button
+            type="button"
+            aria-label="Fermer les filtres"
+            onClick={() => setFiltersOpen(false)}
+            className="fixed inset-0 z-[990] bg-black/30"
+            style={{ touchAction: "manipulation" }}
+          />
+          <div
+            className="fixed left-2 right-2 z-[1000] flex flex-col rounded-3xl bg-white shadow-[0_20px_60px_rgba(2,6,23,0.30)]"
+            style={{
+              top: "calc(env(safe-area-inset-top, 0px) + 70px)",
+              bottom: "calc(var(--ds-bottom-nav-h, 0px) + 8px)",
+            }}
+          >
+            <div className="flex items-center justify-between px-5 py-3 border-b border-slate-100 shrink-0">
+              <h2 className="text-base font-semibold text-slate-900">Filtres</h2>
+              <button
+                type="button"
+                onClick={() => setFiltersOpen(false)}
+                className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 active:scale-95"
+                aria-label="Fermer"
+                style={{ touchAction: "manipulation" }}
+              >
+                <X className="h-4 w-4 text-slate-700" />
+              </button>
+            </div>
+
+            <div className="flex-1 space-y-5 overflow-y-auto px-5 py-4">
+              {/* Note minimale */}
+              <div>
+                <div className="mb-2 text-xs font-medium text-slate-500">Note minimale</div>
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    { v: 0,   label: "Toutes" },
+                    { v: 4,   label: "4★+" },
+                    { v: 4.5, label: "4.5★+" },
+                    { v: 4.8, label: "4.8★+" },
+                  ].map((opt) => (
+                    <button
+                      key={opt.v}
+                      type="button"
+                      onClick={() => setFilterMinRating(opt.v)}
+                      className={
+                        filterMinRating === opt.v
+                          ? "rounded-full bg-[#7c3aed] px-4 py-2 text-sm font-semibold text-white"
+                          : "rounded-full bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700"
+                      }
+                      style={{ touchAction: "manipulation" }}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Prix max */}
+              <div>
+                <div className="mb-2 text-xs font-medium text-slate-500">Prix maximum</div>
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    { v: 0,   label: "Tous" },
+                    { v: 25,  label: "≤ 25 CHF" },
+                    { v: 50,  label: "≤ 50 CHF" },
+                    { v: 75,  label: "≤ 75 CHF" },
+                    { v: 100, label: "≤ 100 CHF" },
+                  ].map((opt) => (
+                    <button
+                      key={opt.v}
+                      type="button"
+                      onClick={() => setFilterMaxPrice(opt.v)}
+                      className={
+                        filterMaxPrice === opt.v
+                          ? "rounded-full bg-[#7c3aed] px-4 py-2 text-sm font-semibold text-white"
+                          : "rounded-full bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700"
+                      }
+                      style={{ touchAction: "manipulation" }}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Vérifiés uniquement */}
+              <button
+                type="button"
+                onClick={() => setFilterVerifiedOnly((v) => !v)}
+                className="flex w-full items-center justify-between rounded-2xl border border-slate-200 px-4 py-3"
+                style={{ touchAction: "manipulation" }}
+              >
+                <div className="text-left">
+                  <div className="text-sm font-semibold text-slate-900">Vérifiés uniquement</div>
+                  <div className="text-xs text-slate-500">Profils avec pièce d&apos;identité validée</div>
+                </div>
+                <div
+                  className={
+                    filterVerifiedOnly
+                      ? "relative h-6 w-11 rounded-full bg-[#7c3aed] transition"
+                      : "relative h-6 w-11 rounded-full bg-slate-200 transition"
+                  }
+                  aria-hidden="true"
+                >
+                  <div
+                    className="absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition"
+                    style={{ left: filterVerifiedOnly ? "22px" : "2px" }}
+                  />
+                </div>
+              </button>
+
+              {/* Tri */}
+              <div>
+                <div className="mb-2 text-xs font-medium text-slate-500">Trier par</div>
+                <div className="flex flex-wrap gap-2">
+                  {([
+                    { v: "default", label: "Par défaut" },
+                    { v: "rating",  label: "Mieux notés" },
+                    { v: "reviews", label: "Plus d'avis" },
+                    { v: "price",   label: "Prix croissant" },
+                  ] as const).map((opt) => (
+                    <button
+                      key={opt.v}
+                      type="button"
+                      onClick={() => setFilterSort(opt.v)}
+                      className={
+                        filterSort === opt.v
+                          ? "rounded-full bg-[#7c3aed] px-4 py-2 text-sm font-semibold text-white"
+                          : "rounded-full bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700"
+                      }
+                      style={{ touchAction: "manipulation" }}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 border-t border-slate-100 px-5 py-3 shrink-0">
+              <button
+                type="button"
+                onClick={resetFilters}
+                disabled={activeFilterCount === 0}
+                className="rounded-full border border-slate-200 px-4 py-3 text-sm font-medium text-slate-700 disabled:opacity-40"
+                style={{ touchAction: "manipulation" }}
+              >
+                Réinitialiser
+              </button>
+              <button
+                type="button"
+                onClick={() => setFiltersOpen(false)}
+                className="flex-1 rounded-full bg-[#7c3aed] py-3 text-base font-semibold text-white shadow-[0_8px_24px_rgba(124,58,237,0.35)] active:scale-[0.98]"
+                style={{ touchAction: "manipulation" }}
+              >
+                Voir {filteredSitters.length} dogsitter{filteredSitters.length > 1 ? "s" : ""}
               </button>
             </div>
           </div>
