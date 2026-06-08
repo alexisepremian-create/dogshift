@@ -89,37 +89,74 @@ for (let i = 0; i < pixelCount; i++) {
   pawAlphaBuffer[i * 4 + 3] = Math.round(255 * smoothed);
 }
 
-const logoBuffer = await sharp(pawAlphaBuffer, {
+// Combined "paw + DOGSHIFT wordmark" mark used by BOTH the native
+// LaunchScreen and the in-WebView CSS overlay so the handoff is seamless
+// — same artwork, same aspect ratio, same centered position. Founder
+// asked for "DOGSHIFT en dessous du logo".
+//
+// Geometry : 1024 wide × 1280 tall (paw 1024×1024 + 256px text strip
+// below). On a portrait iPhone after the LaunchScreen's scaleAspectFill,
+// this displays at 43vmin wide × ~54vmin tall — the CSS overlay uses
+// the same proportions so the paw lands at the same on-screen pixel.
+const MARK_WIDTH = 1024;
+const MARK_HEIGHT = 1280;
+const TEXT_STRIP_HEIGHT = MARK_HEIGHT - MARK_WIDTH; // 256
+
+// SVG wordmark — same letter-spacing (~0.22em) as <BrandLogo> so the
+// brand reads consistently from boot through to in-app. Slight upward
+// shift inside the strip (y = 130/256) so the baseline visually
+// "hangs" from the paw without too big a gap.
+const wordmarkSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="${MARK_WIDTH}" height="${TEXT_STRIP_HEIGHT}">
+  <text x="50%" y="65%"
+    font-family="Helvetica Neue, Helvetica, Arial, sans-serif"
+    font-size="140"
+    font-weight="700"
+    letter-spacing="32"
+    text-anchor="middle"
+    fill="#ffffff">DOGSHIFT</text>
+</svg>`;
+
+// Paw rendered at the FULL width of the mark — it occupies the top
+// 1024×1024 of the 1024×1280 canvas.
+const pawForMarkBuffer = await sharp(pawAlphaBuffer, {
   raw: { width: rawInfo.width, height: rawInfo.height, channels: 4 },
 })
-  .resize(LOGO_SIZE, LOGO_SIZE, {
+  .resize(MARK_WIDTH, MARK_WIDTH, {
     fit: "contain",
     background: { r: 0, g: 0, b: 0, alpha: 0 },
   })
   .png()
   .toBuffer();
 
-// Also publish the extracted paw at a CSS-friendly retina size so the
-// in-WebView splash overlay (app/globals.css) can show the EXACT same
-// silhouette as the native LaunchScreen. Without this we'd see a tiny
-// "pop" at the handoff because the SVG-rendered paw and the PNG-rendered
-// paw have subtly different anti-aliasing.
-// 1024 so the CSS overlay (43vmin on a 3x retina iPhone = ~500 device px)
-// has a >2× source — comfortable for sharp downscale. 512 was too tight on
-// the iPhone 17 Pro and produced subtle edge softening.
-const PAW_WEB_SIZE = 1024;
-const pawWebBuffer = await sharp(pawAlphaBuffer, {
-  raw: { width: rawInfo.width, height: rawInfo.height, channels: 4 },
-})
-  .resize(PAW_WEB_SIZE, PAW_WEB_SIZE, {
-    fit: "contain",
+const markBuffer = await sharp({
+  create: {
+    width: MARK_WIDTH,
+    height: MARK_HEIGHT,
+    channels: 4,
     background: { r: 0, g: 0, b: 0, alpha: 0 },
-  })
+  },
+})
+  .composite([
+    // Paw at the top
+    { input: pawForMarkBuffer, top: 0, left: 0 },
+    // DOGSHIFT below
+    { input: Buffer.from(wordmarkSvg), top: MARK_WIDTH, left: 0 },
+  ])
   .png({ compressionLevel: 9 })
   .toBuffer();
 
-await sharp(pawWebBuffer).toFile(join(root, "public/dogshift-paw-white.png"));
-console.log("✓ public/dogshift-paw-white.png");
+await sharp(markBuffer).toFile(join(root, "public/dogshift-paw-white.png"));
+console.log("✓ public/dogshift-paw-white.png (paw + DOGSHIFT)");
+
+// LaunchScreen splash — composite the SAME mark on the brand-purple
+// canvas. Slight vertical lift so the visual centre of the paw+text
+// group hits the geometric centre of the screen after scaleAspectFill.
+const MARK_RENDER_W = LOGO_SIZE; // 560
+const MARK_RENDER_H = Math.round(LOGO_SIZE * (MARK_HEIGHT / MARK_WIDTH)); // 700
+
+const markScaledForSplash = await sharp(markBuffer)
+  .resize(MARK_RENDER_W, MARK_RENDER_H)
+  .toBuffer();
 
 const splash = await sharp({
   create: {
@@ -131,7 +168,7 @@ const splash = await sharp({
 })
   .composite([
     {
-      input: logoBuffer,
+      input: markScaledForSplash,
       gravity: "center",
     },
   ])
