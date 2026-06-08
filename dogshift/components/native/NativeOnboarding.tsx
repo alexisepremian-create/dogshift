@@ -114,7 +114,7 @@ export default function NativeOnboarding() {
       style={{
         paddingTop: "env(safe-area-inset-top, 0px)",
         paddingBottom: "env(safe-area-inset-bottom, 0px)",
-        background: "#ffffff",
+        background: "linear-gradient(180deg, #f8f7ff 0%, #f1f0fb 50%, #ffffff 50%)",
       }}
       role="dialog"
       aria-modal="true"
@@ -166,12 +166,12 @@ export default function NativeOnboarding() {
                 they blend seamlessly with no visible border. */}
             <div
               className="flex items-center justify-center overflow-hidden"
-              style={{ height: "48vh", background: "#f5f0ea" }}
+              style={{ height: "48vh", background: "transparent" }}
             >
               <img
                 src={s.imgSrc}
                 alt=""
-                className="h-full w-full object-cover"
+                className="h-full w-full object-contain"
                 aria-hidden="true"
               />
             </div>
