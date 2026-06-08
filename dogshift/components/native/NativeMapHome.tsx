@@ -158,23 +158,41 @@ export default function NativeMapHome() {
   const [query] = useState("");
   const [serviceFilter, setServiceFilter] = useState<Service | null>(null);
 
-  // ── Search sheet state ──────────────────────────────────────────────────
-  // Sober bottom-sheet that slides up over the map (backdrop semi-transparent
-  // so the map stays visible). Founder feedback : "très sobre pas trop chargé
-  // qu'on voit toujours l'arrière plan".
+  // ── Search panel state ──────────────────────────────────────────────────
+  // Top-anchored panel that slides DOWN under the search bar and extends to
+  // just above the bottom nav. Founder feedback : "le pop up de recherche
+  // entier s'affiche de haut en bas juste sous la search barre c'est plus
+  // intuitif" (and the bottom-sheet had the purple submit button hidden
+  // behind the nav).
   const router = useRouter();
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchService, setSearchService] = useState<Service>("Promenade");
   const [searchLocation, setSearchLocation] = useState("");
-  const [searchDate, setSearchDate] = useState("");
+  const [searchDate, setSearchDate] = useState<string | null>(null);          // single date (Promenade/Garde)
+  const [searchDateStart, setSearchDateStart] = useState<string | null>(null); // pension range start
+  const [searchDateEnd, setSearchDateEnd] = useState<string | null>(null);     // pension range end
   const [dogPetit, setDogPetit] = useState(0);
   const [dogMoyen, setDogMoyen] = useState(1);
   const [dogGrand, setDogGrand] = useState(0);
+  const [calendarOpen, setCalendarOpen] = useState(false);
+  // Month being shown in the inline calendar.
+  const todayDateRef = useRef(new Date());
+  const [calMonth, setCalMonth] = useState(() => {
+    const d = todayDateRef.current;
+    return new Date(d.getFullYear(), d.getMonth(), 1);
+  });
+
+  const isPension = searchService === "Pension";
 
   const handleSearchSubmit = useCallback(() => {
     const params = new URLSearchParams();
     if (searchLocation.trim()) params.set("q", searchLocation.trim());
-    if (searchDate) params.set("date", searchDate);
+    if (isPension) {
+      if (searchDateStart) params.set("from", searchDateStart);
+      if (searchDateEnd) params.set("to", searchDateEnd);
+    } else if (searchDate) {
+      params.set("date", searchDate);
+    }
     params.set("service", searchService);
     const totalDogs = dogPetit + dogMoyen + dogGrand;
     if (totalDogs > 0) {
@@ -185,7 +203,33 @@ export default function NativeMapHome() {
     }
     setSearchOpen(false);
     router.push(`/sitters?${params.toString()}`);
-  }, [router, searchService, searchLocation, searchDate, dogPetit, dogMoyen, dogGrand]);
+  }, [router, isPension, searchService, searchLocation, searchDate, searchDateStart, searchDateEnd, dogPetit, dogMoyen, dogGrand]);
+
+  // Format a Date or "YYYY-MM-DD" string in fr-CH.
+  const formatDateFR = useCallback((iso: string | null) => {
+    if (!iso) return "";
+    const [y, m, d] = iso.split("-").map(Number);
+    const dt = new Date(y, (m ?? 1) - 1, d ?? 1);
+    return dt.toLocaleDateString("fr-CH", { day: "numeric", month: "long" });
+  }, []);
+
+  // Tap a day in the calendar — single-pick for Promenade/Garde, range-pick
+  // for Pension (first tap = start, second tap = end).
+  const handleDayTap = useCallback((iso: string) => {
+    if (isPension) {
+      if (!searchDateStart || (searchDateStart && searchDateEnd)) {
+        setSearchDateStart(iso);
+        setSearchDateEnd(null);
+      } else if (iso < searchDateStart) {
+        setSearchDateStart(iso);
+      } else {
+        setSearchDateEnd(iso);
+      }
+    } else {
+      setSearchDate(iso);
+      setCalendarOpen(false);
+    }
+  }, [isPension, searchDateStart, searchDateEnd]);
 
   // Fetch published sitters once on mount.
   useEffect(() => {
@@ -560,30 +604,30 @@ export default function NativeMapHome() {
         </div>
       </div>
 
-      {/* ── Sober search sheet ──────────────────────────────────────────── */}
-      {/* Bottom sheet with a semi-transparent backdrop so the map stays
-          visible behind (founder : "très sobre pas trop chargé qu'on voit
-          toujours l'arrière plan"). Inline fields, no nested floating panels —
-          just service chips, a location text input, a date input, and a
-          per-size dog counter, ending in a single purple search button. */}
+      {/* ── Top-anchored search panel ─────────────────────────────────── */}
+      {/* Slides DOWN under the search bar, ends above the bottom nav so the
+          purple submit CTA is always visible. Inline custom calendar (no
+          native iOS full-screen picker — founder : "natif ios mais faudrait
+          faire un truc plus épuré et qui s'affiche vers le bas"). Pension
+          gets a 2-tap range (arrivée → départ), other services single date. */}
       {searchOpen && (
         <>
           <button
             type="button"
             aria-label="Fermer la recherche"
             onClick={() => setSearchOpen(false)}
-            className="fixed inset-0 z-[990] bg-black/30 backdrop-blur-[2px]"
+            className="fixed inset-0 z-[990] bg-black/20 backdrop-blur-[2px]"
             style={{ touchAction: "manipulation" }}
           />
           <div
-            className="fixed left-0 right-0 bottom-0 z-[1000] rounded-t-3xl bg-white shadow-[0_-12px_40px_rgba(2,6,23,0.25)]"
-            style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
+            className="fixed left-2 right-2 z-[1000] flex flex-col overflow-hidden rounded-3xl bg-white shadow-[0_20px_60px_rgba(2,6,23,0.30)]"
+            style={{
+              top: "calc(env(safe-area-inset-top, 0px) + 70px)",
+              bottom: "calc(var(--ds-bottom-nav-h, 0px) + 8px)",
+            }}
           >
-            <div className="flex flex-col items-center pt-2 pb-1">
-              <div className="h-1.5 w-12 rounded-full bg-slate-300" />
-            </div>
-            <div className="flex items-center justify-between px-5 pb-3">
-              <h2 className="text-lg font-semibold text-slate-900">Rechercher</h2>
+            <div className="flex items-center justify-between px-5 py-3 border-b border-slate-100 shrink-0">
+              <h2 className="text-base font-semibold text-slate-900">Rechercher</h2>
               <button
                 type="button"
                 onClick={() => setSearchOpen(false)}
@@ -595,7 +639,7 @@ export default function NativeMapHome() {
               </button>
             </div>
 
-            <div className="space-y-4 px-5 pb-5">
+            <div className="flex-1 overflow-y-auto space-y-4 px-5 py-4">
               {/* Service chips */}
               <div className="flex gap-2">
                 {ALL_SERVICES.map((s) => {
@@ -604,7 +648,12 @@ export default function NativeMapHome() {
                     <button
                       key={s}
                       type="button"
-                      onClick={() => setSearchService(s)}
+                      onClick={() => {
+                        setSearchService(s);
+                        // Reset dates on service change so single ↔ range never overlap
+                        if (s === "Pension") { setSearchDate(null); }
+                        else { setSearchDateStart(null); setSearchDateEnd(null); }
+                      }}
                       className={
                         active
                           ? "flex-1 rounded-full bg-[#7c3aed] py-2 text-sm font-semibold text-white"
@@ -618,12 +667,14 @@ export default function NativeMapHome() {
                 })}
               </div>
 
-              {/* Lieu */}
-              <label className="block">
-                <span className="mb-1 flex items-center gap-1.5 text-xs font-medium text-slate-500">
+              {/* Lieu — no <label> wrapper because WKWebView sometimes
+                  swallows the focus event when the input is inside a label
+                  in a fixed-position container, which blocks the keyboard. */}
+              <div>
+                <div className="mb-1 flex items-center gap-1.5 text-xs font-medium text-slate-500">
                   <MapPin className="h-3.5 w-3.5" />
                   Lieu
-                </span>
+                </div>
                 <input
                   type="text"
                   value={searchLocation}
@@ -634,26 +685,46 @@ export default function NativeMapHome() {
                   inputMode="text"
                   enterKeyHint="next"
                 />
-              </label>
+              </div>
 
-              {/* Quand */}
-              <label className="block">
-                <span className="mb-1 flex items-center gap-1.5 text-xs font-medium text-slate-500">
+              {/* Quand — custom inline calendar, no native iOS picker */}
+              <div>
+                <div className="mb-1 flex items-center gap-1.5 text-xs font-medium text-slate-500">
                   <Calendar className="h-3.5 w-3.5" />
                   Quand
-                </span>
-                <input
-                  type="date"
-                  value={searchDate}
-                  onChange={(e) => setSearchDate(e.target.value)}
-                  className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-base text-slate-900 outline-none focus:border-[#7c3aed]"
-                  min={new Date().toISOString().slice(0, 10)}
-                />
-              </label>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setCalendarOpen((v) => !v)}
+                  className="flex w-full items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left text-base text-slate-900 active:scale-[0.99]"
+                  style={{ touchAction: "manipulation" }}
+                >
+                  <span className={(isPension ? !searchDateStart : !searchDate) ? "text-slate-400" : ""}>
+                    {isPension
+                      ? (searchDateStart
+                          ? `${formatDateFR(searchDateStart)}${searchDateEnd ? ` → ${formatDateFR(searchDateEnd)}` : " → ?"}`
+                          : "Arrivée → Départ")
+                      : (searchDate ? formatDateFR(searchDate) : "Choisir une date")}
+                  </span>
+                  <Calendar className="h-4 w-4 text-slate-400" />
+                </button>
+
+                {calendarOpen && (
+                  <InlineCalendar
+                    month={calMonth}
+                    onMonthChange={setCalMonth}
+                    selectedSingle={isPension ? null : searchDate}
+                    selectedStart={isPension ? searchDateStart : null}
+                    selectedEnd={isPension ? searchDateEnd : null}
+                    rangeMode={isPension}
+                    onDayTap={handleDayTap}
+                  />
+                )}
+              </div>
 
               {/* Chiens */}
               <div>
-                <span className="mb-2 block text-xs font-medium text-slate-500">Chiens</span>
+                <div className="mb-2 text-xs font-medium text-slate-500">Chiens</div>
                 <div className="space-y-2">
                   {([
                     { label: "Petit", sub: "< 10 kg", count: dogPetit, set: setDogPetit },
@@ -691,12 +762,14 @@ export default function NativeMapHome() {
                   ))}
                 </div>
               </div>
+            </div>
 
-              {/* Submit */}
+            {/* Submit — anchored at panel bottom, always visible */}
+            <div className="border-t border-slate-100 px-5 py-3 shrink-0">
               <button
                 type="button"
                 onClick={handleSearchSubmit}
-                className="mt-2 flex w-full items-center justify-center gap-2 rounded-full bg-[#7c3aed] py-3.5 text-base font-semibold text-white shadow-[0_8px_24px_rgba(124,58,237,0.35)] active:scale-[0.98]"
+                className="flex w-full items-center justify-center gap-2 rounded-full bg-[#7c3aed] py-3 text-base font-semibold text-white shadow-[0_8px_24px_rgba(124,58,237,0.35)] active:scale-[0.98]"
                 style={{ touchAction: "manipulation" }}
               >
                 <Search className="h-4 w-4" />
@@ -706,6 +779,119 @@ export default function NativeMapHome() {
           </div>
         </>
       )}
+    </div>
+  );
+}
+
+// ── InlineCalendar ────────────────────────────────────────────────────────
+// Compact month-view calendar with prev/next nav. Supports single-day select
+// (default) and range select (`rangeMode={true}` for Pension). Past days
+// disabled. Same brand purple (#7c3aed) as the rest of the panel.
+function InlineCalendar({
+  month,
+  onMonthChange,
+  selectedSingle,
+  selectedStart,
+  selectedEnd,
+  rangeMode,
+  onDayTap,
+}: {
+  month: Date;
+  onMonthChange: (d: Date) => void;
+  selectedSingle: string | null;
+  selectedStart: string | null;
+  selectedEnd: string | null;
+  rangeMode: boolean;
+  onDayTap: (iso: string) => void;
+}) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const todayIso = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+
+  const y = month.getFullYear();
+  const m = month.getMonth();
+  const firstOfMonth = new Date(y, m, 1);
+  const daysInMonth = new Date(y, m + 1, 0).getDate();
+  // Mon-first (1) … Sun (0 → 7). JS getDay returns 0=Sun. Shift to Mon-first.
+  const startWeekday = (firstOfMonth.getDay() + 6) % 7;
+
+  const monthLabel = month.toLocaleDateString("fr-CH", { month: "long", year: "numeric" });
+  const cells: (string | null)[] = [];
+  for (let i = 0; i < startWeekday; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) {
+    cells.push(`${y}-${String(m + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`);
+  }
+  while (cells.length % 7 !== 0) cells.push(null);
+
+  const inRange = (iso: string) =>
+    rangeMode && selectedStart && selectedEnd && iso > selectedStart && iso < selectedEnd;
+
+  const canGoPrev = !(y === today.getFullYear() && m === today.getMonth());
+
+  return (
+    <div className="mt-2 rounded-2xl border border-slate-200 bg-white p-3">
+      <div className="mb-2 flex items-center justify-between">
+        <button
+          type="button"
+          onClick={() => canGoPrev && onMonthChange(new Date(y, m - 1, 1))}
+          disabled={!canGoPrev}
+          className="flex h-8 w-8 items-center justify-center rounded-full text-slate-700 disabled:text-slate-300 active:scale-95"
+          aria-label="Mois précédent"
+          style={{ touchAction: "manipulation" }}
+        >
+          ‹
+        </button>
+        <div className="text-sm font-semibold capitalize text-slate-900">{monthLabel}</div>
+        <button
+          type="button"
+          onClick={() => onMonthChange(new Date(y, m + 1, 1))}
+          className="flex h-8 w-8 items-center justify-center rounded-full text-slate-700 active:scale-95"
+          aria-label="Mois suivant"
+          style={{ touchAction: "manipulation" }}
+        >
+          ›
+        </button>
+      </div>
+
+      <div className="mb-1 grid grid-cols-7 text-center text-[10px] font-medium uppercase tracking-wide text-slate-400">
+        {["L", "M", "M", "J", "V", "S", "D"].map((d, i) => (<div key={i}>{d}</div>))}
+      </div>
+
+      <div className="grid grid-cols-7 gap-1">
+        {cells.map((iso, i) => {
+          if (!iso) return <div key={i} />;
+          const past = iso < todayIso;
+          const isToday = iso === todayIso;
+          const isSelected =
+            (selectedSingle && iso === selectedSingle) ||
+            (rangeMode && (iso === selectedStart || iso === selectedEnd));
+          const isInRange = inRange(iso);
+          const day = Number(iso.slice(-2));
+          return (
+            <button
+              key={i}
+              type="button"
+              disabled={past}
+              onClick={() => onDayTap(iso)}
+              style={{ touchAction: "manipulation" }}
+              className={[
+                "flex h-9 items-center justify-center rounded-full text-sm transition",
+                past
+                  ? "text-slate-300"
+                  : isSelected
+                    ? "bg-[#7c3aed] font-semibold text-white"
+                    : isInRange
+                      ? "bg-[#7c3aed]/15 text-slate-900"
+                      : isToday
+                        ? "font-semibold text-[#7c3aed]"
+                        : "text-slate-700 active:bg-slate-100",
+              ].join(" ")}
+            >
+              {day}
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }
