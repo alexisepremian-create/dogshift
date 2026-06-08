@@ -40,10 +40,20 @@ import sharp from "sharp";
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 
 const CANVAS_SIZE = 2732;
-const LOGO_SIZE = 900;
+// LOGO_SIZE picked so the LaunchScreen paw renders at the SAME on-screen
+// pixel size as the in-WebView CSS overlay (`43vmin` on app/globals.css).
+// On a portrait iPhone (390×844 CSS px) with scaleAspectFill, the
+// 2732×2732 canvas scales by 844/2732 = 0.309. 43vmin = 167 CSS px →
+// 167 / 0.309 = 540 px on the canvas. Going slightly bigger (560) absorbs
+// rounding so the handoff feels seamless, not a "shrink".
+const LOGO_SIZE = 560;
 const BG_HEX = "#7c3aed";
 
-const logoSrc = join(root, "public/apple-touch-icon.png");
+// Source must be a HIGH-RES master so the upscale to LOGO_SIZE / PAW_WEB_SIZE
+// stays crisp. apple-touch-icon.png is only 180×180 (iOS spec) — using it
+// here produced visible pixelation at boot. The 1024 AppIcon variant is the
+// largest clean PNG we ship and is the exact same artwork.
+const logoSrc = join(root, "ios/App/App/Assets.xcassets/AppIcon.appiconset/icon-1024.png");
 
 // Extract the white paw silhouette out of the iOS home-screen icon so it can
 // be composited on the brand-purple #7c3aed canvas without the icon's own
@@ -94,7 +104,10 @@ const logoBuffer = await sharp(pawAlphaBuffer, {
 // silhouette as the native LaunchScreen. Without this we'd see a tiny
 // "pop" at the handoff because the SVG-rendered paw and the PNG-rendered
 // paw have subtly different anti-aliasing.
-const PAW_WEB_SIZE = 512;
+// 1024 so the CSS overlay (43vmin on a 3x retina iPhone = ~500 device px)
+// has a >2× source — comfortable for sharp downscale. 512 was too tight on
+// the iPhone 17 Pro and produced subtle edge softening.
+const PAW_WEB_SIZE = 1024;
 const pawWebBuffer = await sharp(pawAlphaBuffer, {
   raw: { width: rawInfo.width, height: rawInfo.height, channels: 4 },
 })
