@@ -2,7 +2,7 @@
 /* eslint-disable react-hooks/set-state-in-effect, @next/next/no-img-element */
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 
 import { useIsNativeApp } from "@/lib/native/useIsNativeApp";
 
@@ -59,9 +59,15 @@ const SLIDES: readonly Slide[] = [
 export default function NativeOnboarding() {
   const isNative = useIsNativeApp();
   const router = useRouter();
+  const pathname = usePathname();
   const [shouldShow, setShouldShow] = useState(false);
   const [index, setIndex] = useState(0);
+  // The route we're navigating to on exit. While set, the overlay stays mounted
+  // (fully opaque white) until the URL actually commits to that route — so the
+  // loading skeleton of the page underneath is never revealed in the gap.
+  const [leavingTo, setLeavingTo] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const settleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (!isNative) return;
@@ -73,6 +79,25 @@ export default function NativeOnboarding() {
     setShouldShow(true);
   }, [isNative]);
 
+  // Dismiss the overlay only once the destination route has committed (or after
+  // a safety fallback), so we hand off straight from the white overlay to the
+  // white auth page — the underlying skeleton never flashes.
+  useEffect(() => {
+    if (!leavingTo) return;
+    if (pathname === leavingTo) {
+      setShouldShow(false);
+      return;
+    }
+    const fallback = setTimeout(() => setShouldShow(false), 1200);
+    return () => clearTimeout(fallback);
+  }, [leavingTo, pathname]);
+
+  useEffect(() => {
+    return () => {
+      if (settleTimer.current) clearTimeout(settleTimer.current);
+    };
+  }, []);
+
   const markSeen = useCallback(() => {
     try {
       window.localStorage.setItem(STORAGE_KEY, "1");
@@ -83,13 +108,13 @@ export default function NativeOnboarding() {
 
   const goSignup = useCallback(() => {
     markSeen();
-    setShouldShow(false);
+    setLeavingTo("/signup");
     router.push("/signup");
   }, [markSeen, router]);
 
   const goLogin = useCallback(() => {
     markSeen();
-    setShouldShow(false);
+    setLeavingTo("/login");
     router.push("/login");
   }, [markSeen, router]);
 
@@ -149,10 +174,16 @@ export default function NativeOnboarding() {
         ref={scrollRef}
         className="flex flex-1 snap-x snap-mandatory overflow-x-auto scroll-smooth"
         style={{ scrollbarWidth: "none", WebkitOverflowScrolling: "touch" }}
-        onScroll={(e) => {
-          const x = e.currentTarget.scrollLeft;
-          const w = e.currentTarget.clientWidth;
-          setIndex(Math.round(x / w));
+        onScroll={() => {
+          // Debounced: only update the active slide once scrolling settles.
+          // Updating live (per scroll event) made the CTA label flip-flop
+          // mid-swipe ("Continuer" ↔ "Créer mon compte") between slide 2 and 3.
+          if (settleTimer.current) clearTimeout(settleTimer.current);
+          settleTimer.current = setTimeout(() => {
+            const el = scrollRef.current;
+            if (!el) return;
+            setIndex(Math.round(el.scrollLeft / el.clientWidth));
+          }, 90);
         }}
       >
         {SLIDES.map((s, i) => (

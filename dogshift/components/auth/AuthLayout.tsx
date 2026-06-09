@@ -11,7 +11,7 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
       data-auth-layout=""
       className="flex min-h-[100dvh] flex-col justify-center overflow-hidden bg-white text-slate-900"
     >
-      <div className="mx-auto w-full max-w-[480px] px-6 py-10">
+      <div className="ds-auth-enter mx-auto w-full max-w-[480px] px-6 py-10">
         <div className="flex flex-col items-center">
           <BrandLogo href="/" priority />
 
