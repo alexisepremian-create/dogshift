@@ -161,17 +161,15 @@ export default function NativeOnboarding() {
             id={`ds-ob-slide-${i}`}
             className="flex w-full flex-shrink-0 snap-center flex-col"
           >
-            {/* Illustration area — edge-to-edge, image fills the space.
-                Background matches the images' own beige (#f5f0ea) so
-                they blend seamlessly with no visible border. */}
+            {/* Illustration area — edge-to-edge, no borders */}
             <div
-              className="flex items-center justify-center overflow-hidden"
-              style={{ height: "48vh", background: "transparent" }}
+              className="overflow-hidden"
+              style={{ height: "48vh" }}
             >
               <img
                 src={s.imgSrc}
                 alt=""
-                className="h-full w-full object-contain"
+                className="h-full w-full object-cover"
                 aria-hidden="true"
               />
             </div>
