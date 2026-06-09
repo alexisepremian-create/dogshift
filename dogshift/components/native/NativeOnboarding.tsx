@@ -2,9 +2,11 @@
 /* eslint-disable react-hooks/set-state-in-effect, @next/next/no-img-element */
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useRouter, usePathname } from "next/navigation";
+import { useSession } from "next-auth/react";
+import { X } from "lucide-react";
 
 import { useIsNativeApp } from "@/lib/native/useIsNativeApp";
+import AuthFlow from "@/components/auth/AuthFlow";
 
 const STORAGE_KEY = "ds_native_onboarding_v2";
 
@@ -58,14 +60,14 @@ const SLIDES: readonly Slide[] = [
  */
 export default function NativeOnboarding() {
   const isNative = useIsNativeApp();
-  const router = useRouter();
-  const pathname = usePathname();
+  const { status } = useSession();
   const [shouldShow, setShouldShow] = useState(false);
   const [index, setIndex] = useState(0);
-  // The route we're navigating to on exit. While set, the overlay stays mounted
-  // (fully opaque white) until the URL actually commits to that route — so the
-  // loading skeleton of the page underneath is never revealed in the gap.
-  const [leavingTo, setLeavingTo] = useState<string | null>(null);
+  // Auth bottom-sheet (Airbnb-style). Opening it never navigates — AuthFlow is
+  // rendered in-place over the onboarding's own white background, so the page
+  // underneath (and its loading skeleton) is never revealed.
+  const [authOpen, setAuthOpen] = useState(false);
+  const [sheetRaised, setSheetRaised] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const settleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -78,19 +80,6 @@ export default function NativeOnboarding() {
     }
     setShouldShow(true);
   }, [isNative]);
-
-  // Dismiss the overlay only once the destination route has committed (or after
-  // a safety fallback), so we hand off straight from the white overlay to the
-  // white auth page — the underlying skeleton never flashes.
-  useEffect(() => {
-    if (!leavingTo) return;
-    if (pathname === leavingTo) {
-      setShouldShow(false);
-      return;
-    }
-    const fallback = setTimeout(() => setShouldShow(false), 1200);
-    return () => clearTimeout(fallback);
-  }, [leavingTo, pathname]);
 
   useEffect(() => {
     return () => {
@@ -106,21 +95,36 @@ export default function NativeOnboarding() {
     }
   }, []);
 
-  const goSignup = useCallback(() => {
+  // Open the auth sheet. If the user is somehow already signed in (e.g. a
+  // returning user on a fresh install), skip auth and drop straight into the app.
+  const openAuth = useCallback(() => {
     markSeen();
-    setLeavingTo("/signup");
-    router.push("/signup");
-  }, [markSeen, router]);
+    if (status === "authenticated") {
+      setShouldShow(false);
+      return;
+    }
+    setAuthOpen(true);
+    requestAnimationFrame(() => setSheetRaised(true));
+  }, [markSeen, status]);
 
-  const goLogin = useCallback(() => {
-    markSeen();
-    setLeavingTo("/login");
-    router.push("/login");
-  }, [markSeen, router]);
+  const closeAuth = useCallback(() => {
+    setSheetRaised(false);
+    settleTimer.current = setTimeout(() => setAuthOpen(false), 320);
+  }, []);
+
+  // Once login/signup succeeds inside the sheet, the session flips to
+  // "authenticated" — tear the whole overlay down so the app (or /post-login
+  // redirect) shows through.
+  useEffect(() => {
+    if (authOpen && status === "authenticated") {
+      markSeen();
+      setShouldShow(false);
+    }
+  }, [authOpen, status, markSeen]);
 
   function next() {
     if (index >= SLIDES.length - 1) {
-      goSignup();
+      openAuth();
       return;
     }
     const newIndex = index + 1;
@@ -161,7 +165,7 @@ export default function NativeOnboarding() {
         </div>
         <button
           type="button"
-          onClick={goLogin}
+          onClick={openAuth}
           style={{ touchAction: "manipulation" }}
           className="px-2 py-1.5 text-sm font-medium text-slate-400 active:scale-95"
         >
@@ -273,7 +277,7 @@ export default function NativeOnboarding() {
           {"Vous avez déjà un compte ? "}
           <button
             type="button"
-            onClick={goLogin}
+            onClick={openAuth}
             className="font-semibold text-slate-900 underline underline-offset-2"
             style={{ touchAction: "manipulation" }}
           >
@@ -281,6 +285,51 @@ export default function NativeOnboarding() {
           </button>
         </p>
       </div>
+
+      {/* ── Auth bottom-sheet (slides up over the white onboarding) ── */}
+      {authOpen ? (
+        <div className="absolute inset-0 z-[10] flex flex-col justify-end">
+          {/* Dim backdrop — taps close the sheet. Sits over the opaque white
+              onboarding, so there is never a page skeleton behind it. */}
+          <div
+            className="absolute inset-0 bg-black/40 transition-opacity duration-300"
+            style={{ opacity: sheetRaised ? 1 : 0 }}
+            onClick={closeAuth}
+          />
+
+          {/* Sheet */}
+          <div
+            className="relative w-full rounded-t-[28px] bg-white px-6 pt-3 shadow-2xl transition-transform duration-300 ease-out"
+            style={{
+              transform: sheetRaised ? "translateY(0)" : "translateY(100%)",
+              maxHeight: "94dvh",
+              overflowY: "auto",
+              WebkitOverflowScrolling: "touch",
+              paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 28px)",
+            }}
+          >
+            {/* Grab handle */}
+            <div className="mx-auto mb-2 h-1 w-10 rounded-full bg-slate-200" aria-hidden="true" />
+
+            {/* Close */}
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={closeAuth}
+                aria-label="Fermer"
+                style={{ touchAction: "manipulation" }}
+                className="-mr-1 flex h-9 w-9 items-center justify-center rounded-full text-slate-500 active:scale-95"
+              >
+                <X className="h-5 w-5" aria-hidden />
+              </button>
+            </div>
+
+            <div className="mx-auto w-full max-w-[420px] pb-2">
+              <AuthFlow />
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
