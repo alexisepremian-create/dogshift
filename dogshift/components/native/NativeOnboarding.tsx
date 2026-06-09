@@ -12,9 +12,9 @@ const STORAGE_KEY = "ds_native_onboarding_v2";
 // Illustration images — custom artwork placed in /public by the founder.
 // ---------------------------------------------------------------------------
 const ILLUSTRATION_SRCS = [
-  "/app.png",    // Person walking a happy dog
-  "/app-2.png",  // Dog + shield/checkmark (verified)
-  "/app-3.png",  // Hand holding phone with booking UI
+  "/app-2.png",  // Slide 1 — Le concept
+  "/app-3.png",  // Slide 2 — La confiance
+  "/app.png",    // Slide 3 — La réservation
 ] as const;
 
 // ---------------------------------------------------------------------------
