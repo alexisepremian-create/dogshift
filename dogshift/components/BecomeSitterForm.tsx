@@ -103,7 +103,7 @@ export default function BecomeSitterForm() {
    * so the rest of the multi-step form can call session-gated APIs (e.g.
    * /api/become-sitter/apply) without bouncing the user to /signup.
    *
-   * Mirrors the canonical flow in components/auth/SignUpForm.tsx:
+   * Mirrors the canonical flow in components/auth/AuthFlow.tsx:
    *   1. POST /api/auth/register — bcrypt password, sends verify-email link
    *   2. signIn("credentials", { redirect: false }) — establishes the session
    *

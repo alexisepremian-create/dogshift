@@ -2,10 +2,10 @@
 
 import { useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useSession, signOut } from "next-auth/react";
+import { useSession } from "next-auth/react";
 
 import AuthLayout from "@/components/auth/AuthLayout";
-import SignUpForm from "@/components/auth/SignUpForm";
+import AuthFlow from "@/components/auth/AuthFlow";
 import { useCanonicalDogshiftHostRedirect } from "@/lib/url/useCanonicalDogshiftHost";
 
 export default function SignUpPage() {
@@ -29,7 +29,7 @@ export default function SignUpPage() {
 
   return (
     <AuthLayout>
-      <SignUpForm />
+      <AuthFlow />
     </AuthLayout>
   );
 }
