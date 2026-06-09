@@ -114,7 +114,7 @@ export default function NativeOnboarding() {
       style={{
         paddingTop: "env(safe-area-inset-top, 0px)",
         paddingBottom: "env(safe-area-inset-bottom, 0px)",
-        background: "linear-gradient(180deg, #f8f7ff 0%, #f1f0fb 50%, #ffffff 50%)",
+        background: "#ffffff",
       }}
       role="dialog"
       aria-modal="true"
