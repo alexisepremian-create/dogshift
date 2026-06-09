@@ -335,7 +335,6 @@ export default function AuthFlow() {
                   required
                   className={`mt-2 ${INPUT_CLASS}`}
                   placeholder="toi@exemple.com"
-                  autoFocus
                 />
               </div>
 
@@ -388,7 +387,6 @@ export default function AuthFlow() {
                   required
                   className={`${INPUT_CLASS} pr-12`}
                   placeholder="••••••••"
-                  autoFocus
                 />
                 <button
                   type="button"
@@ -450,7 +448,6 @@ export default function AuthFlow() {
                 className={`mt-2 ${INPUT_CLASS}`}
                 placeholder="Alex"
                 maxLength={80}
-                autoFocus
               />
             </div>
 
