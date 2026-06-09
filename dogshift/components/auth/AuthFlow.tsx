@@ -30,6 +30,7 @@ import Link from "next/link";
 
 import { reportApiError } from "@/lib/observability/reportApiError";
 import { decideAuthStep, type AuthStep } from "@/lib/auth/decideAuthStep";
+import { useIsNativeApp } from "@/lib/native/useIsNativeApp";
 
 function normalizeEmail(input: string) {
   return input.replace(/\s+/g, "").trim().toLowerCase();
@@ -71,10 +72,63 @@ export default function AuthFlow() {
   const [error, setError] = useState<string | null>(null);
   const [autoGoogleStarted, setAutoGoogleStarted] = useState(false);
 
+  const isNative = useIsNativeApp();
   const busy = checking || loading || oauthInFlight;
+
+  // Native Google Sign-In. Google blocks OAuth in embedded WebViews
+  // (`disallowed_useragent`), so inside the Capacitor app we use the native SDK
+  // (@capgo/capacitor-social-login) to get a Google ID token, then bridge it to
+  // the "google-native" Auth.js provider which verifies it server-side.
+  async function handleGoogleNative() {
+    setError(null);
+    setOauthInFlight(true);
+    try {
+      const { SocialLogin } = await import("@capgo/capacitor-social-login");
+      await SocialLogin.initialize({
+        google: {
+          iOSClientId: process.env.NEXT_PUBLIC_GOOGLE_IOS_CLIENT_ID,
+          iOSServerClientId: process.env.NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+        },
+      });
+      const res = await SocialLogin.login({
+        provider: "google",
+        options: { scopes: ["email", "profile"] },
+      });
+      const idToken = (res?.result as { idToken?: string | null } | undefined)?.idToken ?? null;
+      if (!idToken) {
+        setError("Connexion Google impossible. Réessaie.");
+        setOauthInFlight(false);
+        return;
+      }
+      const signRes = await signIn("google-native", { idToken, redirect: false });
+      if (!signRes || signRes.error) {
+        setError("Connexion Google impossible. Réessaie.");
+        setOauthInFlight(false);
+        return;
+      }
+      router.replace(callbackUrl);
+    } catch (err) {
+      // User dismissed the Google sheet → not an error worth surfacing loudly.
+      const msg = err instanceof Error ? err.message : String(err);
+      if (!/cancel|dismiss/i.test(msg)) {
+        reportApiError({
+          kind: "upstream_error",
+          code: "GOOGLE_NATIVE_FAILED",
+          route: "auth.flow.google-native",
+          extra: { message: msg },
+        });
+        setError("Connexion Google impossible. Réessaie dans un instant.");
+      }
+      setOauthInFlight(false);
+    }
+  }
 
   async function handleGoogle() {
     if (oauthInFlight) return;
+    if (isNative) {
+      await handleGoogleNative();
+      return;
+    }
     setError(null);
     setOauthInFlight(true);
     try {
