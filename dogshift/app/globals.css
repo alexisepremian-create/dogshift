@@ -389,6 +389,28 @@ body[data-native="true"] [data-auth-footer] {
   display: none;
 }
 
+/* Slide-up entrance for the auth card in the native shell. The onboarding
+   overlay hands off straight to the white auth page, then the card slides up
+   into place — replaces the old loading-skeleton flash with a clean motion. */
+@keyframes dsAuthSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(28px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+body[data-native="true"] .ds-auth-enter {
+  animation: dsAuthSlideUp 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  body[data-native="true"] .ds-auth-enter {
+    animation: none;
+  }
+}
+
 /* Hide the layout chrome (header + footer) while a navigation is in
    progress. Three orthogonal triggers — any one is enough:
      - data-navigating: set on click, cleared when the controller hands off
