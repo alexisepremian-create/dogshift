@@ -11,6 +11,7 @@
  */
 import test from "node:test";
 import assert from "node:assert/strict";
+import type { TokenPayload } from "google-auth-library";
 
 import { validateGooglePayload } from "../../lib/auth/verifyGoogleIdToken.ts";
 
@@ -18,7 +19,9 @@ const WEB = "web-client-id.apps.googleusercontent.com";
 const IOS = "ios-client-id.apps.googleusercontent.com";
 const AUD = [WEB, IOS];
 
-function base() {
+// Build a Google ID-token payload. Cast to TokenPayload since the fixtures
+// intentionally omit/override fields to exercise the validation branches.
+function payload(overrides: Record<string, unknown> = {}): TokenPayload {
   return {
     iss: "https://accounts.google.com",
     aud: WEB,
@@ -27,11 +30,14 @@ function base() {
     email_verified: true,
     name: "Alex Doe",
     picture: "https://example.com/a.png",
-  };
+    iat: 0,
+    exp: 0,
+    ...overrides,
+  } as TokenPayload;
 }
 
 test("valid payload → normalized identity (email lowercased)", () => {
-  const id = validateGooglePayload(base(), AUD);
+  const id = validateGooglePayload(payload(), AUD);
   assert.deepEqual(id, {
     email: "alex@example.com",
     name: "Alex Doe",
@@ -41,32 +47,32 @@ test("valid payload → normalized identity (email lowercased)", () => {
 });
 
 test("accepts the iOS audience too", () => {
-  const id = validateGooglePayload({ ...base(), aud: IOS }, AUD);
+  const id = validateGooglePayload(payload({ aud: IOS }), AUD);
   assert.equal(id?.email, "alex@example.com");
 });
 
 test("rejects a foreign audience", () => {
-  assert.equal(validateGooglePayload({ ...base(), aud: "someone-else" }, AUD), null);
+  assert.equal(validateGooglePayload(payload({ aud: "someone-else" }), AUD), null);
 });
 
 test("rejects a non-Google issuer", () => {
-  assert.equal(validateGooglePayload({ ...base(), iss: "evil.com" }, AUD), null);
+  assert.equal(validateGooglePayload(payload({ iss: "evil.com" }), AUD), null);
 });
 
 test("rejects an unverified email", () => {
-  assert.equal(validateGooglePayload({ ...base(), email_verified: false }, AUD), null);
+  assert.equal(validateGooglePayload(payload({ email_verified: false }), AUD), null);
 });
 
 test("rejects a missing email", () => {
-  assert.equal(validateGooglePayload({ ...base(), email: undefined }, AUD), null);
+  assert.equal(validateGooglePayload(payload({ email: undefined }), AUD), null);
 });
 
 test("rejects a missing sub", () => {
-  assert.equal(validateGooglePayload({ ...base(), sub: undefined }, AUD), null);
+  assert.equal(validateGooglePayload(payload({ sub: undefined }), AUD), null);
 });
 
 test("rejects when no allowed audiences are configured", () => {
-  assert.equal(validateGooglePayload(base(), []), null);
+  assert.equal(validateGooglePayload(payload(), []), null);
 });
 
 test("rejects a null payload", () => {
