@@ -32,6 +32,7 @@ import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 
 import { prisma } from "@/lib/prisma";
+import { verifyGoogleIdToken } from "@/lib/auth/verifyGoogleIdToken";
 
 function normalizeEmail(email: string): string {
   return email.replace(/\s+/g, "+").trim().toLowerCase();
@@ -69,6 +70,57 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
           }),
         ]
       : []),
+    // Native Google Sign-In bridge. The iOS app can't use the redirect-based
+    // Google provider (Google blocks OAuth in embedded WebViews —
+    // `disallowed_useragent`), so it signs in with the native SDK
+    // (@capgo/capacitor-social-login), obtains a Google ID token, and posts it
+    // here. We verify the token server-side and upsert the user — same linking
+    // semantics as the web Google provider (link by email, default OWNER).
+    Credentials({
+      id: "google-native",
+      name: "Google (native)",
+      credentials: {
+        idToken: { label: "Google ID token", type: "text" },
+      },
+      async authorize(creds) {
+        const idToken = String(creds?.idToken ?? "");
+        if (!idToken) return null;
+
+        const identity = await verifyGoogleIdToken(idToken).catch(() => null);
+        if (!identity) return null;
+
+        const email = identity.email;
+        let user = await prisma.user.findUnique({ where: { email } });
+        if (!user) {
+          user = await prisma.user.create({
+            data: {
+              email,
+              name: identity.name,
+              image: identity.picture,
+              role: "OWNER",
+              emailVerified: new Date(),
+            },
+          });
+        } else if (!user.emailVerified) {
+          // A verified Google email proves ownership — mark it verified.
+          user = await prisma.user.update({
+            where: { id: user.id },
+            data: {
+              emailVerified: new Date(),
+              ...(user.name ? {} : { name: identity.name }),
+              ...(user.image ? {} : { image: identity.picture }),
+            },
+          });
+        }
+
+        return {
+          id: user.id,
+          email: user.email,
+          name: user.name ?? undefined,
+          image: user.image ?? undefined,
+        };
+      },
+    }),
     Credentials({
       name: "Credentials",
       credentials: {
