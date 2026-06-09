@@ -25,10 +25,6 @@ const config: CapacitorConfig = {
   server: {
     url: "https://www.dogshift.ch",
     cleartext: false,
-    // Append "DogShiftApp/Capacitor" to the WKWebView User-Agent so
-    // the Cloudflare WAF skip rule (UA contains "Capacitor") matches
-    // and the bot challenge page is never shown inside the app.
-    appendUserAgent: "DogShiftApp/Capacitor",
     // Allow our domain + Stripe checkout external windows.
     allowNavigation: [
       "www.dogshift.ch",
