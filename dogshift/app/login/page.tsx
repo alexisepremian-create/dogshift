@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
 
 import AuthLayout from "@/components/auth/AuthLayout";
-import LoginForm from "@/components/auth/LoginForm";
+import AuthFlow from "@/components/auth/AuthFlow";
 import { consumeSignoutHandoff } from "@/lib/auth/signoutHandoff";
 import { useCanonicalDogshiftHostRedirect } from "@/lib/url/useCanonicalDogshiftHost";
 
@@ -192,7 +192,7 @@ export default function LoginPage() {
       {isLoaded && isSignedIn && forceMode && alreadySignedInOnLoad.current === true ? (
         <ForceSignOut />
       ) : (
-        <LoginForm />
+        <AuthFlow />
       )}
     </AuthLayout>
   );
