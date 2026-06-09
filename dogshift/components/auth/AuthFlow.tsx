@@ -84,10 +84,15 @@ export default function AuthFlow() {
     setOauthInFlight(true);
     try {
       const { SocialLogin } = await import("@capgo/capacitor-social-login");
+      // Trim defensively: a trailing space/newline pasted into the env var makes
+      // the SDK derive a callback scheme that doesn't match the (clean) one in
+      // Info.plist → "Your app is missing support for the following URL schemes".
+      const iosClientId = (process.env.NEXT_PUBLIC_GOOGLE_IOS_CLIENT_ID ?? "").trim();
+      const webClientId = (process.env.NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID ?? "").trim();
       await SocialLogin.initialize({
         google: {
-          iOSClientId: process.env.NEXT_PUBLIC_GOOGLE_IOS_CLIENT_ID,
-          iOSServerClientId: process.env.NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+          iOSClientId: iosClientId || undefined,
+          iOSServerClientId: webClientId || undefined,
         },
       });
       const res = await SocialLogin.login({
