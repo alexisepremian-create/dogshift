@@ -45,5 +45,16 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
+	<!-- Google Sign-In (native) — the REVERSED_CLIENT_ID of the iOS OAuth client
+	     (ch.dogshift.app). Lets the Google SDK return to the app after auth. -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.481452223716-0l7ati6iliqqu9sti4dmgfikdikrn0jn</string>
+			</array>
+		</dict>
+	</array>
 </dict>
 </plist>
