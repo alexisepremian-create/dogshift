@@ -126,12 +126,14 @@ export default async function RootLayout({
             layers including modals + the Capacitor native bottom nav. */}
         <ImpersonationBanner />
 
-        {/* 3-screen welcome shown only the first time the Capacitor app is
-            launched. Self-dismisses via localStorage; web users never see it. */}
-        <NativeOnboarding />
-
         <Suspense fallback={null}>
           <SessionAuthProvider>
+            {/* 3-screen welcome shown only the first time the Capacitor app is
+                launched. Self-dismisses via localStorage; web users never see
+                it. Lives INSIDE SessionAuthProvider because its auth bottom-sheet
+                renders <AuthFlow /> (useSession + useSearchParams) in-place. */}
+            <NativeOnboarding />
+
             {children}
 
             {/* Native-only bottom tab bar. Renders only inside the Capacitor
