@@ -6,12 +6,10 @@ import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import {
   House,
-  Search,
   Heart,
   Calendar,
   MessageCircle,
   Inbox,
-  LogIn,
   Info,
   HelpCircle,
   ScrollText,
@@ -95,6 +93,12 @@ export default function GlobalNativeBottomNav() {
   const role = (session?.user as { role?: string } | undefined)?.role ?? null;
   const isAuthed = status === "authenticated";
 
+  // The native app is auth-gated: an unauthenticated user is confined to the
+  // login/signup flow and must NOT be able to navigate anywhere else. Hiding the
+  // tab bar entirely (rather than showing anonymous tabs) is what enforces that
+  // — there are simply no nav targets to tap until they sign in.
+  if (!isAuthed) return null;
+
   // Shared "Plus" overflow items
   const moreCommon: BottomNavItem[] = [
     { key: "devenir-sitter", label: "Devenir dogsitter", href: "/devenir-dogsitter", icon: <HelpCircle className="h-5 w-5" />, active: pathname === "/devenir-dogsitter" },
@@ -103,16 +107,6 @@ export default function GlobalNativeBottomNav() {
     { key: "confidentialite", label: "Confidentialité", href: "/confidentialite", icon: <Lock className="h-5 w-5" />, active: pathname === "/confidentialite" },
     { key: "mentions", label: "Mentions légales", href: "/mentions-legales", icon: <Info className="h-5 w-5" />, active: pathname === "/mentions-legales" },
   ];
-
-  if (!isAuthed) {
-    // ── Anonymous ──
-    const items: BottomNavItem[] = [
-      { key: "home", label: "Accueil", href: "/", icon: <House className="h-5 w-5" />, active: pathname === "/" },
-      { key: "search", label: "Recherche", href: "/search", icon: <Search className="h-5 w-5" />, active: pathname.startsWith("/search") },
-      { key: "login", label: "Connexion", href: "/login", icon: <LogIn className="h-5 w-5" />, active: pathname === "/login" },
-    ];
-    return <MobileBottomNav items={items} moreItems={moreCommon} />;
-  }
 
   if (isSitter) {
     // ── Sitter (also has owner side) ──
