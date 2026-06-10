@@ -64,7 +64,13 @@ export default function OwnerDashboardShell({ children }: { children: React.Reac
         <div className="relative z-0 flex min-w-0 flex-1 flex-col">
           <header
             className="fixed inset-x-0 z-[70] flex h-14 items-center border-b border-slate-100 bg-white/95 px-5 backdrop-blur-md lg:hidden"
-            style={{ top: "var(--ds-maintenance-banner-height, 0px)" }}
+            style={{
+              top: "var(--ds-maintenance-banner-height, 0px)",
+              // contentInset: "never" → the WebView extends under the status
+              // bar, so push the bar down by the safe-area inset (0 on web).
+              paddingTop: "env(safe-area-inset-top, 0px)",
+              height: "calc(3.5rem + env(safe-area-inset-top, 0px))",
+            }}
           >
             <BrandLogo href="/" priority />
           </header>
@@ -72,7 +78,7 @@ export default function OwnerDashboardShell({ children }: { children: React.Reac
           <main
             className={
               "flex-1 px-4 sm:px-6 lg:px-10 " +
-              "pt-[calc(3.5rem+var(--ds-maintenance-banner-height,0px))] " +
+              "pt-[calc(3.5rem+env(safe-area-inset-top,0px)+var(--ds-maintenance-banner-height,0px))] " +
               "lg:pt-[calc(1.125rem+var(--ds-maintenance-banner-height,0px))]"
             }
           >
