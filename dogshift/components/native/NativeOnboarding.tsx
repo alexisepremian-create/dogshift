@@ -160,7 +160,7 @@ export default function NativeOnboarding() {
             className="h-9 w-9 rounded-[10px]"
           />
           <span className="text-[15px] font-bold tracking-tight text-slate-900">
-            dogshift
+            DogShift
           </span>
         </div>
         <button
