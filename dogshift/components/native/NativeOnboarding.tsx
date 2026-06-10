@@ -29,20 +29,20 @@ const SLIDES: readonly Slide[] = [
   {
     imgSrc: ILLUSTRATION_SRCS[0],
     step: "01 · LE CONCEPT",
-    title: "Le dogsitting,\nréinventé",
-    body: "Trouve un dogsitter de confiance près de chez toi. Réserve en quelques clics, en toute sérénité.",
+    title: "Votre chien mérite le meilleur.",
+    body: "Trouvez rapidement un dogsitter de confiance près de chez vous pour les promenades, les gardes à domicile ou les séjours en pension.",
   },
   {
     imgSrc: ILLUSTRATION_SRCS[1],
     step: "02 · LA CONFIANCE",
-    title: "100% vérifié",
-    body: "Chaque dogsitter passe un entretien et une vérification d\u2019identité avant d\u2019être publié sur la plateforme.",
+    title: "Des dogsitters vérifiés.",
+    body: "Chaque dogsitter est contrôlé avant d\u2019être publié. Profils vérifiés, expérience confirmée, casier judiciaire vierge et assurance RC pour garantir une garde fiable et sécurisée.",
   },
   {
     imgSrc: ILLUSTRATION_SRCS[2],
     step: "03 · LA RÉSERVATION",
-    title: "Réserve en\n3 clics",
-    body: "Promenade, garde à domicile ou pension : choisis ton service, ton créneau, et c\u2019est parti.",
+    title: "Réservez en quelques secondes.",
+    body: "Réservez votre dogsitter en quelques clics et gérez tout depuis une seule application.",
   },
 ] as const;
 
