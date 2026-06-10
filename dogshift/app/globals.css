@@ -379,9 +379,17 @@ body[data-native="true"] [data-auth-layout] {
   height: 100dvh;
   min-height: 100dvh;
   overflow: hidden;
-  /* Reserve breathing room above the floating nav so the form's bottom
-     elements (CGU footer) never sit behind it. */
-  padding-bottom: var(--ds-bottom-nav-h, 0px);
+  /* The auth pages have no bottom nav in native (the tab bar is hidden until
+     the user signs in), so no reserved space is needed. */
+  padding-bottom: 0;
+}
+/* Lock the whole document on native auth pages so the card can't scroll or
+   iOS-rubber-band — the form always fits within 100dvh. Uses :has() (supported
+   in the iOS WKWebView) to target the body only while an auth layout is shown. */
+body[data-native="true"]:has([data-auth-layout]) {
+  height: 100dvh;
+  overflow: hidden;
+  overscroll-behavior: none;
 }
 /* Hide the "DogShift" separator footer below the form in native — it looks
    out of place inside an app. */
