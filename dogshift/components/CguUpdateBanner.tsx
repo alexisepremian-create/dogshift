@@ -7,6 +7,7 @@ import Link from "next/link";
 import { X, FileText } from "lucide-react";
 
 import { CGU_VERSION } from "@/lib/cguVersion";
+import { useIsNativeApp } from "@/lib/native/useIsNativeApp";
 
 // Affiché quand un utilisateur connecté n'a pas encore accepté la version
 // actuelle des CGU. La version acceptée est stockée dans unsafeMetadata Clerk.
@@ -30,6 +31,7 @@ export default function CguUpdateBanner() {
   const user = __session?.user ?? null;
   const isSignedIn = __sessionStatus === "authenticated";
   const pathname = usePathname();
+  const isNative = useIsNativeApp();
   const [visible, setVisible] = useState(false);
   const [accepting, setAccepting] = useState(false);
   const bannerRef = useRef<HTMLDivElement>(null);
@@ -107,6 +109,10 @@ export default function CguUpdateBanner() {
       setAccepting(false);
     }
   }
+
+  // Hidden inside the native app — the floating banner overlaps the status bar
+  // and feels out of place in an app shell.
+  if (isNative) return null;
 
   if (!visible || isPaymentFlow(pathname)) return null;
 
