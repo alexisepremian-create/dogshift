@@ -1,13 +1,11 @@
 "use client";
 
 import PageLoader from "@/components/ui/PageLoader";
-import NativeBrandedLoader from "@/components/native/NativeBrandedLoader";
-import { useIsNativeApp } from "@/lib/native/useIsNativeApp";
 
+// One consistent loader everywhere in-app: the running dog. (Previously a
+// separate purple "branded" paw cover on native — the founder wants the SAME
+// running-dog animation on every in-app load; only the cold-launch splash
+// stays as the distinct app intro.)
 export default function Loading() {
-  const isNative = useIsNativeApp();
-  // Native: branded purple cover (matches the launch splash) so there's no
-  // white-skeleton flash before the post-login redirect resolves.
-  if (isNative) return <NativeBrandedLoader />;
-  return <PageLoader static />;
+  return <PageLoader />;
 }

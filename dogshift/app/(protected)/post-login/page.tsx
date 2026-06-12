@@ -4,8 +4,6 @@ import { useSession } from "next-auth/react";
 import { useEffect, useRef } from "react";
 
 import PageLoader from "@/components/ui/PageLoader";
-import NativeBrandedLoader from "@/components/native/NativeBrandedLoader";
-import { useIsNativeApp } from "@/lib/native/useIsNativeApp";
 import { navigationPublicOrigin } from "@/lib/url/publicOrigin";
 
 function absolutePath(path: string): string {
@@ -17,7 +15,6 @@ function absolutePath(path: string): string {
 }
 
 export default function PostLoginPage() {
-  const isNative = useIsNativeApp();
   const { data: __session, status: __sessionStatus } = useSession();
   const isLoaded = __sessionStatus !== "loading";
   const userId = __session?.user?.id ?? null;
@@ -80,6 +77,5 @@ export default function PostLoginPage() {
     };
   }, [isLoaded]);
 
-  if (isNative) return <NativeBrandedLoader />;
-  return <PageLoader label="Connexion…" ready={false} static />;
+  return <PageLoader ready={false} />;
 }
