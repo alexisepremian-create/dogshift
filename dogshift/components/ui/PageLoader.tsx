@@ -78,7 +78,9 @@ export default function PageLoader({
       // Without it, the controller might tear down the static overlay
       // before this loader mounts, causing a 1-frame footer flash.
       data-page-loader="1"
-      className="ds-viewport fixed inset-0 z-50 flex w-full items-center justify-center bg-white font-sans"
+      // z above the native bottom tab bar (z-50) so the running dog fully
+      // covers it during any load — the nav must never peek through a loader.
+      className="ds-viewport fixed inset-0 z-[9999] flex w-full items-center justify-center bg-white font-sans"
       style={{
         transition: phase === "fadeOut" ? `opacity ${FADE_MS}ms ease` : undefined,
         opacity: phase === "fadeOut" ? 0 : 1,
