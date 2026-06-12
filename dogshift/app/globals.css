@@ -282,24 +282,11 @@ body[data-navigating="1"] #ds-nav-overlay {
   pointer-events: auto;
 }
 
-body[data-navigating="1"] #ds-nav-overlay svg {
-  animation: brandPulse 1.8s ease-in-out infinite;
-}
-
-/* ── Native skeleton variant ──────────────────────────────────────────────
-   In the Capacitor shell we don't want the branded dog wordmark on every
-   route transition — feedback from the founder was that it looks unpolished
-   compared to Airbnb-style content skeletons. So when running native we
-   swap the SVG for shimmering skeleton blocks. */
-#ds-nav-overlay-native { display: none; }
-
-body[data-native="true"] #ds-nav-overlay-web { display: none; }
-body[data-native="true"][data-navigating="1"] #ds-nav-overlay-native {
-  display: flex;
-  /* Push below the impersonation banner + map status bar so the skeleton
-     blocks sit where actual content would appear. */
-  padding-top: calc(env(safe-area-inset-top, 0px) + 12px);
-}
+/* The running-dog loader (`.rd-*` below) animates itself — no opacity pulse
+   on the container SVG. Shown in BOTH web and native: the founder wants every
+   in-app loading surface to show the brand "dog running" animation, full
+   screen, with nothing else visible behind it (replaces the old gray
+   skeletons that used to show in the native shell). */
 
 @keyframes dsSkelShimmer {
   0%   { background-position: -200% 0; }
@@ -324,47 +311,87 @@ body[data-native="true"][data-navigating="1"] #ds-nav-overlay-native {
 .ds-skel-line-2 { width: 40%; }
 .ds-skel-card { height: 96px; border-radius: 18px; }
 
-/* Same skeleton-vs-logo swap for the PageLoader Suspense fallback. The
-   PageLoader is rendered by loading.tsx files when data is still streaming —
-   slower than a click → first paint, so the skeleton is what the user sees
-   for the bulk of the wait. */
-body[data-native="true"] [data-page-loader="1"] svg,
-body[data-native="true"] [data-page-loader="1"] p {
-  display: none;
+/* ── Running-dog loader ───────────────────────────────────────────────────
+   Shared by <NavigationOverlay /> (click → first-paint mask) and
+   <PageLoader /> (Suspense data-fetch fallback). A single clean silhouette
+   (vectorised flat icon) that gallops in place: a gentle squash-and-stretch
+   bob, a contact shadow that breathes, and speed dashes streaming off the
+   back. Pure transform/opacity so it stays 60 fps on the WKWebView
+   compositor. Component: components/ui/RunningDog.tsx. Tunable: --rd-cycle. */
+.rd-root {
+  --rd-cycle: 0.5s;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
-body[data-native="true"] [data-page-loader="1"]::before {
-  content: "";
+/* Frame-by-frame run cycle: a 6-frame sprite strip (public/dog-run-strip.png)
+   played with steps(6) so the dog's legs actually move (real gait), not a bob.
+   The container aspect matches one frame (773×916) so the strip isn't distorted. */
+.rd-sprite {
+  position: relative;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+.rd-sprite-inner {
   position: absolute;
-  inset: calc(env(safe-area-inset-top, 0px) + 24px) 16px auto 16px;
-  height: 56px;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 600%; /* 6 frames */
+  background: url("/dog-run-strip.png?v=2") 0 0 / 100% 100% no-repeat;
+  animation: rd-run var(--rd-cycle) steps(6) infinite;
+  will-change: transform;
+}
+.rd-shadow {
+  position: absolute;
+  bottom: 3%;
+  left: 50%;
+  width: 54%;
+  height: 6%;
+  background: currentColor;
   border-radius: 9999px;
-  background-color: #e2e8f0;
-  background-image: linear-gradient(90deg, #e2e8f0 0%, #f1f5f9 50%, #e2e8f0 100%);
-  background-size: 200% 100%;
-  animation: dsSkelShimmer 1.4s ease-in-out infinite;
-  width: 56px;
+  opacity: 0.13;
+  filter: blur(0.5px);
+  animation: rd-shadow var(--rd-cycle) cubic-bezier(0.45, 0, 0.55, 1) infinite;
 }
-body[data-native="true"] [data-page-loader="1"]::after {
-  content: "";
+.rd-dash {
   position: absolute;
-  top: calc(env(safe-area-inset-top, 0px) + 100px);
-  left: 16px;
-  right: 16px;
-  bottom: 16px;
-  background:
-    repeating-linear-gradient(
-      to bottom,
-      transparent 0,
-      transparent 12px,
-      #e2e8f0 12px,
-      #e2e8f0 96px,
-      transparent 96px,
-      transparent 108px
-    );
-  border-radius: 6px;
-  animation: dsSkelShimmer 1.4s ease-in-out infinite;
-  background-size: 200% 100%;
-  opacity: 0.6;
+  left: 2%;
+  height: 6px;
+  border-radius: 9999px;
+  background: currentColor;
+  opacity: 0;
+  animation: rd-dash var(--rd-cycle) linear infinite;
+}
+.rd-dash { height: 7px; opacity: 0; }
+.rd-dash-1 { top: 32%; width: 30%; animation-delay: 0s; }
+.rd-dash-2 { top: 49%; width: 20%; animation-delay: calc(var(--rd-cycle) * 0.34); }
+.rd-dash-3 { top: 66%; width: 25%; animation-delay: calc(var(--rd-cycle) * 0.66); }
+
+@keyframes rd-run {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-100%); }
+}
+@keyframes rd-shadow {
+  0%, 100% { transform: translateX(-50%) scaleX(1);   opacity: 0.16; }
+  50%      { transform: translateX(-50%) scaleX(0.7); opacity: 0.06; }
+}
+@keyframes rd-dash {
+  0%   { transform: translateX(34px);  opacity: 0; }
+  30%  { opacity: 0.6; }
+  100% { transform: translateX(-58px); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  /* No translational/frame motion (vestibular safety) — but a loader must still
+     read as "working", so the dog gently breathes instead of freezing. */
+  .rd-shadow, .rd-dash { animation: none; }
+  .rd-sprite-inner { animation: rd-fade 1.6s ease-in-out infinite; }
+}
+@keyframes rd-fade {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.55; }
 }
 
 /* ── BrandLogo : web vs native variant swap ─────────────────────────────
@@ -454,6 +481,44 @@ body[data-navigating="1"] header,
 body[data-nav-cooldown="1"] header,
 body:has([data-page-loader="1"]) header {
   visibility: hidden;
+}
+
+/* ── Native app feel: global polish (Capacitor shell only) ─────────────────
+   Small, low-risk rules that erase the "this is a website" tells inside the
+   WKWebView. All scoped to body[data-native="true"] so the plain web /
+   desktop experience is byte-for-byte unchanged. */
+body[data-native="true"] {
+  /* The #1 web-ism: the translucent blue/grey box that flashes on every tap.
+     Real native apps never show it. */
+  -webkit-tap-highlight-color: transparent;
+  /* Kill the whole-document rubber-band bounce. The page no longer "peels"
+     to reveal a white/purple band at the top or bottom on an over-scroll;
+     inner scroll containers keep their own momentum. */
+  overscroll-behavior-y: none;
+  /* Never auto-inflate body text (iOS does this in some reflow cases). */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  /* Momentum scrolling everywhere. */
+  -webkit-overflow-scrolling: touch;
+}
+
+/* No long-press "Copy / Share…" callout on interactive chrome — that menu is
+   a dead giveaway you're in a browser. Text content (bios, messages, legal
+   pages) stays selectable because we only target controls + images. */
+body[data-native="true"] a,
+body[data-native="true"] button,
+body[data-native="true"] [role="button"],
+body[data-native="true"] img {
+  -webkit-touch-callout: none;
+}
+
+/* iOS auto-zooms the viewport when a focused field has font-size < 16px,
+   which yanks the layout sideways and feels broken in an app. Force the iOS
+   no-zoom threshold on every text field in native. */
+body[data-native="true"] input:not([type="checkbox"]):not([type="radio"]),
+body[data-native="true"] textarea,
+body[data-native="true"] select {
+  font-size: 16px;
 }
 
 /* Search panel tab switch / suggestions animation — premium slower timing */

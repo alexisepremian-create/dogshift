@@ -25,17 +25,26 @@ export default function PageTopOffset({ children }: { children: React.ReactNode 
         pathname.startsWith("/sitter/")),
   );
 
-  const needsOffset = useMemo(() => {
-    if (!pathname) return false;
-    if (pathname === "/") return false;
-    if (isHostArea || isAccountArea || isHostPreview) return false;
-    // In the Capacitor shell the marketing SiteHeader is hidden — adding the
-    // 120px top offset just leaves a huge blank gap above text pages (CGU,
-    // confidentialité, mentions, …). Founder feedback : "le texte est trop
-    // bas faut le monter bcp plus haut".
-    if (isNative) return false;
-    return true;
-  }, [isAccountArea, isHostArea, isHostPreview, isNative, pathname]);
+  // Pages that take a top offset at all (not the home map, not the dashboards
+  // which carry their own chrome, not the sitter preview).
+  const baseApplies = Boolean(
+    pathname &&
+      pathname !== "/" &&
+      !isHostArea &&
+      !isAccountArea &&
+      !isHostPreview,
+  );
+
+  // Web: the marketing SiteHeader is fixed, so content needs to clear it.
+  const needsOffset = baseApplies && !isNative;
+
+  // Native: the marketing SiteHeader is hidden, so the big 120px gap is wrong
+  // (founder: "le texte est trop bas") — BUT with `viewport-fit=cover` +
+  // `contentInset:never`, content at y=0 sits UNDER the iOS status-bar/notch.
+  // So on native text/content pages we add just the safe-area inset (a few px),
+  // never the full header offset. Hero/flow pages (sitter, checkout, devenir-
+  // dogsitter, reservation) stay edge-to-edge — they manage their own top.
+  const nativeTextTop = baseApplies && isNative && !isCompactPage;
 
   useEffect(() => {
     if (!needsOffset) return;
@@ -46,12 +55,13 @@ export default function PageTopOffset({ children }: { children: React.ReactNode 
   }, [needsOffset]);
 
   const paddingTop = useMemo(() => {
+    if (nativeTextTop) return "calc(env(safe-area-inset-top, 0px) + 8px)";
     if (!needsOffset) return undefined;
     if (isCompactPage || scrolled) return "var(--ds-page-top-offset)";
     return "120px";
-  }, [needsOffset, scrolled, isCompactPage]);
+  }, [needsOffset, nativeTextTop, scrolled, isCompactPage]);
 
-  if (!needsOffset) return <>{children}</>;
+  if (!needsOffset && !nativeTextTop) return <>{children}</>;
 
   return (
     <div className="transition-[padding] duration-200 ease-out" style={{ paddingTop }}>
