@@ -227,8 +227,20 @@ export default function HostMessagesLayout({ children }: { children: React.React
               ) : null}
 
               {loading ? (
-                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                  <p className="text-sm font-semibold text-slate-900">Chargement…</p>
+                /* Neon glide skeleton — conversation rows matching the real
+                   list item shape (avatar + lines) and the route-level
+                   DashboardSkeleton, so loading is one continuous shimmer. */
+                <div className="space-y-2">
+                  {Array.from({ length: 6 }).map((_, i) => (
+                    <div key={i} className="flex items-center gap-3 rounded-2xl border border-violet-100 bg-white p-3">
+                      <div className="ds-skel h-12 w-12 shrink-0 rounded-full" />
+                      <div className="flex-1 space-y-2">
+                        <div className="ds-skel h-4 w-1/2 rounded-lg" />
+                        <div className="ds-skel h-3 w-3/4 rounded-lg" />
+                        <div className="ds-skel h-3 w-1/4 rounded-lg" />
+                      </div>
+                    </div>
+                  ))}
                 </div>
               ) : rows.length === 0 ? (
                 <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">

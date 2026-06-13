@@ -85,6 +85,26 @@ export default function PageLoader({
 
   if (phase === "done") return null;
 
+  // NATIVE: render the skeleton IN-FLOW (not a fixed full-screen overlay) so the
+  // bottom nav (z-50, in the root layout) stays visible during loading. A
+  // full-screen overlay covered the nav → founder bug "la nav barre disparait
+  // pdt le chargement". The skeleton shape matches the section content so the
+  // hand-off to the page's own client-fetch skeleton reads as one continuous
+  // load, not a flash.
+  if (isNative) {
+    return (
+      <div
+        data-page-loader="1"
+        className="w-full px-3"
+        style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 2rem)" }}
+        aria-busy="true"
+        aria-live="polite"
+      >
+        <DashboardSkeleton />
+      </div>
+    );
+  }
+
   return (
     <div
       // Marker used by NavigationOverlayController to hand off the static
@@ -92,8 +112,6 @@ export default function PageLoader({
       // Without it, the controller might tear down the static overlay
       // before this loader mounts, causing a 1-frame footer flash.
       data-page-loader="1"
-      // z above the native bottom tab bar (z-50) so the running dog fully
-      // covers it during any load — the nav must never peek through a loader.
       className="ds-viewport fixed inset-0 z-[9999] flex w-full items-center justify-center bg-white font-sans"
       style={{
         transition: phase === "fadeOut" ? `opacity ${FADE_MS}ms ease` : undefined,
@@ -105,16 +123,7 @@ export default function PageLoader({
       aria-busy={phase === "animate" ? "true" : "false"}
       aria-live="polite"
     >
-      {isNative ? (
-        <div
-          className="w-full self-start px-3"
-          style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 2rem)" }}
-        >
-          <DashboardSkeleton />
-        </div>
-      ) : (
-        <RunningDog size={200} className="text-[#7c3aed]" />
-      )}
+      <RunningDog size={200} className="text-[#7c3aed]" />
     </div>
   );
 }
