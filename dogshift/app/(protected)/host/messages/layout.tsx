@@ -231,7 +231,7 @@ export default function HostMessagesLayout({ children }: { children: React.React
                    list item shape (avatar + lines) and the route-level
                    DashboardSkeleton, so loading is one continuous shimmer. */
                 <div className="space-y-2">
-                  {Array.from({ length: 6 }).map((_, i) => (
+                  {Array.from({ length: 4 }).map((_, i) => (
                     <div key={i} className="flex items-center gap-3 rounded-2xl border border-slate-100 bg-white p-3">
                       <div className="ds-skel h-12 w-12 shrink-0 rounded-full" />
                       <div className="flex-1 space-y-2">

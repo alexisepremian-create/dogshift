@@ -378,7 +378,7 @@ export function RequestsSplitView({
                the route fallback to this page's own fetch reads as one
                continuous load (no mismatched flash). */
             <div className="mt-4 space-y-3">
-              {Array.from({ length: 5 }).map((_, idx) => (
+              {Array.from({ length: 3 }).map((_, idx) => (
                 <div key={idx} className="flex items-center gap-3 rounded-2xl border border-slate-100 bg-white p-3">
                   <div className="ds-skel h-12 w-12 shrink-0 rounded-full" />
                   <div className="flex-1 space-y-2">
