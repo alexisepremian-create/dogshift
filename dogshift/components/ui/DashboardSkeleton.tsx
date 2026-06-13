@@ -28,10 +28,10 @@ export default function DashboardSkeleton() {
 
       {/* Card rows */}
       <div className="mt-5 space-y-3">
-        {[0, 1, 2, 3, 4].map((i) => (
+        {[0, 1, 2, 3].map((i) => (
           <div
             key={i}
-            className="flex items-center gap-3 rounded-2xl border border-violet-100 bg-white p-3"
+            className="flex items-center gap-3 rounded-2xl border border-slate-100 bg-white p-3"
           >
             <div className="ds-skel h-12 w-12 shrink-0 rounded-full" />
             <div className="flex-1 space-y-2">

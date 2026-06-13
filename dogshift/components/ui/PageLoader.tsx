@@ -96,7 +96,10 @@ export default function PageLoader({
       <div
         data-page-loader="1"
         className="w-full px-3"
-        style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 2rem)" }}
+        style={{
+          paddingTop: "calc(env(safe-area-inset-top, 0px) + 2rem)",
+          paddingBottom: "calc(max(var(--ds-bottom-nav-h, 0px), 88px) + 24px)",
+        }}
         aria-busy="true"
         aria-live="polite"
       >

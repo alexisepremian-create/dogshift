@@ -209,40 +209,66 @@ test("Conversations + button is a floating FAB anchored bottom-right above the n
   );
 });
 
-// ── Round 4 — clean loading behaviour: neon glide skeletons, no flash ──────
+// ── Round 4 — clean loading behaviour: grey glide skeletons, coherent shapes ─
 
-test("skeleton shimmer is a purple neon glide (not grey)", () => {
+test("skeleton shimmer is a neutral GREY glide (not violet)", () => {
   const css = read("app/globals.css");
   assert.match(css, /@keyframes\s+dsSkelGlide/, "Expected a dsSkelGlide animation.");
-  // Brand violet in the glide highlight, not the old slate greys.
   assert.match(
     css,
-    /\.ds-skel\s*\{[\s\S]*?(167,\s*139,\s*250|139,\s*92,\s*246)[\s\S]*?\}/,
-    "Expected the .ds-skel glide to use brand violet (violet-400/violet-500), per the founder's 'neon violet glide' ask.",
+    /\.ds-skel\s*\{[\s\S]*?#e2e8f0[\s\S]*?\}/,
+    "Expected the .ds-skel base to be slate-200 grey (#e2e8f0) — founder asked for grey, violet was 'moche'.",
   );
   assert.doesNotMatch(
     css,
-    /\.ds-skel\s*\{[\s\S]*?#e2e8f0[\s\S]*?\}/,
-    "The old grey (#e2e8f0) skeleton base must be gone.",
+    /\.ds-skel\s*\{[\s\S]*?(167,\s*139,\s*250|139,\s*92,\s*246|#ede9fe)[\s\S]*?\}/,
+    "The violet skeleton must be gone.",
   );
 });
 
-test("DashboardSkeleton uses the neon .ds-skel shimmer (universal native skeleton)", () => {
+test("DashboardSkeleton uses the grey .ds-skel shimmer (no violet borders)", () => {
   const src = read("components/ui/DashboardSkeleton.tsx");
-  assert.match(src, /ds-skel/, "Expected DashboardSkeleton to use the neon .ds-skel class.");
-  assert.doesNotMatch(src, /bg-slate-100/, "The old grey slate blocks must be gone.");
+  assert.match(src, /ds-skel/, "Expected DashboardSkeleton to use the .ds-skel class.");
+  assert.doesNotMatch(src, /violet-100/, "The violet card borders must be gone (grey only).");
 });
 
-test("RequestsSplitView + messages loading states use the neon skeleton (continuous load)", () => {
+test("RequestsSplitView + messages loading states use the .ds-skel shimmer", () => {
   const requests = read("components/host/requests/RequestsSplitView.tsx");
   const messages = read("app/(protected)/host/messages/layout.tsx");
-  assert.match(requests, /ds-skel/, "Expected the requests loading list to use the neon skeleton.");
+  assert.match(requests, /ds-skel/, "Expected the requests loading list to use the skeleton class.");
   assert.doesNotMatch(
     requests,
     /bg-slate-100\/80 animate-pulse/,
     "The old grey pulse skeleton in the requests loading list must be gone.",
   );
-  assert.match(messages, /ds-skel/, "Expected the conversations loading list to use the neon skeleton (was a 'Chargement…' text box).");
+  assert.match(messages, /ds-skel/, "Expected the conversations loading list to use the skeleton class.");
+});
+
+test("home route fallback shows a MAP skeleton, not a generic list", () => {
+  const fallback = read("components/native/NativeRouteFallback.tsx");
+  assert.match(fallback, /usePathname/, "Expected NativeRouteFallback to branch on the pathname.");
+  assert.match(
+    fallback,
+    /pathname\s*===\s*"\/"\s*\)\s*return\s*<MapHomeSkeleton/,
+    "Expected the home route ('/') to render <MapHomeSkeleton/> (map + sitter preview), not the list skeleton.",
+  );
+  const map = read("components/native/MapHomeSkeleton.tsx");
+  assert.match(map, /fixed inset-0 z-0/, "MapHomeSkeleton must sit below the z-50 nav so the nav stays visible.");
+  assert.match(map, /ds-skel/, "MapHomeSkeleton must use the grey shimmer.");
+});
+
+test("route + section fallbacks pad the bottom so the skeleton never spills under the nav", () => {
+  for (const f of [
+    "components/native/NativeRouteFallback.tsx",
+    "components/native/DashboardSectionLoading.tsx",
+    "components/ui/PageLoader.tsx",
+  ]) {
+    assert.match(
+      read(f),
+      /paddingBottom:\s*"calc\(max\(var\(--ds-bottom-nav-h, 0px\), 88px\) \+ 24px\)"/,
+      `Expected ${f} to floor its bottom padding above the nav.`,
+    );
+  }
 });
 
 test("NativeMapHome search/filter panel is floored above the nav", () => {
