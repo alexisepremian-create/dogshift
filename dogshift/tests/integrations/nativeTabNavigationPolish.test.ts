@@ -273,6 +273,9 @@ test("route fallbacks are pathname-aware faithful replicas (one continuous skele
   assert.match(section, />\s*Réservations\s*</, "Requests replica must show the real 'Réservations' title.");
   assert.match(section, />\s*Conversations\s*</, "Messages replica must show the real 'Conversations' title.");
   assert.match(section, /Rechercher…/, "Requests replica must replicate the search box.");
+  // Dashboard replicas must paint a white bg matching the shell, so the
+  // route→page hand-off doesn't flash the slate body background.
+  assert.match(section, /min-h-screen w-full bg-white/, "Section replicas must paint bg-white to match the dashboard shell.");
 });
 
 test("route + section fallbacks pad the bottom so the skeleton never spills under the nav", () => {

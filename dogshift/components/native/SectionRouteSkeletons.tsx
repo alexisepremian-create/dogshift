@@ -35,7 +35,10 @@ function CardRow() {
 /** Replica of RequestsSplitView's native loading view (Réservations). */
 export function RequestsRouteSkeleton() {
   return (
-    <div className="w-full px-3" style={padStyle}>
+    // `min-h-screen bg-white` matches the dashboard shell's background so the
+    // route→page hand-off doesn't flash the slate body bg (founder: "un mini
+    // flash quand ça charge").
+    <div className="min-h-screen w-full bg-white px-3" style={padStyle}>
       <div className="px-1">
         <h1 className="flex items-center gap-2 text-[26px] font-extrabold tracking-tight text-slate-900">
           <ClipboardList className="h-6 w-6 text-[var(--dogshift-blue)]" aria-hidden="true" />
@@ -93,7 +96,7 @@ export function RequestsRouteSkeleton() {
 /** Replica of the host messages layout's native loading view (Conversations). */
 export function MessagesRouteSkeleton() {
   return (
-    <div className="w-full px-4" style={padStyle}>
+    <div className="min-h-screen w-full bg-white px-4" style={padStyle}>
       <h1 className="mb-3 text-[26px] font-extrabold tracking-tight text-slate-900">Conversations</h1>
       <div className="space-y-2">
         {[0, 1, 2, 3, 4, 5].map((i) => (

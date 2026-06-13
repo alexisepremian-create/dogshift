@@ -53,11 +53,12 @@ export default function NativeRouteFallback({ web }: { web: "loader" | "none" })
       return <MessagesRouteSkeleton />;
     }
 
-    // Other dashboards → generic list skeleton (grey, matching card rows). The
-    // bottom padding clears the z-50 nav so the rows never spill under it.
+    // Other dashboards → generic list skeleton (grey, matching card rows).
+    // `min-h-screen bg-white` matches the dashboard shell so the hand-off
+    // doesn't flash the slate body; bottom padding clears the z-50 nav.
     return (
       <div
-        className="w-full px-3"
+        className="min-h-screen w-full bg-white px-3"
         style={{
           paddingTop: "calc(env(safe-area-inset-top, 0px) + 2rem)",
           paddingBottom: "calc(max(var(--ds-bottom-nav-h, 0px), 88px) + 24px)",
