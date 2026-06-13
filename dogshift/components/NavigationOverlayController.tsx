@@ -57,12 +57,21 @@ function isSkippedHref(href: string): boolean {
 function isNativeInstantRoute(pathOnly: string): boolean {
   if (typeof document === "undefined") return false;
   if (document.documentElement.getAttribute("data-native") !== "true") return false;
+  // Tab destinations + every route reachable from the bottom-nav "Plus" sheet,
+  // so tapping ANY nav cell feels instant (no full-screen loader). The
+  // running-dog loader stays for content navigations (e.g. /sitter/* profiles,
+  // /search) which actually fetch data.
   return (
     pathOnly === "/" ||
     pathOnly === "/host" ||
     pathOnly.startsWith("/host/") ||
     pathOnly === "/account" ||
-    pathOnly.startsWith("/account/")
+    pathOnly.startsWith("/account/") ||
+    pathOnly === "/devenir-dogsitter" ||
+    pathOnly === "/contact" ||
+    pathOnly === "/cgu" ||
+    pathOnly === "/confidentialite" ||
+    pathOnly === "/mentions-legales"
   );
 }
 

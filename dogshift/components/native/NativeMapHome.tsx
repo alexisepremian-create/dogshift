@@ -443,7 +443,7 @@ export default function NativeMapHome() {
         style={{
           bottom: sheetOpen
             ? "calc(70vh + 16px)"
-            : "calc(160px + 32px + var(--ds-bottom-nav-h, 0px))",
+            : "calc(212px + 32px + var(--ds-bottom-nav-h, 0px))",
           touchAction: "manipulation",
         }}
       >
@@ -457,7 +457,7 @@ export default function NativeMapHome() {
         <div
           className="absolute left-4 right-4 z-30"
           style={{
-            bottom: "calc(160px + 32px + var(--ds-bottom-nav-h, 0px))",
+            bottom: "calc(212px + 32px + var(--ds-bottom-nav-h, 0px))",
           }}
         >
           <Link
@@ -521,7 +521,10 @@ export default function NativeMapHome() {
         className={`absolute left-2 right-2 z-30 rounded-3xl bg-white shadow-[0_-8px_24px_rgba(2,6,23,0.14)] transition-transform duration-300 ease-out`}
         style={{
           bottom: "calc(var(--ds-bottom-nav-h, 0px) + 16px)",
-          height: sheetOpen ? "calc(70vh - var(--ds-bottom-nav-h, 0px))" : "160px",
+          // Collapsed peek raised from 160→212px so a full sitter card row fits
+          // above the nav instead of being clipped (founder: "la preview des
+          // cartes sitter est coupée sous la nav barre").
+          height: sheetOpen ? "calc(70vh - var(--ds-bottom-nav-h, 0px))" : "212px",
           transform: "translateY(0)",
         }}
       >
@@ -562,7 +565,7 @@ export default function NativeMapHome() {
           style={{
             maxHeight: sheetOpen
               ? "calc(70vh - 80px - var(--ds-bottom-nav-h, 0px))"
-              : "120px",
+              : "170px",
           }}
         >
           {/* Skeleton shimmer while the /api/sitters fetch is in flight —

@@ -101,7 +101,7 @@ export default function HostDashboardShell({ children }: { children: React.React
           <main
             className={
               isNative
-                ? "flex-1 px-3 pt-[calc(env(safe-area-inset-top,0px)+var(--ds-maintenance-banner-height,0px)+8px)]"
+                ? "flex-1 px-3 pt-[calc(env(safe-area-inset-top,0px)+var(--ds-maintenance-banner-height,0px)+2rem)]"
                 : "flex-1 px-4 sm:px-6 lg:px-10 " +
                   "pt-[calc(3.5rem+env(safe-area-inset-top,0px)+var(--ds-maintenance-banner-height,0px))] " +
                   "lg:pt-[calc(1.125rem+var(--ds-maintenance-banner-height,0px))]"
