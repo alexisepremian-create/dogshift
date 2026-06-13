@@ -163,13 +163,18 @@ html[data-native="true"] body {
 
 /* Once the splash has handed off (data-native-ready), the body must NOT stay
    purple. Otherwise any frame where a page's content doesn't fully cover the
-   viewport — a `loading.tsx` that returns null, the gap while a force-dynamic
-   dashboard refetches on a tab switch — exposes the purple body and the user
-   sees a full purple screen (founder bug: "quand je switch entre les sections
-   ya des fois ecran violet"). Slate-100 matches NativeMapHome's outer bg, so
-   navigation gaps read as a neutral app background, never a purple flash. */
+   viewport exposes the purple WebView bg.
+
+   WHITE (not slate): the 1-frame gap when React swaps a route-fallback skeleton
+   for the page was showing the body bg. With the dashboards painted white
+   (HostDashboardShell / messages layout / route-fallback replicas all bg-white)
+   a slate body made that gap flash slate→white→slate on every navigation
+   (founder: "ya un mini flash ... et meme plus marqué"). A white body makes the
+   gap invisible on every white screen. The map screen paints its own slate
+   (NativeMapHome / MapHomeSkeleton are `fixed inset-0 bg-slate-100`), so it is
+   unaffected. */
 html[data-native="true"][data-native-ready] body {
-  background-color: #f1f5f9;
+  background-color: #ffffff;
 }
 
 html[data-native="true"]::before {
