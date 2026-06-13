@@ -97,3 +97,77 @@ test("NativeRouteFallback: native → skeleton, web='none' → null, web='loader
     "Expected the web branch to preserve the prior behaviour: PageLoader for protected, null for marketing.",
   );
 });
+
+// ── Round 2 — follow-up polish ────────────────────────────────────────────
+
+test("globals.css hides the running-dog nav overlay entirely on native", () => {
+  const css = read("app/globals.css");
+  assert.match(
+    css,
+    /html\[data-native="true"\]\s+#ds-nav-overlay\s*\{\s*display:\s*none\s*!important/,
+    "Expected #ds-nav-overlay to be display:none on native — the founder must NEVER see the running dog in the app, not even a single flash.",
+  );
+});
+
+test("DashboardSectionLoading shows a skeleton on native (never a blank page)", () => {
+  const src = read("components/native/DashboardSectionLoading.tsx");
+  assert.match(
+    src,
+    /getAttribute\("data-native"\)\s*===\s*"true"/,
+    "Expected a synchronous data-native read (no first-frame web-loader flash).",
+  );
+  assert.match(
+    src,
+    /DashboardSkeleton/,
+    "Expected the native branch to render a skeleton, not null — a blank white page during a force-dynamic load is the bug being fixed.",
+  );
+  assert.doesNotMatch(
+    src,
+    /if\s*\(isNative\)\s*return null/,
+    "The old `return null` on native (blank page) must be gone.",
+  );
+});
+
+test("NativeMapHome floors the bottom-nav offset so the sheet never hides under the nav", () => {
+  const src = read("components/native/NativeMapHome.tsx");
+  assert.match(
+    src,
+    /max\(var\(--ds-bottom-nav-h, 0px\), 88px\)/,
+    "Expected a max(var(--ds-bottom-nav-h),88px) floor — when --ds-bottom-nav-h momentarily reads 0 on a tab return, the sheet must still clear the nav.",
+  );
+});
+
+test("RequestsSplitView is full-width with no card on native", () => {
+  const src = read("components/host/requests/RequestsSplitView.tsx");
+  assert.match(src, /useIsNativeApp/, "Expected RequestsSplitView to branch on isNative.");
+  assert.match(
+    src,
+    /isNative\s*\?\s*"w-full px-1 pb-12"/,
+    "Expected the outer wrapper to be full-width on native (no max-w-6xl cap).",
+  );
+  assert.match(
+    src,
+    /isNative\s*\?\s*"px-1"\s*:\s*"rounded-3xl border/,
+    "Expected the header card (rounded-3xl border bg) to be dropped on native — full-width, title flush left.",
+  );
+});
+
+test("Host messages has a Conversations title + a purple + that starts a conversation", () => {
+  const src = read("app/(protected)/host/messages/layout.tsx");
+  assert.match(src, />\s*Conversations\s*</, "Expected a 'Conversations' title.");
+  assert.match(
+    src,
+    /aria-label="Nouvelle conversation"/,
+    "Expected the purple + button (aria-label 'Nouvelle conversation').",
+  );
+  assert.match(
+    src,
+    /bg-\[#7c3aed\]/,
+    "Expected the + button to be brand purple (#7c3aed).",
+  );
+  assert.match(
+    src,
+    /conversations\/start/,
+    "Expected the picker to POST to the start-conversation endpoint.",
+  );
+});

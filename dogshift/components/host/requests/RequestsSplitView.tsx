@@ -16,6 +16,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 
 import { RequestDetailPanel } from "./RequestDetailPanel";
 import { RequestListItem, type HostRequest } from "./RequestListItem";
+import { useIsNativeApp } from "@/lib/native/useIsNativeApp";
 
 type FilterKey = "ALL" | "TO_ACCEPT" | "CONFIRMED" | "CANCELLED" | "ARCHIVED";
 
@@ -56,6 +57,7 @@ export function RequestsSplitView({
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const isNative = useIsNativeApp();
   const [localRows, setLocalRows] = useState<HostRequest[]>(rows);
   const [filter, setFilter] = useState<FilterKey>("ALL");
   const [lastActiveFilter, setLastActiveFilter] = useState<Exclude<FilterKey, "ARCHIVED">>("ALL");
@@ -228,7 +230,7 @@ export function RequestsSplitView({
   }
 
   return (
-    <div className="mx-auto max-w-6xl px-4 pb-12 sm:px-6">
+    <div className={isNative ? "w-full px-1 pb-12" : "mx-auto max-w-6xl px-4 pb-12 sm:px-6"}>
       <DndContext
         sensors={sensors}
         onDragStart={(e: DragStartEvent) => {
@@ -251,11 +253,14 @@ export function RequestsSplitView({
 
         <div className="grid items-start gap-6 lg:grid-cols-[380px_1fr]">
           <section className="min-w-0">
-          <div className="rounded-3xl border border-slate-100 bg-white/60 p-5 shadow-[0_8px_30px_-12px_rgba(15,23,42,0.06)] backdrop-blur-xl sm:p-7">
+          {/* Native: no surrounding card — full-width, title flush top-left,
+              like a native app screen (founder: "je veux pas de carte de fond,
+              le titre en haut a gauche"). Web: keep the frosted card. */}
+          <div className={isNative ? "px-1" : "rounded-3xl border border-slate-100 bg-white/60 p-5 shadow-[0_8px_30px_-12px_rgba(15,23,42,0.06)] backdrop-blur-xl sm:p-7"}>
             <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="text-sm font-semibold text-slate-600">Tableau de bord</p>
-                <h1 className="mt-2 flex items-center gap-2 text-2xl font-bold tracking-tight text-slate-900">
+                {!isNative && <p className="text-sm font-semibold text-slate-600">Tableau de bord</p>}
+                <h1 className={isNative ? "flex items-center gap-2 text-[26px] font-extrabold tracking-tight text-slate-900" : "mt-2 flex items-center gap-2 text-2xl font-bold tracking-tight text-slate-900"}>
                   <ClipboardList className="h-6 w-6 text-[var(--dogshift-blue)]" aria-hidden="true" />
                   <span>Réservations</span>
                 </h1>

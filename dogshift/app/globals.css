@@ -293,6 +293,17 @@ body[data-navigating="1"] #ds-nav-overlay {
   pointer-events: auto;
 }
 
+/* NATIVE: never show the full-screen running-dog navigation overlay. The app
+   must feel like Uber/Airbnb — tab switches slide instantly and section loads
+   show a padded skeleton (NativeRouteFallback / *Skeleton), never the dog.
+   The controller already early-returns for native tab routes, but this kills
+   any residual single-flash from edge cases (first interaction, programmatic
+   nav) so the founder NEVER sees the dog in the app: "je veux plus du tout le
+   voir". Web keeps the overlay (the dog is part of the web loading feel). */
+html[data-native="true"] #ds-nav-overlay {
+  display: none !important;
+}
+
 /* The running-dog loader (`.rd-*` below) animates itself — no opacity pulse
    on the container SVG. Shown in BOTH web and native: the founder wants every
    in-app loading surface to show the brand "dog running" animation, full
