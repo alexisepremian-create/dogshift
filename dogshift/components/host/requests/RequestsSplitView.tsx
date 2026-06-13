@@ -373,16 +373,18 @@ export function RequestsSplitView({
           ) : null}
 
           {loading ? (
+            /* Neon glide skeleton — same row shape as the real request cards
+               AND as the route-level DashboardSkeleton, so the hand-off from
+               the route fallback to this page's own fetch reads as one
+               continuous load (no mismatched flash). */
             <div className="mt-4 space-y-3">
-              {Array.from({ length: 6 }).map((_, idx) => (
-                <div key={idx} className="h-[96px] rounded-2xl border border-slate-100 bg-white/60 p-4 shadow-sm backdrop-blur-xl">
-                  <div className="flex items-start gap-3">
-                    <div className="h-10 w-10 rounded-full bg-slate-100/80 animate-pulse" />
-                    <div className="flex-1">
-                      <div className="h-4 w-2/3 rounded-lg bg-slate-100/80 animate-pulse" />
-                      <div className="mt-2 h-3 w-1/2 rounded-lg bg-slate-100/80 animate-pulse" />
-                      <div className="mt-3 h-5 w-24 rounded-full bg-slate-100/80 animate-pulse" />
-                    </div>
+              {Array.from({ length: 5 }).map((_, idx) => (
+                <div key={idx} className="flex items-center gap-3 rounded-2xl border border-violet-100 bg-white p-3">
+                  <div className="ds-skel h-12 w-12 shrink-0 rounded-full" />
+                  <div className="flex-1 space-y-2">
+                    <div className="ds-skel h-4 w-2/3 rounded-lg" />
+                    <div className="ds-skel h-3 w-2/5 rounded-lg" />
+                    <div className="ds-skel h-5 w-24 rounded-full" />
                   </div>
                 </div>
               ))}

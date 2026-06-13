@@ -693,7 +693,10 @@ export default function NativeMapHome() {
             className="fixed left-2 right-2 z-[1000] flex flex-col rounded-3xl bg-white shadow-[0_20px_60px_rgba(2,6,23,0.30)]"
             style={{
               top: "calc(env(safe-area-inset-top, 0px) + 70px)",
-              bottom: "calc(var(--ds-bottom-nav-h, 0px) + 8px)",
+              // Floor the nav height (max …,88px) so the panel + its submit CTA
+              // never slip under the z-50 bottom nav when --ds-bottom-nav-h
+              // momentarily reads 0 (founder: "le filtre passe sous la nav barre").
+              bottom: "calc(max(var(--ds-bottom-nav-h, 0px), 88px) + 8px)",
             }}
           >
             <div className="flex items-center justify-between px-5 py-3 border-b border-slate-100 shrink-0">
@@ -947,7 +950,10 @@ export default function NativeMapHome() {
             className="fixed left-2 right-2 z-[1000] flex flex-col rounded-3xl bg-white shadow-[0_20px_60px_rgba(2,6,23,0.30)]"
             style={{
               top: "calc(env(safe-area-inset-top, 0px) + 70px)",
-              bottom: "calc(var(--ds-bottom-nav-h, 0px) + 8px)",
+              // Floor the nav height (max …,88px) so the panel + its submit CTA
+              // never slip under the z-50 bottom nav when --ds-bottom-nav-h
+              // momentarily reads 0 (founder: "le filtre passe sous la nav barre").
+              bottom: "calc(max(var(--ds-bottom-nav-h, 0px), 88px) + 8px)",
             }}
           >
             <div className="flex items-center justify-between px-5 py-3 border-b border-slate-100 shrink-0">

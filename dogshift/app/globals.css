@@ -310,22 +310,30 @@ html[data-native="true"] #ds-nav-overlay {
    screen, with nothing else visible behind it (replaces the old gray
    skeletons that used to show in the native shell). */
 
-@keyframes dsSkelShimmer {
-  0%   { background-position: -200% 0; }
-  100% { background-position:  200% 0; }
+/* Purple neon "glide" shimmer. Founder: "je veux que le skeleton de chargement
+   soit violet stylé pas trop foncé mais type neon un peu genre effet glide."
+   A soft violet base (#ede9fe, violet-100) with a brighter violet highlight
+   (#a78bfa, violet-400) that glides across — keeps the loading state on-brand
+   and lively without being dark. Pure background-position animation → cheap,
+   60fps on the WKWebView compositor. */
+@keyframes dsSkelGlide {
+  0%   { background-position: 150% 0; }
+  100% { background-position: -150% 0; }
 }
 
 .ds-skel {
   border-radius: 12px;
-  background-color: #e2e8f0;
+  background-color: #ede9fe;
   background-image: linear-gradient(
-    90deg,
-    #e2e8f0 0%,
-    #f1f5f9 50%,
-    #e2e8f0 100%
+    100deg,
+    rgba(237, 233, 254, 0) 20%,
+    rgba(167, 139, 250, 0.55) 45%,
+    rgba(139, 92, 246, 0.65) 55%,
+    rgba(237, 233, 254, 0) 80%
   );
-  background-size: 200% 100%;
-  animation: dsSkelShimmer 1.4s ease-in-out infinite;
+  background-size: 220% 100%;
+  background-repeat: no-repeat;
+  animation: dsSkelGlide 1.6s linear infinite;
 }
 .ds-skel-circle { height: 56px; width: 56px; border-radius: 9999px; }
 .ds-skel-line { height: 14px; }

@@ -183,9 +183,10 @@ test("PageLoader renders a skeleton (not the running dog) on native", () => {
   );
   assert.match(
     src,
-    /isNative\s*\?\s*\(\s*<div[\s\S]*?DashboardSkeleton[\s\S]*?\)\s*:\s*\(\s*<RunningDog/,
-    "Expected native → <DashboardSkeleton/>, web → <RunningDog/>. This is the belt-and-suspenders layer so even loading.tsx that still use <PageLoader/> never show the dog in the app.",
+    /if\s*\(isNative\)\s*\{[\s\S]*?className="w-full px-3"[\s\S]*?<DashboardSkeleton\s*\/>[\s\S]*?\}/,
+    "Expected native → an IN-FLOW DashboardSkeleton (className 'w-full px-3', not a fixed full-screen overlay) so the bottom nav stays visible during loading.",
   );
+  assert.match(src, /<RunningDog/, "Expected web to keep the running dog.");
 });
 
 test("Conversations + button is a floating FAB anchored bottom-right above the nav", () => {
@@ -205,5 +206,50 @@ test("Conversations + button is a floating FAB anchored bottom-right above the n
     src,
     /justify-between[\s\S]{0,80}Conversations[\s\S]{0,200}Nouvelle conversation/,
     "The + should have moved out of the header into the FAB.",
+  );
+});
+
+// ── Round 4 — clean loading behaviour: neon glide skeletons, no flash ──────
+
+test("skeleton shimmer is a purple neon glide (not grey)", () => {
+  const css = read("app/globals.css");
+  assert.match(css, /@keyframes\s+dsSkelGlide/, "Expected a dsSkelGlide animation.");
+  // Brand violet in the glide highlight, not the old slate greys.
+  assert.match(
+    css,
+    /\.ds-skel\s*\{[\s\S]*?(167,\s*139,\s*250|139,\s*92,\s*246)[\s\S]*?\}/,
+    "Expected the .ds-skel glide to use brand violet (violet-400/violet-500), per the founder's 'neon violet glide' ask.",
+  );
+  assert.doesNotMatch(
+    css,
+    /\.ds-skel\s*\{[\s\S]*?#e2e8f0[\s\S]*?\}/,
+    "The old grey (#e2e8f0) skeleton base must be gone.",
+  );
+});
+
+test("DashboardSkeleton uses the neon .ds-skel shimmer (universal native skeleton)", () => {
+  const src = read("components/ui/DashboardSkeleton.tsx");
+  assert.match(src, /ds-skel/, "Expected DashboardSkeleton to use the neon .ds-skel class.");
+  assert.doesNotMatch(src, /bg-slate-100/, "The old grey slate blocks must be gone.");
+});
+
+test("RequestsSplitView + messages loading states use the neon skeleton (continuous load)", () => {
+  const requests = read("components/host/requests/RequestsSplitView.tsx");
+  const messages = read("app/(protected)/host/messages/layout.tsx");
+  assert.match(requests, /ds-skel/, "Expected the requests loading list to use the neon skeleton.");
+  assert.doesNotMatch(
+    requests,
+    /bg-slate-100\/80 animate-pulse/,
+    "The old grey pulse skeleton in the requests loading list must be gone.",
+  );
+  assert.match(messages, /ds-skel/, "Expected the conversations loading list to use the neon skeleton (was a 'Chargement…' text box).");
+});
+
+test("NativeMapHome search/filter panel is floored above the nav", () => {
+  const src = read("components/native/NativeMapHome.tsx");
+  assert.match(
+    src,
+    /bottom:\s*"calc\(max\(var\(--ds-bottom-nav-h, 0px\), 88px\) \+ 8px\)"/,
+    "Expected the search/filter panel bottom to use the floored nav-height so it never slips under the nav.",
   );
 });
