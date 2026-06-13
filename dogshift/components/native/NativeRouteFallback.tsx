@@ -1,9 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import { usePathname } from "next/navigation";
 
 import PageLoader from "@/components/ui/PageLoader";
 import DashboardSkeleton from "@/components/ui/DashboardSkeleton";
+import MapHomeSkeleton from "@/components/native/MapHomeSkeleton";
 
 /**
  * Suspense fallback for the route-GROUP boundaries — `app/(protected)/loading.tsx`
@@ -31,6 +33,7 @@ import DashboardSkeleton from "@/components/ui/DashboardSkeleton";
  * correct — no 1-frame flash of the web loader before switching.
  */
 export default function NativeRouteFallback({ web }: { web: "loader" | "none" }) {
+  const pathname = usePathname();
   const [isNative] = useState(
     () =>
       typeof document !== "undefined" &&
@@ -38,10 +41,22 @@ export default function NativeRouteFallback({ web }: { web: "loader" | "none" })
   );
 
   if (isNative) {
+    // HOME → a map + sitter-preview skeleton that matches NativeMapHome, so the
+    // hand-off is seamless (a generic list skeleton on the map screen looked
+    // incoherent — founder feedback).
+    if (pathname === "/") return <MapHomeSkeleton />;
+
+    // Everything else → the same list skeleton the dashboard pages show during
+    // their own client fetch (grey, matching card rows), so route-fallback →
+    // page reads as ONE continuous load. The bottom padding clears the z-50 nav
+    // so the rows never spill under it.
     return (
       <div
         className="w-full px-3"
-        style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 2rem)" }}
+        style={{
+          paddingTop: "calc(env(safe-area-inset-top, 0px) + 2rem)",
+          paddingBottom: "calc(max(var(--ds-bottom-nav-h, 0px), 88px) + 24px)",
+        }}
       >
         <DashboardSkeleton />
       </div>
