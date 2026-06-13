@@ -1,8 +1,9 @@
 /**
  * Marketing route loading state.
  *
- * Returns `null` intentionally — see `docs/bugs/e2e-smoke-body-text-too-short.md`
- * for the full post-mortem. Short version:
+ * WEB: returns `null` (via NativeRouteFallback's web="none" path) — see
+ * `docs/bugs/e2e-smoke-body-text-too-short.md` for the full post-mortem.
+ * Short version:
  *
  *  - PR #359 set this to `<PageLoader static />` to bullet-proof the footer-flash
  *    fix. That worked visually in prod, but on Vercel preview deployments the
@@ -13,13 +14,20 @@
  *    `components/NavigationOverlayController.tsx` (static <NavigationOverlay />
  *    + MutationObserver handoff to PageLoader if any) + the CSS rules in
  *    `app/globals.css`. The Suspense fallback was belt-and-suspenders only.
- *  - Returning `null` here unblocks CI on every PR.
+ *  - Returning `null` on web unblocks CI on every PR.
+ *
+ * NATIVE: the /account/* owner dashboards are `force-dynamic` and suspend at
+ * THIS group boundary on tab switches. `null` exposed the body background
+ * (formerly purple) → founder bug "ecran violet quand je switch entre les
+ * sections". A padded skeleton paints instead: neutral, instant, never a
+ * purple flash. The web path is untouched (still `null`), so smoke behaviour
+ * is unchanged. See components/native/NativeRouteFallback.tsx.
  *
  * If the footer flash regresses (3-frame reveal between Link click and the
- * page content), see `docs/bugs/footer-flash-during-navigation.md` — the
- * playbook there covers the layered fix without bringing the PageLoader back
- * to the Suspense fallback.
+ * page content), see `docs/bugs/footer-flash-during-navigation.md`.
  */
+import NativeRouteFallback from "@/components/native/NativeRouteFallback";
+
 export default function Loading() {
-  return null;
+  return <NativeRouteFallback web="none" />;
 }

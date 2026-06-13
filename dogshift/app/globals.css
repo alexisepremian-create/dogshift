@@ -161,6 +161,17 @@ html[data-native="true"] body {
   background-color: #7c3aed;
 }
 
+/* Once the splash has handed off (data-native-ready), the body must NOT stay
+   purple. Otherwise any frame where a page's content doesn't fully cover the
+   viewport — a `loading.tsx` that returns null, the gap while a force-dynamic
+   dashboard refetches on a tab switch — exposes the purple body and the user
+   sees a full purple screen (founder bug: "quand je switch entre les sections
+   ya des fois ecran violet"). Slate-100 matches NativeMapHome's outer bg, so
+   navigation gaps read as a neutral app background, never a purple flash. */
+html[data-native="true"][data-native-ready] body {
+  background-color: #f1f5f9;
+}
+
 html[data-native="true"]::before {
   content: "";
   position: fixed;
