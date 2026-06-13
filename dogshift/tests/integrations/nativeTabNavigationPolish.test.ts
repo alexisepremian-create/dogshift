@@ -277,6 +277,12 @@ test("route fallbacks are pathname-aware faithful replicas (one continuous skele
   // Dashboard replicas must paint a white bg matching the shell, so the
   // route→page hand-off doesn't flash the slate body background.
   assert.match(section, /min-h-screen w-full bg-white/, "Section replicas must paint bg-white to match the dashboard shell.");
+  // …and replicate the shell+page nesting (px-3 main → py-3 inner → px-1) so
+  // the skeleton sits at the SAME position as the real page — otherwise the
+  // route→page swap jumps the content (the real flash). The maintenance-banner
+  // var must be in the top padding to match the shell exactly.
+  assert.match(section, /var\(--ds-maintenance-banner-height, 0px\)/, "Replicas must include the banner var in pt to match the shell.");
+  assert.match(section, /w-full py-3/, "Replicas must include the shell's inner py-3 wrapper so the content isn't 12px too high.");
 });
 
 test("route + section fallbacks pad the bottom so the skeleton never spills under the nav", () => {
