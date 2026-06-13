@@ -245,44 +245,29 @@ test("RequestsSplitView + messages loading states use the .ds-skel shimmer", () 
   assert.match(messages, /ds-skel/, "Expected the conversations loading list to use the skeleton class.");
 });
 
-test("route fallbacks are pathname-aware faithful replicas (one continuous skeleton)", () => {
+test("home gets a map skeleton; sections with their own in-shell skeleton get NO route fallback", () => {
   const fallback = read("components/native/NativeRouteFallback.tsx");
   assert.match(fallback, /usePathname/, "Expected NativeRouteFallback to branch on the pathname.");
   assert.match(
     fallback,
     /pathname\s*===\s*"\/"\s*\)\s*return\s*<MapHomeSkeleton/,
-    "Expected the home route ('/') to render <MapHomeSkeleton/> (map + sitter preview).",
+    "Expected the home route ('/') to render <MapHomeSkeleton/> (matches NativeMapHome, both fixed inset-0).",
   );
+  // Réservations + Conversations render their OWN skeleton inside the shell, so
+  // the route-group fallback must render NOTHING for them — a route-level
+  // skeleton outside the shell can't match the in-shell position or nav spacer,
+  // which caused the flash + the cards spilling under the nav. One skeleton,
+  // one mount.
   assert.match(
     fallback,
-    /\/host\/requests[\s\S]*?<RequestsRouteSkeleton/,
-    "Expected /host/requests to render the Réservations replica skeleton.",
-  );
-  assert.match(
-    fallback,
-    /\/host\/messages[\s\S]*?<MessagesRouteSkeleton/,
-    "Expected /host/messages to render the Conversations replica skeleton.",
+    /pathname\.startsWith\("\/host\/requests"\)[\s\S]*?pathname\.startsWith\("\/host\/messages"\)[\s\S]*?return null/,
+    "Expected /host/requests and /host/messages to return null (no route-level skeleton — the page owns its skeleton).",
   );
 
   const map = read("components/native/MapHomeSkeleton.tsx");
   assert.match(map, /fixed inset-0 z-0/, "MapHomeSkeleton must sit below the z-50 nav so the nav stays visible.");
-  // Faithful replica markers: same chrome + 'Chargement…' loading sheet as NativeMapHome.
   assert.match(map, /Lieu, dates, service/, "MapHomeSkeleton must replicate the real search pill text.");
   assert.match(map, /Chargement…/, "MapHomeSkeleton must replicate the sheet's 'Chargement…' header.");
-
-  const section = read("components/native/SectionRouteSkeletons.tsx");
-  assert.match(section, />\s*Réservations\s*</, "Requests replica must show the real 'Réservations' title.");
-  assert.match(section, />\s*Conversations\s*</, "Messages replica must show the real 'Conversations' title.");
-  assert.match(section, /Rechercher…/, "Requests replica must replicate the search box.");
-  // Dashboard replicas must paint a white bg matching the shell, so the
-  // route→page hand-off doesn't flash the slate body background.
-  assert.match(section, /min-h-screen w-full bg-white/, "Section replicas must paint bg-white to match the dashboard shell.");
-  // …and replicate the shell+page nesting (px-3 main → py-3 inner → px-1) so
-  // the skeleton sits at the SAME position as the real page — otherwise the
-  // route→page swap jumps the content (the real flash). The maintenance-banner
-  // var must be in the top padding to match the shell exactly.
-  assert.match(section, /var\(--ds-maintenance-banner-height, 0px\)/, "Replicas must include the banner var in pt to match the shell.");
-  assert.match(section, /w-full py-3/, "Replicas must include the shell's inner py-3 wrapper so the content isn't 12px too high.");
 });
 
 test("route + section fallbacks pad the bottom so the skeleton never spills under the nav", () => {
