@@ -245,7 +245,7 @@ test("RequestsSplitView + messages loading states use the .ds-skel shimmer", () 
   assert.match(messages, /ds-skel/, "Expected the conversations loading list to use the skeleton class.");
 });
 
-test("home gets a map skeleton; sections with their own in-shell skeleton get NO route fallback", () => {
+test("route fallbacks: map skeleton on home, matched section skeletons on dashboards (never a blank)", () => {
   const fallback = read("components/native/NativeRouteFallback.tsx");
   assert.match(fallback, /usePathname/, "Expected NativeRouteFallback to branch on the pathname.");
   assert.match(
@@ -253,21 +253,39 @@ test("home gets a map skeleton; sections with their own in-shell skeleton get NO
     /pathname\s*===\s*"\/"\s*\)\s*return\s*<MapHomeSkeleton/,
     "Expected the home route ('/') to render <MapHomeSkeleton/> (matches NativeMapHome, both fixed inset-0).",
   );
-  // Réservations + Conversations render their OWN skeleton inside the shell, so
-  // the route-group fallback must render NOTHING for them — a route-level
-  // skeleton outside the shell can't match the in-shell position or nav spacer,
-  // which caused the flash + the cards spilling under the nav. One skeleton,
-  // one mount.
+  // The host/account layouts are force-dynamic + SLOW, so the fallback is on
+  // screen for a real moment — it MUST be a skeleton, never null (null painted
+  // a white screen = the regression we undid).
   assert.match(
     fallback,
-    /pathname\.startsWith\("\/host\/requests"\)[\s\S]*?pathname\.startsWith\("\/host\/messages"\)[\s\S]*?return null/,
-    "Expected /host/requests and /host/messages to return null (no route-level skeleton — the page owns its skeleton).",
+    /\/host\/requests[\s\S]*?<RequestsRouteSkeleton/,
+    "Expected /host/requests to render the matched Réservations skeleton (not null).",
+  );
+  assert.match(
+    fallback,
+    /\/host\/messages[\s\S]*?<MessagesRouteSkeleton/,
+    "Expected /host/messages to render the matched Conversations skeleton (not null).",
   );
 
   const map = read("components/native/MapHomeSkeleton.tsx");
   assert.match(map, /fixed inset-0 z-0/, "MapHomeSkeleton must sit below the z-50 nav so the nav stays visible.");
   assert.match(map, /Lieu, dates, service/, "MapHomeSkeleton must replicate the real search pill text.");
   assert.match(map, /Chargement…/, "MapHomeSkeleton must replicate the sheet's 'Chargement…' header.");
+
+  const section = read("components/native/SectionRouteSkeletons.tsx");
+  assert.match(section, /min-h-screen w-full bg-white/, "Section replicas must paint bg-white to match the shell.");
+  assert.match(section, /w-full py-3/, "Section replicas must include the shell's inner py-3 so the position matches.");
+});
+
+test("home: the web marketing homepage is hidden on native so it never flashes before the map", () => {
+  const css = read("app/globals.css");
+  assert.match(
+    css,
+    /html\[data-native="true"\]\s+\[data-ds-web-home\]\s*\{\s*display:\s*none\s*!important/,
+    "Expected a CSS rule hiding [data-ds-web-home] on native so the web hero never paints before NativeMapHome.",
+  );
+  const sw = read("components/native/NativeHomeSwitch.tsx");
+  assert.match(sw, /data-ds-web-home/, "Expected NativeHomeSwitch to tag the web homepage with data-ds-web-home.");
 });
 
 test("route + section fallbacks pad the bottom so the skeleton never spills under the nav", () => {

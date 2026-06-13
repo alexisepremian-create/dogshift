@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import PageLoader from "@/components/ui/PageLoader";
 import DashboardSkeleton from "@/components/ui/DashboardSkeleton";
 import MapHomeSkeleton from "@/components/native/MapHomeSkeleton";
+import { RequestsRouteSkeleton, MessagesRouteSkeleton } from "@/components/native/SectionRouteSkeletons";
 
 /**
  * Suspense fallback for the route-GROUP boundaries — `app/(protected)/loading.tsx`
@@ -45,22 +46,16 @@ export default function NativeRouteFallback({ web }: { web: "loader" | "none" })
     // `fixed inset-0`), so the hand-off is seamless.
     if (pathname === "/") return <MapHomeSkeleton />;
 
-    // Sections that render their OWN client-fetch skeleton INSIDE the shell
-    // (Réservations, Conversations) → render NOTHING here. A route-level
-    // skeleton rendered OUTSIDE the shell can never match the in-shell page's
-    // position or its nav bottom-spacer, so the route→page swap jumped the
-    // content (the flash) and the cards spilled under the nav. Returning null
-    // means there is ONE skeleton only — the page's own, correctly positioned
-    // inside the shell — and ONE mount instead of two (no swap, no flash).
-    // The body is white (#483) so this brief gap is a clean white screen with
-    // the bottom nav, never a coloured flash.
-    if (
-      pathname.startsWith("/host/requests") ||
-      pathname.startsWith("/account/bookings") ||
-      pathname.startsWith("/host/messages") ||
-      pathname.startsWith("/account/messages")
-    ) {
-      return null;
+    // Réservations / Conversations: the layout's force-dynamic DB read is SLOW,
+    // so this fallback is on screen for a real moment — it MUST show a skeleton
+    // (returning null painted a white screen = the regression). These replicas
+    // reproduce the page's exact in-shell position + low card counts, so the
+    // route→page hand-off shows the same skeleton and nothing spills under nav.
+    if (pathname.startsWith("/host/requests") || pathname.startsWith("/account/bookings")) {
+      return <RequestsRouteSkeleton />;
+    }
+    if (pathname.startsWith("/host/messages") || pathname.startsWith("/account/messages")) {
+      return <MessagesRouteSkeleton />;
     }
 
     // Other dashboards (host/account home) have no own skeleton → a generic

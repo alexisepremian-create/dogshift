@@ -27,7 +27,21 @@ export default function NativeHomeSwitch({ children }: { children: React.ReactNo
     }
   }, [isNative, status, router]);
 
-  if (!isNative) return <>{children}</>;
+  // `useIsNativeApp()` is false on the first client render (SSR-safe), so on
+  // the native app the WEB homepage (children) would paint for a frame before
+  // flipping to <NativeMapHome /> — a visible flash of the marketing hero +
+  // sitter cards (founder bug). We still render the web homepage here (so SSR +
+  // first client render match → no hydration mismatch), but tag it with
+  // `data-ds-web-home`: globals.css hides that element on native via the
+  // synchronous `html[data-native]` attribute set by the boot script, so it
+  // never paints in the app. `display:contents` keeps it layout-neutral on web.
+  if (!isNative) {
+    return (
+      <div data-ds-web-home style={{ display: "contents" }}>
+        {children}
+      </div>
+    );
+  }
 
   // While session is loading, show nothing (splash overlay still covers)
   if (status === "loading") return null;
