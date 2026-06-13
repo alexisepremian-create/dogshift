@@ -244,17 +244,35 @@ test("RequestsSplitView + messages loading states use the .ds-skel shimmer", () 
   assert.match(messages, /ds-skel/, "Expected the conversations loading list to use the skeleton class.");
 });
 
-test("home route fallback shows a MAP skeleton, not a generic list", () => {
+test("route fallbacks are pathname-aware faithful replicas (one continuous skeleton)", () => {
   const fallback = read("components/native/NativeRouteFallback.tsx");
   assert.match(fallback, /usePathname/, "Expected NativeRouteFallback to branch on the pathname.");
   assert.match(
     fallback,
     /pathname\s*===\s*"\/"\s*\)\s*return\s*<MapHomeSkeleton/,
-    "Expected the home route ('/') to render <MapHomeSkeleton/> (map + sitter preview), not the list skeleton.",
+    "Expected the home route ('/') to render <MapHomeSkeleton/> (map + sitter preview).",
   );
+  assert.match(
+    fallback,
+    /\/host\/requests[\s\S]*?<RequestsRouteSkeleton/,
+    "Expected /host/requests to render the Réservations replica skeleton.",
+  );
+  assert.match(
+    fallback,
+    /\/host\/messages[\s\S]*?<MessagesRouteSkeleton/,
+    "Expected /host/messages to render the Conversations replica skeleton.",
+  );
+
   const map = read("components/native/MapHomeSkeleton.tsx");
   assert.match(map, /fixed inset-0 z-0/, "MapHomeSkeleton must sit below the z-50 nav so the nav stays visible.");
-  assert.match(map, /ds-skel/, "MapHomeSkeleton must use the grey shimmer.");
+  // Faithful replica markers: same chrome + 'Chargement…' loading sheet as NativeMapHome.
+  assert.match(map, /Lieu, dates, service/, "MapHomeSkeleton must replicate the real search pill text.");
+  assert.match(map, /Chargement…/, "MapHomeSkeleton must replicate the sheet's 'Chargement…' header.");
+
+  const section = read("components/native/SectionRouteSkeletons.tsx");
+  assert.match(section, />\s*Réservations\s*</, "Requests replica must show the real 'Réservations' title.");
+  assert.match(section, />\s*Conversations\s*</, "Messages replica must show the real 'Conversations' title.");
+  assert.match(section, /Rechercher…/, "Requests replica must replicate the search box.");
 });
 
 test("route + section fallbacks pad the bottom so the skeleton never spills under the nav", () => {
