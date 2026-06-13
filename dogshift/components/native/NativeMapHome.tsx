@@ -443,7 +443,7 @@ export default function NativeMapHome() {
         style={{
           bottom: sheetOpen
             ? "calc(70vh + 16px)"
-            : "calc(148px + 32px + var(--ds-bottom-nav-h, 0px))",
+            : "calc(148px + 32px + max(var(--ds-bottom-nav-h, 0px), 88px))",
           touchAction: "manipulation",
         }}
       >
@@ -457,7 +457,7 @@ export default function NativeMapHome() {
         <div
           className="absolute left-4 right-4 z-30"
           style={{
-            bottom: "calc(148px + 32px + var(--ds-bottom-nav-h, 0px))",
+            bottom: "calc(148px + 32px + max(var(--ds-bottom-nav-h, 0px), 88px))",
           }}
         >
           <Link
@@ -520,7 +520,14 @@ export default function NativeMapHome() {
       <div
         className={`absolute left-2 right-2 z-30 rounded-3xl bg-white shadow-[0_-8px_24px_rgba(2,6,23,0.14)] transition-transform duration-300 ease-out`}
         style={{
-          bottom: "calc(var(--ds-bottom-nav-h, 0px) + 16px)",
+          // Floor the nav height with max(…, 88px): when returning to the map
+          // from another tab the `--ds-bottom-nav-h` var can momentarily read
+          // 0 (the bottom-nav re-measures a tick later), which dropped the
+          // sheet's bottom to 16px and hid its lower half behind the z-50 nav
+          // (founder: "quand je reviens sur la home la preview se remet en
+          // dessous de la nav barre"). The floor guarantees the sheet always
+          // clears the nav; once the real (larger) value lands, max() uses it.
+          bottom: "calc(max(var(--ds-bottom-nav-h, 0px), 88px) + 16px)",
           // Collapsed peek hugs its content: drag handle (~18px) + header
           // (~36px) + one card row (~68px) ≈ 122px, +slack = 148px. 212px left
           // ~80px of empty white above the nav (founder: "ya un espace enorme

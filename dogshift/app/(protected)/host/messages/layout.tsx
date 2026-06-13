@@ -2,9 +2,9 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
-import { MessageCircle } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Plus, X } from "lucide-react";
 
 type ConversationListItem = {
   id: string;
@@ -52,12 +52,84 @@ function formatDateOnly(iso: string) {
   return new Intl.DateTimeFormat("fr-CH", { day: "numeric", month: "short", year: "numeric" }).format(dt);
 }
 
+type Contact = { id: string; name: string; avatarUrl: string | null };
+
 export default function HostMessagesLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
 
   const [conversations, setConversations] = useState<ConversationListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // ── "New conversation" picker (the purple + button) ──────────────────────
+  // Lets the sitter start a chat with an owner they already have a
+  // booking/request with (founder: "un petit + violet pour créer une nouvelle
+  // conversation"). Contacts are derived from /api/host/requests.
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [pickerRaised, setPickerRaised] = useState(false);
+  const [contacts, setContacts] = useState<Contact[]>([]);
+  const [contactsLoading, setContactsLoading] = useState(false);
+  const [startingId, setStartingId] = useState<string | null>(null);
+
+  const loadContacts = useCallback(async () => {
+    setContactsLoading(true);
+    try {
+      const res = await fetch("/api/host/requests", { method: "GET", cache: "no-store" });
+      const payload = (await res.json()) as {
+        ok?: boolean;
+        bookings?: Array<{ owner?: { id?: string; name?: string; avatarUrl?: string | null } }>;
+      };
+      const seen = new Set<string>();
+      const list: Contact[] = [];
+      for (const b of payload.bookings ?? []) {
+        const o = b.owner;
+        if (!o?.id || seen.has(o.id)) continue;
+        seen.add(o.id);
+        list.push({ id: o.id, name: o.name?.trim() || "Client", avatarUrl: o.avatarUrl ?? null });
+      }
+      setContacts(list);
+    } catch {
+      setContacts([]);
+    } finally {
+      setContactsLoading(false);
+    }
+  }, []);
+
+  const openPicker = useCallback(() => {
+    setPickerOpen(true);
+    requestAnimationFrame(() => setPickerRaised(true));
+    void loadContacts();
+  }, [loadContacts]);
+
+  const closePicker = useCallback(() => {
+    setPickerRaised(false);
+    window.setTimeout(() => setPickerOpen(false), 280);
+  }, []);
+
+  const startConversation = useCallback(
+    async (ownerId: string) => {
+      if (startingId) return;
+      setStartingId(ownerId);
+      try {
+        const res = await fetch("/api/host/messages/conversations/start", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ownerId }),
+        });
+        const payload = (await res.json()) as { ok?: boolean; conversationId?: string };
+        if (res.ok && payload.ok && payload.conversationId) {
+          closePicker();
+          router.push(`/host/messages/${encodeURIComponent(payload.conversationId)}`);
+        }
+      } catch {
+        // swallow — button re-enables below
+      } finally {
+        setStartingId(null);
+      }
+    },
+    [startingId, closePicker, router],
+  );
 
   async function loadConversations() {
     setLoading(true);
@@ -120,7 +192,7 @@ export default function HostMessagesLayout({ children }: { children: React.React
   }, [conversations]);
 
   return (
-    <div className="flex h-[calc(100vh-80px-var(--ds-bottom-nav-h,0px))] lg:h-[calc(100vh-80px)] flex-col bg-white -mx-4 -mt-4 sm:mx-0 sm:mt-0 sm:rounded-3xl sm:border sm:border-slate-200 sm:shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)]" data-testid="host-messages-layout">
+    <div className="flex h-[calc(100vh-80px-max(var(--ds-bottom-nav-h,0px),88px))] lg:h-[calc(100vh-80px)] flex-col bg-white -mx-4 -mt-4 sm:mx-0 sm:mt-0 sm:rounded-3xl sm:border sm:border-slate-200 sm:shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)]" data-testid="host-messages-layout">
         <div className="flex-1 min-h-0 relative">
             <div className="grid h-full gap-0 lg:grid-cols-[360px_1fr]">
             <aside
@@ -130,6 +202,22 @@ export default function HostMessagesLayout({ children }: { children: React.React
                 "lg:border-r"
               }
             >
+              {/* Header: title top-left + purple "+" to start a new conversation */}
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <h1 className="text-[26px] font-extrabold tracking-tight text-slate-900">
+                  Conversations
+                </h1>
+                <button
+                  type="button"
+                  onClick={openPicker}
+                  aria-label="Nouvelle conversation"
+                  style={{ touchAction: "manipulation" }}
+                  className="flex h-10 w-10 items-center justify-center rounded-full bg-[#7c3aed] text-white shadow-[0_8px_20px_-6px_rgba(124,58,237,0.6)] active:scale-95"
+                >
+                  <Plus className="h-5 w-5" aria-hidden="true" />
+                </button>
+              </div>
+
               {error ? (
                 <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm font-medium text-rose-900">
                   <p>{error}</p>
@@ -210,6 +298,89 @@ export default function HostMessagesLayout({ children }: { children: React.React
             <section className={"h-full min-h-0 p-0 sm:p-6 " + (activeId ? "block" : "hidden lg:block")}>{children}</section>
             </div>
         </div>
+
+        {/* ── New-conversation picker (bottom sheet) ── */}
+        {pickerOpen ? (
+          <div className="fixed inset-0 z-[95] flex flex-col justify-end">
+            <button
+              type="button"
+              aria-label="Fermer"
+              onClick={closePicker}
+              className="absolute inset-0 bg-black/40 transition-opacity duration-300"
+              style={{ opacity: pickerRaised ? 1 : 0 }}
+            />
+            <div
+              className="relative w-full rounded-t-[28px] bg-white px-5 pt-3 shadow-2xl transition-transform duration-300 ease-out"
+              style={{
+                transform: pickerRaised ? "translateY(0)" : "translateY(100%)",
+                maxHeight: "75dvh",
+                overflowY: "auto",
+                paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 24px)",
+              }}
+            >
+              <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-slate-200" aria-hidden="true" />
+              <div className="mb-3 flex items-center justify-between">
+                <h2 className="text-lg font-bold text-slate-900">Nouvelle conversation</h2>
+                <button
+                  type="button"
+                  onClick={closePicker}
+                  aria-label="Fermer"
+                  style={{ touchAction: "manipulation" }}
+                  className="flex h-9 w-9 items-center justify-center rounded-full text-slate-500 active:scale-95"
+                >
+                  <X className="h-5 w-5" aria-hidden="true" />
+                </button>
+              </div>
+
+              {contactsLoading ? (
+                <div className="space-y-2 py-2">
+                  {Array.from({ length: 4 }).map((_, i) => (
+                    <div key={i} className="flex items-center gap-3 rounded-2xl p-2">
+                      <div className="h-10 w-10 animate-pulse rounded-full bg-slate-100" />
+                      <div className="h-4 w-1/2 animate-pulse rounded-lg bg-slate-100" />
+                    </div>
+                  ))}
+                </div>
+              ) : contacts.length === 0 ? (
+                <div className="py-8 text-center">
+                  <p className="text-sm font-semibold text-slate-900">Aucun contact pour l’instant</p>
+                  <p className="mt-1 text-sm text-slate-500">
+                    Les clients apparaîtront ici dès que tu auras une demande de réservation.
+                  </p>
+                </div>
+              ) : (
+                <div className="pb-1">
+                  {contacts.map((ct) => (
+                    <button
+                      key={ct.id}
+                      type="button"
+                      disabled={Boolean(startingId)}
+                      onClick={() => void startConversation(ct.id)}
+                      style={{ touchAction: "manipulation" }}
+                      className="flex w-full items-center gap-3 rounded-2xl px-2 py-3 text-left active:bg-slate-50 disabled:opacity-60"
+                    >
+                      <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-full bg-slate-100">
+                        {ct.avatarUrl && avatarIsSafe(ct.avatarUrl) ? (
+                          <Image src={ct.avatarUrl} alt={ct.name} fill className="object-cover" sizes="40px" />
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center text-sm font-semibold text-slate-600">
+                            {initialForName(ct.name)}
+                          </div>
+                        )}
+                      </div>
+                      <span className="min-w-0 flex-1 truncate text-sm font-semibold text-slate-900">
+                        {ct.name}
+                      </span>
+                      {startingId === ct.id ? (
+                        <span className="text-xs font-medium text-slate-400">Ouverture…</span>
+                      ) : null}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        ) : null}
     </div>
   );
 }

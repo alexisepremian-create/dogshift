@@ -80,6 +80,30 @@ fixed the "nothing changed" report.
   `ios/App/App/capacitor.config.json` `server.url` first — a stale localhost
   pin makes every merged fix invisible.
 
+## Round 2 follow-up (same day)
+
+After PR #476 the founder reported residual issues on the sim (now correctly
+pointed at prod):
+
+- **Running dog still flashed once** on the first home→Réservations switch.
+  Fix: `html[data-native="true"] #ds-nav-overlay { display: none !important; }`
+  in globals.css — the dog overlay is fully suppressed on native; skeletons
+  cover loading. (The controller early-return wasn't enough for the very first
+  interaction edge case.)
+- **Blank white page** during section loads. Fix: `DashboardSectionLoading`
+  now renders a padded `DashboardSkeleton` on native instead of `null`.
+- **Map preview clipped under the nav after returning from another tab**.
+  Cause: `--ds-bottom-nav-h` momentarily reads 0 on the map's remount. Fix:
+  floor it with `max(var(--ds-bottom-nav-h, 0px), 88px)` in NativeMapHome's
+  sheet/offset calcs so the sheet always clears the z-50 nav.
+- **Réservations/Conversations: drop the background card, go full-width, title
+  top-left**. `RequestsSplitView` and the host messages layout now branch on
+  `isNative` (no `max-w-6xl`, no frosted card; title flush top-left).
+- **New "+" button** (brand purple) on the Conversations header opens a bottom
+  sheet of existing contacts (owners derived from `/api/host/requests`); tapping
+  one upserts a conversation via `/api/host/messages/conversations/start` and
+  navigates to it.
+
 ## 🤖 Automated detection
 
 ```json
