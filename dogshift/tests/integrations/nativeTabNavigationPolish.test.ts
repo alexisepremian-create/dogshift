@@ -54,12 +54,13 @@ test("globals.css resets the native body background off purple after the splash"
     /html\[data-native="true"\]\s+body\s*\{\s*background-color:\s*#7c3aed/,
     "Expected the purple body fallback during the splash to remain.",
   );
-  // …but once ready, the body must become a neutral (non-purple) colour so a
-  // null loading.tsx / force-dynamic refetch gap never flashes purple.
+  // …but once ready, the body must become WHITE (matches the dashboards) so the
+  // 1-frame route-fallback→page swap gap is invisible — never purple, never a
+  // slate→white flash on navigation.
   assert.match(
     css,
-    /html\[data-native="true"\]\[data-native-ready\]\s+body\s*\{\s*background-color:\s*#f1f5f9/,
-    "Expected a [data-native-ready] body background reset to slate (#f1f5f9) so tab-switch gaps never show a purple screen.",
+    /html\[data-native="true"\]\[data-native-ready\]\s+body\s*\{\s*background-color:\s*#ffffff/,
+    "Expected a [data-native-ready] body background reset to white (#ffffff) so navigation gaps never flash against the white dashboards.",
   );
 });
 
