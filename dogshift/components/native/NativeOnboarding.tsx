@@ -71,28 +71,39 @@ export default function NativeOnboarding() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const settleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  useEffect(() => {
-    if (!isNative) return;
-    try {
-      if (window.localStorage.getItem(STORAGE_KEY) === "1") return;
-    } catch {
-      return;
-    }
-    setShouldShow(true);
-  }, [isNative]);
-
-  useEffect(() => {
-    return () => {
-      if (settleTimer.current) clearTimeout(settleTimer.current);
-    };
-  }, []);
-
   const markSeen = useCallback(() => {
     try {
       window.localStorage.setItem(STORAGE_KEY, "1");
     } catch {
       // noop
     }
+  }, []);
+
+  useEffect(() => {
+    if (!isNative) return;
+    // Wait until the session is resolved before deciding — showing the intro
+    // during "loading" then tearing it down causes a flash.
+    if (status === "loading") return;
+    // Already signed in → the app is unlocked, the onboarding/auth gate must
+    // never appear (founder bug: "ya tjr le truc d'intro meme si je suis deja
+    // connecté"). Mark it seen so it also won't pop on a later render.
+    if (status === "authenticated") {
+      markSeen();
+      setShouldShow(false);
+      return;
+    }
+    try {
+      if (window.localStorage.getItem(STORAGE_KEY) === "1") return;
+    } catch {
+      return;
+    }
+    setShouldShow(true);
+  }, [isNative, status, markSeen]);
+
+  useEffect(() => {
+    return () => {
+      if (settleTimer.current) clearTimeout(settleTimer.current);
+    };
   }, []);
 
   // Open the auth sheet. If the user is somehow already signed in (e.g. a
