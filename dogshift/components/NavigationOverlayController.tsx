@@ -47,6 +47,35 @@ function isSkippedHref(href: string): boolean {
 }
 
 /**
+ * In the NATIVE app, switching between the bottom-tab sections must feel
+ * instant — like Uber/Airbnb — with the bottom-nav pill sliding, NOT a
+ * full-screen running-dog loader. So we suppress the overlay for the tab
+ * destinations (home + the owner/sitter dashboards). On the web these keep
+ * the overlay (the dog is part of the consistent web feel). Gated on the
+ * `data-native` attribute set synchronously by the inline boot script.
+ */
+function isNativeInstantRoute(pathOnly: string): boolean {
+  if (typeof document === "undefined") return false;
+  if (document.documentElement.getAttribute("data-native") !== "true") return false;
+  // Tab destinations + every route reachable from the bottom-nav "Plus" sheet,
+  // so tapping ANY nav cell feels instant (no full-screen loader). The
+  // running-dog loader stays for content navigations (e.g. /sitter/* profiles,
+  // /search) which actually fetch data.
+  return (
+    pathOnly === "/" ||
+    pathOnly === "/host" ||
+    pathOnly.startsWith("/host/") ||
+    pathOnly === "/account" ||
+    pathOnly.startsWith("/account/") ||
+    pathOnly === "/devenir-dogsitter" ||
+    pathOnly === "/contact" ||
+    pathOnly === "/cgu" ||
+    pathOnly === "/confidentialite" ||
+    pathOnly === "/mentions-legales"
+  );
+}
+
+/**
  * Minimum duration the navigation overlay stays visible. Even if content
  * commits faster (e.g. a 50 ms route change), the overlay holds for at
  * least this long so:
@@ -124,6 +153,7 @@ function shouldShowOverlayFor(nextUrl: unknown, currentPathname: string | null):
   }
   if (!pathOnly.startsWith("/")) return false;
   if (pathOnly === currentPathname) return false;
+  if (isNativeInstantRoute(pathOnly)) return false;
   return !SKIP_PATHS.some((p) => pathOnly === p);
 }
 
@@ -218,6 +248,8 @@ export default function NavigationOverlayController() {
       const targetPath = href.split("?")[0]?.split("#")[0] ?? "";
       if (targetPath === currentPath) return;
       if (isSkippedHref(href)) return;
+      // Native tab switches are instant (no loader) — see isNativeInstantRoute.
+      if (isNativeInstantRoute(targetPath)) return;
 
       // SYNCHRONOUSLY flip the body attributes → CSS shows the overlay AND
       // hides the footer for FOOTER_HIDE_MS (covers the gap between overlay

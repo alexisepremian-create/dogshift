@@ -1,5 +1,5 @@
-import PageLoader from "@/components/ui/PageLoader";
+import DashboardSectionLoading from "@/components/native/DashboardSectionLoading";
 
 export default function Loading() {
-  return <PageLoader static />;
+  return <DashboardSectionLoading />;
 }
