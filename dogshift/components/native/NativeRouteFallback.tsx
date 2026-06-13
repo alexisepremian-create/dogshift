@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import PageLoader from "@/components/ui/PageLoader";
 import DashboardSkeleton from "@/components/ui/DashboardSkeleton";
 import MapHomeSkeleton from "@/components/native/MapHomeSkeleton";
+import { RequestsRouteSkeleton, MessagesRouteSkeleton } from "@/components/native/SectionRouteSkeletons";
 
 /**
  * Suspense fallback for the route-GROUP boundaries — `app/(protected)/loading.tsx`
@@ -41,15 +42,19 @@ export default function NativeRouteFallback({ web }: { web: "loader" | "none" })
   );
 
   if (isNative) {
-    // HOME → a map + sitter-preview skeleton that matches NativeMapHome, so the
-    // hand-off is seamless (a generic list skeleton on the map screen looked
-    // incoherent — founder feedback).
+    // Each route fallback is a FAITHFUL replica of the destination page's own
+    // loading view, so the route→page hand-off shows no visual change — one
+    // continuous skeleton (founder: "j'en veux qu'un pour chaque page, smooth").
     if (pathname === "/") return <MapHomeSkeleton />;
+    if (pathname.startsWith("/host/requests") || pathname.startsWith("/account/bookings")) {
+      return <RequestsRouteSkeleton />;
+    }
+    if (pathname.startsWith("/host/messages") || pathname.startsWith("/account/messages")) {
+      return <MessagesRouteSkeleton />;
+    }
 
-    // Everything else → the same list skeleton the dashboard pages show during
-    // their own client fetch (grey, matching card rows), so route-fallback →
-    // page reads as ONE continuous load. The bottom padding clears the z-50 nav
-    // so the rows never spill under it.
+    // Other dashboards → generic list skeleton (grey, matching card rows). The
+    // bottom padding clears the z-50 nav so the rows never spill under it.
     return (
       <div
         className="w-full px-3"
