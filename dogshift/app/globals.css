@@ -309,6 +309,16 @@ html[data-native="true"] #ds-nav-overlay {
   display: none !important;
 }
 
+/* NATIVE: hide the web marketing homepage instantly. NativeHomeSwitch renders
+   the web homepage (children) on the first client render because useIsNativeApp
+   is false then — without this rule it would paint the hero + sitter cards for
+   a frame before <NativeMapHome /> mounts (founder bug: "flash sur le chargement
+   de la page home"). The `data-native` attribute is set synchronously by the
+   boot script, so this hide applies before first paint. */
+html[data-native="true"] [data-ds-web-home] {
+  display: none !important;
+}
+
 /* The running-dog loader (`.rd-*` below) animates itself — no opacity pulse
    on the container SVG. Shown in BOTH web and native: the founder wants every
    in-app loading surface to show the brand "dog running" animation, full
