@@ -171,3 +171,39 @@ test("Host messages has a Conversations title + a purple + that starts a convers
     "Expected the picker to POST to the start-conversation endpoint.",
   );
 });
+
+// ── Round 3 — bulletproof dog kill + FAB placement ────────────────────────
+
+test("PageLoader renders a skeleton (not the running dog) on native", () => {
+  const src = read("components/ui/PageLoader.tsx");
+  assert.match(
+    src,
+    /getAttribute\("data-native"\)\s*===\s*"true"/,
+    "Expected PageLoader to detect native synchronously.",
+  );
+  assert.match(
+    src,
+    /isNative\s*\?\s*\(\s*<div[\s\S]*?DashboardSkeleton[\s\S]*?\)\s*:\s*\(\s*<RunningDog/,
+    "Expected native → <DashboardSkeleton/>, web → <RunningDog/>. This is the belt-and-suspenders layer so even loading.tsx that still use <PageLoader/> never show the dog in the app.",
+  );
+});
+
+test("Conversations + button is a floating FAB anchored bottom-right above the nav", () => {
+  const src = read("app/(protected)/host/messages/layout.tsx");
+  assert.match(
+    src,
+    /className="fixed right-4 z-40[^"]*"/,
+    "Expected the + to be a fixed bottom-right FAB (founder: 'le + en bas a droite au dessus de la nav barre').",
+  );
+  assert.match(
+    src,
+    /bottom:\s*"calc\(max\(var\(--ds-bottom-nav-h, 0px\), 88px\) \+ 16px\)"/,
+    "Expected the FAB to sit above the bottom nav using the floored nav-height.",
+  );
+  // The + must no longer live in the header row next to the title.
+  assert.doesNotMatch(
+    src,
+    /justify-between[\s\S]{0,80}Conversations[\s\S]{0,200}Nouvelle conversation/,
+    "The + should have moved out of the header into the FAB.",
+  );
+});

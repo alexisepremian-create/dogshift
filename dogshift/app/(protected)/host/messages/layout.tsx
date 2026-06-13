@@ -202,20 +202,14 @@ export default function HostMessagesLayout({ children }: { children: React.React
                 "lg:border-r"
               }
             >
-              {/* Header: title top-left + purple "+" to start a new conversation */}
-              <div className="mb-3 flex items-center justify-between gap-3">
+              {/* Title top-left. The "+" to start a new conversation is a
+                  floating FAB anchored bottom-right above the nav (see below) —
+                  founder: "le + je le veux en bas a droite au dessus de la nav
+                  barre". */}
+              <div className="mb-3">
                 <h1 className="text-[26px] font-extrabold tracking-tight text-slate-900">
                   Conversations
                 </h1>
-                <button
-                  type="button"
-                  onClick={openPicker}
-                  aria-label="Nouvelle conversation"
-                  style={{ touchAction: "manipulation" }}
-                  className="flex h-10 w-10 items-center justify-center rounded-full bg-[#7c3aed] text-white shadow-[0_8px_20px_-6px_rgba(124,58,237,0.6)] active:scale-95"
-                >
-                  <Plus className="h-5 w-5" aria-hidden="true" />
-                </button>
               </div>
 
               {error ? (
@@ -298,6 +292,25 @@ export default function HostMessagesLayout({ children }: { children: React.React
             <section className={"h-full min-h-0 p-0 sm:p-6 " + (activeId ? "block" : "hidden lg:block")}>{children}</section>
             </div>
         </div>
+
+        {/* ── Floating "+" FAB — bottom-right, above the bottom nav ──
+            Shown on the conversation LIST view (hidden once a thread is open so
+            it doesn't cover the chat). On desktop it's hidden (lg) since the
+            list is always visible alongside the thread. */}
+        {!activeId ? (
+          <button
+            type="button"
+            onClick={openPicker}
+            aria-label="Nouvelle conversation"
+            style={{
+              touchAction: "manipulation",
+              bottom: "calc(max(var(--ds-bottom-nav-h, 0px), 88px) + 16px)",
+            }}
+            className="fixed right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-[#7c3aed] text-white shadow-[0_10px_30px_-6px_rgba(124,58,237,0.65)] active:scale-95 lg:hidden"
+          >
+            <Plus className="h-6 w-6" aria-hidden="true" />
+          </button>
+        ) : null}
 
         {/* ── New-conversation picker (bottom sheet) ── */}
         {pickerOpen ? (

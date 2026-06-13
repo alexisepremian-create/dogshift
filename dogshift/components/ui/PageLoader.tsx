@@ -3,6 +3,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import RunningDog from "@/components/ui/RunningDog";
+import DashboardSkeleton from "@/components/ui/DashboardSkeleton";
 
 /* ── Config ────────────────────────────────────────────────────── */
 
@@ -41,6 +42,19 @@ export default function PageLoader({
   const mountRef = useRef(Date.now());
   const onDoneRef = useRef(onDone);
   onDoneRef.current = onDone;
+
+  // NATIVE: never show the running dog — the founder wants a loading skeleton
+  // to make the wait feel app-like ("je veux plus du tout le voir … je veux
+  // skeleton de chargement pour faire patienter le client"). This is the
+  // belt-and-suspenders layer: even loading.tsx files that still render
+  // <PageLoader /> directly (e.g. /sitter/[id], /post-login) get a skeleton
+  // in the app instead of the dog. Read synchronously so the very first client
+  // render is already correct (no 1-frame dog flash).
+  const [isNative] = useState(
+    () =>
+      typeof document !== "undefined" &&
+      document.documentElement.getAttribute("data-native") === "true",
+  );
 
   const [phase, setPhase] = useState<"animate" | "fadeOut" | "done">("animate");
 
@@ -91,7 +105,16 @@ export default function PageLoader({
       aria-busy={phase === "animate" ? "true" : "false"}
       aria-live="polite"
     >
-      <RunningDog size={200} className="text-[#7c3aed]" />
+      {isNative ? (
+        <div
+          className="w-full self-start px-3"
+          style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 2rem)" }}
+        >
+          <DashboardSkeleton />
+        </div>
+      ) : (
+        <RunningDog size={200} className="text-[#7c3aed]" />
+      )}
     </div>
   );
 }
