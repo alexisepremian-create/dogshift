@@ -59,10 +59,11 @@ export default function NativeRouteFallback({ web }: { web: "loader" | "none" })
     }
 
     // Other dashboards (host/account home) have no own skeleton → a generic
-    // list skeleton. bg-white matches the shell; bottom padding clears the nav.
+    // list skeleton. Fixed overlay (z-40, below the nav) covers the transition
+    // gap instantly so no white body flashes; bottom padding clears the nav.
     return (
       <div
-        className="min-h-screen w-full bg-white px-3"
+        className="fixed inset-0 z-40 w-full overflow-y-auto bg-white px-3"
         style={{
           paddingTop: "calc(env(safe-area-inset-top, 0px) + 2rem)",
           paddingBottom: "calc(max(var(--ds-bottom-nav-h, 0px), 88px) + 24px)",
