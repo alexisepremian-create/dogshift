@@ -292,6 +292,29 @@ test("home: the web marketing homepage is hidden on native so it never flashes b
   assert.match(sw, /data-ds-web-home/, "Expected NativeHomeSwitch to tag the web homepage with data-ds-web-home.");
 });
 
+test("dashboard gates render a skeleton (not null=white) while waiting", () => {
+  // HostHydrationGate + HostDataGate wrap the shell and used to `return null`
+  // (= a white screen) during their hydration / data-ready wait windows — that
+  // white appeared AFTER the route fallback and was the real navigation flash.
+  const hydration = read("components/HostHydrationGate.tsx");
+  assert.match(
+    hydration,
+    /if\s*\(!ready\)\s*return\s*<NativeDashboardLoading/,
+    "HostHydrationGate must render <NativeDashboardLoading/> (not null) before hydration.",
+  );
+  const dataGate = read("components/HostDataGate.tsx");
+  assert.match(
+    dataGate,
+    /if\s*\(waiting\)\s*\{[\s\S]*?return\s*<NativeDashboardLoading/,
+    "HostDataGate must render <NativeDashboardLoading/> (not null) while waiting.",
+  );
+  // The gate skeleton must be a fixed overlay (covers the gap) on native, null on web.
+  const gateLoader = read("components/native/NativeDashboardLoading.tsx");
+  assert.match(gateLoader, /getAttribute\("data-native"\)\s*===\s*"true"/, "NativeDashboardLoading must detect native synchronously.");
+  assert.match(gateLoader, /if\s*\(!isNative\)\s*return null/, "NativeDashboardLoading must return null on web (gates' prior behaviour off-app).");
+  assert.match(gateLoader, /RequestsRouteSkeleton|fixed inset-0 z-40/, "NativeDashboardLoading must render the matched native skeleton overlay.");
+});
+
 test("route + section fallbacks pad the bottom so the skeleton never spills under the nav", () => {
   for (const f of [
     "components/native/NativeRouteFallback.tsx",
