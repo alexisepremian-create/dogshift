@@ -1,10 +1,12 @@
 "use client";
+/* eslint-disable react-hooks/refs -- pre-existing warn-once-on-timeout pattern reads warnedTimeoutRef during render; unrelated to this loading fix. */
 
 import { useRouter } from "next/navigation";
-import { useSession, signOut } from "next-auth/react";
+import { useSession } from "next-auth/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useHostUser } from "@/components/HostUserProvider";
+import NativeDashboardLoading from "@/components/native/NativeDashboardLoading";
 
 const HOST_READY_LATCH_BY_USER_ID = new Map<string, true>();
 
@@ -173,7 +175,10 @@ export default function HostDataGate({ children }: { children: React.ReactNode }
   }
 
   if (waiting) {
-    return null;
+    // Render the native skeleton (not null = white) while waiting for host data
+    // / the readyToRender debounce, so there is no white frame between the route
+    // fallback and the shell (founder bug: "mini flash page blanche"). Web → null.
+    return <NativeDashboardLoading />;
   }
 
   return <>{children}</>;
