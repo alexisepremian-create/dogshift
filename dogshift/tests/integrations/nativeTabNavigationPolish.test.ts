@@ -273,7 +273,11 @@ test("route fallbacks: map skeleton on home, matched section skeletons on dashbo
   assert.match(map, /Chargement…/, "MapHomeSkeleton must replicate the sheet's 'Chargement…' header.");
 
   const section = read("components/native/SectionRouteSkeletons.tsx");
-  assert.match(section, /min-h-screen w-full bg-white/, "Section replicas must paint bg-white to match the shell.");
+  assert.match(
+    section,
+    /fixed inset-0 z-40 w-full overflow-y-auto bg-white/,
+    "Section replicas must be a fixed inset-0 overlay (below the nav) so they cover the transition gap / map teardown instantly — no white flash.",
+  );
   assert.match(section, /w-full py-3/, "Section replicas must include the shell's inner py-3 so the position matches.");
 });
 

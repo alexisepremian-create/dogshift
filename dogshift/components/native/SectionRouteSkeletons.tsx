@@ -16,11 +16,18 @@ import { ClipboardList } from "lucide-react";
  * Card counts are kept low (3 / 4) so the list never exceeds the space above
  * the nav → nothing spills under the bottom nav.
  *
+ * Rendered `fixed inset-0 z-40` (below the z-50 nav): the overlay covers the
+ * WHOLE viewport the instant it mounts, so the brief transition gap — the white
+ * body, or maplibre's WebGL canvas going white as the home map is torn down —
+ * is hidden behind the skeleton instead of flashing (founder: "mini flash page
+ * blanche quand je vais sur réservations"). Content scrolls inside it.
+ *
  * Mirrors the shell: top padding = safe-area + banner + 2rem, white bg, the
  * `py-3` inner wrapper and the `px-1` nesting levels.
  */
 
 const ROOT_PT = "calc(env(safe-area-inset-top, 0px) + var(--ds-maintenance-banner-height, 0px) + 2rem)";
+const OVERLAY_CLASS = "fixed inset-0 z-40 w-full overflow-y-auto bg-white px-3";
 
 function CardRow() {
   return (
@@ -38,8 +45,8 @@ function CardRow() {
 /** Replica of RequestsSplitView's native loading view (Réservations). */
 export function RequestsRouteSkeleton() {
   return (
-    // shell <main px-3 pt-…>  (min-h-screen bg-white matches the shell bg)
-    <div className="min-h-screen w-full bg-white px-3" style={{ paddingTop: ROOT_PT }}>
+    // Fixed overlay (covers the transition gap); inner padding mirrors the shell.
+    <div className={OVERLAY_CLASS} style={{ paddingTop: ROOT_PT }}>
       {/* shell inner <div w-full py-3> */}
       <div className="w-full py-3">
         {/* RequestsSplitView outer <div w-full px-1 pb-12> */}
@@ -106,8 +113,8 @@ export function RequestsRouteSkeleton() {
 /** Replica of the host messages layout's native loading view (Conversations). */
 export function MessagesRouteSkeleton() {
   return (
-    // shell <main px-3 pt-…>
-    <div className="min-h-screen w-full bg-white px-3" style={{ paddingTop: ROOT_PT }}>
+    // Fixed overlay (covers the transition gap); inner padding mirrors the shell.
+    <div className={OVERLAY_CLASS} style={{ paddingTop: ROOT_PT }}>
       {/* shell inner <div w-full py-3> */}
       <div className="w-full py-3">
         {/* HostMessagesLayout root (mobile: -mx-4 -mt-4 bg-white) */}
