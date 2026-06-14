@@ -42,7 +42,19 @@ export default function GlobalNativeBottomNav() {
   const isNative = useIsNativeApp();
   const pathname = usePathname();
   const { data: session, status } = useSession();
-  const [isSitter, setIsSitter] = useState(false);
+  // Seed from a persisted flag so a returning sitter doesn't see the bottom nav
+  // flip owner→sitter (Réservations/calendar icon → Demandes/inbox icon) at
+  // launch while fetchAccountContext resolves (founder bug: "la nav barre pour
+  // l'onglet réservation change au lancement"). fetchAccountContext then
+  // confirms/updates it and re-persists.
+  const [isSitter, setIsSitter] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    try {
+      return window.localStorage.getItem("ds_is_sitter") === "1";
+    } catch {
+      return false;
+    }
+  });
 
   // Resolve "is this user a sitter?" the same way SiteHeader does.
   useEffect(() => {
@@ -55,7 +67,13 @@ export default function GlobalNativeBottomNav() {
       try {
         const ctx = await fetchAccountContext();
         if (cancelled) return;
-        setIsSitter(Boolean(ctx?.hasSitterProfile));
+        const value = Boolean(ctx?.hasSitterProfile);
+        setIsSitter(value);
+        try {
+          window.localStorage.setItem("ds_is_sitter", value ? "1" : "0");
+        } catch {
+          // ignore storage errors (private mode, etc.)
+        }
       } catch {
         if (!cancelled) setIsSitter(false);
       }

@@ -16,7 +16,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 
 import { RequestDetailPanel } from "./RequestDetailPanel";
 import { RequestListItem, type HostRequest } from "./RequestListItem";
-import { useIsNativeApp } from "@/lib/native/useIsNativeApp";
+import { useIsNativeAppSync } from "@/lib/native/useIsNativeAppSync";
 
 type FilterKey = "ALL" | "TO_ACCEPT" | "CONFIRMED" | "CANCELLED" | "ARCHIVED";
 
@@ -57,7 +57,9 @@ export function RequestsSplitView({
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const isNative = useIsNativeApp();
+  // Synchronous read (renders behind HostHydrationGate, client-side) so the
+  // native no-card layout is correct on the first render — no web card flash.
+  const isNative = useIsNativeAppSync();
   const [localRows, setLocalRows] = useState<HostRequest[]>(rows);
   const [filter, setFilter] = useState<FilterKey>("ALL");
   const [lastActiveFilter, setLastActiveFilter] = useState<Exclude<FilterKey, "ARCHIVED">>("ALL");

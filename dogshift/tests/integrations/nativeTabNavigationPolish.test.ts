@@ -329,6 +329,34 @@ test("route + section fallbacks pad the bottom so the skeleton never spills unde
   }
 });
 
+test("dashboard shell + requests read native synchronously (no web-layout flash)", () => {
+  // The shell hides its logo header on native, and RequestsSplitView drops its
+  // card — both must be correct on the FIRST render, else the WEB layout (logo +
+  // card) flashes before flipping. They render behind HostHydrationGate so a
+  // synchronous read is hydration-safe.
+  const shell = read("components/HostDashboardShell.tsx");
+  assert.match(shell, /useIsNativeAppSync/, "HostDashboardShell must use the synchronous native hook.");
+  assert.doesNotMatch(shell, /from "@\/lib\/native\/useIsNativeApp"/, "HostDashboardShell must not use the async useIsNativeApp (causes a web-layout flash).");
+  const requests = read("components/host/requests/RequestsSplitView.tsx");
+  assert.match(requests, /useIsNativeAppSync/, "RequestsSplitView must use the synchronous native hook.");
+  const hook = read("lib/native/useIsNativeAppSync.ts");
+  assert.match(hook, /getAttribute\("data-native"\)\s*===\s*"true"/, "useIsNativeAppSync must read data-native synchronously.");
+});
+
+test("bottom nav persists isSitter so it doesn't flip owner→sitter at launch", () => {
+  const nav = read("components/native/GlobalNativeBottomNav.tsx");
+  assert.match(
+    nav,
+    /useState<boolean>\(\(\)\s*=>[\s\S]*?ds_is_sitter/,
+    "GlobalNativeBottomNav must seed isSitter from the persisted ds_is_sitter flag (no calendar→inbox flip at launch).",
+  );
+  assert.match(
+    nav,
+    /setItem\("ds_is_sitter"/,
+    "It must persist ds_is_sitter after resolving the account context.",
+  );
+});
+
 test("NativeMapHome search/filter panel is floored above the nav", () => {
   const src = read("components/native/NativeMapHome.tsx");
   assert.match(
