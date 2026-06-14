@@ -5,6 +5,7 @@ import type { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSitterReviewSnapshot } from "@/lib/sitterReviews";
 import { resolvePublicEnabledServices } from "@/lib/sitterEnabledServices";
+import { resolveSitterDogSizes } from "@/lib/sitterDogSizes";
 
 export const runtime = "nodejs";
 
@@ -156,7 +157,15 @@ export async function GET(req: NextRequest) {
           servicesJson: s.services,
         }),
         pricing: s.pricing ?? null,
-        dogSizes: s.dogSizes ?? null,
+        // Resolve from the authoritative capacity booleans (what the sitter
+        // toggles + what booking enforces), falling back to the legacy JSON.
+        // Keeps the search size filter + cards consistent with reality.
+        dogSizes: resolveSitterDogSizes({
+          acceptsSmall: s.acceptsSmall,
+          acceptsMedium: s.acceptsMedium,
+          acceptsLarge: s.acceptsLarge,
+          dogSizesJson: s.dogSizes,
+        }),
         capacityPlaces: s.capacityPlaces ?? null,
         acceptsSmall: s.acceptsSmall ?? null,
         acceptsMedium: s.acceptsMedium ?? null,
