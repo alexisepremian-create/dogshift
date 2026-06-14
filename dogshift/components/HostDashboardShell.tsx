@@ -8,7 +8,7 @@ import HostSidebar from "@/components/HostSidebar";
 import BrandLogo from "@/components/BrandLogo";
 import { useHostUser } from "@/components/HostUserProvider";
 import { useHostDashboardNavItems } from "@/components/dashboardNavItems";
-import { useIsNativeApp } from "@/lib/native/useIsNativeApp";
+import { useIsNativeAppSync } from "@/lib/native/useIsNativeAppSync";
 
 /** Primary tabs shown directly in the bottom bar (max 4 + "More") */
 const PRIMARY_NAV_KEYS = ["dashboard", "requests", "messages", "availability"] as const;
@@ -36,7 +36,10 @@ export default function HostDashboardShell({ children }: { children: React.React
   const { items } = useHostDashboardNavItems();
   // Capacitor shell uses <GlobalNativeBottomNav> from app/layout.tsx so the
   // bottom bar persists across all section navigations.
-  const isNative = useIsNativeApp();
+  // Synchronous read (this shell only renders behind HostHydrationGate, i.e.
+  // client-side post-hydration) so the native layout is correct on the FIRST
+  // render — no web layout (logo header + card) flashing before flipping.
+  const isNative = useIsNativeAppSync();
 
   const mode = (searchParams?.get("mode") ?? "").trim();
   const isPublicPreview = pathname?.startsWith("/sitter/") && mode === "preview";
