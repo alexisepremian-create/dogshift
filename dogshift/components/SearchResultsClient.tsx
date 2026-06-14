@@ -1,5 +1,5 @@
 "use client";
-/* eslint-disable react-hooks/set-state-in-effect, @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, @next/next/no-img-element */
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, @next/next/no-img-element */
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -14,6 +14,12 @@ import {
   normalizeLocationText as normalize,
   resolveCoordsForPublishedSitterMap,
 } from "@/lib/sitterMapGeo";
+import { dogCountsFitSitter } from "@/lib/search/dogCapacityFit";
+
+function parseCount(value: string | null): number {
+  const n = parseInt(value ?? "0", 10);
+  return Number.isFinite(n) && n > 0 ? n : 0;
+}
 
 function formatRating(rating: number) {
   return rating % 1 === 0 ? rating.toFixed(0) : rating.toFixed(1);
@@ -70,6 +76,10 @@ type SitterListItem = {
   services: unknown;
   pricing: unknown;
   dogSizes: unknown;
+  capacityPlaces?: number | null;
+  acceptsSmall?: boolean | null;
+  acceptsMedium?: boolean | null;
+  acceptsLarge?: boolean | null;
   averageRating: number | null;
   countReviews: number;
   updatedAt: string;
@@ -92,6 +102,10 @@ type UiSitter = {
   lat: number;
   lng: number;
   avatarUrl: string;
+  acceptsSmall?: boolean | null;
+  acceptsMedium?: boolean | null;
+  acceptsLarge?: boolean | null;
+  capacityPlaces?: number | null;
 };
 
 function parseServices(value: unknown): ServiceType[] {
@@ -183,6 +197,10 @@ function toUiSitter(row: SitterListItem): UiSitter | null {
     lat,
     lng,
     avatarUrl: row.avatarUrl ?? "https://i.pravatar.cc/160?img=7",
+    acceptsSmall: row.acceptsSmall ?? null,
+    acceptsMedium: row.acceptsMedium ?? null,
+    acceptsLarge: row.acceptsLarge ?? null,
+    capacityPlaces: row.capacityPlaces ?? null,
   };
 }
 
@@ -241,6 +259,65 @@ export default function SearchResultsClient() {
   );
   const [location, setLocation] = useState(initialLocation);
   const [dogSize, setDogSize] = useState<(typeof DOG_SIZE_OPTIONS)[number]>("");
+
+  // Capacity criteria from the home (number of dogs per size).
+  const petitN = parseCount(sp.get("dogs_petit"));
+  const moyenN = parseCount(sp.get("dogs_moyen"));
+  const grandN = parseCount(sp.get("dogs_grand"));
+  const requestedDogsTotal = petitN + moyenN + grandN;
+
+  // Availability criteria from the home (dates).
+  const reqDate = (sp.get("date") ?? "").trim();
+  const reqDuration = (sp.get("duration") ?? "").trim();
+  const reqArrival = (sp.get("arrival") ?? "").trim();
+  const reqDeparture = (sp.get("departure") ?? "").trim();
+  const hasDates = service === "Pension" ? Boolean(reqArrival && reqDeparture) : Boolean(reqDate);
+  const availabilityRequested = Boolean(service) && hasDates;
+
+  // sitterId → availability status for the requested dates (null = not fetched).
+  const [availabilityMap, setAvailabilityMap] = useState<Record<string, string> | null>(null);
+  const [availabilityLoading, setAvailabilityLoading] = useState(false);
+
+  useEffect(() => {
+    if (!sittersLoaded) return;
+    if (!availabilityRequested || sitters.length === 0) {
+      setAvailabilityMap(null);
+      setAvailabilityLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setAvailabilityLoading(true);
+    void (async () => {
+      try {
+        const res = await fetch("/api/sitters/availability-batch", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            service,
+            sitterIds: sitters.map((s) => s.id),
+            date: reqDate,
+            duration: reqDuration,
+            arrival: reqArrival,
+            departure: reqDeparture,
+          }),
+        });
+        const payload = (await res.json()) as { ok?: boolean; statuses?: Record<string, string> };
+        if (cancelled) return;
+        setAvailabilityMap(res.ok && payload?.ok && payload.statuses ? payload.statuses : {});
+      } catch {
+        if (!cancelled) setAvailabilityMap({});
+      } finally {
+        if (!cancelled) setAvailabilityLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+     
+  }, [sittersLoaded, sitters, service, reqDate, reqDuration, reqArrival, reqDeparture, availabilityRequested]);
+
+  const availabilityPending = availabilityRequested && availabilityLoading && !availabilityMap;
+
   const isProximitySearch = initialLocation.trim() === "À proximité";
   const [sort, setSort] = useState<SortKey>(isProximitySearch ? "distance_asc" : "rating_desc");
   // Mobile-only: hide secondary filters behind a "Filtres" toggle so the
@@ -295,7 +372,33 @@ export default function SearchResultsClient() {
       const matchesDogSize = dogSize ? sitter.dogSizes.some((s) => normalize(s) === normalize(dogSize)) : true;
       const matchesVerified = sort === "verified_first" ? Boolean(sitter.verified) : true;
       const matchesDistance = sort === "distance_asc" && coords ? distanceKm !== null : true;
-      return matchesService && matchesLocation && matchesDogSize && matchesVerified && matchesDistance;
+      // Capacity: the sitter must accept the requested sizes and have enough places.
+      const matchesCapacity =
+        requestedDogsTotal > 0
+          ? dogCountsFitSitter(
+              { petit: petitN, moyen: moyenN, grand: grandN },
+              {
+                acceptsSmall: sitter.acceptsSmall,
+                acceptsMedium: sitter.acceptsMedium,
+                acceptsLarge: sitter.acceptsLarge,
+                capacityPlaces: sitter.capacityPlaces,
+              },
+            )
+          : true;
+      // Availability: only keep sitters free on the requested dates. While the
+      // batch result is loading, keep nothing (the UI shows a loading state).
+      const matchesAvailability = availabilityRequested
+        ? Boolean(availabilityMap) && availabilityMap![sitter.id] !== undefined && availabilityMap![sitter.id] !== "UNAVAILABLE"
+        : true;
+      return (
+        matchesService &&
+        matchesLocation &&
+        matchesDogSize &&
+        matchesCapacity &&
+        matchesAvailability &&
+        matchesVerified &&
+        matchesDistance
+      );
     });
 
     rows.sort((a, b) => {
@@ -317,7 +420,7 @@ export default function SearchResultsClient() {
     });
 
     return rows;
-  }, [service, location, dogSize, sort, sitters, userGeoCoords]);
+  }, [service, location, dogSize, sort, sitters, userGeoCoords, petitN, moyenN, grandN, requestedDogsTotal, availabilityRequested, availabilityMap]);
 
   const resultsSubtitle = useMemo(() => {
     if (!isResultsMode) return "";
@@ -331,7 +434,7 @@ export default function SearchResultsClient() {
     return `${filtered.length} dog-sitters trouvés`;
   }, [filtered.length, isResultsMode, location]);
 
-  const showEmpty = filtered.length === 0;
+  const showEmpty = !availabilityPending && filtered.length === 0;
 
   return (
     <div className="min-h-screen bg-white text-slate-900">
@@ -552,8 +655,14 @@ export default function SearchResultsClient() {
   
           <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm text-slate-600">
-              <span className="font-semibold text-slate-900">{filtered.length}</span>
-              <span className="text-slate-500"> sitters</span>
+              {availabilityPending ? (
+                <span className="text-slate-500">Recherche des disponibilités…</span>
+              ) : (
+                <>
+                  <span className="font-semibold text-slate-900">{filtered.length}</span>
+                  <span className="text-slate-500"> sitters</span>
+                </>
+              )}
             </p>
 
             <div className="flex items-center gap-3">
