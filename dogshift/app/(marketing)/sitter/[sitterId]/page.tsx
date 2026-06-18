@@ -385,9 +385,6 @@ function SitterPublicProfileContent({
   // bottom nav (founder: page coupée en haut/bas, "Réserver" sous la nav barre).
   const isNative = useIsNativeApp();
   const [showSecondary, setShowSecondary] = useState(false);
-  // Native: Services & tarifs is a compact dropdown (collapsed shows only the
-  // selected service; tap to expand + pick another) to save vertical space.
-  const [servicesOpen, setServicesOpen] = useState(false);
   const id = sitterId;
   if (dbg) console.log("ID used for fetch:", id);
 
@@ -2354,41 +2351,71 @@ function SitterPublicProfileContent({
                   <h2 className="text-lg font-bold tracking-tight text-slate-900">Services & tarifs</h2>
                   {sitter.services.length === 0 ? (
                     <p className="mt-3 text-sm text-slate-500">Ce sitter n&apos;a pas encore renseigné ses services.</p>
-                  ) : (() => {
-                    const anySelected = pricingRows.some((r) => serviceLabelToSlotsType(r.service) === slotsServiceType);
-                    const canDropdown = isNative && pricingRows.length > 1;
-                    return (
-                    <div className={canDropdown ? "mt-3 overflow-hidden rounded-2xl border border-slate-200" : isNative ? "mt-3" : "mt-3 divide-y divide-slate-100"}>
-                      {pricingRows.map((row, idx) => {
+                  ) : isNative ? (
+                    /* Native: horizontal segmented pills + the selected service's
+                       price below. Compact and app-native; tapping a pill drives
+                       the calendar (slotsServiceType). */
+                    (() => {
+                      const selectedRow =
+                        pricingRows.find((r) => serviceLabelToSlotsType(r.service) === slotsServiceType) ?? pricingRows[0];
+                      const selHasPrice =
+                        !!selectedRow && typeof selectedRow.price === "number" && Number.isFinite(selectedRow.price) && selectedRow.price > 0;
+                      return (
+                        <>
+                          <div className="mt-3 flex gap-2">
+                            {pricingRows.map((row) => {
+                              const slot = serviceLabelToSlotsType(row.service);
+                              const color = getServiceColors(slot);
+                              const selected = slotsServiceType === slot;
+                              return (
+                                <button
+                                  key={row.service}
+                                  type="button"
+                                  role="tab"
+                                  aria-checked={selected}
+                                  onClick={() => setSlotsServiceType(slot)}
+                                  style={{ touchAction: "manipulation" }}
+                                  className={[
+                                    "flex-1 rounded-2xl px-3 py-2.5 text-sm font-semibold transition-colors active:scale-[0.98]",
+                                    selected ? `${color.fill} text-white shadow-sm` : "border border-slate-200 bg-white text-slate-700",
+                                  ].join(" ")}
+                                >
+                                  {row.service}
+                                </button>
+                              );
+                            })}
+                          </div>
+                          <p className="mt-2.5 text-sm font-medium text-slate-600">
+                            {selectedRow
+                              ? selHasPrice
+                                ? (
+                                  <>
+                                    À partir de <span className="font-bold text-slate-900">CHF {selectedRow.price}</span>{" "}
+                                    {selectedRow.service === "Pension" ? "/ jour" : "/ heure"}
+                                  </>
+                                )
+                                : "Tarif sur demande"
+                              : null}
+                          </p>
+                        </>
+                      );
+                    })()
+                  ) : (
+                    <div className="mt-3 divide-y divide-slate-100">
+                      {pricingRows.map((row) => {
                         const hasPrice = typeof row.price === "number" && Number.isFinite(row.price) && row.price > 0;
                         const slotServiceType = serviceLabelToSlotsType(row.service);
                         const color = getServiceColors(slotServiceType);
                         const selected = slotsServiceType === slotServiceType;
-                        // Native dropdown: collapsed shows only the selected row
-                        // (or the first if none matched yet); expanded shows all.
-                        if (canDropdown && !servicesOpen && !(selected || (!anySelected && idx === 0))) return null;
                         return (
                           <button
                             key={row.service}
                             type="button"
                             role="tab"
                             aria-checked={selected}
-                            onClick={() => {
-                              if (canDropdown) {
-                                if (servicesOpen) {
-                                  setSlotsServiceType(slotServiceType);
-                                  setServicesOpen(false);
-                                } else {
-                                  setServicesOpen(true);
-                                }
-                              } else {
-                                setSlotsServiceType(slotServiceType);
-                              }
-                            }}
+                            onClick={() => setSlotsServiceType(slotServiceType)}
                             className={[
-                              "flex w-full items-center justify-between text-left text-sm font-medium transition-colors",
-                              isNative ? (canDropdown ? "px-4 py-2.5" : "py-2.5") : "py-3.5",
-                              canDropdown && servicesOpen && idx > 0 ? "border-t border-slate-100" : "",
+                              "flex w-full items-center justify-between py-3.5 text-left text-sm font-medium transition-colors",
                               selected ? "text-slate-900" : "text-slate-600 hover:text-slate-900",
                             ].join(" ")}
                           >
@@ -2396,31 +2423,27 @@ function SitterPublicProfileContent({
                               <span className={`h-2.5 w-2.5 rounded-full ${selected ? color.fill : "bg-slate-300"}`} aria-hidden="true" />
                               <span className={selected ? "font-semibold" : ""}>{row.service}</span>
                             </span>
-                            <span className="flex items-center gap-2">
-                              <span className={selected ? "font-bold text-slate-900" : "text-slate-500"}>
-                                {hasPrice ? (
-                                  <>CHF {row.price} <span className="font-normal text-slate-400">{row.service === "Pension" ? "/ jour" : "/ heure"}</span></>
-                                ) : "Sur demande"}
-                              </span>
-                              {canDropdown && selected ? (
-                                servicesOpen ? <ChevronUp className="h-4 w-4 text-slate-400" /> : <ChevronDown className="h-4 w-4 text-slate-400" />
-                              ) : null}
+                            <span className={selected ? "font-bold text-slate-900" : "text-slate-500"}>
+                              {hasPrice ? (
+                                <>CHF {row.price} <span className="font-normal text-slate-400">{row.service === "Pension" ? "/ jour" : "/ heure"}</span></>
+                              ) : "Sur demande"}
                             </span>
                           </button>
                         );
                       })}
                     </div>
-                    );
-                  })()}
+                  )}
                 </div>
 
                 <div className={isNative ? "mt-5" : "mt-8"}>
                   <h2 className="text-lg font-bold tracking-tight text-slate-900">Agenda des disponibilités</h2>
-                  <p className="mt-1 text-sm text-slate-500">
-                    {slotsServiceType === "PENSION"
-                      ? "Sélectionne une date de début puis une date de fin."
-                      : "Sélectionne une date pour voir les créneaux disponibles."}
-                  </p>
+                  {!isNative ? (
+                    <p className="mt-1 text-sm text-slate-500">
+                      {slotsServiceType === "PENSION"
+                        ? "Sélectionne une date de début puis une date de fin."
+                        : "Sélectionne une date pour voir les créneaux disponibles."}
+                    </p>
+                  ) : null}
 
                   <div className="mt-5">
                     <AvailabilityCalendar
@@ -2457,7 +2480,7 @@ function SitterPublicProfileContent({
                     />
                   </div>
 
-                  <div className={`flex flex-wrap gap-4 text-xs font-medium text-slate-500 ${isNative ? "mt-2" : "mt-4"}`}>
+                  <div className={`${isNative ? "hidden" : "flex"} mt-4 flex-wrap gap-4 text-xs font-medium text-slate-500`}>
                     <div className="flex items-center gap-1.5"><span className={`h-2 w-2 rounded-full ${getServiceColors("PROMENADE").fill}`} /><span>Promenade</span></div>
                     <div className="flex items-center gap-1.5"><span className={`h-2 w-2 rounded-full ${getServiceColors("DOGSITTING").fill}`} /><span>Dogsitting</span></div>
                     <div className="flex items-center gap-1.5"><span className={`h-2 w-2 rounded-full ${getServiceColors("PENSION").fill}`} /><span>Pension</span></div>
