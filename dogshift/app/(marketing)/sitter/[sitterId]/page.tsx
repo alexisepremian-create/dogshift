@@ -10,7 +10,9 @@ import Link from "next/link";
 import { useParams, usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { User, Scissors, Dog, MapPin, Users, MessageSquare, Star, Info, ChevronLeft, ChevronRight, Calendar as CalendarIcon, Shield, CreditCard, MessageCircle } from "lucide-react";
+import { User, Scissors, Dog, MapPin, Users, MessageSquare, Star, Info, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Calendar as CalendarIcon, Shield, CreditCard, MessageCircle } from "lucide-react";
+
+import { useIsNativeApp } from "@/lib/native/useIsNativeApp";
 import { SERVICE_COLORS, getServiceColors } from "@/lib/design/services";
 import SharedCalendar, { type DayAvailability } from "@/components/ui/Calendar";
 import { loadHostProfileFromStorage, type HostProfileV1 } from "@/lib/hostProfile";
@@ -377,6 +379,12 @@ function SitterPublicProfileContent({
   const { maintenanceMode, adminNote } = useMaintenance();
   if (dbg) console.log("[ProfileContent] render");
   const actionsRef = useRef<HTMLDivElement | null>(null);
+  // Native (Capacitor) shell: compact the public profile so the essentials
+  // (services & tarifs + agenda) fit without scrolling, the rest collapses
+  // behind a "Plus d'infos" toggle, and the layout clears the status bar +
+  // bottom nav (founder: page coupée en haut/bas, "Réserver" sous la nav barre).
+  const isNative = useIsNativeApp();
+  const [showSecondary, setShowSecondary] = useState(false);
   const id = sitterId;
   if (dbg) console.log("ID used for fetch:", id);
 
@@ -2432,6 +2440,23 @@ function SitterPublicProfileContent({
                   ) : null}
                 </div>
 
+                {/* Native: collapse the secondary sections (prochaines dispos,
+                    à propos, avis) behind a toggle so services + agenda fit
+                    compactly. Web: always shown (toggle hidden). */}
+                {isNative && !showSecondary ? (
+                  <button
+                    type="button"
+                    onClick={() => setShowSecondary(true)}
+                    className="mt-6 flex w-full items-center justify-center gap-1.5 rounded-2xl border border-slate-200 bg-white py-3 text-sm font-semibold text-slate-700 active:scale-[0.99]"
+                    style={{ touchAction: "manipulation" }}
+                  >
+                    Plus d&apos;infos
+                    <ChevronDown className="h-4 w-4" />
+                  </button>
+                ) : null}
+
+                {!isNative || showSecondary ? (
+                <>
                 <div className="mt-8">
                   <h2 className="text-lg font-bold tracking-tight text-slate-900">Prochaines disponibilités</h2>
                   {nextDaysLoading ? (
@@ -2593,6 +2618,19 @@ function SitterPublicProfileContent({
                     </div>
                   )}
                 </div>
+                {isNative ? (
+                  <button
+                    type="button"
+                    onClick={() => setShowSecondary(false)}
+                    className="mt-6 flex w-full items-center justify-center gap-1.5 rounded-2xl border border-slate-200 bg-white py-3 text-sm font-semibold text-slate-700 active:scale-[0.99]"
+                    style={{ touchAction: "manipulation" }}
+                  >
+                    Réduire
+                    <ChevronUp className="h-4 w-4" />
+                  </button>
+                ) : null}
+                </>
+                ) : null}
               </div>
 
               <aside className="hidden lg:block">
@@ -2707,7 +2745,16 @@ function SitterPublicProfileContent({
             </div>
 
             {/* Mobile Sticky Booking Bar */}
-            <div className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white p-4 pb-safe shadow-[0_-8px_30px_-15px_rgba(0,0,0,0.1)] lg:hidden">
+            {/* Native: sit ABOVE the bottom nav (z-50) so "Réserver" is tappable
+                — at bottom-0 it was hidden behind the nav (founder bug). */}
+            <div
+              className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white p-4 pb-safe shadow-[0_-8px_30px_-15px_rgba(0,0,0,0.1)] lg:hidden"
+              style={
+                isNative
+                  ? { bottom: "calc(max(var(--ds-bottom-nav-h, 0px), 88px))", paddingBottom: "1rem" }
+                  : undefined
+              }
+            >
               <div className="mx-auto flex max-w-5xl items-center justify-between gap-4">
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-semibold text-slate-900">{serviceUi.current.label || "Sélectionnez un service"}</p>
@@ -2821,13 +2868,33 @@ function SitterPublicProfileContent({
   );
 
   return (
-    <div className="min-h-screen bg-white pb-24 text-slate-900 lg:pb-0">
+    <div
+      className="min-h-screen bg-white pb-24 text-slate-900 lg:pb-0"
+      style={
+        isNative
+          ? { paddingBottom: "calc(max(var(--ds-bottom-nav-h, 0px), 88px) + 88px)" }
+          : undefined
+      }
+    >
       {showHostChrome ? (
         <HostUserProvider value={hostUserValue}>
           <HostDashboardShell>{content}</HostDashboardShell>
         </HostUserProvider>
       ) : (
-        <main className="mx-auto max-w-6xl px-4 pt-4 pb-6 sm:px-6 sm:pt-6">{content}</main>
+        <main
+          className={
+            isNative
+              ? "w-full px-4 pb-6"
+              : "mx-auto max-w-6xl px-4 pt-4 pb-6 sm:px-6 sm:pt-6"
+          }
+          style={
+            isNative
+              ? { paddingTop: "calc(env(safe-area-inset-top, 0px) + 0.75rem)" }
+              : undefined
+          }
+        >
+          {content}
+        </main>
       )}
 
       {photoLightboxOpen && sitter?.avatarUrl ? (
