@@ -3,7 +3,7 @@
 
 import maplibregl from "maplibre-gl";
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type TouchEvent as ReactTouchEvent } from "react";
 import Map, { Marker, type MapRef } from "react-map-gl/maplibre";
 import { useRouter } from "next/navigation";
 import { Search, Locate, Star, X, Minus, Plus, MapPin, Calendar, ArrowLeft, SlidersHorizontal } from "lucide-react";
@@ -297,10 +297,13 @@ export default function NativeMapHome() {
       if (q && !(s.name.toLowerCase().includes(q) || s.city.toLowerCase().includes(q))) return false;
       return true;
     });
-    if (filterSort === "rating") return list.slice().sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0));
     if (filterSort === "reviews") return list.slice().sort((a, b) => b.reviews - a.reviews);
     if (filterSort === "price") return list.slice().sort((a, b) => a.minPrice - b.minPrice);
-    return list;
+    // Default (and explicit "rating"): best-rated first, then most-reviewed, so
+    // the strongest profiles surface at the top (founder request).
+    return list
+      .slice()
+      .sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0) || b.reviews - a.reviews);
   }, [sitters, query, serviceFilter, filterMinRating, filterPriceMin, filterPriceMax, filterVerifiedOnly, filterWithReviewsOnly, filterSort]);
 
   const activeSitter = useMemo(
@@ -336,10 +339,56 @@ export default function NativeMapHome() {
     );
   }, []);
 
+  // ── Bottom-sheet drag-to-open / drag-to-close ─────────────────────────────
+  // Swipe the grab handle UP to open, DOWN to close (founder: "slide ce pop up
+  // avec le doigt vers le haut/bas pour l'ouvrir et le fermer"). A plain tap
+  // still toggles. Swipe threshold + the existing CSS height transition gives
+  // the snap — no gesture library needed.
+  const dragStartYRef = useRef<number | null>(null);
+  const swipedRef = useRef(false);
+
+  const onHandleTouchStart = useCallback((e: ReactTouchEvent) => {
+    dragStartYRef.current = e.touches[0]?.clientY ?? null;
+    swipedRef.current = false;
+  }, []);
+
+  const onHandleTouchMove = useCallback((e: ReactTouchEvent) => {
+    if (dragStartYRef.current == null) return;
+    const dy = (e.touches[0]?.clientY ?? 0) - dragStartYRef.current;
+    if (Math.abs(dy) > 24) swipedRef.current = true;
+  }, []);
+
+  const onHandleTouchEnd = useCallback((e: ReactTouchEvent) => {
+    if (dragStartYRef.current == null) return;
+    const dy = (e.changedTouches[0]?.clientY ?? 0) - dragStartYRef.current;
+    dragStartYRef.current = null;
+    if (dy < -28) setSheetOpen(true);
+    else if (dy > 28) setSheetOpen(false);
+  }, []);
+
+  const onHandleClick = useCallback(() => {
+    // Ignore the click that fires at the end of a swipe (otherwise it would
+    // toggle back what the swipe just set).
+    if (swipedRef.current) {
+      swipedRef.current = false;
+      return;
+    }
+    setSheetOpen((v) => !v);
+  }, []);
+
   return (
     <div className="fixed inset-0 overflow-hidden bg-slate-100">
       {/* ── Map plein écran ───────────────────────────────────────────────── */}
-      <div className="absolute inset-0">
+      {/* Blur the map itself (CSS filter on the container — reliable on WKWebView,
+          unlike backdrop-filter over a WebGL canvas) when the sheet is open, so
+          the background reads as "floutté" behind the list (founder request). */}
+      <div
+        className="absolute inset-0"
+        style={{
+          filter: sheetOpen ? "blur(5px)" : undefined,
+          transform: "translateZ(0)",
+        }}
+      >
         {styleUrl ? (
           <Map
             ref={mapRef}
@@ -435,22 +484,25 @@ export default function NativeMapHome() {
           the native bottom-nav height (--ds-bottom-nav-h, exposed by
           MobileBottomNav). The sheet itself sits above the nav too, so it
           all stacks cleanly. */}
-      <button
-        type="button"
-        onClick={handleLocate}
-        aria-label="Me localiser"
-        className="absolute right-4 z-20 flex h-12 w-12 items-center justify-center rounded-full bg-white shadow-[0_6px_18px_rgba(2,6,23,0.25)] active:scale-95"
-        style={{
-          bottom: sheetOpen
-            ? "calc(70vh + 16px)"
-            : "calc(148px + 32px + max(var(--ds-bottom-nav-h, 0px), 88px))",
-          touchAction: "manipulation",
-        }}
-      >
-        <Locate
-          className={`h-5 w-5 ${geoLoading ? "animate-pulse text-[var(--dogshift-blue)]" : "text-slate-700"}`}
-        />
-      </button>
+      {/* Hidden while the sheet is open — the locate button is useless behind
+          the list/blur (founder: "le rond il n'apparaisse pas quand ce pop up
+          s'ouvre"). */}
+      {!sheetOpen && (
+        <button
+          type="button"
+          onClick={handleLocate}
+          aria-label="Me localiser"
+          className="absolute right-4 z-20 flex h-12 w-12 items-center justify-center rounded-full bg-white shadow-[0_6px_18px_rgba(2,6,23,0.25)] active:scale-95"
+          style={{
+            bottom: "calc(148px + 32px + max(var(--ds-bottom-nav-h, 0px), 88px))",
+            touchAction: "manipulation",
+          }}
+        >
+          <Locate
+            className={`h-5 w-5 ${geoLoading ? "animate-pulse text-[var(--dogshift-blue)]" : "text-slate-700"}`}
+          />
+        </button>
+      )}
 
       {/* ── Active sitter mini-popup (above the sheet, when a marker is tapped) ── */}
       {activeSitter && !sheetOpen && (
@@ -506,6 +558,22 @@ export default function NativeMapHome() {
         </div>
       )}
 
+      {/* ── Scrim behind the open sheet ──────────────────────────────────── */}
+      {/* When the sheet is open: lightly dim everything behind it (the map is
+          also blurred via its own CSS filter above), and tap anywhere outside
+          the sheet to close it (founder: "si on clique en dehors ça le ferme").
+          z-[25] sits above the map + search bar (z-20) but below the sheet
+          (z-30). */}
+      {sheetOpen && (
+        <button
+          type="button"
+          aria-label="Fermer la liste"
+          onClick={() => setSheetOpen(false)}
+          className="absolute inset-0 z-[25] bg-black/10"
+          style={{ touchAction: "manipulation" }}
+        />
+      )}
+
       {/* ── Bottom sheet : sitter list ───────────────────────────────────── */}
       {/* Sits ABOVE the native bottom-nav (offset by --ds-bottom-nav-h). The
           bottom-nav already accounts for the safe-area home indicator, so we
@@ -537,13 +605,17 @@ export default function NativeMapHome() {
           transform: "translateY(0)",
         }}
       >
-        {/* Drag handle (tap toggles, drag would need a gesture lib) */}
+        {/* Drag handle — tap toggles, swipe up/down opens/closes. Bigger touch
+            target (py-3) so the swipe is easy to grab. */}
         <button
           type="button"
-          onClick={() => setSheetOpen((v) => !v)}
+          onClick={onHandleClick}
+          onTouchStart={onHandleTouchStart}
+          onTouchMove={onHandleTouchMove}
+          onTouchEnd={onHandleTouchEnd}
           className="flex w-full flex-col items-center pt-2 pb-1"
           aria-label={sheetOpen ? "Réduire la liste" : "Voir la liste complète"}
-          style={{ touchAction: "manipulation" }}
+          style={{ touchAction: "none" }}
         >
           <div className="h-1.5 w-12 rounded-full bg-slate-300" />
         </button>
@@ -653,10 +725,22 @@ export default function NativeMapHome() {
                       {s.name}
                     </div>
                     <div className="truncate text-xs text-slate-500">{s.city}</div>
-                    {s.rating !== null && (
-                      <div className={`mt-0.5 flex items-center gap-0.5 text-xs text-slate-600 ${sheetOpen ? "justify-center" : ""}`}>
-                        <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-                        {s.rating.toFixed(1)}
+                    {(s.rating !== null || s.minPrice > 0) && (
+                      <div className={`mt-0.5 truncate text-xs text-slate-600 ${sheetOpen ? "text-center" : ""}`}>
+                        {s.rating !== null && (
+                          <span className="inline-flex items-center gap-0.5 align-middle">
+                            <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+                            {s.rating.toFixed(1)}
+                          </span>
+                        )}
+                        {s.rating !== null && s.minPrice > 0 && (
+                          <span className="mx-1 align-middle text-slate-300">·</span>
+                        )}
+                        {s.minPrice > 0 && (
+                          <span className="align-middle font-medium text-slate-700">
+                            {sheetOpen ? `Dès CHF ${s.minPrice}.–` : `dès ${s.minPrice} CHF`}
+                          </span>
+                        )}
                       </div>
                     )}
                   </div>

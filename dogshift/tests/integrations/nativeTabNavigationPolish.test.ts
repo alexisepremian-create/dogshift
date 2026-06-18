@@ -357,6 +357,27 @@ test("bottom nav persists isSitter so it doesn't flip owner→sitter at launch",
   );
 });
 
+test("NativeMapHome sheet: swipe + click-outside + blur + hidden locate + price + best-rated first", () => {
+  const src = read("components/native/NativeMapHome.tsx");
+  // Swipe to open/close the sheet via the grab handle.
+  assert.match(src, /onTouchStart=\{onHandleTouchStart\}/, "Sheet handle must wire onTouchStart for swipe.");
+  assert.match(src, /onHandleTouchEnd[\s\S]*?dy < -28[\s\S]*?setSheetOpen\(true\)/, "Swipe up must open the sheet.");
+  assert.match(src, /onHandleTouchEnd[\s\S]*?dy > 28[\s\S]*?setSheetOpen\(false\)/, "Swipe down must close the sheet.");
+  // Tap outside (scrim) closes; map is blurred while open.
+  assert.match(src, /aria-label="Fermer la liste"[\s\S]*?onClick=\{\(\) => setSheetOpen\(false\)\}/, "A full-screen scrim must close the sheet on tap-outside.");
+  assert.match(src, /filter:\s*sheetOpen\s*\?\s*"blur\(/, "The map container must blur while the sheet is open.");
+  // Locate FAB hidden while the sheet is open.
+  assert.match(src, /\{!sheetOpen && \([\s\S]*?aria-label="Me localiser"/, "The locate FAB must be hidden while the sheet is open.");
+  // Price shown on the cards.
+  assert.match(src, /CHF \$\{s\.minPrice\}|dès \$\{s\.minPrice\} CHF/, "Sitter cards must show the starting price.");
+  // Default order = best-rated first.
+  assert.match(
+    src,
+    /sort\(\(a, b\) => \(b\.rating \?\? 0\) - \(a\.rating \?\? 0\) \|\| b\.reviews - a\.reviews\)/,
+    "Default sitter order must be best-rated first (then most-reviewed).",
+  );
+});
+
 test("NativeMapHome search/filter panel is floored above the nav", () => {
   const src = read("components/native/NativeMapHome.tsx");
   assert.match(
