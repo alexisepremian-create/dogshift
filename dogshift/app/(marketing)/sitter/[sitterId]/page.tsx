@@ -385,6 +385,9 @@ function SitterPublicProfileContent({
   // bottom nav (founder: page coupée en haut/bas, "Réserver" sous la nav barre).
   const isNative = useIsNativeApp();
   const [showSecondary, setShowSecondary] = useState(false);
+  // Native: Services & tarifs is a compact dropdown (collapsed shows only the
+  // selected service; tap to expand + pick another) to save vertical space.
+  const [servicesOpen, setServicesOpen] = useState(false);
   const id = sitterId;
   if (dbg) console.log("ID used for fetch:", id);
 
@@ -2351,23 +2354,41 @@ function SitterPublicProfileContent({
                   <h2 className="text-lg font-bold tracking-tight text-slate-900">Services & tarifs</h2>
                   {sitter.services.length === 0 ? (
                     <p className="mt-3 text-sm text-slate-500">Ce sitter n&apos;a pas encore renseigné ses services.</p>
-                  ) : (
-                    <div className="mt-3 divide-y divide-slate-100">
-                      {pricingRows.map((row) => {
+                  ) : (() => {
+                    const anySelected = pricingRows.some((r) => serviceLabelToSlotsType(r.service) === slotsServiceType);
+                    const canDropdown = isNative && pricingRows.length > 1;
+                    return (
+                    <div className={canDropdown ? "mt-3 overflow-hidden rounded-2xl border border-slate-200" : isNative ? "mt-3" : "mt-3 divide-y divide-slate-100"}>
+                      {pricingRows.map((row, idx) => {
                         const hasPrice = typeof row.price === "number" && Number.isFinite(row.price) && row.price > 0;
                         const slotServiceType = serviceLabelToSlotsType(row.service);
                         const color = getServiceColors(slotServiceType);
                         const selected = slotsServiceType === slotServiceType;
+                        // Native dropdown: collapsed shows only the selected row
+                        // (or the first if none matched yet); expanded shows all.
+                        if (canDropdown && !servicesOpen && !(selected || (!anySelected && idx === 0))) return null;
                         return (
                           <button
                             key={row.service}
                             type="button"
                             role="tab"
                             aria-checked={selected}
-                            onClick={() => setSlotsServiceType(slotServiceType)}
+                            onClick={() => {
+                              if (canDropdown) {
+                                if (servicesOpen) {
+                                  setSlotsServiceType(slotServiceType);
+                                  setServicesOpen(false);
+                                } else {
+                                  setServicesOpen(true);
+                                }
+                              } else {
+                                setSlotsServiceType(slotServiceType);
+                              }
+                            }}
                             className={[
                               "flex w-full items-center justify-between text-left text-sm font-medium transition-colors",
-                              isNative ? "py-2.5" : "py-3.5",
+                              isNative ? (canDropdown ? "px-4 py-2.5" : "py-2.5") : "py-3.5",
+                              canDropdown && servicesOpen && idx > 0 ? "border-t border-slate-100" : "",
                               selected ? "text-slate-900" : "text-slate-600 hover:text-slate-900",
                             ].join(" ")}
                           >
@@ -2375,16 +2396,22 @@ function SitterPublicProfileContent({
                               <span className={`h-2.5 w-2.5 rounded-full ${selected ? color.fill : "bg-slate-300"}`} aria-hidden="true" />
                               <span className={selected ? "font-semibold" : ""}>{row.service}</span>
                             </span>
-                            <span className={selected ? "font-bold text-slate-900" : "text-slate-500"}>
-                              {hasPrice ? (
-                                <>CHF {row.price} <span className="font-normal text-slate-400">{row.service === "Pension" ? "/ jour" : "/ heure"}</span></>
-                              ) : "Sur demande"}
+                            <span className="flex items-center gap-2">
+                              <span className={selected ? "font-bold text-slate-900" : "text-slate-500"}>
+                                {hasPrice ? (
+                                  <>CHF {row.price} <span className="font-normal text-slate-400">{row.service === "Pension" ? "/ jour" : "/ heure"}</span></>
+                                ) : "Sur demande"}
+                              </span>
+                              {canDropdown && selected ? (
+                                servicesOpen ? <ChevronUp className="h-4 w-4 text-slate-400" /> : <ChevronDown className="h-4 w-4 text-slate-400" />
+                              ) : null}
                             </span>
                           </button>
                         );
                       })}
                     </div>
-                  )}
+                    );
+                  })()}
                 </div>
 
                 <div className={isNative ? "mt-5" : "mt-8"}>
