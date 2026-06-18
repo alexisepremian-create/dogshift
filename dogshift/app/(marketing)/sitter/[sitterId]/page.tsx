@@ -2271,7 +2271,7 @@ function SitterPublicProfileContent({
                       <img
                         src={sitter.avatarUrl}
                         alt={sitter.name}
-                        className="h-20 w-20 sm:h-24 sm:w-24 lg:h-28 lg:w-28 rounded-full object-cover ring-1 ring-slate-200 transition-opacity hover:opacity-90"
+                        className={`${isNative ? "h-16 w-16" : "h-20 w-20 sm:h-24 sm:w-24 lg:h-28 lg:w-28"} rounded-full object-cover ring-1 ring-slate-200 transition-opacity hover:opacity-90`}
                         loading="lazy"
                         referrerPolicy="no-referrer"
                       />
@@ -2302,8 +2302,10 @@ function SitterPublicProfileContent({
                     </div>
                   </div>
 
-                  {/* Mobile-only price band */}
-                  <div className="mt-4 rounded-2xl border border-slate-200 bg-white px-5 py-3.5 shadow-sm lg:hidden">
+                  {/* Mobile-only price band — hidden on native (the price is
+                      already in Services & tarifs; keeps the profile compact so
+                      it fits one screen). */}
+                  <div className={`mt-4 rounded-2xl border border-slate-200 bg-white px-5 py-3.5 shadow-sm lg:hidden ${isNative ? "hidden" : ""}`}>
                     <div className="flex items-baseline gap-1.5 text-slate-900">
                       <span className="text-xs font-medium text-slate-500">À partir de</span>
                       <span className="text-lg font-bold">CHF</span>
@@ -2315,8 +2317,9 @@ function SitterPublicProfileContent({
                     </div>
                   </div>
                   
-                  {/* Characteristics chips */}
-                  <div className="mt-6 flex flex-wrap items-center gap-2 border-y border-slate-100 py-4">
+                  {/* Characteristics chips — hidden on native to keep it compact
+                      (dog sizes/criteria surface in the booking flow). */}
+                  <div className={`mt-6 flex flex-wrap items-center gap-2 border-y border-slate-100 py-4 ${isNative ? "hidden" : ""}`}>
                     {dogSizeBadges.map((size) => {
                       const maxForSize = sitter.maxDogsBySize?.[size];
                       return (
@@ -2344,7 +2347,7 @@ function SitterPublicProfileContent({
                     ) : null}
                   </div>
 
-                  <div className="mt-8">
+                  <div className={isNative ? "mt-4" : "mt-8"}>
                   <h2 className="text-lg font-bold tracking-tight text-slate-900">Services & tarifs</h2>
                   {sitter.services.length === 0 ? (
                     <p className="mt-3 text-sm text-slate-500">Ce sitter n&apos;a pas encore renseigné ses services.</p>
@@ -2363,7 +2366,8 @@ function SitterPublicProfileContent({
                             aria-checked={selected}
                             onClick={() => setSlotsServiceType(slotServiceType)}
                             className={[
-                              "flex w-full items-center justify-between py-3.5 text-left text-sm font-medium transition-colors",
+                              "flex w-full items-center justify-between text-left text-sm font-medium transition-colors",
+                              isNative ? "py-2.5" : "py-3.5",
                               selected ? "text-slate-900" : "text-slate-600 hover:text-slate-900",
                             ].join(" ")}
                           >
@@ -2383,7 +2387,7 @@ function SitterPublicProfileContent({
                   )}
                 </div>
 
-                <div className="mt-8">
+                <div className={isNative ? "mt-5" : "mt-8"}>
                   <h2 className="text-lg font-bold tracking-tight text-slate-900">Agenda des disponibilités</h2>
                   <p className="mt-1 text-sm text-slate-500">
                     {slotsServiceType === "PENSION"
@@ -2426,7 +2430,7 @@ function SitterPublicProfileContent({
                     />
                   </div>
 
-                  <div className="mt-4 flex flex-wrap gap-4 text-xs font-medium text-slate-500">
+                  <div className={`flex flex-wrap gap-4 text-xs font-medium text-slate-500 ${isNative ? "mt-2" : "mt-4"}`}>
                     <div className="flex items-center gap-1.5"><span className={`h-2 w-2 rounded-full ${getServiceColors("PROMENADE").fill}`} /><span>Promenade</span></div>
                     <div className="flex items-center gap-1.5"><span className={`h-2 w-2 rounded-full ${getServiceColors("DOGSITTING").fill}`} /><span>Dogsitting</span></div>
                     <div className="flex items-center gap-1.5"><span className={`h-2 w-2 rounded-full ${getServiceColors("PENSION").fill}`} /><span>Pension</span></div>
