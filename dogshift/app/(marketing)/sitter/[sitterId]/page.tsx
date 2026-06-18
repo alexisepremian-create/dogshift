@@ -10,7 +10,7 @@ import Link from "next/link";
 import { useParams, usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { User, Scissors, Dog, MapPin, Users, MessageSquare, Star, Info, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Calendar as CalendarIcon, Shield, CreditCard, MessageCircle } from "lucide-react";
+import { User, Scissors, Dog, MapPin, Users, MessageSquare, Star, Info, ChevronLeft, ChevronRight, Calendar as CalendarIcon, Shield, CreditCard, MessageCircle } from "lucide-react";
 
 import { useIsNativeApp } from "@/lib/native/useIsNativeApp";
 import { SERVICE_COLORS, getServiceColors } from "@/lib/design/services";
@@ -384,7 +384,23 @@ function SitterPublicProfileContent({
   // behind a "Plus d'infos" toggle, and the layout clears the status bar +
   // bottom nav (founder: page coupée en haut/bas, "Réserver" sous la nav barre).
   const isNative = useIsNativeApp();
-  const [showSecondary, setShowSecondary] = useState(false);
+  // Native: the booking + "plus d'infos" surface is a swipeable bottom sheet
+  // (like the home map sheet). Réserver shows only when a date is selected; with
+  // no date the sheet is a "Plus d'infos" handle that swipes up to the sitter's
+  // secondary info.
+  const [profileSheetOpen, setProfileSheetOpen] = useState(false);
+  // Live finger-tracking for the native booking sheet: while dragging the
+  // handle, `sheetDragH` holds the sheet's current pixel height so the card
+  // follows the finger instead of snapping. null = not dragging (use the
+  // CSS height for the open/collapsed snap point).
+  const [sheetDragH, setSheetDragH] = useState<number | null>(null);
+  const sheetHeaderRef = useRef<HTMLDivElement | null>(null);
+  const sheetDragStartY = useRef<number | null>(null);
+  const sheetStartH = useRef<number>(0);
+  const sheetBarH = useRef<number>(96);
+  const sheetOpenH = useRef<number>(520);
+  const profileSwiped = useRef(false);
+
   const id = sitterId;
   if (dbg) console.log("ID used for fetch:", id);
 
@@ -1588,13 +1604,13 @@ function SitterPublicProfileContent({
               activeService={slotsServiceType}
             />
 
-            {slotsServiceType !== "PENSION" && bookingSelectionSummary ? (
+            {!isNative && slotsServiceType !== "PENSION" && bookingSelectionSummary ? (
               <div className="mt-3 rounded-2xl border border-slate-200 bg-white p-4">
                 <p className="text-sm font-medium text-slate-900">{bookingSelectionSummary}</p>
               </div>
             ) : null}
 
-            {slotsServiceType !== "PENSION" && slotsDate ? (
+            {!isNative && slotsServiceType !== "PENSION" && slotsDate ? (
               <div className="mt-3 rounded-2xl border border-slate-200 bg-white p-4">
                 <p className="text-sm font-semibold text-slate-900">Créneaux disponibles</p>
                 <p className="mt-1 text-sm text-slate-600">
@@ -1671,7 +1687,7 @@ function SitterPublicProfileContent({
               </div>
             ) : null}
 
-            {slotsServiceType === "PENSION" ? (
+            {!isNative && slotsServiceType === "PENSION" ? (
               <div className="mt-3 rounded-2xl border border-slate-200 bg-white p-4">
                 <p className="text-sm font-semibold text-slate-900">Sélection du séjour</p>
                 <p className="mt-1 text-sm text-slate-600">
@@ -2195,6 +2211,294 @@ function SitterPublicProfileContent({
   const dogSizeBadges =
     process.env.NODE_ENV !== "production" && dbgDogSizesParam ? ["Petit", "Moyen", "Grand"] : sitter.dogSizes;
 
+  // Booking CTA action — shared by the web sticky bar and the native sheet.
+  const handleReserve = () => {
+    if (maintenanceMode) { setBookingCtaError(maintenanceBookingUserMessage(adminNote)); return; }
+    if (!isLoaded) { setBookingCtaError("Chargement de la session… Réessaie dans une seconde."); return; }
+    if (!isSignedIn) { setBookingCtaError("Veuillez vous connecter pour demander une réservation."); return; }
+    if (!canRequestBooking) {
+      setBookingCtaError(
+        slotsServiceType === "PENSION"
+          ? "Sélectionnez une arrivée et une date de départ valides pour continuer."
+          : "Sélectionnez un service et une date dans l'agenda pour continuer."
+      );
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
+    setBookingCtaError(null);
+    void continueToReservation();
+  };
+
+  // Booking details for the selected date (créneaux, disponibilité). On native
+  // this is what the swipe-up sheet shows once a date is picked — the sheet
+  // turns into the "fiche de réservation" instead of the generic profile info.
+  const bookingDetails = (
+    <>
+      {slotsServiceType !== "PENSION" && bookingSelectionSummary ? (
+        <div className="rounded-2xl border border-slate-200 bg-white p-4">
+          <p className="text-sm font-medium text-slate-900">{bookingSelectionSummary}</p>
+        </div>
+      ) : null}
+
+      {slotsServiceType !== "PENSION" && slotsDate ? (
+        <div className="mt-3 rounded-2xl border border-slate-200 bg-white p-4">
+          <p className="text-sm font-semibold text-slate-900">Créneaux disponibles</p>
+          <p className="mt-1 text-sm text-slate-600">
+            {serviceUi.current.label} le {formatDateFr(slotsDate)}
+          </p>
+
+          {selectedSlotNotice ? <p className="mt-3 text-sm text-amber-900">{selectedSlotNotice}</p> : null}
+
+          {slotsLoading ? (
+            <p className="mt-3 text-sm text-slate-600">Chargement des disponibilités…</p>
+          ) : slotsError ? (
+            <div className="mt-3 rounded-2xl border border-rose-200 bg-rose-50 p-3">
+              <p className="text-sm text-rose-700">Impossible de charger les créneaux pour cette date.</p>
+            </div>
+          ) : selectedDayStatus === "ON_REQUEST" ? (
+            <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 p-3">
+              <p className="text-sm font-semibold text-amber-900">Sur demande</p>
+              <p className="mt-1 text-sm text-amber-800">Ce service est disponible uniquement sur demande pour cette date.</p>
+            </div>
+          ) : selectedDayPartial ? (
+            <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 p-3">
+              <p className="text-sm font-semibold text-amber-900">Disponibilité partielle</p>
+              <p className="mt-1 text-sm text-amber-800">Cette date reste réservable, mais certains créneaux sont déjà bloqués par une réservation existante.</p>
+            </div>
+          ) : selectedDayStatus === "UNAVAILABLE" ? (
+            <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 p-3">
+              <p className="text-sm font-semibold text-slate-900">Indisponible</p>
+            </div>
+          ) : serviceSummary && !serviceSummary.hasExplicitTimeSlots && !dayHasBookingConflicts ? (
+            <div className="mt-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-3">
+              <p className="text-sm font-semibold text-emerald-900">Disponible toute la journée</p>
+            </div>
+          ) : serviceSummary && !serviceSummary.hasExplicitTimeSlots && dayHasBookingConflicts ? (
+            <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 p-3">
+              <p className="text-sm font-semibold text-amber-900">Disponibilité partielle</p>
+              <p className="mt-1 text-sm text-amber-800">Une partie de la journée est déjà réservée.</p>
+            </div>
+          ) : configuredRanges.length ? (
+            <div className="mt-3 grid gap-2">
+              {configuredRanges.map((range) => (
+                <div key={`${range.startAt}-${range.endAt}-${range.status}`} className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2">
+                  <span className="text-sm font-medium text-slate-900">
+                    {formatTimeLabel(range.startAt)} - {formatTimeLabel(range.endAt)}
+                  </span>
+                  {range.status === "ON_REQUEST" ? <span className="text-xs font-semibold text-amber-700">Sur demande</span> : null}
+                </div>
+              ))}
+            </div>
+          ) : daySlotsSummary.length ? (
+            <div className="mt-3 grid gap-3">
+              {daySlotsSummary.map((group: any) => (
+                <div key={group.key} className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                  <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-500">{group.label}</p>
+                  <div className="mt-2 grid gap-2">
+                    {group.ranges.map((range: any) => (
+                      <div key={`${range.startAt}-${range.endAt}`} className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2">
+                        <span className="text-sm font-medium text-slate-900">
+                          {formatTimeLabel(range.startAt)} - {formatTimeLabel(range.endAt)}
+                        </span>
+                        {range.hasOnRequest ? (
+                          <span className="text-xs font-semibold text-amber-700">Sur demande</span>
+                        ) : null}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 p-3">
+              <p className="text-sm text-slate-600">Aucun créneau disponible n’est renseigné pour cette date.</p>
+            </div>
+          )}
+        </div>
+      ) : null}
+
+      {slotsServiceType === "PENSION" ? (
+        <div className="rounded-2xl border border-slate-200 bg-white p-4">
+          <p className="text-sm font-semibold text-slate-900">Sélection du séjour</p>
+          <p className="mt-1 text-sm text-slate-600">
+            Choisissez une date pour un séjour d’un jour, puis cliquez sur une date plus tardive si vous souhaitez étendre le séjour.
+          </p>
+          {bookingSelectionSummary ? <p className="mt-3 text-sm font-medium text-slate-900">{bookingSelectionSummary}</p> : null}
+          {pensionSelectionMessage ? <p className="mt-2 text-sm font-medium text-amber-900">{pensionSelectionMessage}</p> : null}
+        </div>
+      ) : null}
+    </>
+  );
+
+  // Secondary sitter info (prochaines dispos, à propos, détails pension, avis).
+  // Web: rendered inline in the content flow. Native: rendered inside the
+  // swipeable bottom sheet (swipe up to reveal).
+  const secondaryInfo = (
+    <>
+      <div className={isNative ? "" : "mt-8"}>
+        <h2 className="text-lg font-bold tracking-tight text-slate-900">Prochaines disponibilités</h2>
+        {nextDaysLoading ? (
+          <p className="mt-2 text-sm text-slate-500">Chargement…</p>
+        ) : nextDaysError ? (
+          <div className="mt-2">
+            <p className="text-sm text-rose-700">{getAvailabilityLoadErrorMessage(nextDaysError)}</p>
+            <button type="button" onClick={() => setNextDaysRetryKey((v) => v + 1)} className="mt-2 inline-flex h-9 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">Réessayer</button>
+          </div>
+        ) : nextAvail.length ? (
+          <ul className="mt-3 grid gap-2">
+            {nextAvail.map((d) => (
+              <li key={d} className="flex items-center gap-2 text-sm text-slate-700 font-medium">
+                <span className={`h-2 w-2 rounded-full ${getServiceColors(slotsServiceType).fill}`} />
+                <span>{formatDateFr(d)}</span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <div className="mt-3">
+            <p className="text-sm leading-relaxed text-slate-600">
+              Aucune disponibilité publiée pour le moment. Contacte {sitter.name.split(" ")[0]} pour proposer tes dates — il/elle répond généralement sous 24h.
+            </p>
+            <button type="button" onClick={() => { if (disableSelfActions) return; actionsRef.current?.querySelector<HTMLButtonElement>('button[data-chat="1"]')?.click(); }} className="mt-2 text-sm font-semibold text-slate-900 underline decoration-slate-300 underline-offset-4 hover:decoration-slate-500 transition-colors">Envoyer un message</button>
+          </div>
+        )}
+      </div>
+
+      <div className={`rounded-2xl border border-slate-200 bg-white ${isNative ? "mt-3 p-4" : "mt-8 p-5 sm:p-6"}`}>
+        <h2 className="text-lg font-bold tracking-tight text-slate-900">À propos de {sitter.name.split(" ")[0]}</h2>
+        {sitter.bio && sitter.bio.trim().length >= 20 ? (
+          <div className="mt-3">
+            <p className={`text-[15px] leading-relaxed text-slate-700 whitespace-pre-line ${!bioExpanded && sitter.bio.trim().length > 200 ? "line-clamp-4" : ""}`}>
+              {sitter.bio}
+            </p>
+            {sitter.bio.trim().length > 200 && !bioExpanded && (
+              <button
+                type="button"
+                onClick={() => setBioExpanded(true)}
+                className="mt-1.5 text-sm font-semibold text-slate-900 underline decoration-slate-300 underline-offset-4 hover:decoration-slate-500 transition-colors"
+              >
+                Lire la suite
+              </button>
+            )}
+          </div>
+        ) : (
+          <p className="mt-3 text-sm leading-relaxed text-slate-500 italic">Ce sitter n&apos;a pas encore complété sa présentation.</p>
+        )}
+      </div>
+
+      {showBoardingDetails && boardingDetails ? (
+        <div className={`rounded-2xl border border-slate-200 bg-white ${isNative ? "mt-3 p-4" : "mt-6 p-5 sm:p-6"}`}>
+          <h2 className="text-lg font-bold tracking-tight text-slate-900">Détails pension</h2>
+          <dl className="mt-4 grid gap-x-6 gap-y-4 sm:grid-cols-2">
+            {boardingDetails.housingType ? (
+              <div>
+                <dt className="text-xs font-semibold uppercase tracking-wider text-slate-500">Logement</dt>
+                <dd className="mt-1.5 text-[15px] text-slate-900 font-medium">{boardingDetails.housingType}</dd>
+              </div>
+            ) : null}
+            {typeof boardingDetails.hasGarden === "boolean" ? (
+              <div>
+                <dt className="text-xs font-semibold uppercase tracking-wider text-slate-500">Jardin</dt>
+                <dd className="mt-1.5 text-[15px] text-slate-900 font-medium">{boardingDetails.hasGarden ? "Oui" : "Non"}</dd>
+              </div>
+            ) : null}
+            {typeof boardingDetails.hasOtherPets === "boolean" ? (
+              <div>
+                <dt className="text-xs font-semibold uppercase tracking-wider text-slate-500">Autres animaux</dt>
+                <dd className="mt-1.5 text-[15px] text-slate-900 font-medium">{boardingDetails.hasOtherPets ? "Oui" : "Non"}</dd>
+              </div>
+            ) : null}
+            {boardingDetails.notes ? (
+              <div className="sm:col-span-2">
+                <dt className="text-xs font-semibold uppercase tracking-wider text-slate-500">Notes</dt>
+                <dd className="mt-1.5 text-[15px] leading-relaxed text-slate-700 whitespace-pre-line">{boardingDetails.notes}</dd>
+              </div>
+            ) : null}
+            {Array.isArray(boardingDetails.pensionAcceptedSizes) && boardingDetails.pensionAcceptedSizes.length > 0 ? (
+              <div className="sm:col-span-2">
+                <dt className="text-xs font-semibold uppercase tracking-wider text-slate-500">Tailles de chiens acceptées en pension</dt>
+                <dd className="mt-3 grid grid-cols-3 gap-2">
+                  {(["small", "medium", "large"] as const).map((key) => {
+                    const accepted = boardingDetails.pensionAcceptedSizes!.includes(key);
+                    const labels: Record<string, { label: string; range: string }> = {
+                      small: { label: "Petit", range: "< 10 kg" },
+                      medium: { label: "Moyen", range: "10–25 kg" },
+                      large: { label: "Grand", range: "> 25 kg" },
+                    };
+                    const { label, range } = labels[key];
+                    return (
+                      <div
+                        key={key}
+                        className={`flex flex-col items-center gap-1 rounded-2xl border-2 px-3 py-3 text-center transition ${
+                          accepted
+                            ? "border-emerald-200 bg-emerald-50"
+                            : "border-slate-100 bg-slate-50 opacity-40"
+                        }`}
+                      >
+                        <svg className={`h-5 w-5 ${accepted ? "text-emerald-600" : "text-slate-400"}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M10 5.172C10 3.782 8.423 2.679 6.5 3c-2.823.47-4.113 6.006-4 7 .08.703 1.725 1.722 3.656 1 1.261-.472 1.96-1.45 2.344-2.5M14.267 5.172c0-1.39 1.577-2.493 3.5-2.172 2.823.47 4.113 6.006 4 7-.08.703-1.725 1.722-3.656 1-1.261-.472-1.855-1.45-2.344-2.5M8 14v.5M16 14v.5M11.25 16.25h1.5L12 17l-.75-.75z"/>
+                          <path d="M4.42 11.247A13.152 13.152 0 0 0 4 14.556C4 18.728 7.582 21 12 21s8-2.272 8-6.444c0-1.061-.162-2.2-.493-3.309m-9.243-6.082A8.801 8.801 0 0 1 12 5c.78 0 1.5.108 2.161.306"/>
+                        </svg>
+                        <span className={`text-xs font-bold ${accepted ? "text-emerald-800" : "text-slate-400"}`}>{label}</span>
+                        <span className={`text-[10px] ${accepted ? "text-emerald-600" : "text-slate-400"}`}>{range}</span>
+                        {accepted ? (
+                          <span className="mt-0.5 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">Accepté</span>
+                        ) : (
+                          <span className="mt-0.5 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-400 line-through">Refusé</span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </dd>
+              </div>
+            ) : null}
+          </dl>
+        </div>
+      ) : null}
+
+      <div className={`rounded-2xl border border-slate-200 bg-white ${isNative ? "mt-3 p-4" : "mt-6 p-5 sm:p-6"}`}>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-lg font-bold tracking-tight text-slate-900">Avis</h2>
+          {visibleReviews.length > 0 && (
+            <div className="flex items-center gap-2">
+              <span className="inline-flex items-center gap-1 font-medium text-slate-900">
+                <Star className="h-5 w-5 fill-amber-400 text-amber-400" />
+                <span className="text-lg font-bold">{ratingLabel}</span>
+              </span>
+              <span className="text-sm font-medium text-slate-500">({reviewCountLabel} avis)</span>
+            </div>
+          )}
+        </div>
+        {visibleReviews.length === 0 ? (
+          <div className="mt-6 flex flex-col items-center justify-center py-8 text-center">
+            <MessageSquare className="h-8 w-8 text-slate-300" />
+            <p className="mt-3 text-sm font-semibold text-slate-700">Aucun avis pour le moment</p>
+            <p className="mt-1 text-sm text-slate-500">Sois le premier à laisser un retour après ta réservation.</p>
+          </div>
+        ) : (
+          <div className="mt-5 grid gap-4">
+            {visibleReviews.map((review) => (
+              <article key={review.id} className="rounded-xl border border-slate-100 bg-slate-50 p-4">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold text-slate-900">{review.authorName}</p>
+                    <p className="mt-0.5 text-xs font-medium text-slate-500">{formatReviewDate(review.createdAt)}</p>
+                  </div>
+                  <span className="inline-flex items-center gap-1 rounded-full bg-white px-2.5 py-0.5 text-xs font-semibold text-slate-700 border border-slate-200">
+                    <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
+                    {formatRating(review.rating)}
+                  </span>
+                </div>
+                <p className="mt-2.5 text-sm leading-relaxed text-slate-700">
+                  {review.comment?.trim() ? review.comment.trim() : <span className="italic text-slate-500">Aucun commentaire ajouté.</span>}
+                </p>
+              </article>
+            ))}
+          </div>
+        )}
+      </div>
+    </>
+  );
+
   const content = (
     <div className="relative grid gap-4 overflow-hidden" data-testid="sitter-public-profile">
       <div className="relative z-10">
@@ -2494,197 +2798,10 @@ function SitterPublicProfileContent({
                   ) : null}
                 </div>
 
-                {/* Native: collapse the secondary sections (prochaines dispos,
-                    à propos, avis) behind a toggle so services + agenda fit
-                    compactly. Web: always shown (toggle hidden). */}
-                {isNative && !showSecondary ? (
-                  <button
-                    type="button"
-                    onClick={() => setShowSecondary(true)}
-                    className="mt-6 flex w-full items-center justify-center gap-1.5 rounded-2xl border border-slate-200 bg-white py-3 text-sm font-semibold text-slate-700 active:scale-[0.99]"
-                    style={{ touchAction: "manipulation" }}
-                  >
-                    Plus d&apos;infos
-                    <ChevronDown className="h-4 w-4" />
-                  </button>
-                ) : null}
-
-                {!isNative || showSecondary ? (
-                <>
-                <div className="mt-8">
-                  <h2 className="text-lg font-bold tracking-tight text-slate-900">Prochaines disponibilités</h2>
-                  {nextDaysLoading ? (
-                    <p className="mt-2 text-sm text-slate-500">Chargement…</p>
-                  ) : nextDaysError ? (
-                    <div className="mt-2">
-                      <p className="text-sm text-rose-700">{getAvailabilityLoadErrorMessage(nextDaysError)}</p>
-                      <button type="button" onClick={() => setNextDaysRetryKey((v) => v + 1)} className="mt-2 inline-flex h-9 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">Réessayer</button>
-                    </div>
-                  ) : nextAvail.length ? (
-                    <ul className="mt-3 grid gap-2">
-                      {nextAvail.map((d) => (
-                        <li key={d} className="flex items-center gap-2 text-sm text-slate-700 font-medium">
-                          <span className={`h-2 w-2 rounded-full ${getServiceColors(slotsServiceType).fill}`} />
-                          <span>{formatDateFr(d)}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <div className="mt-3">
-                      <p className="text-sm leading-relaxed text-slate-600">
-                        Aucune disponibilité publiée pour le moment. Contacte {sitter.name.split(" ")[0]} pour proposer tes dates — il/elle répond généralement sous 24h.
-                      </p>
-                      <button type="button" onClick={() => { if (disableSelfActions) return; actionsRef.current?.querySelector<HTMLButtonElement>('button[data-chat="1"]')?.click(); }} className="mt-2 text-sm font-semibold text-slate-900 underline decoration-slate-300 underline-offset-4 hover:decoration-slate-500 transition-colors">Envoyer un message</button>
-                    </div>
-                  )}
-                </div>
-
-                <div className="mt-8 rounded-2xl border border-slate-200 bg-white p-5 sm:p-6">
-                  <h2 className="text-lg font-bold tracking-tight text-slate-900">À propos de {sitter.name.split(" ")[0]}</h2>
-                  {sitter.bio && sitter.bio.trim().length >= 20 ? (
-                    <div className="mt-3">
-                      <p className={`text-[15px] leading-relaxed text-slate-700 whitespace-pre-line ${!bioExpanded && sitter.bio.trim().length > 200 ? "line-clamp-4" : ""}`}>
-                        {sitter.bio}
-                      </p>
-                      {sitter.bio.trim().length > 200 && !bioExpanded && (
-                        <button
-                          type="button"
-                          onClick={() => setBioExpanded(true)}
-                          className="mt-1.5 text-sm font-semibold text-slate-900 underline decoration-slate-300 underline-offset-4 hover:decoration-slate-500 transition-colors"
-                        >
-                          Lire la suite
-                        </button>
-                      )}
-                    </div>
-                  ) : (
-                    <p className="mt-3 text-sm leading-relaxed text-slate-500 italic">Ce sitter n&apos;a pas encore complété sa présentation.</p>
-                  )}
-                </div>
-
-                {showBoardingDetails && boardingDetails ? (
-                  <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-5 sm:p-6">
-                    <h2 className="text-lg font-bold tracking-tight text-slate-900">Détails pension</h2>
-                    <dl className="mt-4 grid gap-x-6 gap-y-4 sm:grid-cols-2">
-                      {boardingDetails.housingType ? (
-                        <div>
-                          <dt className="text-xs font-semibold uppercase tracking-wider text-slate-500">Logement</dt>
-                          <dd className="mt-1.5 text-[15px] text-slate-900 font-medium">{boardingDetails.housingType}</dd>
-                        </div>
-                      ) : null}
-                      {typeof boardingDetails.hasGarden === "boolean" ? (
-                        <div>
-                          <dt className="text-xs font-semibold uppercase tracking-wider text-slate-500">Jardin</dt>
-                          <dd className="mt-1.5 text-[15px] text-slate-900 font-medium">{boardingDetails.hasGarden ? "Oui" : "Non"}</dd>
-                        </div>
-                      ) : null}
-                      {typeof boardingDetails.hasOtherPets === "boolean" ? (
-                        <div>
-                          <dt className="text-xs font-semibold uppercase tracking-wider text-slate-500">Autres animaux</dt>
-                          <dd className="mt-1.5 text-[15px] text-slate-900 font-medium">{boardingDetails.hasOtherPets ? "Oui" : "Non"}</dd>
-                        </div>
-                      ) : null}
-                      {boardingDetails.notes ? (
-                        <div className="sm:col-span-2">
-                          <dt className="text-xs font-semibold uppercase tracking-wider text-slate-500">Notes</dt>
-                          <dd className="mt-1.5 text-[15px] leading-relaxed text-slate-700 whitespace-pre-line">{boardingDetails.notes}</dd>
-                        </div>
-                      ) : null}
-                      {Array.isArray(boardingDetails.pensionAcceptedSizes) && boardingDetails.pensionAcceptedSizes.length > 0 ? (
-                        <div className="sm:col-span-2">
-                          <dt className="text-xs font-semibold uppercase tracking-wider text-slate-500">Tailles de chiens acceptées en pension</dt>
-                          <dd className="mt-3 grid grid-cols-3 gap-2">
-                            {(["small", "medium", "large"] as const).map((key) => {
-                              const accepted = boardingDetails.pensionAcceptedSizes!.includes(key);
-                              const labels: Record<string, { label: string; range: string }> = {
-                                small: { label: "Petit", range: "< 10 kg" },
-                                medium: { label: "Moyen", range: "10–25 kg" },
-                                large: { label: "Grand", range: "> 25 kg" },
-                              };
-                              const { label, range } = labels[key];
-                              return (
-                                <div
-                                  key={key}
-                                  className={`flex flex-col items-center gap-1 rounded-2xl border-2 px-3 py-3 text-center transition ${
-                                    accepted
-                                      ? "border-emerald-200 bg-emerald-50"
-                                      : "border-slate-100 bg-slate-50 opacity-40"
-                                  }`}
-                                >
-                                  <svg className={`h-5 w-5 ${accepted ? "text-emerald-600" : "text-slate-400"}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                                    <path d="M10 5.172C10 3.782 8.423 2.679 6.5 3c-2.823.47-4.113 6.006-4 7 .08.703 1.725 1.722 3.656 1 1.261-.472 1.96-1.45 2.344-2.5M14.267 5.172c0-1.39 1.577-2.493 3.5-2.172 2.823.47 4.113 6.006 4 7-.08.703-1.725 1.722-3.656 1-1.261-.472-1.855-1.45-2.344-2.5M8 14v.5M16 14v.5M11.25 16.25h1.5L12 17l-.75-.75z"/>
-                                    <path d="M4.42 11.247A13.152 13.152 0 0 0 4 14.556C4 18.728 7.582 21 12 21s8-2.272 8-6.444c0-1.061-.162-2.2-.493-3.309m-9.243-6.082A8.801 8.801 0 0 1 12 5c.78 0 1.5.108 2.161.306"/>
-                                  </svg>
-                                  <span className={`text-xs font-bold ${accepted ? "text-emerald-800" : "text-slate-400"}`}>{label}</span>
-                                  <span className={`text-[10px] ${accepted ? "text-emerald-600" : "text-slate-400"}`}>{range}</span>
-                                  {accepted ? (
-                                    <span className="mt-0.5 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">Accepté</span>
-                                  ) : (
-                                    <span className="mt-0.5 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-400 line-through">Refusé</span>
-                                  )}
-                                </div>
-                              );
-                            })}
-                          </dd>
-                        </div>
-                      ) : null}
-                    </dl>
-                  </div>
-                ) : null}
-
-                <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-5 sm:p-6">
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <h2 className="text-lg font-bold tracking-tight text-slate-900">Avis</h2>
-                    {visibleReviews.length > 0 && (
-                      <div className="flex items-center gap-2">
-                        <span className="inline-flex items-center gap-1 font-medium text-slate-900">
-                          <Star className="h-5 w-5 fill-amber-400 text-amber-400" />
-                          <span className="text-lg font-bold">{ratingLabel}</span>
-                        </span>
-                        <span className="text-sm font-medium text-slate-500">({reviewCountLabel} avis)</span>
-                      </div>
-                    )}
-                  </div>
-                  {visibleReviews.length === 0 ? (
-                    <div className="mt-6 flex flex-col items-center justify-center py-8 text-center">
-                      <MessageSquare className="h-8 w-8 text-slate-300" />
-                      <p className="mt-3 text-sm font-semibold text-slate-700">Aucun avis pour le moment</p>
-                      <p className="mt-1 text-sm text-slate-500">Sois le premier à laisser un retour après ta réservation.</p>
-                    </div>
-                  ) : (
-                    <div className="mt-5 grid gap-4">
-                      {visibleReviews.map((review) => (
-                        <article key={review.id} className="rounded-xl border border-slate-100 bg-slate-50 p-4">
-                          <div className="flex flex-wrap items-start justify-between gap-3">
-                            <div>
-                              <p className="text-sm font-semibold text-slate-900">{review.authorName}</p>
-                              <p className="mt-0.5 text-xs font-medium text-slate-500">{formatReviewDate(review.createdAt)}</p>
-                            </div>
-                            <span className="inline-flex items-center gap-1 rounded-full bg-white px-2.5 py-0.5 text-xs font-semibold text-slate-700 border border-slate-200">
-                              <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
-                              {formatRating(review.rating)}
-                            </span>
-                          </div>
-                          <p className="mt-2.5 text-sm leading-relaxed text-slate-700">
-                            {review.comment?.trim() ? review.comment.trim() : <span className="italic text-slate-500">Aucun commentaire ajouté.</span>}
-                          </p>
-                        </article>
-                      ))}
-                    </div>
-                  )}
-                </div>
-                {isNative ? (
-                  <button
-                    type="button"
-                    onClick={() => setShowSecondary(false)}
-                    className="mt-6 flex w-full items-center justify-center gap-1.5 rounded-2xl border border-slate-200 bg-white py-3 text-sm font-semibold text-slate-700 active:scale-[0.99]"
-                    style={{ touchAction: "manipulation" }}
-                  >
-                    Réduire
-                    <ChevronUp className="h-4 w-4" />
-                  </button>
-                ) : null}
-                </>
-                ) : null}
+                {/* Web: the secondary sections render inline here. Native: they
+                    live in the swipeable bottom sheet (rendered at the top level
+                    of the component), so nothing renders inline. */}
+                {!isNative ? secondaryInfo : null}
               </div>
 
               <aside className="hidden lg:block">
@@ -2798,59 +2915,31 @@ function SitterPublicProfileContent({
               </aside>
             </div>
 
-            {/* Mobile Sticky Booking Bar */}
-            {/* Native: sit ABOVE the bottom nav (z-50) so "Réserver" is tappable
-                — at bottom-0 it was hidden behind the nav (founder bug). */}
-            <div
-              className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white p-4 pb-safe shadow-[0_-8px_30px_-15px_rgba(0,0,0,0.1)] lg:hidden"
-              style={
-                isNative
-                  ? { bottom: "calc(max(var(--ds-bottom-nav-h, 0px), 88px))", paddingBottom: "1rem" }
-                  : undefined
-              }
-            >
-              <div className="mx-auto flex max-w-5xl items-center justify-between gap-4">
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-semibold text-slate-900">{serviceUi.current.label || "Sélectionnez un service"}</p>
-                  <p className="truncate text-xs text-slate-600">{bookingSelectionSummary || "Dates à définir"}</p>
+            {/* Booking surface. Native: the swipeable bottom sheet is rendered
+                at the top level of the component (outside this `content` tree)
+                so it escapes the `overflow-hidden` + z-10 stacking context and
+                its dimmed backdrop can cover the whole page. Web: fixed bar. */}
+            {isNative ? null : (
+              <div className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white p-4 pb-safe shadow-[0_-8px_30px_-15px_rgba(0,0,0,0.1)] lg:hidden">
+                <div className="mx-auto flex max-w-5xl items-center justify-between gap-4">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold text-slate-900">{serviceUi.current.label || "Sélectionnez un service"}</p>
+                    <p className="truncate text-xs text-slate-600">{bookingSelectionSummary || "Dates à définir"}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleReserve}
+                    disabled={maintenanceMode}
+                    className="inline-flex h-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-5 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition hover:bg-[var(--dogshift-blue-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)] disabled:cursor-not-allowed disabled:opacity-55"
+                  >
+                    Réserver
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (maintenanceMode) {
-                      setBookingCtaError(maintenanceBookingUserMessage(adminNote));
-                      return;
-                    }
-                    if (!isLoaded) {
-                      setBookingCtaError("Chargement de la session… Réessaie dans une seconde.");
-                      return;
-                    }
-                    if (!isSignedIn) {
-                      setBookingCtaError("Veuillez vous connecter pour demander une réservation.");
-                      return;
-                    }
-                    if (!canRequestBooking) {
-                      setBookingCtaError(
-                        slotsServiceType === "PENSION"
-                          ? "Sélectionnez une arrivée et une date de départ valides pour continuer."
-                          : "Sélectionnez un service et une date dans l'agenda pour continuer."
-                      );
-                      window.scrollTo({ top: 0, behavior: 'smooth' });
-                      return;
-                    }
-                    setBookingCtaError(null);
-                    void continueToReservation();
-                  }}
-                  disabled={maintenanceMode}
-                  className="inline-flex h-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-5 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition hover:bg-[var(--dogshift-blue-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)] disabled:cursor-not-allowed disabled:opacity-55"
-                >
-                  Réserver
-                </button>
+                {bookingCtaError ? (
+                  <p className="mt-2 text-xs font-medium text-rose-600">{bookingCtaError}</p>
+                ) : null}
               </div>
-              {bookingCtaError ? (
-                <p className="mt-2 text-xs font-medium text-rose-600">{bookingCtaError}</p>
-              ) : null}
-            </div>
+            )}
           </>
         ) : (
             <div className="mx-auto max-w-5xl rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-40px_rgba(2,6,23,0.35)] sm:p-8">
@@ -2926,7 +3015,7 @@ function SitterPublicProfileContent({
       className="min-h-screen bg-white pb-24 text-slate-900 lg:pb-0"
       style={
         isNative
-          ? { paddingBottom: "calc(max(var(--ds-bottom-nav-h, 0px), 88px) + 88px)" }
+          ? { paddingBottom: "calc(max(var(--ds-bottom-nav-h, 0px), 88px) + 128px)" }
           : undefined
       }
     >
@@ -2950,6 +3039,123 @@ function SitterPublicProfileContent({
           {content}
         </main>
       )}
+
+      {/* Native booking sheet. ONE promoted container (translateZ(0)) holds both
+          the blur layer and the opaque card as children, so both composite ABOVE
+          the scrolled page in WKWebView (a high-z element that is NOT a child of
+          a promoted layer falls behind the scroll layer — the bug that kept the
+          card see-through). The container stops above the nav so the tab bar
+          stays visible. The card height tracks the finger (sheetDragH) and snaps
+          open/collapsed on release. */}
+      {isNative && showFullListing ? (
+        <div
+          className="fixed inset-0 z-[45] lg:hidden"
+          style={{
+            transform: "translateZ(0)",
+            pointerEvents: profileSheetOpen || sheetDragH != null ? "auto" : "none",
+          }}
+          onClick={() => setProfileSheetOpen(false)}
+        >
+          {/* Dim + blur layer — fades with drag progress. Doesn't intercept
+              taps (the container handles close); never blocks the page when
+              collapsed (opacity 0 + container pointer-events none). The nav
+              (z-50) sits above this whole container, so it stays visible and
+              un-dimmed. */}
+          <div
+            className="absolute inset-0 bg-black/45 backdrop-blur-sm"
+            style={{
+              opacity:
+                sheetDragH != null
+                  ? Math.min(1, Math.max(0, (sheetDragH - sheetBarH.current) / Math.max(1, sheetOpenH.current - sheetBarH.current)))
+                  : profileSheetOpen
+                    ? 1
+                    : 0,
+              transition: sheetDragH != null ? "none" : "opacity 300ms ease-out",
+              pointerEvents: "none",
+            }}
+            aria-hidden="true"
+          />
+
+          {/* The card. Child of the promoted container → renders opaque above
+              the page. Grows/shrinks with the finger. */}
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="absolute left-3 right-3 flex flex-col overflow-hidden rounded-3xl bg-white shadow-[0_-10px_40px_rgba(2,6,23,0.24)]"
+            style={{
+              bottom: "calc(max(var(--ds-bottom-nav-h, 0px), 88px) + 12px)",
+              height: sheetDragH != null ? `${sheetDragH}px` : profileSheetOpen ? "min(64vh, 520px)" : "auto",
+              maxHeight: "min(64vh, 520px)",
+              transition: sheetDragH != null ? "none" : "height 300ms ease-out",
+              pointerEvents: "auto",
+            }}
+          >
+            <div
+              ref={sheetHeaderRef}
+              onClick={() => { if (profileSwiped.current) { profileSwiped.current = false; return; } setProfileSheetOpen((v) => !v); }}
+              onTouchStart={(e) => {
+                const y = e.touches[0]?.clientY ?? 0;
+                sheetDragStartY.current = y;
+                profileSwiped.current = false;
+                sheetBarH.current = sheetHeaderRef.current?.offsetHeight ?? 96;
+                sheetOpenH.current = Math.min((typeof window !== "undefined" ? window.innerHeight : 800) * 0.64, 520);
+                sheetStartH.current = profileSheetOpen ? sheetOpenH.current : sheetBarH.current;
+              }}
+              onTouchMove={(e) => {
+                if (sheetDragStartY.current == null) return;
+                const dy = (e.touches[0]?.clientY ?? 0) - sheetDragStartY.current;
+                if (Math.abs(dy) > 6) profileSwiped.current = true;
+                const h = Math.min(sheetOpenH.current, Math.max(sheetBarH.current, sheetStartH.current - dy));
+                setSheetDragH(h);
+              }}
+              onTouchEnd={() => {
+                if (sheetDragStartY.current == null) return;
+                sheetDragStartY.current = null;
+                const h = sheetDragH ?? sheetStartH.current;
+                const mid = (sheetBarH.current + sheetOpenH.current) / 2;
+                setProfileSheetOpen(h > mid);
+                setSheetDragH(null);
+              }}
+              className="shrink-0"
+              style={{ touchAction: "none" }}
+            >
+              <div className="flex w-full flex-col items-center pt-4 pb-2" aria-label={profileSheetOpen ? "Réduire" : "Voir plus d'infos"}>
+                <div className="h-1.5 w-10 rounded-full bg-slate-300" />
+              </div>
+              <div className="px-4 pb-3">
+                {canRequestBooking ? (
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-semibold text-slate-900">{serviceUi.current.label}</p>
+                      <p className="truncate text-xs text-slate-600">{bookingSelectionSummary}</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); handleReserve(); }}
+                      disabled={maintenanceMode}
+                      style={{ touchAction: "manipulation" }}
+                      className="inline-flex h-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-5 text-sm font-semibold text-white shadow-sm transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-55"
+                    >
+                      Réserver
+                    </button>
+                  </div>
+                ) : (
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-slate-900">Plus d&apos;infos sur {sitter.name.split(" ")[0]}</p>
+                    <p className="truncate text-xs text-slate-500">Sélectionne une date pour réserver</p>
+                  </div>
+                )}
+                {bookingCtaError ? <p className="mt-2 text-xs font-medium text-rose-600">{bookingCtaError}</p> : null}
+              </div>
+            </div>
+
+            {profileSheetOpen || sheetDragH != null ? (
+              <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-6">
+                {canRequestBooking ? bookingDetails : secondaryInfo}
+              </div>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
 
       {photoLightboxOpen && sitter?.avatarUrl ? (
         <div
