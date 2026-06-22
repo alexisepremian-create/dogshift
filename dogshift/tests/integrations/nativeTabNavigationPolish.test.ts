@@ -75,12 +75,12 @@ test("route-group loaders route through NativeRouteFallback (no full-screen runn
   );
   assert.match(
     marketingLoading,
-    /NativeRouteFallback\s+web="none"/,
-    "Expected (marketing)/loading.tsx to use NativeRouteFallback (web='none') — owner tab switches must show a native skeleton, while web stays null for the e2e smoke test.",
+    /NativeRouteFallback\s+web="spacer"/,
+    "Expected (marketing)/loading.tsx to use NativeRouteFallback (web='spacer') — owner tab switches show a native skeleton; on web a full-height spacer reserves space so the homepage footer doesn't collapse to the top during the streaming DB read.",
   );
 });
 
-test("NativeRouteFallback: native → skeleton, web='none' → null, web='loader' → PageLoader", () => {
+test("NativeRouteFallback: native → skeleton, web spacer reserves height (no PageLoader on marketing)", () => {
   const src = read("components/native/NativeRouteFallback.tsx");
   assert.match(
     src,
@@ -94,8 +94,21 @@ test("NativeRouteFallback: native → skeleton, web='none' → null, web='loader
   );
   assert.match(
     src,
-    /web\s*===\s*"loader"\s*\?\s*<PageLoader static \/>\s*:\s*null/,
-    "Expected the web branch to preserve the prior behaviour: PageLoader for protected, null for marketing.",
+    /web\s*===\s*"loader"\)\s*return\s*<PageLoader static \/>/,
+    "Expected the protected web fallback to keep PageLoader (running dog).",
+  );
+  assert.match(
+    src,
+    /web\s*===\s*"spacer"\)\s*return\s*<div[^>]*min-h-screen/,
+    "Expected the marketing web fallback to be a full-height SPACER (reserves a viewport so the footer stays below the fold during the homepage streaming SSR).",
+  );
+  // Guard the e2e-smoke invariant: the marketing/web fallback must NOT carry a
+  // PageLoader / data-page-loader marker (it would hide header+footer via the
+  // footer-flash CSS → <100 char body on cold-Neon previews → smoke fails).
+  assert.doesNotMatch(
+    src,
+    /data-page-loader/,
+    "The marketing web fallback must not introduce a data-page-loader marker — see docs/bugs/homepage-footer-flash-initial-load.md.",
   );
 });
 
