@@ -33,7 +33,7 @@ import { RequestsRouteSkeleton, MessagesRouteSkeleton } from "@/components/nativ
  * inline boot script in app/layout.tsx) so the first client render is already
  * correct — no 1-frame flash of the web loader before switching.
  */
-export default function NativeRouteFallback({ web }: { web: "loader" | "none" }) {
+export default function NativeRouteFallback({ web }: { web: "loader" | "none" | "spacer" }) {
   const pathname = usePathname();
   const [isNative] = useState(
     () =>
@@ -74,5 +74,14 @@ export default function NativeRouteFallback({ web }: { web: "loader" | "none" })
     );
   }
 
-  return web === "loader" ? <PageLoader static /> : null;
+  if (web === "loader") return <PageLoader static />;
+  // "spacer": reserve a full viewport height while the page's streaming SSR
+  // (e.g. the homepage's async getFeaturedSitters DB read) is pending, so the
+  // footer/header don't collapse to the top of the screen — the recurring
+  // "I see the footer first" flash. Deliberately a plain empty div with NO
+  // PageLoader and NO text: a loader marker would hide header+footer via the
+  // footer-flash CSS and re-break the e2e smoke (>100 char body assertion) on
+  // cold-Neon previews. See docs/bugs/homepage-footer-flash-initial-load.md.
+  if (web === "spacer") return <div aria-hidden className="min-h-screen bg-white" />;
+  return null;
 }

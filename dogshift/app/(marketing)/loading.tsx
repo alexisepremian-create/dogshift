@@ -1,20 +1,22 @@
 /**
  * Marketing route loading state.
  *
- * WEB: returns `null` (via NativeRouteFallback's web="none" path) — see
- * `docs/bugs/e2e-smoke-body-text-too-short.md` for the full post-mortem.
- * Short version:
+ * WEB: returns a full-height empty SPACER (NativeRouteFallback web="spacer").
+ * The homepage `Home()` is an async server component that `await`s
+ * getFeaturedSitters() (a Neon read). With streaming SSR the layout (header +
+ * footer) flushes first while `{children}` is pending → with a `null` fallback
+ * the content region collapsed and the footer painted right under the header
+ * ("I see the footer first before the page loads"). The spacer reserves one
+ * viewport of height so the footer stays below the fold until content streams in.
  *
- *  - PR #359 set this to `<PageLoader static />` to bullet-proof the footer-flash
- *    fix. That worked visually in prod, but on Vercel preview deployments the
- *    Suspense boundary on the homepage doesn't resolve within 15 s (Neon cold
- *    start + initial sitter query latency), so Playwright always sees just the
- *    loader (~63 chars) and the smoke test asserting >100 chars always fails.
- *  - The footer flash is now handled by the layered defense in
- *    `components/NavigationOverlayController.tsx` (static <NavigationOverlay />
- *    + MutationObserver handoff to PageLoader if any) + the CSS rules in
- *    `app/globals.css`. The Suspense fallback was belt-and-suspenders only.
- *  - Returning `null` on web unblocks CI on every PR.
+ * Why NOT `<PageLoader static />` here (see
+ * `docs/bugs/e2e-smoke-body-text-too-short.md`): PageLoader carries
+ * `data-page-loader="1"`, which the footer-flash CSS uses to hide header+footer
+ * via `visibility:hidden`. On Vercel preview the homepage Suspense boundary
+ * doesn't resolve within Playwright's 15 s (cold Neon), so the smoke test would
+ * see only the loader (~63 chars) and the >100-char assertion fails. The spacer
+ * has NO marker and NO text → header+footer text stays in `body.innerText`, so
+ * smoke is unaffected, exactly like the old `null` path.
  *
  * NATIVE: the /account/* owner dashboards are `force-dynamic` and suspend at
  * THIS group boundary on tab switches. `null` exposed the body background
@@ -29,5 +31,5 @@
 import NativeRouteFallback from "@/components/native/NativeRouteFallback";
 
 export default function Loading() {
-  return <NativeRouteFallback web="none" />;
+  return <NativeRouteFallback web="spacer" />;
 }
