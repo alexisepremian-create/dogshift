@@ -2,7 +2,7 @@
 
 import { signOut } from "next-auth/react";
 import { useEffect, useRef } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 import PageLoader from "@/components/ui/PageLoader";
 import NativeBrandedLoader from "@/components/native/NativeBrandedLoader";
@@ -76,6 +76,7 @@ async function clearNativeSocialSession() {
 
 export default function SignOutPage() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const doneRef = useRef(false);
   const isNative = useIsNativeAppSync();
 
@@ -112,13 +113,28 @@ export default function SignOutPage() {
       }
     }
 
+    function navigateOut() {
+      // Native: client-side nav (NOT a hard window.location). A hard nav tears
+      // down the document, and during the WKWebView commit gap iOS paints its
+      // own backgroundColor (#7c3aed, capacitor.config.ts) WITHOUT the logo →
+      // a "mini flash écran violet". A client nav keeps the root-layout
+      // #ds-auth-splash mounted the whole way to /login. The SIGNOUT_HANDOFF
+      // flag (set in markHandoff) still suppresses the /login auto-redirect
+      // bounce, so we don't need a fresh document to clear the session cache.
+      if (isNative) {
+        router.replace(safeRedirect);
+        return;
+      }
+      window.location.replace(safeRedirect);
+    }
+
     const failsafe = window.setTimeout(() => {
       // signOut hung (unlikely). Force the redirect anyway — Auth.js may
       // still complete cookie clearing on the next request because
       // /api/auth/signout is idempotent.
       clearLegacyAuthCookies();
       markHandoff();
-      window.location.replace(safeRedirect);
+      navigateOut();
     }, FAILSAFE_MS);
 
     void (async () => {
@@ -139,11 +155,11 @@ export default function SignOutPage() {
       clearLegacyAuthCookies();
       markHandoff();
       window.clearTimeout(failsafe);
-      window.location.replace(safeRedirect);
+      navigateOut();
     })();
 
     return () => window.clearTimeout(failsafe);
-  }, [searchParams]);
+  }, [searchParams, isNative, router]);
 
   // Native: the branded cover (purple + paw) — no skeleton. Web: unchanged.
   if (isNative) return <NativeBrandedLoader />;

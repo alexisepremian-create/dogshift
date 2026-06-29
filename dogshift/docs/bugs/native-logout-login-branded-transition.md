@@ -67,6 +67,25 @@ A sessionStorage-flag-driven cover (mirrors `lib/auth/signoutHandoff.ts`) wires 
   (`nav[aria-label="Navigation principale"]`) + `#ds-nav-overlay` for the
   sub-frame before the cover paints.
 
+### Follow-up 1 — splash must cover the signIn round-trip (login)
+The cover was begun only **after** `signIn()` resolved, so during native token
+verification the `/login` form repainted underneath (user "re-landed on login"
+before the splash, which then appeared abruptly). `components/auth/AuthFlow.tsx`
+now calls `beginAuthTransition()` the instant the native Google/Apple sheet
+closes (right after the idToken, **before** `signIn`), and `endAuthTransition()`
+in the signIn-failure branch so a failed login isn't stranded on purple.
+
+### Follow-up 2 — "mini flash écran violet" = WKWebView bg during the hard-nav gap
+The WKWebView `backgroundColor` is brand purple (`capacitor.config.ts`). A hard
+`window.location.replace` tears down the document; during the commit gap iOS
+paints that purple bg **without the logo** = a brief purple flash, on BOTH login
+(`/post-login` → dashboard) and logout (`/sign-out` → `/login`). Fix: on native,
+both hops are now **client-side** (`router.replace`) so the root-layout
+`#ds-auth-splash` never unmounts — the logo is present the whole time. Web keeps
+the hard nav (fresh session read). Safe because the session is already loaded at
+`/post-login`, and the `SIGNOUT_HANDOFF` flag (not the hard reload) is what
+prevents the `/login` logout-bounce.
+
 ## What NOT to do again
 
 - Don't treat the Auth.js cookie clear as a full logout in the native app — the
@@ -75,6 +94,11 @@ A sessionStorage-flag-driven cover (mirrors `lib/auth/signoutHandoff.ts`) wires 
   end-to-end by the single flag-driven `AuthTransitionCover`; if you add a new
   post-login destination, call `endAuthTransition()` when its content is ready.
 - Keep everything native-gated (`isNative` / `data-native`) — web auth is unchanged.
+- Don't reintroduce `window.location.replace` for the native login/logout hops —
+  the WKWebView's purple bg flashes (logo-less) during the hard-nav commit gap.
+  Use `router.replace` on native so `#ds-auth-splash` stays mounted end-to-end.
+- Don't begin the cover after `signIn()` — begin it the moment the native OAuth
+  sheet closes, or `/login` repaints during token verification.
 
 ## 🤖 Automated detection
 
