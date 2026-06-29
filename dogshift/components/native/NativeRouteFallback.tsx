@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 
 import PageLoader from "@/components/ui/PageLoader";
 import DashboardSkeleton from "@/components/ui/DashboardSkeleton";
+import HostDashboardSkeletonOverlay from "@/components/native/HostDashboardSkeletonOverlay";
 import MapHomeSkeleton from "@/components/native/MapHomeSkeleton";
 import { RequestsRouteSkeleton, MessagesRouteSkeleton } from "@/components/native/SectionRouteSkeletons";
 
@@ -58,7 +59,14 @@ export default function NativeRouteFallback({ web }: { web: "loader" | "none" | 
       return <MessagesRouteSkeleton />;
     }
 
-    // Other dashboards (host/account home) have no own skeleton → a generic
+    // Sitter dashboard root: the SAME faithful skeleton the gates + the /host
+    // page render, so the whole chain (route group → route → gate → page) is one
+    // continuous shape — never the generic list skeleton flashing before it.
+    if (pathname === "/host") {
+      return <HostDashboardSkeletonOverlay />;
+    }
+
+    // Other dashboards (account home) have no own skeleton → a generic
     // list skeleton. Fixed overlay (z-40, below the nav) covers the transition
     // gap instantly so no white body flashes; bottom padding clears the nav.
     return (
