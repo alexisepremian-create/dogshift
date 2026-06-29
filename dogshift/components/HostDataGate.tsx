@@ -7,7 +7,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useHostUser } from "@/components/HostUserProvider";
 import NativeDashboardLoading from "@/components/native/NativeDashboardLoading";
-import { endAuthTransition } from "@/lib/native/authTransition";
 
 const HOST_READY_LATCH_BY_USER_ID = new Map<string, true>();
 
@@ -105,12 +104,11 @@ export default function HostDataGate({ children }: { children: React.ReactNode }
     };
   }, [readyToRender]);
 
-  // Login lands here: once the sitter dashboard content is ready, end the
-  // branded (purple + paw) cover so it fades straight to the real screen —
-  // never a skeleton. No-op when no auth transition is active.
-  useEffect(() => {
-    if (readyToRender) endAuthTransition();
-  }, [readyToRender]);
+  // NB: the auth-transition splash is NOT ended here. This gate becoming ready
+  // only means it will render the page — the /host page then shows its OWN
+  // DashboardSkeleton until its data loads. Ending here faded the splash to that
+  // skeleton. The /host page itself calls endAuthTransition when its real
+  // content is ready (see app/(protected)/host/page.tsx).
 
   const waiting = !hostReady || !readyToRender;
 

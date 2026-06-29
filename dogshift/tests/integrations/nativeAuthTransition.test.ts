@@ -66,10 +66,14 @@ test("the transition is BEGUN on logout and on every sign-in success", () => {
   );
 });
 
-test("the transition is ENDED at every destination (login screen + dashboards)", () => {
-  assert.match(read("app/login/page.tsx"), /endAuthTransition\(\)/, "login screen must end the cover so the user can choose an account.");
-  assert.match(read("components/HostDataGate.tsx"), /endAuthTransition\(\)/, "sitter dashboard must end the cover when ready.");
-  assert.match(read("components/OwnerDashboardShell.tsx"), /endAuthTransition\(\)/, "owner dashboard must end the cover when ready.");
+test("the transition is ENDED at every login destination (login screen + dashboards)", () => {
+  // resolve-redirect sends sitters → /host, owners → /account, logout → /login.
+  assert.match(read("app/login/page.tsx"), /endAuthTransition\(\)/, "login screen (logout dest) must end the splash.");
+  // Must be the PAGE (real content ready), NOT HostDataGate (which is ready
+  // before the page's own DashboardSkeleton clears).
+  assert.match(read("app/(protected)/host/page.tsx"), /endAuthTransition\(\)/, "sitter dashboard PAGE must end the splash when its content is ready.");
+  assert.doesNotMatch(read("components/HostDataGate.tsx"), /endAuthTransition\(\)/, "HostDataGate must NOT end the splash (too early — fades to the page's own skeleton).");
+  assert.match(read("components/OwnerDashboardShell.tsx"), /endAuthTransition\(\)/, "owner dashboard must end the splash when ready.");
 });
 
 test("boot script stamps data-auth-transition from the surviving sessionStorage flag", () => {
@@ -87,11 +91,8 @@ test("auth transition uses an instant inline-SVG splash (no PNG decode gap)", ()
   assert.match(layout, /id="ds-auth-splash"[\s\S]*?BrandedSplashLogo/,
     "The layout must server-render #ds-auth-splash with BrandedSplashLogo (paints instantly, no purple-without-logo gap on reload).");
   const logo = read("components/native/BrandedSplashLogo.tsx");
-  assert.match(logo, /ds-splash-paw/, "BrandedSplashLogo must render the real brand paw (.ds-splash-paw).");
-  assert.doesNotMatch(logo, /<img|native-splash\.png/, "The component must not fetch an image (the paw is a base64 data-URI in the cached CSS).");
-  // The paw must be the real asset inlined as base64 (instant, no fetch/2732² decode).
-  assert.match(css, /\.ds-splash-paw\s*\{[\s\S]*?url\("data:image\/png;base64,/,
-    ".ds-splash-paw must use a base64 data-URI so the brand paw paints with the cached CSS (no plain-purple gap).");
+  assert.match(logo, /<svg[\s\S]*<path d="M/, "BrandedSplashLogo must be inline SVG (vectorized real paw) — paints with the document, no decode gap.");
+  assert.doesNotMatch(logo, /<img|native-splash\.png|base64/, "The splash logo must not fetch/decode an image (inline vector only).");
   assert.match(css, /html\[data-native="true"\]\[data-auth-transition="true"\]::before,\s*\n?\s*html\[data-native="true"\]\[data-auth-transition="true"\]::after\s*\{[^}]*display:\s*none/,
     "During an auth transition the PNG cold splash must be suppressed so only the instant splash shows.");
   assert.match(css, /\[data-auth-transition="true"\]\s+#ds-auth-splash\s*\{[^}]*display:\s*flex/,
