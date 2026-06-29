@@ -529,6 +529,19 @@ body:has([data-page-loader="1"]) header {
    Small, low-risk rules that erase the "this is a website" tells inside the
    WKWebView. All scoped to body[data-native="true"] so the plain web /
    desktop experience is byte-for-byte unchanged. */
+/* Disable WebKit's automatic text inflation ("font boosting") BEFORE first
+   paint. This MUST live on <html> — the boot script in app/layout.tsx stamps
+   html[data-native] synchronously, whereas body[data-native] is only added a
+   frame later by the useIsNativeApp effect. When this rule was on body only,
+   WebKit boosted the font-size of list rows + the search field on the requests
+   screen for one frame, so the text visibly "jumped bigger" on arrival
+   (founder: "le texte dans la liste et la barre de recherche devient plus
+   gros"). On <html> it applies on the very first layout, so nothing inflates. */
+html[data-native="true"] {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
 body[data-native="true"] {
   /* The #1 web-ism: the translucent blue/grey box that flashes on every tap.
      Real native apps never show it. */
@@ -537,9 +550,6 @@ body[data-native="true"] {
      to reveal a white/purple band at the top or bottom on an over-scroll;
      inner scroll containers keep their own momentum. */
   overscroll-behavior-y: none;
-  /* Never auto-inflate body text (iOS does this in some reflow cases). */
-  -webkit-text-size-adjust: 100%;
-  text-size-adjust: 100%;
   /* Momentum scrolling everywhere. */
   -webkit-overflow-scrolling: touch;
 }
@@ -556,10 +566,13 @@ body[data-native="true"] img {
 
 /* iOS auto-zooms the viewport when a focused field has font-size < 16px,
    which yanks the layout sideways and feels broken in an app. Force the iOS
-   no-zoom threshold on every text field in native. */
-body[data-native="true"] input:not([type="checkbox"]):not([type="radio"]),
-body[data-native="true"] textarea,
-body[data-native="true"] select {
+   no-zoom threshold on every text field in native. Scoped to <html> (stamped
+   synchronously at boot) so the size is correct on first paint — on
+   body[data-native] (added async) the search field flipped 14px → 16px a frame
+   after mount, reading as the text "growing" on arrival. */
+html[data-native="true"] input:not([type="checkbox"]):not([type="radio"]),
+html[data-native="true"] textarea,
+html[data-native="true"] select {
   font-size: 16px;
 }
 
