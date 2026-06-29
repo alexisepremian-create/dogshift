@@ -1,6 +1,6 @@
 "use client";
 
-import { ClipboardList } from "lucide-react";
+import { ClipboardList, Plus } from "lucide-react";
 
 /**
  * Route-level loading skeletons that FAITHFULLY replicate each section page's
@@ -72,15 +72,21 @@ export function RequestsRouteSkeleton() {
                   </div>
                 </div>
 
+                {/* Use the REAL (non-interactive) <select>/<input> with the exact
+                    same classes as RequestsSplitView, not <div>s mimicking them.
+                    A <div> and a form control render text at different sizes under
+                    the native 16px no-zoom rule + WebKit autosizing, so a div
+                    placeholder still "grew" on the skeleton→page hand-off. Same
+                    element = pixel-identical = zero jump. */}
                 <div className="mt-6 grid gap-3 md:grid-cols-[140px_1fr]">
                   <div className="relative">
-                    {/* text-base (16px) to MATCH the real <select>/<input>, which
-                        the native no-zoom rule forces to 16px — otherwise the
-                        Tous/Rechercher text visibly jumped 14px→16px on load
-                        (founder: "le texte qui grossit dans l'onglet demandes"). */}
-                    <div className="flex h-10 w-full items-center rounded-2xl border border-slate-100 bg-white pl-3 pr-8 text-base font-semibold text-slate-700 shadow-sm md:w-[140px]">
-                      Tous
-                    </div>
+                    <select
+                      aria-hidden="true"
+                      tabIndex={-1}
+                      className="pointer-events-none h-10 w-full md:w-[140px] appearance-none rounded-2xl border border-slate-100 bg-white pl-3 pr-8 text-sm font-semibold text-slate-700 shadow-sm outline-none"
+                    >
+                      <option>Tous</option>
+                    </select>
                     <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">
                       <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4" aria-hidden="true">
                         <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
@@ -88,14 +94,18 @@ export function RequestsRouteSkeleton() {
                     </div>
                   </div>
                   <div className="relative flex-1">
-                    <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
+                    <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 z-10">
                       <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4" aria-hidden="true">
                         <path fillRule="evenodd" d="M8.5 3a5.5 5.5 0 104.384 8.824l2.146 2.146a.75.75 0 101.06-1.06l-2.146-2.146A5.5 5.5 0 008.5 3zm-4 5.5a4 4 0 117.999.001A4 4 0 014.5 8.5z" clipRule="evenodd" />
                       </svg>
                     </span>
-                    <div className="flex h-10 w-full items-center rounded-2xl border border-slate-100 bg-white pl-10 pr-3 text-base text-slate-400 shadow-sm">
-                      Rechercher…
-                    </div>
+                    <input
+                      aria-hidden="true"
+                      tabIndex={-1}
+                      readOnly
+                      placeholder="Rechercher…"
+                      className="pointer-events-none h-10 w-full appearance-none rounded-2xl border border-slate-100 bg-white pl-10 pr-3 text-sm font-medium text-slate-900 shadow-sm outline-none placeholder:text-slate-400"
+                    />
                   </div>
                 </div>
               </div>
@@ -140,6 +150,18 @@ export function MessagesRouteSkeleton() {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* The "+" FAB lives in the messages LAYOUT, which suspends during the
+          force-dynamic load — so it only appeared AFTER the skeleton. Render a
+          static replica (same position/style) inside the skeleton so it shows
+          at the same time as the loading state (founder request). */}
+      <div
+        aria-hidden="true"
+        style={{ bottom: "calc(max(var(--ds-bottom-nav-h, 0px), 88px) + 16px)" }}
+        className="fixed right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-[#7c3aed] text-white shadow-[0_10px_30px_-6px_rgba(124,58,237,0.65)] lg:hidden"
+      >
+        <Plus className="h-6 w-6" aria-hidden="true" />
       </div>
     </div>
   );

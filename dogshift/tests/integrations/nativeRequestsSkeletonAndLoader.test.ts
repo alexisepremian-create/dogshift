@@ -35,13 +35,22 @@ test("requests + messages loading boundaries use the faithful NativeRouteFallbac
   }
 });
 
-test("requests skeleton sizes Tous/Rechercher at 16px to match the real inputs", () => {
+test("requests skeleton uses REAL select/input (pixel-identical, no size jump)", () => {
   const src = read("components/native/SectionRouteSkeletons.tsx");
-  // The Tous + Rechercher placeholder rows must be text-base (16px), not text-sm.
-  assert.match(src, /pl-3 pr-8 text-base font-semibold text-slate-700 shadow-sm md:w-\[140px\][^]*?Tous/,
-    "The 'Tous' placeholder must be text-base (16px) to match the real <select>.");
-  assert.match(src, /pl-10 pr-3 text-base text-slate-400 shadow-sm[^]*?Rechercher/,
-    "The 'Rechercher…' placeholder must be text-base (16px) to match the real <input>.");
+  // The placeholders must be actual form controls (same element = same 16px rule
+  // + same autosizing as the real page), not <div>s that render text differently.
+  assert.match(src, /<select[\s\S]*?<option>Tous<\/option>[\s\S]*?<\/select>/,
+    "The 'Tous' placeholder must be a real <select> so its text size matches the page.");
+  assert.match(src, /<input[\s\S]*?placeholder="Rechercher…"[\s\S]*?readOnly|readOnly[\s\S]*?placeholder="Rechercher…"/,
+    "The 'Rechercher…' placeholder must be a real readonly <input> so its text size matches the page.");
+});
+
+test("messages skeleton includes the + FAB so it shows with the loading state", () => {
+  const src = read("components/native/SectionRouteSkeletons.tsx");
+  assert.match(src, /MessagesRouteSkeleton[\s\S]*?<Plus /,
+    "MessagesRouteSkeleton must render the + FAB so it appears at the same time as the skeleton.");
+  assert.match(src, /fixed right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-\[#7c3aed\]/,
+    "The skeleton FAB must match the real messages-layout FAB position/style.");
 });
 
 test("NativeBrandedLoader renders the splash as a cover background (no squished logo)", () => {
