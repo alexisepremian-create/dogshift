@@ -1,16 +1,13 @@
 "use client";
 
+import BrandedSplashLogo from "@/components/native/BrandedSplashLogo";
+
 /**
- * Full-screen branded loading cover for the native app — pixel-identical to the
- * cold-launch splash (brand purple #7c3aed + the SAME `/native-splash.png`,
- * `background-size: cover`). Used to mask the logout/login transitions so the
- * user sees ONE continuous branded screen until the destination is ready, with
- * zero seam against the launch splash.
- *
- * NB: it renders the splash image as a `cover` background (not a fixed-size
- * <img>) so the logo keeps its aspect ratio. The previous version forced the
- * 1024×1280 paw PNG into a 92×92 square, which squished the logo (founder: "le
- * logo est compressé comme ça quand je me déconnecte/reconnecte").
+ * Full-screen branded cover for the /sign-out page's own (client-nav) frame —
+ * purple + the inline-SVG logo (same as #ds-auth-splash), so it paints instantly
+ * with no PNG decode gap and matches the splash exactly. The global
+ * #ds-auth-splash covers the hard-nav reloads; this just covers /sign-out before
+ * its effect sets the flag.
  */
 export default function NativeBrandedLoader({ fadeOut = false }: { fadeOut?: boolean }) {
   return (
@@ -19,28 +16,19 @@ export default function NativeBrandedLoader({ fadeOut = false }: { fadeOut?: boo
       style={{
         position: "fixed",
         inset: 0,
-        // Just below the cold-launch splash (2147483647) so that still wins,
-        // but above every app layer (headers z-70, bottom nav, modals).
         zIndex: 2147483646,
         background: "#7c3aed",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
         transition: "opacity 380ms ease",
         opacity: fadeOut ? 0 : 1,
         pointerEvents: fadeOut ? "none" : "auto",
+        paddingTop: "env(safe-area-inset-top, 0px)",
+        paddingBottom: "env(safe-area-inset-bottom, 0px)",
       }}
     >
-      <div
-        style={{
-          position: "absolute",
-          inset: 0,
-          backgroundImage: 'url("/native-splash.png")',
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-          backgroundRepeat: "no-repeat",
-          // Fully static — identical to the (now frozen) cold-launch splash, so
-          // the client-nav cover and the hard-nav splash are seamless (no pulse
-          // vs static mismatch during the hand-off).
-        }}
-      />
+      <BrandedSplashLogo />
     </div>
   );
 }

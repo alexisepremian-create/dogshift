@@ -23,9 +23,13 @@ export const AUTH_TRANSITION_END_EVENT = "ds-auth-transition-end";
 /** Max age (ms) of the flag before it's treated as stale (failsafe upper bound). */
 const MAX_AGE_MS = 12_000;
 
-/** Start the transition: show the branded cover until end/failsafe. */
+/** Start the transition: show the branded splash until end/failsafe. */
 export function beginAuthTransition(): void {
   if (typeof window === "undefined") return;
+  // Native only — the branded splash is a native-app affordance. Web auth is
+  // unchanged (the CSS splash is not data-native-gated, so we must not set the
+  // flag on web; some callers, e.g. /sign-out, invoke this unconditionally).
+  if (document.documentElement.getAttribute("data-native") !== "true") return;
   try {
     window.sessionStorage.setItem(AUTH_TRANSITION_KEY, String(Date.now()));
   } catch {
@@ -60,7 +64,14 @@ export function authTransitionActive(): boolean {
   return Date.now() - ts < MAX_AGE_MS;
 }
 
-/** End the transition: clear the flag and signal the cover to fade out. */
+/** Fade-out duration (ms) — matches the #ds-auth-splash opacity transition. */
+const EXIT_FADE_MS = 340;
+
+/**
+ * End the transition: fade the splash out, then drop the attributes + flag.
+ * Idempotent — safe to call from several destinations (login screen, the sitter
+ * + owner dashboard gates, the failsafe); only the first call starts the fade.
+ */
 export function endAuthTransition(): void {
   if (typeof window === "undefined") return;
   try {
@@ -68,14 +79,23 @@ export function endAuthTransition(): void {
   } catch {
     /* ignore */
   }
+  const h = document.documentElement;
+  // Nothing active, or already fading out → no-op.
+  if (h.getAttribute("data-auth-transition") !== "true") return;
+  if (h.getAttribute("data-auth-transition-exit") === "true") return;
   try {
-    document.documentElement.removeAttribute("data-auth-transition");
+    h.setAttribute("data-auth-transition-exit", "true");
+    window.setTimeout(() => {
+      h.removeAttribute("data-auth-transition");
+      h.removeAttribute("data-auth-transition-exit");
+      try {
+        window.dispatchEvent(new Event(AUTH_TRANSITION_END_EVENT));
+      } catch {
+        /* ignore */
+      }
+    }, EXIT_FADE_MS);
   } catch {
-    /* ignore */
-  }
-  try {
-    window.dispatchEvent(new Event(AUTH_TRANSITION_END_EVENT));
-  } catch {
-    /* ignore */
+    h.removeAttribute("data-auth-transition");
+    h.removeAttribute("data-auth-transition-exit");
   }
 }

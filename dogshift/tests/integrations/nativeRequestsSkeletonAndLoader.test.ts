@@ -53,9 +53,8 @@ test("messages skeleton includes the + FAB so it shows with the loading state", 
     "The skeleton FAB must match the real messages-layout FAB position/style.");
 });
 
-test("NativeBrandedLoader renders the splash as a cover background (no squished logo)", () => {
+test("NativeBrandedLoader renders the inline-SVG logo (no squished image, no decode gap)", () => {
   const src = read("components/native/NativeBrandedLoader.tsx");
-  assert.match(src, /native-splash\.png/, "Cover must reuse the launch splash image for a seamless match.");
-  assert.match(src, /backgroundSize:\s*"cover"/, "The splash image must use background-size: cover to keep its aspect ratio.");
-  assert.doesNotMatch(src, /width=\{92\}/, "Must not force the logo into a fixed 92px square (that squished it).");
+  assert.match(src, /BrandedSplashLogo/, "Must render the shared inline-SVG logo (paints instantly, correct aspect).");
+  assert.doesNotMatch(src, /width=\{92\}|native-splash\.png/, "Must not force a fixed 92px square nor depend on a PNG decode.");
 });
