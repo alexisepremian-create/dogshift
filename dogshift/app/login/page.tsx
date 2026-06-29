@@ -77,14 +77,17 @@ export default function LoginPage() {
     router.replace(dest);
   }, [forceMode, isLoaded, isSignedIn, next, router]);
 
-  // Logout lands here: once the session has resolved to "unauthenticated" and
-  // we're showing the form, end the branded cover so it fades to reveal the
-  // login screen (the account chooser the user asked for). No-op when no
-  // transition is active (normal /login visits, and during a sign-in where the
-  // cover was just begun and we're navigating away).
+  // Logout lands here: once the session has resolved to "unauthenticated", end
+  // the branded cover so it fades to reveal the login screen (account chooser).
+  // GATED on `justSignedOutRef` — i.e. only when we ARRIVED from /sign-out.
+  // Without this gate it also fired during a fresh LOGIN (user on /login, not
+  // yet authenticated), wiping the cover that beginAuthTransition() had just
+  // set, so the login page flashed back before navigating (founder: "ça revient
+  // sur la page de connexion, puis le logo, puis violet, puis le logo").
   useEffect(() => {
     if (!isLoaded) return;
     if (isSignedIn) return;
+    if (justSignedOutRef.current !== true) return;
     endAuthTransition();
   }, [isLoaded, isSignedIn]);
 

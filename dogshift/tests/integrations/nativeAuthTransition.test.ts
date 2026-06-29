@@ -72,6 +72,33 @@ test("the transition is ENDED at every destination (login screen + dashboards)",
   assert.match(read("components/OwnerDashboardShell.tsx"), /endAuthTransition\(\)/, "owner dashboard must end the cover when ready.");
 });
 
+test("boot script stamps data-auth-transition from the surviving sessionStorage flag", () => {
+  const layout = read("app/layout.tsx");
+  assert.match(
+    layout,
+    /sessionStorage\.getItem\('ds_auth_transition'\)[\s\S]*?setAttribute\('data-auth-transition'/,
+    "The synchronous boot script must read ds_auth_transition and set data-auth-transition on <html> so the cold splash can be frozen before first paint on a hard-nav reload.",
+  );
+});
+
+test("the cold-launch splash is frozen static during an auth transition (no grow/fade flash)", () => {
+  const css = read("app/globals.css");
+  assert.match(
+    css,
+    /html\[data-native="true"\]\[data-auth-transition="true"\]::after\s*\{[^}]*animation:\s*none/,
+    "Expected the splash ::after to be frozen (animation: none) during data-auth-transition, otherwise the logo flashes bigger→smaller on each hard-nav reload.",
+  );
+});
+
+test("login only ends the cover when ARRIVING from sign-out (not during a fresh login)", () => {
+  const src = read("app/login/page.tsx");
+  assert.match(
+    src,
+    /justSignedOutRef\.current\s*!==\s*true\)\s*return;\s*\n\s*endAuthTransition\(\)/,
+    "The /login endAuthTransition must be gated on justSignedOutRef, else it wipes the cover mid-login and the login page flashes back.",
+  );
+});
+
 test("CSS hides the bottom nav + nav overlay while the cover is up", () => {
   const css = read("app/globals.css");
   assert.match(
