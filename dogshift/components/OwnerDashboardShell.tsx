@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { LogOut } from "lucide-react";
 
 import BrandLogo from "@/components/BrandLogo";
@@ -7,6 +8,7 @@ import MobileBottomNav from "@/components/MobileBottomNav";
 import OwnerSidebar from "@/components/OwnerSidebar";
 import { useOwnerDashboardNavItems } from "@/components/dashboardNavItems";
 import { useIsNativeApp } from "@/lib/native/useIsNativeApp";
+import { endAuthTransition } from "@/lib/native/authTransition";
 
 /** Primary tabs in the bottom bar (max 4 + « Plus »), owner-specific labels */
 const PRIMARY_NAV_KEYS = ["dashboard", "bookings", "messages", "dogs"] as const;
@@ -23,6 +25,13 @@ const BOTTOM_NAV_LABELS: Record<string, string> = {
 };
 
 export default function OwnerDashboardShell({ children }: { children: React.ReactNode }) {
+
+  // Login lands here for owners (server-rendered content is already in the DOM
+  // when this client shell hydrates) → end the branded cover so it fades to the
+  // real screen, never a skeleton. No-op when no auth transition is active.
+  useEffect(() => {
+    endAuthTransition();
+  }, []);
 
   const { items } = useOwnerDashboardNavItems();
   // In the Capacitor shell we let <GlobalNativeBottomNav> (rendered from

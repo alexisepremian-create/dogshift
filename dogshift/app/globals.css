@@ -309,6 +309,18 @@ html[data-native="true"] #ds-nav-overlay {
   display: none !important;
 }
 
+/* NATIVE auth transition: while the branded (purple + paw) cover is being
+   shown for logout/login, hide the bottom tab bar and the nav running-dog
+   overlay. The cover (<AuthTransitionCover>, z 2147483646) already sits above
+   everything once it paints; this keyed-on-attribute rule kills the sub-frame
+   between beginAuthTransition() (which sets the attribute synchronously) and the
+   cover's first paint, so the founder never sees "la navbarre qui apparaît"
+   mid-transition. `data-auth-transition` is only ever set in the native app. */
+html[data-auth-transition="true"] nav[aria-label="Navigation principale"],
+html[data-auth-transition="true"] #ds-nav-overlay {
+  display: none !important;
+}
+
 /* NATIVE: hide the web marketing homepage instantly. NativeHomeSwitch renders
    the web homepage (children) on the first client render because useIsNativeApp
    is false then — without this rule it would paint the hero + sitter cards for

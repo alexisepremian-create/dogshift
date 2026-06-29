@@ -31,6 +31,7 @@ import Link from "next/link";
 import { reportApiError } from "@/lib/observability/reportApiError";
 import { decideAuthStep, type AuthStep } from "@/lib/auth/decideAuthStep";
 import { useIsNativeApp } from "@/lib/native/useIsNativeApp";
+import { beginAuthTransition } from "@/lib/native/authTransition";
 
 function normalizeEmail(input: string) {
   return input.replace(/\s+/g, "").trim().toLowerCase();
@@ -111,6 +112,7 @@ export default function AuthFlow() {
         setOauthInFlight(false);
         return;
       }
+      if (isNative) beginAuthTransition();
       router.replace(callbackUrl);
     } catch (err) {
       // User dismissed the Google sheet → not an error worth surfacing loudly.
@@ -175,6 +177,7 @@ export default function AuthFlow() {
         setOauthInFlight(false);
         return;
       }
+      if (isNative) beginAuthTransition();
       router.replace(callbackUrl);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -312,6 +315,7 @@ export default function AuthFlow() {
         return;
       }
 
+      if (isNative) beginAuthTransition();
       router.replace(callbackUrl);
     } catch (err) {
       reportApiError({
@@ -377,6 +381,7 @@ export default function AuthFlow() {
         return;
       }
 
+      if (isNative) beginAuthTransition();
       router.replace(callbackUrl);
     } catch (err) {
       reportApiError({
