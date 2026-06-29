@@ -311,33 +311,70 @@ export default function NativeMapHome() {
     [sitters, activeId],
   );
 
-  // Browser geoloc — works inside Capacitor WKWebView with NSLocationWhenInUseUsageDescription
-  // set in Info.plist (already in the iOS project). No extra plugin needed for v1.
-  const handleLocate = useCallback(() => {
-    if (typeof navigator === "undefined" || !navigator.geolocation) return;
-    setGeoLoading(true);
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setGeoLoading(false);
-        const map = mapRef.current;
-        if (!map) return;
-        try {
-          map.flyTo({
-            center: [pos.coords.longitude, pos.coords.latitude],
-            zoom: 12,
-            duration: 1200,
-          });
-        } catch {
-          // noop
-        }
-      },
-      () => {
-        setGeoLoading(false);
-        // Silent fail — user denied. Keep Lausanne fallback.
-      },
-      { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 },
-    );
+  // Recenter on the user's location.
+  //
+  // WKWebView does NOT implement the HTML5 `navigator.geolocation` API, so the
+  // web call silently never fires its callback inside the Capacitor app — which
+  // is why the button "did nothing". Natively we therefore go through the
+  // Capacitor Geolocation plugin (@capacitor/geolocation), which bridges to Core
+  // Location (requires NSLocationWhenInUseUsageDescription in Info.plist + a
+  // `npx cap sync ios` rebuild). Web keeps the browser API.
+  const flyToMe = useCallback((lng: number, lat: number) => {
+    try {
+      mapRef.current?.flyTo({ center: [lng, lat], zoom: 12, duration: 1200 });
+    } catch {
+      // noop
+    }
   }, []);
+
+  const handleLocate = useCallback(() => {
+    setGeoLoading(true);
+    void (async () => {
+      const isNative =
+        typeof document !== "undefined" &&
+        document.documentElement.getAttribute("data-native") === "true";
+
+      if (isNative) {
+        try {
+          const { Geolocation } = await import("@capacitor/geolocation");
+          let perm = await Geolocation.checkPermissions();
+          if (perm.location !== "granted" && perm.coarseLocation !== "granted") {
+            perm = await Geolocation.requestPermissions();
+          }
+          if (perm.location === "denied" && perm.coarseLocation === "denied") {
+            setGeoLoading(false);
+            return;
+          }
+          const pos = await Geolocation.getCurrentPosition({
+            enableHighAccuracy: true,
+            timeout: 8000,
+          });
+          setGeoLoading(false);
+          flyToMe(pos.coords.longitude, pos.coords.latitude);
+          return;
+        } catch {
+          // Plugin missing (app not yet rebuilt) or permission error → fall
+          // through to the browser API below as a best effort.
+        }
+      }
+
+      if (typeof navigator === "undefined" || !navigator.geolocation) {
+        setGeoLoading(false);
+        return;
+      }
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          setGeoLoading(false);
+          flyToMe(pos.coords.longitude, pos.coords.latitude);
+        },
+        () => {
+          setGeoLoading(false);
+          // Silent fail — user denied / unsupported. Keep Lausanne fallback.
+        },
+        { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 },
+      );
+    })();
+  }, [flyToMe]);
 
   // ── Bottom-sheet drag-to-open / drag-to-close ─────────────────────────────
   // Swipe the grab handle UP to open, DOWN to close (founder: "slide ce pop up
@@ -721,26 +758,27 @@ export default function NativeMapHome() {
                     className={sheetOpen ? "h-14 w-14 rounded-full object-cover" : "h-10 w-10 rounded-full object-cover"}
                   />
                   <div className={sheetOpen ? "min-w-0 w-full" : "min-w-0 flex-1"}>
-                    <div className="truncate text-sm font-semibold text-slate-900">
-                      {s.name}
+                    {/* Name + rating on ONE line — the star note sits next to the
+                        first name so the price gets its own full line below and
+                        is never truncated (founder: "la note … à côté du prénom
+                        et pas tout en bas parce que sinon ça coupe le tarif"). */}
+                    <div className={`flex items-center gap-1 ${sheetOpen ? "justify-center" : ""}`}>
+                      <span className="truncate text-sm font-semibold text-slate-900">
+                        {s.name}
+                      </span>
+                      {s.rating !== null && (
+                        <span className="flex shrink-0 items-center gap-0.5 text-xs font-medium text-slate-700">
+                          <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+                          {s.rating.toFixed(1)}
+                        </span>
+                      )}
                     </div>
-                    <div className="truncate text-xs text-slate-500">{s.city}</div>
-                    {(s.rating !== null || s.minPrice > 0) && (
-                      <div className={`mt-0.5 truncate text-xs text-slate-600 ${sheetOpen ? "text-center" : ""}`}>
-                        {s.rating !== null && (
-                          <span className="inline-flex items-center gap-0.5 align-middle">
-                            <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-                            {s.rating.toFixed(1)}
-                          </span>
-                        )}
-                        {s.rating !== null && s.minPrice > 0 && (
-                          <span className="mx-1 align-middle text-slate-300">·</span>
-                        )}
-                        {s.minPrice > 0 && (
-                          <span className="align-middle font-medium text-slate-700">
-                            {sheetOpen ? `Dès CHF ${s.minPrice}.–` : `dès ${s.minPrice} CHF`}
-                          </span>
-                        )}
+                    <div className={`truncate text-xs text-slate-500 ${sheetOpen ? "text-center" : ""}`}>
+                      {s.city}
+                    </div>
+                    {s.minPrice > 0 && (
+                      <div className={`mt-0.5 truncate text-xs font-medium text-slate-700 ${sheetOpen ? "text-center" : ""}`}>
+                        {sheetOpen ? `Dès CHF ${s.minPrice}.–` : `dès ${s.minPrice} CHF`}
                       </div>
                     )}
                   </div>
