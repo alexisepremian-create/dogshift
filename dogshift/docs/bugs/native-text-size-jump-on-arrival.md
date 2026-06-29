@@ -53,6 +53,22 @@ Verified via Playwright: with `data-native` on `<html>`, computed
   are fine to keep on body — they don't change the rendered size, so the async
   delay is invisible.
 
+## Follow-up (still grew after the first fix)
+
+The first fix killed the autosizing + the input's own 14→16 flip, but the text
+still "grew" on the Réservations tab for two more reasons, fixed in a follow-up:
+
+1. **Wrong skeleton.** `app/(protected)/host/requests/loading.tsx` (and messages)
+   rendered the **generic** `DashboardSkeleton` — the most-specific loading
+   boundary wins over the faithful group fallback. Switched them to
+   `NativeRouteFallback` so the tab shows the faithful `RequestsRouteSkeleton`.
+2. **Skeleton/real size mismatch.** `RequestsRouteSkeleton`'s Tous/Rechercher
+   placeholders were `text-sm` (14px) `<div>`s, but the real page's
+   `<select>`/`<input>` are forced to **16px** by the native no-zoom rule → the
+   text jumped 14→16px on every skeleton→page hand-off. Set the placeholders to
+   `text-base` (16px) so they match. Guarded by
+   `tests/integrations/nativeRequestsSkeletonAndLoader.test.ts`.
+
 ## 🤖 Automated detection
 
 ```json
