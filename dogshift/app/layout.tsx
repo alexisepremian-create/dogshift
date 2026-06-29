@@ -113,7 +113,7 @@ export default async function RootLayout({
         <script
           dangerouslySetInnerHTML={{
             __html:
-              "(function(){try{var c=window.Capacitor;if(c&&typeof c.isNativePlatform==='function'&&c.isNativePlatform()){var h=document.documentElement;h.setAttribute('data-native','true');var p=typeof c.getPlatform==='function'?c.getPlatform():'';if(p)h.setAttribute('data-native-platform',p);var apply=function(){if(document.body){document.body.setAttribute('data-native','true');if(p)document.body.setAttribute('data-native-platform',p);}else{requestAnimationFrame(apply);}};apply();}}catch(e){}})();",
+              "(function(){try{var c=window.Capacitor;if(c&&typeof c.isNativePlatform==='function'&&c.isNativePlatform()){var h=document.documentElement;h.setAttribute('data-native','true');var p=typeof c.getPlatform==='function'?c.getPlatform():'';if(p)h.setAttribute('data-native-platform',p);try{var t=window.sessionStorage.getItem('ds_auth_transition');if(t&&(Date.now()-parseInt(t,10))<12000){h.setAttribute('data-auth-transition','true');}}catch(e2){}var apply=function(){if(document.body){document.body.setAttribute('data-native','true');if(p)document.body.setAttribute('data-native-platform',p);}else{requestAnimationFrame(apply);}};apply();}}catch(e){}})();",
           }}
         />
         <link rel="icon" href="/favicon.ico" />

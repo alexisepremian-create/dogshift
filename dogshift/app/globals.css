@@ -257,6 +257,27 @@ html[data-native="true"][data-native-ready]::after {
     forwards;
 }
 
+/* During a native AUTH transition (logout/login), freeze the cold-launch splash
+   STATIC — no grow, no fade — even once data-native-ready fires. Without this,
+   every hard-nav reload in the logout/login flow replayed the grow+fade, so the
+   logo flashed bigger→smaller and left a plain-purple gap mid-fade (founder:
+   "flash/bug sur le logo ... écran violet puis il réapparaît"). The branded
+   cover (AuthTransitionCover) shows the SAME static logo during the client-nav
+   portions. `data-auth-transition` is stamped synchronously by the boot script
+   from the surviving sessionStorage flag, and removed by endAuthTransition() at
+   the destination — which re-enables the rules above so the splash plays its
+   grow+fade exit exactly once, smoothly. MUST come after the rules above (equal
+   specificity → source order) and uses !important as belt-and-suspenders. */
+html[data-native="true"][data-auth-transition="true"]::before {
+  animation: none !important;
+  opacity: 1 !important;
+}
+html[data-native="true"][data-auth-transition="true"]::after {
+  animation: none !important;
+  opacity: 1 !important;
+  transform: none !important;
+}
+
 @keyframes spin {
   to { transform: rotate(360deg); }
 }

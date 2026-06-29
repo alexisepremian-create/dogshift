@@ -36,8 +36,9 @@ export default function NativeBrandedLoader({ fadeOut = false }: { fadeOut?: boo
           backgroundSize: "cover",
           backgroundPosition: "center",
           backgroundRepeat: "no-repeat",
-          animation: "brandPulseSubtle 1.6s ease-in-out infinite",
-          willChange: "opacity",
+          // Fully static — identical to the (now frozen) cold-launch splash, so
+          // the client-nav cover and the hard-nav splash are seamless (no pulse
+          // vs static mismatch during the hand-off).
         }}
       />
     </div>
