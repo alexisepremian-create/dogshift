@@ -8,6 +8,7 @@ import { signOut, useSession } from "next-auth/react";
 import AuthLayout from "@/components/auth/AuthLayout";
 import AuthFlow from "@/components/auth/AuthFlow";
 import { consumeSignoutHandoff } from "@/lib/auth/signoutHandoff";
+import { endAuthTransition } from "@/lib/native/authTransition";
 import { useCanonicalDogshiftHostRedirect } from "@/lib/url/useCanonicalDogshiftHost";
 
 /**
@@ -75,6 +76,17 @@ export default function LoginPage() {
     const dest = next ? `/post-login?next=${encodeURIComponent(next)}` : "/post-login";
     router.replace(dest);
   }, [forceMode, isLoaded, isSignedIn, next, router]);
+
+  // Logout lands here: once the session has resolved to "unauthenticated" and
+  // we're showing the form, end the branded cover so it fades to reveal the
+  // login screen (the account chooser the user asked for). No-op when no
+  // transition is active (normal /login visits, and during a sign-in where the
+  // cover was just begun and we're navigating away).
+  useEffect(() => {
+    if (!isLoaded) return;
+    if (isSignedIn) return;
+    endAuthTransition();
+  }, [isLoaded, isSignedIn]);
 
   useEffect(() => {
     if (!debugMode) return;

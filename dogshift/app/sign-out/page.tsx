@@ -5,7 +5,10 @@ import { useEffect, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 
 import PageLoader from "@/components/ui/PageLoader";
+import NativeBrandedLoader from "@/components/native/NativeBrandedLoader";
+import { useIsNativeAppSync } from "@/lib/native/useIsNativeAppSync";
 import { SIGNOUT_HANDOFF_KEY } from "@/lib/auth/signoutHandoff";
+import { beginAuthTransition } from "@/lib/native/authTransition";
 
 export const dynamic = "force-dynamic";
 
@@ -44,13 +47,45 @@ function clearLegacyAuthCookies() {
   }
 }
 
+/**
+ * Clear the native Google/Apple session so the NEXT sign-in shows the account
+ * chooser instead of silently reusing the same account. Auth.js `signOut()`
+ * only clears the web/JWT cookie — the @capgo/capacitor-social-login native
+ * session survives it, which is why logging out "auto-reconnected" the user.
+ * Best-effort + per-provider allSettled: an unsupported provider (Apple logout
+ * can be a no-op) never blocks the sign-out.
+ */
+async function clearNativeSocialSession() {
+  if (typeof window === "undefined") return;
+  const cap = (window as unknown as { Capacitor?: { isNativePlatform?: () => boolean } }).Capacitor;
+  if (typeof cap?.isNativePlatform !== "function" || !cap.isNativePlatform()) return;
+  try {
+    const mod = (await import("@capgo/capacitor-social-login")) as unknown as {
+      SocialLogin?: { logout?: (o: { provider: string }) => Promise<unknown> };
+    };
+    const SocialLogin = mod.SocialLogin;
+    if (!SocialLogin?.logout) return;
+    await Promise.allSettled([
+      SocialLogin.logout({ provider: "google" }),
+      SocialLogin.logout({ provider: "apple" }),
+    ]);
+  } catch {
+    /* sdk missing / not native — ignore */
+  }
+}
+
 export default function SignOutPage() {
   const searchParams = useSearchParams();
   const doneRef = useRef(false);
+  const isNative = useIsNativeAppSync();
 
   useEffect(() => {
     if (doneRef.current) return;
     doneRef.current = true;
+
+    // Show the single branded (purple + paw) cover for the whole logout → login
+    // transition (survives the hard navigation to /login below).
+    beginAuthTransition();
 
     // Where to land after sign-out. Defaults to /login if no redirect was
     // requested. We only accept same-origin relative paths to avoid being
@@ -87,6 +122,9 @@ export default function SignOutPage() {
     }, FAILSAFE_MS);
 
     void (async () => {
+      // Clear the native social session first so the next login shows the
+      // account chooser (independent of whether the cookie clear succeeds).
+      await clearNativeSocialSession();
       try {
         // signOut({ redirect: false }) returns once Auth.js has cleared its
         // JWT cookie via /api/auth/signout. We then do a HARD navigation
@@ -107,5 +145,7 @@ export default function SignOutPage() {
     return () => window.clearTimeout(failsafe);
   }, [searchParams]);
 
+  // Native: the branded cover (purple + paw) — no skeleton. Web: unchanged.
+  if (isNative) return <NativeBrandedLoader />;
   return <PageLoader label="Déconnexion…" ready minDuration={300} persist static />;
 }

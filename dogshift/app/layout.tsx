@@ -13,6 +13,7 @@ import ServiceWorkerRegistration from "@/components/ServiceWorkerRegistration";
 import WebOnly from "@/components/native/WebOnly";
 import GlobalNativeBottomNav from "@/components/native/GlobalNativeBottomNav";
 import NativeOnboarding from "@/components/native/NativeOnboarding";
+import AuthTransitionCover from "@/components/native/AuthTransitionCover";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -125,6 +126,11 @@ export default async function RootLayout({
             top of <body> so its `position: fixed` overlay sits above all other
             layers including modals + the Capacitor native bottom nav. */}
         <ImpersonationBanner />
+
+        {/* Native-only branded cover (purple + paw) that masks the logout and
+            login transitions end-to-end. Outside SessionAuthProvider — it's
+            driven by a sessionStorage flag, not the session. */}
+        <AuthTransitionCover />
 
         <Suspense fallback={null}>
           <SessionAuthProvider>
