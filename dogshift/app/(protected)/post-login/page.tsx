@@ -1,9 +1,11 @@
 "use client";
 
 import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import { useEffect, useRef } from "react";
 
 import PageLoader from "@/components/ui/PageLoader";
+import { useIsNativeAppSync } from "@/lib/native/useIsNativeAppSync";
 import { navigationPublicOrigin } from "@/lib/url/publicOrigin";
 
 function absolutePath(path: string): string {
@@ -16,6 +18,8 @@ function absolutePath(path: string): string {
 
 export default function PostLoginPage() {
   const { data: __session, status: __sessionStatus } = useSession();
+  const router = useRouter();
+  const isNative = useIsNativeAppSync();
   const isLoaded = __sessionStatus !== "loading";
   const userId = __session?.user?.id ?? null;
   const userIdRef = useRef(userId);
@@ -68,6 +72,17 @@ export default function PostLoginPage() {
       const useNext = isSafeNext;
       const t = useNext ? next : redirect;
       const dest = t.startsWith("/") && !t.startsWith("//") ? t : "/account";
+      if (isNative) {
+        // Native: client-side nav (NOT a hard window.location). A hard nav here
+        // tears down the document, and during the WKWebView commit gap iOS
+        // paints its own backgroundColor (#7c3aed, capacitor.config.ts) WITHOUT
+        // the logo → a "mini flash écran violet". A client nav keeps the
+        // root-layout #ds-auth-splash mounted the whole time (the session is
+        // already loaded here, so no fresh-document read is needed). The /host
+        // (or owner) page calls endAuthTransition() once its content is ready.
+        router.replace(dest);
+        return;
+      }
       window.location.replace(absolutePath(dest));
     })();
 
@@ -75,7 +90,7 @@ export default function PostLoginPage() {
       cancelled = true;
       runStartedRef.current = false;
     };
-  }, [isLoaded]);
+  }, [isLoaded, isNative, router]);
 
   return <PageLoader ready={false} />;
 }

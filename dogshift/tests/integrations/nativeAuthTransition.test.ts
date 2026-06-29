@@ -123,6 +123,31 @@ test("login only ends the cover when ARRIVING from sign-out (not during a fresh 
   );
 });
 
+test("native uses CLIENT navigation at the hard-nav boundaries (no purple WebView-bg flash)", () => {
+  // The WKWebView backgroundColor is brand purple (capacitor.config.ts). A hard
+  // window.location nav tears down the document and exposes that purple WITHOUT
+  // the logo during the commit gap = a "mini flash écran violet". On native both
+  // the login (/post-login → dashboard) and logout (/sign-out → /login) hops must
+  // be client-side (router.replace) so the root-layout #ds-auth-splash never
+  // unmounts. Web keeps the hard nav (window.location) for a fresh session read.
+  const postLogin = read("app/(protected)/post-login/page.tsx");
+  assert.match(postLogin, /useIsNativeAppSync/, "/post-login must detect native synchronously.");
+  assert.match(
+    postLogin,
+    /if \(isNative\) \{[\s\S]*?router\.replace\(dest\);/,
+    "/post-login must client-nav (router.replace) on native to avoid the hard-nav purple flash.",
+  );
+  assert.match(postLogin, /window\.location\.replace\(absolutePath\(dest\)\)/, "/post-login must keep the hard nav for web.");
+
+  const signOut = read("app/sign-out/page.tsx");
+  assert.match(
+    signOut,
+    /if \(isNative\) \{\s*\n\s*router\.replace\(safeRedirect\);/,
+    "/sign-out must client-nav (router.replace) on native to avoid the hard-nav purple flash.",
+  );
+  assert.match(signOut, /window\.location\.replace\(safeRedirect\)/, "/sign-out must keep the hard nav for web.");
+});
+
 test("CSS hides the bottom nav + nav overlay while the cover is up", () => {
   const css = read("app/globals.css");
   assert.match(
