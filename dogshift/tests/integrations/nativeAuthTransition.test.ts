@@ -82,16 +82,18 @@ test("boot script stamps data-auth-transition from the surviving sessionStorage 
 });
 
 test("auth transition uses an instant inline-SVG splash (no PNG decode gap)", () => {
+  const css = read("app/globals.css");
   const layout = read("app/layout.tsx");
   assert.match(layout, /id="ds-auth-splash"[\s\S]*?BrandedSplashLogo/,
-    "The layout must server-render #ds-auth-splash with the inline-SVG BrandedSplashLogo (paints instantly, no purple-without-logo gap on reload).");
+    "The layout must server-render #ds-auth-splash with BrandedSplashLogo (paints instantly, no purple-without-logo gap on reload).");
   const logo = read("components/native/BrandedSplashLogo.tsx");
-  assert.match(logo, /<svg/, "BrandedSplashLogo must be inline SVG (no <img> / PNG decode).");
-  assert.doesNotMatch(logo, /<img|backgroundImage|url\(/, "The splash logo must not depend on an image fetch.");
-
-  const css = read("app/globals.css");
+  assert.match(logo, /ds-splash-paw/, "BrandedSplashLogo must render the real brand paw (.ds-splash-paw).");
+  assert.doesNotMatch(logo, /<img|native-splash\.png/, "The component must not fetch an image (the paw is a base64 data-URI in the cached CSS).");
+  // The paw must be the real asset inlined as base64 (instant, no fetch/2732² decode).
+  assert.match(css, /\.ds-splash-paw\s*\{[\s\S]*?url\("data:image\/png;base64,/,
+    ".ds-splash-paw must use a base64 data-URI so the brand paw paints with the cached CSS (no plain-purple gap).");
   assert.match(css, /html\[data-native="true"\]\[data-auth-transition="true"\]::before,\s*\n?\s*html\[data-native="true"\]\[data-auth-transition="true"\]::after\s*\{[^}]*display:\s*none/,
-    "During an auth transition the PNG cold splash must be suppressed so only the instant inline-SVG splash shows.");
+    "During an auth transition the PNG cold splash must be suppressed so only the instant splash shows.");
   assert.match(css, /\[data-auth-transition="true"\]\s+#ds-auth-splash\s*\{[^}]*display:\s*flex/,
     "#ds-auth-splash must be shown while data-auth-transition is set.");
 });
