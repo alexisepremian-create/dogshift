@@ -328,6 +328,29 @@ test("dashboard gates render a skeleton (not null=white) while waiting", () => {
   assert.match(gateLoader, /RequestsRouteSkeleton|fixed inset-0 z-40/, "NativeDashboardLoading must render the matched native skeleton overlay.");
 });
 
+test("sitter dashboard root shows ONE skeleton: gate + page share HostDashboardSkeleton", () => {
+  // The gate (NativeDashboardLoading) used to render the GENERIC
+  // components/ui/DashboardSkeleton (title + chips + rows) while the /host PAGE
+  // rendered its own layout-faithful skeleton — so the user saw TWO different
+  // skeletons flash in sequence before the dashboard. Both must now render the
+  // SAME shared HostDashboardSkeleton so it reads as one continuous load.
+  const shared = read("components/HostDashboardSkeleton.tsx");
+  assert.match(shared, /export default function HostDashboardSkeleton/, "HostDashboardSkeleton must be a shared component.");
+  assert.match(shared, /data-testid="host-dashboard-skeleton"/, "It must be the faithful host-dashboard replica.");
+
+  const page = read("app/(protected)/host/page.tsx");
+  assert.match(page, /import HostDashboardSkeleton from "@\/components\/HostDashboardSkeleton"/, "/host page must import the shared skeleton.");
+  assert.match(page, /return <HostDashboardSkeleton \/>/, "/host page must render the shared skeleton (not a local one).");
+  assert.doesNotMatch(page, /function DashboardSkeleton\(/, "The local DashboardSkeleton duplicate must be gone.");
+
+  const gateLoader = read("components/native/NativeDashboardLoading.tsx");
+  assert.match(
+    gateLoader,
+    /pathname === "\/host"[\s\S]*?<HostDashboardSkeleton \/>/,
+    "NativeDashboardLoading must render the SAME HostDashboardSkeleton for the /host root.",
+  );
+});
+
 test("route + section fallbacks pad the bottom so the skeleton never spills under the nav", () => {
   for (const f of [
     "components/native/NativeRouteFallback.tsx",
