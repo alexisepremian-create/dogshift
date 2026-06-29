@@ -1,12 +1,16 @@
 "use client";
-/* eslint-disable @next/next/no-img-element */
 
 /**
- * Full-screen branded loading cover for the native app — brand purple
- * (#7c3aed) + the white DogShift paw, matching the launch splash. Used to mask
- * the post-login transition so the user never sees a white skeleton or a
- * jarring multi-step sequence — just one continuous branded screen until the
- * destination is ready.
+ * Full-screen branded loading cover for the native app — pixel-identical to the
+ * cold-launch splash (brand purple #7c3aed + the SAME `/native-splash.png`,
+ * `background-size: cover`). Used to mask the logout/login transitions so the
+ * user sees ONE continuous branded screen until the destination is ready, with
+ * zero seam against the launch splash.
+ *
+ * NB: it renders the splash image as a `cover` background (not a fixed-size
+ * <img>) so the logo keeps its aspect ratio. The previous version forced the
+ * 1024×1280 paw PNG into a 92×92 square, which squished the logo (founder: "le
+ * logo est compressé comme ça quand je me déconnecte/reconnecte").
  */
 export default function NativeBrandedLoader({ fadeOut = false }: { fadeOut?: boolean }) {
   return (
@@ -19,26 +23,21 @@ export default function NativeBrandedLoader({ fadeOut = false }: { fadeOut?: boo
         // but above every app layer (headers z-70, bottom nav, modals).
         zIndex: 2147483646,
         background: "#7c3aed",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
         transition: "opacity 380ms ease",
         opacity: fadeOut ? 0 : 1,
         pointerEvents: fadeOut ? "none" : "auto",
-        paddingTop: "env(safe-area-inset-top, 0px)",
-        paddingBottom: "env(safe-area-inset-bottom, 0px)",
       }}
     >
-      <img
-        src="/dogshift-paw-white.png"
-        alt=""
-        width={92}
-        height={92}
+      <div
         style={{
-          width: 92,
-          height: 92,
-          animation: "dsBrandedPawPulse 1.3s ease-in-out infinite",
-          willChange: "transform, opacity",
+          position: "absolute",
+          inset: 0,
+          backgroundImage: 'url("/native-splash.png")',
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          backgroundRepeat: "no-repeat",
+          animation: "brandPulseSubtle 1.6s ease-in-out infinite",
+          willChange: "opacity",
         }}
       />
     </div>

@@ -74,7 +74,11 @@ export function RequestsRouteSkeleton() {
 
                 <div className="mt-6 grid gap-3 md:grid-cols-[140px_1fr]">
                   <div className="relative">
-                    <div className="flex h-10 w-full items-center rounded-2xl border border-slate-100 bg-white pl-3 pr-8 text-sm font-semibold text-slate-700 shadow-sm md:w-[140px]">
+                    {/* text-base (16px) to MATCH the real <select>/<input>, which
+                        the native no-zoom rule forces to 16px — otherwise the
+                        Tous/Rechercher text visibly jumped 14px→16px on load
+                        (founder: "le texte qui grossit dans l'onglet demandes"). */}
+                    <div className="flex h-10 w-full items-center rounded-2xl border border-slate-100 bg-white pl-3 pr-8 text-base font-semibold text-slate-700 shadow-sm md:w-[140px]">
                       Tous
                     </div>
                     <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">
@@ -89,7 +93,7 @@ export function RequestsRouteSkeleton() {
                         <path fillRule="evenodd" d="M8.5 3a5.5 5.5 0 104.384 8.824l2.146 2.146a.75.75 0 101.06-1.06l-2.146-2.146A5.5 5.5 0 008.5 3zm-4 5.5a4 4 0 117.999.001A4 4 0 014.5 8.5z" clipRule="evenodd" />
                       </svg>
                     </span>
-                    <div className="flex h-10 w-full items-center rounded-2xl border border-slate-100 bg-white pl-10 pr-3 text-sm text-slate-400 shadow-sm">
+                    <div className="flex h-10 w-full items-center rounded-2xl border border-slate-100 bg-white pl-10 pr-3 text-base text-slate-400 shadow-sm">
                       Rechercher…
                     </div>
                   </div>
