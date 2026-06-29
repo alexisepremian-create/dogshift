@@ -31,7 +31,7 @@ import Link from "next/link";
 import { reportApiError } from "@/lib/observability/reportApiError";
 import { decideAuthStep, type AuthStep } from "@/lib/auth/decideAuthStep";
 import { useIsNativeApp } from "@/lib/native/useIsNativeApp";
-import { beginAuthTransition } from "@/lib/native/authTransition";
+import { beginAuthTransition, endAuthTransition } from "@/lib/native/authTransition";
 
 function normalizeEmail(input: string) {
   return input.replace(/\s+/g, "").trim().toLowerCase();
@@ -106,13 +106,17 @@ export default function AuthFlow() {
         setOauthInFlight(false);
         return;
       }
+      // Cover the signIn round-trip with the branded splash the instant the
+      // native sheet closes — otherwise /login flashes back while signIn()
+      // verifies the token server-side. Ended if signIn fails (below).
+      if (isNative) beginAuthTransition();
       const signRes = await signIn("google-native", { idToken, redirect: false });
       if (!signRes || signRes.error) {
+        if (isNative) endAuthTransition();
         setError("Connexion Google impossible. Réessaie.");
         setOauthInFlight(false);
         return;
       }
-      if (isNative) beginAuthTransition();
       router.replace(callbackUrl);
     } catch (err) {
       // User dismissed the Google sheet → not an error worth surfacing loudly.
@@ -171,13 +175,17 @@ export default function AuthFlow() {
         setOauthInFlight(false);
         return;
       }
+      // Cover the signIn round-trip with the branded splash the instant the
+      // native sheet closes — otherwise /login flashes back while signIn()
+      // verifies the token server-side. Ended if signIn fails (below).
+      if (isNative) beginAuthTransition();
       const signRes = await signIn("apple-native", { idToken, redirect: false });
       if (!signRes || signRes.error) {
+        if (isNative) endAuthTransition();
         setError("Connexion Apple impossible. Réessaie.");
         setOauthInFlight(false);
         return;
       }
-      if (isNative) beginAuthTransition();
       router.replace(callbackUrl);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
