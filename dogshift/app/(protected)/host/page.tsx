@@ -25,6 +25,7 @@ import {
   type HostVerificationStatus,
 } from "@/lib/hostProfile";
 import { loadHostBookings, loadHostRequestStatus } from "@/lib/hostBookings";
+import { endAuthTransition } from "@/lib/native/authTransition";
 function monthTitle(date: Date) {
   return new Intl.DateTimeFormat("fr-CH", { month: "long", year: "numeric" }).format(date);
 }
@@ -437,6 +438,15 @@ export default function HostDashboardPage() {
   }, [profile, host.stripeAccountStatus]);
 
   const completionUiReady = Boolean(sitterId) && verificationLoaded;
+
+  // Login lands sitters here (resolve-redirect → /host). End the native auth
+  // splash only once THIS page is past its own DashboardSkeleton (below) and
+  // about to render real content — otherwise the splash faded to reveal the
+  // page's skeleton (founder: "ça révèle le skeleton à la reconnexion").
+  const hostContentReady = isLoaded && isSignedIn && (!sitterId || verificationLoaded);
+  useEffect(() => {
+    if (hostContentReady) endAuthTransition();
+  }, [hostContentReady]);
 
   useEffect(() => {
     if (!sitterId) {
