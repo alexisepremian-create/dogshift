@@ -431,6 +431,41 @@ test("NativeMapHome sheet: swipe + click-outside + blur + hidden locate + price 
   );
 });
 
+test("NativeMapHome: rating sits next to the name, price on its own line (never truncated)", () => {
+  const src = read("components/native/NativeMapHome.tsx");
+  // Name + star rating share one flex row…
+  assert.match(
+    src,
+    /<span className="truncate text-sm font-semibold text-slate-900">\s*\{s\.name\}\s*<\/span>\s*\{s\.rating !== null && \([\s\S]*?\{s\.rating\.toFixed\(1\)\}/,
+    "The sitter card must render the star rating on the SAME row as the name.",
+  );
+  // …and the price gets its OWN line (so it can't be cut off by the rating).
+  assert.match(
+    src,
+    /\{s\.minPrice > 0 && \(\s*<div className=\{`mt-0\.5 truncate text-xs font-medium text-slate-700/,
+    "The price must be on its own dedicated line below the name/city.",
+  );
+});
+
+test("NativeMapHome locate button uses the native Geolocation plugin (WKWebView has no navigator.geolocation)", () => {
+  const src = read("components/native/NativeMapHome.tsx");
+  assert.match(
+    src,
+    /import\("@capacitor\/geolocation"\)/,
+    "handleLocate must use @capacitor/geolocation natively — WKWebView never fires navigator.geolocation.",
+  );
+  assert.match(src, /Geolocation\.requestPermissions\(\)/, "It must request location permission on native.");
+  assert.match(src, /Geolocation\.getCurrentPosition/, "It must read the position via the plugin on native.");
+  // Web still falls back to the browser API.
+  assert.match(src, /navigator\.geolocation\.getCurrentPosition/, "Web must keep the navigator.geolocation fallback.");
+  // The native plugin needs the iOS usage-description or Core Location aborts.
+  assert.match(
+    read("ios/App/App/Info.plist"),
+    /NSLocationWhenInUseUsageDescription/,
+    "Info.plist must declare NSLocationWhenInUseUsageDescription for the Geolocation plugin.",
+  );
+});
+
 test("NativeMapHome search/filter panel is floored above the nav", () => {
   const src = read("components/native/NativeMapHome.tsx");
   assert.match(

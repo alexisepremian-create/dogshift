@@ -45,6 +45,10 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
+	<!-- Location — used by the map "recenter on me" button (Capacitor Geolocation
+	     plugin → Core Location). Required or iOS denies/aborts the request. -->
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>DogShift utilise ta position pour centrer la carte sur les dogsitters proches de toi.</string>
 	<!-- DogShift's UI is light-only (white surfaces, brand purple). Force Light
 	     so the launch screen + WebView never render a dark-mode variant — fixes
 	     the dark/black launch flash on phones set to Dark Mode. -->
