@@ -297,7 +297,6 @@ html[data-native="true"][data-auth-transition="true"]::after {
   justify-content: center;
   background: #7c3aed;
   opacity: 1;
-  transition: opacity 320ms ease;
   pointer-events: none;
   padding-top: env(safe-area-inset-top, 0px);
   padding-bottom: env(safe-area-inset-bottom, 0px);
@@ -306,8 +305,15 @@ html[data-native="true"][data-auth-transition="true"] #ds-auth-splash {
   display: flex;
   pointer-events: auto;
 }
+/* Exit = the EXACT cold-launch animation (paw grows + fades while the purple
+   dwells then fades), so the logout/login splash ends identically to the app
+   launch — intentional, never a plain opacity fade that read as a bug (founder:
+   "écran violet sans logo"). */
 html[data-native="true"][data-auth-transition-exit="true"] #ds-auth-splash {
-  opacity: 0;
+  animation: ds-native-splash-bg-fade 700ms ease-out forwards;
+}
+html[data-native="true"][data-auth-transition-exit="true"] .ds-splash-paw {
+  animation: ds-native-splash-paw-grow 700ms cubic-bezier(0.25, 0.1, 0.25, 1) forwards;
 }
 
 @keyframes spin {
