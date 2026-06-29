@@ -328,27 +328,44 @@ test("dashboard gates render a skeleton (not null=white) while waiting", () => {
   assert.match(gateLoader, /RequestsRouteSkeleton|fixed inset-0 z-40/, "NativeDashboardLoading must render the matched native skeleton overlay.");
 });
 
-test("sitter dashboard root shows ONE skeleton: gate + page share HostDashboardSkeleton", () => {
-  // The gate (NativeDashboardLoading) used to render the GENERIC
-  // components/ui/DashboardSkeleton (title + chips + rows) while the /host PAGE
-  // rendered its own layout-faithful skeleton — so the user saw TWO different
-  // skeletons flash in sequence before the dashboard. Both must now render the
-  // SAME shared HostDashboardSkeleton so it reads as one continuous load.
+test("sitter dashboard root shows ONE skeleton across EVERY boundary (route group → route → gate → page)", () => {
+  // The chain to /host crosses 4 Suspense/gate boundaries. Each used to render a
+  // DIFFERENT skeleton (generic ui/DashboardSkeleton at the route-group + route +
+  // gate, faithful local one at the page), so the user saw several skeletons
+  // flash in sequence. Every boundary must now render the SAME faithful skeleton:
+  //  - route group  (NativeRouteFallback, /host branch) → HostDashboardSkeletonOverlay
+  //  - route        (host/loading.tsx, native)          → HostDashboardSkeletonOverlay
+  //  - gates        (NativeDashboardLoading, /host)      → HostDashboardSkeletonOverlay
+  //  - page         (/host page)                         → HostDashboardSkeleton (bare, in-shell)
+  // The overlay's padding mirrors the shell <main> so it lands in the exact same
+  // spot as the page's bare skeleton — one continuous shape, no shift.
   const shared = read("components/HostDashboardSkeleton.tsx");
   assert.match(shared, /export default function HostDashboardSkeleton/, "HostDashboardSkeleton must be a shared component.");
   assert.match(shared, /data-testid="host-dashboard-skeleton"/, "It must be the faithful host-dashboard replica.");
 
+  const overlay = read("components/native/HostDashboardSkeletonOverlay.tsx");
+  assert.match(overlay, /<HostDashboardSkeleton \/>/, "HostDashboardSkeletonOverlay must wrap the faithful skeleton.");
+  assert.match(
+    overlay,
+    /paddingTop:[\s\S]*?env\(safe-area-inset-top[\s\S]*?2rem \+ 0\.75rem/,
+    "The overlay must pad to land where the in-shell page skeleton sits (main pt + inner py-3).",
+  );
+
   const page = read("app/(protected)/host/page.tsx");
-  assert.match(page, /import HostDashboardSkeleton from "@\/components\/HostDashboardSkeleton"/, "/host page must import the shared skeleton.");
   assert.match(page, /return <HostDashboardSkeleton \/>/, "/host page must render the shared skeleton (not a local one).");
   assert.doesNotMatch(page, /function DashboardSkeleton\(/, "The local DashboardSkeleton duplicate must be gone.");
 
-  const gateLoader = read("components/native/NativeDashboardLoading.tsx");
-  assert.match(
-    gateLoader,
-    /pathname === "\/host"[\s\S]*?<HostDashboardSkeleton \/>/,
-    "NativeDashboardLoading must render the SAME HostDashboardSkeleton for the /host root.",
-  );
+  for (const [file, label] of [
+    ["components/native/NativeRouteFallback.tsx", "route-group fallback"],
+    ["app/(protected)/host/loading.tsx", "route fallback"],
+    ["components/native/NativeDashboardLoading.tsx", "dashboard gates"],
+  ] as const) {
+    const src = read(file);
+    assert.match(src, /HostDashboardSkeletonOverlay/, `${label} (${file}) must render HostDashboardSkeletonOverlay for /host.`);
+  }
+  // The two pathname-aware boundaries must gate the overlay on the /host root.
+  assert.match(read("components/native/NativeRouteFallback.tsx"), /pathname === "\/host"[\s\S]*?HostDashboardSkeletonOverlay/, "NativeRouteFallback must use the overlay for the /host root.");
+  assert.match(read("components/native/NativeDashboardLoading.tsx"), /pathname === "\/host"[\s\S]*?HostDashboardSkeletonOverlay/, "NativeDashboardLoading must use the overlay for the /host root.");
 });
 
 test("route + section fallbacks pad the bottom so the skeleton never spills under the nav", () => {
