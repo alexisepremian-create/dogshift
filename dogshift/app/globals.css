@@ -257,25 +257,42 @@ html[data-native="true"][data-native-ready]::after {
     forwards;
 }
 
-/* During a native AUTH transition (logout/login), freeze the cold-launch splash
-   STATIC — no grow, no fade — even once data-native-ready fires. Without this,
-   every hard-nav reload in the logout/login flow replayed the grow+fade, so the
-   logo flashed bigger→smaller and left a plain-purple gap mid-fade (founder:
-   "flash/bug sur le logo ... écran violet puis il réapparaît"). The branded
-   cover (AuthTransitionCover) shows the SAME static logo during the client-nav
-   portions. `data-auth-transition` is stamped synchronously by the boot script
-   from the surviving sessionStorage flag, and removed by endAuthTransition() at
-   the destination — which re-enables the rules above so the splash plays its
-   grow+fade exit exactly once, smoothly. MUST come after the rules above (equal
-   specificity → source order) and uses !important as belt-and-suspenders. */
-html[data-native="true"][data-auth-transition="true"]::before {
-  animation: none !important;
-  opacity: 1 !important;
-}
+/* ── Native AUTH-transition splash (logout/login) ──────────────────────────
+   The cold-launch splash uses the 2732² PNG; on an in-app hard-nav reload the
+   PNG hasn't decoded yet, so there was a plain-purple-without-logo frame (the
+   native LaunchScreen only hides this on cold launch). So during an auth
+   transition we SUPPRESS the cold splash entirely and show #ds-auth-splash
+   instead — a server-rendered, INLINE-SVG splash that paints instantly with the
+   document. The logo is therefore present the entire time, with zero gap. */
+html[data-native="true"][data-auth-transition="true"]::before,
 html[data-native="true"][data-auth-transition="true"]::after {
-  animation: none !important;
-  opacity: 1 !important;
-  transform: none !important;
+  display: none !important;
+}
+
+/* The inline-SVG splash. display:none by default (web + idle native); shown
+   instantly (no opacity fade-IN) the moment data-auth-transition is set, and
+   fades OUT over 320ms when data-auth-transition-exit is set by
+   endAuthTransition() just before the attributes are dropped. */
+#ds-auth-splash {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483646;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: #7c3aed;
+  opacity: 1;
+  transition: opacity 320ms ease;
+  pointer-events: none;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+html[data-native="true"][data-auth-transition="true"] #ds-auth-splash {
+  display: flex;
+  pointer-events: auto;
+}
+html[data-native="true"][data-auth-transition-exit="true"] #ds-auth-splash {
+  opacity: 0;
 }
 
 @keyframes spin {

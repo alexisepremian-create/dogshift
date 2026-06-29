@@ -1,74 +1,40 @@
 "use client";
-/* eslint-disable react-hooks/set-state-in-effect -- intentionally read the
-   sessionStorage flag on mount (covers hard-nav reloads landing mid-transition);
-   doing it in an effect rather than a useState initializer avoids an SSR/client
-   hydration mismatch. */
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 
-import NativeBrandedLoader from "@/components/native/NativeBrandedLoader";
 import {
-  authTransitionActive,
   AUTH_TRANSITION_BEGIN_EVENT,
-  AUTH_TRANSITION_END_EVENT,
   endAuthTransition,
 } from "@/lib/native/authTransition";
 
 /**
- * Global, native-only branded cover (purple + paw) that masks the logout and
- * login transitions. Mounted once in the root layout; persists across client
- * navigations and re-mounts (reading the sessionStorage flag) across the hard
- * `window.location.replace` reloads both flows perform — so the user sees one
- * continuous brand screen instead of the old skeleton → cold-splash → skeleton
- * cascade. Always clears on the end signal or a 6 s failsafe.
+ * Failsafe controller for the native auth-transition splash (#ds-auth-splash in
+ * the root layout). The splash itself is rendered server-side and shown/hidden
+ * purely by CSS keyed on html[data-auth-transition] — so this component renders
+ * NOTHING. Its only job is to guarantee the splash never gets stuck: if a
+ * transition is active (flag set on a hard-nav reload, or a begin event from a
+ * same-document nav) it arms a 6 s timer that force-ends it.
  */
 const FAILSAFE_MS = 6000;
-const FADE_MS = 420; // a touch longer than NativeBrandedLoader's 380ms opacity fade
 
 export default function AuthTransitionCover() {
-  const [active, setActive] = useState(false);
-  const [fadeOut, setFadeOut] = useState(false);
-
-  // Show on: (a) a flag already present on this load (hard-nav reload landing
-  // mid-transition), or (b) a begin event from a same-document client nav.
   useEffect(() => {
-    const native = document.documentElement.getAttribute("data-native") === "true";
-    if (native && authTransitionActive()) setActive(true);
-
-    const onBegin = () => {
-      if (document.documentElement.getAttribute("data-native") !== "true") return;
-      setFadeOut(false);
-      setActive(true);
+    let timer: number | undefined;
+    const arm = () => {
+      if (document.documentElement.getAttribute("data-auth-transition") !== "true") return;
+      if (timer) window.clearTimeout(timer);
+      timer = window.setTimeout(() => endAuthTransition(), FAILSAFE_MS);
     };
+    // A flag already present on this load (hard-nav reload landing mid-transition).
+    arm();
+    // A same-document begin (client nav).
+    const onBegin = () => arm();
     window.addEventListener(AUTH_TRANSITION_BEGIN_EVENT, onBegin);
-    return () => window.removeEventListener(AUTH_TRANSITION_BEGIN_EVENT, onBegin);
+    return () => {
+      window.removeEventListener(AUTH_TRANSITION_BEGIN_EVENT, onBegin);
+      if (timer) window.clearTimeout(timer);
+    };
   }, []);
 
-  // While active: wait for the end signal (destination ready) or the failsafe,
-  // then fade out and unmount.
-  useEffect(() => {
-    if (!active) return;
-    let fadeTimer: number | undefined;
-    const finish = () => {
-      setFadeOut(true);
-      fadeTimer = window.setTimeout(() => {
-        setActive(false);
-        setFadeOut(false);
-      }, FADE_MS);
-    };
-    const onEnd = () => finish();
-    window.addEventListener(AUTH_TRANSITION_END_EVENT, onEnd);
-    const failsafe = window.setTimeout(() => {
-      endAuthTransition();
-      finish();
-    }, FAILSAFE_MS);
-    return () => {
-      window.removeEventListener(AUTH_TRANSITION_END_EVENT, onEnd);
-      window.clearTimeout(failsafe);
-      if (fadeTimer) window.clearTimeout(fadeTimer);
-    };
-  }, [active]);
-
-  if (!active) return null;
-  return <NativeBrandedLoader fadeOut={fadeOut} />;
+  return null;
 }

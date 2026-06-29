@@ -46,13 +46,13 @@ test("authTransition helpers expose begin/active/end + a single sessionStorage k
   assert.match(src, /sessionStorage/, "The flag must live in sessionStorage so it survives the hard navigations.");
 });
 
-test("the branded cover is mounted globally and renders NativeBrandedLoader", () => {
+test("the splash + failsafe controller are mounted globally", () => {
   const layout = read("app/layout.tsx");
-  assert.match(layout, /AuthTransitionCover/, "Expected <AuthTransitionCover/> to be mounted in the root layout.");
+  assert.match(layout, /id="ds-auth-splash"/, "Expected the server-rendered #ds-auth-splash in the root layout.");
+  assert.match(layout, /AuthTransitionCover/, "Expected <AuthTransitionCover/> (failsafe) mounted in the root layout.");
   const cover = read("components/native/AuthTransitionCover.tsx");
-  assert.match(cover, /NativeBrandedLoader/, "The cover must render the purple+paw NativeBrandedLoader.");
-  assert.match(cover, /authTransitionActive/, "The cover must read the flag on mount (covers hard-nav reloads).");
-  assert.match(cover, /AUTH_TRANSITION_BEGIN_EVENT/, "The cover must react to the begin event (client-nav case).");
+  assert.match(cover, /endAuthTransition/, "The failsafe controller must force-end a stuck transition.");
+  assert.match(cover, /AUTH_TRANSITION_BEGIN_EVENT/, "It must (re)arm on the begin event (client-nav case).");
 });
 
 test("the transition is BEGUN on logout and on every sign-in success", () => {
@@ -81,13 +81,19 @@ test("boot script stamps data-auth-transition from the surviving sessionStorage 
   );
 });
 
-test("the cold-launch splash is frozen static during an auth transition (no grow/fade flash)", () => {
+test("auth transition uses an instant inline-SVG splash (no PNG decode gap)", () => {
+  const layout = read("app/layout.tsx");
+  assert.match(layout, /id="ds-auth-splash"[\s\S]*?BrandedSplashLogo/,
+    "The layout must server-render #ds-auth-splash with the inline-SVG BrandedSplashLogo (paints instantly, no purple-without-logo gap on reload).");
+  const logo = read("components/native/BrandedSplashLogo.tsx");
+  assert.match(logo, /<svg/, "BrandedSplashLogo must be inline SVG (no <img> / PNG decode).");
+  assert.doesNotMatch(logo, /<img|backgroundImage|url\(/, "The splash logo must not depend on an image fetch.");
+
   const css = read("app/globals.css");
-  assert.match(
-    css,
-    /html\[data-native="true"\]\[data-auth-transition="true"\]::after\s*\{[^}]*animation:\s*none/,
-    "Expected the splash ::after to be frozen (animation: none) during data-auth-transition, otherwise the logo flashes bigger→smaller on each hard-nav reload.",
-  );
+  assert.match(css, /html\[data-native="true"\]\[data-auth-transition="true"\]::before,\s*\n?\s*html\[data-native="true"\]\[data-auth-transition="true"\]::after\s*\{[^}]*display:\s*none/,
+    "During an auth transition the PNG cold splash must be suppressed so only the instant inline-SVG splash shows.");
+  assert.match(css, /\[data-auth-transition="true"\]\s+#ds-auth-splash\s*\{[^}]*display:\s*flex/,
+    "#ds-auth-splash must be shown while data-auth-transition is set.");
 });
 
 test("login only ends the cover when ARRIVING from sign-out (not during a fresh login)", () => {

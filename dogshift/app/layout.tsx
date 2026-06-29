@@ -14,6 +14,7 @@ import WebOnly from "@/components/native/WebOnly";
 import GlobalNativeBottomNav from "@/components/native/GlobalNativeBottomNav";
 import NativeOnboarding from "@/components/native/NativeOnboarding";
 import AuthTransitionCover from "@/components/native/AuthTransitionCover";
+import BrandedSplashLogo from "@/components/native/BrandedSplashLogo";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -127,9 +128,16 @@ export default async function RootLayout({
             layers including modals + the Capacitor native bottom nav. */}
         <ImpersonationBanner />
 
-        {/* Native-only branded cover (purple + paw) that masks the logout and
-            login transitions end-to-end. Outside SessionAuthProvider — it's
-            driven by a sessionStorage flag, not the session. */}
+        {/* Native auth-transition splash — server-rendered + INLINE SVG so it
+            paints instantly on every hard-nav reload (no PNG decode gap = no
+            plain-purple-without-logo moment). Shown/hidden purely via CSS keyed
+            on html[data-auth-transition] (set synchronously by the boot script
+            from the surviving sessionStorage flag, and by beginAuthTransition).
+            Hidden (display:none) on web and when no transition is active. */}
+        <div id="ds-auth-splash" aria-hidden="true">
+          <BrandedSplashLogo />
+        </div>
+        {/* Manages the begin/end failsafe for the splash above (renders nothing). */}
         <AuthTransitionCover />
 
         <Suspense fallback={null}>
