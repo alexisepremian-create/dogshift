@@ -64,8 +64,8 @@ export function authTransitionActive(): boolean {
   return Date.now() - ts < MAX_AGE_MS;
 }
 
-/** Fade-out duration (ms) — matches the #ds-auth-splash opacity transition. */
-const EXIT_FADE_MS = 340;
+/** Exit-animation duration (ms) — matches the #ds-auth-splash grow+fade. */
+const EXIT_FADE_MS = 700;
 
 /**
  * End the transition: fade the splash out, then drop the attributes + flag.
