@@ -58,11 +58,26 @@ test("the splash + failsafe controller are mounted globally", () => {
 test("the transition is BEGUN on logout and on every sign-in success", () => {
   assert.match(read("app/sign-out/page.tsx"), /beginAuthTransition\(\)/, "logout must begin the transition.");
   const flow = read("components/auth/AuthFlow.tsx");
-  // Every post-auth redirect (google-native, apple-native, credentials) must begin first.
-  const begins = (flow.match(/if \(isNative\) beginAuthTransition\(\);\s*\n\s*router\.replace\(callbackUrl\);/g) ?? []).length;
+  // The credentials login + signup success paths begin right before the redirect.
+  const beginsBeforeRedirect = (flow.match(/if \(isNative\) beginAuthTransition\(\);\s*\n\s*router\.replace\(callbackUrl\);/g) ?? []).length;
   assert.ok(
-    begins >= 3,
-    `Expected beginAuthTransition() before each router.replace(callbackUrl) success path (>=3), found ${begins}.`,
+    beginsBeforeRedirect >= 2,
+    `Expected beginAuthTransition() before router.replace(callbackUrl) on the credentials paths (>=2), found ${beginsBeforeRedirect}.`,
+  );
+  // The native OAuth paths must begin BEFORE signIn() (the moment the native
+  // sheet closes) so the splash covers the signIn round-trip — otherwise /login
+  // flashes back while the token is verified server-side.
+  const beginsBeforeSignIn = (flow.match(/if \(isNative\) beginAuthTransition\(\);\s*\n\s*const signRes = await signIn\(/g) ?? []).length;
+  assert.ok(
+    beginsBeforeSignIn >= 2,
+    `Expected beginAuthTransition() BEFORE signIn() on google-native + apple-native (>=2), found ${beginsBeforeSignIn}.`,
+  );
+  // And the splash must be ended if that signIn fails (so the user isn't stranded
+  // on purple after a failed native login).
+  const endsOnFailure = (flow.match(/if \(isNative\) endAuthTransition\(\);\s*\n\s*setError\(/g) ?? []).length;
+  assert.ok(
+    endsOnFailure >= 2,
+    `Expected endAuthTransition() on native signIn failure (>=2), found ${endsOnFailure}.`,
   );
 });
 
