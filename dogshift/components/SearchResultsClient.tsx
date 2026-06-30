@@ -825,14 +825,16 @@ export default function SearchResultsClient() {
                       ))}
                     </div>
 
-                    <div className="mt-auto flex flex-col items-stretch gap-2 pt-4 sm:flex-row sm:items-center sm:justify-between sm:pt-5">
-                      <p className="whitespace-nowrap text-sm text-slate-600">
+                    <div className="mt-auto flex items-center justify-between gap-2 pt-4 sm:pt-5">
+                      <p className="min-w-0 truncate text-sm text-slate-600">
                         <span className="text-slate-500">Dès </span>
                         <span className="text-base font-semibold text-slate-900">CHF {cheapestPrice}</span>
                         <span className="text-slate-500">{cheapestUnit}</span>
                       </p>
+                      {/* Purple + small pill (founder: "le bouton contacter doit
+                          etre violet et plus petit"). */}
                       <span
-                        className="inline-flex w-full items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition sm:w-auto md:group-hover:bg-[var(--dogshift-blue-hover)]"
+                        className="inline-flex shrink-0 items-center justify-center rounded-full bg-[#7c3aed] px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition active:scale-95 md:group-hover:bg-[#6d28d9]"
                         aria-label={`Contacter ${sitter.name}`}
                       >
                         Contacter

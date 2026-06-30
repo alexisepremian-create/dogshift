@@ -85,4 +85,31 @@ test("SearchResultsClient: compact filters open a modal; cards are simplified", 
   assert.doesNotMatch(src, /Répond \{sitter\.responseTime\}/, "The card must drop the response-time line (less text).");
   assert.doesNotMatch(src, /line-clamp-3">\{sitter\.bio\}/, "The card must drop the bio paragraph (less text).");
   assert.doesNotMatch(src, /formatDogSizesLabeled\(sitter\.dogSizes\)/, "The card must drop the dog-sizes label (less text).");
+  // The Contacter button is a small purple pill (not the full-width navy one).
+  assert.match(
+    src,
+    /rounded-full bg-\[#7c3aed\] px-3 py-1\.5 text-xs[\s\S]*?>\s*Contacter/,
+    "The /search Contacter button must be a small purple pill.",
+  );
+});
+
+test("NativeMapHome shows the search results INSIDE the search popup (no /search nav)", () => {
+  const src = readFileSync(join(process.cwd(), "components/native/NativeMapHome.tsx"), "utf8");
+  // A third "results" view exists in the search panel.
+  assert.match(src, /"main"\s*\|\s*"filters"\s*\|\s*"results"/, "The search panel must have a 'results' view.");
+  // Submitting opens that view in-modal instead of navigating away.
+  assert.match(
+    src,
+    /handleSearchSubmit = useCallback\(\(\) => \{\s*setSearchPanelView\("results"\)/,
+    "Rechercher must switch to the in-modal results view.",
+  );
+  assert.doesNotMatch(src, /router\.push\(`\/sitters/, "It must NOT navigate to /sitters anymore (results are in the popup).");
+  // Results reuse the agglomeration radius so the location filter matches /search.
+  assert.match(src, /haversineKm\(hub[\s\S]*?SEARCH_HUB_RADIUS_KM/, "In-popup results must filter by the hub radius.");
+  // The Contacter button in the popup results is a small purple pill.
+  assert.match(
+    src,
+    /rounded-full bg-\[#7c3aed\] px-3 py-1\.5 text-xs[\s\S]*?>\s*Contacter/,
+    "The popup result Contacter button must be a small purple pill.",
+  );
 });
