@@ -5,6 +5,7 @@ import maplibregl from "maplibre-gl";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState, type TouchEvent as ReactTouchEvent } from "react";
 import Map, { Marker, type MapRef } from "react-map-gl/maplibre";
+import { useRouter } from "next/navigation";
 import { Search, Locate, Star, X, Minus, Plus, MapPin, Calendar, ArrowLeft, SlidersHorizontal, Check } from "lucide-react";
 
 import {
@@ -216,9 +217,26 @@ export default function NativeMapHome() {
   // like a second page). Founder request : "rajoute une option filtre aussi
   // la dans le pop up de recherche … genre que ca fasse comme une deuxieme
   // page".
-  const [searchPanelView, setSearchPanelView] = useState<"main" | "filters" | "results" | "detail">("main");
+  const [searchPanelView, setSearchPanelView] = useState<"main" | "filters" | "results" | "detail" | "booking">("main");
   // The sitter whose fiche is shown inside the popup ("detail" view).
   const [detailSitter, setDetailSitter] = useState<UiSitter | null>(null);
+  const router = useRouter();
+  // ── In-popup booking state (the "booking" view) ─────────────────────────
+  // The whole pre-payment booking happens in the sheet: pick the service (via the
+  // tariff rows) + a date on the availability calendar, then hand off ONLY the
+  // secure Stripe step to /sitter/[id]/reservation.
+  const [bookingService, setBookingService] = useState<Service>("Promenade");
+  const [bookingDate, setBookingDate] = useState<string | null>(null);
+  const [bookingStart, setBookingStart] = useState<string | null>(null);
+  const [bookingEnd, setBookingEnd] = useState<string | null>(null);
+  const bookingTodayRef = useRef(new Date());
+  const [bookingMonth, setBookingMonth] = useState(() => {
+    const d = bookingTodayRef.current;
+    return new Date(d.getFullYear(), d.getMonth(), 1);
+  });
+  // iso date → per-service availability status for the visible month.
+  const [bookingDayStatus, setBookingDayStatus] = useState<Record<string, { promenade: string; garde: string; pension: string }>>({});
+  const isBookingPension = bookingService === "Pension";
   const [searchService, setSearchService] = useState<Service>("Promenade");
   const [searchLocation, setSearchLocation] = useState("");
   const [searchDate, setSearchDate] = useState<string | null>(null);          // single date (Promenade/Garde)
@@ -263,6 +281,111 @@ export default function NativeMapHome() {
     // Best-rated first, then most-reviewed (same default as the map sheet).
     return list.slice().sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0) || b.reviews - a.reviews);
   }, [sitters, searchService, searchLocation]);
+
+  // Fetch the sitter's day-by-day availability for the calendar's visible month
+  // (booking view only). Fail-open: on error every future day stays selectable.
+  useEffect(() => {
+    if (searchPanelView !== "booking" || !detailSitter) return;
+    const y = bookingMonth.getFullYear();
+    const m = bookingMonth.getMonth();
+    const pad = (n: number) => String(n).padStart(2, "0");
+    const from = `${y}-${pad(m + 1)}-01`;
+    const lastDay = new Date(y, m + 1, 0).getDate();
+    const to = `${y}-${pad(m + 1)}-${pad(lastDay)}`;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetch(`/api/sitters/${detailSitter.id}/day-status/multi?from=${from}&to=${to}`, { cache: "no-store" });
+        const payload = (await res.json()) as { ok?: boolean; days?: Array<Record<string, unknown>> };
+        if (cancelled || !res.ok || !payload?.ok || !Array.isArray(payload.days)) return;
+        const map: Record<string, { promenade: string; garde: string; pension: string }> = {};
+        for (const d of payload.days) {
+          const iso = typeof d.date === "string" ? d.date : "";
+          if (!iso) continue;
+          map[iso] = {
+            promenade: String(d.promenadeStatus ?? "UNAVAILABLE"),
+            garde: String(d.dogsittingStatus ?? "UNAVAILABLE"),
+            pension: String(d.pensionStatus ?? "UNAVAILABLE"),
+          };
+        }
+        setBookingDayStatus(map);
+      } catch {
+        if (!cancelled) setBookingDayStatus({});
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [searchPanelView, detailSitter, bookingMonth]);
+
+  // iso → status for the CURRENTLY selected service ("" = unknown → selectable).
+  const bookingStatusForIso = useCallback(
+    (iso: string): string => {
+      const row = bookingDayStatus[iso];
+      if (!row) return "";
+      if (bookingService === "Garde") return row.garde;
+      if (bookingService === "Pension") return row.pension;
+      return row.promenade;
+    },
+    [bookingDayStatus, bookingService],
+  );
+
+  // Open the in-popup fiche for a sitter (default the booking service to the
+  // cheapest one offered).
+  const openSitterDetail = useCallback((s: UiSitter) => {
+    const cheapest = (["Promenade", "Garde", "Pension"] as Service[])
+      .filter((svc) => typeof s.pricing[svc] === "number")
+      .sort((a, b) => (s.pricing[a] as number) - (s.pricing[b] as number))[0];
+    setBookingService(cheapest ?? s.services[0] ?? "Promenade");
+    setBookingDate(null);
+    setBookingStart(null);
+    setBookingEnd(null);
+    setBookingDayStatus({});
+    setBookingMonth(() => {
+      const d = new Date();
+      return new Date(d.getFullYear(), d.getMonth(), 1);
+    });
+    setDetailSitter(s);
+    setSearchOpen(true);
+    setSearchPanelView("detail");
+  }, []);
+
+  // Hand off to the secure reservation/payment page with the in-popup selection.
+  const continueToReservation = useCallback(() => {
+    if (!detailSitter) return;
+    const qp = new URLSearchParams();
+    qp.set("service", bookingService);
+    if (isBookingPension) {
+      if (!bookingStart || !bookingEnd) return;
+      qp.set("start", bookingStart);
+      qp.set("end", bookingEnd);
+    } else {
+      if (!bookingDate) return;
+      qp.set("date", bookingDate);
+    }
+    setSearchOpen(false);
+    setSearchPanelView("main");
+    router.push(`/sitter/${encodeURIComponent(detailSitter.id)}/reservation?${qp.toString()}`);
+  }, [router, detailSitter, bookingService, isBookingPension, bookingStart, bookingEnd, bookingDate]);
+
+  const handleBookingDayTap = useCallback(
+    (iso: string) => {
+      if (bookingStatusForIso(iso) === "UNAVAILABLE") return; // can't book a closed day
+      if (isBookingPension) {
+        if (!bookingStart || (bookingStart && bookingEnd)) {
+          setBookingStart(iso);
+          setBookingEnd(null);
+        } else if (iso < bookingStart) {
+          setBookingStart(iso);
+        } else {
+          setBookingEnd(iso);
+        }
+      } else {
+        setBookingDate(iso);
+      }
+    },
+    [bookingStatusForIso, isBookingPension, bookingStart, bookingEnd],
+  );
+
+  const bookingCanContinue = isBookingPension ? Boolean(bookingStart && bookingEnd) : Boolean(bookingDate);
 
   // Format a Date or "YYYY-MM-DD" string in fr-CH.
   const formatDateFR = useCallback((iso: string | null) => {
@@ -756,12 +879,15 @@ export default function NativeMapHome() {
           {!loading && (
             <div className={sheetOpen ? "grid grid-cols-2 gap-3" : "flex gap-3 overflow-x-auto -mx-4 px-4"}>
               {filteredSitters.map((s) => (
-                <Link
+                <button
                   key={s.id}
-                  href={`/sitters/${s.id}`}
-                  onClick={(e) => {
-                    if (!sheetOpen) {
-                      e.preventDefault();
+                  type="button"
+                  onClick={() => {
+                    // Expanded sheet → open the sitter fiche in the popup (no full
+                    // page). Collapsed peek → just fly the map to the marker.
+                    if (sheetOpen) {
+                      openSitterDetail(s);
+                    } else {
                       setActiveId(s.id);
                       try {
                         mapRef.current?.flyTo({ center: [s.lng, s.lat], zoom: 13, duration: 600 });
@@ -771,7 +897,7 @@ export default function NativeMapHome() {
                   className={
                     sheetOpen
                       ? "flex flex-col items-center gap-1 rounded-2xl border border-slate-200 bg-white p-3 text-center active:scale-[0.99]"
-                      : "flex-shrink-0 w-[160px] flex items-center gap-2 rounded-2xl border border-slate-200 bg-white p-2"
+                      : "flex-shrink-0 w-[160px] flex items-center gap-2 rounded-2xl border border-slate-200 bg-white p-2 text-left"
                   }
                   style={{ touchAction: "manipulation" }}
                 >
@@ -805,7 +931,7 @@ export default function NativeMapHome() {
                       </div>
                     )}
                   </div>
-                </Link>
+                </button>
               ))}
             </div>
           )}
@@ -880,6 +1006,17 @@ export default function NativeMapHome() {
                 >
                   <ArrowLeft className="h-4 w-4" />
                   Retour
+                </button>
+              ) : searchPanelView === "booking" ? (
+                <button
+                  type="button"
+                  onClick={() => setSearchPanelView("detail")}
+                  className="flex items-center gap-1.5 text-base font-semibold text-slate-900 active:opacity-70"
+                  aria-label="Retour à la fiche"
+                  style={{ touchAction: "manipulation" }}
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                  {detailSitter?.name ?? "Réserver"}
                 </button>
               ) : (
                 <h2 className="text-base font-semibold text-slate-900">Rechercher</h2>
@@ -1073,7 +1210,7 @@ export default function NativeMapHome() {
                       <button
                         key={s.id}
                         type="button"
-                        onClick={() => { setDetailSitter(s); setSearchPanelView("detail"); }}
+                        onClick={() => openSitterDetail(s)}
                         className="flex w-full items-center gap-3 rounded-2xl border border-slate-200 bg-white p-3 text-left active:scale-[0.99]"
                         style={{ touchAction: "manipulation" }}
                       >
@@ -1108,7 +1245,7 @@ export default function NativeMapHome() {
                   </div>
                 )}
               </div>
-            ) : (
+            ) : searchPanelView === "detail" ? (
               // ── Detail view — the sitter fiche, redesigned to fit the popup ──
               <div className="flex-1 overflow-y-auto px-5 py-4">
                 {detailSitter && (
@@ -1147,14 +1284,24 @@ export default function NativeMapHome() {
                     </div>
 
                     <div className="mt-5">
-                      <div className="text-sm font-semibold text-slate-900">Services & tarifs</div>
-                      <div className="mt-2 space-y-2">
+                      <div className="text-sm font-semibold text-slate-900">Services &amp; tarifs</div>
+                      <div className="mt-2 space-y-1.5">
                         {detailSitter.services.map((svc) => {
                           const price = detailSitter.pricing[svc];
                           const unit = svc === "Pension" ? "/ jour" : "/ heure";
+                          const selected = bookingService === svc;
+                          // Tap a row to pick the service to book (compact rows).
                           return (
-                            <div key={svc} className="flex items-center justify-between rounded-2xl border border-slate-200 px-4 py-2.5">
-                              <span className="text-sm font-medium text-slate-800">{svc}</span>
+                            <button
+                              key={svc}
+                              type="button"
+                              onClick={() => { setBookingService(svc); setBookingDate(null); setBookingStart(null); setBookingEnd(null); }}
+                              className={`flex w-full items-center justify-between rounded-xl border px-3.5 py-2 text-left transition ${
+                                selected ? "border-[#7c3aed] bg-[#7c3aed]/5" : "border-slate-200"
+                              }`}
+                              style={{ touchAction: "manipulation" }}
+                            >
+                              <span className={`text-sm font-medium ${selected ? "text-[#7c3aed]" : "text-slate-800"}`}>{svc}</span>
                               {typeof price === "number" ? (
                                 <span className="text-sm text-slate-600">
                                   <span className="font-semibold text-slate-900">CHF {price}</span> {unit}
@@ -1162,7 +1309,7 @@ export default function NativeMapHome() {
                               ) : (
                                 <span className="text-xs text-slate-400">Sur demande</span>
                               )}
-                            </div>
+                            </button>
                           );
                         })}
                       </div>
@@ -1174,6 +1321,53 @@ export default function NativeMapHome() {
                         <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-slate-600">{detailSitter.bio}</p>
                       </div>
                     ) : null}
+                  </>
+                )}
+              </div>
+            ) : (
+              // ── Booking view — service + availability calendar, in-popup ──
+              <div className="flex-1 overflow-y-auto px-5 py-4">
+                {detailSitter && (
+                  <>
+                    <div className="text-sm font-semibold text-slate-900">Service</div>
+                    <div className="mt-2 flex gap-2">
+                      {detailSitter.services.map((svc) => {
+                        const selected = bookingService === svc;
+                        return (
+                          <button
+                            key={svc}
+                            type="button"
+                            onClick={() => { setBookingService(svc); setBookingDate(null); setBookingStart(null); setBookingEnd(null); }}
+                            className={`flex-1 rounded-full py-2 text-sm font-semibold transition ${
+                              selected ? "bg-[#7c3aed] text-white" : "bg-slate-100 text-slate-700"
+                            }`}
+                            style={{ touchAction: "manipulation" }}
+                          >
+                            {svc}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    <div className="mt-5 flex items-center gap-1.5 text-sm font-semibold text-slate-900">
+                      <Calendar className="h-4 w-4" />
+                      {isBookingPension ? "Choisis tes dates" : "Choisis une date"}
+                    </div>
+                    <InlineCalendar
+                      month={bookingMonth}
+                      onMonthChange={setBookingMonth}
+                      selectedSingle={isBookingPension ? null : bookingDate}
+                      selectedStart={isBookingPension ? bookingStart : null}
+                      selectedEnd={isBookingPension ? bookingEnd : null}
+                      rangeMode={isBookingPension}
+                      onDayTap={handleBookingDayTap}
+                      statusForIso={bookingStatusForIso}
+                    />
+                    <div className="mt-3 flex flex-wrap items-center gap-3 text-[11px] text-slate-500">
+                      <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-[#7c3aed]" /> Disponible</span>
+                      <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-amber-400" /> Sur demande</span>
+                      <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-slate-300" /> Indisponible</span>
+                    </div>
                   </>
                 )}
               </div>
@@ -1216,17 +1410,29 @@ export default function NativeMapHome() {
                 </div>
               </div>
             ) : searchPanelView === "detail" && detailSitter ? (
-              // Booking needs the calendar on the full profile, so the CTA opens
-              // it (date selection lives there) — the fiche itself stays in-popup.
+              // Réserver opens the in-popup booking view (service + calendar).
               <div className="border-t border-slate-100 px-5 py-3 shrink-0">
-                <Link
-                  href={`/sitters/${detailSitter.id}`}
-                  onClick={() => { setSearchOpen(false); setSearchPanelView("main"); }}
+                <button
+                  type="button"
+                  onClick={() => setSearchPanelView("booking")}
                   className="flex w-full items-center justify-center gap-2 rounded-full bg-[#7c3aed] py-3 text-base font-semibold text-white shadow-[0_8px_24px_rgba(124,58,237,0.35)] active:scale-[0.98]"
                   style={{ touchAction: "manipulation" }}
                 >
                   Réserver
-                </Link>
+                </button>
+              </div>
+            ) : searchPanelView === "booking" && detailSitter ? (
+              // The only step that leaves the popup is the secure Stripe payment.
+              <div className="border-t border-slate-100 px-5 py-3 shrink-0">
+                <button
+                  type="button"
+                  onClick={continueToReservation}
+                  disabled={!bookingCanContinue}
+                  className="flex w-full items-center justify-center gap-2 rounded-full bg-[#7c3aed] py-3 text-base font-semibold text-white shadow-[0_8px_24px_rgba(124,58,237,0.35)] transition active:scale-[0.98] disabled:opacity-40"
+                  style={{ touchAction: "manipulation" }}
+                >
+                  Continuer
+                </button>
               </div>
             ) : null}
           </div>
@@ -1317,6 +1523,7 @@ function InlineCalendar({
   selectedEnd,
   rangeMode,
   onDayTap,
+  statusForIso,
 }: {
   month: Date;
   onMonthChange: (d: Date) => void;
@@ -1325,6 +1532,9 @@ function InlineCalendar({
   selectedEnd: string | null;
   rangeMode: boolean;
   onDayTap: (iso: string) => void;
+  // Optional per-day availability (booking calendar). Absent = every future day
+  // is selectable (search "Quand" field keeps its original behaviour).
+  statusForIso?: (iso: string) => string;
 }) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -1383,22 +1593,26 @@ function InlineCalendar({
         {cells.map((iso, i) => {
           if (!iso) return <div key={i} />;
           const past = iso < todayIso;
+          const status = statusForIso ? statusForIso(iso) : "";
+          const unavailable = status === "UNAVAILABLE";
+          const disabled = past || unavailable;
           const isToday = iso === todayIso;
           const isSelected =
             (selectedSingle && iso === selectedSingle) ||
             (rangeMode && (iso === selectedStart || iso === selectedEnd));
           const isInRange = inRange(iso);
           const day = Number(iso.slice(-2));
+          const dot = disabled || isSelected ? "" : status === "AVAILABLE" ? "bg-[#7c3aed]" : status === "ON_REQUEST" ? "bg-amber-400" : "";
           return (
             <button
               key={i}
               type="button"
-              disabled={past}
+              disabled={disabled}
               onClick={() => onDayTap(iso)}
               style={{ touchAction: "manipulation" }}
               className={[
-                "flex h-9 items-center justify-center rounded-full text-sm transition",
-                past
+                "relative flex h-9 items-center justify-center rounded-full text-sm transition",
+                disabled
                   ? "text-slate-300"
                   : isSelected
                     ? "bg-[#7c3aed] font-semibold text-white"
@@ -1410,6 +1624,7 @@ function InlineCalendar({
               ].join(" ")}
             >
               {day}
+              {dot ? <span className={`absolute bottom-1 h-1 w-1 rounded-full ${dot}`} aria-hidden="true" /> : null}
             </button>
           );
         })}
