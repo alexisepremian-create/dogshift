@@ -3,7 +3,7 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Check, ChevronDown, PawPrint, Search, SlidersHorizontal } from "lucide-react";
+import { Check, ChevronDown, PawPrint, Search, SlidersHorizontal, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import {
@@ -33,6 +33,24 @@ function ratingValue(rating: number | null) {
 function formatRatingMaybe(rating: number | null) {
   if (typeof rating !== "number" || !Number.isFinite(rating)) return "—";
   return formatRating(rating);
+}
+
+/** Airbnb-style selectable chip for the mobile filter modal. */
+function FilterPill({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{ touchAction: "manipulation" }}
+      className={
+        active
+          ? "rounded-full border-2 border-slate-900 bg-white px-4 py-2 text-sm font-semibold text-slate-900"
+          : "rounded-full border-2 border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700"
+      }
+    >
+      {children}
+    </button>
+  );
 }
 
 function StarIcon({ className }: { className?: string }) {
@@ -329,11 +347,12 @@ export default function SearchResultsClient() {
   // top of the search page isn't dominated by 5 stacked rows on a phone.
   // Audit 2026-05-22: full-width stacked filters pushed the actual sitter
   // cards entirely below the fold on iPhone-class screens.
-  // Keep the filter panel OPEN after a search that already carries a filter
-  // (service from the home/map), so the applied filters stay visible here
-  // instead of being hidden behind the collapsed "Filtres" toggle (founder:
-  // "une fois recherché les filtres restent affichés ici").
-  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(Boolean(initialService));
+  // Mobile: the secondary filters (service, dog size) live in a clean modal that
+  // opens from the "Filtres" button — keeps the results header compact instead of
+  // a tall stack of selects (founder: "le filtre … beaucoup trop gros … un bouton
+  // qui ouvre le fil de recherche comme sur la Home Page"). The active filters
+  // stay indicated by the badge count + the "/ Promenade" subtitle.
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const activeFilterCount = (service ? 1 : 0) + (dogSize ? 1 : 0);
   const [userGeoCoords] = useState<{ lat: number; lng: number } | null>(() => {
     const latStr = sp.get("lat");
@@ -505,9 +524,9 @@ export default function SearchResultsClient() {
             </div>
             <button
               type="button"
-              onClick={() => setMobileFiltersOpen((v) => !v)}
+              onClick={() => setMobileFiltersOpen(true)}
+              aria-haspopup="dialog"
               aria-expanded={mobileFiltersOpen}
-              aria-controls="search-filters-extra"
               className="relative inline-flex shrink-0 items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-3 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 active:scale-[.98]"
               style={{ touchAction: "manipulation" }}
             >
@@ -608,68 +627,6 @@ export default function SearchResultsClient() {
             </div>
           </div>
 
-          {/* Mobile expanded panel — only the meaningful filters (no disabled
-              date pickers — they confuse users and waste real estate). */}
-          {mobileFiltersOpen ? (
-            <div id="search-filters-extra" className="mt-3 grid gap-3 sm:grid-cols-2 lg:hidden">
-              <div>
-                <label className="block text-xs font-semibold text-slate-700" htmlFor="filter-service-mobile">
-                  Service
-                </label>
-                <div className="relative mt-2">
-                  <select
-                    id="filter-service-mobile"
-                    value={service}
-                    onChange={(e) => setService(e.target.value as (typeof SERVICE_OPTIONS)[number])}
-                    className={SELECT_BASE_CLASS}
-                  >
-                    <option value="">Tous</option>
-                    <option value="Promenade">Promenade</option>
-                    <option value="Garde">Garde</option>
-                    <option value="Pension">Pension</option>
-                  </select>
-                  <span className="pointer-events-none absolute inset-y-0 right-4 inline-flex items-center text-slate-400" aria-hidden="true">
-                    <ChevronDown className="h-4 w-4" />
-                  </span>
-                </div>
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-slate-700" htmlFor="filter-dogsize-mobile">
-                  Taille du chien
-                </label>
-                <div className="relative mt-2">
-                  <select
-                    id="filter-dogsize-mobile"
-                    value={dogSize}
-                    onChange={(e) => setDogSize(e.target.value as (typeof DOG_SIZE_OPTIONS)[number])}
-                    className={SELECT_BASE_CLASS}
-                  >
-                    <option value="">Toutes</option>
-                    <option value="Petit">Petit</option>
-                    <option value="Moyen">Moyen</option>
-                    <option value="Grand">Grand</option>
-                  </select>
-                  <span className="pointer-events-none absolute inset-y-0 right-4 inline-flex items-center text-slate-400" aria-hidden="true">
-                    <ChevronDown className="h-4 w-4" />
-                  </span>
-                </div>
-              </div>
-              {(service || dogSize) ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setService("");
-                    setDogSize("");
-                  }}
-                  className="sm:col-span-2 inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 transition hover:bg-slate-50"
-                  style={{ touchAction: "manipulation" }}
-                >
-                  Réinitialiser les filtres
-                </button>
-              ) : null}
-            </div>
-          ) : null}
-  
           <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm text-slate-600">
               {availabilityPending ? (
@@ -707,6 +664,89 @@ export default function SearchResultsClient() {
           </div>
         </div>
 
+        {/* ── Mobile filter modal (opened by "Filtres") ─────────────────────
+            A clean bottom sheet with chip selectors — the same simple pattern as
+            the home-page search panel. Keeps the results header compact. */}
+        {mobileFiltersOpen ? (
+          <div className="fixed inset-0 z-[200] lg:hidden" role="dialog" aria-modal="true" aria-label="Filtres">
+            <button
+              type="button"
+              aria-label="Fermer les filtres"
+              onClick={() => setMobileFiltersOpen(false)}
+              className="absolute inset-0 bg-black/30"
+              style={{ touchAction: "manipulation" }}
+            />
+            <div
+              className="absolute inset-x-0 bottom-0 rounded-t-3xl bg-white p-5 shadow-[0_-20px_60px_rgba(2,6,23,0.30)]"
+              style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 20px)" }}
+            >
+              <div className="flex items-center justify-between">
+                <h2 className="text-base font-semibold text-slate-900">Filtres</h2>
+                <button
+                  type="button"
+                  onClick={() => setMobileFiltersOpen(false)}
+                  aria-label="Fermer"
+                  className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 active:scale-95"
+                  style={{ touchAction: "manipulation" }}
+                >
+                  <X className="h-4 w-4 text-slate-700" />
+                </button>
+              </div>
+
+              <div className="mt-5 space-y-5">
+                <div>
+                  <div className="mb-2 text-xs font-semibold text-slate-500">Service</div>
+                  <div className="flex flex-wrap gap-2">
+                    {([["", "Tous"], ["Promenade", "Promenade"], ["Garde", "Garde"], ["Pension", "Pension"]] as const).map(
+                      ([val, label]) => (
+                        <FilterPill key={val || "all"} active={service === val} onClick={() => setService(val as (typeof SERVICE_OPTIONS)[number])}>
+                          {label}
+                        </FilterPill>
+                      ),
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <div className="mb-2 text-xs font-semibold text-slate-500">Taille du chien</div>
+                  <div className="flex flex-wrap gap-2">
+                    {([["", "Toutes"], ["Petit", "Petit"], ["Moyen", "Moyen"], ["Grand", "Grand"]] as const).map(
+                      ([val, label]) => (
+                        <FilterPill key={val || "all"} active={dogSize === val} onClick={() => setDogSize(val as (typeof DOG_SIZE_OPTIONS)[number])}>
+                          {label}
+                        </FilterPill>
+                      ),
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-6 flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setService("");
+                    setDogSize("");
+                  }}
+                  disabled={activeFilterCount === 0}
+                  className="rounded-full border border-slate-200 px-4 py-3 text-sm font-medium text-slate-700 disabled:opacity-40"
+                  style={{ touchAction: "manipulation" }}
+                >
+                  Réinitialiser
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMobileFiltersOpen(false)}
+                  className="flex-1 rounded-full bg-[var(--dogshift-blue)] py-3 text-base font-semibold text-white shadow-sm active:scale-[0.98]"
+                  style={{ touchAction: "manipulation" }}
+                >
+                  Voir {filtered.length} dog-sitter{filtered.length > 1 ? "s" : ""}
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
+
         {!showEmpty ? (
           <div className="mt-8 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3">
             {filtered.map(({ sitter }) => (
@@ -723,72 +763,70 @@ export default function SearchResultsClient() {
                 const cheapestUnit = cheapest?.svc === "Pension" ? " / jour" : " / heure";
                 const cheapestPrice = cheapest?.price ?? sitter.pricePerDay;
                 const sitterHref = `/sitter/${sitter.id}?mode=public`;
-                const dogSizesLabel = formatDogSizesLabeled(sitter.dogSizes);
 
                 return (
                   <Link
                     key={sitter.id}
                     href={sitterHref}
-                    className="group relative flex h-full cursor-pointer flex-col rounded-3xl border border-slate-200 bg-white p-3 shadow-[0_12px_40px_-28px_rgba(2,6,23,0.3)] transition will-change-transform hover:border-[color-mix(in_srgb,var(--dogshift-blue),transparent_70%)] hover:shadow-[0_18px_60px_-40px_rgba(2,6,23,0.45)] md:hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)] sm:p-6"
+                    className="group flex h-full cursor-pointer flex-col rounded-3xl border border-slate-200 bg-white p-4 shadow-[0_12px_40px_-28px_rgba(2,6,23,0.3)] transition will-change-transform hover:border-[color-mix(in_srgb,var(--dogshift-blue),transparent_70%)] hover:shadow-[0_18px_60px_-40px_rgba(2,6,23,0.45)] md:hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)] sm:p-5"
                   >
-                    {sitter.verified ? (
-                      <div className="absolute right-3 top-3 z-10 inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-800 shadow-sm sm:right-5 sm:top-5 sm:px-3 sm:py-1">
-                        <Check className="h-3.5 w-3.5" aria-hidden="true" />
-                        {/* Hide the label on the narrow 2-col card so it doesn't
-                            collide with the name; keep the check as the badge. */}
-                        <span className="hidden sm:inline">Vérifié</span>
-                      </div>
-                    ) : null}
-
-                    <div className="flex items-start justify-between gap-2 sm:gap-4">
-                      <div className="flex min-w-0 items-start gap-2.5 sm:gap-4">
+                    {/* Header — avatar with a corner check badge (no top-right
+                        ribbon that clipped the name), name + city. */}
+                    <div className="flex items-center gap-3">
+                      <div className="relative shrink-0">
                         <img
                           src={sitter.avatarUrl}
                           alt={sitter.name}
-                          className="h-11 w-11 shrink-0 rounded-full object-cover ring-1 ring-slate-200 sm:h-12 sm:w-12"
+                          className="h-14 w-14 rounded-full object-cover ring-1 ring-slate-200"
                           loading="lazy"
                           referrerPolicy="no-referrer"
                         />
-                        <div className="min-w-0">
-                          <h2 className="truncate pr-5 text-sm font-semibold text-slate-900 sm:pr-0 sm:text-base md:group-hover:underline">{sitter.name}</h2>
-                          <p className="mt-0.5 truncate text-xs text-slate-600 sm:mt-1 sm:text-sm">{sitter.city}</p>
-                        </div>
+                        {sitter.verified ? (
+                          <span
+                            className="absolute -bottom-0.5 -right-0.5 flex h-5 w-5 items-center justify-center rounded-full border-2 border-white bg-emerald-500 text-white shadow-sm"
+                            aria-label="Profil vérifié"
+                            title="Profil vérifié"
+                          >
+                            <Check className="h-3 w-3" strokeWidth={3} aria-hidden="true" />
+                          </span>
+                        ) : null}
+                      </div>
+                      <div className="min-w-0">
+                        <h2 className="truncate text-base font-semibold text-slate-900 md:group-hover:underline">{sitter.name}</h2>
+                        <p className="truncate text-sm text-slate-500">{sitter.city}</p>
                       </div>
                     </div>
 
-                    <div className="mt-4 flex min-h-[30px] flex-wrap items-center justify-start gap-1.5 sm:gap-2">
+                    {/* Rating — real stars + count, or a subtle "Nouveau" pill for
+                        profiles without reviews (cleaner than "★ — (0 avis)"). */}
+                    <div className="mt-3 text-sm">
+                      {sitter.reviewCount > 0 ? (
+                        <span className="inline-flex items-center gap-1">
+                          <StarIcon className="h-4 w-4 text-[#F5B301]" />
+                          <span className="font-semibold text-slate-900">{formatRatingMaybe(sitter.rating)}</span>
+                          <span className="text-slate-400">({sitter.reviewCount})</span>
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-500">
+                          Nouveau
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Services — compact chips, the card's only secondary text. */}
+                    <div className="mt-3 flex flex-wrap gap-1.5">
                       {sitter.services.map((svc) => (
                         <span
                           key={svc}
-                          className="inline-flex shrink-0 items-center rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-700 sm:px-3"
+                          className="inline-flex shrink-0 items-center rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600"
                         >
                           {svc}
                         </span>
                       ))}
                     </div>
 
-                    {dogSizesLabel ? (
-                      <p className="mt-3 text-xs font-medium text-slate-500">
-                        <span className="text-slate-600">{dogSizesLabel}</span>
-                      </p>
-                    ) : null}
-
-                    <div className="mt-4 space-y-2 text-sm text-slate-600">
-                      <p className="flex items-center gap-1 leading-none">
-                        <span className="inline-flex items-center gap-1 font-medium leading-none text-slate-900">
-                          <StarIcon className="h-4 w-4 text-[#F5B301]" />
-                          {formatRatingMaybe(sitter.rating)}
-                        </span>
-                        <span className="text-slate-500 leading-none">({sitter.reviewCount} avis)</span>
-                      </p>
-                      <p>
-                        <span className="font-medium text-slate-900">Répond {sitter.responseTime}</span>
-                      </p>
-                      <p className="min-h-[60px] text-slate-600 line-clamp-3">{sitter.bio}</p>
-                    </div>
-
                     <div className="mt-auto flex flex-col items-stretch gap-2 pt-4 sm:flex-row sm:items-center sm:justify-between sm:pt-5">
-                      <p className="text-sm text-slate-600">
+                      <p className="whitespace-nowrap text-sm text-slate-600">
                         <span className="text-slate-500">Dès </span>
                         <span className="text-base font-semibold text-slate-900">CHF {cheapestPrice}</span>
                         <span className="text-slate-500">{cheapestUnit}</span>

@@ -65,6 +65,24 @@ test("SearchResultsClient wires the q param, the hub radius and a 2-col grid", (
   assert.match(src, /distanceKm <= SEARCH_HUB_RADIUS_KM/, "Named-hub searches must filter by SEARCH_HUB_RADIUS_KM.");
   // Cards are shown two-per-row on mobile.
   assert.match(src, /grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3/, "Result cards must be a 2-col grid on mobile.");
-  // The applied filters stay visible after a search that carries a service.
-  assert.match(src, /useState\(Boolean\(initialService\)\)/, "The filter panel must default open when a filter is already applied.");
+});
+
+test("SearchResultsClient: compact filters open a modal; cards are simplified", () => {
+  const src = readFileSync(join(process.cwd(), "components/SearchResultsClient.tsx"), "utf8");
+  // Filters live in a modal that opens from the Filtres button (not a tall
+  // inline stack of selects) — the panel must default CLOSED.
+  assert.match(src, /useState\(false\)/, "The mobile filter modal must default closed (compact header).");
+  assert.match(src, /role="dialog"[\s\S]*?aria-modal="true"/, "Filtres must open a modal dialog.");
+  assert.match(src, /<FilterPill /, "The modal must use chip selectors (FilterPill).");
+  // Verified check moved to a corner badge on the avatar — no top-right ribbon
+  // that clipped the name.
+  assert.match(
+    src,
+    /-bottom-0\.5 -right-0\.5[\s\S]*?bg-emerald-500/,
+    "The verified check must be a corner badge on the avatar (not a name-clipping ribbon).",
+  );
+  // Simplified card: the wordy bits are gone.
+  assert.doesNotMatch(src, /Répond \{sitter\.responseTime\}/, "The card must drop the response-time line (less text).");
+  assert.doesNotMatch(src, /line-clamp-3">\{sitter\.bio\}/, "The card must drop the bio paragraph (less text).");
+  assert.doesNotMatch(src, /formatDogSizesLabeled\(sitter\.dogSizes\)/, "The card must drop the dog-sizes label (less text).");
 });
