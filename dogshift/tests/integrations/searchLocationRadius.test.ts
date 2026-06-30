@@ -106,10 +106,22 @@ test("NativeMapHome shows the search results INSIDE the search popup (no /search
   assert.doesNotMatch(src, /router\.push\(`\/sitters/, "It must NOT navigate to /sitters anymore (results are in the popup).");
   // Results reuse the agglomeration radius so the location filter matches /search.
   assert.match(src, /haversineKm\(hub[\s\S]*?SEARCH_HUB_RADIUS_KM/, "In-popup results must filter by the hub radius.");
-  // Tapping a result opens the sitter fiche INSIDE the popup (detail view).
-  assert.match(src, /"main"\s*\|\s*"filters"\s*\|\s*"results"\s*\|\s*"detail"/, "The popup must have a 'detail' (fiche) view.");
-  assert.match(src, /setDetailSitter\(s\);\s*setSearchPanelView\("detail"\)/, "Tapping a result must open the in-popup fiche.");
-  assert.match(src, /Services & tarifs/, "The fiche must show the services & prices.");
-  // The fiche's Réserver CTA opens the full profile (where the booking calendar lives).
-  assert.match(src, /href=\{`\/sitters\/\$\{detailSitter\.id\}`\}[\s\S]*?Réserver/, "The fiche CTA must open the sitter profile to book.");
+});
+
+test("NativeMapHome: the whole browse → fiche → booking flow lives in the popup", () => {
+  const src = readFileSync(join(process.cwd(), "components/native/NativeMapHome.tsx"), "utf8");
+  // The popup has detail (fiche) + booking views in addition to the search ones.
+  assert.match(src, /"main"\s*\|\s*"filters"\s*\|\s*"results"\s*\|\s*"detail"\s*\|\s*"booking"/, "The popup must have 'detail' + 'booking' views.");
+  // Tapping a result OR a map-sheet card opens the fiche in the popup (no full page).
+  assert.match(src, /onClick=\{\(\) => openSitterDetail\(s\)\}/, "Result rows must open the in-popup fiche.");
+  assert.match(src, /if \(sheetOpen\) \{\s*openSitterDetail\(s\)/, "Map-sheet cards must open the in-popup fiche (no /sitters nav).");
+  assert.doesNotMatch(src, /href=\{`\/sitters\/\$\{s\.id\}`\}/, "The map sheet must NOT link to the full sitter page anymore.");
+  // The tariff rows are clickable to pick the service.
+  assert.match(src, /onClick=\{\(\) => \{ setBookingService\(svc\)/, "Tariff rows must select the booking service.");
+  // Réserver opens the in-popup booking view; the calendar shows availability.
+  assert.match(src, /onClick=\{\(\) => setSearchPanelView\("booking"\)\}[\s\S]*?Réserver/, "Réserver must open the in-popup booking view.");
+  assert.match(src, /<InlineCalendar[\s\S]*?statusForIso=\{bookingStatusForIso\}/, "The booking view must show the availability calendar.");
+  assert.match(src, /day-status\/multi\?from=/, "It must fetch real day-by-day availability.");
+  // Only the secure Stripe step leaves the popup.
+  assert.match(src, /router\.push\(`\/sitter\/\$\{encodeURIComponent\(detailSitter\.id\)\}\/reservation/, "Continuer must hand off to the secure reservation/payment page.");
 });
