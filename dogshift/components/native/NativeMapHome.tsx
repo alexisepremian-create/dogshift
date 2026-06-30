@@ -58,11 +58,14 @@ type UiSitter = {
   id: string;
   name: string;
   city: string;
+  postalCode: string;
   avatar: string;
   rating: number | null;
   reviews: number;
   minPrice: number;
+  pricing: Partial<Record<Service, number>>;
   services: Service[];
+  bio: string;
   lat: number;
   lng: number;
   verified: boolean;
@@ -83,15 +86,20 @@ function parseServices(value: unknown): Service[] {
   return [];
 }
 
-function parseMinPrice(pricing: unknown): number {
-  if (!pricing || typeof pricing !== "object") return 0;
+function parsePricingObj(pricing: unknown): Partial<Record<Service, number>> {
+  if (!pricing || typeof pricing !== "object") return {};
   const obj = pricing as Record<string, unknown>;
-  const nums: number[] = [];
-  for (const key of ["Promenade", "Garde", "Pension"]) {
+  const out: Partial<Record<Service, number>> = {};
+  for (const key of ALL_SERVICES) {
     const v = obj[key];
-    if (typeof v === "number" && Number.isFinite(v) && v > 0) nums.push(v);
+    if (typeof v === "number" && Number.isFinite(v) && v > 0) out[key] = v;
   }
-  return nums.length ? Math.min(...nums) : 0;
+  return out;
+}
+
+function parseMinPrice(pricing: unknown): number {
+  const values = Object.values(parsePricingObj(pricing));
+  return values.length ? Math.min(...values) : 0;
 }
 
 function toUi(row: SitterRow): UiSitter | null {
@@ -102,11 +110,14 @@ function toUi(row: SitterRow): UiSitter | null {
     id,
     name: row.name,
     city: row.city,
+    postalCode: row.postalCode ?? "",
     avatar: row.avatarUrl ?? "https://i.pravatar.cc/160?img=7",
     rating: typeof row.averageRating === "number" ? row.averageRating : null,
     reviews: typeof row.countReviews === "number" ? row.countReviews : 0,
     minPrice: parseMinPrice(row.pricing),
+    pricing: parsePricingObj(row.pricing),
     services: parseServices(row.services),
+    bio: typeof row.bio === "string" ? row.bio : "",
     lat,
     lng,
     verified: row.verified === true,
@@ -205,7 +216,9 @@ export default function NativeMapHome() {
   // like a second page). Founder request : "rajoute une option filtre aussi
   // la dans le pop up de recherche … genre que ca fasse comme une deuxieme
   // page".
-  const [searchPanelView, setSearchPanelView] = useState<"main" | "filters" | "results">("main");
+  const [searchPanelView, setSearchPanelView] = useState<"main" | "filters" | "results" | "detail">("main");
+  // The sitter whose fiche is shown inside the popup ("detail" view).
+  const [detailSitter, setDetailSitter] = useState<UiSitter | null>(null);
   const [searchService, setSearchService] = useState<Service>("Promenade");
   const [searchLocation, setSearchLocation] = useState("");
   const [searchDate, setSearchDate] = useState<string | null>(null);          // single date (Promenade/Garde)
@@ -857,6 +870,17 @@ export default function NativeMapHome() {
                   <ArrowLeft className="h-4 w-4" />
                   {searchResults.length} dogsitter{searchResults.length > 1 ? "s" : ""}
                 </button>
+              ) : searchPanelView === "detail" ? (
+                <button
+                  type="button"
+                  onClick={() => setSearchPanelView("results")}
+                  className="flex items-center gap-1.5 text-base font-semibold text-slate-900 active:opacity-70"
+                  aria-label="Retour aux résultats"
+                  style={{ touchAction: "manipulation" }}
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                  Retour
+                </button>
               ) : (
                 <h2 className="text-base font-semibold text-slate-900">Rechercher</h2>
               )}
@@ -1036,7 +1060,7 @@ export default function NativeMapHome() {
                 filterWithReviewsOnly={filterWithReviewsOnly} setFilterWithReviewsOnly={setFilterWithReviewsOnly}
                 filterSort={filterSort}                  setFilterSort={setFilterSort}
               />
-            ) : (
+            ) : searchPanelView === "results" ? (
               // ── Results view — the search results, right inside this popup ──
               <div className="flex-1 overflow-y-auto px-4 py-3">
                 {searchResults.length === 0 ? (
@@ -1046,11 +1070,11 @@ export default function NativeMapHome() {
                 ) : (
                   <div className="space-y-2.5">
                     {searchResults.map((s) => (
-                      <Link
+                      <button
                         key={s.id}
-                        href={`/sitters/${s.id}`}
-                        onClick={() => { setSearchOpen(false); setSearchPanelView("main"); }}
-                        className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-3 active:scale-[0.99]"
+                        type="button"
+                        onClick={() => { setDetailSitter(s); setSearchPanelView("detail"); }}
+                        className="flex w-full items-center gap-3 rounded-2xl border border-slate-200 bg-white p-3 text-left active:scale-[0.99]"
                         style={{ touchAction: "manipulation" }}
                       >
                         <div className="relative shrink-0">
@@ -1077,20 +1101,88 @@ export default function NativeMapHome() {
                           )}
                         </div>
                         <span className="shrink-0 rounded-full bg-[#7c3aed] px-3 py-1.5 text-xs font-semibold text-white shadow-sm active:scale-95">
-                          Contacter
+                          Voir
                         </span>
-                      </Link>
+                      </button>
                     ))}
                   </div>
+                )}
+              </div>
+            ) : (
+              // ── Detail view — the sitter fiche, redesigned to fit the popup ──
+              <div className="flex-1 overflow-y-auto px-5 py-4">
+                {detailSitter && (
+                  <>
+                    <div className="flex items-center gap-3">
+                      <div className="relative shrink-0">
+                        <img src={detailSitter.avatar} alt="" className="h-16 w-16 rounded-full object-cover ring-1 ring-slate-200" />
+                        {detailSitter.verified && (
+                          <span className="absolute -bottom-0.5 -right-0.5 flex h-5 w-5 items-center justify-center rounded-full border-2 border-white bg-emerald-500 text-white shadow-sm">
+                            <Check className="h-3 w-3" strokeWidth={3} aria-hidden="true" />
+                          </span>
+                        )}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="truncate text-lg font-bold text-slate-900">{detailSitter.name}</div>
+                        <div className="flex items-center gap-1 truncate text-sm text-slate-500">
+                          <MapPin className="h-3.5 w-3.5 shrink-0" />
+                          {detailSitter.city}{detailSitter.postalCode ? `, ${detailSitter.postalCode}` : ""}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
+                      {detailSitter.reviews > 0 ? (
+                        <span className="inline-flex items-center gap-1 text-sm text-slate-700">
+                          <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                          <span className="font-semibold text-slate-900">{detailSitter.rating?.toFixed(1)}</span>
+                          <span className="text-slate-400">({detailSitter.reviews})</span>
+                        </span>
+                      ) : (
+                        <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-500">Nouveau sur DogShift</span>
+                      )}
+                      {detailSitter.verified && (
+                        <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">Vérifié</span>
+                      )}
+                    </div>
+
+                    <div className="mt-5">
+                      <div className="text-sm font-semibold text-slate-900">Services & tarifs</div>
+                      <div className="mt-2 space-y-2">
+                        {detailSitter.services.map((svc) => {
+                          const price = detailSitter.pricing[svc];
+                          const unit = svc === "Pension" ? "/ jour" : "/ heure";
+                          return (
+                            <div key={svc} className="flex items-center justify-between rounded-2xl border border-slate-200 px-4 py-2.5">
+                              <span className="text-sm font-medium text-slate-800">{svc}</span>
+                              {typeof price === "number" ? (
+                                <span className="text-sm text-slate-600">
+                                  <span className="font-semibold text-slate-900">CHF {price}</span> {unit}
+                                </span>
+                              ) : (
+                                <span className="text-xs text-slate-400">Sur demande</span>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {detailSitter.bio ? (
+                      <div className="mt-5">
+                        <div className="text-sm font-semibold text-slate-900">À propos</div>
+                        <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-slate-600">{detailSitter.bio}</p>
+                      </div>
+                    ) : null}
+                  </>
                 )}
               </div>
             )}
 
             {/* Footer — Submit (search view) OR Apply (filters view). The results
                 view has no footer: the header back-arrow returns to the form. */}
-            {searchPanelView !== "results" ? (
-            <div className="border-t border-slate-100 px-5 py-3 shrink-0">
-              {searchPanelView === "main" ? (
+            {searchPanelView === "main" ? (
+              <div className="border-t border-slate-100 px-5 py-3 shrink-0">
                 <button
                   type="button"
                   onClick={handleSearchSubmit}
@@ -1100,7 +1192,9 @@ export default function NativeMapHome() {
                   <Search className="h-4 w-4" />
                   Rechercher
                 </button>
-              ) : (
+              </div>
+            ) : searchPanelView === "filters" ? (
+              <div className="border-t border-slate-100 px-5 py-3 shrink-0">
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
@@ -1120,8 +1214,20 @@ export default function NativeMapHome() {
                     Appliquer
                   </button>
                 </div>
-              )}
-            </div>
+              </div>
+            ) : searchPanelView === "detail" && detailSitter ? (
+              // Booking needs the calendar on the full profile, so the CTA opens
+              // it (date selection lives there) — the fiche itself stays in-popup.
+              <div className="border-t border-slate-100 px-5 py-3 shrink-0">
+                <Link
+                  href={`/sitters/${detailSitter.id}`}
+                  onClick={() => { setSearchOpen(false); setSearchPanelView("main"); }}
+                  className="flex w-full items-center justify-center gap-2 rounded-full bg-[#7c3aed] py-3 text-base font-semibold text-white shadow-[0_8px_24px_rgba(124,58,237,0.35)] active:scale-[0.98]"
+                  style={{ touchAction: "manipulation" }}
+                >
+                  Réserver
+                </Link>
+              </div>
             ) : null}
           </div>
         </>
