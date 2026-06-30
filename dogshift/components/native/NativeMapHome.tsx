@@ -5,10 +5,15 @@ import maplibregl from "maplibre-gl";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState, type TouchEvent as ReactTouchEvent } from "react";
 import Map, { Marker, type MapRef } from "react-map-gl/maplibre";
-import { useRouter } from "next/navigation";
-import { Search, Locate, Star, X, Minus, Plus, MapPin, Calendar, ArrowLeft, SlidersHorizontal } from "lucide-react";
+import { Search, Locate, Star, X, Minus, Plus, MapPin, Calendar, ArrowLeft, SlidersHorizontal, Check } from "lucide-react";
 
-import { resolveCoordsForPublishedSitterMap } from "@/lib/sitterMapGeo";
+import {
+  LOCATION_HUB_COORDS,
+  SEARCH_HUB_RADIUS_KM,
+  haversineKm,
+  normalizeLocationText,
+  resolveCoordsForPublishedSitterMap,
+} from "@/lib/sitterMapGeo";
 
 import "maplibre-gl/dist/maplibre-gl.css";
 
@@ -194,14 +199,13 @@ export default function NativeMapHome() {
   // entier s'affiche de haut en bas juste sous la search barre c'est plus
   // intuitif" (and the bottom-sheet had the purple submit button hidden
   // behind the nav).
-  const router = useRouter();
   const lieuInputRef = useRef<HTMLInputElement>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   // "main" = search form ; "filters" = filter form (same panel, slides in
   // like a second page). Founder request : "rajoute une option filtre aussi
   // la dans le pop up de recherche … genre que ca fasse comme une deuxieme
   // page".
-  const [searchPanelView, setSearchPanelView] = useState<"main" | "filters">("main");
+  const [searchPanelView, setSearchPanelView] = useState<"main" | "filters" | "results">("main");
   const [searchService, setSearchService] = useState<Service>("Promenade");
   const [searchLocation, setSearchLocation] = useState("");
   const [searchDate, setSearchDate] = useState<string | null>(null);          // single date (Promenade/Garde)
@@ -220,26 +224,32 @@ export default function NativeMapHome() {
 
   const isPension = searchService === "Pension";
 
+  // Results are shown INSIDE this same popup (a third "results" view) instead of
+  // navigating to /search — keeps the whole search in one stylish sheet (founder
+  // request). The map already has every published sitter loaded, so it's instant.
   const handleSearchSubmit = useCallback(() => {
-    const params = new URLSearchParams();
-    if (searchLocation.trim()) params.set("q", searchLocation.trim());
-    if (isPension) {
-      if (searchDateStart) params.set("from", searchDateStart);
-      if (searchDateEnd) params.set("to", searchDateEnd);
-    } else if (searchDate) {
-      params.set("date", searchDate);
-    }
-    params.set("service", searchService);
-    const totalDogs = dogPetit + dogMoyen + dogGrand;
-    if (totalDogs > 0) {
-      params.set("dogs", String(totalDogs));
-      if (dogPetit) params.set("petit", String(dogPetit));
-      if (dogMoyen) params.set("moyen", String(dogMoyen));
-      if (dogGrand) params.set("grand", String(dogGrand));
-    }
-    setSearchOpen(false);
-    router.push(`/sitters?${params.toString()}`);
-  }, [router, isPension, searchService, searchLocation, searchDate, searchDateStart, searchDateEnd, dogPetit, dogMoyen, dogGrand]);
+    setSearchPanelView("results");
+  }, []);
+
+  const searchResults = useMemo(() => {
+    const q = normalizeLocationText(searchLocation);
+    const hub = q ? (LOCATION_HUB_COORDS[q] ?? LOCATION_HUB_COORDS[q.replace(/\s+/g, "")]) : undefined;
+    const list = sitters.filter((s) => {
+      if (searchService && !s.services.includes(searchService)) return false;
+      if (q) {
+        // Known place ("Lausanne") → keep the agglomeration within the radius
+        // (same rule as the /search list). Otherwise a plain city prefix match.
+        if (hub) {
+          if (haversineKm(hub, { lat: s.lat, lng: s.lng }) > SEARCH_HUB_RADIUS_KM) return false;
+        } else if (!normalizeLocationText(s.city).startsWith(q)) {
+          return false;
+        }
+      }
+      return true;
+    });
+    // Best-rated first, then most-reviewed (same default as the map sheet).
+    return list.slice().sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0) || b.reviews - a.reviews);
+  }, [sitters, searchService, searchLocation]);
 
   // Format a Date or "YYYY-MM-DD" string in fr-CH.
   const formatDateFR = useCallback((iso: string | null) => {
@@ -803,7 +813,7 @@ export default function NativeMapHome() {
           <button
             type="button"
             aria-label="Fermer la recherche"
-            onClick={() => setSearchOpen(false)}
+            onClick={() => { setSearchOpen(false); setSearchPanelView("main"); }}
             className="fixed inset-0 z-[990] bg-black/30"
             style={{ touchAction: "manipulation" }}
           />
@@ -835,6 +845,17 @@ export default function NativeMapHome() {
                 >
                   <ArrowLeft className="h-4 w-4" />
                   Filtres
+                </button>
+              ) : searchPanelView === "results" ? (
+                <button
+                  type="button"
+                  onClick={() => setSearchPanelView("main")}
+                  className="flex items-center gap-1.5 text-base font-semibold text-slate-900 active:opacity-70"
+                  aria-label="Modifier la recherche"
+                  style={{ touchAction: "manipulation" }}
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                  {searchResults.length} dogsitter{searchResults.length > 1 ? "s" : ""}
                 </button>
               ) : (
                 <h2 className="text-base font-semibold text-slate-900">Rechercher</h2>
@@ -1005,7 +1026,7 @@ export default function NativeMapHome() {
                 )}
               </button>
             </div>
-            ) : (
+            ) : searchPanelView === "filters" ? (
               <FilterBody
                 filterMinRating={filterMinRating}        setFilterMinRating={setFilterMinRating}
                 priceMin={PRICE_MIN}                     priceMax={PRICE_MAX}
@@ -1015,9 +1036,59 @@ export default function NativeMapHome() {
                 filterWithReviewsOnly={filterWithReviewsOnly} setFilterWithReviewsOnly={setFilterWithReviewsOnly}
                 filterSort={filterSort}                  setFilterSort={setFilterSort}
               />
+            ) : (
+              // ── Results view — the search results, right inside this popup ──
+              <div className="flex-1 overflow-y-auto px-4 py-3">
+                {searchResults.length === 0 ? (
+                  <div className="py-10 text-center text-sm text-slate-500">
+                    Aucun dogsitter trouvé pour cette recherche.
+                  </div>
+                ) : (
+                  <div className="space-y-2.5">
+                    {searchResults.map((s) => (
+                      <Link
+                        key={s.id}
+                        href={`/sitters/${s.id}`}
+                        onClick={() => { setSearchOpen(false); setSearchPanelView("main"); }}
+                        className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-3 active:scale-[0.99]"
+                        style={{ touchAction: "manipulation" }}
+                      >
+                        <div className="relative shrink-0">
+                          <img src={s.avatar} alt="" className="h-14 w-14 rounded-full object-cover ring-1 ring-slate-200" />
+                          {s.verified && (
+                            <span className="absolute -bottom-0.5 -right-0.5 flex h-5 w-5 items-center justify-center rounded-full border-2 border-white bg-emerald-500 text-white shadow-sm">
+                              <Check className="h-3 w-3" strokeWidth={3} aria-hidden="true" />
+                            </span>
+                          )}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-1">
+                            <span className="truncate text-sm font-semibold text-slate-900">{s.name}</span>
+                            {s.rating !== null && (
+                              <span className="flex shrink-0 items-center gap-0.5 text-xs font-medium text-slate-700">
+                                <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+                                {s.rating.toFixed(1)}
+                              </span>
+                            )}
+                          </div>
+                          <div className="truncate text-xs text-slate-500">{s.city}</div>
+                          {s.minPrice > 0 && (
+                            <div className="mt-0.5 text-xs font-medium text-slate-700">dès {s.minPrice} CHF</div>
+                          )}
+                        </div>
+                        <span className="shrink-0 rounded-full bg-[#7c3aed] px-3 py-1.5 text-xs font-semibold text-white shadow-sm active:scale-95">
+                          Contacter
+                        </span>
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </div>
             )}
 
-            {/* Footer — Submit (search view) OR Apply (filters view) */}
+            {/* Footer — Submit (search view) OR Apply (filters view). The results
+                view has no footer: the header back-arrow returns to the form. */}
+            {searchPanelView !== "results" ? (
             <div className="border-t border-slate-100 px-5 py-3 shrink-0">
               {searchPanelView === "main" ? (
                 <button
@@ -1051,6 +1122,7 @@ export default function NativeMapHome() {
                 </div>
               )}
             </div>
+            ) : null}
           </div>
         </>
       )}
