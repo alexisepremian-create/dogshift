@@ -10,6 +10,7 @@ import {
   LOCATION_HUB_COORDS,
   LOCATION_HUB_RADIUS_KM,
   PROXIMITY_RADIUS_KM,
+  SEARCH_HUB_RADIUS_KM,
   haversineKm,
   normalizeLocationText as normalize,
   resolveCoordsForPublishedSitterMap,
@@ -252,7 +253,11 @@ export default function SearchResultsClient() {
   }, [hydrated]);
 
   const initialService = (sp.get("service") ?? "").trim();
-  const initialLocation = (sp.get("location") ?? "").trim();
+  // Accept BOTH `location` (web home links) and `q` (native map search +
+  // SEO/bookmarked /sitters?q=… URLs). Before this, a native-map search sent
+  // `q=Lausanne` but we only read `location`, so the place was dropped — the
+  // search bar stayed empty and the location filter never applied.
+  const initialLocation = (sp.get("location") ?? sp.get("q") ?? "").trim();
 
   const [service, setService] = useState<(typeof SERVICE_OPTIONS)[number]>(
     (SERVICE_OPTIONS as readonly string[]).includes(initialService) ? (initialService as (typeof SERVICE_OPTIONS)[number]) : ""
@@ -324,7 +329,11 @@ export default function SearchResultsClient() {
   // top of the search page isn't dominated by 5 stacked rows on a phone.
   // Audit 2026-05-22: full-width stacked filters pushed the actual sitter
   // cards entirely below the fold on iPhone-class screens.
-  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
+  // Keep the filter panel OPEN after a search that already carries a filter
+  // (service from the home/map), so the applied filters stay visible here
+  // instead of being hidden behind the collapsed "Filtres" toggle (founder:
+  // "une fois recherché les filtres restent affichés ici").
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(Boolean(initialService));
   const activeFilterCount = (service ? 1 : 0) + (dogSize ? 1 : 0);
   const [userGeoCoords] = useState<{ lat: number; lng: number } | null>(() => {
     const latStr = sp.get("lat");
@@ -365,9 +374,17 @@ export default function SearchResultsClient() {
       .filter(({ sitter, distanceKm }) => {
       const matchesService = service ? sitter.services.some((s) => normalize(s) === normalize(service)) : true;
       const matchesLocation = normalizedLocation
-        ? (isProximity && coords
-            ? distanceKm !== null && distanceKm <= PROXIMITY_RADIUS_KM
-            : normalize(sitter.city).startsWith(normalizedLocation) || normalize(sitter.postalCode).startsWith(normalizedLocation))
+        ? isProximity && coords
+          ? distanceKm !== null && distanceKm <= PROXIMITY_RADIUS_KM
+          : // Named place we can geolocate (a known hub like "Lausanne"): keep
+            // sitters within the agglomeration RADIUS, so the grand-Lausanne
+            // suburbs (Ecublens, Penthaz, Renens…) match while clearly-other
+            // towns (Chexbres, Vevey) don't. Strict city/postal startsWith only
+            // as a fallback for places we can't map.
+            !isProximity && coords
+            ? distanceKm !== null && distanceKm <= SEARCH_HUB_RADIUS_KM
+            : normalize(sitter.city).startsWith(normalizedLocation) ||
+              normalize(sitter.postalCode).startsWith(normalizedLocation)
         : true;
       const matchesDogSize = dogSize ? sitter.dogSizes.some((s) => normalize(s) === normalize(dogSize)) : true;
       const matchesVerified = sort === "verified_first" ? Boolean(sitter.verified) : true;
@@ -691,7 +708,7 @@ export default function SearchResultsClient() {
         </div>
 
         {!showEmpty ? (
-          <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-8 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3">
             {filtered.map(({ sitter }) => (
               (() => {
                 const candidates = sitter.services
@@ -712,27 +729,29 @@ export default function SearchResultsClient() {
                   <Link
                     key={sitter.id}
                     href={sitterHref}
-                    className="group relative flex h-full cursor-pointer flex-col rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_12px_40px_-28px_rgba(2,6,23,0.3)] transition will-change-transform hover:border-[color-mix(in_srgb,var(--dogshift-blue),transparent_70%)] hover:shadow-[0_18px_60px_-40px_rgba(2,6,23,0.45)] md:hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)]"
+                    className="group relative flex h-full cursor-pointer flex-col rounded-3xl border border-slate-200 bg-white p-3 shadow-[0_12px_40px_-28px_rgba(2,6,23,0.3)] transition will-change-transform hover:border-[color-mix(in_srgb,var(--dogshift-blue),transparent_70%)] hover:shadow-[0_18px_60px_-40px_rgba(2,6,23,0.45)] md:hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)] sm:p-6"
                   >
                     {sitter.verified ? (
-                      <div className="absolute right-5 top-5 z-10 inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[11px] font-semibold text-emerald-800 shadow-sm">
+                      <div className="absolute right-3 top-3 z-10 inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-800 shadow-sm sm:right-5 sm:top-5 sm:px-3 sm:py-1">
                         <Check className="h-3.5 w-3.5" aria-hidden="true" />
-                        Vérifié
+                        {/* Hide the label on the narrow 2-col card so it doesn't
+                            collide with the name; keep the check as the badge. */}
+                        <span className="hidden sm:inline">Vérifié</span>
                       </div>
                     ) : null}
 
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex items-start gap-4">
+                    <div className="flex items-start justify-between gap-2 sm:gap-4">
+                      <div className="flex min-w-0 items-start gap-2.5 sm:gap-4">
                         <img
                           src={sitter.avatarUrl}
                           alt={sitter.name}
-                          className="h-12 w-12 shrink-0 rounded-full object-cover ring-1 ring-slate-200"
+                          className="h-11 w-11 shrink-0 rounded-full object-cover ring-1 ring-slate-200 sm:h-12 sm:w-12"
                           loading="lazy"
                           referrerPolicy="no-referrer"
                         />
-                        <div>
-                          <h2 className="text-base font-semibold text-slate-900 md:group-hover:underline">{sitter.name}</h2>
-                          <p className="mt-1 text-sm text-slate-600">{sitter.city}</p>
+                        <div className="min-w-0">
+                          <h2 className="truncate pr-5 text-sm font-semibold text-slate-900 sm:pr-0 sm:text-base md:group-hover:underline">{sitter.name}</h2>
+                          <p className="mt-0.5 truncate text-xs text-slate-600 sm:mt-1 sm:text-sm">{sitter.city}</p>
                         </div>
                       </div>
                     </div>
@@ -768,14 +787,14 @@ export default function SearchResultsClient() {
                       <p className="min-h-[60px] text-slate-600 line-clamp-3">{sitter.bio}</p>
                     </div>
 
-                    <div className="mt-auto flex items-center justify-between pt-5">
+                    <div className="mt-auto flex flex-col items-stretch gap-2 pt-4 sm:flex-row sm:items-center sm:justify-between sm:pt-5">
                       <p className="text-sm text-slate-600">
-                        <span className="text-slate-500">À partir de </span>
+                        <span className="text-slate-500">Dès </span>
                         <span className="text-base font-semibold text-slate-900">CHF {cheapestPrice}</span>
                         <span className="text-slate-500">{cheapestUnit}</span>
                       </p>
                       <span
-                        className="inline-flex items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition md:group-hover:bg-[var(--dogshift-blue-hover)]"
+                        className="inline-flex w-full items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition sm:w-auto md:group-hover:bg-[var(--dogshift-blue-hover)]"
                         aria-label={`Contacter ${sitter.name}`}
                       >
                         Contacter

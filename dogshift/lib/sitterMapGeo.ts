@@ -17,6 +17,18 @@ export const LOCATION_HUB_RADIUS_KM = 34;
 /** Radius used for GPS "À proximité" searches — tight, same commune / city area. */
 export const PROXIMITY_RADIUS_KM = 10;
 
+/**
+ * Radius for a NAMED-place search ("Lausanne") on the /search results list.
+ *
+ * Tuned from the founder's real examples so the "grand Lausanne" agglomeration
+ * is INCLUDED but neighbouring towns that are clearly elsewhere are EXCLUDED:
+ *   - Ecublens ~5 km, Morges ~10 km, Penthaz ~11.2 km  → IN  (agglomeration)
+ *   - Chexbres ~12.0 km (Lavaux), Vevey ~17.3 km (Riviera) → OUT
+ * 11.5 km is the value that splits Penthaz (in) from Chexbres (out). It is
+ * deliberately tighter than LOCATION_HUB_RADIUS_KM (the wide map radius).
+ */
+export const SEARCH_HUB_RADIUS_KM = 11.5;
+
 const toRad = (deg: number) => (deg * Math.PI) / 180;
 
 export function haversineKm(a: { lat: number; lng: number }, b: { lat: number; lng: number }) {
