@@ -187,4 +187,20 @@ test("ReservationClient supports an embedded (in-popup) mode", () => {
   assert.match(src, /Number\(slot\.time\.slice\(0, 2\)\) >= 6/, "Night hours (00:00–05:30) must be filtered out.");
   // Lieu de garde options are side by side on mobile.
   assert.match(src, /embedded \? "mt-3 grid grid-cols-2 gap-2" : "mt-4 grid gap-2 sm:grid-cols-2"/, "Lieu de garde options must be side by side when embedded.");
+  // Both pickers use a frosted translucent sheet + single scrollable column with a
+  // NON-purple (slate) selection highlight — no more 3-col grid, no purple fill.
+  const frostedCount = (src.match(/bg-white\/80 p-4 shadow-\[0_-20px_60px_rgba\(2,6,23,0\.25\)\] backdrop-blur-2xl/g) ?? []).length;
+  assert.ok(frostedCount >= 2, "Both the time AND duration sheets must use the frosted translucent background.");
+  assert.doesNotMatch(src, /grid grid-cols-3 gap-1\.5/, "The duration picker must not use a 3-col grid anymore (single column).");
+  const slateSelCount = (src.match(/selected\s*\n?\s*\?\s*"bg-slate-900\/5 text-slate-900"/g) ?? []).length;
+  assert.ok(slateSelCount >= 2, "Both pickers must use a slate (non-purple) selection highlight.");
+  // Address inputs get a purple focus ring when embedded.
+  const purpleFocus = (src.match(/focus:border-\[#7c3aed\] focus:ring-4 focus:ring-\[#7c3aed\]\/15/g) ?? []).length;
+  assert.ok(purpleFocus >= 3, "The 3 address inputs must use a purple focus ring when embedded.");
+  // "Votre chien" card is compact when embedded: no verbose text, just a small
+  // purple "Ajouter votre chien" button.
+  assert.match(src, /\{embedded \? null : \(\s*<p className="mt-1 text-sm text-slate-500">Le sitter recevra la fiche/, "The verbose dog-card subtitle must be hidden when embedded.");
+  assert.match(src, /rounded-full bg-\[#7c3aed\] px-4 py-2 text-sm font-semibold text-white active:scale-95"\s*>\s*Ajouter votre chien/, "Embedded empty dog state must be a small purple 'Ajouter votre chien' button.");
+  // The redundant bottom Récap aside is removed when embedded (top recap covers it).
+  assert.match(src, /\{embedded \? null : \(\s*<aside className="lg:sticky lg:top-8 lg:self-start">/, "The bottom Récap aside must be hidden when embedded.");
 });
