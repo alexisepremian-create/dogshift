@@ -2521,10 +2521,16 @@ export default function ReservationClient({
         </div>
       </main>
 
-      {/* Mobile Sticky CTA */}
+      {/* Mobile Sticky CTA — `fixed` (viewport) on the standalone page, but
+          `sticky` within the scroll area when embedded in the popup sheet so it
+          pins to the SHEET bottom instead of escaping to the screen bottom. */}
       <div
-        className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white shadow-[0_-8px_30px_-15px_rgba(0,0,0,0.1)] lg:hidden"
-        style={{ paddingBottom: "env(safe-area-inset-bottom, 16px)" }}
+        className={
+          embedded
+            ? "sticky bottom-0 z-40 border-t border-slate-200 bg-white shadow-[0_-8px_30px_-15px_rgba(0,0,0,0.1)] lg:hidden"
+            : "fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white shadow-[0_-8px_30px_-15px_rgba(0,0,0,0.1)] lg:hidden"
+        }
+        style={embedded ? undefined : { paddingBottom: "env(safe-area-inset-bottom, 16px)" }}
       >
         {(error ?? disabledReason) && (
           <p className={`px-4 pt-3 text-center text-xs font-medium ${error ? "text-rose-600" : "text-slate-400"}`}>
