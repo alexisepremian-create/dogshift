@@ -538,7 +538,7 @@ function DogShiftTimePicker({
             </p>
             {/* Single scrollable column (iOS-style) with a subtle non-purple
                 highlight + check on the selected row. */}
-            <div className="max-h-[46vh] overflow-y-auto">
+            <div className="max-h-[264px] overflow-y-auto">
               <div className="flex flex-col">
                 {normalizedSlots.map((slot) => {
                   const selected = slot.time === draftValue;
@@ -681,7 +681,7 @@ function DogShiftDurationPicker({
             </div>
             {/* Single scrollable column (iOS-style) with a subtle non-purple
                 highlight + check on the selected row. */}
-            <div className="max-h-[46vh] overflow-y-auto">
+            <div className="max-h-[264px] overflow-y-auto">
               <div className="flex flex-col">
                 {options.map((option) => {
                   const selected = option.hours === value;
