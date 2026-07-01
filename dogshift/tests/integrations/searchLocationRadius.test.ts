@@ -116,6 +116,9 @@ test("NativeMapHome: the whole browse → fiche → booking flow lives in the po
   assert.match(src, /onClick=\{\(\) => openSitterDetail\(s\)\}/, "Result rows must open the in-popup fiche.");
   assert.match(src, /if \(sheetOpen\) \{\s*openSitterDetail\(s\)/, "Map-sheet cards must open the in-popup fiche (no /sitters nav).");
   assert.doesNotMatch(src, /href=\{`\/sitters\/\$\{s\.id\}`\}/, "The map sheet must NOT link to the full sitter page anymore.");
+  // The map marker mini-popup card also opens the fiche in the popup.
+  assert.match(src, /onClick=\{\(\) => openSitterDetail\(activeSitter\)\}/, "The marker mini-popup must open the in-popup fiche.");
+  assert.doesNotMatch(src, /href=\{`\/sitters\/\$\{activeSitter\.id\}`\}/, "The marker card must NOT link to the full sitter page anymore.");
   // The tariff rows are clickable to pick the service.
   assert.match(src, /onClick=\{\(\) => \{ setBookingService\(svc\)/, "Tariff rows must select the booking service.");
   // Réserver opens the in-popup booking view; the calendar shows availability.
