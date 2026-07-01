@@ -166,4 +166,7 @@ test("ReservationClient supports an embedded (in-popup) mode", () => {
   assert.match(src, /\{embedded \? null : \(\s*<div[^>]*>\s*<p className="text-sm font-semibold text-slate-900">Dates<\/p>/, "The interactive Dates card must be hidden when embedded.");
   assert.match(src, /!embedded && effectiveSelectedDate && selectedDateStatusLoaded \?/, "The availability subtitle must be hidden when embedded (no load flash).");
   assert.match(src, /embedded \? \(\s*\/\/ Clean purple check[\s\S]*?<Check className="h-4 w-4" strokeWidth=\{3\}/, "The embedded service selector must use a purple check, not the blue radio.");
+  // No "all services then filtered" flash: gate the rows behind a skeleton until
+  // availability loads.
+  assert.match(src, /embedded && !selectedDateStatusLoaded \?[\s\S]*?animate-pulse rounded-xl bg-slate-100/, "Embedded service list must show a skeleton until availability loads (no flash of all services).");
 });
