@@ -802,7 +802,19 @@ function DogShiftDatePicker({
   );
 }
 
-export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
+export default function ReservationClient({
+  sitter,
+  embedded = false,
+  initialParams,
+}: {
+  sitter: SitterDto;
+  // When true, render without the full-page chrome (no min-h-screen, no title,
+  // no "Retour à l'annonce") so this exact flow can live inside the native home
+  // popup. `initialParams` seed the service/date when there's no URL to read
+  // them from (the popup passes them here).
+  embedded?: boolean;
+  initialParams?: { service?: string; date?: string; start?: string; end?: string };
+}) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { maintenanceMode, adminNote } = useMaintenance();
@@ -936,10 +948,11 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
   const earliestAllowedTimeLabel = `${pad2(new Date(earliestAllowedMs).getHours())}:${pad2(new Date(earliestAllowedMs).getMinutes())}`;
 
   useEffect(() => {
-    const serviceParam = (searchParams.get("service") ?? "").trim();
-    const dateParam = (searchParams.get("date") ?? "").trim();
-    const startParam = (searchParams.get("start") ?? "").trim();
-    const endParam = (searchParams.get("end") ?? "").trim();
+    // Embedded (native popup) has no URL to read from → fall back to initialParams.
+    const serviceParam = (initialParams?.service ?? searchParams.get("service") ?? "").trim();
+    const dateParam = (initialParams?.date ?? searchParams.get("date") ?? "").trim();
+    const startParam = (initialParams?.start ?? searchParams.get("start") ?? "").trim();
+    const endParam = (initialParams?.end ?? searchParams.get("end") ?? "").trim();
 
     const serviceExists = sitter.services.some((svc) => svc === serviceParam);
     if (serviceExists) {
@@ -1919,19 +1932,21 @@ export default function ReservationClient({ sitter }: { sitter: SitterDto }) {
   }
 
   return (
-    <div className="min-h-screen bg-white text-slate-900">
-      <main className="mx-auto max-w-5xl px-4 pt-4 pb-32 sm:px-6 sm:pt-6 lg:pb-10">
-        <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">Demande de réservation</h1>
-            <p className="mt-2 text-sm text-slate-600">Sélectionne un service, des dates, puis continue vers le paiement.</p>
+    <div className={embedded ? "bg-white text-slate-900" : "min-h-screen bg-white text-slate-900"}>
+      <main className={embedded ? "mx-auto max-w-5xl px-4 pt-2 pb-32 sm:px-6" : "mx-auto max-w-5xl px-4 pt-4 pb-32 sm:px-6 sm:pt-6 lg:pb-10"}>
+        {embedded ? null : (
+          <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h1 className="text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">Demande de réservation</h1>
+              <p className="mt-2 text-sm text-slate-600">Sélectionne un service, des dates, puis continue vers le paiement.</p>
+            </div>
+            <Link href={`/sitter/${encodeURIComponent(sitter.sitterId)}?mode=public`} className={SECONDARY_BTN}>
+              Retour à l’annonce
+            </Link>
           </div>
-          <Link href={`/sitter/${encodeURIComponent(sitter.sitterId)}?mode=public`} className={SECONDARY_BTN}>
-            Retour à l’annonce
-          </Link>
-        </div>
+        )}
 
-        <div className="mt-8 grid gap-8 lg:grid-cols-[1fr_360px]">
+        <div className={embedded ? "grid gap-8 lg:grid-cols-[1fr_360px]" : "mt-8 grid gap-8 lg:grid-cols-[1fr_360px]"}>
           <section className="space-y-6">
             <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.12)] sm:p-8">
               <p className="text-sm font-semibold text-slate-900">Récapitulatif sitter</p>
