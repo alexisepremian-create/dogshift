@@ -3,9 +3,9 @@
 
 import maplibregl from "maplibre-gl";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useRef, useState, type TouchEvent as ReactTouchEvent } from "react";
 import Map, { Marker, type MapRef } from "react-map-gl/maplibre";
-import { useRouter } from "next/navigation";
 import { Search, Locate, Star, X, Minus, Plus, MapPin, Calendar, ArrowLeft, SlidersHorizontal, Check } from "lucide-react";
 
 import {
@@ -15,6 +15,31 @@ import {
   normalizeLocationText,
   resolveCoordsForPublishedSitterMap,
 } from "@/lib/sitterMapGeo";
+
+// The real reservation flow (slots + recap + booking creation + Stripe redirect),
+// lazy-loaded so it only ships when a user actually books. Rendered inside a
+// full-screen in-app overlay so the whole pre-payment booking stays in the app
+// (no navigation to the standalone page). Only the final Stripe /checkout is a page.
+const ReservationClient = dynamic(
+  () => import("@/app/(marketing)/sitter/[sitterId]/reservation/reservation-client"),
+  { ssr: false },
+);
+
+type ReservationSitterDto = {
+  sitterId: string;
+  name: string;
+  city: string;
+  postalCode: string;
+  bio: string;
+  avatarUrl: string;
+  services: string[];
+  pricing: Record<string, unknown>;
+  lat?: number | null;
+  lng?: number | null;
+  hasAddress?: boolean;
+  pensionAcceptedSizes?: string[];
+  acceptanceCriteria?: { neuteredRequired?: boolean; maxDogs?: number | null } | null;
+};
 
 import "maplibre-gl/dist/maplibre-gl.css";
 
@@ -220,7 +245,10 @@ export default function NativeMapHome() {
   const [searchPanelView, setSearchPanelView] = useState<"main" | "filters" | "results" | "detail" | "booking">("main");
   // The sitter whose fiche is shown inside the popup ("detail" view).
   const [detailSitter, setDetailSitter] = useState<UiSitter | null>(null);
-  const router = useRouter();
+  // In-popup reservation overlay (renders the real ReservationClient).
+  const [reservationOpen, setReservationOpen] = useState(false);
+  const [reservationDto, setReservationDto] = useState<ReservationSitterDto | null>(null);
+  const [reservationParams, setReservationParams] = useState<{ service?: string; date?: string; start?: string; end?: string }>({});
   // ── In-popup booking state (the "booking" view) ─────────────────────────
   // The whole pre-payment booking happens in the sheet: pick the service (via the
   // tariff rows) + a date on the availability calendar, then hand off ONLY the
@@ -348,23 +376,65 @@ export default function NativeMapHome() {
     setSearchPanelView("detail");
   }, []);
 
-  // Hand off to the secure reservation/payment page with the in-popup selection.
+  // Open the reservation flow (slots + recap + booking) INSIDE the app, in a
+  // full-screen overlay that renders the real ReservationClient. Only the final
+  // Stripe checkout (triggered from within it) is a page.
   const continueToReservation = useCallback(() => {
     if (!detailSitter) return;
-    const qp = new URLSearchParams();
-    qp.set("service", bookingService);
+    const params: { service: string; date?: string; start?: string; end?: string } = { service: bookingService };
     if (isBookingPension) {
       if (!bookingStart || !bookingEnd) return;
-      qp.set("start", bookingStart);
-      qp.set("end", bookingEnd);
+      params.start = bookingStart;
+      params.end = bookingEnd;
     } else {
       if (!bookingDate) return;
-      qp.set("date", bookingDate);
+      params.date = bookingDate;
     }
-    setSearchOpen(false);
-    setSearchPanelView("main");
-    router.push(`/sitter/${encodeURIComponent(detailSitter.id)}/reservation?${qp.toString()}`);
-  }, [router, detailSitter, bookingService, isBookingPension, bookingStart, bookingEnd, bookingDate]);
+    // Seed the overlay immediately from the data we already have (instant paint),
+    // then upgrade with the full profile (adds hasAddress, pension sizes, etc.).
+    const seed: ReservationSitterDto = {
+      sitterId: detailSitter.id,
+      name: detailSitter.name,
+      city: detailSitter.city,
+      postalCode: detailSitter.postalCode,
+      bio: detailSitter.bio,
+      avatarUrl: detailSitter.avatar,
+      services: detailSitter.services,
+      pricing: detailSitter.pricing as Record<string, unknown>,
+      lat: detailSitter.lat,
+      lng: detailSitter.lng,
+      hasAddress: Number.isFinite(detailSitter.lat) && Number.isFinite(detailSitter.lng),
+    };
+    setReservationParams(params);
+    setReservationDto(seed);
+    setReservationOpen(true);
+    const sitterId = detailSitter.id;
+    void (async () => {
+      try {
+        const res = await fetch(`/api/sitters/${sitterId}`, { cache: "no-store" });
+        const payload = (await res.json()) as { ok?: boolean; sitter?: Record<string, unknown> };
+        if (!res.ok || !payload?.ok || !payload.sitter) return;
+        const s = payload.sitter;
+        setReservationDto((prev) => ({
+          sitterId: String(s.sitterId ?? prev?.sitterId ?? sitterId),
+          name: String(s.name ?? prev?.name ?? ""),
+          city: String(s.city ?? prev?.city ?? ""),
+          postalCode: String(s.postalCode ?? prev?.postalCode ?? ""),
+          bio: String(s.bio ?? prev?.bio ?? ""),
+          avatarUrl: String(s.avatarUrl ?? prev?.avatarUrl ?? ""),
+          services: Array.isArray(s.services) ? (s.services.filter((x) => typeof x === "string") as string[]) : (prev?.services ?? []),
+          pricing: s.pricing && typeof s.pricing === "object" ? (s.pricing as Record<string, unknown>) : (prev?.pricing ?? {}),
+          lat: typeof s.lat === "number" ? s.lat : prev?.lat ?? null,
+          lng: typeof s.lng === "number" ? s.lng : prev?.lng ?? null,
+          hasAddress: Boolean(s.hasAddress),
+          pensionAcceptedSizes: Array.isArray(s.pensionAcceptedSizes) ? (s.pensionAcceptedSizes as string[]) : undefined,
+          acceptanceCriteria: (s.acceptanceCriteria as ReservationSitterDto["acceptanceCriteria"]) ?? null,
+        }));
+      } catch {
+        /* keep the seed */
+      }
+    })();
+  }, [detailSitter, bookingService, isBookingPension, bookingStart, bookingEnd, bookingDate]);
 
   const handleBookingDayTap = useCallback(
     (iso: string) => {
@@ -1437,6 +1507,37 @@ export default function NativeMapHome() {
             ) : null}
           </div>
         </>
+      )}
+
+      {/* ── In-app reservation overlay ─────────────────────────────────────
+          Renders the REAL reservation flow (slots, recap, booking creation)
+          full-screen inside the app — no navigation to the standalone page.
+          Only the final Stripe checkout it triggers is a secure page. */}
+      {reservationOpen && (
+        <div className="fixed inset-0 z-[1001] flex flex-col bg-white">
+          <div
+            className="flex shrink-0 items-center border-b border-slate-100 bg-white px-4 pb-3"
+            style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 0.75rem)" }}
+          >
+            <button
+              type="button"
+              onClick={() => setReservationOpen(false)}
+              className="flex items-center gap-1.5 text-base font-semibold text-slate-900 active:opacity-70"
+              aria-label="Retour à la fiche"
+              style={{ touchAction: "manipulation" }}
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Réservation
+            </button>
+          </div>
+          <div className="flex-1 overflow-y-auto">
+            {reservationDto ? (
+              <ReservationClient sitter={reservationDto} embedded initialParams={reservationParams} />
+            ) : (
+              <div className="flex h-full items-center justify-center text-sm text-slate-500">Chargement…</div>
+            )}
+          </div>
+        </div>
       )}
 
       {/* ── Filter popup ───────────────────────────────────────────────── */}

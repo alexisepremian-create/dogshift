@@ -122,6 +122,21 @@ test("NativeMapHome: the whole browse → fiche → booking flow lives in the po
   assert.match(src, /onClick=\{\(\) => setSearchPanelView\("booking"\)\}[\s\S]*?Réserver/, "Réserver must open the in-popup booking view.");
   assert.match(src, /<InlineCalendar[\s\S]*?statusForIso=\{bookingStatusForIso\}/, "The booking view must show the availability calendar.");
   assert.match(src, /day-status\/multi\?from=/, "It must fetch real day-by-day availability.");
-  // Only the secure Stripe step leaves the popup.
-  assert.match(src, /router\.push\(`\/sitter\/\$\{encodeURIComponent\(detailSitter\.id\)\}\/reservation/, "Continuer must hand off to the secure reservation/payment page.");
+  // Continuer opens the reservation flow IN the app (overlay), no page nav.
+  assert.match(src, /setReservationOpen\(true\)/, "Continuer must open the in-app reservation overlay.");
+  assert.doesNotMatch(src, /router\.push\(`\/sitter\/\$\{encodeURIComponent\(detailSitter\.id\)\}\/reservation/, "It must NOT navigate to the standalone reservation page.");
+  // The overlay renders the REAL reservation flow (reused, not reimplemented).
+  assert.match(src, /<ReservationClient sitter=\{reservationDto\} embedded/, "The overlay must render the real ReservationClient (embedded).");
+  assert.match(src, /import\("@\/app\/\(marketing\)\/sitter\/\[sitterId\]\/reservation\/reservation-client"\)/, "ReservationClient must be lazy-loaded.");
+});
+
+test("ReservationClient supports an embedded (in-popup) mode", () => {
+  const src = readFileSync(join(process.cwd(), "app/(marketing)/sitter/[sitterId]/reservation/reservation-client.tsx"), "utf8");
+  // Additive props so the exact same flow renders inside the native popup.
+  assert.match(src, /embedded = false/, "It must accept an `embedded` prop.");
+  assert.match(src, /initialParams\?: \{ service\?: string; date\?: string; start\?: string; end\?: string \}/, "It must accept seeded params (no URL in the popup).");
+  // Embedded drops the full-page chrome (title + Retour à l'annonce).
+  assert.match(src, /embedded \? null : \([\s\S]*?Retour à l/, "Embedded mode must hide the page chrome.");
+  // Params fall back to initialParams when there's no URL.
+  assert.match(src, /initialParams\?\.service \?\? searchParams\.get\("service"\)/, "It must read seeded params before the URL.");
 });
