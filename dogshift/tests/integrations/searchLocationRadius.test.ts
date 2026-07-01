@@ -144,7 +144,14 @@ test("ReservationClient supports an embedded (in-popup) mode", () => {
   assert.match(src, /initialParams\?\.service \?\? searchParams\.get\("service"\)/, "It must read seeded params before the URL.");
   // Embedded polish: round photo, no bio in the recap, purple CTA, honest label.
   assert.match(src, /embedded \? "h-12 w-12 shrink-0 rounded-full/, "Embedded recap photo must be a circle.");
-  assert.match(src, /embedded \? null : <p className="mt-2 text-sm text-slate-600 line-clamp-2">\{sitter\.bio\}/, "Embedded recap must drop the bio.");
+  assert.match(src, /<p className="mt-2 text-sm text-slate-600 line-clamp-2">\{sitter\.bio\}/, "The bio stays for the web page.");
+  assert.doesNotMatch(src, /embedded[\s\S]{0,80}line-clamp-2">\{sitter\.bio\}/, "The embedded recap must NOT show the bio (date shown instead).");
   assert.match(src, /embedded\s*\n?\s*\? "inline-flex shrink-0 items-center justify-center rounded-full bg-\[#7c3aed\]/, "Embedded CTA must be purple.");
   assert.match(src, /summary\?\.quantityLabel \|\| selectedService \|\| "Service à définir"/, "The total label must show the selected service instead of 'Service à définir'.");
+  // Embedded: date shown statically in the recap, the interactive Dates card is
+  // hidden, no availability-lag subtitle, and the service radio is a purple check.
+  assert.match(src, /embedded \? \(\s*dateStart \?[\s\S]*?formatDisplayDate\(dateStart\)/, "Embedded recap must show the chosen date statically.");
+  assert.match(src, /\{embedded \? null : \(\s*<div[^>]*>\s*<p className="text-sm font-semibold text-slate-900">Dates<\/p>/, "The interactive Dates card must be hidden when embedded.");
+  assert.match(src, /!embedded && effectiveSelectedDate && selectedDateStatusLoaded \?/, "The availability subtitle must be hidden when embedded (no load flash).");
+  assert.match(src, /embedded \? \(\s*\/\/ Clean purple check[\s\S]*?<Check className="h-4 w-4" strokeWidth=\{3\}/, "The embedded service selector must use a purple check, not the blue radio.");
 });
