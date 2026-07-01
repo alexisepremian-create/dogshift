@@ -187,6 +187,10 @@ test("ReservationClient supports an embedded (in-popup) mode", () => {
   assert.match(src, /Number\(slot\.time\.slice\(0, 2\)\) >= 6/, "Night hours (00:00–05:30) must be filtered out.");
   // Lieu de garde options are side by side on mobile.
   assert.match(src, /embedded \? "mt-3 grid grid-cols-2 gap-2" : "mt-4 grid gap-2 sm:grid-cols-2"/, "Lieu de garde options must be side by side when embedded.");
+  // The picker list stays compact (a few rows that scroll) — not a full-height sheet.
+  const compactList = (src.match(/max-h-\[264px\] overflow-y-auto/g) ?? []).length;
+  assert.ok(compactList >= 2, "Both picker lists must be compact (max-h-[264px], scrollable).");
+  assert.doesNotMatch(src, /max-h-\[46vh\]/, "The picker list must not fill ~half the popup anymore.");
   // Both pickers use a frosted translucent sheet + single scrollable column with a
   // NON-purple (slate) selection highlight — no more 3-col grid, no purple fill.
   const frostedCount = (src.match(/bg-white\/80 p-4 shadow-\[0_-20px_60px_rgba\(2,6,23,0\.25\)\] backdrop-blur-2xl/g) ?? []).length;
