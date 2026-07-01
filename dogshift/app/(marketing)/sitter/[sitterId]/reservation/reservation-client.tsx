@@ -2056,6 +2056,14 @@ export default function ReservationClient({
                 </div>
               ) : null}
               <div className="mt-4 grid gap-2">
+                {/* Embedded: until availability is loaded, show a skeleton row
+                    instead of the FULL (unfiltered) service list — otherwise the
+                    card flashed "all services" then collapsed to the available
+                    one. A skeleton → the correct filtered list reads clean. */}
+                {embedded && !selectedDateStatusLoaded ? (
+                  <div className="h-11 animate-pulse rounded-xl bg-slate-100" />
+                ) : (
+                <>
                 {selectablePricingRows.map((row) => {
                   const status = effectiveSelectedDate && selectedDateStatusLoaded ? serviceStatusForLabel(selectedDateDayStatus, row.service) : null;
                   const selectable = typeof row.unitPrice === "number" && (status === null || status === "AVAILABLE" || status === "ON_REQUEST");
@@ -2118,6 +2126,8 @@ export default function ReservationClient({
                     Aucun service réservable n’est disponible le {formatDisplayDate(effectiveSelectedDate)}.
                   </div>
                 ) : null}
+                </>
+                )}
               </div>
             </div>
 
