@@ -1509,35 +1509,48 @@ export default function NativeMapHome() {
         </>
       )}
 
-      {/* ── In-app reservation overlay ─────────────────────────────────────
-          Renders the REAL reservation flow (slots, recap, booking creation)
-          full-screen inside the app — no navigation to the standalone page.
-          Only the final Stripe checkout it triggers is a secure page. */}
+      {/* ── In-app reservation sheet ───────────────────────────────────────
+          Renders the REAL reservation flow (slots, recap, booking creation) in
+          the SAME floating rounded sheet as the rest of the popup — over the
+          map, not a full page. Only the final Stripe checkout it triggers is a
+          secure page. */}
       {reservationOpen && (
-        <div className="fixed inset-0 z-[1001] flex flex-col bg-white">
+        <>
+          <button
+            type="button"
+            aria-label="Fermer la réservation"
+            onClick={() => setReservationOpen(false)}
+            className="fixed inset-0 z-[1002] bg-black/30"
+            style={{ touchAction: "manipulation" }}
+          />
           <div
-            className="flex shrink-0 items-center border-b border-slate-100 bg-white px-4 pb-3"
-            style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 0.75rem)" }}
+            className="fixed left-2 right-2 z-[1003] flex flex-col overflow-hidden rounded-3xl bg-white shadow-[0_20px_60px_rgba(2,6,23,0.30)]"
+            style={{
+              top: "calc(env(safe-area-inset-top, 0px) + 70px)",
+              bottom: "calc(max(var(--ds-bottom-nav-h, 0px), 88px) + 8px)",
+            }}
           >
-            <button
-              type="button"
-              onClick={() => setReservationOpen(false)}
-              className="flex items-center gap-1.5 text-base font-semibold text-slate-900 active:opacity-70"
-              aria-label="Retour à la fiche"
-              style={{ touchAction: "manipulation" }}
-            >
-              <ArrowLeft className="h-4 w-4" />
-              Réservation
-            </button>
+            <div className="flex shrink-0 items-center border-b border-slate-100 px-4 py-3">
+              <button
+                type="button"
+                onClick={() => setReservationOpen(false)}
+                className="flex items-center gap-1.5 text-base font-semibold text-slate-900 active:opacity-70"
+                aria-label="Retour à la fiche"
+                style={{ touchAction: "manipulation" }}
+              >
+                <ArrowLeft className="h-4 w-4" />
+                Réservation
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto">
+              {reservationDto ? (
+                <ReservationClient sitter={reservationDto} embedded initialParams={reservationParams} />
+              ) : (
+                <div className="flex h-full items-center justify-center text-sm text-slate-500">Chargement…</div>
+              )}
+            </div>
           </div>
-          <div className="flex-1 overflow-y-auto">
-            {reservationDto ? (
-              <ReservationClient sitter={reservationDto} embedded initialParams={reservationParams} />
-            ) : (
-              <div className="flex h-full items-center justify-center text-sm text-slate-500">Chargement…</div>
-            )}
-          </div>
-        </div>
+        </>
       )}
 
       {/* ── Filter popup ───────────────────────────────────────────────── */}
