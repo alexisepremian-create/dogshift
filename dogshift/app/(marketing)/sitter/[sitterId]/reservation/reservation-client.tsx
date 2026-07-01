@@ -1946,29 +1946,31 @@ export default function ReservationClient({
           </div>
         )}
 
-        <div className={embedded ? "grid gap-8 lg:grid-cols-[1fr_360px]" : "mt-8 grid gap-8 lg:grid-cols-[1fr_360px]"}>
-          <section className="space-y-6">
-            <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.12)] sm:p-8">
-              <p className="text-sm font-semibold text-slate-900">Récapitulatif sitter</p>
-              <div className="mt-4 flex items-start gap-4">
+        <div className={embedded ? "grid gap-4 lg:grid-cols-[1fr_360px]" : "mt-8 grid gap-8 lg:grid-cols-[1fr_360px]"}>
+          <section className={embedded ? "space-y-4" : "space-y-6"}>
+            <div className={embedded ? "rounded-3xl border border-slate-200 bg-white p-4" : "rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.12)] sm:p-8"}>
+              {embedded ? null : <p className="text-sm font-semibold text-slate-900">Récapitulatif sitter</p>}
+              <div className={embedded ? "flex items-center gap-3" : "mt-4 flex items-start gap-4"}>
                 {sitter.avatarUrl ? (
                   <img
                     src={sitter.avatarUrl}
                     alt={sitter.name}
-                    className="h-14 w-14 rounded-2xl object-cover ring-1 ring-slate-200"
+                    className={embedded ? "h-12 w-12 shrink-0 rounded-full object-cover ring-1 ring-slate-200" : "h-14 w-14 rounded-2xl object-cover ring-1 ring-slate-200"}
                     loading="lazy"
                     referrerPolicy="no-referrer"
                   />
                 ) : (
-                  <div className="h-14 w-14 rounded-2xl bg-slate-100 ring-1 ring-slate-200" />
+                  <div className={embedded ? "h-12 w-12 shrink-0 rounded-full bg-slate-100 ring-1 ring-slate-200" : "h-14 w-14 rounded-2xl bg-slate-100 ring-1 ring-slate-200"} />
                 )}
-                <div>
-                  <p className="text-base font-semibold text-slate-900">{sitter.name}</p>
-                  <p className="mt-1 text-sm text-slate-600">
+                <div className="min-w-0">
+                  <p className="truncate text-base font-semibold text-slate-900">{sitter.name}</p>
+                  <p className="truncate text-sm text-slate-600">
                     {sitter.city}
                     {sitter.postalCode ? ` · ${sitter.postalCode}` : ""}
                   </p>
-                  <p className="mt-2 text-sm text-slate-600 line-clamp-2">{sitter.bio}</p>
+                  {/* No bio in the embedded recap — the user just came from the
+                      fiche; keep the booking sheet short + clean. */}
+                  {embedded ? null : <p className="mt-2 text-sm text-slate-600 line-clamp-2">{sitter.bio}</p>}
                 </div>
               </div>
             </div>
@@ -2541,14 +2543,20 @@ export default function ReservationClient({
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-semibold text-slate-900">Total : CHF {summary ? summary.total.toFixed(2) : "—"}</p>
             <p className="truncate text-xs text-slate-600">
-              {summary?.quantityLabel || "Service à définir"}
+              {/* When a service is already selected, don't say "Service à
+                  définir" — the missing bit is the time slot (shown above). */}
+              {summary?.quantityLabel || selectedService || "Service à définir"}
             </p>
           </div>
           <button
             type="button"
             disabled={submitting}
             onClick={() => void onContinue()}
-            className="inline-flex shrink-0 items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-6 py-3 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition hover:bg-[var(--dogshift-blue-hover)] disabled:cursor-not-allowed disabled:opacity-60"
+            className={
+              embedded
+                ? "inline-flex shrink-0 items-center justify-center rounded-full bg-[#7c3aed] px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[#6d28d9] disabled:cursor-not-allowed disabled:opacity-60"
+                : "inline-flex shrink-0 items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-6 py-3 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition hover:bg-[var(--dogshift-blue-hover)] disabled:cursor-not-allowed disabled:opacity-60"
+            }
           >
             {submitting ? "Redirection…" : "Continuer"}
           </button>
