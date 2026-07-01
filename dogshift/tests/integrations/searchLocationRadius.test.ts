@@ -133,6 +133,18 @@ test("NativeMapHome: the whole browse → fiche → booking flow lives in the po
   assert.match(src, /import\("@\/app\/\(marketing\)\/sitter\/\[sitterId\]\/reservation\/reservation-client"\)/, "ReservationClient must be lazy-loaded.");
 });
 
+test("NativeMapHome fiche: rating opens reviews, photo opens a lightbox", () => {
+  const src = readFileSync(join(process.cwd(), "components/native/NativeMapHome.tsx"), "utf8");
+  // Rating is a button that opens the reviews sheet.
+  assert.match(src, /onClick=\{openReviews\}/, "The rating must be tappable to open reviews.");
+  assert.match(src, /const openReviews = useCallback[\s\S]*?\/api\/sitters\/\$\{sitterId\}/, "openReviews must fetch the sitter's reviews.");
+  assert.match(src, /\{reviewsOpen && \(/, "There must be a reviews sheet.");
+  assert.match(src, /reviewsList\.map/, "The reviews sheet must render the fetched reviews.");
+  // Photo is a button that opens a lightbox.
+  assert.match(src, /onClick=\{\(\) => setPhotoOpen\(true\)\}/, "The fiche photo must be tappable.");
+  assert.match(src, /\{photoOpen && detailSitter && \([\s\S]*?max-h-\[80vh\]/, "Tapping the photo must open a full-size lightbox.");
+});
+
 test("ReservationClient supports an embedded (in-popup) mode", () => {
   const src = readFileSync(join(process.cwd(), "app/(marketing)/sitter/[sitterId]/reservation/reservation-client.tsx"), "utf8");
   // Additive props so the exact same flow renders inside the native popup.
