@@ -142,4 +142,9 @@ test("ReservationClient supports an embedded (in-popup) mode", () => {
   assert.match(src, /embedded \? null : \([\s\S]*?Retour à l/, "Embedded mode must hide the page chrome.");
   // Params fall back to initialParams when there's no URL.
   assert.match(src, /initialParams\?\.service \?\? searchParams\.get\("service"\)/, "It must read seeded params before the URL.");
+  // Embedded polish: round photo, no bio in the recap, purple CTA, honest label.
+  assert.match(src, /embedded \? "h-12 w-12 shrink-0 rounded-full/, "Embedded recap photo must be a circle.");
+  assert.match(src, /embedded \? null : <p className="mt-2 text-sm text-slate-600 line-clamp-2">\{sitter\.bio\}/, "Embedded recap must drop the bio.");
+  assert.match(src, /embedded\s*\n?\s*\? "inline-flex shrink-0 items-center justify-center rounded-full bg-\[#7c3aed\]/, "Embedded CTA must be purple.");
+  assert.match(src, /summary\?\.quantityLabel \|\| selectedService \|\| "Service à définir"/, "The total label must show the selected service instead of 'Service à définir'.");
 });
