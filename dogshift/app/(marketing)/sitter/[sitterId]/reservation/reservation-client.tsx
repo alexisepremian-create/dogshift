@@ -1999,7 +1999,7 @@ export default function ReservationClient({
             </div>
 
             {embedded ? null : (
-            <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.12)] sm:p-8">
+            <div className={embedded ? "rounded-3xl border border-slate-200 bg-white p-4" : "rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.12)] sm:p-8"}>
               <p className="text-sm font-semibold text-slate-900">Dates</p>
               {unit === "DAILY" ? (
                 <div className="mt-4 grid gap-3 sm:grid-cols-2">
@@ -2051,6 +2051,9 @@ export default function ReservationClient({
             </div>
             )}
 
+            {/* Embedded: the Service card is dropped — the service was already
+                chosen on the fiche and is shown in the recap above. */}
+            {embedded ? null : (
             <div className={embedded ? "rounded-3xl border border-slate-200 bg-white p-4" : "rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.12)] sm:p-8"}>
               <p className="text-sm font-semibold text-slate-900">Service</p>
               {/* Embedded: no "Services disponibles le … selon les disponibilités"
@@ -2144,6 +2147,7 @@ export default function ReservationClient({
                 )}
               </div>
             </div>
+            )}
 
             {shouldRenderHourlyDetails ? (
               <div
@@ -2152,12 +2156,12 @@ export default function ReservationClient({
                   if (hourlyDetailsOpen) return;
                   setShouldRenderHourlyDetails(false);
                 }}
-                className={`rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.12)] transition-opacity duration-250 ease-in-out sm:p-8 ${
+                className={`${embedded ? "rounded-3xl border border-slate-200 bg-white p-4" : "rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.12)] sm:p-8"} transition-opacity duration-250 ease-in-out ${
                   hourlyDetailsOpen ? "opacity-100" : "pointer-events-none opacity-0"
                 }`}
               >
                 <p className="text-sm font-semibold text-slate-900">Détails (horaire)</p>
-                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                <div className={embedded ? "mt-3 grid grid-cols-2 gap-2" : "mt-4 grid gap-3 sm:grid-cols-2"}>
                   <DogShiftTimePicker
                     id="start_time"
                     label="Heure de début"
@@ -2187,16 +2191,25 @@ export default function ReservationClient({
                   />
                 </div>
 
-                <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                  <p className="text-xs font-semibold text-slate-600">Heure de fin</p>
-                  <p className="mt-1 text-sm font-semibold text-slate-900">{endTime ?? "—"}</p>
-                </div>
+                {embedded ? (
+                  <div className="mt-2 flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2">
+                    <span className="text-xs font-semibold text-slate-600">Heure de fin</span>
+                    <span className="text-sm font-semibold text-slate-900">{endTime ?? "—"}</span>
+                  </div>
+                ) : (
+                  <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                    <p className="text-xs font-semibold text-slate-600">Heure de fin</p>
+                    <p className="mt-1 text-sm font-semibold text-slate-900">{endTime ?? "—"}</p>
+                  </div>
+                )}
 
                 {isTodaySelected && hasLeadTimeOnlyForToday ? (
                   <p className="mt-4 text-sm font-medium text-rose-700">Aucun créneau disponible pour aujourd’hui.</p>
                 ) : null}
 
-                {dateStart && !startTime && !hasLeadTimeOnlyForToday ? (
+                {/* Embedded: no amber "Sélectionne …" banners — the greyed-out
+                    "Continuer" button already conveys it (no wall of text). */}
+                {embedded ? null : dateStart && !startTime && !hasLeadTimeOnlyForToday ? (
                   <p className="mt-3 flex items-start gap-1.5 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs text-amber-800">
                     <svg className="mt-px h-3.5 w-3.5 shrink-0 text-amber-500" viewBox="0 0 16 16" fill="currentColor" aria-hidden>
                       <path fillRule="evenodd" d="M8 1.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13ZM0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8Zm8-2.5a.75.75 0 0 1 .75.75v3a.75.75 0 0 1-1.5 0v-3A.75.75 0 0 1 8 5.5Zm0 6.5a1 1 0 1 1 0-2 1 1 0 0 1 0 2Z" clipRule="evenodd" />
@@ -2216,7 +2229,7 @@ export default function ReservationClient({
             ) : null}
 
             {/* Lieu de garde */}
-            <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.12)] sm:p-8">
+            <div className={embedded ? "rounded-3xl border border-slate-200 bg-white p-4" : "rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.12)] sm:p-8"}>
               <p className="text-sm font-semibold text-slate-900">Lieu de garde</p>
               <p className="mt-1 text-sm text-slate-600">Où se déroulera la prestation ?</p>
 
@@ -2321,7 +2334,7 @@ export default function ReservationClient({
 
             {/* Number of dogs picker — shown when sitter has a maxDogs limit */}
             {sitter.acceptanceCriteria?.maxDogs != null && sitter.acceptanceCriteria.maxDogs > 0 && (
-              <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.12)] sm:p-8">
+              <div className={embedded ? "rounded-3xl border border-slate-200 bg-white p-4" : "rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.12)] sm:p-8"}>
                 <p className="text-sm font-semibold text-slate-900">Nombre de chiens</p>
                 <p className="mt-1 text-xs text-slate-500">
                   Ce sitter accepte au maximum {sitter.acceptanceCriteria.maxDogs} chien{sitter.acceptanceCriteria.maxDogs > 1 ? "s" : ""} simultanément.
@@ -2365,7 +2378,7 @@ export default function ReservationClient({
             )}
 
             {/* Dog picker + phone */}
-            <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.12)] sm:p-8">
+            <div className={embedded ? "rounded-3xl border border-slate-200 bg-white p-4" : "rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.12)] sm:p-8"}>
               <p className="text-sm font-semibold text-slate-900">Votre chien</p>
               <p className="mt-1 text-sm text-slate-500">Le sitter recevra la fiche complète de votre chien dans sa notification.</p>
 
@@ -2479,7 +2492,7 @@ export default function ReservationClient({
             </div>
 
 
-            <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.12)] sm:p-8">
+            <div className={embedded ? "rounded-3xl border border-slate-200 bg-white p-4" : "rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.12)] sm:p-8"}>
               <p className="text-sm font-semibold text-slate-900">Message (optionnel)</p>
               <textarea
                 value={message}
@@ -2492,7 +2505,7 @@ export default function ReservationClient({
           </section>
 
           <aside className="lg:sticky lg:top-8 lg:self-start">
-            <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.12)] sm:p-8">
+            <div className={embedded ? "rounded-3xl border border-slate-200 bg-white p-4" : "rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.12)] sm:p-8"}>
               <p className="text-sm font-semibold text-slate-900">Récap</p>
 
               <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-5">

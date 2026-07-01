@@ -174,4 +174,11 @@ test("ReservationClient supports an embedded (in-popup) mode", () => {
   assert.match(src, /\{selectedService \? \([\s\S]*?<PawPrint[\s\S]*?\{selectedService\}/, "Embedded recap must show the chosen service (purple, paw icon).");
   // The last-minute pill only shows once availability is loaded (with the service).
   assert.match(src, /\(!embedded \|\| selectedDateStatusLoaded\) && lastMinuteEnabled === true/, "The last-minute pill must appear with the service, not before.");
+  // Compact pass: Service card dropped when embedded; hourly time+duration side by
+  // side; amber "Sélectionne …" banners removed (greyed button conveys it); all
+  // remaining cards use the compact p-4 padding.
+  assert.match(src, /Embedded: the Service card is dropped[\s\S]{0,120}?\{embedded \? null : \(/, "The Service card must be dropped when embedded.");
+  assert.match(src, /embedded \? "mt-3 grid grid-cols-2 gap-2" : "mt-4 grid gap-3 sm:grid-cols-2"/, "Hourly details must be 2 boxes side by side when embedded.");
+  assert.match(src, /embedded \? null : dateStart && !startTime && !hasLeadTimeOnlyForToday \?/, "The amber 'sélectionne une heure' banner must be removed when embedded.");
+  assert.match(src, /embedded \? "rounded-3xl border border-slate-200 bg-white p-4"/, "Embedded cards must use the compact p-4 padding.");
 });
