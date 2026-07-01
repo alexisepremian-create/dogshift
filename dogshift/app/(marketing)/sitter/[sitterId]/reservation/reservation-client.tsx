@@ -8,7 +8,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Calendar, ChevronLeft, ChevronRight, Home, MapPin, Scissors, AlertTriangle } from "lucide-react";
+import { Calendar, ChevronLeft, ChevronRight, Home, MapPin, Scissors, AlertTriangle, Check } from "lucide-react";
 
 import { useMaintenance } from "@/components/platform/MaintenanceProvider";
 import { maintenanceBookingUserMessage } from "@/lib/platform/maintenanceConstants";
@@ -1968,13 +1968,26 @@ export default function ReservationClient({
                     {sitter.city}
                     {sitter.postalCode ? ` · ${sitter.postalCode}` : ""}
                   </p>
-                  {/* No bio in the embedded recap — the user just came from the
-                      fiche; keep the booking sheet short + clean. */}
-                  {embedded ? null : <p className="mt-2 text-sm text-slate-600 line-clamp-2">{sitter.bio}</p>}
+                  {/* Embedded: the date was already picked in the previous step,
+                      so show it here (static) instead of a separate Dates card
+                      with a calendar. No bio (the user came from the fiche). */}
+                  {embedded ? (
+                    dateStart ? (
+                      <p className="mt-0.5 flex items-center gap-1 text-sm font-medium text-[#7c3aed]">
+                        <Calendar className="h-3.5 w-3.5" />
+                        {unit === "DAILY" && dateEnd && dateEnd !== dateStart
+                          ? `${formatDisplayDate(dateStart)} → ${formatDisplayDate(dateEnd)}`
+                          : formatDisplayDate(dateStart)}
+                      </p>
+                    ) : null
+                  ) : (
+                    <p className="mt-2 text-sm text-slate-600 line-clamp-2">{sitter.bio}</p>
+                  )}
                 </div>
               </div>
             </div>
 
+            {embedded ? null : (
             <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.12)] sm:p-8">
               <p className="text-sm font-semibold text-slate-900">Dates</p>
               {unit === "DAILY" ? (
@@ -2025,10 +2038,14 @@ export default function ReservationClient({
                 </div>
               )}
             </div>
+            )}
 
-            <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.12)] sm:p-8">
+            <div className={embedded ? "rounded-3xl border border-slate-200 bg-white p-4" : "rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.12)] sm:p-8"}>
               <p className="text-sm font-semibold text-slate-900">Service</p>
-              {effectiveSelectedDate && selectedDateStatusLoaded ? (
+              {/* Embedded: no "Services disponibles le … selon les disponibilités"
+                  subtitle — it only appeared AFTER the ~1-2s availability fetch,
+                  which read as a lag. The service options themselves are instant. */}
+              {!embedded && effectiveSelectedDate && selectedDateStatusLoaded ? (
                 <p className="mt-2 text-sm text-slate-600">
                   Services disponibles le {formatDisplayDate(effectiveSelectedDate)} selon les disponibilités du sitter.
                 </p>
@@ -2058,26 +2075,39 @@ export default function ReservationClient({
                       }}
                       className={
                         selected
-                          ? "flex w-full items-center justify-between rounded-2xl border border-[var(--dogshift-blue)] bg-[color-mix(in_srgb,var(--dogshift-blue),white_92%)] px-4 py-3 text-left text-sm font-semibold text-[var(--dogshift-blue)]"
+                          ? embedded
+                            ? "flex w-full items-center justify-between rounded-xl border border-[#7c3aed] bg-[#7c3aed]/5 px-3.5 py-2.5 text-left text-sm font-semibold text-[#7c3aed]"
+                            : "flex w-full items-center justify-between rounded-2xl border border-[var(--dogshift-blue)] bg-[color-mix(in_srgb,var(--dogshift-blue),white_92%)] px-4 py-3 text-left text-sm font-semibold text-[var(--dogshift-blue)]"
                           : selectable
-                            ? "flex w-full items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left text-sm font-semibold text-slate-900 transition hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)]"
-                            : "flex w-full items-center justify-between rounded-2xl border border-slate-200 bg-slate-100 px-4 py-3 text-left text-sm font-semibold text-slate-500"
+                            ? embedded
+                              ? "flex w-full items-center justify-between rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-left text-sm font-semibold text-slate-900 transition hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#7c3aed]"
+                              : "flex w-full items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left text-sm font-semibold text-slate-900 transition hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)]"
+                            : embedded
+                              ? "flex w-full items-center justify-between rounded-xl border border-slate-200 bg-slate-100 px-3.5 py-2.5 text-left text-sm font-semibold text-slate-500"
+                              : "flex w-full items-center justify-between rounded-2xl border border-slate-200 bg-slate-100 px-4 py-3 text-left text-sm font-semibold text-slate-500"
                       }
                     >
                       <span className="flex items-center gap-2">
-                        <span
-                          className={
-                            selected
-                              ? "inline-flex h-4 w-4 items-center justify-center rounded-full border-2 border-[var(--dogshift-blue)]"
-                              : "inline-flex h-4 w-4 items-center justify-center rounded-full border-2 border-slate-300"
-                          }
-                          aria-hidden="true"
-                        >
-                          {selected ? <span className="h-2 w-2 rounded-full bg-[var(--dogshift-blue)]" /> : null}
-                        </span>
+                        {embedded ? (
+                          // Clean purple check instead of the blue radio dot.
+                          <span className={selected ? "inline-flex h-4 w-4 items-center justify-center text-[#7c3aed]" : "inline-flex h-4 w-4 items-center justify-center"} aria-hidden="true">
+                            {selected ? <Check className="h-4 w-4" strokeWidth={3} /> : null}
+                          </span>
+                        ) : (
+                          <span
+                            className={
+                              selected
+                                ? "inline-flex h-4 w-4 items-center justify-center rounded-full border-2 border-[var(--dogshift-blue)]"
+                                : "inline-flex h-4 w-4 items-center justify-center rounded-full border-2 border-slate-300"
+                            }
+                            aria-hidden="true"
+                          >
+                            {selected ? <span className="h-2 w-2 rounded-full bg-[var(--dogshift-blue)]" /> : null}
+                          </span>
+                        )}
                         {row.service}
                       </span>
-                      <span className={selected ? "text-[var(--dogshift-blue)]" : selectable ? "text-slate-900" : "text-slate-500"}>
+                      <span className={selected ? (embedded ? "text-[#7c3aed]" : "text-[var(--dogshift-blue)]") : selectable ? "text-slate-900" : "text-slate-500"}>
                         {selectable ? `CHF ${row.unitPrice}${unitLabel}` : "Prix sur demande"}
                       </span>
                     </button>
