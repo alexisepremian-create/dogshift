@@ -244,6 +244,11 @@ export default function NativeMapHome() {
   const [searchPanelView, setSearchPanelView] = useState<"main" | "filters" | "results" | "detail" | "booking">("main");
   // The sitter whose fiche is shown inside the popup ("detail" view).
   const [detailSitter, setDetailSitter] = useState<UiSitter | null>(null);
+  // Tapping the rating opens a reviews sheet; tapping the photo opens a lightbox.
+  const [reviewsOpen, setReviewsOpen] = useState(false);
+  const [reviewsList, setReviewsList] = useState<Array<{ authorName: string; rating: number; comment?: string; createdAt: string }>>([]);
+  const [reviewsLoading, setReviewsLoading] = useState(false);
+  const [photoOpen, setPhotoOpen] = useState(false);
   // In-popup reservation overlay (renders the real ReservationClient).
   const [reservationOpen, setReservationOpen] = useState(false);
   const [reservationDto, setReservationDto] = useState<ReservationSitterDto | null>(null);
@@ -374,6 +379,33 @@ export default function NativeMapHome() {
     setSearchOpen(true);
     setSearchPanelView("detail");
   }, []);
+
+  // Fetch + open the sitter's reviews in a sheet (from the fiche rating tap).
+  const openReviews = useCallback(() => {
+    if (!detailSitter) return;
+    setReviewsOpen(true);
+    setReviewsLoading(true);
+    const sitterId = detailSitter.id;
+    void (async () => {
+      try {
+        const res = await fetch(`/api/sitters/${sitterId}`, { cache: "no-store" });
+        const payload = (await res.json()) as { ok?: boolean; sitter?: { reviews?: Array<Record<string, unknown>> } };
+        const raw = Array.isArray(payload?.sitter?.reviews) ? payload.sitter!.reviews! : [];
+        setReviewsList(
+          raw.map((r) => ({
+            authorName: typeof r.authorName === "string" ? r.authorName : "Propriétaire",
+            rating: typeof r.rating === "number" ? r.rating : 0,
+            comment: typeof r.comment === "string" ? r.comment : undefined,
+            createdAt: typeof r.createdAt === "string" ? r.createdAt : "",
+          })),
+        );
+      } catch {
+        setReviewsList([]);
+      } finally {
+        setReviewsLoading(false);
+      }
+    })();
+  }, [detailSitter]);
 
   // Open the reservation flow (slots + recap + booking) INSIDE the app, in a
   // full-screen overlay that renders the real ReservationClient. Only the final
@@ -1325,14 +1357,20 @@ export default function NativeMapHome() {
                 {detailSitter && (
                   <>
                     <div className="flex items-center gap-3">
-                      <div className="relative shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => setPhotoOpen(true)}
+                        className="relative shrink-0 active:scale-95"
+                        aria-label="Voir la photo en grand"
+                        style={{ touchAction: "manipulation" }}
+                      >
                         <img src={detailSitter.avatar} alt="" className="h-16 w-16 rounded-full object-cover ring-1 ring-slate-200" />
                         {detailSitter.verified && (
                           <span className="absolute -bottom-0.5 -right-0.5 flex h-5 w-5 items-center justify-center rounded-full border-2 border-white bg-emerald-500 text-white shadow-sm">
                             <Check className="h-3 w-3" strokeWidth={3} aria-hidden="true" />
                           </span>
                         )}
-                      </div>
+                      </button>
                       <div className="min-w-0">
                         <div className="truncate text-lg font-bold text-slate-900">{detailSitter.name}</div>
                         <div className="flex items-center gap-1 truncate text-sm text-slate-500">
@@ -1344,11 +1382,17 @@ export default function NativeMapHome() {
 
                     <div className="mt-3 flex flex-wrap items-center gap-2">
                       {detailSitter.reviews > 0 ? (
-                        <span className="inline-flex items-center gap-1 text-sm text-slate-700">
+                        <button
+                          type="button"
+                          onClick={openReviews}
+                          className="inline-flex items-center gap-1 text-sm text-slate-700 active:opacity-70"
+                          aria-label="Voir les avis"
+                          style={{ touchAction: "manipulation" }}
+                        >
                           <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
                           <span className="font-semibold text-slate-900">{detailSitter.rating?.toFixed(1)}</span>
-                          <span className="text-slate-400">({detailSitter.reviews})</span>
-                        </span>
+                          <span className="text-slate-400 underline underline-offset-2">({detailSitter.reviews} avis)</span>
+                        </button>
                       ) : (
                         <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-500">Nouveau sur DogShift</span>
                       )}
@@ -1555,6 +1599,77 @@ export default function NativeMapHome() {
             </div>
           </div>
         </>
+      )}
+
+      {/* ── Reviews sheet (opened by tapping the rating on the fiche) ─────── */}
+      {reviewsOpen && (
+        <>
+          <button
+            type="button"
+            aria-label="Fermer les avis"
+            onClick={() => setReviewsOpen(false)}
+            className="fixed inset-0 z-[1002] bg-black/30"
+            style={{ touchAction: "manipulation" }}
+          />
+          <div
+            className="fixed left-2 right-2 z-[1003] flex flex-col overflow-hidden rounded-3xl bg-white shadow-[0_20px_60px_rgba(2,6,23,0.30)]"
+            style={{
+              top: "calc(env(safe-area-inset-top, 0px) + 70px)",
+              bottom: "calc(max(var(--ds-bottom-nav-h, 0px), 88px) + 8px)",
+            }}
+          >
+            <div className="flex shrink-0 items-center border-b border-slate-100 px-4 py-3">
+              <button
+                type="button"
+                onClick={() => setReviewsOpen(false)}
+                className="flex items-center gap-1.5 text-base font-semibold text-slate-900 active:opacity-70"
+                aria-label="Retour à la fiche"
+                style={{ touchAction: "manipulation" }}
+              >
+                <ArrowLeft className="h-4 w-4" />
+                Avis{detailSitter && detailSitter.reviews > 0 ? ` (${detailSitter.reviews})` : ""}
+              </button>
+            </div>
+            <div className="flex-1 space-y-2.5 overflow-y-auto px-5 py-4">
+              {reviewsLoading ? (
+                <div className="py-10 text-center text-sm text-slate-500">Chargement des avis…</div>
+              ) : reviewsList.length === 0 ? (
+                <div className="py-10 text-center text-sm text-slate-500">Pas encore d&apos;avis.</div>
+              ) : (
+                reviewsList.map((r, i) => (
+                  <div key={i} className="rounded-2xl border border-slate-200 p-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="truncate text-sm font-semibold text-slate-900">{r.authorName}</span>
+                      <span className="flex shrink-0 items-center gap-0.5 text-xs font-medium text-slate-700">
+                        <Star className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400" />
+                        {r.rating.toFixed(1)}
+                      </span>
+                    </div>
+                    {r.comment ? <p className="mt-1 text-sm leading-relaxed text-slate-600">{r.comment}</p> : null}
+                    {r.createdAt ? (
+                      <p className="mt-1 text-xs text-slate-400">
+                        {new Date(r.createdAt).toLocaleDateString("fr-CH", { day: "numeric", month: "long", year: "numeric" })}
+                      </p>
+                    ) : null}
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* ── Photo lightbox (tap the fiche avatar) ────────────────────────── */}
+      {photoOpen && detailSitter && (
+        <button
+          type="button"
+          onClick={() => setPhotoOpen(false)}
+          aria-label="Fermer la photo"
+          className="fixed inset-0 z-[1004] flex items-center justify-center bg-black/80 p-8"
+          style={{ touchAction: "manipulation" }}
+        >
+          <img src={detailSitter.avatar} alt={detailSitter.name} className="max-h-[80vh] max-w-full rounded-2xl object-contain shadow-2xl" />
+        </button>
       )}
 
       {/* ── Filter popup ───────────────────────────────────────────────── */}
