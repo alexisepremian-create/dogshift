@@ -8,7 +8,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Calendar, ChevronLeft, ChevronRight, Home, MapPin, Scissors, AlertTriangle, Check } from "lucide-react";
+import { Calendar, ChevronLeft, ChevronRight, Home, MapPin, Scissors, AlertTriangle, Check, PawPrint } from "lucide-react";
 
 import { useMaintenance } from "@/components/platform/MaintenanceProvider";
 import { maintenanceBookingUserMessage } from "@/lib/platform/maintenanceConstants";
@@ -1964,22 +1964,33 @@ export default function ReservationClient({
                 )}
                 <div className="min-w-0">
                   <p className="truncate text-base font-semibold text-slate-900">{sitter.name}</p>
-                  <p className="truncate text-sm text-slate-600">
-                    {sitter.city}
-                    {sitter.postalCode ? ` · ${sitter.postalCode}` : ""}
+                  <p className="flex items-center gap-1 truncate text-sm text-slate-600">
+                    {embedded ? <MapPin className="h-3.5 w-3.5 shrink-0 text-slate-400" /> : null}
+                    <span className="truncate">
+                      {sitter.city}
+                      {sitter.postalCode ? ` · ${sitter.postalCode}` : ""}
+                    </span>
                   </p>
-                  {/* Embedded: the date was already picked in the previous step,
-                      so show it here (static) instead of a separate Dates card
-                      with a calendar. No bio (the user came from the fiche). */}
+                  {/* Embedded: the date + service were already picked in the
+                      previous steps, so show them here (static, compact) instead
+                      of a separate Dates card. No bio (the user came from the fiche). */}
                   {embedded ? (
-                    dateStart ? (
-                      <p className="mt-0.5 flex items-center gap-1 text-sm font-medium text-[#7c3aed]">
-                        <Calendar className="h-3.5 w-3.5" />
-                        {unit === "DAILY" && dateEnd && dateEnd !== dateStart
-                          ? `${formatDisplayDate(dateStart)} → ${formatDisplayDate(dateEnd)}`
-                          : formatDisplayDate(dateStart)}
-                      </p>
-                    ) : null
+                    <>
+                      {dateStart ? (
+                        <p className="mt-0.5 flex items-center gap-1 text-sm font-medium text-[#7c3aed]">
+                          <Calendar className="h-3.5 w-3.5 shrink-0" />
+                          {unit === "DAILY" && dateEnd && dateEnd !== dateStart
+                            ? `${formatDisplayDate(dateStart)} → ${formatDisplayDate(dateEnd)}`
+                            : formatDisplayDate(dateStart)}
+                        </p>
+                      ) : null}
+                      {selectedService ? (
+                        <p className="mt-0.5 flex items-center gap-1 text-sm font-medium text-[#7c3aed]">
+                          <PawPrint className="h-3.5 w-3.5 shrink-0" />
+                          {selectedService}
+                        </p>
+                      ) : null}
+                    </>
                   ) : (
                     <p className="mt-2 text-sm text-slate-600 line-clamp-2">{sitter.bio}</p>
                   )}
@@ -2050,7 +2061,10 @@ export default function ReservationClient({
                   Services disponibles le {formatDisplayDate(effectiveSelectedDate)} selon les disponibilités du sitter.
                 </p>
               ) : null}
-              {lastMinuteEnabled === true ? (
+              {/* Embedded: the last-minute pill must appear WITH the service list,
+                  not before it — so it's gated on the same availability load as
+                  the service rows (skeleton until both are ready). */}
+              {(!embedded || selectedDateStatusLoaded) && lastMinuteEnabled === true ? (
                 <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-900">
                   Réservation de dernière minute disponible
                 </div>

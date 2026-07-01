@@ -162,11 +162,16 @@ test("ReservationClient supports an embedded (in-popup) mode", () => {
   assert.match(src, /summary\?\.quantityLabel \|\| selectedService \|\| "Service à définir"/, "The total label must show the selected service instead of 'Service à définir'.");
   // Embedded: date shown statically in the recap, the interactive Dates card is
   // hidden, no availability-lag subtitle, and the service radio is a purple check.
-  assert.match(src, /embedded \? \(\s*dateStart \?[\s\S]*?formatDisplayDate\(dateStart\)/, "Embedded recap must show the chosen date statically.");
+  assert.match(src, /embedded \? \(\s*<>[\s\S]*?dateStart \?[\s\S]*?formatDisplayDate\(dateStart\)/, "Embedded recap must show the chosen date statically.");
   assert.match(src, /\{embedded \? null : \(\s*<div[^>]*>\s*<p className="text-sm font-semibold text-slate-900">Dates<\/p>/, "The interactive Dates card must be hidden when embedded.");
   assert.match(src, /!embedded && effectiveSelectedDate && selectedDateStatusLoaded \?/, "The availability subtitle must be hidden when embedded (no load flash).");
   assert.match(src, /embedded \? \(\s*\/\/ Clean purple check[\s\S]*?<Check className="h-4 w-4" strokeWidth=\{3\}/, "The embedded service selector must use a purple check, not the blue radio.");
   // No "all services then filtered" flash: gate the rows behind a skeleton until
   // availability loads.
   assert.match(src, /embedded && !selectedDateStatusLoaded \?[\s\S]*?animate-pulse rounded-xl bg-slate-100/, "Embedded service list must show a skeleton until availability loads (no flash of all services).");
+  // Recap: pin next to the city + the chosen service (purple, paw icon) under the date.
+  assert.match(src, /embedded \? <MapPin className="h-3\.5 w-3\.5 shrink-0 text-slate-400" \/> : null/, "Embedded recap must show a pin next to the city.");
+  assert.match(src, /\{selectedService \? \([\s\S]*?<PawPrint[\s\S]*?\{selectedService\}/, "Embedded recap must show the chosen service (purple, paw icon).");
+  // The last-minute pill only shows once availability is loaded (with the service).
+  assert.match(src, /\(!embedded \|\| selectedDateStatusLoaded\) && lastMinuteEnabled === true/, "The last-minute pill must appear with the service, not before.");
 });
