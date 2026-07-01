@@ -518,16 +518,16 @@ function DogShiftTimePicker({
         <>
           <div className="fixed inset-0 z-[1100] bg-black/30" onClick={() => onOpenChange(false)} aria-hidden="true" />
           <div
-            className="fixed inset-x-0 bottom-0 z-[1101] rounded-t-3xl border-t border-slate-200 bg-white p-4 shadow-[0_-20px_60px_rgba(2,6,23,0.25)]"
+            className="fixed inset-x-0 bottom-0 z-[1101] rounded-t-3xl border-t border-white/40 bg-white/80 p-4 shadow-[0_-20px_60px_rgba(2,6,23,0.25)] backdrop-blur-2xl"
             style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 16px)" }}
           >
-            <div className="mx-auto mb-3 h-1.5 w-10 rounded-full bg-slate-200" />
+            <div className="mx-auto mb-3 h-1.5 w-10 rounded-full bg-slate-300" />
             <div className="flex items-center justify-between pb-1">
               <p className="text-base font-semibold text-slate-900">{label}</p>
               <button
                 type="button"
                 onClick={() => onOpenChange(false)}
-                className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-slate-600 active:scale-95"
+                className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-200/70 text-slate-600 active:scale-95"
                 aria-label="Fermer"
               >
                 ✕
@@ -536,8 +536,10 @@ function DogShiftTimePicker({
             <p className="pb-2 text-[11px] font-medium text-slate-400">
               {hasSlots ? "Heures indisponibles grisées" : "Aucun horaire disponible"}
             </p>
-            <div className="max-h-[42vh] overflow-y-auto">
-              <div className="grid grid-cols-3 gap-1.5">
+            {/* Single scrollable column (iOS-style) with a subtle non-purple
+                highlight + check on the selected row. */}
+            <div className="max-h-[46vh] overflow-y-auto">
+              <div className="flex flex-col">
                 {normalizedSlots.map((slot) => {
                   const selected = slot.time === draftValue;
                   return (
@@ -550,16 +552,17 @@ function DogShiftTimePicker({
                         setDraftValue(slot.time);
                       }}
                       className={
-                        "flex w-full items-center justify-center rounded-xl px-2 py-2.5 text-sm font-semibold transition disabled:cursor-not-allowed " +
+                        "flex w-full items-center justify-between rounded-xl px-4 py-3 text-base font-semibold transition disabled:cursor-not-allowed " +
                         (selected
-                          ? "bg-[#7c3aed] text-white"
+                          ? "bg-slate-900/5 text-slate-900"
                           : slot.available
-                            ? "text-slate-900 active:bg-slate-100"
+                            ? "text-slate-900 active:bg-slate-900/5"
                             : "text-slate-300 line-through")
                       }
                       aria-disabled={!slot.available}
                     >
-                      {slot.time}
+                      <span>{slot.time}</span>
+                      {selected ? <Check className="h-4 w-4 text-slate-700" strokeWidth={3} aria-hidden="true" /> : null}
                     </button>
                   );
                 })}
@@ -661,23 +664,25 @@ function DogShiftDurationPicker({
         <>
           <div className="fixed inset-0 z-[1100] bg-black/30" onClick={() => onOpenChange(false)} aria-hidden="true" />
           <div
-            className="fixed inset-x-0 bottom-0 z-[1101] rounded-t-3xl border-t border-slate-200 bg-white p-4 shadow-[0_-20px_60px_rgba(2,6,23,0.25)]"
+            className="fixed inset-x-0 bottom-0 z-[1101] rounded-t-3xl border-t border-white/40 bg-white/80 p-4 shadow-[0_-20px_60px_rgba(2,6,23,0.25)] backdrop-blur-2xl"
             style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 16px)" }}
           >
-            <div className="mx-auto mb-3 h-1.5 w-10 rounded-full bg-slate-200" />
+            <div className="mx-auto mb-3 h-1.5 w-10 rounded-full bg-slate-300" />
             <div className="flex items-center justify-between pb-2">
               <p className="text-base font-semibold text-slate-900">{label}</p>
               <button
                 type="button"
                 onClick={() => onOpenChange(false)}
-                className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-slate-600 active:scale-95"
+                className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-200/70 text-slate-600 active:scale-95"
                 aria-label="Fermer"
               >
                 ✕
               </button>
             </div>
-            <div className="max-h-[42vh] overflow-y-auto">
-              <div className="grid grid-cols-3 gap-1.5">
+            {/* Single scrollable column (iOS-style) with a subtle non-purple
+                highlight + check on the selected row. */}
+            <div className="max-h-[46vh] overflow-y-auto">
+              <div className="flex flex-col">
                 {options.map((option) => {
                   const selected = option.hours === value;
                   return (
@@ -691,15 +696,17 @@ function DogShiftDurationPicker({
                         onOpenChange(false);
                       }}
                       className={
-                        "flex w-full items-center justify-center rounded-xl px-2 py-2.5 text-sm font-semibold transition disabled:cursor-not-allowed " +
+                        "flex w-full items-center justify-between rounded-xl px-4 py-3 text-base font-semibold transition disabled:cursor-not-allowed " +
                         (selected
-                          ? "bg-[#7c3aed] text-white"
+                          ? "bg-slate-900/5 text-slate-900"
                           : option.available
-                            ? "text-slate-900 active:bg-slate-100"
+                            ? "text-slate-900 active:bg-slate-900/5"
                             : "text-slate-300 line-through")
                       }
+                      aria-disabled={!option.available}
                     >
-                      {formatDurationHours(option.hours)}
+                      <span>{formatDurationHours(option.hours)}</span>
+                      {selected ? <Check className="h-4 w-4 text-slate-700" strokeWidth={3} aria-hidden="true" /> : null}
                     </button>
                   );
                 })}
@@ -2295,7 +2302,12 @@ export default function ReservationClient({
                     onChange={(e) => setOwnerStreet(e.target.value)}
                     placeholder="Rue et numéro — ex. Rue du Rhône 12"
                     autoComplete="address-line1"
-                    className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition focus:border-[var(--dogshift-blue)] focus:ring-4 focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_85%)]"
+                    className={
+                      "w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition " +
+                      (embedded
+                        ? "focus:border-[#7c3aed] focus:ring-4 focus:ring-[#7c3aed]/15"
+                        : "focus:border-[var(--dogshift-blue)] focus:ring-4 focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_85%)]")
+                    }
                   />
 
                   {/* NPA + Ville côte à côte */}
@@ -2307,7 +2319,12 @@ export default function ReservationClient({
                       placeholder="NPA — ex. 1204"
                       autoComplete="postal-code"
                       maxLength={10}
-                      className="w-28 shrink-0 rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition focus:border-[var(--dogshift-blue)] focus:ring-4 focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_85%)]"
+                      className={
+                        "w-28 shrink-0 rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition " +
+                        (embedded
+                          ? "focus:border-[#7c3aed] focus:ring-4 focus:ring-[#7c3aed]/15"
+                          : "focus:border-[var(--dogshift-blue)] focus:ring-4 focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_85%)]")
+                      }
                     />
                     <div className="relative flex-1">
                       <input
@@ -2316,7 +2333,12 @@ export default function ReservationClient({
                         onChange={(e) => setOwnerCity(e.target.value)}
                         placeholder="Ville — ex. Genève"
                         autoComplete="address-level2"
-                        className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition focus:border-[var(--dogshift-blue)] focus:ring-4 focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_85%)]"
+                        className={
+                          "w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition " +
+                          (embedded
+                            ? "focus:border-[#7c3aed] focus:ring-4 focus:ring-[#7c3aed]/15"
+                            : "focus:border-[var(--dogshift-blue)] focus:ring-4 focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_85%)]")
+                        }
                       />
                       {geocodingAddress && (
                         <div className="absolute right-3 top-1/2 -translate-y-1/2">
@@ -2387,7 +2409,9 @@ export default function ReservationClient({
             {/* Dog picker + phone */}
             <div className={embedded ? "rounded-3xl border border-slate-200 bg-white p-4" : "rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.12)] sm:p-8"}>
               <p className="text-sm font-semibold text-slate-900">Votre chien</p>
-              <p className="mt-1 text-sm text-slate-500">Le sitter recevra la fiche complète de votre chien dans sa notification.</p>
+              {embedded ? null : (
+                <p className="mt-1 text-sm text-slate-500">Le sitter recevra la fiche complète de votre chien dans sa notification.</p>
+              )}
 
               {dogsLoading ? (
                 <div className="mt-4 flex items-center gap-2 text-sm text-slate-500">
@@ -2395,17 +2419,28 @@ export default function ReservationClient({
                   Chargement…
                 </div>
               ) : dogs.length === 0 ? (
-                <div className="mt-4 rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-5 py-4">
-                  <p className="text-sm text-slate-600">Vous n&apos;avez pas encore ajouté de chien.</p>
+                embedded ? (
                   <a
                     href="/account/dogs"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="mt-2 inline-block text-sm font-semibold text-[var(--dogshift-blue)] underline underline-offset-2"
+                    className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-[#7c3aed] px-4 py-2 text-sm font-semibold text-white active:scale-95"
                   >
-                    Ajouter mon chien →
+                    Ajouter votre chien
                   </a>
-                </div>
+                ) : (
+                  <div className="mt-4 rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-5 py-4">
+                    <p className="text-sm text-slate-600">Vous n&apos;avez pas encore ajouté de chien.</p>
+                    <a
+                      href="/account/dogs"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-2 inline-block text-sm font-semibold text-[var(--dogshift-blue)] underline underline-offset-2"
+                    >
+                      Ajouter mon chien →
+                    </a>
+                  </div>
+                )
               ) : (
                 <div className="mt-4 flex flex-col gap-2">
                   {dogs.map((dog) => {
@@ -2511,6 +2546,7 @@ export default function ReservationClient({
             </div>
           </section>
 
+          {embedded ? null : (
           <aside className="lg:sticky lg:top-8 lg:self-start">
             <div className={embedded ? "rounded-3xl border border-slate-200 bg-white p-4" : "rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.12)] sm:p-8"}>
               <p className="text-sm font-semibold text-slate-900">Récap</p>
@@ -2594,6 +2630,7 @@ export default function ReservationClient({
               </p>
             </div>
           </aside>
+          )}
         </div>
       </main>
 
