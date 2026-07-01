@@ -2497,8 +2497,8 @@ export default function ReservationClient({
               <textarea
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
-                rows={4}
-                className="mt-4 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition focus:border-[var(--dogshift-blue)] focus:ring-4 focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_85%)]"
+                rows={embedded ? 2 : 4}
+                className={embedded ? "mt-3 w-full rounded-2xl border border-slate-300 bg-white px-4 py-2.5 text-sm text-slate-900 outline-none transition focus:border-[#7c3aed] focus:ring-4 focus:ring-[color-mix(in_srgb,#7c3aed,transparent_88%)]" : "mt-4 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition focus:border-[var(--dogshift-blue)] focus:ring-4 focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_85%)]"}
                 placeholder="Décris ton chien et tes attentes."
               />
             </div>
@@ -2508,7 +2508,7 @@ export default function ReservationClient({
             <div className={embedded ? "rounded-3xl border border-slate-200 bg-white p-4" : "rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.12)] sm:p-8"}>
               <p className="text-sm font-semibold text-slate-900">Récap</p>
 
-              <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-5">
+              <div className={embedded ? "mt-3 rounded-2xl border border-slate-200 bg-slate-50 p-3" : "mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-5"}>
                 <div className="flex items-start justify-between gap-6 text-sm">
                   <p className="text-slate-600">Service</p>
                   <p className="text-right font-semibold text-slate-900">{selectedService ?? "—"}</p>
