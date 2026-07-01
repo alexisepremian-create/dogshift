@@ -181,4 +181,10 @@ test("ReservationClient supports an embedded (in-popup) mode", () => {
   assert.match(src, /embedded \? "mt-3 grid grid-cols-2 gap-2" : "mt-4 grid gap-3 sm:grid-cols-2"/, "Hourly details must be 2 boxes side by side when embedded.");
   assert.match(src, /embedded \? null : dateStart && !startTime && !hasLeadTimeOnlyForToday \?/, "The amber 'sélectionne une heure' banner must be removed when embedded.");
   assert.match(src, /embedded \? "rounded-3xl border border-slate-200 bg-white p-4"/, "Embedded cards must use the compact p-4 padding.");
+  // Time/duration pickers open as an iOS-style bottom sheet (no off-screen overflow).
+  assert.match(src, /fixed inset-x-0 bottom-0 z-\[1101\] rounded-t-3xl/, "Time/duration pickers must open as a bottom sheet.");
+  // Night hours (before 06:00) are dropped from the time slots.
+  assert.match(src, /Number\(slot\.time\.slice\(0, 2\)\) >= 6/, "Night hours (00:00–05:30) must be filtered out.");
+  // Lieu de garde options are side by side on mobile.
+  assert.match(src, /embedded \? "mt-3 grid grid-cols-2 gap-2" : "mt-4 grid gap-2 sm:grid-cols-2"/, "Lieu de garde options must be side by side when embedded.");
 });

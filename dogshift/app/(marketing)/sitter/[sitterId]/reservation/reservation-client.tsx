@@ -509,89 +509,90 @@ function DogShiftTimePicker({
         aria-haspopup="listbox"
         aria-expanded={open}
       >
-        <span className={display ? "text-slate-900" : "text-slate-500"}>{display || (disabled ? "Choisir d’abord une durée" : "Choisir une heure")}</span>
+        <span className={`min-w-0 flex-1 truncate ${display ? "text-slate-900" : "text-slate-500"}`}>{display || (disabled ? "Choisir" : "Choisir une heure")}</span>
       </button>
 
       {open && !disabled ? (
-        <div className="absolute left-1/2 top-full z-50 mt-3 w-[min(360px,calc(100vw-32px))] -translate-x-1/2">
-          <div className="rounded-[20px] border border-slate-200 bg-white p-3 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.18)]">
-            <div className="flex items-center justify-between gap-3 px-1 pb-2">
+        // iOS-style bottom sheet (fixed, dimmed backdrop) — the old absolute
+        // dropdown overflowed off-screen inside the narrow popup.
+        <>
+          <div className="fixed inset-0 z-[1100] bg-black/30" onClick={() => onOpenChange(false)} aria-hidden="true" />
+          <div
+            className="fixed inset-x-0 bottom-0 z-[1101] rounded-t-3xl border-t border-slate-200 bg-white p-4 shadow-[0_-20px_60px_rgba(2,6,23,0.25)]"
+            style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 16px)" }}
+          >
+            <div className="mx-auto mb-3 h-1.5 w-10 rounded-full bg-slate-200" />
+            <div className="flex items-center justify-between pb-1">
+              <p className="text-base font-semibold text-slate-900">{label}</p>
               <button
                 type="button"
                 onClick={() => onOpenChange(false)}
-                className="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)]"
+                className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-slate-600 active:scale-95"
+                aria-label="Fermer"
               >
-                Fermer
+                ✕
               </button>
             </div>
-
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-2">
-              <p className="px-2 pb-2 text-[11px] font-semibold text-slate-500">
-                {hasSlots ? "Heures valides en clair, heures impossibles grisées et barrées" : "Aucun horaire disponible"}
-              </p>
-              <div className="rounded-2xl border border-slate-200 bg-white p-2">
-                <div className="max-h-64 overflow-auto">
-                  <div className="grid gap-1 sm:grid-cols-2">
-                    {normalizedSlots.map((slot) => {
-                      const selected = slot.time === draftValue;
-                      const unavailableClasses =
-                        "border border-slate-200 bg-slate-100 text-slate-400 line-through decoration-slate-400 decoration-2 opacity-80";
-                      return (
-                        <button
-                          key={slot.time}
-                          type="button"
-                          disabled={!slot.available}
-                          onClick={() => {
-                            if (!slot.available) return;
-                            setDraftValue(slot.time);
-                          }}
-                          className={
-                            "flex w-full items-center justify-center rounded-xl px-3 py-2 text-sm font-semibold transition duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)] disabled:cursor-not-allowed " +
-                            (selected
-                              ? "bg-[color-mix(in_srgb,var(--dogshift-blue),white_85%)] text-[var(--dogshift-blue)]"
-                              : slot.available
-                                ? "text-slate-900 hover:bg-[color-mix(in_srgb,var(--dogshift-blue),white_92%)]"
-                                : unavailableClasses)
-                          }
-                          aria-disabled={!slot.available}
-                        >
-                          {slot.time}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                <button
-                  type="button"
-                  disabled={!hasAllowedTimes || !isCandidateAllowed}
-                  onClick={() => {
-                    onChange(draftValue ?? null);
-                    onOpenChange(false);
-                  }}
-                  className="inline-flex items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-4 py-2.5 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition duration-150 hover:bg-[var(--dogshift-blue-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)] disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  Valider
-                </button>
-
-                {value ? (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      onChange(null);
-                      onOpenChange(false);
-                    }}
-                    className="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition duration-150 hover:bg-slate-50"
-                  >
-                    Effacer
-                  </button>
-                ) : null}
+            <p className="pb-2 text-[11px] font-medium text-slate-400">
+              {hasSlots ? "Heures indisponibles grisées" : "Aucun horaire disponible"}
+            </p>
+            <div className="max-h-[42vh] overflow-y-auto">
+              <div className="grid grid-cols-3 gap-1.5">
+                {normalizedSlots.map((slot) => {
+                  const selected = slot.time === draftValue;
+                  return (
+                    <button
+                      key={slot.time}
+                      type="button"
+                      disabled={!slot.available}
+                      onClick={() => {
+                        if (!slot.available) return;
+                        setDraftValue(slot.time);
+                      }}
+                      className={
+                        "flex w-full items-center justify-center rounded-xl px-2 py-2.5 text-sm font-semibold transition disabled:cursor-not-allowed " +
+                        (selected
+                          ? "bg-[#7c3aed] text-white"
+                          : slot.available
+                            ? "text-slate-900 active:bg-slate-100"
+                            : "text-slate-300 line-through")
+                      }
+                      aria-disabled={!slot.available}
+                    >
+                      {slot.time}
+                    </button>
+                  );
+                })}
               </div>
             </div>
+
+            <div className="mt-4 flex items-center gap-2">
+              {value ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onChange(null);
+                    onOpenChange(false);
+                  }}
+                  className="rounded-full border border-slate-200 px-4 py-3 text-sm font-medium text-slate-700 active:scale-95"
+                >
+                  Effacer
+                </button>
+              ) : null}
+              <button
+                type="button"
+                disabled={!hasAllowedTimes || !isCandidateAllowed}
+                onClick={() => {
+                  onChange(draftValue ?? null);
+                  onOpenChange(false);
+                }}
+                className="flex-1 rounded-full bg-[#7c3aed] py-3 text-base font-semibold text-white shadow-[0_8px_24px_rgba(124,58,237,0.35)] transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                Valider
+              </button>
+            </div>
           </div>
-        </div>
+        </>
       ) : null}
     </div>
   );
@@ -653,73 +654,74 @@ function DogShiftDurationPicker({
         aria-haspopup="listbox"
         aria-expanded={open}
       >
-        <span className={display ? "text-slate-900" : "text-slate-500"}>{display || (disabled ? "Choisir d’abord une heure" : "Choisir une durée")}</span>
+        <span className={`min-w-0 flex-1 truncate ${display ? "text-slate-900" : "text-slate-500"}`}>{display || (disabled ? "Choisir" : "Choisir une durée")}</span>
       </button>
 
       {open && !disabled ? (
-        <div className="absolute left-0 top-full z-50 mt-3 w-[min(220px,calc(100vw-32px))]">
-          <div className="rounded-[20px] border border-slate-200 bg-white p-3 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.18)]">
-            <div className="flex items-center justify-between gap-3 px-1 pb-2">
+        <>
+          <div className="fixed inset-0 z-[1100] bg-black/30" onClick={() => onOpenChange(false)} aria-hidden="true" />
+          <div
+            className="fixed inset-x-0 bottom-0 z-[1101] rounded-t-3xl border-t border-slate-200 bg-white p-4 shadow-[0_-20px_60px_rgba(2,6,23,0.25)]"
+            style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 16px)" }}
+          >
+            <div className="mx-auto mb-3 h-1.5 w-10 rounded-full bg-slate-200" />
+            <div className="flex items-center justify-between pb-2">
+              <p className="text-base font-semibold text-slate-900">{label}</p>
               <button
                 type="button"
                 onClick={() => onOpenChange(false)}
-                className="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)]"
+                className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-slate-600 active:scale-95"
+                aria-label="Fermer"
               >
-                Fermer
+                ✕
               </button>
             </div>
-
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-2">
-              <div className="rounded-2xl border border-slate-200 bg-white p-2">
-                <p className="px-2 pb-2 text-[11px] font-semibold text-slate-500">Durée</p>
-                <div className="max-h-56 overflow-auto">
-                  <div className="grid gap-1">
-                    {options.map((option) => {
-                      const selected = option.hours === value;
-                      return (
-                        <button
-                          key={option.hours}
-                          type="button"
-                          disabled={!option.available}
-                          onClick={() => {
-                            if (!option.available) return;
-                            onChange(option.hours);
-                            onOpenChange(false);
-                          }}
-                          className={
-                            "flex w-full items-center justify-center rounded-xl px-3 py-2 text-sm font-semibold transition duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dogshift-blue)] disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400 disabled:line-through " +
-                            (selected
-                              ? "bg-[color-mix(in_srgb,var(--dogshift-blue),white_85%)] text-[var(--dogshift-blue)]"
-                              : option.available
-                                ? "text-slate-900 hover:bg-[color-mix(in_srgb,var(--dogshift-blue),white_92%)]"
-                                : "text-slate-400")
-                          }
-                        >
-                          {formatDurationHours(option.hours)}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
+            <div className="max-h-[42vh] overflow-y-auto">
+              <div className="grid grid-cols-3 gap-1.5">
+                {options.map((option) => {
+                  const selected = option.hours === value;
+                  return (
+                    <button
+                      key={option.hours}
+                      type="button"
+                      disabled={!option.available}
+                      onClick={() => {
+                        if (!option.available) return;
+                        onChange(option.hours);
+                        onOpenChange(false);
+                      }}
+                      className={
+                        "flex w-full items-center justify-center rounded-xl px-2 py-2.5 text-sm font-semibold transition disabled:cursor-not-allowed " +
+                        (selected
+                          ? "bg-[#7c3aed] text-white"
+                          : option.available
+                            ? "text-slate-900 active:bg-slate-100"
+                            : "text-slate-300 line-through")
+                      }
+                    >
+                      {formatDurationHours(option.hours)}
+                    </button>
+                  );
+                })}
               </div>
-
-              {value ? (
-                <div className="mt-3 grid gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      onChange(null);
-                      onOpenChange(false);
-                    }}
-                    className="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition duration-150 hover:bg-slate-50"
-                  >
-                    Effacer
-                  </button>
-                </div>
-              ) : null}
             </div>
+
+            {value ? (
+              <div className="mt-4">
+                <button
+                  type="button"
+                  onClick={() => {
+                    onChange(null);
+                    onOpenChange(false);
+                  }}
+                  className="w-full rounded-full border border-slate-200 py-3 text-sm font-medium text-slate-700 active:scale-[0.98]"
+                >
+                  Effacer
+                </button>
+              </div>
+            ) : null}
           </div>
-        </div>
+        </>
       ) : null}
     </div>
   );
@@ -1546,13 +1548,16 @@ export default function ReservationClient({
 
   const timePickerSlots = useMemo(
     () =>
-      startAvailabilities.map((start) => {
-        const time = isoToTimeLabel(start.startAt);
-        return {
-          time,
-          available: availableStartTimes.includes(time),
-        };
-      }),
+      startAvailabilities
+        .map((start) => {
+          const time = isoToTimeLabel(start.startAt);
+          return {
+            time,
+            available: availableStartTimes.includes(time),
+          };
+        })
+        // Drop night hours (00:00–05:30) — nobody books a dog walk at night.
+        .filter((slot) => Number(slot.time.slice(0, 2)) >= 6),
     [availableStartTimes, startAvailabilities]
   );
 
@@ -2233,22 +2238,23 @@ export default function ReservationClient({
               <p className="text-sm font-semibold text-slate-900">Lieu de garde</p>
               <p className="mt-1 text-sm text-slate-600">Où se déroulera la prestation ?</p>
 
-              <div className="mt-4 grid gap-2 sm:grid-cols-2">
+              <div className={embedded ? "mt-3 grid grid-cols-2 gap-2" : "mt-4 grid gap-2 sm:grid-cols-2"}>
                 <button
                   type="button"
                   role="radio"
                   aria-checked={locationMode === "AT_SITTER"}
                   onClick={() => { setLocationMode("AT_SITTER"); setTravelPreview(null); setTravelError(null); }}
                   className={
-                    locationMode === "AT_SITTER"
-                      ? "flex items-center gap-3 rounded-2xl border border-[var(--dogshift-blue)] bg-[color-mix(in_srgb,var(--dogshift-blue),white_92%)] px-4 py-3 text-left text-sm font-semibold text-[var(--dogshift-blue)]"
-                      : "flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left text-sm font-semibold text-slate-900 transition hover:bg-slate-50"
+                    (embedded ? "flex flex-col items-start gap-1.5 rounded-2xl px-3 py-2.5 text-left text-sm font-semibold " : "flex items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm font-semibold ") +
+                    (locationMode === "AT_SITTER"
+                      ? embedded ? "border border-[#7c3aed] bg-[#7c3aed]/5 text-[#7c3aed]" : "border border-[var(--dogshift-blue)] bg-[color-mix(in_srgb,var(--dogshift-blue),white_92%)] text-[var(--dogshift-blue)]"
+                      : "border border-slate-200 bg-white text-slate-900 transition hover:bg-slate-50")
                   }
                 >
                   <MapPin className="h-5 w-5 shrink-0" aria-hidden="true" />
                   <div>
                     <p>Chez le sitter</p>
-                    <p className="text-xs font-normal opacity-70">Vous vous déplacez — sans frais</p>
+                    <p className="text-xs font-normal opacity-70">Sans frais</p>
                   </div>
                 </button>
 
@@ -2260,11 +2266,12 @@ export default function ReservationClient({
                   onClick={() => { if (sitter.hasAddress) setLocationMode("AT_OWNER"); }}
                   title={!sitter.hasAddress ? "Ce sitter n'a pas encore renseigné son adresse" : undefined}
                   className={
-                    locationMode === "AT_OWNER"
-                      ? "flex items-center gap-3 rounded-2xl border border-[var(--dogshift-blue)] bg-[color-mix(in_srgb,var(--dogshift-blue),white_92%)] px-4 py-3 text-left text-sm font-semibold text-[var(--dogshift-blue)]"
+                    (embedded ? "flex flex-col items-start gap-1.5 rounded-2xl px-3 py-2.5 text-left text-sm font-semibold " : "flex items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm font-semibold ") +
+                    (locationMode === "AT_OWNER"
+                      ? embedded ? "border border-[#7c3aed] bg-[#7c3aed]/5 text-[#7c3aed]" : "border border-[var(--dogshift-blue)] bg-[color-mix(in_srgb,var(--dogshift-blue),white_92%)] text-[var(--dogshift-blue)]"
                       : sitter.hasAddress
-                        ? "flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left text-sm font-semibold text-slate-900 transition hover:bg-slate-50"
-                        : "flex cursor-not-allowed items-center gap-3 rounded-2xl border border-slate-200 bg-slate-100 px-4 py-3 text-left text-sm font-semibold text-slate-400"
+                        ? "border border-slate-200 bg-white text-slate-900 transition hover:bg-slate-50"
+                        : "cursor-not-allowed border border-slate-200 bg-slate-100 text-slate-400")
                   }
                 >
                   <Home className="h-5 w-5 shrink-0" aria-hidden="true" />
