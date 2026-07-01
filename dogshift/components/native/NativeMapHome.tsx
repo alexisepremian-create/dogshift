@@ -2,7 +2,6 @@
 /* eslint-disable @next/next/no-img-element */
 
 import maplibregl from "maplibre-gl";
-import Link from "next/link";
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useRef, useState, type TouchEvent as ReactTouchEvent } from "react";
 import Map, { Marker, type MapRef } from "react-map-gl/maplibre";
@@ -765,49 +764,54 @@ export default function NativeMapHome() {
             bottom: "calc(148px + 32px + max(var(--ds-bottom-nav-h, 0px), 88px))",
           }}
         >
-          <Link
-            href={`/sitters/${activeSitter.id}`}
-            className="flex items-center gap-3 rounded-2xl bg-white p-3 shadow-[0_12px_30px_rgba(2,6,23,0.25)] active:scale-[0.98]"
-            style={{ touchAction: "manipulation" }}
-          >
-            <img
-              src={activeSitter.avatar}
-              alt=""
-              className="h-14 w-14 rounded-full object-cover"
-            />
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-1.5 truncate text-base font-semibold text-slate-900">
-                {activeSitter.name}
-                {activeSitter.verified && (
-                  <span className="rounded-full bg-blue-50 px-1.5 py-0.5 text-[10px] font-medium text-blue-700">
-                    ✓
-                  </span>
-                )}
-              </div>
-              <div className="truncate text-sm text-slate-500">{activeSitter.city}</div>
-              <div className="mt-1 flex items-center gap-3 text-xs">
-                {activeSitter.rating !== null && (
-                  <span className="flex items-center gap-0.5 text-slate-700">
-                    <Star className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400" />
-                    {activeSitter.rating.toFixed(1)}
-                    <span className="text-slate-400">({activeSitter.reviews})</span>
-                  </span>
-                )}
-                {activeSitter.minPrice > 0 && (
-                  <span className="text-slate-700">dès {activeSitter.minPrice} CHF</span>
-                )}
-              </div>
-            </div>
+          <div className="flex items-center gap-3 rounded-2xl bg-white p-3 shadow-[0_12px_30px_rgba(2,6,23,0.25)]">
+            {/* Tapping the marker card opens the sitter fiche IN the popup (no
+                full-page navigation) — same as the sheet cards. */}
             <button
               type="button"
-              onClick={(e) => { e.preventDefault(); setActiveId(null); }}
+              onClick={() => openSitterDetail(activeSitter)}
+              className="flex min-w-0 flex-1 items-center gap-3 text-left active:scale-[0.98]"
+              style={{ touchAction: "manipulation" }}
+            >
+              <img
+                src={activeSitter.avatar}
+                alt=""
+                className="h-14 w-14 rounded-full object-cover"
+              />
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1.5 truncate text-base font-semibold text-slate-900">
+                  {activeSitter.name}
+                  {activeSitter.verified && (
+                    <span className="rounded-full bg-blue-50 px-1.5 py-0.5 text-[10px] font-medium text-blue-700">
+                      ✓
+                    </span>
+                  )}
+                </div>
+                <div className="truncate text-sm text-slate-500">{activeSitter.city}</div>
+                <div className="mt-1 flex items-center gap-3 text-xs">
+                  {activeSitter.rating !== null && (
+                    <span className="flex items-center gap-0.5 text-slate-700">
+                      <Star className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400" />
+                      {activeSitter.rating.toFixed(1)}
+                      <span className="text-slate-400">({activeSitter.reviews})</span>
+                    </span>
+                  )}
+                  {activeSitter.minPrice > 0 && (
+                    <span className="text-slate-700">dès {activeSitter.minPrice} CHF</span>
+                  )}
+                </div>
+              </div>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveId(null)}
               aria-label="Fermer"
               className="-mr-1 h-8 w-8 flex-shrink-0 rounded-full text-slate-400"
               style={{ touchAction: "manipulation" }}
             >
               ✕
             </button>
-          </Link>
+          </div>
         </div>
       )}
 
