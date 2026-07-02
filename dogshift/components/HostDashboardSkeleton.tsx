@@ -1,6 +1,7 @@
 "use client";
 
 import SunCornerGlow from "@/components/SunCornerGlow";
+import { useIsNativeAppSync } from "@/lib/native/useIsNativeAppSync";
 
 /**
  * Faithful loading skeleton for the SITTER dashboard (/host root) — a pixel
@@ -21,7 +22,61 @@ function Skeleton({ className }: { className?: string }) {
   );
 }
 
+/**
+ * Native skeleton — mirrors the minimalist native home (greeting → progress →
+ * 3 stats → "Accès rapide" → 2×2 tiles → 2 ghost tiles). No warm gradient / no
+ * SunCornerGlow, so it matches the white native dashboard behind it exactly
+ * (founder: "faut que ça reflète exactement ce qui charge derrière", + no flash).
+ */
+function HostNativeSkeleton() {
+  return (
+    <div className="space-y-4" data-testid="host-dashboard-skeleton" aria-busy="true" aria-live="polite">
+      <span className="sr-only">Chargement du tableau de bord…</span>
+
+      {/* Greeting */}
+      <div className="flex items-center gap-3">
+        <Skeleton className="h-14 w-14 rounded-full" />
+        <div className="min-w-0 flex-1">
+          <Skeleton className="h-3 w-16" />
+          <Skeleton className="mt-2 h-6 w-40" />
+        </div>
+        <Skeleton className="h-6 w-20 rounded-full" />
+      </div>
+
+      {/* Complete-profile bar */}
+      <Skeleton className="h-14 w-full rounded-2xl" />
+
+      {/* 3 stat chips */}
+      <div className="grid grid-cols-3 gap-2">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <div key={i} className="rounded-2xl bg-slate-50 p-3">
+            <Skeleton className="mx-auto block h-5 w-10" />
+            <Skeleton className="mx-auto mt-2 block h-3 w-12" />
+          </div>
+        ))}
+      </div>
+
+      <Skeleton className="h-4 w-28" />
+
+      {/* 2×2 tiles + 2 ghost tiles */}
+      <div className="grid grid-cols-2 gap-3">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <Skeleton key={i} className="h-[92px] w-full rounded-2xl" />
+        ))}
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        {Array.from({ length: 2 }).map((_, i) => (
+          <Skeleton key={i} className="h-[92px] w-full rounded-2xl" />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function HostDashboardSkeleton() {
+  const isNative = useIsNativeAppSync();
+  if (isNative) return <HostNativeSkeleton />;
+
   return (
     <div
       className="relative grid gap-6 overflow-hidden"

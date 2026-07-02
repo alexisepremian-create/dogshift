@@ -2,12 +2,13 @@
 
 import { useEffect } from "react";
 import type { ReactNode } from "react";
+import { ArrowLeft } from "lucide-react";
 
 /**
- * Full-height slide-up sheet for the native dashboards — same idea as the
- * in-popup reservation flow: tapping a dashboard tile opens the destination in
- * this overlay instead of a hard page navigation. Native-only (only ever
- * mounted inside the `ds-native-only` dashboard branch).
+ * Floating slide-up sheet for the native dashboards — identical geometry to the
+ * in-popup reservation fiche (`left-2 right-2`, rounded on all corners, sits
+ * below the status bar and above the bottom nav). Tapping a dashboard tile opens
+ * the destination in this overlay instead of a hard page navigation. Native-only.
  */
 export function DashboardSheet({
   open,
@@ -36,36 +37,39 @@ export function DashboardSheet({
     <>
       <div className="fixed inset-0 z-[1200] bg-black/30" onClick={onClose} aria-hidden="true" />
       <div
-        className="fixed inset-x-0 bottom-0 z-[1201] flex flex-col overflow-hidden rounded-t-3xl bg-white shadow-[0_-20px_60px_rgba(2,6,23,0.25)]"
+        className="fixed left-2 right-2 z-[1201] flex flex-col overflow-hidden rounded-3xl bg-white shadow-[0_20px_60px_rgba(2,6,23,0.30)]"
         style={{
-          top: "calc(env(safe-area-inset-top, 0px) + 8px)",
+          top: "calc(env(safe-area-inset-top, 0px) + 70px)",
+          bottom: "calc(max(var(--ds-bottom-nav-h, 0px), 88px) + 8px)",
         }}
         role="dialog"
         aria-modal="true"
         aria-label={title}
       >
-        {/* Header */}
-        <div className="flex shrink-0 items-center gap-2 border-b border-slate-100 px-3 py-2.5">
+        {/* Header — back arrow (left) + close (right), same as the reservation fiche */}
+        <div className="flex shrink-0 items-center justify-between border-b border-slate-100 px-5 py-3">
           <button
             type="button"
             onClick={onClose}
+            className="flex items-center gap-1.5 text-base font-semibold text-slate-900 active:opacity-70"
             aria-label="Retour"
-            className="inline-flex h-9 w-9 items-center justify-center rounded-full text-slate-700 active:bg-slate-100"
+            style={{ touchAction: "manipulation" }}
           >
-            <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-              <path d="M15 18l-6-6 6-6" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
+            <ArrowLeft className="h-4 w-4" />
+            Retour
           </button>
-          <p className="text-base font-bold text-slate-900">{title}</p>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Fermer"
+            className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-slate-600 active:scale-95"
+          >
+            ✕
+          </button>
         </div>
 
         {/* Scrollable body */}
-        <div
-          className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-3"
-          style={{ paddingBottom: "calc(max(var(--ds-bottom-nav-h, 0px), 88px) + 16px)" }}
-        >
-          {children}
-        </div>
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-3">{children}</div>
       </div>
     </>
   );

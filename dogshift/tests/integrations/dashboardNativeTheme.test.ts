@@ -84,6 +84,43 @@ test("DashboardSheet is a slide-up overlay with a back header", () => {
   assert.match(sheet, /"use client"/, "DashboardSheet must be a client component.");
   assert.match(sheet, /z-\[1201\]/, "Sheet must sit above the dashboard.");
   assert.match(sheet, /aria-label="Retour"/, "Sheet must have a back button.");
+  // Floating geometry identical to the reservation fiche (not edge-to-edge).
+  assert.match(sheet, /fixed left-2 right-2 z-\[1201\][\s\S]*rounded-3xl/, "Sheet must float with side margins + rounded corners.");
+  assert.match(sheet, /env\(safe-area-inset-top, 0px\) \+ 70px/, "Sheet top must match the reservation fiche offset.");
+  assert.match(sheet, /aria-label="Fermer"/, "Sheet must also have a ✕ close button.");
+});
+
+test("native tab bar is solid/edge-to-edge with a center DogShift logo that opens the menu", () => {
+  const bar = read("components/native/NativeTabBar.tsx");
+  assert.match(bar, /"use client"/, "NativeTabBar must be a client component.");
+  // Solid bar anchored to the bottom — NOT the floating rounded pill.
+  assert.match(bar, /border-t border-slate-200 bg-white/, "Bar must be a solid edge-to-edge bar (border-top, white).");
+  assert.doesNotMatch(bar, /rounded-\[24px\][\s\S]*backdrop-blur-xl/, "Must not reuse the floating frosted pill.");
+  // Center raised DogShift logo opens the more sheet.
+  assert.match(bar, /dogshift-paw-white\.png/, "Center button must be the DogShift logo.");
+  assert.match(bar, /setMoreOpen\(\(v\) => !v\)/, "Center logo must toggle the more menu.");
+  // Sets the shared nav-height var so content spacing stays correct.
+  assert.match(bar, /--ds-bottom-nav-h/, "NativeTabBar must publish the nav height var.");
+});
+
+test("GlobalNativeBottomNav uses NativeTabBar with a person→dashboard tab", () => {
+  const nav = read("components/native/GlobalNativeBottomNav.tsx");
+  assert.match(nav, /<NativeTabBar /, "Native nav must render the new NativeTabBar.");
+  assert.doesNotMatch(nav, /<MobileBottomNav /, "Native nav must no longer use the floating MobileBottomNav.");
+  assert.match(nav, /key: "dashboard"[\s\S]*<User /, "A person icon must be a primary tab → dashboard.");
+  assert.match(nav, /href: "\/host", icon: <User /, "Sitter person tab → /host.");
+  assert.match(nav, /href: "\/account", icon: <User /, "Owner person tab → /account.");
+});
+
+test("native host skeleton drops the yellow gradient + matches the new home", () => {
+  const skel = read("components/HostDashboardSkeleton.tsx");
+  assert.match(skel, /function HostNativeSkeleton/, "A native skeleton variant must exist.");
+  assert.match(skel, /useIsNativeAppSync\(\)/, "Skeleton must branch on native.");
+  assert.match(skel, /if \(isNative\) return <HostNativeSkeleton/, "Native must render the native skeleton (no SunCornerGlow/yellow).");
+  // The native skeleton block must not carry the warm gradient.
+  const nativeBlock = skel.slice(skel.indexOf("function HostNativeSkeleton"), skel.indexOf("export default"));
+  assert.doesNotMatch(nativeBlock, /rgba\(250,204,21/, "Native skeleton must have no yellow gradient.");
+  assert.doesNotMatch(nativeBlock, /SunCornerGlow/, "Native skeleton must not render SunCornerGlow.");
 });
 
 test("native islands open destinations in the sheet (onClick + dynamic panels)", () => {
