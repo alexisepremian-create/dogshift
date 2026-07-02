@@ -100,6 +100,9 @@ test("native tab bar is solid/edge-to-edge with a center DogShift logo that open
   assert.match(bar, /<PawPrint[^>]*text-white/, "Center button must be a white paw icon (no wordmark).");
   assert.doesNotMatch(bar, /ring-4 ring-white/, "Center logo must be full purple, no white ring.");
   assert.match(bar, /setMoreOpen\(\(v\) => !v\)/, "Center logo must toggle the more menu.");
+  // Sliding purple pill behind the active tab (animated between tabs).
+  assert.match(bar, /absolute inset-y-\[8px\][\s\S]*bg-\[#7c3aed\]/, "Active tab must have a purple pill.");
+  assert.match(bar, /transition: "left 320ms/, "The pill must slide between tabs.");
   // White fills through the safe area so the map never shows below the bar.
   assert.match(bar, /bg-white[\s\S]*paddingBottom: "env\(safe-area-inset-bottom\)"/, "Bar white bg must extend through the safe area.");
   // Sets the shared nav-height var so content spacing stays correct.
