@@ -30,12 +30,12 @@ function Tab({ item, onNavigate }: { item: BottomNavItem; onNavigate: () => void
       onClick={onNavigate}
       aria-current={item.active ? "page" : undefined}
       aria-label={item.label}
-      className="flex flex-1 flex-col items-center justify-center gap-1 py-1.5 select-none"
+      className="relative z-10 flex flex-1 flex-col items-center justify-center gap-1 py-1.5 select-none"
     >
-      <span style={{ color: item.active ? "#7c3aed" : "#94a3b8" }}>{item.icon}</span>
+      <span style={{ color: item.active ? "#ffffff" : "#94a3b8", transition: "color 200ms ease" }}>{item.icon}</span>
       <span
         className="max-w-full truncate text-[10px] font-semibold leading-none"
-        style={{ color: item.active ? "#7c3aed" : "#94a3b8" }}
+        style={{ color: item.active ? "#ffffff" : "#94a3b8", transition: "color 200ms ease" }}
       >
         {item.label}
       </span>
@@ -51,6 +51,15 @@ export default function NativeTabBar({ items, moreItems = [] }: { items: BottomN
   const half = Math.ceil(items.length / 2);
   const left = items.slice(0, half);
   const right = items.slice(half);
+
+  // Sliding purple pill behind the active tab. The center logo occupies a fixed
+  // 80px slot between the left and right groups, so right-group tabs are shifted
+  // by +80px. Each tab is `(100% - 80px) / count` wide.
+  const CENTER = 80;
+  const activeIndex = items.findIndex((i) => i.active);
+  const tabExpr = `((100% - ${CENTER}px) / ${items.length})`;
+  const pillWidth = `calc(${tabExpr} - 12px)`;
+  const pillLeft = `calc(${tabExpr} * ${activeIndex} ${activeIndex >= half ? `+ ${CENTER}px ` : ""}+ 6px)`;
 
   useEffect(() => {
     const el = barRef.current;
@@ -127,6 +136,19 @@ export default function NativeTabBar({ items, moreItems = [] }: { items: BottomN
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       >
         <div className="relative flex h-[58px] items-stretch">
+          {/* Sliding purple pill behind the active tab */}
+          {activeIndex >= 0 ? (
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-y-[8px] z-0 rounded-2xl bg-[#7c3aed]"
+              style={{
+                left: pillLeft,
+                width: pillWidth,
+                transition: "left 320ms cubic-bezier(0.34, 1.15, 0.64, 1)",
+              }}
+            />
+          ) : null}
+
           {left.map((item) => (
             <Tab key={item.key} item={item} onNavigate={() => setMoreOpen(false)} />
           ))}
