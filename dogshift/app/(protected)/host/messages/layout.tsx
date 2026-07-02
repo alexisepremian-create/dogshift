@@ -340,7 +340,10 @@ export default function HostMessagesLayout({ children }: { children: React.React
                 transform: pickerRaised ? "translateY(0)" : "translateY(100%)",
                 maxHeight: "75dvh",
                 overflowY: "auto",
-                paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 24px)",
+                // Reserve the bottom-nav height so the sheet content never slides
+                // under the fixed tab bar (the dashboard shell traps this sheet
+                // in a `relative z-0` context, below the root-level nav).
+                paddingBottom: "calc(max(var(--ds-bottom-nav-h, 0px), 88px) + 24px)",
               }}
             >
               <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-slate-200" aria-hidden="true" />

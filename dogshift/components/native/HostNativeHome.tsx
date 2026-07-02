@@ -69,7 +69,7 @@ export function HostNativeHome({
         </div>
         {completionUiReady ? (
           <span className="ml-auto shrink-0 inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
-            {isPublished ? "Publié" : "Brouillon"}
+            {isPublished ? "Publié" : "Non publié"}
           </span>
         ) : null}
       </div>
