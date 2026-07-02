@@ -81,7 +81,7 @@ function Skeleton({ className }: { className?: string }) {
 }
 
 function SettingsSkeleton({ isHost }: { isHost: boolean }) {
-  const cardBase = "rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-8 min-w-0";
+  const cardBase = "ds-card rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-8 min-w-0";
   return (
     <div className="grid gap-6" aria-busy="true" aria-live="polite">
       <span className="sr-only">Chargement de tes paramètres…</span>
@@ -407,7 +407,7 @@ export default function AccountSettingsPage() {
 
   const initialLoading = meLoading && !meError && security === null;
 
-  const cardBase = "rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-8 min-w-0";
+  const cardBase = "ds-card rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-8 min-w-0";
   const sectionTitle = "flex items-start justify-between gap-4";
   const labelBase = "block text-sm font-medium text-slate-700";
   const inputBase =
@@ -456,7 +456,7 @@ export default function AccountSettingsPage() {
 
   return (
     <div className="relative grid gap-6" data-testid="account-settings-page">
-      <div className="relative z-10 grid gap-6 min-w-0">
+      <div className="ds-native-tight relative z-10 grid gap-6 min-w-0">
       <div>
         <p className="ds-native-hide text-sm font-semibold text-slate-600">Mon compte</p>
         <h1 className="mt-2 flex items-center gap-2 text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">
@@ -535,7 +535,7 @@ export default function AccountSettingsPage() {
               <Mail className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" aria-hidden="true" />
               <input id="email" value={profileEmail} disabled className={`${inputBase} pl-10`} />
             </div>
-            <p className="mt-2 text-xs text-slate-500">Ton email est géré par ton fournisseur de connexion.</p>
+            <p className="ds-native-hide mt-2 text-xs text-slate-500">Ton email est géré par ton fournisseur de connexion.</p>
           </div>
 
           {isHost ? (
@@ -551,7 +551,7 @@ export default function AccountSettingsPage() {
                 className={inputBase}
                 placeholder="+41 79 123 45 67"
               />
-              <p className="mt-2 text-xs text-slate-500">Utilisé pour les notifications SMS de dernière minute</p>
+              <p className="ds-native-hide mt-2 text-xs text-slate-500">Utilisé pour les notifications SMS de dernière minute</p>
             </div>
           ) : null}
         </div>
@@ -615,7 +615,7 @@ export default function AccountSettingsPage() {
                 Vérifie ton email pour sécuriser ton compte et recevoir les notifications.
               </p>
               {provider === "google" ? (
-                <p className="mt-2 text-xs text-slate-500">Compte connecté via Google — l’email est géré par ton fournisseur.</p>
+                <p className="ds-native-hide mt-2 text-xs text-slate-500">Compte connecté via Google — l’email est géré par ton fournisseur.</p>
               ) : null}
             </div>
 
@@ -728,7 +728,7 @@ export default function AccountSettingsPage() {
         <div className={sectionTitle}>
           <div>
             <h2 className="text-lg font-semibold text-slate-900">Sécurité & connexion</h2>
-            <p className="mt-2 text-sm text-slate-600">Vérifie l’état de ton compte et renforce ta sécurité.</p>
+            <p className="ds-native-hide mt-2 text-sm text-slate-600">Vérifie l’état de ton compte et renforce ta sécurité.</p>
           </div>
           <Shield className="h-5 w-5 text-slate-400" aria-hidden="true" />
         </div>
@@ -771,7 +771,7 @@ export default function AccountSettingsPage() {
               <Settings className="h-4 w-4 text-slate-400" aria-hidden="true" />
               <div>
                 <p className="text-xs font-semibold text-slate-700">2FA</p>
-                <p className="mt-0.5 text-xs text-slate-500">Bientôt disponible</p>
+                <p className="ds-native-hide mt-0.5 text-xs text-slate-500">Bientôt disponible</p>
               </div>
             </div>
           </div>
@@ -927,7 +927,7 @@ export default function AccountSettingsPage() {
         <div className={sectionTitle}>
           <div>
             <h2 className="text-lg font-semibold text-slate-900">Notifications</h2>
-            <p className="mt-2 text-sm text-slate-600">Notifications par email uniquement (pour l’instant).</p>
+            <p className="ds-native-hide mt-2 text-sm text-slate-600">Notifications par email uniquement (pour l’instant).</p>
           </div>
         </div>
 
@@ -1000,7 +1000,7 @@ export default function AccountSettingsPage() {
         <div className={sectionTitle}>
           <div>
             <h2 className="text-lg font-semibold text-slate-900">Préférences</h2>
-            <p className="mt-2 text-sm text-slate-600">Personnalise la langue et le format d’affichage.</p>
+            <p className="ds-native-hide mt-2 text-sm text-slate-600">Personnalise la langue et le format d’affichage.</p>
           </div>
         </div>
 
@@ -1044,7 +1044,7 @@ export default function AccountSettingsPage() {
               className={inputBase}
               placeholder="Europe/Zurich"
             />
-            <p className="mt-2 text-xs text-slate-500">Détecté automatiquement par défaut.</p>
+            <p className="ds-native-hide mt-2 text-xs text-slate-500">Détecté automatiquement par défaut.</p>
           </div>
 
           <div className="sm:col-span-2">
@@ -1113,7 +1113,7 @@ export default function AccountSettingsPage() {
         <div className={sectionTitle}>
           <div className="mx-auto text-center">
             <h2 className="text-lg font-semibold text-slate-900">Sécurité du compte</h2>
-            <p className="mt-2 text-sm text-slate-600">Gère les connexions et les actions importantes liées à ton compte.</p>
+            <p className="ds-native-hide mt-2 text-sm text-slate-600">Gère les connexions et les actions importantes liées à ton compte.</p>
           </div>
           <Shield className="h-5 w-5 text-slate-400" aria-hidden="true" />
         </div>
@@ -1128,7 +1128,7 @@ export default function AccountSettingsPage() {
           >
             Se déconnecter de tous les appareils
           </button>
-          <p className="-mt-1 max-w-[320px] text-center text-xs text-slate-500">Déconnecte ton compte de tous les appareils actuellement connectés.</p>
+          <p className="ds-native-hide -mt-1 max-w-[320px] text-center text-xs text-slate-500">Déconnecte ton compte de tous les appareils actuellement connectés.</p>
 
           {deleteStep === "idle" && (
             <button

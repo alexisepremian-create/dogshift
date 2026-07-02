@@ -499,7 +499,7 @@ export default function HostProfileEditPage() {
       <div className="relative grid gap-6 overflow-x-hidden" data-testid="host-profile-edit">
         <div className="ds-card relative z-10 rounded-3xl border border-slate-200 bg-white p-6">
           <p className="text-sm font-semibold text-slate-900">Profil hôte</p>
-          <p className="mt-2 text-sm text-slate-600">Ton profil hôte n&apos;est pas encore disponible.</p>
+          <p className="ds-native-hide mt-2 text-sm text-slate-600">Ton profil hôte n&apos;est pas encore disponible.</p>
           <div className="mt-4">
             <Link href="/devenir-dogsitter" className="text-sm font-semibold text-[var(--dogshift-blue)]">
               Créer mon profil hôte
@@ -528,13 +528,13 @@ export default function HostProfileEditPage() {
           </div>
         </div>
 
-        <div className="mt-8 grid gap-6">
+        <div className="ds-native-tight mt-8 grid gap-6">
 
           {/* ── Section 1 — Identité du profil public ── */}
           <section className="relative rounded-3xl border border-slate-200 bg-white shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)]">
-            <div id="identity" className="scroll-mt-24 p-6 sm:p-8">
+            <div id="identity" className="ds-card scroll-mt-24 p-6 sm:p-8">
               <h2 className="text-base font-semibold text-slate-900">Identité du profil public</h2>
-              <p className="mt-1 text-sm text-slate-600">Ces informations sont visibles par tous sur ton profil public.</p>
+              <p className="ds-native-hide mt-1 text-sm text-slate-600">Ces informations sont visibles par tous sur ton profil public.</p>
 
               <div className="mt-5 grid gap-4 sm:grid-cols-2">
                 <div>
@@ -549,7 +549,7 @@ export default function HostProfileEditPage() {
                     placeholder="ex. Camille"
                     autoComplete="given-name"
                   />
-                  <p className="mt-2 text-xs text-slate-500">Visible sur ton profil public.</p>
+                  <p className="ds-native-hide mt-2 text-xs text-slate-500">Visible sur ton profil public.</p>
                 </div>
 
                 <div>
@@ -573,7 +573,7 @@ export default function HostProfileEditPage() {
                       autoComplete="postal-code"
                     />
                   </div>
-                  <p className="mt-2 text-xs text-slate-500">Visible sur ton profil public.</p>
+                  <p className="ds-native-hide mt-2 text-xs text-slate-500">Visible sur ton profil public.</p>
                 </div>
               </div>
 
@@ -650,7 +650,7 @@ export default function HostProfileEditPage() {
 
           {/* ── Section 2 — Présentation ── */}
           <section className="relative rounded-3xl border border-slate-200 bg-white shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)]">
-            <div id="description" className="scroll-mt-24 p-6 sm:p-8">
+            <div id="description" className="ds-card scroll-mt-24 p-6 sm:p-8">
               <div className="flex items-center justify-between gap-3">
                 <div className="flex min-w-0 flex-1 items-center gap-1.5">
                   <h2 className="text-base font-semibold text-slate-900">Présentation</h2>
@@ -721,7 +721,7 @@ export default function HostProfileEditPage() {
 
           {/* ── Section 3 — Critères d'acceptation des chiens ── */}
           <section className="relative rounded-3xl border border-slate-200 bg-white shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)]">
-            <div id="acceptanceCriteria" className="scroll-mt-24 p-6 sm:p-8">
+            <div id="acceptanceCriteria" className="ds-card scroll-mt-24 p-6 sm:p-8">
               <h2 className="text-base font-semibold text-slate-900">Critères d&apos;acceptation des chiens</h2>
               <p className="mt-1 text-sm text-slate-500">
                 Ces critères s&apos;appliquent à vos services Promenade et Garde. Pour la Pension, les tailles et conditions sont définies par DogShift selon la vérification de votre logement.
@@ -892,7 +892,7 @@ export default function HostProfileEditPage() {
                   <div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-4">
                     <div>
                       <p className="text-sm font-semibold text-slate-900">Chien castré/stérilisé requis</p>
-                      <p className="mt-0.5 text-xs text-slate-500">Vous n&apos;acceptez que les chiens castrés ou stérilisés.</p>
+                      <p className="ds-native-hide mt-0.5 text-xs text-slate-500">Vous n&apos;acceptez que les chiens castrés ou stérilisés.</p>
                     </div>
                     <button
                       type="button"
@@ -929,7 +929,7 @@ export default function HostProfileEditPage() {
 
           {/* ── Section 4 — Logement (conditionnelle) ── */}
           <section className="relative rounded-3xl border border-slate-200 bg-white shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)]">
-            <div className="p-6 sm:p-8">
+            <div className="ds-card p-6 sm:p-8">
               <h2 className="text-base font-semibold text-slate-900">Logement</h2>
               <p className="mt-1 text-sm text-slate-500">
                 Informations sur votre logement, requises pour activer la Pension sur votre profil.
@@ -1201,7 +1201,7 @@ export default function HostProfileEditPage() {
 
           {/* ── Section 5 — Statut du compte ── */}
           <section className="relative rounded-3xl border border-slate-200 bg-white shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)]">
-            <div className="p-6 sm:p-8">
+            <div className="ds-card p-6 sm:p-8">
               <h2 className="text-base font-semibold text-slate-900">Statut du compte</h2>
 
               {/* 5a — Vérification d'identité */}
@@ -1251,7 +1251,7 @@ export default function HostProfileEditPage() {
                     </div>
                   ) : (
                     <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                      <p className="text-sm text-slate-600">Demandez la vérification pour rassurer les clients.</p>
+                      <p className="ds-native-hide text-sm text-slate-600">Demandez la vérification pour rassurer les clients.</p>
 
                       {verificationStatus === "rejected" ? (
                         <div className="mt-3 rounded-2xl border border-rose-200 bg-rose-50 p-4">
@@ -1285,7 +1285,7 @@ export default function HostProfileEditPage() {
                             </label>
                             <p className="text-xs font-medium text-slate-600">{verificationIdFileName ?? "Aucun fichier choisi"}</p>
                           </div>
-                          <p className="mt-2 text-xs text-slate-500">JPG/PNG/PDF • max 5MB</p>
+                          <p className="ds-native-hide mt-2 text-xs text-slate-500">JPG/PNG/PDF • max 5MB</p>
                         </div>
 
                         <div>
@@ -1311,7 +1311,7 @@ export default function HostProfileEditPage() {
                             </label>
                             <p className="text-xs font-medium text-slate-600">{verificationSelfieFileName ?? "Aucun fichier choisi"}</p>
                           </div>
-                          <p className="mt-2 text-xs text-slate-500">JPG/PNG • max 5MB</p>
+                          <p className="ds-native-hide mt-2 text-xs text-slate-500">JPG/PNG • max 5MB</p>
                         </div>
                       </div>
 

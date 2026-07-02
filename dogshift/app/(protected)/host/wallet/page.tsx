@@ -620,7 +620,7 @@ export default function HostWalletPage() {
 
   return (
     <div className="relative grid gap-6" data-testid="host-wallet-page">
-      <div className="relative z-10 grid gap-6">
+      <div className="ds-native-tight relative z-10 grid gap-6">
         {/* ─── Header ─── */}
         <div>
           <p className="ds-native-hide text-sm font-semibold text-slate-600">Tableau de bord</p>
@@ -708,7 +708,7 @@ export default function HostWalletPage() {
             {/* Right: Vertical bar chart */}
             <div className="flex flex-1 flex-col">
               <h2 className="text-lg font-semibold tracking-tight text-slate-900">Services effectués</h2>
-              <p className="mt-1 text-sm text-slate-500">Nombre de prestations par type de service.</p>
+              <p className="ds-native-hide mt-1 text-sm text-slate-500">Nombre de prestations par type de service.</p>
 
               {bookingsLoading ? (
                 <div className="mt-6 flex flex-1 items-end justify-around gap-4 pb-6">
@@ -763,7 +763,7 @@ export default function HostWalletPage() {
               </div>
             ) : (
               <div className="mt-6 flex items-center justify-center rounded-2xl bg-slate-50 py-10">
-                <p className="text-sm text-slate-500">Aucun service terminé pour le moment.</p>
+                <p className="ds-native-hide text-sm text-slate-500">Aucun service terminé pour le moment.</p>
               </div>
             )}
           </div>
@@ -774,7 +774,7 @@ export default function HostWalletPage() {
           <div className="lg:hidden">
             {!stripeInfoOpen ? (
               <div className="rounded-3xl border border-slate-200 bg-white shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)]">
-                <div className="p-6 sm:p-8">
+                <div className="ds-card p-6 sm:p-8">
                   <div className="flex flex-col items-center text-center">
                     <button
                       type="button"
@@ -798,7 +798,7 @@ export default function HostWalletPage() {
                         <Info className="h-4 w-4" aria-hidden="true" />
                       </button>
                     </div>
-                    <p className="mt-2 max-w-[280px] text-sm text-slate-500">Connecte ton compte pour recevoir automatiquement les paiements sur ton compte bancaire.</p>
+                    <p className="ds-native-hide mt-2 max-w-[280px] text-sm text-slate-500">Connecte ton compte pour recevoir automatiquement les paiements sur ton compte bancaire.</p>
                     <div className="mt-6 flex flex-wrap justify-center gap-3">
                       {stripeConnect.status === "ENABLED" ? (
                         <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3.5 py-1 text-[13px] font-semibold text-emerald-700"><span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />Activé</span>
@@ -831,7 +831,7 @@ export default function HostWalletPage() {
                     <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white shadow-sm ring-1 ring-slate-100"><span className="text-lg">🎉</span></div>
                     <div>
                       <p className="font-semibold text-slate-900">Phase pilote : 0% de commission</p>
-                      <p className="mt-1 text-sm leading-relaxed text-slate-500">Vous conservez 100% du montant des réservations, frais Stripe inclus.</p>
+                      <p className="ds-native-hide mt-1 text-sm leading-relaxed text-slate-500">Vous conservez 100% du montant des réservations, frais Stripe inclus.</p>
                     </div>
                   </div>
                 </div>
@@ -841,7 +841,7 @@ export default function HostWalletPage() {
                 <div className="flex items-start justify-between gap-4 border-b border-slate-100 bg-slate-50/50 p-6 sm:px-8 rounded-t-3xl">
                   <div>
                     <p className="font-semibold text-slate-900">Comment ça marche ?</p>
-                    <p className="mt-1 text-[13px] text-slate-500">Paiements et virements via Stripe</p>
+                    <p className="ds-native-hide mt-1 text-[13px] text-slate-500">Paiements et virements via Stripe</p>
                   </div>
                   <button type="button" onClick={() => setStripeInfoOpen(false)} className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-white text-slate-500 shadow-sm ring-1 ring-slate-200 transition hover:bg-slate-50 hover:text-slate-700">
                     <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
@@ -874,7 +874,7 @@ export default function HostWalletPage() {
                 style={{ backfaceVisibility: "hidden" }}
               >
                 {/* Stripe Content */}
-                <div className="relative p-6 sm:p-8">
+                <div className="ds-card relative p-6 sm:p-8">
                   <div className="relative z-10 flex flex-col items-center text-center">
                     <button
                       type="button"
@@ -982,7 +982,7 @@ export default function HostWalletPage() {
                 <div className="flex items-start justify-between gap-4 border-b border-slate-100 bg-slate-50/50 p-6 sm:px-8 rounded-t-3xl">
                   <div>
                     <p className="font-semibold text-slate-900">Comment ça marche ?</p>
-                    <p className="mt-1 text-[13px] text-slate-500">Paiements et virements via Stripe</p>
+                    <p className="ds-native-hide mt-1 text-[13px] text-slate-500">Paiements et virements via Stripe</p>
                   </div>
                   <button
                     type="button"
