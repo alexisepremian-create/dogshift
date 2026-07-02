@@ -64,20 +64,40 @@ test("globals.css swaps native vs web dashboard homes", () => {
   assert.match(css, /html\[data-native="true"\]\s+\.ds-web-only\s*\{\s*display:\s*none/, "Web dashboard hides in the app.");
 });
 
-test("both homes render a minimalist native dashboard branch", () => {
+test("both homes mount a native island behind ds-native-only, web behind ds-web-only", () => {
   const sitter = read("app/(protected)/host/page.tsx");
   const owner = read("app/(marketing)/account/page.tsx");
-  assert.match(sitter, /ds-native-only[^"]*"\s+data-testid="host-dashboard-native"/, "Sitter home must have a native branch.");
-  assert.match(owner, /ds-native-only[^"]*"\s+data-testid="account-dashboard-native"/, "Owner home must have a native branch.");
-  // Existing web dashboards are preserved behind ds-web-only.
+  assert.match(sitter, /ds-native-only[\s\S]{0,120}<HostNativeHome/, "Sitter native branch must mount HostNativeHome.");
+  assert.match(owner, /ds-native-only[\s\S]{0,160}<OwnerNativeHome/, "Owner native branch must mount OwnerNativeHome.");
   assert.match(sitter, /ds-web-only[^"]*"\s+data-testid="host-dashboard"/, "Sitter web dashboard must be gated ds-web-only.");
   assert.match(owner, /ds-web-only[^"]*"\s+data-testid="account-dashboard"/, "Owner web dashboard must be gated ds-web-only.");
-  // Native branches use the shared purple action tiles.
-  assert.match(sitter, /NativeDashTile[\s\S]*variant="primary"/, "Sitter native home must use purple primary tiles.");
-  assert.match(owner, /NativeDashTile[\s\S]*variant="primary"/, "Owner native home must use purple primary tiles.");
 });
 
-test("NativeDashTile primary variant is purple", () => {
+test("NativeDashTile primary variant is purple and supports an onClick (button) mode", () => {
   const tile = read("components/native/NativeDashTile.tsx");
   assert.match(tile, /variant === "primary"[\s\S]*bg-\[#7c3aed\]/, "Primary tile must be purple #7c3aed.");
+  assert.match(tile, /if \(onClick\)[\s\S]*<button/, "Tile must render a <button> when onClick is provided.");
+});
+
+test("DashboardSheet is a slide-up overlay with a back header", () => {
+  const sheet = read("components/native/DashboardSheet.tsx");
+  assert.match(sheet, /"use client"/, "DashboardSheet must be a client component.");
+  assert.match(sheet, /z-\[1201\]/, "Sheet must sit above the dashboard.");
+  assert.match(sheet, /aria-label="Retour"/, "Sheet must have a back button.");
+});
+
+test("native islands open destinations in the sheet (onClick + dynamic panels)", () => {
+  for (const [file, tag, count] of [
+    ["components/native/HostNativeHome.tsx", "host-dashboard-native", 6],
+    ["components/native/OwnerNativeHome.tsx", "account-dashboard-native", 5],
+  ] as const) {
+    const src = read(file);
+    assert.match(src, new RegExp(`data-testid="${tag}"`), `${file} must render the native dashboard.`);
+    assert.match(src, /onClick=\{\(\) => setPanel\(/, `${file} tiles must open a panel, not navigate.`);
+    assert.match(src, /<DashboardSheet /, `${file} must render the DashboardSheet.`);
+    const dynCount = (src.match(/dynamic\(\(\) => import\(/g) ?? []).length;
+    assert.ok(dynCount >= count, `${file} must lazy-load its ${count} destination panels (found ${dynCount}).`);
+    // Options must be an inline literal (Next requires it for ssr:false).
+    assert.match(src, /\{ ssr: false, loading: PanelLoading \}/, `${file} must inline the dynamic options.`);
+  }
 });

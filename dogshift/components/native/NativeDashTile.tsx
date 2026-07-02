@@ -7,15 +7,20 @@ type Variant = "primary" | "default" | "ghost";
  * Big, tappable action tile for the native (Capacitor) dashboards.
  * Minimalist: an icon chip, a short label, an optional count badge. Primary
  * variant = filled purple CTA. Used by both the owner and sitter native homes.
+ *
+ * Pass `href` to navigate (`<Link>`) or `onClick` to open a popup sheet
+ * (`<button>`).
  */
 export function NativeDashTile({
   href,
+  onClick,
   label,
   icon,
   badge,
   variant = "default",
 }: {
-  href: string;
+  href?: string;
+  onClick?: () => void;
   label: string;
   icon: ReactNode;
   badge?: number;
@@ -33,14 +38,12 @@ export function NativeDashTile({
       ? "bg-white/20 text-white"
       : "bg-[#7c3aed]/10 text-[#7c3aed]";
 
-  return (
-    <Link
-      href={href}
-      className={
-        "relative flex min-h-[92px] flex-col items-start justify-between gap-5 rounded-2xl p-4 transition active:scale-[0.98] " +
-        shell
-      }
-    >
+  const className =
+    "relative flex min-h-[92px] flex-col items-start justify-between gap-5 rounded-2xl p-4 text-left transition active:scale-[0.98] " +
+    shell;
+
+  const inner = (
+    <>
       <span className={"inline-flex h-9 w-9 items-center justify-center rounded-xl " + chip}>{icon}</span>
       <span className="text-sm font-semibold leading-tight">{label}</span>
       {typeof badge === "number" && badge > 0 ? (
@@ -48,6 +51,20 @@ export function NativeDashTile({
           {badge > 99 ? "99+" : badge}
         </span>
       ) : null}
+    </>
+  );
+
+  if (onClick) {
+    return (
+      <button type="button" onClick={onClick} className={className}>
+        {inner}
+      </button>
+    );
+  }
+
+  return (
+    <Link href={href ?? "#"} className={className}>
+      {inner}
     </Link>
   );
 }
