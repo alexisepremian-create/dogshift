@@ -136,7 +136,7 @@ export default function GlobalNativeBottomNav() {
       { key: "home", label: "Accueil", href: "/", icon: <House className="h-5 w-5" />, active: pathname === "/" },
       { key: "requests", label: "Demandes", href: "/host/requests", icon: <Inbox className="h-5 w-5" />, active: pathname.startsWith("/host/requests") },
       { key: "messages", label: "Messages", href: "/host/messages", icon: <MessageCircle className="h-5 w-5" />, active: pathname.startsWith("/host/messages") },
-      { key: "dashboard", label: "Tableau", href: "/host", icon: <User className="h-5 w-5" />, active: pathname === "/host" },
+      { key: "dashboard", label: "Compte", href: "/host", icon: <User className="h-5 w-5" />, active: pathname === "/host" },
     ];
     const moreSitter: BottomNavItem[] = [
       { key: "account", label: "Mon compte (owner)", href: "/account", icon: <Heart className="h-5 w-5" />, active: pathname === "/account" },
@@ -152,7 +152,7 @@ export default function GlobalNativeBottomNav() {
     { key: "home", label: "Accueil", href: "/", icon: <House className="h-5 w-5" />, active: pathname === "/" },
     { key: "bookings", label: "Réservations", href: "/account/bookings", icon: <Calendar className="h-5 w-5" />, active: pathname.startsWith("/account/bookings") },
     { key: "messages", label: "Messages", href: "/account/messages", icon: <MessageCircle className="h-5 w-5" />, active: pathname.startsWith("/account/messages") },
-    { key: "dashboard", label: "Tableau", href: "/account", icon: <User className="h-5 w-5" />, active: pathname === "/account" },
+    { key: "dashboard", label: "Compte", href: "/account", icon: <User className="h-5 w-5" />, active: pathname === "/account" },
   ];
   const moreOwner: BottomNavItem[] = [
     { key: "devenir-sitter", label: "Devenir dogsitter", href: "/devenir-dogsitter", icon: <HelpCircle className="h-5 w-5" />, active: pathname === "/devenir-dogsitter" },

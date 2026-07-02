@@ -1,9 +1,8 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { X } from "lucide-react";
+import { PawPrint, X } from "lucide-react";
 
 import type { BottomNavItem } from "@/components/MobileBottomNav";
 
@@ -63,8 +62,11 @@ export default function NativeTabBar({ items, moreItems = [] }: { items: BottomN
     measure();
     const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(measure) : null;
     ro?.observe(el);
+    // Re-measure once fonts/safe-area settle.
+    const t = setTimeout(measure, 300);
     return () => {
       ro?.disconnect();
+      clearTimeout(t);
       syncNavHeight(0);
     };
   }, []);
@@ -84,7 +86,6 @@ export default function NativeTabBar({ items, moreItems = [] }: { items: BottomN
       ref={navRef}
       aria-label="Navigation principale"
       className="fixed inset-x-0 bottom-0 z-50 lg:hidden"
-      style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
     >
       {/* ── "More" sheet (opened by the center logo) ── */}
       {moreOpen && moreItems.length > 0 ? (
@@ -119,23 +120,27 @@ export default function NativeTabBar({ items, moreItems = [] }: { items: BottomN
         </div>
       ) : null}
 
-      {/* ── Solid bar ── */}
-      <div ref={barRef} className="border-t border-slate-200 bg-white">
+      {/* ── Solid bar — white fills through the safe area so nothing shows below ── */}
+      <div
+        ref={barRef}
+        className="border-t border-slate-200 bg-white"
+        style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+      >
         <div className="relative flex h-[58px] items-stretch">
           {left.map((item) => (
             <Tab key={item.key} item={item} onNavigate={() => setMoreOpen(false)} />
           ))}
 
-          {/* Center DogShift logo → opens the more sheet */}
-          <div className="flex w-[72px] shrink-0 items-start justify-center">
+          {/* Center DogShift paw → opens the more sheet (full purple, no ring) */}
+          <div className="flex w-[80px] shrink-0 items-start justify-center">
             <button
               type="button"
               onClick={() => setMoreOpen((v) => !v)}
               aria-label="Menu"
               aria-expanded={moreOpen}
-              className="-mt-5 flex h-14 w-14 items-center justify-center rounded-full bg-[#7c3aed] shadow-[0_10px_24px_-6px_rgba(124,58,237,0.6)] ring-4 ring-white active:scale-95"
+              className="-mt-7 flex h-[68px] w-[68px] items-center justify-center rounded-full bg-[#7c3aed] shadow-[0_12px_28px_-6px_rgba(124,58,237,0.65)] active:scale-95"
             >
-              <Image src="/dogshift-paw-white.png" alt="DogShift" width={30} height={30} className="h-7 w-7 object-contain" />
+              <PawPrint className="h-9 w-9 text-white" strokeWidth={2.2} />
             </button>
           </div>
 
