@@ -1,8 +1,9 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { PawPrint, X } from "lucide-react";
+import { X } from "lucide-react";
 
 import type { BottomNavItem } from "@/components/MobileBottomNav";
 
@@ -34,7 +35,7 @@ function Tab({ item, onNavigate }: { item: BottomNavItem; onNavigate: () => void
     >
       <span style={{ color: item.active ? "#ffffff" : "#94a3b8", transition: "color 200ms ease" }}>{item.icon}</span>
       <span
-        className="max-w-full truncate text-[10px] font-semibold leading-none"
+        className="max-w-full truncate text-[11.5px] font-semibold leading-none"
         style={{ color: item.active ? "#ffffff" : "#94a3b8", transition: "color 200ms ease" }}
       >
         {item.label}
@@ -153,16 +154,16 @@ export default function NativeTabBar({ items, moreItems = [] }: { items: BottomN
             <Tab key={item.key} item={item} onNavigate={() => setMoreOpen(false)} />
           ))}
 
-          {/* Center DogShift paw → opens the more sheet (full purple, no ring) */}
+          {/* Center DogShift app-icon logo → opens the more sheet */}
           <div className="flex w-[80px] shrink-0 items-start justify-center">
             <button
               type="button"
               onClick={() => setMoreOpen((v) => !v)}
               aria-label="Menu"
               aria-expanded={moreOpen}
-              className="-mt-7 flex h-[68px] w-[68px] items-center justify-center rounded-full bg-[#7c3aed] shadow-[0_12px_28px_-6px_rgba(124,58,237,0.65)] active:scale-95"
+              className="-mt-7 h-[68px] w-[68px] overflow-hidden rounded-full bg-[#7c3aed] shadow-[0_12px_28px_-6px_rgba(124,58,237,0.65)] active:scale-95"
             >
-              <PawPrint className="h-9 w-9 text-white" strokeWidth={2.2} />
+              <Image src="/apple-touch-icon.png" alt="DogShift" width={68} height={68} className="h-full w-full object-cover" priority />
             </button>
           </div>
 

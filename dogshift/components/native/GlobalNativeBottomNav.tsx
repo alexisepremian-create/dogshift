@@ -133,10 +133,10 @@ export default function GlobalNativeBottomNav() {
     // 4 flanking tabs (2 left of the center logo, 2 right). The person icon →
     // the sitter dashboard (/host). The center DogShift logo opens `moreItems`.
     const items: BottomNavItem[] = [
-      { key: "home", label: "Accueil", href: "/", icon: <House className="h-5 w-5" />, active: pathname === "/" },
-      { key: "requests", label: "Demandes", href: "/host/requests", icon: <Inbox className="h-5 w-5" />, active: pathname.startsWith("/host/requests") },
-      { key: "messages", label: "Messages", href: "/host/messages", icon: <MessageCircle className="h-5 w-5" />, active: pathname.startsWith("/host/messages") },
-      { key: "dashboard", label: "Compte", href: "/host", icon: <User className="h-5 w-5" />, active: pathname === "/host" },
+      { key: "home", label: "Accueil", href: "/", icon: <House className="h-6 w-6" />, active: pathname === "/" },
+      { key: "requests", label: "Demandes", href: "/host/requests", icon: <Inbox className="h-6 w-6" />, active: pathname.startsWith("/host/requests") },
+      { key: "messages", label: "Messages", href: "/host/messages", icon: <MessageCircle className="h-6 w-6" />, active: pathname.startsWith("/host/messages") },
+      { key: "dashboard", label: "Compte", href: "/host", icon: <User className="h-6 w-6" />, active: pathname === "/host" },
     ];
     const moreSitter: BottomNavItem[] = [
       { key: "account", label: "Mon compte (owner)", href: "/account", icon: <Heart className="h-5 w-5" />, active: pathname === "/account" },
@@ -149,10 +149,10 @@ export default function GlobalNativeBottomNav() {
 
   // ── Owner (authed, not sitter) ──
   const items: BottomNavItem[] = [
-    { key: "home", label: "Accueil", href: "/", icon: <House className="h-5 w-5" />, active: pathname === "/" },
-    { key: "bookings", label: "Réservations", href: "/account/bookings", icon: <Calendar className="h-5 w-5" />, active: pathname.startsWith("/account/bookings") },
-    { key: "messages", label: "Messages", href: "/account/messages", icon: <MessageCircle className="h-5 w-5" />, active: pathname.startsWith("/account/messages") },
-    { key: "dashboard", label: "Compte", href: "/account", icon: <User className="h-5 w-5" />, active: pathname === "/account" },
+    { key: "home", label: "Accueil", href: "/", icon: <House className="h-6 w-6" />, active: pathname === "/" },
+    { key: "bookings", label: "Réservations", href: "/account/bookings", icon: <Calendar className="h-6 w-6" />, active: pathname.startsWith("/account/bookings") },
+    { key: "messages", label: "Messages", href: "/account/messages", icon: <MessageCircle className="h-6 w-6" />, active: pathname.startsWith("/account/messages") },
+    { key: "dashboard", label: "Compte", href: "/account", icon: <User className="h-6 w-6" />, active: pathname === "/account" },
   ];
   const moreOwner: BottomNavItem[] = [
     { key: "devenir-sitter", label: "Devenir dogsitter", href: "/devenir-dogsitter", icon: <HelpCircle className="h-5 w-5" />, active: pathname === "/devenir-dogsitter" },
