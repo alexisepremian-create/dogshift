@@ -136,6 +136,12 @@ html[data-native="true"] [data-ds-dashboard] .ds-stat {
 html[data-native="true"] [data-ds-dashboard] .ds-row {
   padding: 0.75rem 0.875rem;
 }
+/* Declutter: hide verbose intro/descriptive text in the native app only, so the
+   dashboard destination pages (wallet, settings, availability…) stay minimal —
+   "garde juste l'essentiel". Web keeps the full copy. */
+html[data-native="true"] [data-ds-dashboard] .ds-native-hide {
+  display: none;
+}
 
 /* Native vs web dashboard home swap. The owner/sitter home pages render BOTH a
    spacious web dashboard (`.ds-web-only`) and a minimalist native dashboard

@@ -1317,7 +1317,7 @@ export default function AvailabilityStudioPage() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="text-xl font-bold text-slate-900 sm:text-2xl">Disponibilités</p>
-          <p className="mt-1 text-sm text-slate-600 sm:mt-2">Configure tes services et tes exceptions.</p>
+          <p className="ds-native-hide mt-1 text-sm text-slate-600 sm:mt-2">Configure tes services et tes exceptions.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {savedPing ? (
