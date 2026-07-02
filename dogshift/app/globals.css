@@ -137,6 +137,20 @@ html[data-native="true"] [data-ds-dashboard] .ds-row {
   padding: 0.75rem 0.875rem;
 }
 
+/* Native vs web dashboard home swap. The owner/sitter home pages render BOTH a
+   spacious web dashboard (`.ds-web-only`) and a minimalist native dashboard
+   (`.ds-native-only`); CSS picks one based on `data-native` (set synchronously
+   on <html>, so no flash and it works in server-rendered pages too). */
+.ds-native-only {
+  display: none;
+}
+html[data-native="true"] .ds-native-only {
+  display: block;
+}
+html[data-native="true"] .ds-web-only {
+  display: none;
+}
+
 /* ── Native app cold-launch overlay ────────────────────────────────────────
    Two coordinated layers cover the cold-launch window — see
    docs/bugs/native-app-footer-flash-on-launch.md for the full story:
