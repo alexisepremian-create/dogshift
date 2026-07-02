@@ -462,17 +462,7 @@ function DogShiftTimePicker({
       .map(([time, available]) => ({ time, available }))
       .sort((a, b) => a.time.localeCompare(b.time));
   }, [slots]);
-  const selectableTimes = useMemo(() => normalizedSlots.filter((slot) => slot.available).map((slot) => slot.time), [normalizedSlots]);
-  const [draftValue, setDraftValue] = useState<string | null>(() => value ?? selectableTimes[0] ?? null);
-
-  useEffect(() => {
-    if (!open) return;
-    setDraftValue(value && selectableTimes.includes(value) ? value : selectableTimes[0] ?? null);
-  }, [open, selectableTimes, value]);
-
   const hasSlots = normalizedSlots.length > 0;
-  const hasAllowedTimes = selectableTimes.length > 0;
-  const isCandidateAllowed = Boolean(draftValue && selectableTimes.includes(draftValue));
 
   useEffect(() => {
     if (!open) return;
@@ -538,10 +528,10 @@ function DogShiftTimePicker({
             </p>
             {/* Single scrollable column (iOS-style) with a subtle non-purple
                 highlight + check on the selected row. */}
-            <div className="max-h-[176px] overflow-y-auto">
+            <div className="max-h-[224px] overflow-y-auto">
               <div className="flex flex-col">
                 {normalizedSlots.map((slot) => {
-                  const selected = slot.time === draftValue;
+                  const selected = slot.time === value;
                   return (
                     <button
                       key={slot.time}
@@ -549,7 +539,8 @@ function DogShiftTimePicker({
                       disabled={!slot.available}
                       onClick={() => {
                         if (!slot.available) return;
-                        setDraftValue(slot.time);
+                        onChange(slot.time);
+                        onOpenChange(false);
                       }}
                       className={
                         "flex w-full items-center justify-between rounded-xl px-4 py-3 text-base font-semibold transition disabled:cursor-not-allowed " +
@@ -569,31 +560,20 @@ function DogShiftTimePicker({
               </div>
             </div>
 
-            <div className="mt-4 flex items-center gap-2">
-              {value ? (
+            {value ? (
+              <div className="mt-4">
                 <button
                   type="button"
                   onClick={() => {
                     onChange(null);
                     onOpenChange(false);
                   }}
-                  className="rounded-full border border-slate-200 px-4 py-3 text-sm font-medium text-slate-700 active:scale-95"
+                  className="w-full rounded-full border border-slate-200 py-3 text-sm font-medium text-slate-700 active:scale-[0.98]"
                 >
                   Effacer
                 </button>
-              ) : null}
-              <button
-                type="button"
-                disabled={!hasAllowedTimes || !isCandidateAllowed}
-                onClick={() => {
-                  onChange(draftValue ?? null);
-                  onOpenChange(false);
-                }}
-                className="flex-1 rounded-full bg-[#7c3aed] py-3 text-base font-semibold text-white shadow-[0_8px_24px_rgba(124,58,237,0.35)] transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                Valider
-              </button>
-            </div>
+              </div>
+            ) : null}
           </div>
         </>
       ) : null}
@@ -681,7 +661,7 @@ function DogShiftDurationPicker({
             </div>
             {/* Single scrollable column (iOS-style) with a subtle non-purple
                 highlight + check on the selected row. */}
-            <div className="max-h-[176px] overflow-y-auto">
+            <div className="max-h-[224px] overflow-y-auto">
               <div className="flex flex-col">
                 {options.map((option) => {
                   const selected = option.hours === value;
