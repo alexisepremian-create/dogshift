@@ -488,6 +488,8 @@ export default function HostDashboardPage() {
           <NativeStat value={unreadMessages} label="Messages" />
         </div>
 
+        <p className="pt-1 text-sm font-semibold text-slate-900">Accès rapide</p>
+
         <div className="grid grid-cols-2 gap-3">
           <NativeDashTile href="/host/requests" label="Demandes" icon={<CalendarClock className="h-5 w-5" />} badge={pendingRequests} variant="primary" />
           <NativeDashTile href="/host/messages" label="Messages" icon={<MessageCircle className="h-5 w-5" />} badge={unreadMessages} />
