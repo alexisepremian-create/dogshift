@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useSession, signOut } from "next-auth/react";
+import { useSession } from "next-auth/react";
 
 import {
   AlertTriangle,
@@ -458,13 +458,13 @@ export default function AccountSettingsPage() {
     <div className="relative grid gap-6" data-testid="account-settings-page">
       <div className="relative z-10 grid gap-6 min-w-0">
       <div>
-        <p className="text-sm font-semibold text-slate-600">Mon compte</p>
+        <p className="ds-native-hide text-sm font-semibold text-slate-600">Mon compte</p>
         <h1 className="mt-2 flex items-center gap-2 text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">
           <Settings className="h-6 w-6 text-slate-700" aria-hidden="true" />
           <span>Paramètres</span>
         </h1>
         <div className="mt-3 flex min-h-[32px] items-center">
-          <p className="text-sm text-slate-600">Gérez vos informations, votre sécurité et vos préférences.</p>
+          <p className="ds-native-hide text-sm text-slate-600">Gérez vos informations, votre sécurité et vos préférences.</p>
         </div>
       </div>
 
@@ -484,7 +484,7 @@ export default function AccountSettingsPage() {
         <div className={sectionTitle}>
           <div>
             <h2 className="text-lg font-semibold text-slate-900">Informations personnelles</h2>
-            <p className="mt-2 text-sm text-slate-600">Modifie ton nom affiché sans toucher à la sécurité.</p>
+            <p className="ds-native-hide mt-2 text-sm text-slate-600">Modifie ton nom affiché sans toucher à la sécurité.</p>
           </div>
           <User2 className="h-5 w-5 text-slate-400" aria-hidden="true" />
         </div>
@@ -1016,7 +1016,7 @@ export default function AccountSettingsPage() {
                 onChange={(e) =>
                   setSettingsState((prev) => ({
                     ...prev,
-                    preferences: { ...prev.preferences, language: e.target.value as any },
+                    preferences: { ...prev.preferences, language: e.target.value as SettingsState["preferences"]["language"] },
                   }))
                 }
                 className={`${inputBase} appearance-none pr-8`}
@@ -1058,7 +1058,7 @@ export default function AccountSettingsPage() {
                 onChange={(e) =>
                   setSettingsState((prev) => ({
                     ...prev,
-                    preferences: { ...prev.preferences, dateFormat: e.target.value as any },
+                    preferences: { ...prev.preferences, dateFormat: e.target.value as SettingsState["preferences"]["dateFormat"] },
                   }))
                 }
                 className={`${inputBase} appearance-none pr-8`}
