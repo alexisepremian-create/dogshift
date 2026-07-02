@@ -17,9 +17,11 @@ import {
   Lock,
   Mail,
   LogOut,
+  User,
 } from "lucide-react";
 
-import MobileBottomNav, { type BottomNavItem } from "@/components/MobileBottomNav";
+import { type BottomNavItem } from "@/components/MobileBottomNav";
+import NativeTabBar from "@/components/native/NativeTabBar";
 import { useIsNativeApp } from "@/lib/native/useIsNativeApp";
 import { fetchAccountContext } from "@/lib/accountContext";
 
@@ -128,19 +130,21 @@ export default function GlobalNativeBottomNav() {
 
   if (isSitter) {
     // ── Sitter (also has owner side) ──
+    // 4 flanking tabs (2 left of the center logo, 2 right). The person icon →
+    // the sitter dashboard (/host). The center DogShift logo opens `moreItems`.
     const items: BottomNavItem[] = [
       { key: "home", label: "Accueil", href: "/", icon: <House className="h-5 w-5" />, active: pathname === "/" },
       { key: "requests", label: "Demandes", href: "/host/requests", icon: <Inbox className="h-5 w-5" />, active: pathname.startsWith("/host/requests") },
       { key: "messages", label: "Messages", href: "/host/messages", icon: <MessageCircle className="h-5 w-5" />, active: pathname.startsWith("/host/messages") },
+      { key: "dashboard", label: "Tableau", href: "/host", icon: <User className="h-5 w-5" />, active: pathname === "/host" },
     ];
     const moreSitter: BottomNavItem[] = [
-      { key: "host-dashboard", label: "Tableau de bord sitter", href: "/host", icon: <Shield className="h-5 w-5" />, active: pathname === "/host" },
       { key: "account", label: "Mon compte (owner)", href: "/account", icon: <Heart className="h-5 w-5" />, active: pathname === "/account" },
       ...(role === "ADMIN" ? [{ key: "admin", label: "Admin", href: "/admin/dashboard", icon: <Shield className="h-5 w-5" />, active: pathname.startsWith("/admin") }] : []),
       ...moreCommon,
       { key: "logout", label: "Déconnexion", href: "/sign-out", icon: <LogOut className="h-5 w-5" />, active: false },
     ];
-    return <MobileBottomNav items={items} moreItems={moreSitter} />;
+    return <NativeTabBar items={items} moreItems={moreSitter} />;
   }
 
   // ── Owner (authed, not sitter) ──
@@ -148,13 +152,13 @@ export default function GlobalNativeBottomNav() {
     { key: "home", label: "Accueil", href: "/", icon: <House className="h-5 w-5" />, active: pathname === "/" },
     { key: "bookings", label: "Réservations", href: "/account/bookings", icon: <Calendar className="h-5 w-5" />, active: pathname.startsWith("/account/bookings") },
     { key: "messages", label: "Messages", href: "/account/messages", icon: <MessageCircle className="h-5 w-5" />, active: pathname.startsWith("/account/messages") },
+    { key: "dashboard", label: "Tableau", href: "/account", icon: <User className="h-5 w-5" />, active: pathname === "/account" },
   ];
   const moreOwner: BottomNavItem[] = [
-    { key: "account", label: "Mon compte", href: "/account", icon: <Heart className="h-5 w-5" />, active: pathname === "/account" },
     { key: "devenir-sitter", label: "Devenir dogsitter", href: "/devenir-dogsitter", icon: <HelpCircle className="h-5 w-5" />, active: pathname === "/devenir-dogsitter" },
     ...(role === "ADMIN" ? [{ key: "admin", label: "Admin", href: "/admin/dashboard", icon: <Shield className="h-5 w-5" />, active: pathname.startsWith("/admin") }] : []),
     ...moreCommon.filter((m) => m.key !== "devenir-sitter"),
     { key: "logout", label: "Déconnexion", href: "/sign-out", icon: <LogOut className="h-5 w-5" />, active: false },
   ];
-  return <MobileBottomNav items={items} moreItems={moreOwner} />;
+  return <NativeTabBar items={items} moreItems={moreOwner} />;
 }
