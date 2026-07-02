@@ -64,7 +64,7 @@ export default function OwnerDashboardShell({ children }: { children: React.Reac
   const moreNavItems = [...moreFromKeys, signOutItem];
 
   return (
-    <div className="min-h-screen w-full max-w-[100vw] overflow-x-hidden bg-white text-slate-900">
+    <div data-ds-dashboard className="min-h-screen w-full max-w-[100vw] overflow-x-hidden bg-white text-slate-900">
       <div className="flex min-h-screen">
         <div className="relative z-40 hidden shrink-0 lg:block">
           <OwnerSidebar className="sticky top-0 h-screen" forceExpanded />

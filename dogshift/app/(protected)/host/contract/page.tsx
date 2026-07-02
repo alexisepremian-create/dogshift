@@ -3,7 +3,7 @@
 export default function HostContractPage() {
   return (
     <div className="relative grid gap-6 overflow-hidden" data-testid="host-contract-page-locked">
-      <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.18)] sm:p-8">
+      <div className="ds-card rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.18)] sm:p-8">
         <p className="text-sm font-semibold text-slate-600">Signature du contrat</p>
         <h1 className="mt-2 text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">Lien sécurisé requis</h1>
         <p className="mt-4 max-w-2xl text-sm leading-relaxed text-slate-600">

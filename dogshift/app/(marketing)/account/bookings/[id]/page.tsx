@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useSearchParams } from "next/navigation";
-import { useSession, signOut } from "next-auth/react";
+import { useSession } from "next-auth/react";
 import { CalendarDays, Clock3 } from "lucide-react";
 
 type BookingDetail = {
@@ -532,7 +532,7 @@ export default function AccountBookingDetailPage() {
   if (!isLoaded) return null;
   if (!isSignedIn) {
     return (
-      <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)] sm:p-8">
+      <div className="ds-card rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)] sm:p-8">
         <p className="text-sm font-semibold text-slate-900">Connexion requise (401).</p>
         <p className="mt-2 text-sm text-slate-600">Connecte-toi pour accéder au détail de ta réservation.</p>
         <div className="mt-5">
@@ -582,14 +582,14 @@ export default function AccountBookingDetailPage() {
       ) : null}
 
       {loading || !booking || !computed ? (
-        <div className="rounded-3xl border border-slate-200 bg-white p-6 sm:p-8">
+        <div className="ds-card rounded-3xl border border-slate-200 bg-white p-6 sm:p-8">
           <p className="text-sm font-semibold text-slate-900">Chargement…</p>
           <p className="mt-2 text-sm text-slate-600">Nous récupérons les détails de ta réservation.</p>
         </div>
       ) : (
         <div className="grid gap-6 lg:grid-cols-[1fr_360px] lg:items-start">
           <div className="grid gap-6">
-            <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.12)] sm:p-8">
+            <div className="ds-card rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.12)] sm:p-8">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                 <div className="flex items-start gap-4">
                   <div className="relative h-14 w-14 overflow-hidden rounded-2xl bg-slate-100">
@@ -674,7 +674,7 @@ export default function AccountBookingDetailPage() {
             </div>
           </div>
 
-          <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.12)] sm:p-8">
+          <div className="ds-card rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.12)] sm:p-8">
             <p className="text-sm font-semibold text-slate-900">Montants</p>
             <div className="mt-4 space-y-3 text-sm">
               <div className="flex items-center justify-between text-slate-700">

@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useSession, signOut } from "next-auth/react";
+import { useSession } from "next-auth/react";
 import { Archive, ChevronDown, Dog, MessageCircle, Pin, Plus, RefreshCw, Trash2, X } from "lucide-react";
 import { publicDogPhotoPath } from "@/lib/dogPhotoMedia";
 
@@ -533,7 +533,7 @@ export default function AccountMessagesPage() {
   if (!isLoaded) return null;
   if (!isSignedIn) {
     return (
-      <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)] sm:p-8">
+      <div className="ds-card rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)] sm:p-8">
         <p className="text-sm font-semibold text-slate-900">Connexion requise (401).</p>
         <Link href="/login" className="mt-4 inline-flex items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[var(--dogshift-blue-hover)]">
           Se connecter
@@ -562,11 +562,11 @@ export default function AccountMessagesPage() {
       ) : null}
 
       {loading ? (
-        <div className="rounded-3xl border border-slate-200 bg-white p-6 sm:p-8">
+        <div className="ds-card rounded-3xl border border-slate-200 bg-white p-6 sm:p-8">
           <p className="text-sm font-semibold text-slate-900">Chargement…</p>
         </div>
       ) : rows.length === 0 && archivedRows.length === 0 ? (
-        <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)] sm:p-8">
+        <div className="ds-card rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)] sm:p-8">
           <p className="text-sm font-semibold text-slate-900">Aucune conversation</p>
           <p className="mt-2 text-sm text-slate-600">Quand tu contactes un dogsitter, la conversation apparaîtra ici.</p>
           <div className="mt-5">

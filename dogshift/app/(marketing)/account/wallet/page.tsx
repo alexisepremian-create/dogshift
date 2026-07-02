@@ -443,14 +443,14 @@ function OwnerWalletContent() {
             <p>{error}</p>
           </div>
         ) : loading ? (
-          <div className="rounded-3xl border border-slate-200 bg-white p-6 sm:p-8">
+          <div className="ds-card rounded-3xl border border-slate-200 bg-white p-6 sm:p-8">
             <p className="text-sm font-semibold text-slate-900">Chargement…</p>
             <p className="mt-2 text-sm text-slate-600">Ton portefeuille est en cours de préparation.</p>
           </div>
         ) : (
           <div className="space-y-6">
             {/* ━━━ EXPENSE DASHBOARD ━━━ */}
-            <div onMouseMove={onTopEnter} className="rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)] sm:p-8">
+            <div onMouseMove={onTopEnter} className="ds-card rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)] sm:p-8">
               <div className="mb-8 flex flex-col justify-between gap-4 border-b border-slate-100 pb-6 sm:flex-row sm:items-center">
                 <div>
                   <h2 className="text-lg font-semibold tracking-tight text-slate-900">Aperçu des statistiques</h2>
@@ -552,7 +552,7 @@ function OwnerWalletContent() {
             </div>
 
             {/* Historique des transactions */}
-            <div className="rounded-3xl border border-slate-100 bg-white/60 p-5 shadow-[0_8px_30px_-12px_rgba(15,23,42,0.06)] backdrop-blur-xl sm:p-7">
+            <div className="ds-card rounded-3xl border border-slate-100 bg-white/60 p-5 shadow-[0_8px_30px_-12px_rgba(15,23,42,0.06)] backdrop-blur-xl sm:p-7">
               <h2 className="mb-6 text-lg font-bold text-slate-900">Historique des transactions</h2>
               
               {filteredHistory.length === 0 ? (

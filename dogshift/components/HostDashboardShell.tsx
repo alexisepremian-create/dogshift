@@ -53,7 +53,7 @@ export default function HostDashboardShell({ children }: { children: React.React
   const moreNavItems = (MORE_NAV_KEYS as readonly string[]).map(toNavItem).filter(Boolean) as import("@/components/MobileBottomNav").BottomNavItem[];
 
   return (
-    <div className="min-h-screen w-full max-w-[100vw] overflow-x-hidden bg-white text-slate-900">
+    <div data-ds-dashboard className="min-h-screen w-full max-w-[100vw] overflow-x-hidden bg-white text-slate-900">
       {/*
        * Sitter compliance gate — blocking modal that surfaces when the sitter
        * has either (1) not accepted the current CGU version, or (2) has not

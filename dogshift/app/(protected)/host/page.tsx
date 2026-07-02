@@ -439,7 +439,7 @@ export default function HostDashboardPage() {
             WebkitMaskImage: "linear-gradient(to bottom, rgba(0,0,0,1) 0px, rgba(0,0,0,1) 160px, rgba(0,0,0,0) 300px)",
           }}
         />
-        <div className="relative z-10 rounded-3xl border border-slate-200 bg-white p-6">
+        <div className="ds-card relative z-10 rounded-3xl border border-slate-200 bg-white p-6">
           <p className="text-sm font-semibold text-slate-900">Tableau de bord</p>
           <p className="mt-2 text-sm text-slate-600">Ton profil hôte n’est pas encore disponible.</p>
           <div className="mt-4">
@@ -560,7 +560,7 @@ export default function HostDashboardPage() {
         </div>
 
         <div className="mt-8 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
-          <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)]">
+          <div className="ds-stat rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)]">
             <p className="text-xs font-semibold text-slate-600">Note moyenne</p>
             <div className="mt-2 flex items-center gap-2">
               <StarIcon className="h-5 w-5 text-[#F5B301]" />
@@ -568,24 +568,24 @@ export default function HostDashboardPage() {
             </div>
           </div>
 
-          <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)]">
+          <div className="ds-stat rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)]">
             <p className="text-xs font-semibold text-slate-600">Nombre d’avis</p>
             <p className="mt-2 text-2xl font-semibold text-slate-900">{reviewCount}</p>
           </div>
 
-          <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)]">
+          <div className="ds-stat rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)]">
             <p className="text-xs font-semibold text-slate-600">Réservations en attente</p>
             <p className="mt-2 text-2xl font-semibold text-slate-900">{pendingRequests}</p>
           </div>
 
-          <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)]">
+          <div className="ds-stat rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)]">
             <p className="text-xs font-semibold text-slate-600">Temps de réponse</p>
             <p className="mt-2 text-2xl font-semibold text-slate-900">{responseTime}</p>
           </div>
         </div>
 
         <div className="mt-8 grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
-          <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)]">
+          <section className="ds-card rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)]">
             <div className="flex items-center justify-between gap-4">
               <div>
                 <h2 className="text-base font-semibold text-slate-900">À faire</h2>
@@ -610,7 +610,7 @@ export default function HostDashboardPage() {
                   <Link
                     key={item.id}
                     href={item.href}
-                    className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4 text-sm font-semibold text-slate-900 transition hover:bg-slate-100"
+                    className="ds-row flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4 text-sm font-semibold text-slate-900 transition hover:bg-slate-100"
                   >
                     <span>{item.label}</span>
                     <span className="ml-auto inline-flex items-center gap-2">
@@ -635,12 +635,12 @@ export default function HostDashboardPage() {
             </div>
           </section>
 
-          <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)]">
+          <section className="ds-card rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)]">
             <h2 className="text-base font-semibold text-slate-900">Accès rapide</h2>
             <div className="mt-4 space-y-3">
               <Link
                 href="/host/requests"
-                className="flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4 text-sm font-semibold text-slate-900 transition hover:bg-slate-100"
+                className="ds-row flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4 text-sm font-semibold text-slate-900 transition hover:bg-slate-100"
               >
                 <span>Réservations</span>
                 <span className="ml-auto inline-flex items-center gap-2">
@@ -658,7 +658,7 @@ export default function HostDashboardPage() {
               </Link>
               <Link
                 href="/host/messages"
-                className="flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4 text-sm font-semibold text-slate-900 transition hover:bg-slate-100"
+                className="ds-row flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4 text-sm font-semibold text-slate-900 transition hover:bg-slate-100"
               >
                 <span>Messages</span>
                 <span className="ml-auto inline-flex items-center gap-2">
@@ -677,7 +677,7 @@ export default function HostDashboardPage() {
 
               <Link
                 href="/host/settings"
-                className="flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4 text-sm font-semibold text-slate-900 transition hover:bg-slate-100"
+                className="ds-row flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4 text-sm font-semibold text-slate-900 transition hover:bg-slate-100"
               >
                 <span>Paramètres</span>
                 <span className="ml-auto inline-flex items-center gap-2">

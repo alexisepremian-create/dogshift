@@ -1256,7 +1256,7 @@ export default function AvailabilityStudioPage() {
 
   if (!sitterId) {
     return (
-      <div className="rounded-3xl border border-slate-200 bg-white p-8">
+      <div className="ds-card rounded-3xl border border-slate-200 bg-white p-8">
         <p className="text-sm font-semibold text-slate-900">Disponibilités</p>
         <p className="mt-2 text-sm text-slate-600">Crée ton profil sitter pour configurer ton agenda.</p>
         <div className="mt-4">
