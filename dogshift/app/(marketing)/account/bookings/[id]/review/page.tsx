@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { useSession, signOut } from "next-auth/react";
+import { useSession } from "next-auth/react";
 import { CalendarDays, ChevronLeft, MapPin } from "lucide-react";
 
 
@@ -314,7 +314,7 @@ export default function AccountBookingReviewPage() {
                 </div>
               </section>
 
-              <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+              <section className="ds-card rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
                 {eligibilityLoading ? (
                   <p className="text-sm font-medium text-slate-600">Chargement…</p>
                 ) : eligibility?.ok && eligibility.eligible ? (

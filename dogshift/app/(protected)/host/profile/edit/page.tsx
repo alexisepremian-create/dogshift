@@ -497,7 +497,7 @@ export default function HostProfileEditPage() {
   if (!sitterId) {
     return (
       <div className="relative grid gap-6 overflow-x-hidden" data-testid="host-profile-edit">
-        <div className="relative z-10 rounded-3xl border border-slate-200 bg-white p-6">
+        <div className="ds-card relative z-10 rounded-3xl border border-slate-200 bg-white p-6">
           <p className="text-sm font-semibold text-slate-900">Profil hôte</p>
           <p className="mt-2 text-sm text-slate-600">Ton profil hôte n&apos;est pas encore disponible.</p>
           <div className="mt-4">

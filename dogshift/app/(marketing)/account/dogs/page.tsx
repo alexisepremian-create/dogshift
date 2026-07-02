@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
-import { useSession, signOut } from "next-auth/react";
+import { useSession } from "next-auth/react";
 import { Plus, Pencil, Trash2, Star, Dog, X, Check, Camera, Loader2 } from "lucide-react";
 import AccountPageSkeleton from "@/components/ui/AccountPageSkeleton";
 import { publicDogPhotoPath } from "@/lib/dogPhotoMedia";
@@ -247,7 +247,7 @@ export default function DogsPage() {
 
       {/* Form (add or edit) */}
       {(adding || editing) && (
-        <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.16)] sm:p-8">
+        <div className="ds-card rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.16)] sm:p-8">
           <div className="mb-6 flex items-center justify-between">
             <h2 className="text-base font-semibold text-slate-900">
               {editing ? `Modifier ${editing.name}` : "Nouveau chien"}

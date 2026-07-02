@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { getAuthedDbUser } from "@/lib/auth/getAuthedDbUser";
 import type { Prisma } from "@prisma/client";
 import {
   AlertTriangle,
@@ -146,10 +145,10 @@ export default async function AccountDashboardPage({
   const allConfirmed = total > 0 && confirmed === total;
 
   const statCardBase =
-    "group relative overflow-hidden rounded-2xl border p-3.5 text-left shadow-sm transition hover:shadow-md sm:rounded-3xl sm:p-7";
-  const contentCardBase = "relative isolate rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8";
+    "ds-stat group relative overflow-hidden rounded-2xl border p-3.5 text-left shadow-sm transition hover:shadow-md sm:rounded-3xl sm:p-7";
+  const contentCardBase = "ds-card relative isolate rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8";
   const quickLinkBase =
-    "group inline-flex items-center justify-between gap-3 rounded-2xl border px-5 py-4 text-sm font-semibold shadow-sm transition";
+    "ds-row group inline-flex items-center justify-between gap-3 rounded-2xl border px-5 py-4 text-sm font-semibold shadow-sm transition";
 
   function formatDateTimeHuman(dt: Date) {
     return new Intl.DateTimeFormat("fr-CH", {
@@ -370,7 +369,7 @@ export default async function AccountDashboardPage({
       </div>
 
       {hasUrgent ? (
-        <div className="relative isolate overflow-hidden rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+        <div className="relative isolate overflow-hidden ds-card rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
           <div className="absolute inset-0 z-0 bg-white/95" aria-hidden="true" />
 
           <div className="relative z-10">

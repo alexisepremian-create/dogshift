@@ -107,6 +107,36 @@ body[data-native="true"] {
   padding-bottom: var(--ds-bottom-nav-h, 0px);
 }
 
+/* ── Native dashboard accent (owner + sitter) ──────────────────────────────
+   The in-popup reservation flow uses a purple accent (#7c3aed) in the native
+   app while the web site keeps the navy --dogshift-blue. To make the whole
+   owner/sitter dashboard match in native WITHOUT rewriting ~160 call sites, we
+   override the accent custom-properties for the dashboard subtree only. CSS
+   custom properties inherit, so every `var(--dogshift-blue)` (and color-mix
+   built on it) inside an element carrying `data-ds-dashboard` resolves to
+   purple in native, navy on web. Scope = the dashboard shells only, so the
+   marketing homepage / map / public fiche stay navy. */
+html[data-native="true"] [data-ds-dashboard] {
+  --dogshift-blue: #7c3aed;
+  --dogshift-blue-hover: #6d28d9;
+}
+
+/* Compact the dashboard cards/rows in the NATIVE app only, to match the tight
+   in-popup reservation flow. Driven by marker classes (`ds-card`, `ds-row`,
+   `ds-stat`) so it works in both server- and client-rendered dashboard pages
+   with no JS. The native app is always phone-width, so the Tailwind `sm:`
+   padding variants never apply — a plain padding override is safe and the web
+   site (no `data-native`) is completely unaffected. */
+html[data-native="true"] [data-ds-dashboard] .ds-card {
+  padding: 1rem;
+}
+html[data-native="true"] [data-ds-dashboard] .ds-stat {
+  padding: 0.875rem;
+}
+html[data-native="true"] [data-ds-dashboard] .ds-row {
+  padding: 0.75rem 0.875rem;
+}
+
 /* ── Native app cold-launch overlay ────────────────────────────────────────
    Two coordinated layers cover the cold-launch window — see
    docs/bugs/native-app-footer-flash-on-launch.md for the full story:

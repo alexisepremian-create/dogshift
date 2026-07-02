@@ -523,7 +523,7 @@ function AccountBookingsContent() {
     <div className="relative" data-testid="account-bookings-page">
       <div className="grid items-start gap-6 lg:grid-cols-[380px_1fr]">
         <section className={mobileDetailOpen ? "hidden min-w-0 lg:block" : "min-w-0 block"}>
-          <div className="rounded-3xl border border-slate-100 bg-white/60 p-5 shadow-[0_8px_30px_-12px_rgba(15,23,42,0.06)] backdrop-blur-xl sm:p-7">
+          <div className="ds-card rounded-3xl border border-slate-100 bg-white/60 p-5 shadow-[0_8px_30px_-12px_rgba(15,23,42,0.06)] backdrop-blur-xl sm:p-7">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-sm font-semibold text-slate-600">Mon compte</p>

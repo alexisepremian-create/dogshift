@@ -157,7 +157,7 @@ export default function HostMessageThreadPage() {
 
   if (error && !header) {
     return (
-      <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)] sm:p-8">
+      <div className="ds-card rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)] sm:p-8">
         <p className="text-sm font-semibold text-slate-900">{error}</p>
         <div className="mt-5">
           <Link href="/login" className="inline-flex items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[var(--dogshift-blue-hover)]">
@@ -173,7 +173,7 @@ export default function HostMessageThreadPage() {
   return (
     <div className="flex h-full flex-col">
       {loading || !header ? (
-        <div className="rounded-3xl border border-slate-200 bg-white p-6 sm:p-8">
+        <div className="ds-card rounded-3xl border border-slate-200 bg-white p-6 sm:p-8">
           <p className="text-sm font-semibold text-slate-900">Chargement…</p>
         </div>
       ) : (
