@@ -217,6 +217,8 @@ export default async function AccountDashboardPage({
           <NativeStat value={unreadMessages} label="Messages" />
         </div>
 
+        <p className="pt-1 text-sm font-semibold text-slate-900">Accès rapide</p>
+
         <div className="grid grid-cols-2 gap-3">
           <NativeDashTile href="/" label="Réserver" icon={<Search className="h-5 w-5" />} variant="primary" />
           <NativeDashTile href="/account/bookings" label="Réservations" icon={<CalendarDays className="h-5 w-5" />} />
