@@ -96,8 +96,8 @@ test("native tab bar is solid/edge-to-edge with a center DogShift logo that open
   // Solid bar anchored to the bottom — NOT the floating rounded pill.
   assert.match(bar, /border-t border-slate-200 bg-white/, "Bar must be a solid edge-to-edge bar (border-top, white).");
   assert.doesNotMatch(bar, /rounded-\[24px\][\s\S]*backdrop-blur-xl/, "Must not reuse the floating frosted pill.");
-  // Center raised DogShift paw (icon only, full purple, no white ring) opens the more sheet.
-  assert.match(bar, /<PawPrint[^>]*text-white/, "Center button must be a white paw icon (no wordmark).");
+  // Center raised real DogShift logo (the app icon) opens the more sheet, full purple, no white ring.
+  assert.match(bar, /apple-touch-icon\.png/, "Center button must use the real DogShift app-icon logo.");
   assert.doesNotMatch(bar, /ring-4 ring-white/, "Center logo must be full purple, no white ring.");
   assert.match(bar, /setMoreOpen\(\(v\) => !v\)/, "Center logo must toggle the more menu.");
   // Sliding purple pill behind the active tab (animated between tabs).
