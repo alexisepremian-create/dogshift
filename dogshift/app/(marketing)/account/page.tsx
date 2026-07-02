@@ -13,11 +13,9 @@ import {
   Hourglass,
   MessageCircle,
   Plus,
-  Search,
   Settings,
-  Wallet,
 } from "lucide-react";
-import { NativeDashTile, NativeStat } from "@/components/native/NativeDashTile";
+import { OwnerNativeHome } from "@/components/native/OwnerNativeHome";
 
 import ContractAmendmentBlockingModal from "@/components/ContractAmendmentBlockingModal";
 import SunCornerGlow from "@/components/SunCornerGlow";
@@ -174,62 +172,25 @@ export default async function AccountDashboardPage({
 
   return (
     <>
-      {/* ── Native app: minimalist dashboard (owner) ───────────────────────── */}
-      <div className="ds-native-only space-y-4 pb-2" data-testid="account-dashboard-native">
+      {/* ── Native app: minimalist dashboard (owner) — tiles open in a sheet ── */}
+      <div className="ds-native-only">
         {hostUser?.sitterId ? <ContractAmendmentBlockingModal sitterId={hostUser.sitterId} state={hostUser.contractAmendment} /> : null}
-
-        <div>
-          <p className="text-sm text-slate-500">Bonjour</p>
-          <p className="text-2xl font-bold tracking-tight text-slate-900">{firstName || ""}</p>
-        </div>
-
-        {pendingPayment > 0 ? (
-          <Link
-            href="/account/bookings?tab=pending&pending=payment"
-            className="flex items-center gap-3 rounded-2xl bg-amber-50 px-4 py-3 active:bg-amber-100"
-          >
-            <CreditCard className="h-5 w-5 shrink-0 text-amber-600" aria-hidden="true" />
-            <span className="text-sm font-semibold text-amber-900">
-              {pendingPayment} réservation{pendingPayment > 1 ? "s" : ""} à payer
-            </span>
-            <ChevronRight className="ml-auto h-4 w-4 shrink-0 text-amber-500" aria-hidden="true" />
-          </Link>
-        ) : null}
-
-        {nextBooking?.startDate ? (
-          <Link
-            href={`/account/bookings/${encodeURIComponent(String(nextBooking.id))}`}
-            className="block rounded-3xl bg-[#7c3aed] p-4 text-white shadow-[0_16px_40px_-18px_rgba(124,58,237,0.7)] active:bg-[#6d28d9]"
-          >
-            <p className="text-xs font-medium text-white/70">Prochaine réservation</p>
-            <p className="mt-1 text-base font-bold">
-              {typeof nextBooking.service === "string" && nextBooking.service.trim() ? nextBooking.service.trim() : "Service"} · {formatDateTimeHuman(new Date(nextBooking.startDate))}
-            </p>
-            <p className="mt-0.5 text-sm text-white/80">
-              {nextBooking.sitter?.sitterProfile?.displayName || nextBooking.sitter?.name || "Dogsitter"}
-            </p>
-          </Link>
-        ) : null}
-
-        <div className="grid grid-cols-3 gap-2">
-          <NativeStat value={pendingAcceptance} label="En attente" />
-          <NativeStat value={confirmed} label="Confirmées" />
-          <NativeStat value={unreadMessages} label="Messages" />
-        </div>
-
-        <p className="pt-1 text-sm font-semibold text-slate-900">Accès rapide</p>
-
-        <div className="grid grid-cols-2 gap-3">
-          <NativeDashTile href="/" label="Réserver" icon={<Search className="h-5 w-5" />} variant="primary" />
-          <NativeDashTile href="/account/bookings" label="Réservations" icon={<CalendarDays className="h-5 w-5" />} />
-          <NativeDashTile href="/account/messages" label="Messages" icon={<MessageCircle className="h-5 w-5" />} badge={unreadMessages} />
-          <NativeDashTile href="/account/dogs" label="Mes chiens" icon={<Dog className="h-5 w-5" />} />
-        </div>
-
-        <div className="grid grid-cols-2 gap-3">
-          <NativeDashTile href="/account/wallet" label="Portefeuille" icon={<Wallet className="h-5 w-5" />} variant="ghost" />
-          <NativeDashTile href="/account/settings" label="Paramètres" icon={<Settings className="h-5 w-5" />} variant="ghost" />
-        </div>
+        <OwnerNativeHome
+          firstName={firstName || ""}
+          pendingPayment={pendingPayment}
+          pendingAcceptance={pendingAcceptance}
+          confirmed={confirmed}
+          unreadMessages={unreadMessages}
+          nextBooking={
+            nextBooking?.startDate
+              ? {
+                  id: String(nextBooking.id),
+                  label: `${typeof nextBooking.service === "string" && nextBooking.service.trim() ? nextBooking.service.trim() : "Service"} · ${formatDateTimeHuman(new Date(nextBooking.startDate))}`,
+                  sitterName: nextBooking.sitter?.sitterProfile?.displayName || nextBooking.sitter?.name || "Dogsitter",
+                }
+              : null
+          }
+        />
       </div>
 
       {/* ── Web dashboard (unchanged) ──────────────────────────────────────── */}

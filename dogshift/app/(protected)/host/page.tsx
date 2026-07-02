@@ -8,8 +8,8 @@ import Image from "next/image";
 import { Suspense, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { useSearchParams } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
-import { CalendarClock, Clock, MessageCircle, Settings, User, Wallet, X } from "lucide-react";
-import { NativeDashTile, NativeStat } from "@/components/native/NativeDashTile";
+import { X } from "lucide-react";
+import { HostNativeHome } from "@/components/native/HostNativeHome";
 
 import SunCornerGlow from "@/components/SunCornerGlow";
 import HostDashboardSkeleton from "@/components/HostDashboardSkeleton";
@@ -455,52 +455,18 @@ export default function HostDashboardPage() {
 
   return (
     <>
-      {/* ── Native app: minimalist dashboard (sitter) ──────────────────────── */}
-      <div className="ds-native-only space-y-4 pb-2" data-testid="host-dashboard-native">
-        <div className="flex items-center gap-3">
-          <HostAvatar src={avatarSrc} alt={greetingName ? `Photo de profil de ${greetingName}` : "Photo de profil"} />
-          <div className="min-w-0">
-            <p className="text-sm text-slate-500">Bonjour</p>
-            <p className="truncate text-2xl font-bold tracking-tight text-slate-900">{greetingName ?? ""}</p>
-          </div>
-          {completionUiReady ? (
-            <span className="ml-auto shrink-0 inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
-              {isPublished ? "Publié" : "Brouillon"}
-            </span>
-          ) : null}
-        </div>
-
-        {completionUiReady && completionPercent < 100 ? (
-          <Link href="/host/profile/edit" className="flex items-center gap-3 rounded-2xl bg-[#7c3aed]/10 px-4 py-3 active:bg-[#7c3aed]/15">
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-semibold text-[#6d28d9]">Compléter mon profil</p>
-              <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-[#7c3aed]/20">
-                <div className="h-full rounded-full bg-[#7c3aed]" style={{ width: `${completionPercent}%` }} />
-              </div>
-            </div>
-            <span className="shrink-0 text-sm font-bold text-[#6d28d9]">{completionPercent}%</span>
-          </Link>
-        ) : null}
-
-        <div className="grid grid-cols-3 gap-2">
-          <NativeStat value={rating} label="Note" icon={<StarIcon className="h-4 w-4 text-[#F5B301]" />} />
-          <NativeStat value={pendingRequests} label="Demandes" />
-          <NativeStat value={unreadMessages} label="Messages" />
-        </div>
-
-        <p className="pt-1 text-sm font-semibold text-slate-900">Accès rapide</p>
-
-        <div className="grid grid-cols-2 gap-3">
-          <NativeDashTile href="/host/requests" label="Demandes" icon={<CalendarClock className="h-5 w-5" />} badge={pendingRequests} variant="primary" />
-          <NativeDashTile href="/host/messages" label="Messages" icon={<MessageCircle className="h-5 w-5" />} badge={unreadMessages} />
-          <NativeDashTile href="/host/availability" label="Disponibilités" icon={<Clock className="h-5 w-5" />} />
-          <NativeDashTile href="/host/profile/edit" label="Mon profil" icon={<User className="h-5 w-5" />} />
-        </div>
-
-        <div className="grid grid-cols-2 gap-3">
-          <NativeDashTile href="/host/wallet" label="Portefeuille" icon={<Wallet className="h-5 w-5" />} variant="ghost" />
-          <NativeDashTile href="/host/settings" label="Paramètres" icon={<Settings className="h-5 w-5" />} variant="ghost" />
-        </div>
+      {/* ── Native app: minimalist dashboard (sitter) — tiles open in a sheet ── */}
+      <div className="ds-native-only">
+        <HostNativeHome
+          greetingName={greetingName ?? null}
+          avatarSrc={avatarSrc}
+          isPublished={Boolean(isPublished)}
+          completionUiReady={completionUiReady}
+          completionPercent={completionPercent}
+          rating={rating}
+          pendingRequests={pendingRequests}
+          unreadMessages={unreadMessages}
+        />
       </div>
 
       {/* ── Web dashboard (unchanged) ──────────────────────────────────────── */}
