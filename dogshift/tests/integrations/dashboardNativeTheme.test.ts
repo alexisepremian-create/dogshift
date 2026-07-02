@@ -96,9 +96,12 @@ test("native tab bar is solid/edge-to-edge with a center DogShift logo that open
   // Solid bar anchored to the bottom — NOT the floating rounded pill.
   assert.match(bar, /border-t border-slate-200 bg-white/, "Bar must be a solid edge-to-edge bar (border-top, white).");
   assert.doesNotMatch(bar, /rounded-\[24px\][\s\S]*backdrop-blur-xl/, "Must not reuse the floating frosted pill.");
-  // Center raised DogShift logo opens the more sheet.
-  assert.match(bar, /dogshift-paw-white\.png/, "Center button must be the DogShift logo.");
+  // Center raised DogShift paw (icon only, full purple, no white ring) opens the more sheet.
+  assert.match(bar, /<PawPrint[^>]*text-white/, "Center button must be a white paw icon (no wordmark).");
+  assert.doesNotMatch(bar, /ring-4 ring-white/, "Center logo must be full purple, no white ring.");
   assert.match(bar, /setMoreOpen\(\(v\) => !v\)/, "Center logo must toggle the more menu.");
+  // White fills through the safe area so the map never shows below the bar.
+  assert.match(bar, /bg-white[\s\S]*paddingBottom: "env\(safe-area-inset-bottom\)"/, "Bar white bg must extend through the safe area.");
   // Sets the shared nav-height var so content spacing stays correct.
   assert.match(bar, /--ds-bottom-nav-h/, "NativeTabBar must publish the nav height var.");
 });
