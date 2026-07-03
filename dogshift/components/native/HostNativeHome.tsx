@@ -112,12 +112,9 @@ export function HostNativeHome({
             <Image src={avatar} alt={greetingName ? `Photo de profil de ${greetingName}` : "Photo de profil"} fill unoptimized className="object-cover" sizes="56px" />
           ) : (
             <span className="flex h-full w-full items-center justify-center">
-              <Camera className="h-5 w-5 text-slate-400" aria-hidden="true" />
+              <Camera className="h-5 w-5 text-[#7c3aed]" aria-hidden="true" />
             </span>
           )}
-          <span className="absolute bottom-0 right-0 flex h-5 w-5 items-center justify-center rounded-full border-2 border-white bg-[#7c3aed] text-white">
-            <Camera className="h-2.5 w-2.5" aria-hidden="true" />
-          </span>
           {avatarUploading ? (
             <span className="absolute inset-0 flex items-center justify-center bg-white/60">
               <span className="h-5 w-5 animate-spin rounded-full border-2 border-[#7c3aed] border-t-transparent" />
@@ -204,7 +201,16 @@ export function HostNativeHome({
                   <button
                     key={t.id}
                     type="button"
-                    onClick={() => setPanel(hrefToPanel(t.href))}
+                    onClick={() => {
+                      // The photo can only be changed from the dashboard avatar,
+                      // so this task closes the sheet and opens the picker.
+                      if (t.id === "avatar") {
+                        setPanel(null);
+                        avatarInputRef.current?.click();
+                        return;
+                      }
+                      setPanel(hrefToPanel(t.href));
+                    }}
                     className="flex w-full items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left active:bg-slate-50"
                   >
                     <Circle className="h-4 w-4 shrink-0 text-[#7c3aed]" aria-hidden="true" />
