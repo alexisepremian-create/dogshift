@@ -1443,29 +1443,31 @@ export default function AvailabilityStudioPage() {
                   const day = i + 1;
                   const dateIso = `${String(meta.year).padStart(4, "0")}-${String(meta.month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
                   const row = monthStatusByDate.get(dateIso);
-                  const status = globalDayStatus(row);
-                  const tone = statusCellTone(status);
                   const isPast = dateIso < todayKeyZurich;
                   const isToday = dateIso === todayKeyZurich;
                   const showPromenade = row ? row.promenadeStatus === "AVAILABLE" || row.promenadeStatus === "ON_REQUEST" : false;
                   const showDogsitting = row ? row.dogsittingStatus === "AVAILABLE" || row.dogsittingStatus === "ON_REQUEST" : false;
                   const showPension = row ? row.pensionStatus === "AVAILABLE" || row.pensionStatus === "ON_REQUEST" : false;
                   return (
-                    <div
+                    <button
                       key={dateIso}
+                      type="button"
+                      disabled={isPast}
+                      onClick={() => openInlineException(dateIso)}
+                      aria-label={`Modifier les disponibilités du ${formatDateFrCh(dateIso)}`}
                       className={
-                        `flex h-9 flex-col items-center justify-between rounded-lg px-0.5 py-1 ring-1 ${tone} ` +
-                        (isPast ? "opacity-40 " : "") +
-                        (isToday ? "ring-2 ring-[#7c3aed]" : "")
+                        "flex h-10 flex-col items-center justify-center gap-1 rounded-xl " +
+                        (isPast ? "cursor-not-allowed opacity-30 " : "active:bg-slate-100 ") +
+                        (isToday ? "bg-[#7c3aed]/10" : "")
                       }
                     >
-                      <span className="text-[11px] font-semibold leading-none text-slate-900">{day}</span>
-                      <span className="flex items-center gap-0.5">
+                      <span className={"text-sm font-semibold leading-none " + (isToday ? "text-[#7c3aed]" : "text-slate-900")}>{day}</span>
+                      <span className="flex h-1.5 items-center justify-center gap-0.5">
                         {showPromenade ? <span className={`h-1.5 w-1.5 rounded-full ${serviceDotTone("PROMENADE")}`} aria-hidden="true" /> : null}
                         {showDogsitting ? <span className={`h-1.5 w-1.5 rounded-full ${serviceDotTone("DOGSITTING")}`} aria-hidden="true" /> : null}
                         {showPension ? <span className={`h-1.5 w-1.5 rounded-full ${serviceDotTone("PENSION")}`} aria-hidden="true" /> : null}
                       </span>
-                    </div>
+                    </button>
                   );
                 })}
               </div>
@@ -1511,6 +1513,93 @@ export default function AvailabilityStudioPage() {
             </div>
           </div>
         </div>
+
+        {/* Compact day-availability popup */}
+        {inlineExceptionOpen && exceptionDate ? (
+          <>
+            <div
+              className="fixed inset-0 z-[1300] bg-slate-900/40"
+              onClick={() => setInlineExceptionOpen(false)}
+              aria-hidden="true"
+            />
+            <div
+              className="fixed inset-x-2 bottom-2 z-[1301] rounded-3xl bg-white p-4 shadow-xl"
+              style={{ paddingBottom: "calc(max(var(--ds-bottom-nav-h, 0px), 88px) + 8px)" }}
+              role="dialog"
+              aria-modal="true"
+            >
+              <div className="flex items-center justify-between">
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Disponibilité</p>
+                  <p className="truncate text-base font-bold text-slate-900">{formatDateFrCh(exceptionDate)}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setInlineExceptionOpen(false)}
+                  aria-label="Fermer"
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-500 active:scale-95"
+                >
+                  <X className="h-4 w-4" aria-hidden="true" />
+                </button>
+              </div>
+
+              {enabledServices.length ? (
+                <div className="mt-3 flex gap-2">
+                  {enabledServices.map((svc) => {
+                    const active = exceptionService === svc;
+                    return (
+                      <button
+                        key={`popup-svc-${svc}`}
+                        type="button"
+                        onClick={() => selectInlineExceptionService(svc)}
+                        className={
+                          "flex flex-1 items-center justify-center gap-1 rounded-xl px-2 py-2 text-xs font-semibold transition " +
+                          (active ? serviceSolidTone(svc) : "border border-slate-200 bg-white text-slate-600")
+                        }
+                      >
+                        <ServiceIcon svc={svc} className="h-3.5 w-3.5 shrink-0" />
+                        <span className="truncate">{serviceMeta(svc).label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : null}
+
+              <div className="mt-3 grid grid-cols-3 gap-2">
+                {(["AVAILABLE", "ON_REQUEST", "UNAVAILABLE"] as const).map((status) => {
+                  const active = exceptionStatus === status;
+                  const activeTone =
+                    status === "AVAILABLE" ? "bg-[#7c3aed] text-white" : status === "ON_REQUEST" ? "bg-amber-500 text-white" : "bg-slate-600 text-white";
+                  return (
+                    <button
+                      key={`popup-status-${status}`}
+                      type="button"
+                      onClick={() => setExceptionStatus(status)}
+                      aria-pressed={active}
+                      className={
+                        "rounded-xl px-2 py-2.5 text-xs font-semibold transition " +
+                        (active ? activeTone : "border border-slate-200 bg-white text-slate-600")
+                      }
+                    >
+                      {statusLabelFr(status)}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {exceptionError ? <p className="mt-3 text-xs font-semibold text-rose-600">{exceptionError}</p> : null}
+
+              <button
+                type="button"
+                disabled={exceptionSaving || !enabledServices.length}
+                onClick={() => void saveSingleDayException(exceptionService, exceptionDate, exceptionStatus)}
+                className="mt-4 inline-flex w-full items-center justify-center rounded-full bg-[#7c3aed] px-4 py-3 text-sm font-semibold text-white active:bg-[#6d28d9] disabled:opacity-50"
+              >
+                {exceptionSaving ? "Enregistrement…" : "Enregistrer"}
+              </button>
+            </div>
+          </>
+        ) : null}
       </div>
     );
   }
