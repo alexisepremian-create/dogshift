@@ -9,7 +9,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Info, X, Settings, Banknote, Clock, ShieldCheck, Home, Rocket, RotateCw } from "lucide-react";
+import { Info, X, Settings, Banknote, Clock, ShieldCheck, Home, Rocket, RotateCw, Footprints, Moon, ChevronLeft, ChevronRight } from "lucide-react";
 import { useIsNativeAppSync } from "@/lib/native/useIsNativeAppSync";
 
 import { useHostUser } from "@/components/HostUserProvider";
@@ -90,6 +90,13 @@ function serviceMeta(svc: ServiceTypeApi) {
   if (svc === "PROMENADE") return { icon: "🚶", label: "Promenade" };
   if (svc === "DOGSITTING") return { icon: "🏠", label: "Dogsitting" };
   return { icon: "🛌", label: "Pension" };
+}
+
+// Native service icon (replaces emojis for a cleaner look).
+function ServiceIcon({ svc, className }: { svc: ServiceTypeApi; className?: string }) {
+  if (svc === "PROMENADE") return <Footprints className={className} aria-hidden="true" />;
+  if (svc === "DOGSITTING") return <Home className={className} aria-hidden="true" />;
+  return <Moon className={className} aria-hidden="true" />;
 }
 
 // Per-service colour code (mirrors the website): Promenade = sky, Dogsitting =
@@ -1359,7 +1366,7 @@ export default function AvailabilityStudioPage() {
                   (active ? serviceSolidTone(svc) : "border border-slate-200 bg-white text-slate-600")
                 }
               >
-                <span aria-hidden="true">{serviceMeta(svc).icon}</span>
+                <ServiceIcon svc={svc} className="h-4 w-4 shrink-0" />
                 <span className="truncate">{serviceMeta(svc).label}</span>
               </button>
             );
@@ -1387,7 +1394,7 @@ export default function AvailabilityStudioPage() {
           {pricingSavingByService[availabilityTab] ? <span className="ml-auto text-xs text-slate-400">Enregistrement…</span> : null}
         </div>
 
-        {/* Flip card: weekly agenda ⇄ recurring actions */}
+        {/* Flip card: month calendar ⇄ recurring weekly availability */}
         <div className="[perspective:1200px]">
           <div
             className={
@@ -1395,9 +1402,84 @@ export default function AvailabilityStudioPage() {
               (availFlipped ? "[transform:rotateY(180deg)]" : "")
             }
           >
-            {/* FRONT — weekly agenda */}
+            {/* FRONT — month calendar overview */}
             <div className="absolute inset-0 overflow-y-auto [backface-visibility:hidden]">
-              <p className="text-sm font-semibold text-slate-900">Agenda hebdomadaire</p>
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-semibold capitalize text-slate-900">{meta.monthLabel}</p>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setMonthCursor((d) => new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() - 1, 1, 12, 0, 0, 0)))}
+                    aria-label="Mois précédent"
+                    className="flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 active:scale-95"
+                  >
+                    <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setMonthCursor((d) => new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1, 12, 0, 0, 0)))}
+                    aria-label="Mois suivant"
+                    className="flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 active:scale-95"
+                  >
+                    <ChevronRight className="h-4 w-4" aria-hidden="true" />
+                  </button>
+                </div>
+              </div>
+
+              <div className="mt-2 grid grid-cols-7 gap-1 text-center text-[10px] font-semibold text-slate-400">
+                <div>L</div>
+                <div>M</div>
+                <div>M</div>
+                <div>J</div>
+                <div>V</div>
+                <div>S</div>
+                <div>D</div>
+              </div>
+              <div className="mt-1 grid grid-cols-7 gap-1">
+                {Array.from({ length: meta.mondayIndex }).map((_, i) => (
+                  <div key={`pad-${i}`} />
+                ))}
+                {Array.from({ length: meta.daysInMonth }).map((_, i) => {
+                  const day = i + 1;
+                  const dateIso = `${String(meta.year).padStart(4, "0")}-${String(meta.month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+                  const row = monthStatusByDate.get(dateIso);
+                  const status = globalDayStatus(row);
+                  const tone = statusCellTone(status);
+                  const isPast = dateIso < todayKeyZurich;
+                  const isToday = dateIso === todayKeyZurich;
+                  const showPromenade = row ? row.promenadeStatus === "AVAILABLE" || row.promenadeStatus === "ON_REQUEST" : false;
+                  const showDogsitting = row ? row.dogsittingStatus === "AVAILABLE" || row.dogsittingStatus === "ON_REQUEST" : false;
+                  const showPension = row ? row.pensionStatus === "AVAILABLE" || row.pensionStatus === "ON_REQUEST" : false;
+                  return (
+                    <div
+                      key={dateIso}
+                      className={
+                        `flex h-9 flex-col items-center justify-between rounded-lg px-0.5 py-1 ring-1 ${tone} ` +
+                        (isPast ? "opacity-40 " : "") +
+                        (isToday ? "ring-2 ring-[#7c3aed]" : "")
+                      }
+                    >
+                      <span className="text-[11px] font-semibold leading-none text-slate-900">{day}</span>
+                      <span className="flex items-center gap-0.5">
+                        {showPromenade ? <span className={`h-1.5 w-1.5 rounded-full ${serviceDotTone("PROMENADE")}`} aria-hidden="true" /> : null}
+                        {showDogsitting ? <span className={`h-1.5 w-1.5 rounded-full ${serviceDotTone("DOGSITTING")}`} aria-hidden="true" /> : null}
+                        {showPension ? <span className={`h-1.5 w-1.5 rounded-full ${serviceDotTone("PENSION")}`} aria-hidden="true" /> : null}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="mt-2 flex items-center justify-center gap-3 text-[10px] font-medium text-slate-500">
+                <span className="flex items-center gap-1"><span className={`h-1.5 w-1.5 rounded-full ${serviceDotTone("PROMENADE")}`} aria-hidden="true" />Promenade</span>
+                <span className="flex items-center gap-1"><span className={`h-1.5 w-1.5 rounded-full ${serviceDotTone("DOGSITTING")}`} aria-hidden="true" />Dogsitting</span>
+                <span className="flex items-center gap-1"><span className={`h-1.5 w-1.5 rounded-full ${serviceDotTone("PENSION")}`} aria-hidden="true" />Pension</span>
+              </div>
+            </div>
+
+            {/* BACK — recurring weekly availability */}
+            <div className="absolute inset-0 overflow-y-auto [backface-visibility:hidden] [transform:rotateY(180deg)]">
+              <p className="text-sm font-semibold text-slate-900">Disponibilités récurrentes</p>
               <div className="mt-2 grid gap-1.5">
                 {weeklyDayOptions.map((day) => {
                   const rule = weeklyRulesForTab.get(day.dayOfWeek) ?? { enabled: false, status: "AVAILABLE" as const };
@@ -1425,29 +1507,6 @@ export default function AvailabilityStudioPage() {
                     </div>
                   );
                 })}
-              </div>
-            </div>
-
-            {/* BACK — recurring actions */}
-            <div className="absolute inset-0 [backface-visibility:hidden] [transform:rotateY(180deg)]">
-              <p className="text-sm font-semibold text-slate-900">Actions récurrentes</p>
-              <div className="mt-2 grid gap-2">
-                {([
-                  ["all-available-week", "Tout disponible cette semaine"],
-                  ["all-available-month", "Tout disponible ce mois"],
-                  ["copy-week", "Reproduire cette semaine sur le mois"],
-                ] as const).map(([action, label]) => (
-                  <button
-                    key={action}
-                    type="button"
-                    disabled={quickActionSaving !== null || !canEditAvailabilityForTab}
-                    onClick={() => void applyQuickAction(action)}
-                    className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3 text-left text-sm font-semibold text-slate-900 active:bg-slate-50 disabled:opacity-60"
-                  >
-                    <span>{quickActionSaving === action ? "Enregistrement…" : label}</span>
-                    <Rocket className="h-4 w-4 shrink-0 text-[#7c3aed]" aria-hidden="true" />
-                  </button>
-                ))}
               </div>
             </div>
           </div>
