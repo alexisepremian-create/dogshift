@@ -46,6 +46,7 @@ export default function HostProfileEditPage() {
   });
   const [avatarFileName, setAvatarFileName] = useState<string | null>(null);
   const [avatarUploading, setAvatarUploading] = useState(false);
+  const nativeAvatarInputRef = useRef<HTMLInputElement>(null);
   const [verificationIdFileName, setVerificationIdFileName] = useState<string | null>(null);
   const [verificationSelfieFileName, setVerificationSelfieFileName] = useState<string | null>(null);
   const [verificationError, setVerificationError] = useState<string | null>(null);
@@ -529,7 +530,7 @@ export default function HostProfileEditPage() {
             <span>Mon profil</span>
           </h1>
           <div className="flex shrink-0 items-center gap-2">
-            <span className="text-xs font-semibold text-slate-600">{published ? "Publié" : "Brouillon"}</span>
+            <span className="text-xs font-semibold text-slate-600">Publier</span>
             <button
               type="button"
               role="switch"
@@ -546,6 +547,43 @@ export default function HostProfileEditPage() {
 
         {error ? <p className="text-xs font-medium text-rose-600">{error}</p> : null}
         {saved ? <p className="text-xs font-medium text-emerald-600">Enregistré ✓</p> : null}
+
+        {/* Tappable avatar (Instagram-style) */}
+        <div className="flex justify-center">
+          <button
+            type="button"
+            onClick={() => nativeAvatarInputRef.current?.click()}
+            className="relative h-24 w-24 overflow-hidden rounded-full border border-slate-200 bg-slate-100"
+            aria-label="Changer la photo de profil"
+          >
+            {profile.avatarDataUrl || profile.avatarUrl ? (
+              <Image src={profile.avatarDataUrl || profile.avatarUrl || ""} alt="Photo de profil" fill unoptimized={Boolean(profile.avatarDataUrl)} className="object-cover" sizes="96px" />
+            ) : (
+              <span className="flex h-full w-full items-center justify-center">
+                <Camera className="h-7 w-7 text-slate-400" aria-hidden="true" />
+              </span>
+            )}
+            <span className="absolute bottom-0 right-0 flex h-7 w-7 items-center justify-center rounded-full border-2 border-white bg-[#7c3aed] text-white">
+              <Camera className="h-3.5 w-3.5" aria-hidden="true" />
+            </span>
+            {avatarUploading ? (
+              <span className="absolute inset-0 flex items-center justify-center bg-white/60">
+                <span className="h-6 w-6 animate-spin rounded-full border-2 border-[#7c3aed] border-t-transparent" />
+              </span>
+            ) : null}
+          </button>
+          <input
+            ref={nativeAvatarInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) void uploadHostAvatar(f);
+              e.currentTarget.value = "";
+            }}
+          />
+        </div>
 
         {/* Profil public */}
         <div className="space-y-3">
@@ -605,14 +643,14 @@ export default function HostProfileEditPage() {
           </div>
         </div>
 
-        {/* Photo + vérification → site web */}
+        {/* Vérification → site web */}
         <a
           href="https://www.dogshift.ch/host/profile/edit"
           target="_blank"
           rel="noreferrer"
           className="flex items-center gap-2 text-sm font-medium text-[#7c3aed]"
         >
-          <Camera className="h-4 w-4" aria-hidden="true" /> Photo & vérification (sur le site)
+          <ShieldCheck className="h-4 w-4" aria-hidden="true" /> Vérification (sur le site)
         </a>
 
         <button
