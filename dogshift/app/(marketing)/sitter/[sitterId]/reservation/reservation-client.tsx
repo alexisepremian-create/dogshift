@@ -503,79 +503,58 @@ function DogShiftTimePicker({
       </button>
 
       {open && !disabled ? (
-        // iOS-style bottom sheet (fixed, dimmed backdrop) — the old absolute
-        // dropdown overflowed off-screen inside the narrow popup.
-        <>
-          <div className="fixed inset-0 z-[1100] bg-black/30" onClick={() => onOpenChange(false)} aria-hidden="true" />
-          <div
-            className="fixed inset-x-0 bottom-0 z-[1101] rounded-t-3xl border-t border-white/40 bg-white/80 p-4 shadow-[0_-20px_60px_rgba(2,6,23,0.25)] backdrop-blur-2xl"
-            style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 16px)" }}
-          >
-            <div className="mx-auto mb-3 h-1.5 w-10 rounded-full bg-slate-300" />
-            <div className="flex items-center justify-between pb-1">
-              <p className="text-base font-semibold text-slate-900">{label}</p>
-              <button
-                type="button"
-                onClick={() => onOpenChange(false)}
-                className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-200/70 text-slate-600 active:scale-95"
-                aria-label="Fermer"
-              >
-                ✕
-              </button>
-            </div>
-            <p className="pb-2 text-[11px] font-medium text-slate-400">
-              {hasSlots ? "Heures indisponibles grisées" : "Aucun horaire disponible"}
-            </p>
-            {/* Single scrollable column (iOS-style) with a subtle non-purple
-                highlight + check on the selected row. */}
-            <div className="max-h-[224px] overflow-y-auto">
-              <div className="flex flex-col">
-                {normalizedSlots.map((slot) => {
-                  const selected = slot.time === value;
-                  return (
-                    <button
-                      key={slot.time}
-                      type="button"
-                      disabled={!slot.available}
-                      onClick={() => {
-                        if (!slot.available) return;
-                        onChange(slot.time);
-                        onOpenChange(false);
-                      }}
-                      className={
-                        "flex w-full items-center justify-between rounded-xl px-4 py-3 text-base font-semibold transition disabled:cursor-not-allowed " +
-                        (selected
-                          ? "bg-slate-900/5 text-slate-900"
-                          : slot.available
-                            ? "text-slate-900 active:bg-slate-900/5"
-                            : "text-slate-300 line-through")
-                      }
-                      aria-disabled={!slot.available}
-                    >
-                      <span>{slot.time}</span>
-                      {selected ? <Check className="h-4 w-4 text-slate-700" strokeWidth={3} aria-hidden="true" /> : null}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {value ? (
-              <div className="mt-4">
+        // Compact Apple-style menu anchored right under the field (a small
+        // scrollable card) rather than a full-width bottom sheet.
+        <div
+          className="absolute left-0 right-0 top-full z-[60] mt-2 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_20px_50px_-20px_rgba(2,6,23,0.35)]"
+          role="listbox"
+        >
+          <p className="border-b border-slate-100 px-3 py-2 text-[11px] font-medium text-slate-400">
+            {hasSlots ? "Heures indisponibles grisées" : "Aucun horaire disponible"}
+          </p>
+          <div className="max-h-[200px] overflow-y-auto p-1">
+            {normalizedSlots.map((slot) => {
+              const selected = slot.time === value;
+              return (
                 <button
+                  key={slot.time}
                   type="button"
+                  disabled={!slot.available}
                   onClick={() => {
-                    onChange(null);
+                    if (!slot.available) return;
+                    onChange(slot.time);
                     onOpenChange(false);
                   }}
-                  className="w-full rounded-full border border-slate-200 py-3 text-sm font-medium text-slate-700 active:scale-[0.98]"
+                  className={
+                    "flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-sm font-semibold transition disabled:cursor-not-allowed " +
+                    (selected
+                      ? "bg-slate-900/5 text-slate-900"
+                      : slot.available
+                        ? "text-slate-900 active:bg-slate-900/5"
+                        : "text-slate-300 line-through")
+                  }
+                  aria-disabled={!slot.available}
                 >
-                  Effacer
+                  <span>{slot.time}</span>
+                  {selected ? <Check className="h-4 w-4 text-slate-700" strokeWidth={3} aria-hidden="true" /> : null}
                 </button>
-              </div>
-            ) : null}
+              );
+            })}
           </div>
-        </>
+
+          {value ? (
+            <button
+              type="button"
+              onClick={() => {
+                onChange(null);
+                onOpenChange(false);
+              }}
+              className="w-full border-t border-slate-100 py-2.5 text-sm font-medium text-slate-600 active:bg-slate-50"
+            >
+              Effacer
+            </button>
+          ) : null}
+        </div>
       ) : null}
     </div>
   );
@@ -641,74 +620,54 @@ function DogShiftDurationPicker({
       </button>
 
       {open && !disabled ? (
-        <>
-          <div className="fixed inset-0 z-[1100] bg-black/30" onClick={() => onOpenChange(false)} aria-hidden="true" />
-          <div
-            className="fixed inset-x-0 bottom-0 z-[1101] rounded-t-3xl border-t border-white/40 bg-white/80 p-4 shadow-[0_-20px_60px_rgba(2,6,23,0.25)] backdrop-blur-2xl"
-            style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 16px)" }}
-          >
-            <div className="mx-auto mb-3 h-1.5 w-10 rounded-full bg-slate-300" />
-            <div className="flex items-center justify-between pb-2">
-              <p className="text-base font-semibold text-slate-900">{label}</p>
-              <button
-                type="button"
-                onClick={() => onOpenChange(false)}
-                className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-200/70 text-slate-600 active:scale-95"
-                aria-label="Fermer"
-              >
-                ✕
-              </button>
-            </div>
-            {/* Single scrollable column (iOS-style) with a subtle non-purple
-                highlight + check on the selected row. */}
-            <div className="max-h-[224px] overflow-y-auto">
-              <div className="flex flex-col">
-                {options.map((option) => {
-                  const selected = option.hours === value;
-                  return (
-                    <button
-                      key={option.hours}
-                      type="button"
-                      disabled={!option.available}
-                      onClick={() => {
-                        if (!option.available) return;
-                        onChange(option.hours);
-                        onOpenChange(false);
-                      }}
-                      className={
-                        "flex w-full items-center justify-between rounded-xl px-4 py-3 text-base font-semibold transition disabled:cursor-not-allowed " +
-                        (selected
-                          ? "bg-slate-900/5 text-slate-900"
-                          : option.available
-                            ? "text-slate-900 active:bg-slate-900/5"
-                            : "text-slate-300 line-through")
-                      }
-                      aria-disabled={!option.available}
-                    >
-                      <span>{formatDurationHours(option.hours)}</span>
-                      {selected ? <Check className="h-4 w-4 text-slate-700" strokeWidth={3} aria-hidden="true" /> : null}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {value ? (
-              <div className="mt-4">
+        // Compact Apple-style menu anchored under the field.
+        <div
+          className="absolute left-0 right-0 top-full z-[60] mt-2 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_20px_50px_-20px_rgba(2,6,23,0.35)]"
+          role="listbox"
+        >
+          <div className="max-h-[200px] overflow-y-auto p-1">
+            {options.map((option) => {
+              const selected = option.hours === value;
+              return (
                 <button
+                  key={option.hours}
                   type="button"
+                  disabled={!option.available}
                   onClick={() => {
-                    onChange(null);
+                    if (!option.available) return;
+                    onChange(option.hours);
                     onOpenChange(false);
                   }}
-                  className="w-full rounded-full border border-slate-200 py-3 text-sm font-medium text-slate-700 active:scale-[0.98]"
+                  className={
+                    "flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-sm font-semibold transition disabled:cursor-not-allowed " +
+                    (selected
+                      ? "bg-slate-900/5 text-slate-900"
+                      : option.available
+                        ? "text-slate-900 active:bg-slate-900/5"
+                        : "text-slate-300 line-through")
+                  }
+                  aria-disabled={!option.available}
                 >
-                  Effacer
+                  <span>{formatDurationHours(option.hours)}</span>
+                  {selected ? <Check className="h-4 w-4 text-slate-700" strokeWidth={3} aria-hidden="true" /> : null}
                 </button>
-              </div>
-            ) : null}
+              );
+            })}
           </div>
-        </>
+
+          {value ? (
+            <button
+              type="button"
+              onClick={() => {
+                onChange(null);
+                onOpenChange(false);
+              }}
+              className="w-full border-t border-slate-100 py-2.5 text-sm font-medium text-slate-600 active:bg-slate-50"
+            >
+              Effacer
+            </button>
+          ) : null}
+        </div>
       ) : null}
     </div>
   );
