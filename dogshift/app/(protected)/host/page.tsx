@@ -466,6 +466,7 @@ export default function HostDashboardPage() {
           rating={rating}
           pendingRequests={pendingRequests}
           unreadMessages={unreadMessages}
+          todos={todos.map((t) => ({ id: t.id, label: t.label, href: t.href }))}
         />
       </div>
 

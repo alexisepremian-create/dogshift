@@ -1,10 +1,9 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
 import dynamic from "next/dynamic";
 import { useState, type ComponentType } from "react";
-import { CalendarClock, Clock, MessageCircle, Settings, User, Wallet } from "lucide-react";
+import { CalendarClock, Clock, MessageCircle, Settings, User, Wallet, ChevronRight, Circle } from "lucide-react";
 
 import { NativeDashTile, NativeStat } from "@/components/native/NativeDashTile";
 import { DashboardSheet } from "@/components/native/DashboardSheet";
@@ -32,6 +31,17 @@ const PANELS: Record<string, { title: string; Component: ComponentType }> = {
   settings: { title: "Paramètres", Component: dynamic(() => import("@/app/(protected)/host/settings/page"), { ssr: false, loading: PanelLoading }) },
 };
 
+type HostTodo = { id: string; label: string; href: string };
+
+// Map a todo's destination href to the in-popup panel that fulfils it.
+function hrefToPanel(href: string): string {
+  if (href.startsWith("/host/availability")) return "availability";
+  if (href.startsWith("/host/wallet")) return "wallet";
+  if (href.startsWith("/host/messages")) return "messages";
+  if (href.startsWith("/host/requests")) return "requests";
+  return "profile"; // profile/edit (photo, sizes, bio, verification…)
+}
+
 export function HostNativeHome({
   greetingName,
   avatarSrc,
@@ -41,6 +51,7 @@ export function HostNativeHome({
   rating,
   pendingRequests,
   unreadMessages,
+  todos,
 }: {
   greetingName: string | null;
   avatarSrc: string | null;
@@ -50,10 +61,13 @@ export function HostNativeHome({
   rating: string | number;
   pendingRequests: number;
   unreadMessages: number;
+  todos: HostTodo[];
 }) {
   const [panel, setPanel] = useState<string | null>(null);
-  const active = panel ? PANELS[panel] : null;
+  const isCompletion = panel === "completion";
+  const active = panel && !isCompletion ? PANELS[panel] : null;
   const ActiveComponent = active?.Component ?? null;
+  const sheetTitle = isCompletion ? "Compléter mon profil" : active?.title ?? "";
 
   return (
     <div className="space-y-4 pb-2" data-testid="host-dashboard-native">
@@ -75,7 +89,11 @@ export function HostNativeHome({
       </div>
 
       {completionUiReady && completionPercent < 100 ? (
-        <Link href="/host/profile/edit" className="flex items-center gap-3 rounded-2xl bg-[#7c3aed]/10 px-4 py-3 active:bg-[#7c3aed]/15">
+        <button
+          type="button"
+          onClick={() => setPanel("completion")}
+          className="flex w-full items-center gap-3 rounded-2xl bg-[#7c3aed]/10 px-4 py-3 text-left active:bg-[#7c3aed]/15"
+        >
           <div className="min-w-0 flex-1">
             <p className="text-sm font-semibold text-[#6d28d9]">Compléter mon profil</p>
             <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-[#7c3aed]/20">
@@ -83,7 +101,7 @@ export function HostNativeHome({
             </div>
           </div>
           <span className="shrink-0 text-sm font-bold text-[#6d28d9]">{completionPercent}%</span>
-        </Link>
+        </button>
       ) : null}
 
       <div className="grid grid-cols-3 gap-2">
@@ -106,8 +124,42 @@ export function HostNativeHome({
         <NativeDashTile onClick={() => setPanel("settings")} label="Paramètres" icon={<Settings className="h-5 w-5" />} variant="ghost" />
       </div>
 
-      <DashboardSheet open={active != null} title={active?.title ?? ""} onClose={() => setPanel(null)}>
-        {ActiveComponent ? <ActiveComponent /> : null}
+      <DashboardSheet open={panel != null} title={sheetTitle} onClose={() => setPanel(null)}>
+        {isCompletion ? (
+          <div className="space-y-4">
+            <div className="rounded-2xl bg-[#7c3aed]/10 px-4 py-3">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-semibold text-[#6d28d9]">Progression</p>
+                <p className="text-sm font-bold text-[#6d28d9]">{completionPercent}%</p>
+              </div>
+              <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-[#7c3aed]/20">
+                <div className="h-full rounded-full bg-[#7c3aed]" style={{ width: `${completionPercent}%` }} />
+              </div>
+            </div>
+
+            {todos.length === 0 ? (
+              <p className="py-6 text-center text-sm text-slate-500">Tout est complété ✓</p>
+            ) : (
+              <div className="space-y-2">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">À faire</p>
+                {todos.map((t) => (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => setPanel(hrefToPanel(t.href))}
+                    className="flex w-full items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left active:bg-slate-50"
+                  >
+                    <Circle className="h-4 w-4 shrink-0 text-[#7c3aed]" aria-hidden="true" />
+                    <span className="min-w-0 flex-1 text-sm font-semibold text-slate-900">{t.label}</span>
+                    <ChevronRight className="h-4 w-4 shrink-0 text-slate-400" aria-hidden="true" />
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        ) : ActiveComponent ? (
+          <ActiveComponent />
+        ) : null}
       </DashboardSheet>
     </div>
   );
