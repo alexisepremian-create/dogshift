@@ -8,8 +8,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars */
 
 import Link from "next/link";
+import { createPortal } from "react-dom";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Info, X, Settings, Banknote, Clock, ShieldCheck, Home, Rocket, RotateCw, Footprints, Moon, ChevronLeft, ChevronRight } from "lucide-react";
+import { Info, X, Settings, Banknote, Clock, ShieldCheck, Home, Rocket, RotateCw, Footprints, Moon, ChevronLeft, ChevronRight, Eraser } from "lucide-react";
 import { useIsNativeAppSync } from "@/lib/native/useIsNativeAppSync";
 
 import { useHostUser } from "@/components/HostUserProvider";
@@ -253,6 +254,7 @@ function monthMeta(cursor: Date) {
 export default function AvailabilityStudioPage() {
   const isNative = useIsNativeAppSync();
   const [availFlipped, setAvailFlipped] = useState(false);
+  const [monthClearConfirm, setMonthClearConfirm] = useState(false);
   const host = useHostUser();
   const sitterId = host.sitterId;
   const remoteProfile = (host.profile && typeof host.profile === "object" ? (host.profile as Partial<HostProfileV1>) : null);
@@ -972,7 +974,7 @@ export default function AvailabilityStudioPage() {
     }
   }
 
-  async function applyQuickAction(action: "all-available-week" | "all-available-month" | "copy-week") {
+  async function applyQuickAction(action: "all-available-week" | "all-available-month" | "copy-week" | "clear-month") {
     if (!sitterId) return;
     setQuickActionSaving(action);
     setError(null);
@@ -998,6 +1000,8 @@ export default function AvailabilityStudioPage() {
         for (const date of dates) statusByDate.set(date, "AVAILABLE");
       } else if (action === "all-available-month") {
         for (const date of dates) statusByDate.set(date, "AVAILABLE");
+      } else if (action === "clear-month") {
+        for (const date of dates) statusByDate.set(date, "UNAVAILABLE");
       } else {
         const refDate = meta.fromIso <= todayKeyZurich && todayKeyZurich <= meta.toIso ? todayKeyZurich : futureMonthDates[0];
         const ref = new Date(`${refDate}T12:00:00Z`);
@@ -1342,15 +1346,51 @@ export default function AvailabilityStudioPage() {
             <Clock className="h-6 w-6 text-[#7c3aed]" aria-hidden="true" />
             <span>Disponibilités</span>
           </h1>
-          <button
-            type="button"
-            onClick={() => setAvailFlipped((v) => !v)}
-            aria-label="Retourner la carte"
-            className="flex h-9 w-9 items-center justify-center rounded-full bg-[#7c3aed]/10 text-[#7c3aed] active:scale-95"
-          >
-            <RotateCw className="h-4 w-4" aria-hidden="true" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setMonthClearConfirm(true)}
+              aria-label="Réinitialiser le mois"
+              className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-slate-500 active:scale-95"
+            >
+              <Eraser className="h-4 w-4" aria-hidden="true" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setAvailFlipped((v) => !v)}
+              aria-label="Retourner la carte"
+              className="flex h-9 w-9 items-center justify-center rounded-full bg-[#7c3aed]/10 text-[#7c3aed] active:scale-95"
+            >
+              <RotateCw className="h-4 w-4" aria-hidden="true" />
+            </button>
+          </div>
         </div>
+
+        {monthClearConfirm ? (
+          <div className="flex items-center justify-between gap-2 rounded-2xl border border-rose-200 bg-rose-50 px-3 py-2">
+            <p className="min-w-0 text-xs font-semibold text-rose-900">Réinitialiser tout le mois pour {serviceMeta(availabilityTab).label} ?</p>
+            <div className="flex shrink-0 items-center gap-1.5">
+              <button
+                type="button"
+                disabled={quickActionSaving !== null}
+                onClick={() => {
+                  setMonthClearConfirm(false);
+                  void applyQuickAction("clear-month");
+                }}
+                className="inline-flex h-8 items-center justify-center rounded-lg bg-rose-600 px-3 text-xs font-semibold text-white disabled:opacity-60"
+              >
+                {quickActionSaving === "clear-month" ? "…" : "Confirmer"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setMonthClearConfirm(false)}
+                className="inline-flex h-8 items-center justify-center rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700"
+              >
+                Annuler
+              </button>
+            </div>
+          </div>
+        ) : null}
 
         {/* Service selector (colour-coded per service) */}
         <div className="grid grid-cols-3 gap-2">
@@ -1445,9 +1485,8 @@ export default function AvailabilityStudioPage() {
                   const row = monthStatusByDate.get(dateIso);
                   const isPast = dateIso < todayKeyZurich;
                   const isToday = dateIso === todayKeyZurich;
-                  const showPromenade = row ? row.promenadeStatus === "AVAILABLE" || row.promenadeStatus === "ON_REQUEST" : false;
-                  const showDogsitting = row ? row.dogsittingStatus === "AVAILABLE" || row.dogsittingStatus === "ON_REQUEST" : false;
-                  const showPension = row ? row.pensionStatus === "AVAILABLE" || row.pensionStatus === "ON_REQUEST" : false;
+                  // Only surface the service the sitter is currently editing.
+                  const svcStatus = dayStatusForService(row, availabilityTab);
                   return (
                     <button
                       key={dateIso}
@@ -1462,10 +1501,12 @@ export default function AvailabilityStudioPage() {
                       }
                     >
                       <span className={"text-sm font-semibold leading-none " + (isToday ? "text-[#7c3aed]" : "text-slate-900")}>{day}</span>
-                      <span className="flex h-1.5 items-center justify-center gap-0.5">
-                        {showPromenade ? <span className={`h-1.5 w-1.5 rounded-full ${serviceDotTone("PROMENADE")}`} aria-hidden="true" /> : null}
-                        {showDogsitting ? <span className={`h-1.5 w-1.5 rounded-full ${serviceDotTone("DOGSITTING")}`} aria-hidden="true" /> : null}
-                        {showPension ? <span className={`h-1.5 w-1.5 rounded-full ${serviceDotTone("PENSION")}`} aria-hidden="true" /> : null}
+                      <span className="flex h-1.5 items-center justify-center">
+                        {svcStatus === "AVAILABLE" ? (
+                          <span className={`h-1.5 w-1.5 rounded-full ${serviceDotTone(availabilityTab)}`} aria-hidden="true" />
+                        ) : svcStatus === "ON_REQUEST" ? (
+                          <span className="h-1.5 w-1.5 rounded-full bg-amber-400" aria-hidden="true" />
+                        ) : null}
                       </span>
                     </button>
                   );
@@ -1473,9 +1514,8 @@ export default function AvailabilityStudioPage() {
               </div>
 
               <div className="mt-2 flex items-center justify-center gap-3 text-[10px] font-medium text-slate-500">
-                <span className="flex items-center gap-1"><span className={`h-1.5 w-1.5 rounded-full ${serviceDotTone("PROMENADE")}`} aria-hidden="true" />Promenade</span>
-                <span className="flex items-center gap-1"><span className={`h-1.5 w-1.5 rounded-full ${serviceDotTone("DOGSITTING")}`} aria-hidden="true" />Dogsitting</span>
-                <span className="flex items-center gap-1"><span className={`h-1.5 w-1.5 rounded-full ${serviceDotTone("PENSION")}`} aria-hidden="true" />Pension</span>
+                <span className="flex items-center gap-1"><span className={`h-1.5 w-1.5 rounded-full ${serviceDotTone(availabilityTab)}`} aria-hidden="true" />Disponible</span>
+                <span className="flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-amber-400" aria-hidden="true" />Sur demande</span>
               </div>
             </div>
 
@@ -1514,92 +1554,191 @@ export default function AvailabilityStudioPage() {
           </div>
         </div>
 
-        {/* Compact day-availability popup */}
-        {inlineExceptionOpen && exceptionDate ? (
-          <>
-            <div
-              className="fixed inset-0 z-[1300] bg-slate-900/40"
-              onClick={() => setInlineExceptionOpen(false)}
-              aria-hidden="true"
-            />
-            <div
-              className="fixed inset-x-2 bottom-2 z-[1301] rounded-3xl bg-white p-4 shadow-xl"
-              style={{ paddingBottom: "calc(max(var(--ds-bottom-nav-h, 0px), 88px) + 8px)" }}
-              role="dialog"
-              aria-modal="true"
-            >
-              <div className="flex items-center justify-between">
-                <div className="min-w-0">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Disponibilité</p>
-                  <p className="truncate text-base font-bold text-slate-900">{formatDateFrCh(exceptionDate)}</p>
-                </div>
-                <button
-                  type="button"
+        {/* Compact day-availability popup — portalled to <body> so it floats
+            cleanly ABOVE the tab bar instead of colliding with the paw. */}
+        {inlineExceptionOpen && exceptionDate
+          ? createPortal(
+              <>
+                <div
+                  className="fixed inset-0 z-[1400] bg-slate-900/40"
                   onClick={() => setInlineExceptionOpen(false)}
-                  aria-label="Fermer"
-                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-500 active:scale-95"
+                  aria-hidden="true"
+                />
+                <div
+                  className="fixed inset-x-3 z-[1401] max-h-[70vh] overflow-y-auto rounded-3xl bg-white p-4 shadow-[0_20px_60px_rgba(2,6,23,0.30)]"
+                  style={{ bottom: "calc(max(var(--ds-bottom-nav-h, 0px), 88px) + 20px)" }}
+                  role="dialog"
+                  aria-modal="true"
                 >
-                  <X className="h-4 w-4" aria-hidden="true" />
-                </button>
-              </div>
-
-              {enabledServices.length ? (
-                <div className="mt-3 flex gap-2">
-                  {enabledServices.map((svc) => {
-                    const active = exceptionService === svc;
-                    return (
-                      <button
-                        key={`popup-svc-${svc}`}
-                        type="button"
-                        onClick={() => selectInlineExceptionService(svc)}
-                        className={
-                          "flex flex-1 items-center justify-center gap-1 rounded-xl px-2 py-2 text-xs font-semibold transition " +
-                          (active ? serviceSolidTone(svc) : "border border-slate-200 bg-white text-slate-600")
-                        }
-                      >
-                        <ServiceIcon svc={svc} className="h-3.5 w-3.5 shrink-0" />
-                        <span className="truncate">{serviceMeta(svc).label}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              ) : null}
-
-              <div className="mt-3 grid grid-cols-3 gap-2">
-                {(["AVAILABLE", "ON_REQUEST", "UNAVAILABLE"] as const).map((status) => {
-                  const active = exceptionStatus === status;
-                  const activeTone =
-                    status === "AVAILABLE" ? "bg-[#7c3aed] text-white" : status === "ON_REQUEST" ? "bg-amber-500 text-white" : "bg-slate-600 text-white";
-                  return (
+                  <div className="flex items-center justify-between">
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Disponibilité</p>
+                      <p className="truncate text-base font-bold text-slate-900">{formatDateFrCh(exceptionDate)}</p>
+                    </div>
                     <button
-                      key={`popup-status-${status}`}
                       type="button"
-                      onClick={() => setExceptionStatus(status)}
-                      aria-pressed={active}
-                      className={
-                        "rounded-xl px-2 py-2.5 text-xs font-semibold transition " +
-                        (active ? activeTone : "border border-slate-200 bg-white text-slate-600")
-                      }
+                      onClick={() => setInlineExceptionOpen(false)}
+                      aria-label="Fermer"
+                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-500 active:scale-95"
                     >
-                      {statusLabelFr(status)}
+                      <X className="h-4 w-4" aria-hidden="true" />
                     </button>
-                  );
-                })}
-              </div>
+                  </div>
 
-              {exceptionError ? <p className="mt-3 text-xs font-semibold text-rose-600">{exceptionError}</p> : null}
+                  {enabledServices.length ? (
+                    <div className="mt-3 flex gap-2">
+                      {enabledServices.map((svc) => {
+                        const active = exceptionService === svc;
+                        return (
+                          <button
+                            key={`popup-svc-${svc}`}
+                            type="button"
+                            onClick={() => selectInlineExceptionService(svc)}
+                            className={
+                              "flex flex-1 items-center justify-center gap-1 rounded-xl px-2 py-2 text-xs font-semibold transition " +
+                              (active ? serviceSolidTone(svc) : "border border-slate-200 bg-white text-slate-600")
+                            }
+                          >
+                            <ServiceIcon svc={svc} className="h-3.5 w-3.5 shrink-0" />
+                            <span className="truncate">{serviceMeta(svc).label}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ) : null}
 
-              <button
-                type="button"
-                disabled={exceptionSaving || !enabledServices.length}
-                onClick={() => void saveSingleDayException(exceptionService, exceptionDate, exceptionStatus)}
-                className="mt-4 inline-flex w-full items-center justify-center rounded-full bg-[#7c3aed] px-4 py-3 text-sm font-semibold text-white active:bg-[#6d28d9] disabled:opacity-50"
-              >
-                {exceptionSaving ? "Enregistrement…" : "Enregistrer"}
-              </button>
-            </div>
-          </>
-        ) : null}
+                  <div className="mt-3 grid grid-cols-3 gap-2">
+                    {(["AVAILABLE", "ON_REQUEST", "UNAVAILABLE"] as const).map((status) => {
+                      const active = exceptionStatus === status;
+                      const activeTone =
+                        status === "AVAILABLE" ? "bg-[#7c3aed] text-white" : status === "ON_REQUEST" ? "bg-amber-500 text-white" : "bg-slate-600 text-white";
+                      return (
+                        <button
+                          key={`popup-status-${status}`}
+                          type="button"
+                          onClick={() => setExceptionStatus(status)}
+                          aria-pressed={active}
+                          className={
+                            "rounded-xl px-2 py-2.5 text-xs font-semibold transition " +
+                            (active ? activeTone : "border border-slate-200 bg-white text-slate-600")
+                          }
+                        >
+                          {statusLabelFr(status)}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Time slots — appears when the service supports hours and the
+                      day isn't marked unavailable. Native <select> keeps it discreet. */}
+                  {serviceSupportsTimeSlots(exceptionService) && exceptionStatus !== "UNAVAILABLE" ? (
+                    <div className="mt-3">
+                      <div className="grid grid-cols-2 gap-1.5 rounded-2xl bg-slate-50 p-1.5 ring-1 ring-slate-200">
+                        <button
+                          type="button"
+                          onClick={() => setExceptionAllDay(true)}
+                          className={
+                            "rounded-xl px-2 py-2 text-xs font-semibold transition " +
+                            (exceptionAllDay ? "bg-[#7c3aed] text-white" : "bg-white text-slate-600")
+                          }
+                          aria-pressed={exceptionAllDay}
+                        >
+                          Toute la journée
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setExceptionAllDay(false);
+                            setExceptionRanges((prev) => (prev.length ? prev : [{ startMin: 8 * 60, endMin: 10 * 60 }]));
+                          }}
+                          className={
+                            "rounded-xl px-2 py-2 text-xs font-semibold transition " +
+                            (!exceptionAllDay ? "bg-[#7c3aed] text-white" : "bg-white text-slate-600")
+                          }
+                          aria-pressed={!exceptionAllDay}
+                        >
+                          Horaires
+                        </button>
+                      </div>
+
+                      {!exceptionAllDay ? (
+                        <div className="mt-2 space-y-2">
+                          {exceptionRanges.map((r, idx) => (
+                            <div key={`popup-range-${idx}`} className="flex items-center gap-2">
+                              <select
+                                value={r.startMin}
+                                onChange={(e) =>
+                                  setExceptionRanges((prev) => {
+                                    const next = prev.slice();
+                                    next[idx] = { ...next[idx], startMin: Number(e.target.value) };
+                                    return next;
+                                  })
+                                }
+                                className="h-9 flex-1 rounded-lg border border-slate-300 bg-white px-2 text-sm font-semibold text-slate-900"
+                                aria-label={`Créneau ${idx + 1} début`}
+                              >
+                                {TIME_PICKER_OPTIONS.map((m) => (
+                                  <option key={`s-${idx}-${m}`} value={m}>
+                                    {minutesToHHMM(m)}
+                                  </option>
+                                ))}
+                              </select>
+                              <span className="text-xs font-semibold text-slate-400" aria-hidden="true">→</span>
+                              <select
+                                value={r.endMin}
+                                onChange={(e) =>
+                                  setExceptionRanges((prev) => {
+                                    const next = prev.slice();
+                                    next[idx] = { ...next[idx], endMin: Number(e.target.value) };
+                                    return next;
+                                  })
+                                }
+                                className="h-9 flex-1 rounded-lg border border-slate-300 bg-white px-2 text-sm font-semibold text-slate-900"
+                                aria-label={`Créneau ${idx + 1} fin`}
+                              >
+                                {TIME_PICKER_OPTIONS.map((m) => (
+                                  <option key={`e-${idx}-${m}`} value={m}>
+                                    {minutesToHHMM(m)}
+                                  </option>
+                                ))}
+                              </select>
+                              <button
+                                type="button"
+                                onClick={() => setExceptionRanges((prev) => prev.filter((_, j) => j !== idx))}
+                                aria-label="Supprimer ce créneau"
+                                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 active:scale-95"
+                              >
+                                <X className="h-4 w-4" aria-hidden="true" />
+                              </button>
+                            </div>
+                          ))}
+                          <button
+                            type="button"
+                            onClick={() => setExceptionRanges((prev) => [...prev, { startMin: 8 * 60, endMin: 10 * 60 }])}
+                            className="w-full rounded-xl border border-dashed border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-[#7c3aed] active:bg-slate-50"
+                          >
+                            + Ajouter un créneau
+                          </button>
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : null}
+
+                  {exceptionError ? <p className="mt-3 text-xs font-semibold text-rose-600">{exceptionError}</p> : null}
+
+                  <button
+                    type="button"
+                    disabled={exceptionSaving || !enabledServices.length}
+                    onClick={() => void saveSingleDayException(exceptionService, exceptionDate, exceptionStatus)}
+                    className="mt-4 inline-flex w-full items-center justify-center rounded-full bg-[#7c3aed] px-4 py-3 text-sm font-semibold text-white active:bg-[#6d28d9] disabled:opacity-50"
+                  >
+                    {exceptionSaving ? "Enregistrement…" : "Enregistrer"}
+                  </button>
+                </div>
+              </>,
+              document.body,
+            )
+          : null}
       </div>
     );
   }
