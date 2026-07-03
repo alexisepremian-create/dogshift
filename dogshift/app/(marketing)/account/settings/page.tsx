@@ -21,6 +21,7 @@ import {
   Trash2,
   User2,
 } from "lucide-react";
+import { useIsNativeAppSync } from "@/lib/native/useIsNativeAppSync";
 
 type SettingsState = {
   notifications: {
@@ -233,6 +234,7 @@ function defaultSettings(): SettingsState {
 }
 
 export default function AccountSettingsPage() {
+  const isNative = useIsNativeAppSync();
   const pathname = usePathname();
   const isHost = typeof pathname === "string" && pathname.startsWith("/host/");
   const basePath = isHost ? "/host/settings" : "/account/settings";
@@ -413,6 +415,70 @@ export default function AccountSettingsPage() {
   const inputBase =
     "mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition focus:border-[var(--dogshift-blue)] focus:ring-4 focus:ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_85%)] disabled:bg-slate-50 disabled:text-slate-500";
 
+  // Extracted so both the web layout and the native compact layout can reuse them.
+  async function saveProfile() {
+    setProfileSubmitting(true);
+    setMeError(null);
+    try {
+      const res = await fetch("/api/account/settings/me", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ firstName: profileFirstName, lastName: profileLastName, ...(isHost ? { phone: profilePhone } : null) }),
+      });
+      const payload = (await res.json()) as { ok?: boolean };
+      if (!res.ok || !payload.ok) {
+        setMeError("Impossible d’enregistrer tes informations.");
+        setToast("Impossible d’enregistrer tes informations");
+        return;
+      }
+      setProfileSnapshot({ firstName: profileFirstName, lastName: profileLastName, phone: profilePhone });
+      router.refresh();
+      setToast("Informations mises à jour");
+    } catch {
+      setMeError("Impossible d’enregistrer tes informations.");
+      setToast("Impossible d’enregistrer tes informations");
+    } finally {
+      setProfileSubmitting(false);
+    }
+  }
+
+  async function submitPassword() {
+    setPasswordError(null);
+    setPasswordMessage(null);
+    if (password.length < 8) {
+      setPasswordError("Mot de passe trop court (8 caractères minimum).");
+      return;
+    }
+    if (password !== passwordConfirm) {
+      setPasswordError("Les mots de passe ne correspondent pas.");
+      return;
+    }
+    setPasswordSubmitting(true);
+    try {
+      const res = await fetch("/api/auth/set-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password, passwordConfirm }),
+      });
+      const payload = (await res.json()) as { ok?: boolean; error?: string; detail?: string };
+      if (!res.ok || !payload.ok) {
+        if (payload.error === "UNAUTHORIZED") return setPasswordError("Tu dois être connecté pour faire ça.");
+        if (payload.error === "PASSWORD_TOO_SHORT") return setPasswordError("Le mot de passe doit contenir au moins 8 caractères.");
+        if (payload.error === "PASSWORDS_DO_NOT_MATCH") return setPasswordError("Les mots de passe ne correspondent pas.");
+        if (payload.error === "PASSWORD_REJECTED") return setPasswordError("Ce mot de passe n'est pas accepté (trop simple ou compromis). Essaie-en un autre.");
+        return setPasswordError("Impossible de définir le mot de passe. Réessaie.");
+      }
+      setPasswordMessage("Mot de passe défini. Tu peux maintenant te connecter avec email + mot de passe.");
+      setPassword("");
+      setPasswordConfirm("");
+      setSecurity((prev) => (prev ? { ...prev, passwordSet: true } : prev));
+    } catch {
+      setPasswordError("Impossible de définir le mot de passe. Réessaie.");
+    } finally {
+      setPasswordSubmitting(false);
+    }
+  }
+
   async function saveNotificationPreference(key: keyof SettingsState["notifications"], nextValue: boolean) {
     if (notificationSavingKey) return;
     const prevValue = Boolean(settingsState.notifications[key]);
@@ -452,6 +518,93 @@ export default function AccountSettingsPage() {
     } finally {
       setNotificationSavingKey(null);
     }
+  }
+
+  if (isNative) {
+    const nInput =
+      "mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-[#7c3aed] focus:ring-4 focus:ring-[#7c3aed]/15 disabled:bg-slate-50 disabled:text-slate-500";
+    const nLabel = "text-xs font-semibold text-slate-600";
+    return (
+      <div className="space-y-5 pb-2" data-testid="account-settings-page">
+        <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight text-slate-900">
+          <Settings className="h-6 w-6 text-[#7c3aed]" aria-hidden="true" />
+          <span>Paramètres</span>
+        </h1>
+
+        {toast ? (
+          <div className="rounded-xl bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-900">{toast}</div>
+        ) : null}
+
+        {/* Informations personnelles — flat, no card */}
+        <div className="space-y-3">
+          <p className="text-sm font-semibold text-slate-900">Informations personnelles</p>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className={nLabel} htmlFor="n_first">Prénom</label>
+              <input id="n_first" value={profileFirstName} onChange={(e) => setProfileFirstName(e.target.value)} className={nInput} />
+            </div>
+            <div>
+              <label className={nLabel} htmlFor="n_last">Nom</label>
+              <input id="n_last" value={profileLastName} onChange={(e) => setProfileLastName(e.target.value)} className={nInput} />
+            </div>
+          </div>
+          <div>
+            <label className={nLabel} htmlFor="n_email">Email</label>
+            <input id="n_email" value={profileEmail} disabled className={nInput} />
+          </div>
+          {emailVerificationStatus === "verified" ? (
+            <p className="flex items-center gap-1 text-sm font-semibold text-emerald-600">
+              <CheckCircle2 className="h-4 w-4" aria-hidden="true" /> Email vérifié
+            </p>
+          ) : (
+            <p className="text-xs text-slate-500">
+              Email non vérifié — vérifie-le depuis{" "}
+              <a href="https://www.dogshift.ch/account/settings" target="_blank" rel="noreferrer" className="font-semibold text-[#7c3aed] underline">
+                le site dogshift.ch
+              </a>
+              .
+            </p>
+          )}
+          {profileDirty ? (
+            <button
+              type="button"
+              disabled={profileSubmitting}
+              onClick={saveProfile}
+              className="inline-flex items-center justify-center rounded-full bg-[#7c3aed] px-4 py-2 text-sm font-semibold text-white active:bg-[#6d28d9] disabled:opacity-50"
+            >
+              {profileSubmitting ? "Enregistrement…" : "Enregistrer"}
+            </button>
+          ) : null}
+        </div>
+
+        {/* Mot de passe */}
+        <div className="space-y-2">
+          <p className="text-sm font-semibold text-slate-900">Mot de passe</p>
+          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Nouveau mot de passe" autoComplete="new-password" className={nInput} />
+          <input type="password" value={passwordConfirm} onChange={(e) => setPasswordConfirm(e.target.value)} placeholder="Confirmer" autoComplete="new-password" className={nInput} />
+          {passwordError ? <p className="text-xs font-medium text-rose-600">{passwordError}</p> : null}
+          {passwordMessage ? <p className="text-xs font-medium text-emerald-600">{passwordMessage}</p> : null}
+          <button
+            type="button"
+            disabled={!passwordCanSubmit}
+            onClick={submitPassword}
+            className="inline-flex items-center justify-center rounded-full bg-[#7c3aed] px-4 py-2 text-sm font-semibold text-white active:bg-[#6d28d9] disabled:opacity-50"
+          >
+            {passwordSubmitting ? "…" : "Changer le mot de passe"}
+          </button>
+        </div>
+
+        {/* Supprimer le compte → site web */}
+        <a
+          href="https://www.dogshift.ch/account/settings"
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex items-center gap-1.5 text-sm font-medium text-rose-600"
+        >
+          <Trash2 className="h-4 w-4" aria-hidden="true" /> Supprimer mon compte (sur le site)
+        </a>
+      </div>
+    );
   }
 
   return (
@@ -574,32 +727,7 @@ export default function AccountSettingsPage() {
             <button
               type="button"
               disabled={profileSubmitting}
-              onClick={async () => {
-                setProfileSubmitting(true);
-                setMeError(null);
-                try {
-                  const res = await fetch("/api/account/settings/me", {
-                    method: "PATCH",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ firstName: profileFirstName, lastName: profileLastName, ...(isHost ? { phone: profilePhone } : null) }),
-                  });
-                  const payload = (await res.json()) as { ok?: boolean };
-                  if (!res.ok || !payload.ok) {
-                    setMeError("Impossible d’enregistrer tes informations.");
-                    setToast("Impossible d’enregistrer tes informations");
-                    return;
-                  }
-
-                  setProfileSnapshot({ firstName: profileFirstName, lastName: profileLastName, phone: profilePhone });
-                  router.refresh();
-                  setToast("Informations mises à jour");
-                } catch {
-                  setMeError("Impossible d’enregistrer tes informations.");
-                  setToast("Impossible d’enregistrer tes informations");
-                } finally {
-                  setProfileSubmitting(false);
-                }
-              }}
+              onClick={saveProfile}
               className="inline-flex items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[var(--dogshift-blue-hover)] disabled:cursor-not-allowed disabled:opacity-60"
             >
               {profileSubmitting ? "Enregistrement…" : "Enregistrer"}
@@ -863,58 +991,7 @@ export default function AccountSettingsPage() {
             <button
               type="button"
               disabled={!passwordCanSubmit}
-              onClick={async () => {
-                setPasswordError(null);
-                setPasswordMessage(null);
-
-                if (password.length < 8) {
-                  setPasswordError("Mot de passe trop court (8 caractères minimum).");
-                  return;
-                }
-                if (password !== passwordConfirm) {
-                  setPasswordError("Les mots de passe ne correspondent pas.");
-                  return;
-                }
-
-                setPasswordSubmitting(true);
-                try {
-                  const res = await fetch("/api/auth/set-password", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ password, passwordConfirm }),
-                  });
-                  const payload = (await res.json()) as { ok?: boolean; error?: string; detail?: string };
-                  if (!res.ok || !payload.ok) {
-                    if (payload.error === "UNAUTHORIZED") {
-                      setPasswordError("Tu dois être connecté pour faire ça.");
-                      return;
-                    }
-                    if (payload.error === "PASSWORD_TOO_SHORT") {
-                      setPasswordError("Le mot de passe doit contenir au moins 8 caractères.");
-                      return;
-                    }
-                    if (payload.error === "PASSWORDS_DO_NOT_MATCH") {
-                      setPasswordError("Les mots de passe ne correspondent pas.");
-                      return;
-                    }
-                    if (payload.error === "PASSWORD_REJECTED") {
-                      setPasswordError("Ce mot de passe n'est pas accepté (trop simple ou compromis). Essaie-en un autre.");
-                      return;
-                    }
-                    setPasswordError("Impossible de définir le mot de passe. Réessaie.");
-                    return;
-                  }
-
-                  setPasswordMessage("Mot de passe défini. Tu peux maintenant te connecter avec email + mot de passe.");
-                  setPassword("");
-                  setPasswordConfirm("");
-                  setSecurity((prev) => (prev ? { ...prev, passwordSet: true } : prev));
-                } catch {
-                  setPasswordError("Impossible de définir le mot de passe. Réessaie.");
-                } finally {
-                  setPasswordSubmitting(false);
-                }
-              }}
+              onClick={submitPassword}
               className="inline-flex w-auto max-w-[320px] items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[var(--dogshift-blue-hover)] disabled:cursor-not-allowed disabled:opacity-60"
             >
               Définir mon mot de passe
