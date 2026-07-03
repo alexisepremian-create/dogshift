@@ -268,6 +268,7 @@ export default function NativeMapHome() {
   });
   // iso date → per-service availability status for the visible month.
   const [bookingDayStatus, setBookingDayStatus] = useState<Record<string, { promenade: string; garde: string; pension: string }>>({});
+  const [bookingDaysLoading, setBookingDaysLoading] = useState(false);
   const isBookingPension = bookingService === "Pension";
   const [searchService, setSearchService] = useState<Service>("Promenade");
   const [searchLocation, setSearchLocation] = useState("");
@@ -325,6 +326,7 @@ export default function NativeMapHome() {
     const lastDay = new Date(y, m + 1, 0).getDate();
     const to = `${y}-${pad(m + 1)}-${pad(lastDay)}`;
     let cancelled = false;
+    setBookingDaysLoading(true);
     void (async () => {
       try {
         const res = await fetch(`/api/sitters/${detailSitter.id}/day-status/multi?from=${from}&to=${to}`, { cache: "no-store" });
@@ -343,6 +345,8 @@ export default function NativeMapHome() {
         setBookingDayStatus(map);
       } catch {
         if (!cancelled) setBookingDayStatus({});
+      } finally {
+        if (!cancelled) setBookingDaysLoading(false);
       }
     })();
     return () => { cancelled = true; };
@@ -1471,21 +1475,32 @@ export default function NativeMapHome() {
                       <Calendar className="h-4 w-4" />
                       {isBookingPension ? "Choisis tes dates" : "Choisis une date"}
                     </div>
-                    <InlineCalendar
-                      month={bookingMonth}
-                      onMonthChange={setBookingMonth}
-                      selectedSingle={isBookingPension ? null : bookingDate}
-                      selectedStart={isBookingPension ? bookingStart : null}
-                      selectedEnd={isBookingPension ? bookingEnd : null}
-                      rangeMode={isBookingPension}
-                      onDayTap={handleBookingDayTap}
-                      statusForIso={bookingStatusForIso}
-                    />
-                    <div className="mt-3 flex flex-wrap items-center gap-3 text-[11px] text-slate-500">
-                      <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-[#7c3aed]" /> Disponible</span>
-                      <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-amber-400" /> Sur demande</span>
-                      <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-slate-300" /> Indisponible</span>
-                    </div>
+                    {bookingDaysLoading ? (
+                      // Don't render the calendar until the sitter's day statuses
+                      // are loaded — otherwise every day flashes "selectable"
+                      // (fail-open default) before the real availabilities land.
+                      <div className="mt-2 flex items-center justify-center py-10">
+                        <div className="h-6 w-6 animate-spin rounded-full border-2 border-[#7c3aed] border-t-transparent" />
+                      </div>
+                    ) : (
+                      <>
+                        <InlineCalendar
+                          month={bookingMonth}
+                          onMonthChange={setBookingMonth}
+                          selectedSingle={isBookingPension ? null : bookingDate}
+                          selectedStart={isBookingPension ? bookingStart : null}
+                          selectedEnd={isBookingPension ? bookingEnd : null}
+                          rangeMode={isBookingPension}
+                          onDayTap={handleBookingDayTap}
+                          statusForIso={bookingStatusForIso}
+                        />
+                        <div className="mt-3 flex flex-wrap items-center gap-3 text-[11px] text-slate-500">
+                          <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-[#7c3aed]" /> Disponible</span>
+                          <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-amber-400" /> Sur demande</span>
+                          <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-slate-300" /> Indisponible</span>
+                        </div>
+                      </>
+                    )}
                   </>
                 )}
               </div>
