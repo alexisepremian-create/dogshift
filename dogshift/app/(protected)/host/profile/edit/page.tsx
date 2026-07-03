@@ -6,6 +6,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Info, Pencil, ShieldCheck, Clock, Camera, AlertTriangle, CheckCircle, XCircle, Upload } from "lucide-react";
+import { useIsNativeAppSync } from "@/lib/native/useIsNativeAppSync";
 
 import { useHostUser } from "@/components/HostUserProvider";
 import { isActivatedStatus } from "@/lib/sitterContract";
@@ -26,6 +27,7 @@ import { SizeWeightLegend } from "@/components/capacity/SizeWeightLegend";
 import { DOG_SIZE_WEIGHTS } from "@/lib/constants/dog-sizes";
 
 export default function HostProfileEditPage() {
+  const isNative = useIsNativeAppSync();
   const host = useHostUser();
   const { sitterId, profile: remoteProfile, published: remotePublished, termsAcceptedAt, termsVersion, lifecycleStatus } = host;
 
@@ -506,6 +508,121 @@ export default function HostProfileEditPage() {
             </Link>
           </div>
         </div>
+      </div>
+    );
+  }
+
+  if (isNative) {
+    const nInput =
+      "mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-[#7c3aed] focus:ring-4 focus:ring-[#7c3aed]/15";
+    const nLabel = "text-xs font-semibold text-slate-600";
+    const sizes: Array<{ key: "acceptsSmall" | "acceptsMedium" | "acceptsLarge"; dog: DogSize; label: string }> = [
+      { key: "acceptsSmall", dog: "Petit", label: "Petit" },
+      { key: "acceptsMedium", dog: "Moyen", label: "Moyen" },
+      { key: "acceptsLarge", dog: "Grand", label: "Grand" },
+    ];
+    return (
+      <div className="space-y-5 pb-2" data-testid="host-profile-edit">
+        <div className="flex items-center justify-between gap-2">
+          <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight text-slate-900">
+            <Pencil className="h-6 w-6 text-[#7c3aed]" aria-hidden="true" />
+            <span>Mon profil</span>
+          </h1>
+          <div className="flex shrink-0 items-center gap-2">
+            <span className="text-xs font-semibold text-slate-600">{published ? "Publié" : "Brouillon"}</span>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={published}
+              aria-label="Publier l'annonce"
+              onClick={() => { if (canTogglePublish) setPublished((v) => !v); }}
+              style={{ touchAction: "manipulation" }}
+              className={"inline-flex h-7 w-12 items-center rounded-full p-1 transition " + (canTogglePublish ? "" : "opacity-50 ") + (published ? "bg-[#7c3aed]" : "bg-slate-200")}
+            >
+              <span className={"h-5 w-5 rounded-full bg-white shadow-sm transition-transform " + (published ? "translate-x-5" : "")} />
+            </button>
+          </div>
+        </div>
+
+        {error ? <p className="text-xs font-medium text-rose-600">{error}</p> : null}
+        {saved ? <p className="text-xs font-medium text-emerald-600">Enregistré ✓</p> : null}
+
+        {/* Profil public */}
+        <div className="space-y-3">
+          <p className="text-sm font-semibold text-slate-900">Profil public</p>
+          <div>
+            <label className={nLabel} htmlFor="np_name">Nom visible</label>
+            <input id="np_name" value={profile.firstName} onChange={(e) => setProfile((p) => ({ ...p, firstName: e.target.value }))} className={nInput} placeholder="ex. Camille" />
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className={nLabel} htmlFor="np_city">Ville</label>
+              <input id="np_city" value={profile.city} onChange={(e) => setProfile((p) => ({ ...p, city: e.target.value }))} className={nInput} />
+            </div>
+            <div>
+              <label className={nLabel} htmlFor="np_npa">NPA</label>
+              <input id="np_npa" value={profile.postalCode} onChange={(e) => setProfile((p) => ({ ...p, postalCode: e.target.value }))} className={nInput} />
+            </div>
+          </div>
+          <div>
+            <label className={nLabel} htmlFor="np_addr">Adresse complète (confidentielle)</label>
+            <input id="np_addr" value={profile.address} onChange={(e) => setProfile((p) => ({ ...p, address: e.target.value }))} className={nInput} placeholder="ex. Rue du Rhône 12, 1204 Genève" />
+          </div>
+        </div>
+
+        {/* Description */}
+        <div className="space-y-2">
+          <p className="text-sm font-semibold text-slate-900">Description</p>
+          <textarea value={profile.bio} onChange={(e) => setProfile((p) => ({ ...p, bio: e.target.value }))} rows={4} className={nInput} placeholder="Présente-toi en quelques mots." />
+        </div>
+
+        {/* Tailles acceptées */}
+        <div className="space-y-2">
+          <p className="text-sm font-semibold text-slate-900">Tailles de chiens acceptées</p>
+          <div className="grid grid-cols-3 gap-2">
+            {sizes.map((s) => {
+              const on = Boolean(profile[s.key]);
+              return (
+                <button
+                  key={s.key}
+                  type="button"
+                  onClick={() =>
+                    setProfile((p) => ({
+                      ...p,
+                      [s.key]: !on,
+                      dogSizes: { ...p.dogSizes, [s.dog]: !on },
+                    }))
+                  }
+                  className={
+                    "rounded-xl border px-3 py-2.5 text-sm font-semibold transition " +
+                    (on ? "border-[#7c3aed] bg-[#7c3aed]/10 text-[#7c3aed]" : "border-slate-200 bg-white text-slate-600")
+                  }
+                >
+                  {s.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Photo + vérification → site web */}
+        <a
+          href="https://www.dogshift.ch/host/profile/edit"
+          target="_blank"
+          rel="noreferrer"
+          className="flex items-center gap-2 text-sm font-medium text-[#7c3aed]"
+        >
+          <Camera className="h-4 w-4" aria-hidden="true" /> Photo & vérification (sur le site)
+        </a>
+
+        <button
+          type="button"
+          disabled={saving}
+          onClick={onSave}
+          className="inline-flex w-full items-center justify-center rounded-full bg-[#7c3aed] px-4 py-3 text-sm font-semibold text-white active:bg-[#6d28d9] disabled:opacity-50"
+        >
+          {saving ? "Enregistrement…" : "Enregistrer"}
+        </button>
       </div>
     );
   }
