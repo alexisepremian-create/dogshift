@@ -233,9 +233,11 @@ export function RequestsSplitView({
 
   // Native popup: while the first fetch is in flight show ONLY the spinner
   // (no header + trailing spinner) so the load reads as one continuous circle.
+  // min-h matches PanelLoading (55vh) so the spinner never jumps position
+  // during the import → fetch hand-off.
   if (isNative && loading) {
     return (
-      <div className="flex min-h-[60vh] items-center justify-center" data-testid="host-requests-page">
+      <div className="flex min-h-[55vh] items-center justify-center" data-testid="host-requests-page">
         <div className="h-7 w-7 animate-spin rounded-full border-2 border-[#7c3aed] border-t-transparent" />
       </div>
     );
