@@ -9,8 +9,8 @@ import { NativeDashTile, NativeStat } from "@/components/native/NativeDashTile";
 import { DashboardSheet } from "@/components/native/DashboardSheet";
 
 const PanelLoading = () => (
-  <div className="flex items-center justify-center py-16">
-    <div className="h-6 w-6 animate-spin rounded-full border-2 border-[#7c3aed] border-t-transparent" />
+  <div className="flex min-h-[55vh] items-center justify-center">
+    <div className="h-7 w-7 animate-spin rounded-full border-2 border-[#7c3aed] border-t-transparent" />
   </div>
 );
 

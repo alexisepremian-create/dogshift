@@ -347,8 +347,8 @@ test("sitter dashboard root shows ONE skeleton across EVERY boundary (route grou
   assert.match(overlay, /<HostDashboardSkeleton \/>/, "HostDashboardSkeletonOverlay must wrap the faithful skeleton.");
   assert.match(
     overlay,
-    /paddingTop:[\s\S]*?env\(safe-area-inset-top[\s\S]*?2rem \+ 0\.75rem/,
-    "The overlay must pad to land where the in-shell page skeleton sits (main pt + inner py-3).",
+    /paddingTop:[\s\S]*?env\(safe-area-inset-top[\s\S]*?0\.5rem \+ 0\.25rem/,
+    "The overlay must pad to land where the in-shell page skeleton sits (main pt + inner pt-1).",
   );
 
   const page = read("app/(protected)/host/page.tsx");
@@ -412,10 +412,12 @@ test("bottom nav persists isSitter so it doesn't flip owner→sitter at launch",
 
 test("NativeMapHome sheet: swipe + click-outside + blur + hidden locate + price + best-rated first", () => {
   const src = read("components/native/NativeMapHome.tsx");
-  // Swipe to open/close the sheet via the grab handle.
-  assert.match(src, /onTouchStart=\{onHandleTouchStart\}/, "Sheet handle must wire onTouchStart for swipe.");
-  assert.match(src, /onHandleTouchEnd[\s\S]*?dy < -28[\s\S]*?setSheetOpen\(true\)/, "Swipe up must open the sheet.");
-  assert.match(src, /onHandleTouchEnd[\s\S]*?dy > 28[\s\S]*?setSheetOpen\(false\)/, "Swipe down must close the sheet.");
+  // Drag to open/close the sheet via the grab handle — follows the finger 1:1
+  // (live height) then snaps on release.
+  assert.match(src, /onTouchStart=\{onHandleTouchStart\}/, "Sheet handle must wire onTouchStart for drag.");
+  assert.match(src, /onHandleTouchMove[\s\S]*?setSheetDragH\(/, "Drag must track the sheet height live (setSheetDragH).");
+  assert.match(src, /onHandleTouchEnd[\s\S]*?setSheetOpen\(shouldOpen\)/, "Release must snap the sheet open/closed.");
+  assert.match(src, /height:\s*sheetDragH != null \?/, "The sheet height must follow the live drag value.");
   // Tap outside (scrim) closes; map is blurred while open.
   assert.match(src, /aria-label="Fermer la liste"[\s\S]*?onClick=\{\(\) => setSheetOpen\(false\)\}/, "A full-screen scrim must close the sheet on tap-outside.");
   assert.match(src, /filter:\s*sheetOpen\s*\?\s*"blur\(/, "The map container must blur while the sheet is open.");

@@ -192,6 +192,9 @@ export default function NativeMapHome() {
   const [loading, setLoading] = useState(true);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
+  // Live height while the user is dragging the sheet handle (null = not dragging,
+  // let CSS use the open/collapsed height). Lets the sheet follow the finger 1:1.
+  const [sheetDragH, setSheetDragH] = useState<number | null>(null);
   const [geoLoading, setGeoLoading] = useState(false);
   // `query` is kept (used by filteredSitters) but no longer set from the UI —
   // the inline search input was replaced by a modal trigger; full search lives
@@ -633,26 +636,55 @@ export default function NativeMapHome() {
   // still toggles. Swipe threshold + the existing CSS height transition gives
   // the snap — no gesture library needed.
   const dragStartYRef = useRef<number | null>(null);
+  const dragBaseHRef = useRef<number>(148);
   const swipedRef = useRef(false);
 
-  const onHandleTouchStart = useCallback((e: ReactTouchEvent) => {
-    dragStartYRef.current = e.touches[0]?.clientY ?? null;
-    swipedRef.current = false;
+  // Collapsed peek height (must match the CSS below) + the open height in px.
+  const SHEET_COLLAPSED = 148;
+  const sheetOpenHeightPx = useCallback(() => {
+    if (typeof window === "undefined") return 400;
+    const navRaw = getComputedStyle(document.documentElement).getPropertyValue("--ds-bottom-nav-h");
+    const navH = Math.max(parseFloat(navRaw) || 0, 0);
+    return Math.max(SHEET_COLLAPSED, Math.round(window.innerHeight * 0.7) - navH);
   }, []);
 
-  const onHandleTouchMove = useCallback((e: ReactTouchEvent) => {
-    if (dragStartYRef.current == null) return;
-    const dy = (e.touches[0]?.clientY ?? 0) - dragStartYRef.current;
-    if (Math.abs(dy) > 24) swipedRef.current = true;
-  }, []);
+  const onHandleTouchStart = useCallback(
+    (e: ReactTouchEvent) => {
+      dragStartYRef.current = e.touches[0]?.clientY ?? null;
+      dragBaseHRef.current = sheetOpen ? sheetOpenHeightPx() : SHEET_COLLAPSED;
+      swipedRef.current = false;
+    },
+    [sheetOpen, sheetOpenHeightPx],
+  );
 
-  const onHandleTouchEnd = useCallback((e: ReactTouchEvent) => {
-    if (dragStartYRef.current == null) return;
-    const dy = (e.changedTouches[0]?.clientY ?? 0) - dragStartYRef.current;
-    dragStartYRef.current = null;
-    if (dy < -28) setSheetOpen(true);
-    else if (dy > 28) setSheetOpen(false);
-  }, []);
+  const onHandleTouchMove = useCallback(
+    (e: ReactTouchEvent) => {
+      if (dragStartYRef.current == null) return;
+      const dy = (e.touches[0]?.clientY ?? 0) - dragStartYRef.current;
+      if (Math.abs(dy) > 6) swipedRef.current = true;
+      // Dragging UP (dy < 0) grows the sheet; DOWN shrinks it. Track 1:1.
+      const openPx = sheetOpenHeightPx();
+      const next = Math.min(openPx, Math.max(SHEET_COLLAPSED, dragBaseHRef.current - dy));
+      setSheetDragH(next);
+    },
+    [sheetOpenHeightPx],
+  );
+
+  const onHandleTouchEnd = useCallback(
+    (e: ReactTouchEvent) => {
+      if (dragStartYRef.current == null) return;
+      const dy = (e.changedTouches[0]?.clientY ?? 0) - dragStartYRef.current;
+      dragStartYRef.current = null;
+      const openPx = sheetOpenHeightPx();
+      const finalH = sheetDragH ?? dragBaseHRef.current;
+      const midpoint = (SHEET_COLLAPSED + openPx) / 2;
+      // Snap by position, or by a fast flick.
+      const shouldOpen = dy < -60 ? true : dy > 60 ? false : finalH > midpoint;
+      setSheetOpen(shouldOpen);
+      setSheetDragH(null);
+    },
+    [sheetDragH, sheetOpenHeightPx],
+  );
 
   const onHandleClick = useCallback(() => {
     // Ignore the click that fires at the end of a swipe (otherwise it would
@@ -756,7 +788,7 @@ export default function NativeMapHome() {
                 style={{ touchAction: "manipulation" }}
                 className={
                   active
-                    ? "flex-shrink-0 rounded-full bg-[var(--dogshift-blue)] px-4 py-2 text-sm font-semibold text-white shadow-[0_6px_18px_rgba(47,77,107,0.35)] active:scale-95"
+                    ? "flex-shrink-0 rounded-full bg-[#7c3aed] px-4 py-2 text-sm font-semibold text-white shadow-[0_6px_18px_rgba(124,58,237,0.35)] active:scale-95"
                     : "flex-shrink-0 rounded-full bg-white/95 px-4 py-2 text-sm font-medium text-slate-700 shadow-[0_4px_12px_rgba(2,6,23,0.12)] backdrop-blur active:scale-95"
                 }
               >
@@ -879,8 +911,10 @@ export default function NativeMapHome() {
           it (founder bug : "il passe sous la nav barre ca doit etre séparé
           distinctement"). */}
       <div
-        className={`absolute left-2 right-2 z-30 rounded-3xl bg-white shadow-[0_-8px_24px_rgba(2,6,23,0.14)] transition-transform duration-300 ease-out`}
+        className={`absolute left-2 right-2 z-30 rounded-3xl bg-white shadow-[0_-8px_24px_rgba(2,6,23,0.14)]`}
         style={{
+          // While dragging: no transition (follow the finger). On release: snap.
+          transition: sheetDragH != null ? "none" : "height 320ms cubic-bezier(0.22,1,0.36,1)",
           // Floor the nav height with max(…, 88px): when returning to the map
           // from another tab the `--ds-bottom-nav-h` var can momentarily read
           // 0 (the bottom-nav re-measures a tick later), which dropped the
@@ -894,7 +928,7 @@ export default function NativeMapHome() {
           // ~80px of empty white above the nav (founder: "ya un espace enorme
           // entre la nav barre et la carte"). 160px clipped the card; 148px is
           // the sweet spot — full card visible, no empty gap.
-          height: sheetOpen ? "calc(70vh - var(--ds-bottom-nav-h, 0px))" : "148px",
+          height: sheetDragH != null ? `${sheetDragH}px` : sheetOpen ? "calc(70vh - var(--ds-bottom-nav-h, 0px))" : "148px",
           transform: "translateY(0)",
         }}
       >
