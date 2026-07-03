@@ -10,7 +10,7 @@
 /* eslint-disable @next/next/no-img-element */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Info, Wallet, CheckCircle2, Clock, Landmark, ShieldCheck, PlayCircle, ArrowRightLeft, CalendarClock, RotateCw } from "lucide-react";
+import { Info, Wallet, CheckCircle2, Clock, Landmark, ShieldCheck, PlayCircle, ArrowRightLeft, CalendarClock, RotateCw, ChevronDown } from "lucide-react";
 import { useIsNativeAppSync } from "@/lib/native/useIsNativeAppSync";
 
 
@@ -623,6 +623,7 @@ export default function HostWalletPage() {
 
   if (isNative) {
     const stripeEnabled = stripeConnect.status === "ENABLED";
+    const walletLoading = bookingsLoading || stripeConnect.loading;
     return (
       <div className="flex h-full flex-col pb-2" data-testid="host-wallet-page">
         <div className="flex items-center justify-between">
@@ -630,86 +631,99 @@ export default function HostWalletPage() {
             <Wallet className="h-6 w-6 text-[#7c3aed]" aria-hidden="true" />
             <span>Portefeuille</span>
           </h1>
-          <button
-            type="button"
-            onClick={() => setWalletFlipped((v) => !v)}
-            aria-label="Retourner la carte"
-            className="flex h-9 w-9 items-center justify-center rounded-full bg-[#7c3aed]/10 text-[#7c3aed] active:scale-95"
-          >
-            <RotateCw className="h-4 w-4" aria-hidden="true" />
-          </button>
+          {!walletLoading ? (
+            <button
+              type="button"
+              onClick={() => setWalletFlipped((v) => !v)}
+              aria-label="Retourner la carte"
+              className="flex h-9 w-9 items-center justify-center rounded-full bg-[#7c3aed]/10 text-[#7c3aed] active:scale-95"
+            >
+              <RotateCw className="h-4 w-4" aria-hidden="true" />
+            </button>
+          ) : null}
         </div>
 
-        <select
-          value={timeframe}
-          onChange={(e) => setTimeframe(e.target.value as any)}
-          className="mt-3 h-10 w-full appearance-none rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm font-medium text-slate-700 outline-none"
-        >
-          <option value="TODAY">Aujourd&apos;hui</option>
-          <option value="WEEK">7 derniers jours</option>
-          <option value="MONTH">Mois en cours</option>
-          <option value="ALL">Toujours</option>
-        </select>
+        {walletLoading ? (
+          <div className="flex flex-1 items-center justify-center py-20">
+            <div className="h-7 w-7 animate-spin rounded-full border-2 border-[#7c3aed] border-t-transparent" />
+          </div>
+        ) : (
+          <>
+            <div className="relative mt-3">
+              <select
+                value={timeframe}
+                onChange={(e) => setTimeframe(e.target.value as any)}
+                className="h-10 w-full appearance-none rounded-xl border border-slate-200 bg-slate-50 pl-3 pr-9 text-sm font-medium text-slate-700 outline-none"
+              >
+                <option value="TODAY">Aujourd&apos;hui</option>
+                <option value="WEEK">7 derniers jours</option>
+                <option value="MONTH">Mois en cours</option>
+                <option value="ALL">Toujours</option>
+              </select>
+              <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#7c3aed]" aria-hidden="true" />
+            </div>
 
-        {/* Flip card: revenue ring ⇄ services effectués */}
-        <div className="mt-3 flex flex-1 items-center justify-center [perspective:1200px]">
-          <div
-            className={
-              "relative h-[248px] w-full [transform-style:preserve-3d] transition-transform duration-500 " +
-              (walletFlipped ? "[transform:rotateY(180deg)]" : "")
-            }
-          >
-            {/* FRONT — revenue ring */}
-            <div className="absolute inset-0 flex items-center justify-center [backface-visibility:hidden]">
-              <div className="relative">
-                <RevenueRing data={revenueByService} total={totalRevenueCents} trigger={1} />
-                <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Revenus</p>
-                  <p className="text-2xl font-extrabold text-slate-900">{formatCents(totalRevenueCents)}</p>
-                  <p className="text-xs text-slate-500">
-                    {filteredBookings.length} service{filteredBookings.length > 1 ? "s" : ""}
-                  </p>
+            {/* Flip card: revenue ring ⇄ services effectués — placed high, not centered */}
+            <div className="mt-3 [perspective:1200px]">
+              <div
+                className={
+                  "relative h-[248px] w-full [transform-style:preserve-3d] transition-transform duration-500 " +
+                  (walletFlipped ? "[transform:rotateY(180deg)]" : "")
+                }
+              >
+                {/* FRONT — revenue ring */}
+                <div className="absolute inset-0 flex items-center justify-center [backface-visibility:hidden]">
+                  <div className="relative">
+                    <RevenueRing data={revenueByService} total={totalRevenueCents} trigger={1} />
+                    <div className="absolute inset-0 flex flex-col items-center justify-center">
+                      <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Revenus</p>
+                      <p className="text-2xl font-extrabold text-slate-900">{formatCents(totalRevenueCents)}</p>
+                      <p className="text-xs text-slate-500">
+                        {filteredBookings.length} service{filteredBookings.length > 1 ? "s" : ""}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* BACK — 3 derniers services effectués */}
+                <div className="absolute inset-0 flex flex-col [backface-visibility:hidden] [transform:rotateY(180deg)]">
+                  <p className="text-sm font-semibold text-slate-900">Services effectués</p>
+                  <div className="mt-2 space-y-2">
+                    {last3.length === 0 ? (
+                      <p className="text-sm text-slate-500">Aucun service pour l&apos;instant.</p>
+                    ) : (
+                      last3.map((b: any, i: number) => (
+                        <div key={i} className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2.5">
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-semibold text-slate-900">{b.service?.trim() || "Service"}</p>
+                            <p className="text-xs text-slate-500">
+                              {b.endDate ? new Intl.DateTimeFormat("fr-CH", { day: "numeric", month: "short" }).format(new Date(b.endDate)) : ""}
+                            </p>
+                          </div>
+                          <span className="shrink-0 text-sm font-semibold text-slate-900">{formatCents(b.amount ?? 0)}</span>
+                        </div>
+                      ))
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
 
-            {/* BACK — 3 derniers services effectués */}
-            <div className="absolute inset-0 flex flex-col [backface-visibility:hidden] [transform:rotateY(180deg)]">
-              <p className="text-sm font-semibold text-slate-900">Services effectués</p>
-              <div className="mt-2 space-y-2">
-                {last3.length === 0 ? (
-                  <p className="text-sm text-slate-500">Aucun service pour l&apos;instant.</p>
-                ) : (
-                  last3.map((b: any, i: number) => (
-                    <div key={i} className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2.5">
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-semibold text-slate-900">{b.service?.trim() || "Service"}</p>
-                        <p className="text-xs text-slate-500">
-                          {b.endDate ? new Intl.DateTimeFormat("fr-CH", { day: "numeric", month: "short" }).format(new Date(b.endDate)) : ""}
-                        </p>
-                      </div>
-                      <span className="shrink-0 text-sm font-semibold text-slate-900">{formatCents(b.amount ?? 0)}</span>
-                    </div>
-                  ))
-                )}
-              </div>
+            {/* Stripe status — pinned to the bottom */}
+            <div className="mt-auto flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3">
+              <span className="flex items-center gap-2">
+                <span className="text-base font-bold tracking-tight text-[#635bff]">stripe</span>
+                <span className={"h-2 w-2 rounded-full " + (stripeEnabled ? "bg-emerald-500" : "bg-slate-300")} />
+                <span className="text-sm font-medium text-slate-600">{stripeEnabled ? "Paiements actifs" : "Non configuré"}</span>
+              </span>
+              {stripeEnabled ? null : (
+                <a href="https://www.dogshift.ch/host/wallet" target="_blank" rel="noreferrer" className="text-sm font-semibold text-[#7c3aed]">
+                  Configurer
+                </a>
+              )}
             </div>
-          </div>
-        </div>
-
-        {/* Stripe status */}
-        <div className="mt-3 flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3">
-          <span className="flex items-center gap-2">
-            <span className="text-base font-bold tracking-tight text-[#635bff]">stripe</span>
-            <span className={"h-2 w-2 rounded-full " + (stripeEnabled ? "bg-emerald-500" : "bg-slate-300")} />
-            <span className="text-sm font-medium text-slate-600">{stripeEnabled ? "Paiements actifs" : "Non configuré"}</span>
-          </span>
-          {stripeEnabled ? null : (
-            <a href="https://www.dogshift.ch/host/wallet" target="_blank" rel="noreferrer" className="text-sm font-semibold text-[#7c3aed]">
-              Configurer
-            </a>
-          )}
-        </div>
+          </>
+        )}
       </div>
     );
   }
