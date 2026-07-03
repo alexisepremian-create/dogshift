@@ -55,7 +55,7 @@ function formatDateOnly(iso: string) {
 
 type Contact = { id: string; name: string; avatarUrl: string | null };
 
-export default function HostMessagesLayout({ children }: { children: React.ReactNode }) {
+export default function HostMessagesLayout({ children }: { children?: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const isNative = useIsNativeAppSync();

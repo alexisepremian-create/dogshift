@@ -24,7 +24,10 @@ const PanelLoading = () => (
 
 const PANELS: Record<string, { title: string; Component: ComponentType }> = {
   requests: { title: "Demandes", Component: dynamic(() => import("@/app/(protected)/host/requests/page"), { ssr: false, loading: PanelLoading }) },
-  messages: { title: "Messages", Component: dynamic(() => import("@/app/(protected)/host/messages/page"), { ssr: false, loading: PanelLoading }) },
+  // The conversation list + "Nouvelle conversation" (+) FAB live in the messages
+  // *layout*, not the page (which is just the empty detail placeholder). Render
+  // the layout so the panel shows the real conversations section with the +.
+  messages: { title: "Messages", Component: dynamic(() => import("@/app/(protected)/host/messages/layout"), { ssr: false, loading: PanelLoading }) },
   availability: { title: "Disponibilités", Component: dynamic(() => import("@/app/(protected)/host/availability/page"), { ssr: false, loading: PanelLoading }) },
   profile: { title: "Mon profil", Component: dynamic(() => import("@/app/(protected)/host/profile/edit/page"), { ssr: false, loading: PanelLoading }) },
   wallet: { title: "Portefeuille", Component: dynamic(() => import("@/app/(protected)/host/wallet/page"), { ssr: false, loading: PanelLoading }) },
@@ -102,36 +105,38 @@ export function HostNativeHome({
   return (
     <div className="space-y-4 pb-2" data-testid="host-dashboard-native">
       <div className="flex items-center gap-3">
-        <button
-          type="button"
-          onClick={() => avatarInputRef.current?.click()}
-          className="relative h-14 w-14 shrink-0 overflow-hidden rounded-full border border-slate-200 bg-white"
-          aria-label="Changer la photo de profil"
-        >
-          {avatar ? (
-            <Image src={avatar} alt={greetingName ? `Photo de profil de ${greetingName}` : "Photo de profil"} fill unoptimized className="object-cover" sizes="56px" />
-          ) : (
-            <span className="flex h-full w-full items-center justify-center">
-              <Camera className="h-5 w-5 text-[#7c3aed]" aria-hidden="true" />
-            </span>
-          )}
-          {avatarUploading ? (
-            <span className="absolute inset-0 flex items-center justify-center bg-white/60">
-              <span className="h-5 w-5 animate-spin rounded-full border-2 border-[#7c3aed] border-t-transparent" />
-            </span>
-          ) : null}
-        </button>
-        <input
-          ref={avatarInputRef}
-          type="file"
-          accept="image/*"
-          className="hidden"
-          onChange={(e) => {
-            const f = e.target.files?.[0];
-            if (f) void uploadAvatar(f);
-            e.currentTarget.value = "";
-          }}
-        />
+        {/* The <input> overlays the avatar (opacity-0) instead of being hidden,
+            so iOS anchors its photo picker popover to the avatar — not the
+            centre of the screen when triggered from the "Ajouter une photo"
+            checklist item. */}
+        <div className="relative h-14 w-14 shrink-0">
+          <div className="relative h-14 w-14 overflow-hidden rounded-full border border-slate-200 bg-white">
+            {avatar ? (
+              <Image src={avatar} alt={greetingName ? `Photo de profil de ${greetingName}` : "Photo de profil"} fill unoptimized className="object-cover" sizes="56px" />
+            ) : (
+              <span className="flex h-full w-full items-center justify-center">
+                <Camera className="h-5 w-5 text-[#7c3aed]" aria-hidden="true" />
+              </span>
+            )}
+            {avatarUploading ? (
+              <span className="absolute inset-0 flex items-center justify-center bg-white/60">
+                <span className="h-5 w-5 animate-spin rounded-full border-2 border-[#7c3aed] border-t-transparent" />
+              </span>
+            ) : null}
+          </div>
+          <input
+            ref={avatarInputRef}
+            type="file"
+            accept="image/*"
+            aria-label="Changer la photo de profil"
+            className="absolute inset-0 h-full w-full cursor-pointer rounded-full opacity-0"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) void uploadAvatar(f);
+              e.currentTarget.value = "";
+            }}
+          />
+        </div>
         <div className="min-w-0">
           <p className="text-sm text-slate-500">Bonjour</p>
           <p className="truncate text-2xl font-bold tracking-tight text-slate-900">{greetingName ?? ""}</p>
