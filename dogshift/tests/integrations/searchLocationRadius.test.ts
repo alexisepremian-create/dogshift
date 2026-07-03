@@ -198,8 +198,8 @@ test("ReservationClient supports an embedded (in-popup) mode", () => {
   assert.match(src, /const selected = slot\.time === value;/, "Time picker rows must reflect the committed value, not a draft.");
   // Both pickers are a compact anchored menu card + single scrollable column with a
   // NON-purple (slate) selection highlight — no more 3-col grid, no purple fill.
-  const cardMenuCount = (src.match(/mt-2 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-\[0_20px_50px_-20px_rgba\(2,6,23,0\.35\)\]/g) ?? []).length;
-  assert.ok(cardMenuCount >= 2, "Both the time AND duration pickers must be an anchored menu card.");
+  const cardMenuCount = (src.match(/mt-2 overflow-hidden rounded-2xl border border-white\/50 bg-white\/75 shadow-\[0_20px_50px_-20px_rgba\(2,6,23,0\.35\)\] backdrop-blur-2xl/g) ?? []).length;
+  assert.ok(cardMenuCount >= 2, "Both the time AND duration pickers must be a translucent anchored menu card.");
   assert.doesNotMatch(src, /grid grid-cols-3 gap-1\.5/, "The duration picker must not use a 3-col grid anymore (single column).");
   const slateSelCount = (src.match(/selected\s*\n?\s*\?\s*"bg-slate-900\/5 text-slate-900"/g) ?? []).length;
   assert.ok(slateSelCount >= 2, "Both pickers must use a slate (non-purple) selection highlight.");
