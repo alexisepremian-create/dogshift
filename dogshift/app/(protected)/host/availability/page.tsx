@@ -91,23 +91,25 @@ function serviceMeta(svc: ServiceTypeApi) {
   return { icon: "🛌", label: "Pension" };
 }
 
-// Service tones are unified to the brand accent (`--dogshift-blue`) so the whole
-// availability UI matches the rest of the dashboard — purple in the native app
-// (via the accent flip on `[data-ds-dashboard]`), navy on web. Status colors
-// (green = available, amber = on-request) are intentionally left untouched.
-const SERVICE_ACCENT = "bg-[var(--dogshift-blue)]";
-const SERVICE_ACCENT_TINT = "bg-[color-mix(in_srgb,var(--dogshift-blue),white_94%)]";
-
-function serviceDotTone(_svc: ServiceTypeApi) {
-  return SERVICE_ACCENT;
+// Per-service colour code (mirrors the website): Promenade = sky, Dogsitting =
+// violet, Pension = emerald. Status colours (green = available, amber = on
+// request) are separate and untouched.
+function serviceDotTone(svc: ServiceTypeApi) {
+  if (svc === "PROMENADE") return "bg-sky-400";
+  if (svc === "DOGSITTING") return "bg-violet-400";
+  return "bg-emerald-400";
 }
 
-function serviceRingTone(_svc: ServiceTypeApi) {
-  return "ring-[color-mix(in_srgb,var(--dogshift-blue),transparent_70%)] bg-[color-mix(in_srgb,var(--dogshift-blue),white_94%)] text-[var(--dogshift-blue)]";
+function serviceRingTone(svc: ServiceTypeApi) {
+  if (svc === "PROMENADE") return "ring-sky-200 bg-sky-50 text-sky-900";
+  if (svc === "DOGSITTING") return "ring-violet-200 bg-violet-50 text-violet-900";
+  return "ring-emerald-200 bg-emerald-50 text-emerald-900";
 }
 
-function serviceSolidTone(_svc: ServiceTypeApi) {
-  return "bg-[var(--dogshift-blue)] text-white border-[var(--dogshift-blue)]";
+function serviceSolidTone(svc: ServiceTypeApi) {
+  if (svc === "PROMENADE") return "bg-sky-500 text-white border-sky-500";
+  if (svc === "DOGSITTING") return "bg-violet-500 text-white border-violet-500";
+  return "bg-emerald-500 text-white border-emerald-500";
 }
 
 function pricingUnitLabel(svc: ServiceTypeApi) {
@@ -1459,7 +1461,7 @@ export default function AvailabilityStudioPage() {
                       {enabledServices.map((svc) => {
                         const active = exceptionService === svc;
                         const tone = serviceDotTone(svc);
-                        const baseTone = "bg-[var(--dogshift-blue)]";
+                        const baseTone = tone === "bg-sky-400" ? "bg-sky-500" : tone === "bg-violet-400" ? "bg-violet-500" : "bg-emerald-500";
                         return (
                           <button
                             key={`ex-svc-${svc}`}
@@ -1545,7 +1547,7 @@ export default function AvailabilityStudioPage() {
                               key={`exr-${idx}`}
                               className={
                                 justAddedRangeIdx === idx
-                                  ? "flex flex-wrap items-center gap-2 rounded-2xl border border-slate-200 bg-[color-mix(in_srgb,var(--dogshift-blue),white_94%)] px-3 py-2 transition-colors"
+                                  ? "flex flex-wrap items-center gap-2 rounded-2xl border border-slate-200 bg-sky-50 px-3 py-2 transition-colors"
                                   : "flex flex-wrap items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-2 transition-colors"
                               }
                             >
@@ -1868,7 +1870,7 @@ export default function AvailabilityStudioPage() {
                           const cfg = configByService[svc];
                           const enabled = cfg?.enabled === true;
                           const tone = serviceDotTone(svc);
-                          const activeSwitchTone = "bg-[var(--dogshift-blue)]";
+                          const activeSwitchTone = tone === "bg-sky-400" ? "bg-sky-500" : tone === "bg-violet-400" ? "bg-violet-500" : "bg-emerald-500";
                           const priceInput = pricingInputByService[svc] ?? "";
                           const priceError = pricingErrorByService[svc];
                           const priceSaving = pricingSavingByService[svc];
@@ -1994,7 +1996,7 @@ export default function AvailabilityStudioPage() {
               {(["PROMENADE", "DOGSITTING", "PENSION"] as const).map((svc) => {
                 const active = availabilityTab === svc;
                 const tone = serviceDotTone(svc);
-                const baseTone = "bg-[var(--dogshift-blue)]";
+                const baseTone = tone === "bg-sky-400" ? "bg-sky-500" : tone === "bg-violet-400" ? "bg-violet-500" : "bg-emerald-500";
                 const disabled = configByService[svc]?.enabled !== true || Boolean(pricingErrorByService[svc]);
                 return (
                   <button
@@ -2404,7 +2406,7 @@ export default function AvailabilityStudioPage() {
                               key={`inline-range-${idx}`}
                               className={
                                 justAddedRangeIdx === idx
-                                  ? "flex flex-wrap items-center gap-1.5 rounded-2xl border border-slate-200 bg-[color-mix(in_srgb,var(--dogshift-blue),white_94%)] px-2 py-1.5 sm:gap-2 sm:px-3 sm:py-2"
+                                  ? "flex flex-wrap items-center gap-1.5 rounded-2xl border border-slate-200 bg-sky-50 px-2 py-1.5 sm:gap-2 sm:px-3 sm:py-2"
                                   : "flex flex-wrap items-center gap-1.5 rounded-2xl border border-slate-200 bg-slate-50 px-2 py-1.5 sm:gap-2 sm:px-3 sm:py-2"
                               }
                             >

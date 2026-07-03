@@ -523,7 +523,7 @@ export default function AccountSettingsPage() {
   if (isNative) {
     if (initialLoading) {
       return (
-        <div className="flex h-full items-center justify-center py-24" data-testid="account-settings-page">
+        <div className="flex min-h-[55vh] items-center justify-center" data-testid="account-settings-page">
           <div className="h-7 w-7 animate-spin rounded-full border-2 border-[#7c3aed] border-t-transparent" />
         </div>
       );

@@ -89,13 +89,13 @@ export default function OwnerDashboardShell({ children }: { children: React.Reac
           <main
             className={
               isNative
-                ? "flex-1 px-3 pt-[calc(env(safe-area-inset-top,0px)+var(--ds-maintenance-banner-height,0px)+2rem)]"
+                ? "flex-1 px-3 pt-[calc(env(safe-area-inset-top,0px)+var(--ds-maintenance-banner-height,0px)+0.5rem)]"
                 : "flex-1 px-4 sm:px-6 lg:px-10 " +
                   "pt-[calc(3.5rem+env(safe-area-inset-top,0px)+var(--ds-maintenance-banner-height,0px))] " +
                   "lg:pt-[calc(1.125rem+var(--ds-maintenance-banner-height,0px))]"
             }
           >
-            <div className={isNative ? "w-full py-3" : "mx-auto w-full max-w-6xl py-4 lg:py-5"}>{children}</div>
+            <div className={isNative ? "w-full pt-1 pb-3" : "mx-auto w-full max-w-6xl py-4 lg:py-5"}>{children}</div>
 
             <div
               className="block lg:hidden"

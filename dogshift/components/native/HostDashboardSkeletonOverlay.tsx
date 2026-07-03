@@ -24,7 +24,7 @@ export default function HostDashboardSkeletonOverlay() {
       className="fixed inset-0 z-40 w-full overflow-y-auto bg-white px-3"
       style={{
         paddingTop:
-          "calc(env(safe-area-inset-top, 0px) + var(--ds-maintenance-banner-height, 0px) + 2rem + 0.75rem)",
+          "calc(env(safe-area-inset-top, 0px) + var(--ds-maintenance-banner-height, 0px) + 0.5rem + 0.25rem)",
         paddingBottom: "calc(max(var(--ds-bottom-nav-h, 0px), 88px) + 24px)",
       }}
     >

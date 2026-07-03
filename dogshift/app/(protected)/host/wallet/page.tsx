@@ -622,8 +622,15 @@ export default function HostWalletPage() {
   }
 
   if (isNative) {
-    const stripeEnabled = stripeConnect.status === "ENABLED";
     const walletLoading = bookingsLoading || stripeConnect.loading;
+    if (walletLoading) {
+      return (
+        <div className="flex min-h-[55vh] items-center justify-center" data-testid="host-wallet-page">
+          <div className="h-7 w-7 animate-spin rounded-full border-2 border-[#7c3aed] border-t-transparent" />
+        </div>
+      );
+    }
+    const stripeEnabled = stripeConnect.status === "ENABLED";
     return (
       <div className="flex h-full flex-col pb-2" data-testid="host-wallet-page">
         <div className="flex items-center justify-between">
@@ -631,25 +638,17 @@ export default function HostWalletPage() {
             <Wallet className="h-6 w-6 text-[#7c3aed]" aria-hidden="true" />
             <span>Portefeuille</span>
           </h1>
-          {!walletLoading ? (
-            <button
-              type="button"
-              onClick={() => setWalletFlipped((v) => !v)}
-              aria-label="Retourner la carte"
-              className="flex h-9 w-9 items-center justify-center rounded-full bg-[#7c3aed]/10 text-[#7c3aed] active:scale-95"
-            >
-              <RotateCw className="h-4 w-4" aria-hidden="true" />
-            </button>
-          ) : null}
+          <button
+            type="button"
+            onClick={() => setWalletFlipped((v) => !v)}
+            aria-label="Retourner la carte"
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-[#7c3aed]/10 text-[#7c3aed] active:scale-95"
+          >
+            <RotateCw className="h-4 w-4" aria-hidden="true" />
+          </button>
         </div>
 
-        {walletLoading ? (
-          <div className="flex flex-1 items-center justify-center py-20">
-            <div className="h-7 w-7 animate-spin rounded-full border-2 border-[#7c3aed] border-t-transparent" />
-          </div>
-        ) : (
-          <>
-            <div className="relative mt-3">
+        <div className="relative mt-3">
               <select
                 value={timeframe}
                 onChange={(e) => setTimeframe(e.target.value as any)}
@@ -722,8 +721,6 @@ export default function HostWalletPage() {
                 </a>
               )}
             </div>
-          </>
-        )}
       </div>
     );
   }
