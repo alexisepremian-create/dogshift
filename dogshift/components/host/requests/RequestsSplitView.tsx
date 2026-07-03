@@ -375,6 +375,13 @@ export function RequestsSplitView({
           ) : null}
 
           {loading ? (
+            isNative ? (
+              /* Native popup: a single centred spinner (founder wants the
+                 loading circle, not a skeleton, inside the dashboard sheets). */
+              <div className="flex min-h-[40vh] items-center justify-center">
+                <div className="h-7 w-7 animate-spin rounded-full border-2 border-[#7c3aed] border-t-transparent" />
+              </div>
+            ) : (
             /* Neon glide skeleton — same row shape as the real request cards
                AND as the route-level DashboardSkeleton, so the hand-off from
                the route fallback to this page's own fetch reads as one
@@ -391,6 +398,7 @@ export function RequestsSplitView({
                 </div>
               ))}
             </div>
+            )
           ) : filtered.length === 0 ? (
             <div className="mt-4 rounded-3xl border border-slate-100 bg-white/60 p-8 shadow-[0_8px_30px_-12px_rgba(15,23,42,0.06)] backdrop-blur-xl text-center">
               <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-slate-50 text-slate-400">

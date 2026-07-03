@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Plus, X } from "lucide-react";
+import { useIsNativeAppSync } from "@/lib/native/useIsNativeAppSync";
 
 type ConversationListItem = {
   id: string;
@@ -57,6 +58,7 @@ type Contact = { id: string; name: string; avatarUrl: string | null };
 export default function HostMessagesLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
+  const isNative = useIsNativeAppSync();
 
   const [conversations, setConversations] = useState<ConversationListItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -227,6 +229,12 @@ export default function HostMessagesLayout({ children }: { children: React.React
               ) : null}
 
               {loading ? (
+                isNative ? (
+                  /* Native popup: single centred spinner instead of a skeleton. */
+                  <div className="flex min-h-[40vh] items-center justify-center">
+                    <div className="h-7 w-7 animate-spin rounded-full border-2 border-[#7c3aed] border-t-transparent" />
+                  </div>
+                ) : (
                 /* Neon glide skeleton — conversation rows matching the real
                    list item shape (avatar + lines) and the route-level
                    DashboardSkeleton, so loading is one continuous shimmer. */
@@ -242,6 +250,7 @@ export default function HostMessagesLayout({ children }: { children: React.React
                     </div>
                   ))}
                 </div>
+                )
               ) : rows.length === 0 ? (
                 <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                   <p className="text-sm font-semibold text-slate-900">Aucune conversation</p>
