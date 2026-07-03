@@ -207,11 +207,13 @@ export function HostNativeHome({
                     key={t.id}
                     type="button"
                     onClick={() => {
-                      // The photo can only be changed from the dashboard avatar,
-                      // so this task closes the sheet and opens the picker.
+                      // The photo can only be changed from the dashboard avatar.
+                      // iOS anchors the file picker to the tap location, so we
+                      // can't open it from here without it landing mid-screen —
+                      // instead close the sheet so the avatar (with its camera
+                      // badge) is right there to tap.
                       if (t.id === "avatar") {
                         setPanel(null);
-                        avatarInputRef.current?.click();
                         return;
                       }
                       setPanel(hrefToPanel(t.href));

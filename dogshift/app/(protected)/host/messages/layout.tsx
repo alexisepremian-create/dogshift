@@ -193,6 +193,17 @@ export default function HostMessagesLayout({ children }: { children?: React.Reac
     });
   }, [conversations]);
 
+  // Native: single spinner during the first fetch (same 55vh position as
+  // PanelLoading) so the loading circle never jumps between the import and the
+  // conversation fetch.
+  if (isNative && loading) {
+    return (
+      <div className="flex min-h-[55vh] items-center justify-center" data-testid="host-messages-layout">
+        <div className="h-7 w-7 animate-spin rounded-full border-2 border-[#7c3aed] border-t-transparent" />
+      </div>
+    );
+  }
+
   return (
     <div className="flex h-[calc(100vh-80px-max(var(--ds-bottom-nav-h,0px),88px))] lg:h-[calc(100vh-80px)] flex-col bg-white -mx-4 -mt-4 sm:mx-0 sm:mt-0 sm:rounded-3xl sm:border sm:border-slate-200 sm:shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)]" data-testid="host-messages-layout">
         <div className="flex-1 min-h-0 relative">
@@ -229,15 +240,8 @@ export default function HostMessagesLayout({ children }: { children?: React.Reac
               ) : null}
 
               {loading ? (
-                isNative ? (
-                  /* Native popup: single centred spinner instead of a skeleton. */
-                  <div className="flex min-h-[40vh] items-center justify-center">
-                    <div className="h-7 w-7 animate-spin rounded-full border-2 border-[#7c3aed] border-t-transparent" />
-                  </div>
-                ) : (
-                /* Neon glide skeleton — conversation rows matching the real
-                   list item shape (avatar + lines) and the route-level
-                   DashboardSkeleton, so loading is one continuous shimmer. */
+                /* Web only (native shows a single spinner via the early return
+                   above). Neon glide skeleton matching the real list items. */
                 <div className="space-y-2">
                   {Array.from({ length: 4 }).map((_, i) => (
                     <div key={i} className="flex items-center gap-3 rounded-2xl border border-slate-100 bg-white p-3">
@@ -250,7 +254,6 @@ export default function HostMessagesLayout({ children }: { children?: React.Reac
                     </div>
                   ))}
                 </div>
-                )
               ) : rows.length === 0 ? (
                 <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                   <p className="text-sm font-semibold text-slate-900">Aucune conversation</p>
