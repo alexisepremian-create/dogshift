@@ -2,8 +2,8 @@
 
 import Image from "next/image";
 import dynamic from "next/dynamic";
-import { useState, type ComponentType } from "react";
-import { CalendarClock, Clock, MessageCircle, Settings, User, Wallet, ChevronRight, Circle } from "lucide-react";
+import { useRef, useState, type ComponentType } from "react";
+import { CalendarClock, Clock, MessageCircle, Settings, User, Wallet, ChevronRight, Circle, Camera } from "lucide-react";
 
 import { NativeDashTile, NativeStat } from "@/components/native/NativeDashTile";
 import { DashboardSheet } from "@/components/native/DashboardSheet";
@@ -64,7 +64,37 @@ export function HostNativeHome({
   todos: HostTodo[];
 }) {
   const [panel, setPanel] = useState<string | null>(null);
+  const [avatar, setAvatar] = useState<string | null>(avatarSrc);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
   const isCompletion = panel === "completion";
+
+  async function uploadAvatar(file: File) {
+    setAvatarUploading(true);
+    try {
+      const rawType = (file.type || "").toLowerCase();
+      const contentType = rawType === "image/png" ? "image/png" : rawType === "image/webp" ? "image/webp" : "image/jpeg";
+      const presRes = await fetch("/api/host/profile/avatar/presign", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ contentType, sizeBytes: file.size }),
+      });
+      const pres = (await presRes.json().catch(() => null)) as { ok?: boolean; uploadUrl?: string; key?: string } | null;
+      if (!presRes.ok || !pres?.ok || !pres.uploadUrl || !pres.key) return;
+      const putRes = await fetch(String(pres.uploadUrl), { method: "PUT", headers: { "Content-Type": contentType }, body: file });
+      if (!putRes.ok) return;
+      const commitRes = await fetch("/api/host/profile/avatar/commit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ key: pres.key }),
+      });
+      const commit = (await commitRes.json().catch(() => null)) as { ok?: boolean; avatarUrl?: string } | null;
+      if (!commitRes.ok || !commit?.ok || typeof commit.avatarUrl !== "string") return;
+      setAvatar(commit.avatarUrl);
+    } finally {
+      setAvatarUploading(false);
+    }
+  }
   const active = panel && !isCompletion ? PANELS[panel] : null;
   const ActiveComponent = active?.Component ?? null;
   const sheetTitle = isCompletion ? "Compléter mon profil" : active?.title ?? "";
@@ -72,11 +102,39 @@ export function HostNativeHome({
   return (
     <div className="space-y-4 pb-2" data-testid="host-dashboard-native">
       <div className="flex items-center gap-3">
-        {avatarSrc ? (
-          <Image src={avatarSrc} alt={greetingName ? `Photo de profil de ${greetingName}` : "Photo de profil"} width={56} height={56} unoptimized className="h-14 w-14 rounded-full border border-slate-200 object-cover bg-white" />
-        ) : (
-          <div aria-hidden="true" className="h-14 w-14 rounded-full border border-slate-200 bg-white" />
-        )}
+        <button
+          type="button"
+          onClick={() => avatarInputRef.current?.click()}
+          className="relative h-14 w-14 shrink-0 overflow-hidden rounded-full border border-slate-200 bg-white"
+          aria-label="Changer la photo de profil"
+        >
+          {avatar ? (
+            <Image src={avatar} alt={greetingName ? `Photo de profil de ${greetingName}` : "Photo de profil"} fill unoptimized className="object-cover" sizes="56px" />
+          ) : (
+            <span className="flex h-full w-full items-center justify-center">
+              <Camera className="h-5 w-5 text-slate-400" aria-hidden="true" />
+            </span>
+          )}
+          <span className="absolute bottom-0 right-0 flex h-5 w-5 items-center justify-center rounded-full border-2 border-white bg-[#7c3aed] text-white">
+            <Camera className="h-2.5 w-2.5" aria-hidden="true" />
+          </span>
+          {avatarUploading ? (
+            <span className="absolute inset-0 flex items-center justify-center bg-white/60">
+              <span className="h-5 w-5 animate-spin rounded-full border-2 border-[#7c3aed] border-t-transparent" />
+            </span>
+          ) : null}
+        </button>
+        <input
+          ref={avatarInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (f) void uploadAvatar(f);
+            e.currentTarget.value = "";
+          }}
+        />
         <div className="min-w-0">
           <p className="text-sm text-slate-500">Bonjour</p>
           <p className="truncate text-2xl font-bold tracking-tight text-slate-900">{greetingName ?? ""}</p>
