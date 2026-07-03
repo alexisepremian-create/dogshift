@@ -9,7 +9,8 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Info, X, Settings, Banknote, Clock, ShieldCheck, Home, Rocket } from "lucide-react";
+import { Info, X, Settings, Banknote, Clock, ShieldCheck, Home, Rocket, RotateCw } from "lucide-react";
+import { useIsNativeAppSync } from "@/lib/native/useIsNativeAppSync";
 
 import { useHostUser } from "@/components/HostUserProvider";
 import { normalizeRanges } from "@/lib/availability/rangeValidation";
@@ -243,6 +244,8 @@ function monthMeta(cursor: Date) {
 }
 
 export default function AvailabilityStudioPage() {
+  const isNative = useIsNativeAppSync();
+  const [availFlipped, setAvailFlipped] = useState(false);
   const host = useHostUser();
   const sitterId = host.sitterId;
   const remoteProfile = (host.profile && typeof host.profile === "object" ? (host.profile as Partial<HostProfileV1>) : null);
@@ -1309,6 +1312,144 @@ export default function AvailabilityStudioPage() {
             {[0, 1, 2, 3, 4, 5, 6].map((i) => (
               <div key={i} className="h-11 rounded-2xl bg-slate-100" />
             ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (isNative) {
+    if (!initialLoaded) {
+      return (
+        <div className="flex min-h-[55vh] items-center justify-center" data-testid="host-availability-page">
+          <div className="h-7 w-7 animate-spin rounded-full border-2 border-[#7c3aed] border-t-transparent" />
+        </div>
+      );
+    }
+    const svcTabs = ["PROMENADE", "DOGSITTING", "PENSION"] as const;
+    const priceInput = pricingInputByService[availabilityTab];
+    return (
+      <div className="space-y-4 pb-2" data-testid="host-availability-page">
+        <div className="flex items-center justify-between">
+          <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight text-slate-900">
+            <Clock className="h-6 w-6 text-[#7c3aed]" aria-hidden="true" />
+            <span>Disponibilités</span>
+          </h1>
+          <button
+            type="button"
+            onClick={() => setAvailFlipped((v) => !v)}
+            aria-label="Retourner la carte"
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-[#7c3aed]/10 text-[#7c3aed] active:scale-95"
+          >
+            <RotateCw className="h-4 w-4" aria-hidden="true" />
+          </button>
+        </div>
+
+        {/* Service selector (colour-coded per service) */}
+        <div className="grid grid-cols-3 gap-2">
+          {svcTabs.map((svc) => {
+            const active = availabilityTab === svc;
+            return (
+              <button
+                key={svc}
+                type="button"
+                onClick={() => setAvailabilityTab(svc)}
+                className={
+                  "flex items-center justify-center gap-1 rounded-xl px-2 py-2 text-sm font-semibold transition " +
+                  (active ? serviceSolidTone(svc) : "border border-slate-200 bg-white text-slate-600")
+                }
+              >
+                <span aria-hidden="true">{serviceMeta(svc).icon}</span>
+                <span className="truncate">{serviceMeta(svc).label}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Compact tariff for the active service */}
+        <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-2.5">
+          <span className="text-sm font-semibold text-slate-900">Tarif</span>
+          <input
+            inputMode="numeric"
+            value={priceInput}
+            onChange={(e) => {
+              const val = e.target.value;
+              setPricingInputByService((prev) => ({ ...prev, [availabilityTab]: val }));
+              clearTimeout(pricingDebounceRef.current[availabilityTab]);
+              pricingDebounceRef.current[availabilityTab] = setTimeout(() => {
+                void saveServicePricing(availabilityTab, val);
+              }, 500);
+            }}
+            onBlur={() => void saveServicePricing(availabilityTab)}
+            className="w-16 rounded-lg border border-slate-300 px-2 py-1.5 text-sm font-semibold text-slate-900 outline-none focus:border-[#7c3aed] focus:ring-2 focus:ring-[#7c3aed]/15"
+          />
+          <span className="text-xs font-medium text-slate-500">{pricingUnitLabel(availabilityTab)}</span>
+          {pricingSavingByService[availabilityTab] ? <span className="ml-auto text-xs text-slate-400">Enregistrement…</span> : null}
+        </div>
+
+        {/* Flip card: weekly agenda ⇄ recurring actions */}
+        <div className="[perspective:1200px]">
+          <div
+            className={
+              "relative h-[352px] w-full [transform-style:preserve-3d] transition-transform duration-500 " +
+              (availFlipped ? "[transform:rotateY(180deg)]" : "")
+            }
+          >
+            {/* FRONT — weekly agenda */}
+            <div className="absolute inset-0 overflow-y-auto [backface-visibility:hidden]">
+              <p className="text-sm font-semibold text-slate-900">Agenda hebdomadaire</p>
+              <div className="mt-2 grid gap-1.5">
+                {weeklyDayOptions.map((day) => {
+                  const rule = weeklyRulesForTab.get(day.dayOfWeek) ?? { enabled: false, status: "AVAILABLE" as const };
+                  return (
+                    <div key={`${availabilityTab}-${day.dayOfWeek}`} className="flex items-center justify-between gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+                      <label className="flex min-w-0 items-center gap-2.5">
+                        <input
+                          type="checkbox"
+                          checked={rule.enabled}
+                          disabled={anyRuleSaving || !canEditAvailabilityForTab}
+                          onChange={(e) => void saveWeeklyRule(availabilityTab, day.dayOfWeek, e.currentTarget.checked, rule.status)}
+                          className="h-4 w-4 rounded border-slate-300 text-[#7c3aed] focus:ring-[#7c3aed]"
+                        />
+                        <span className="text-sm font-medium text-slate-900">{day.label}</span>
+                      </label>
+                      <select
+                        value={rule.status}
+                        disabled={!rule.enabled || anyRuleSaving || !canEditAvailabilityForTab}
+                        onChange={(e) => void saveWeeklyRule(availabilityTab, day.dayOfWeek, true, e.currentTarget.value === "ON_REQUEST" ? "ON_REQUEST" : "AVAILABLE")}
+                        className="h-8 rounded-lg border border-slate-200 bg-white px-2 text-sm font-medium text-slate-700 disabled:bg-slate-100 disabled:text-slate-400"
+                      >
+                        <option value="AVAILABLE">Disponible</option>
+                        <option value="ON_REQUEST">Sur demande</option>
+                      </select>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* BACK — recurring actions */}
+            <div className="absolute inset-0 [backface-visibility:hidden] [transform:rotateY(180deg)]">
+              <p className="text-sm font-semibold text-slate-900">Actions récurrentes</p>
+              <div className="mt-2 grid gap-2">
+                {([
+                  ["all-available-week", "Tout disponible cette semaine"],
+                  ["all-available-month", "Tout disponible ce mois"],
+                  ["copy-week", "Reproduire cette semaine sur le mois"],
+                ] as const).map(([action, label]) => (
+                  <button
+                    key={action}
+                    type="button"
+                    disabled={quickActionSaving !== null || !canEditAvailabilityForTab}
+                    onClick={() => void applyQuickAction(action)}
+                    className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3 text-left text-sm font-semibold text-slate-900 active:bg-slate-50 disabled:opacity-60"
+                  >
+                    <span>{quickActionSaving === action ? "Enregistrement…" : label}</span>
+                    <Rocket className="h-4 w-4 shrink-0 text-[#7c3aed]" aria-hidden="true" />
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       </div>
