@@ -1285,8 +1285,16 @@ export default function AvailabilityStudioPage() {
     );
   }
 
-  // Skeleton shown only on the very first load before any data arrives
+  // Skeleton shown only on the very first load before any data arrives.
+  // Native uses a single spinner (founder: no skeleton inside the popups).
   if (!initialLoaded) {
+    if (isNative) {
+      return (
+        <div className="flex min-h-[55vh] items-center justify-center" data-testid="host-availability-page">
+          <div className="h-7 w-7 animate-spin rounded-full border-2 border-[#7c3aed] border-t-transparent" />
+        </div>
+      );
+    }
     return (
       <div className="w-full py-6 animate-pulse" aria-busy="true" aria-label="Chargement des disponibilités…">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -1330,13 +1338,6 @@ export default function AvailabilityStudioPage() {
   }
 
   if (isNative) {
-    if (!initialLoaded) {
-      return (
-        <div className="flex min-h-[55vh] items-center justify-center" data-testid="host-availability-page">
-          <div className="h-7 w-7 animate-spin rounded-full border-2 border-[#7c3aed] border-t-transparent" />
-        </div>
-      );
-    }
     const svcTabs = ["PROMENADE", "DOGSITTING", "PENSION"] as const;
     const priceInput = pricingInputByService[availabilityTab];
     return (
