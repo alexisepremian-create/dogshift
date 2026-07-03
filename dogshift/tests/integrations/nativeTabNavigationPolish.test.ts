@@ -472,7 +472,7 @@ test("NativeMapHome search/filter panel is floored above the nav", () => {
   const src = read("components/native/NativeMapHome.tsx");
   assert.match(
     src,
-    /bottom:\s*"calc\(max\(var\(--ds-bottom-nav-h, 0px\), 88px\) \+ 8px\)"/,
-    "Expected the search/filter panel bottom to use the floored nav-height so it never slips under the nav.",
+    /bottom:\s*"calc\(max\(var\(--ds-bottom-nav-h, 0px\), 88px\) \+ 20px\)"/,
+    "Expected the search/filter panel bottom to sit above the nav + centre paw (floored nav-height + clearance).",
   );
 });

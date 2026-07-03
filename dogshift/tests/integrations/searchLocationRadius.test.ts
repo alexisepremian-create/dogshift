@@ -181,24 +181,25 @@ test("ReservationClient supports an embedded (in-popup) mode", () => {
   assert.match(src, /embedded \? "mt-3 grid grid-cols-2 gap-2" : "mt-4 grid gap-3 sm:grid-cols-2"/, "Hourly details must be 2 boxes side by side when embedded.");
   assert.match(src, /embedded \? null : dateStart && !startTime && !hasLeadTimeOnlyForToday \?/, "The amber 'sélectionne une heure' banner must be removed when embedded.");
   assert.match(src, /embedded \? "rounded-3xl border border-slate-200 bg-white p-4"/, "Embedded cards must use the compact p-4 padding.");
-  // Time/duration pickers open as an iOS-style bottom sheet (no off-screen overflow).
-  assert.match(src, /fixed inset-x-0 bottom-0 z-\[1101\] rounded-t-3xl/, "Time/duration pickers must open as a bottom sheet.");
+  // Time/duration pickers open as a compact Apple-style menu anchored right
+  // under the field (a small scrollable card), not a full-width bottom sheet.
+  assert.match(src, /absolute left-0 right-0 top-full z-\[60\]/, "Time/duration pickers must open as an anchored dropdown under the field.");
   // Night hours (before 06:00) are dropped from the time slots.
   assert.match(src, /Number\(slot\.time\.slice\(0, 2\)\) >= 6/, "Night hours (00:00–05:30) must be filtered out.");
   // Lieu de garde options are side by side on mobile.
   assert.match(src, /embedded \? "mt-3 grid grid-cols-2 gap-2" : "mt-4 grid gap-2 sm:grid-cols-2"/, "Lieu de garde options must be side by side when embedded.");
   // The picker list stays compact (a few rows that scroll) — not a full-height sheet.
-  const compactList = (src.match(/max-h-\[224px\] overflow-y-auto/g) ?? []).length;
-  assert.ok(compactList >= 2, "Both picker lists must be compact (max-h-[224px], a few rows then scroll).");
+  const compactList = (src.match(/max-h-\[200px\] overflow-y-auto/g) ?? []).length;
+  assert.ok(compactList >= 2, "Both picker lists must be compact (max-h-[200px], a few rows then scroll).");
   assert.doesNotMatch(src, /max-h-\[(46vh|264px|176px)\]/, "The picker list must not fill a large part of the popup anymore.");
   // The time picker commits on row tap (no separate Valider step) — selecting an
   // hour then closing must keep it. Guards the draft-only regression.
   assert.doesNotMatch(src, /!hasAllowedTimes \|\| !isCandidateAllowed/, "Time picker must not gate selection behind a Valider button (commit on tap).");
   assert.match(src, /const selected = slot\.time === value;/, "Time picker rows must reflect the committed value, not a draft.");
-  // Both pickers use a frosted translucent sheet + single scrollable column with a
+  // Both pickers are a compact anchored menu card + single scrollable column with a
   // NON-purple (slate) selection highlight — no more 3-col grid, no purple fill.
-  const frostedCount = (src.match(/bg-white\/80 p-4 shadow-\[0_-20px_60px_rgba\(2,6,23,0\.25\)\] backdrop-blur-2xl/g) ?? []).length;
-  assert.ok(frostedCount >= 2, "Both the time AND duration sheets must use the frosted translucent background.");
+  const cardMenuCount = (src.match(/mt-2 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-\[0_20px_50px_-20px_rgba\(2,6,23,0\.35\)\]/g) ?? []).length;
+  assert.ok(cardMenuCount >= 2, "Both the time AND duration pickers must be an anchored menu card.");
   assert.doesNotMatch(src, /grid grid-cols-3 gap-1\.5/, "The duration picker must not use a 3-col grid anymore (single column).");
   const slateSelCount = (src.match(/selected\s*\n?\s*\?\s*"bg-slate-900\/5 text-slate-900"/g) ?? []).length;
   assert.ok(slateSelCount >= 2, "Both pickers must use a slate (non-purple) selection highlight.");
