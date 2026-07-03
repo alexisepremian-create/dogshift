@@ -506,12 +506,12 @@ function DogShiftTimePicker({
         // Compact Apple-style menu anchored right under the field (a small
         // scrollable card) rather than a full-width bottom sheet.
         <div
-          className="absolute left-0 right-0 top-full z-[60] mt-2 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_20px_50px_-20px_rgba(2,6,23,0.35)]"
+          className="absolute left-0 right-0 top-full z-[60] mt-2 overflow-hidden rounded-2xl border border-white/50 bg-white/75 shadow-[0_20px_50px_-20px_rgba(2,6,23,0.35)] backdrop-blur-2xl"
           role="listbox"
         >
-          <p className="border-b border-slate-100 px-3 py-2 text-[11px] font-medium text-slate-400">
-            {hasSlots ? "Heures indisponibles grisées" : "Aucun horaire disponible"}
-          </p>
+          {!hasSlots ? (
+            <p className="border-b border-slate-100 px-3 py-2 text-[11px] font-medium text-slate-400">Aucun horaire disponible</p>
+          ) : null}
           <div className="max-h-[200px] overflow-y-auto p-1">
             {normalizedSlots.map((slot) => {
               const selected = slot.time === value;
@@ -622,7 +622,7 @@ function DogShiftDurationPicker({
       {open && !disabled ? (
         // Compact Apple-style menu anchored under the field.
         <div
-          className="absolute left-0 right-0 top-full z-[60] mt-2 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_20px_50px_-20px_rgba(2,6,23,0.35)]"
+          className="absolute left-0 right-0 top-full z-[60] mt-2 overflow-hidden rounded-2xl border border-white/50 bg-white/75 shadow-[0_20px_50px_-20px_rgba(2,6,23,0.35)] backdrop-blur-2xl"
           role="listbox"
         >
           <div className="max-h-[200px] overflow-y-auto p-1">
@@ -800,8 +800,12 @@ export default function ReservationClient({
   const [calendarMonthStatuses, setCalendarMonthStatuses] = useState<Record<string, DayStatusRow>>({});
   const [, setHourlySlots] = useState<HourlySlot[]>([]);
   const [, setHourlySlotsLoading] = useState(false);
-  const [, setHourlySlotsLoaded] = useState(false);
+  const [hourlySlotsLoaded, setHourlySlotsLoaded] = useState(false);
   const [, setHourlySlotsError] = useState<string | null>(null);
+  // Embedded flow: gate the whole reservation view behind a spinner until the
+  // first hourly-slots fetch resolves, so the "Choisir une heure" field is
+  // already interactive when the sheet finishes opening (never enables late).
+  const [embeddedFirstLoadDone, setEmbeddedFirstLoadDone] = useState(false);
   const [hourlyConfig, setHourlyConfig] = useState<HourlyConfig | null>(null);
   const [startAvailabilities, setStartAvailabilities] = useState<StartAvailability[]>([]);
   const [configuredRanges, setConfiguredRanges] = useState<ConfiguredTimeRange[]>([]);
@@ -1171,6 +1175,12 @@ export default function ReservationClient({
     if (!startTime || !durationHours) return null;
     return computeEndTime(startTime, durationHours);
   }, [durationHours, startTime]);
+
+  // Latch the embedded first-load once the initial hourly fetch has resolved
+  // (success OR error both flip hourlySlotsLoaded), so we only gate on arrival.
+  useEffect(() => {
+    if (hourlySlotsLoaded) setEmbeddedFirstLoadDone(true);
+  }, [hourlySlotsLoaded]);
 
   useEffect(() => {
     if (unit !== "HOURLY" || !selectedService || !dateStart) {
@@ -1880,6 +1890,16 @@ export default function ReservationClient({
     } finally {
       setSubmitting(false);
     }
+  }
+
+  // Embedded hourly flow: hold a spinner until the first slots fetch resolves so
+  // the time field is ready the moment the reservation sheet finishes opening.
+  if (embedded && unit === "HOURLY" && !!dateStart && !embeddedFirstLoadDone) {
+    return (
+      <div className="flex min-h-[55vh] items-center justify-center bg-white">
+        <div className="h-7 w-7 animate-spin rounded-full border-2 border-[#7c3aed] border-t-transparent" />
+      </div>
+    );
   }
 
   return (
