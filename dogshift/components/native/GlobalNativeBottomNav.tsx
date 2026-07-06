@@ -58,7 +58,17 @@ export default function GlobalNativeBottomNav() {
     }
   });
 
-  // Resolve "is this user a sitter?" the same way SiteHeader does.
+  // Resolve "does this user belong on the sitter dashboard?".
+  //
+  // IMPORTANT: this must be gated on ACTIVATION, not on merely having a
+  // SitterProfile. A user who is an OWNER with a non-activated sitter profile
+  // (e.g. contract signed but never activated) is treated as a sitter by the
+  // nav if we key off `hasSitterProfile` — so every tab points to /host*, which
+  // the /host layout correctly bounces back to /account (HOST_NOT_ACTIVATED).
+  // That /account⇄/host bounce (amplified by Next prefetching the /host links)
+  // left the owner dashboard stuck on its skeleton. `monEspaceHref` already
+  // encodes the server's decision (`activated ? "/host" : "/account"`), so use
+  // it as the single source of truth.
   useEffect(() => {
     if (status !== "authenticated") {
       setIsSitter(false);
@@ -69,7 +79,7 @@ export default function GlobalNativeBottomNav() {
       try {
         const ctx = await fetchAccountContext();
         if (cancelled) return;
-        const value = Boolean(ctx?.hasSitterProfile);
+        const value = ctx?.monEspaceHref === "/host";
         setIsSitter(value);
         try {
           window.localStorage.setItem("ds_is_sitter", value ? "1" : "0");
