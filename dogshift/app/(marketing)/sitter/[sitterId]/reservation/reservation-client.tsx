@@ -792,6 +792,54 @@ export default function ReservationClient({
   const [dogsLoading, setDogsLoading] = useState(true);
   const [selectedDogIds, setSelectedDogIds] = useState<string[]>([]);
   const [ownerPhone, setOwnerPhone] = useState("");
+  // In-app "add a dog" mini-form (embedded flow) — avoids leaving the booking
+  // for the website. A full profile can still be completed later in Mes chiens.
+  const [addDogOpen, setAddDogOpen] = useState(false);
+  const [newDogName, setNewDogName] = useState("");
+  const [newDogBreed, setNewDogBreed] = useState("");
+  const [newDogWeight, setNewDogWeight] = useState("");
+  const [addingDog, setAddingDog] = useState(false);
+  const [addDogError, setAddDogError] = useState<string | null>(null);
+
+  async function submitNewDog() {
+    const name = newDogName.trim();
+    if (!name) {
+      setAddDogError("Indique le nom de ton chien.");
+      return;
+    }
+    setAddingDog(true);
+    setAddDogError(null);
+    try {
+      const weightNum = Number(newDogWeight.replace(",", ".").trim());
+      const res = await fetch("/api/account/dogs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name,
+          breed: newDogBreed.trim() || null,
+          weightKg: Number.isFinite(weightNum) && weightNum > 0 ? weightNum : null,
+        }),
+      });
+      const payload = (await res.json().catch(() => null)) as { dog?: { id: string; name: string; breed: string | null; weightKg: number | null; isDefault: boolean; photoUrl: string | null }; error?: string } | null;
+      if (!res.ok || !payload?.dog) {
+        setAddDogError(payload?.error ?? "Impossible d'ajouter le chien. Réessaie.");
+        return;
+      }
+      const dog = payload.dog;
+      setDogs((prev) => [...prev, dog]);
+      setSelectedDogIds([dog.id]);
+      const sk = dogSizeKeyFromWeight(dog.weightKg);
+      if (sk) setDogSize(sk);
+      setAddDogOpen(false);
+      setNewDogName("");
+      setNewDogBreed("");
+      setNewDogWeight("");
+    } catch {
+      setAddDogError("Impossible d'ajouter le chien. Vérifie ta connexion.");
+    } finally {
+      setAddingDog(false);
+    }
+  }
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -1176,11 +1224,18 @@ export default function ReservationClient({
     return computeEndTime(startTime, durationHours);
   }, [durationHours, startTime]);
 
-  // Latch the embedded first-load once the initial hourly fetch has resolved
-  // (success OR error both flip hourlySlotsLoaded), so we only gate on arrival.
+  // Latch the embedded first-load exactly once, when the initial content is
+  // ready: the owner's dogs have loaded AND — for hourly services — the slots
+  // fetch has resolved. Basing this on the STABLE initialParams.service (not the
+  // live `unit`, which flips from null→HOURLY a render after mount) keeps the
+  // gate monotonic, so the sheet shows one continuous spinner then the content
+  // (no content→spinner→content flash).
   useEffect(() => {
-    if (hourlySlotsLoaded) setEmbeddedFirstLoadDone(true);
-  }, [hourlySlotsLoaded]);
+    if (embeddedFirstLoadDone) return;
+    const initialHourly = !!initialParams?.service && pricingUnitForService(initialParams.service) === "HOURLY";
+    const ready = !dogsLoading && (!initialHourly || hourlySlotsLoaded);
+    if (ready) setEmbeddedFirstLoadDone(true);
+  }, [dogsLoading, hourlySlotsLoaded, embeddedFirstLoadDone, initialParams]);
 
   useEffect(() => {
     if (unit !== "HOURLY" || !selectedService || !dateStart) {
@@ -1892,9 +1947,9 @@ export default function ReservationClient({
     }
   }
 
-  // Embedded hourly flow: hold a spinner until the first slots fetch resolves so
-  // the time field is ready the moment the reservation sheet finishes opening.
-  if (embedded && unit === "HOURLY" && !!dateStart && !embeddedFirstLoadDone) {
+  // Embedded flow: hold a single continuous spinner until the first content is
+  // ready (dogs + slots), so nothing paints half-loaded then flips to a spinner.
+  if (embedded && !embeddedFirstLoadDone) {
     return (
       <div className="flex min-h-[55vh] items-center justify-center bg-white">
         <div className="h-7 w-7 animate-spin rounded-full border-2 border-[#7c3aed] border-t-transparent" />
@@ -2379,14 +2434,16 @@ export default function ReservationClient({
                 </div>
               ) : dogs.length === 0 ? (
                 embedded ? (
-                  <a
-                    href="/account/dogs"
-                    target="_blank"
-                    rel="noopener noreferrer"
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAddDogError(null);
+                      setAddDogOpen(true);
+                    }}
                     className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-[#7c3aed] px-4 py-2 text-sm font-semibold text-white active:scale-95"
                   >
                     Ajouter votre chien
-                  </a>
+                  </button>
                 ) : (
                   <div className="mt-4 rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-5 py-4">
                     <p className="text-sm text-slate-600">Vous n&apos;avez pas encore ajouté de chien.</p>
@@ -2491,6 +2548,78 @@ export default function ReservationClient({
                 />
               </div>
             </div>
+
+            {/* In-app add-a-dog mini form (embedded flow only). */}
+            {addDogOpen ? (
+              <div
+                className="fixed inset-0 z-[70] flex items-center justify-center bg-black/40 p-4"
+                onClick={() => (addingDog ? undefined : setAddDogOpen(false))}
+                role="dialog"
+                aria-modal="true"
+              >
+                <div className="w-full max-w-md rounded-3xl bg-white p-4 shadow-[0_20px_60px_rgba(2,6,23,0.30)]" onClick={(e) => e.stopPropagation()}>
+                  <div className="flex items-center justify-between">
+                    <p className="text-base font-bold text-slate-900">Ajouter votre chien</p>
+                    <button
+                      type="button"
+                      onClick={() => setAddDogOpen(false)}
+                      aria-label="Fermer"
+                      className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-slate-500 active:scale-95"
+                    >
+                      ✕
+                    </button>
+                  </div>
+
+                  <div className="mt-3 space-y-3">
+                    <div>
+                      <label className="text-xs font-semibold text-slate-600" htmlFor="new_dog_name">Nom</label>
+                      <input
+                        id="new_dog_name"
+                        value={newDogName}
+                        onChange={(e) => setNewDogName(e.target.value)}
+                        placeholder="ex. Rex"
+                        className="mt-1 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-[#7c3aed] focus:ring-4 focus:ring-[#7c3aed]/15"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-xs font-semibold text-slate-600" htmlFor="new_dog_breed">Race (optionnel)</label>
+                        <input
+                          id="new_dog_breed"
+                          value={newDogBreed}
+                          onChange={(e) => setNewDogBreed(e.target.value)}
+                          placeholder="ex. Labrador"
+                          className="mt-1 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-[#7c3aed] focus:ring-4 focus:ring-[#7c3aed]/15"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-semibold text-slate-600" htmlFor="new_dog_weight">Poids (kg)</label>
+                        <input
+                          id="new_dog_weight"
+                          inputMode="decimal"
+                          value={newDogWeight}
+                          onChange={(e) => setNewDogWeight(e.target.value)}
+                          placeholder="ex. 12"
+                          className="mt-1 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-[#7c3aed] focus:ring-4 focus:ring-[#7c3aed]/15"
+                        />
+                      </div>
+                    </div>
+
+                    {addDogError ? <p className="text-xs font-semibold text-rose-600">{addDogError}</p> : null}
+
+                    <button
+                      type="button"
+                      disabled={addingDog}
+                      onClick={() => void submitNewDog()}
+                      className="w-full rounded-full bg-[#7c3aed] py-3 text-sm font-semibold text-white active:bg-[#6d28d9] disabled:opacity-50"
+                    >
+                      {addingDog ? "Ajout…" : "Ajouter"}
+                    </button>
+                    <p className="text-center text-[11px] text-slate-400">Tu pourras compléter la fiche plus tard dans « Mes chiens ».</p>
+                  </div>
+                </div>
+              </div>
+            ) : null}
 
 
             <div className={embedded ? "rounded-3xl border border-slate-200 bg-white p-4" : "rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.12)] sm:p-8"}>
