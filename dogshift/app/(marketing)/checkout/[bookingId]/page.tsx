@@ -7,9 +7,8 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
-import { AlertTriangle, Info } from "lucide-react";
+import { AlertTriangle, Info, ArrowLeft, Footprints, Home, Moon } from "lucide-react";
 
-import PageLoader from "@/components/ui/PageLoader";
 
 const TravelMap = dynamic(() => import("@/components/TravelMap").then((m) => ({ default: m.TravelMap })), { ssr: false });
 
@@ -23,6 +22,16 @@ import { useIsNativeAppSync } from "@/lib/native/useIsNativeAppSync";
 
 const PURPLE_BTN =
   "inline-flex items-center justify-center rounded-full bg-[#7c3aed] px-6 py-3 text-sm font-semibold text-white transition active:bg-[#6d28d9] disabled:cursor-not-allowed disabled:opacity-60";
+
+// Resume key: set when the in-app reservation sheet opens, so tapping "Retour"
+// on checkout returns to that sheet instead of the full sitter fiche.
+const RESUME_RESERVATION_KEY = "ds_resume_reservation";
+
+function ServiceGlyph({ service, className }: { service?: string | null; className?: string }) {
+  if (service === "Pension") return <Moon className={className} aria-hidden="true" />;
+  if (service === "Garde" || service === "Dogsitting") return <Home className={className} aria-hidden="true" />;
+  return <Footprints className={className} aria-hidden="true" />;
+}
 
 type BookingStatus =
   | "DRAFT"
@@ -228,6 +237,8 @@ function CheckoutForm({
 
   async function onPay() {
     if (!stripe || !elements) return;
+    // Payment started → don't resume the reservation sheet afterwards.
+    try { sessionStorage.removeItem(RESUME_RESERVATION_KEY); } catch { /* ignore */ }
     setSubmitting(true);
     setError(null);
 
@@ -318,11 +329,13 @@ function CheckoutForm({
 
   const inner = (
     <>
-      <div>
-        <h2 className="text-lg font-semibold tracking-tight text-slate-900">Paiement sécurisé</h2>
-        <p className="mt-1 text-sm text-slate-600">Choisis ton moyen de paiement pour finaliser la réservation.</p>
-      </div>
-      <div className="mt-5">
+      {native ? null : (
+        <div>
+          <h2 className="text-lg font-semibold tracking-tight text-slate-900">Paiement sécurisé</h2>
+          <p className="mt-1 text-sm text-slate-600">Choisis ton moyen de paiement pour finaliser la réservation.</p>
+        </div>
+      )}
+      <div className={native ? "" : "mt-5"}>
         <CancellationPolicyEncart variant={cancellationPolicyVariant} />
       </div>
 
@@ -387,7 +400,9 @@ function CheckoutForm({
       >
         {submitting ? "Paiement…" : "Payer"}
       </button>
-      <p className="mt-3 text-xs text-slate-500">Aucun débit imprévu. Le total affiché inclut les frais de paiement estimés.</p>
+      {native ? null : (
+        <p className="mt-3 text-xs text-slate-500">Aucun débit imprévu. Le total affiché inclut les frais de paiement estimés.</p>
+      )}
     </>
   );
 
@@ -404,6 +419,7 @@ export default function CheckoutBookingPage() {
   const bookingId = typeof params?.bookingId === "string" ? params.bookingId : "";
   const { maintenanceMode, adminNote, loading: maintLoading } = useMaintenance();
   const isNative = useIsNativeAppSync();
+  const router = useRouter();
 
   const [stripeUi, setStripeUi] = useState<{
     stripePromise: Promise<any>;
@@ -683,6 +699,17 @@ const stripeReact = await import("@stripe/react-stripe-js");
   const useStripeHook = (stripeUi?.useStripe ?? (() => null)) as () => StripeInstance | null;
   const useElementsHook = (stripeUi?.useElements ?? (() => null)) as () => StripeElements | null;
 
+  // Single continuous spinner while the booking + Stripe intent load — matches
+  // checkout/[bookingId]/loading.tsx so the route transition and the fetch read
+  // as ONE loader (no skeleton→logo double flash).
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-white">
+        <div className="h-7 w-7 animate-spin rounded-full border-2 border-[#7c3aed] border-t-transparent" />
+      </div>
+    );
+  }
+
   return (
     <div className={isNative ? "min-h-screen bg-white text-slate-900" : "min-h-screen bg-gradient-to-b from-slate-50 to-white text-slate-900"}>
       <main
@@ -697,32 +724,60 @@ const stripeReact = await import("@stripe/react-stripe-js");
         }
       >
         <div className={isNative ? "" : "mx-auto max-w-5xl"}>
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="min-w-0">
-              <h1 className={isNative ? "text-2xl font-bold tracking-tight text-slate-900" : "text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl"}>Confirmer et payer</h1>
-              {booking && (
-                <p className="mt-1.5 text-sm text-slate-500 truncate">
-                  {[
-                    booking.service,
-                    isHourlyBooking ? bookingDateLabel : null,
-                    isHourlyBooking ? bookingTimeRangeLabel : null,
-                    !isHourlyBooking && booking.startDate ? formatDateLabel(booking.startDate) : null,
-                    !isHourlyBooking && booking.endDate ? `→ ${formatDateLabel(booking.endDate)}` : null,
-                  ].filter(Boolean).join(" · ")}
-                </p>
-              )}
+          {isNative ? (
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <h1 className="text-2xl font-bold tracking-tight text-slate-900">Confirmer et payer</h1>
+                {booking && (
+                  <div className="mt-2 flex items-center gap-2">
+                    <ServiceGlyph service={booking.service} className="h-5 w-5 shrink-0 text-[#7c3aed]" />
+                    <p className="truncate text-base font-bold text-slate-900">
+                      {[
+                        booking.service,
+                        isHourlyBooking ? bookingDateLabel : null,
+                        isHourlyBooking ? bookingTimeRangeLabel : null,
+                        !isHourlyBooking && booking.startDate ? formatDateLabel(booking.startDate) : null,
+                        !isHourlyBooking && booking.endDate ? `→ ${formatDateLabel(booking.endDate)}` : null,
+                      ].filter(Boolean).join(" · ")}
+                    </p>
+                  </div>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => router.back()}
+                aria-label="Retour"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-600 active:scale-95"
+              >
+                <ArrowLeft className="h-5 w-5" aria-hidden="true" />
+              </button>
             </div>
-            <Link
-              href={booking?.sitterId ? `/sitter/${booking.sitterId}` : "/search"}
-              className="inline-flex shrink-0 items-center justify-center rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
-            >
-              ← Retour
-            </Link>
-          </div>
+          ) : (
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-w-0">
+                <h1 className="text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">Confirmer et payer</h1>
+                {booking && (
+                  <p className="mt-1.5 text-sm text-slate-500 truncate">
+                    {[
+                      booking.service,
+                      isHourlyBooking ? bookingDateLabel : null,
+                      isHourlyBooking ? bookingTimeRangeLabel : null,
+                      !isHourlyBooking && booking.startDate ? formatDateLabel(booking.startDate) : null,
+                      !isHourlyBooking && booking.endDate ? `→ ${formatDateLabel(booking.endDate)}` : null,
+                    ].filter(Boolean).join(" · ")}
+                  </p>
+                )}
+              </div>
+              <Link
+                href={booking?.sitterId ? `/sitter/${booking.sitterId}` : "/search"}
+                className="inline-flex shrink-0 items-center justify-center rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
+              >
+                ← Retour
+              </Link>
+            </div>
+          )}
 
-          {loading ? (
-            <PageLoader static />
-          ) : error ? (
+          {error ? (
             <div className="mt-6 rounded-3xl border border-slate-200 bg-white p-5 sm:p-8 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)]">
               <p className="text-sm font-semibold text-slate-900">Impossible d’afficher le checkout</p>
               <p className="mt-2 text-sm text-rose-600">{error}</p>
@@ -737,25 +792,9 @@ const stripeReact = await import("@stripe/react-stripe-js");
             </div>
           ) : booking && clientSecret ? (
             isNative ? (
-              // Native: no outer white card — just the grey recap cards + the
-              // payment form + a purple Payer button (recap + pay, nothing else).
+              // Native: no outer white card and no service/date recap card (it's
+              // already under the title) — just the totals + the payment form.
               <div className="mt-5 space-y-3">
-                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                  <SummaryRow label="Service" value={booking.service ?? "—"} />
-                  <div className="mt-3 h-px w-full bg-slate-200" />
-                  {isHourlyBooking ? (
-                    <div className="mt-3 space-y-3">
-                      <SummaryRow label="Date" value={bookingDateLabel} />
-                      <SummaryRow label="Heure" value={bookingTimeRangeLabel} />
-                    </div>
-                  ) : (
-                    <div className="mt-3 space-y-3">
-                      <SummaryRow label="Début" value={bookingStartLabel} />
-                      <SummaryRow label="Fin" value={bookingEndLabel} />
-                    </div>
-                  )}
-                </div>
-
                 <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                   <SummaryRow label="Sous-total" value={formatCents(booking.amount - (booking.travelFeeAmount ?? 0))} />
                   {booking.travelFeeAmount ? (

@@ -446,6 +446,14 @@ export default function NativeMapHome() {
     setReservationParams(params);
     setReservationDto(seed);
     setReservationOpen(true);
+    // Remember this sheet so "Retour" on the Stripe checkout page (a real
+    // navigation) can reopen it instead of the full fiche. Cleared when the user
+    // closes the sheet or once the payment starts.
+    try {
+      sessionStorage.setItem("ds_resume_reservation", JSON.stringify({ dto: seed, params }));
+    } catch {
+      /* ignore storage errors */
+    }
     const sitterId = detailSitter.id;
     void (async () => {
       try {
@@ -473,6 +481,46 @@ export default function NativeMapHome() {
       }
     })();
   }, [detailSitter, bookingService, isBookingPension, bookingStart, bookingEnd, bookingDate]);
+
+  // Closing the reservation sheet = abandoning it → don't resume it later.
+  const closeReservation = useCallback(() => {
+    setReservationOpen(false);
+    try {
+      sessionStorage.removeItem("ds_resume_reservation");
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  // On mount, if we just came back from the Stripe checkout page (which is a real
+  // navigation), reopen the reservation sheet we left. One-shot: consumed here.
+  useEffect(() => {
+    let raw: string | null = null;
+    try {
+      raw = sessionStorage.getItem("ds_resume_reservation");
+    } catch {
+      raw = null;
+    }
+    if (!raw) return;
+    try {
+      sessionStorage.removeItem("ds_resume_reservation");
+    } catch {
+      /* ignore */
+    }
+    try {
+      const parsed = JSON.parse(raw) as {
+        dto?: ReservationSitterDto;
+        params?: { service?: string; date?: string; start?: string; end?: string };
+      };
+      if (parsed?.dto?.sitterId) {
+        setReservationDto(parsed.dto);
+        setReservationParams(parsed.params ?? {});
+        setReservationOpen(true);
+      }
+    } catch {
+      /* ignore malformed resume state */
+    }
+  }, []);
 
   const handleBookingDayTap = useCallback(
     (iso: string) => {
@@ -1616,7 +1664,7 @@ export default function NativeMapHome() {
           <button
             type="button"
             aria-label="Fermer la réservation"
-            onClick={() => setReservationOpen(false)}
+            onClick={closeReservation}
             className="fixed inset-0 z-[1002] bg-black/30"
             style={{ touchAction: "manipulation" }}
           />
@@ -1630,7 +1678,7 @@ export default function NativeMapHome() {
             <div className="flex shrink-0 items-center border-b border-slate-100 px-4 py-3">
               <button
                 type="button"
-                onClick={() => setReservationOpen(false)}
+                onClick={closeReservation}
                 className="flex items-center gap-1.5 text-base font-semibold text-slate-900 active:opacity-70"
                 aria-label="Retour à la fiche"
                 style={{ touchAction: "manipulation" }}
