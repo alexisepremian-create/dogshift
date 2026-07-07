@@ -2457,6 +2457,78 @@ export default function ReservationClient({
                     </a>
                   </div>
                 )
+              ) : embedded ? (
+                // Native: two dogs side by side (wraps to the next row) to save
+                // vertical space, purple selection accent.
+                <div className="mt-4 grid grid-cols-2 gap-2">
+                  {dogs.map((dog) => {
+                    const isSelected = selectedDogIds.includes(dog.id);
+                    const dogSizeKey = dogSizeKeyFromWeight(dog.weightKg);
+                    const pensionSizes = sitter.pensionAcceptedSizes ?? [];
+                    const isPension = selectedService === "Pension";
+                    const sizeBlocked = isPension && pensionSizes.length > 0 && dogSizeKey !== null && !pensionSizes.includes(dogSizeKey);
+                    const photoSrc = dog.photoUrl ? publicDogPhotoPath(dog.photoUrl) : null;
+                    const toggle = () => {
+                      setSelectedDogIds((prev) => {
+                        const next = prev.includes(dog.id) ? prev.filter((id) => id !== dog.id) : [...prev, dog.id];
+                        const firstDog = dogs.find((d) => d.id === (next[0] ?? null));
+                        const sk = firstDog ? dogSizeKeyFromWeight(firstDog.weightKg) : null;
+                        if (sk) setDogSize(sk);
+                        return next;
+                      });
+                    };
+                    return (
+                      <button
+                        key={dog.id}
+                        type="button"
+                        onClick={toggle}
+                        className={
+                          "flex flex-col gap-2 rounded-2xl border px-3 py-2.5 text-left transition " +
+                          (sizeBlocked
+                            ? "border-rose-200 bg-rose-50 opacity-70"
+                            : isSelected
+                              ? "border-[#7c3aed] bg-[#7c3aed]/5"
+                              : "border-slate-200 bg-white active:bg-slate-50")
+                        }
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className={
+                            "flex h-5 w-5 shrink-0 items-center justify-center rounded-md border-2 transition " +
+                            (isSelected ? "border-[#7c3aed] bg-[#7c3aed]" : sizeBlocked ? "border-rose-300 bg-white" : "border-slate-300 bg-white")
+                          }>
+                            {isSelected && (
+                              <svg className="h-3 w-3 text-white" viewBox="0 0 12 12" fill="none">
+                                <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                              </svg>
+                            )}
+                          </span>
+                          {photoSrc ? (
+                            <img src={photoSrc} alt={dog.name} className="h-8 w-8 shrink-0 rounded-lg object-cover ring-1 ring-slate-200" />
+                          ) : (
+                            <div className={
+                              "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-sm font-bold " +
+                              (isSelected ? "bg-[#7c3aed]/15 text-[#7c3aed]" : sizeBlocked ? "bg-rose-100 text-rose-400" : "bg-slate-100 text-slate-500")
+                            }>
+                              {dog.name.charAt(0).toUpperCase()}
+                            </div>
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <p className={"truncate text-sm font-semibold leading-tight " + (isSelected ? "text-[#7c3aed]" : "text-slate-900")}>{dog.name}</p>
+                          <p className="text-[11px] leading-tight text-slate-500">
+                            {[
+                              dog.breed,
+                              dog.weightKg ? `${dog.weightKg} kg` : null,
+                              dogSizeKey ? DOG_SIZE_WEIGHTS[dogSizeKey].label : null,
+                            ].filter(Boolean).join(" · ")}
+                            {sizeBlocked && <span className="font-semibold text-rose-500"> — taille non acceptée</span>}
+                            {isPension && !dog.weightKg && <span className="font-semibold text-amber-600"> — poids manquant</span>}
+                          </p>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
               ) : (
                 <div className="mt-4 flex flex-col gap-2">
                   {dogs.map((dog) => {

@@ -19,6 +19,10 @@ import {
   type CancellationPolicyVariant,
 } from "@/lib/reservation/cancellationPolicyUi";
 import { maintenanceBookingUserMessage } from "@/lib/platform/maintenanceConstants";
+import { useIsNativeAppSync } from "@/lib/native/useIsNativeAppSync";
+
+const PURPLE_BTN =
+  "inline-flex items-center justify-center rounded-full bg-[#7c3aed] px-6 py-3 text-sm font-semibold text-white transition active:bg-[#6d28d9] disabled:cursor-not-allowed disabled:opacity-60";
 
 type BookingStatus =
   | "DRAFT"
@@ -181,6 +185,7 @@ function CheckoutForm({
   useStripe,
   useElements,
   noCard = false,
+  native = false,
 }: {
   bookingId: string;
   cancellationPolicyVariant: CancellationPolicyVariant;
@@ -189,6 +194,7 @@ function CheckoutForm({
   useStripe: () => StripeInstance | null;
   useElements: () => StripeElements | null;
   noCard?: boolean;
+  native?: boolean;
 }) {
   const stripe = useStripe();
   const elements = useElements();
@@ -377,7 +383,7 @@ function CheckoutForm({
         type="button"
         disabled={!stripe || !elements || submitting || !termsAccepted}
         onClick={() => void onPay()}
-        className={`mt-4 w-full ${PRIMARY_BTN}`}
+        className={`mt-4 w-full ${native ? PURPLE_BTN : PRIMARY_BTN}`}
       >
         {submitting ? "Paiement…" : "Payer"}
       </button>
@@ -397,6 +403,7 @@ export default function CheckoutBookingPage() {
   const params = useParams<{ bookingId: string }>();
   const bookingId = typeof params?.bookingId === "string" ? params.bookingId : "";
   const { maintenanceMode, adminNote, loading: maintLoading } = useMaintenance();
+  const isNative = useIsNativeAppSync();
 
   const [stripeUi, setStripeUi] = useState<{
     stripePromise: Promise<any>;
@@ -677,12 +684,22 @@ const stripeReact = await import("@stripe/react-stripe-js");
   const useElementsHook = (stripeUi?.useElements ?? (() => null)) as () => StripeElements | null;
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white text-slate-900">
-      <main className="mx-auto max-w-[1100px] px-4 pt-4 pb-10 sm:px-6 sm:pt-6">
-        <div className="mx-auto max-w-5xl">
+    <div className={isNative ? "min-h-screen bg-white text-slate-900" : "min-h-screen bg-gradient-to-b from-slate-50 to-white text-slate-900"}>
+      <main
+        className={isNative ? "mx-auto w-full max-w-lg px-4" : "mx-auto max-w-[1100px] px-4 pt-4 pb-10 sm:px-6 sm:pt-6"}
+        style={
+          isNative
+            ? {
+                paddingTop: "calc(env(safe-area-inset-top, 0px) + 14px)",
+                paddingBottom: "calc(max(var(--ds-bottom-nav-h, 0px), 88px) + 16px)",
+              }
+            : undefined
+        }
+      >
+        <div className={isNative ? "" : "mx-auto max-w-5xl"}>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="min-w-0">
-              <h1 className="text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">Confirmer et payer</h1>
+              <h1 className={isNative ? "text-2xl font-bold tracking-tight text-slate-900" : "text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl"}>Confirmer et payer</h1>
               {booking && (
                 <p className="mt-1.5 text-sm text-slate-500 truncate">
                   {[
@@ -719,6 +736,72 @@ const stripeReact = await import("@stripe/react-stripe-js");
               </div>
             </div>
           ) : booking && clientSecret ? (
+            isNative ? (
+              // Native: no outer white card — just the grey recap cards + the
+              // payment form + a purple Payer button (recap + pay, nothing else).
+              <div className="mt-5 space-y-3">
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                  <SummaryRow label="Service" value={booking.service ?? "—"} />
+                  <div className="mt-3 h-px w-full bg-slate-200" />
+                  {isHourlyBooking ? (
+                    <div className="mt-3 space-y-3">
+                      <SummaryRow label="Date" value={bookingDateLabel} />
+                      <SummaryRow label="Heure" value={bookingTimeRangeLabel} />
+                    </div>
+                  ) : (
+                    <div className="mt-3 space-y-3">
+                      <SummaryRow label="Début" value={bookingStartLabel} />
+                      <SummaryRow label="Fin" value={bookingEndLabel} />
+                    </div>
+                  )}
+                </div>
+
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                  <SummaryRow label="Sous-total" value={formatCents(booking.amount - (booking.travelFeeAmount ?? 0))} />
+                  {booking.travelFeeAmount ? (
+                    <>
+                      <div className="mt-2" />
+                      <SummaryRow label="Frais de déplacement" value={formatCents(booking.travelFeeAmount)} />
+                    </>
+                  ) : null}
+                  <div className="mt-2" />
+                  <SummaryRow
+                    label={
+                      <span className="inline-flex items-center gap-2">
+                        <span>Frais de paiement (estimés)</span>
+                        <InfoTooltip text="Ces frais correspondent aux coûts de traitement du paiement (ex: carte bancaire). Ils peuvent légèrement varier selon le moyen de paiement utilisé." />
+                      </span>
+                    }
+                    value={formatCents(paymentFeeAmount)}
+                  />
+                  <div className="mt-3 h-px w-full bg-slate-200" />
+                  <div className="mt-3 flex items-center justify-between gap-4">
+                    <p className="text-sm font-semibold text-slate-900">Total</p>
+                    <p className="text-lg font-bold tracking-tight text-slate-900">{formatCents(totalOwnerAmount)}</p>
+                  </div>
+                </div>
+
+                {canRender ? (
+                  <ElementsComp stripe={stripeUi!.stripePromise} options={stripeElementsOptions!}>
+                    <CheckoutForm
+                      bookingId={booking.id}
+                      cancellationPolicyVariant={checkoutCancellationVariant}
+                      ExpressCheckoutElement={ExpressCheckoutElementComp}
+                      PaymentElement={PaymentElementComp}
+                      useStripe={useStripeHook}
+                      useElements={useElementsHook}
+                      noCard
+                      native
+                    />
+                  </ElementsComp>
+                ) : (
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                    <p className="text-sm font-semibold text-slate-900">Stripe</p>
+                    <p className="mt-2 text-sm text-rose-600">{stripeUiError ?? "Impossible de charger Stripe."}</p>
+                  </div>
+                )}
+              </div>
+            ) : (
             <div className="mt-7">
               {/* Unified card: Récapitulatif (left) + Paiement sécurisé (right) */}
               <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)] lg:flex lg:items-stretch">
@@ -823,6 +906,7 @@ const stripeReact = await import("@stripe/react-stripe-js");
                 </div>
               </div>
             </div>
+            )
           ) : null}
         </div>
       </main>
