@@ -283,8 +283,11 @@ export default function AccountMessagesPage() {
     return () => document.removeEventListener("mousedown", handleClick);
   }, []);
 
-  async function loadConversations() {
-    setLoading(true);
+  // `silent` = refresh the list in the background without flipping the page into
+  // the full-screen loading skeleton (used after starting a conversation so the
+  // just-opened thread isn't hidden by a skeleton flash).
+  async function loadConversations(silent = false) {
+    if (!silent) setLoading(true);
     setError(null);
     try {
       const res = await fetch("/api/account/messages/conversations", { method: "GET" });
@@ -303,7 +306,7 @@ export default function AccountMessagesPage() {
       setError("Impossible de charger tes messages.");
       setConversations([]);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }
 
@@ -355,12 +358,15 @@ export default function AccountMessagesPage() {
       if (res.ok && payload.ok && payload.conversationId) {
         const conversationId = payload.conversationId;
         closePicker();
-        await loadConversations();
+        // Open the thread immediately (no blocking list reload → no skeleton
+        // flash), sync the URL so the reset effect protects it, then refresh the
+        // list in the background so it also shows in the left panel.
         setSelectedId(conversationId);
+        void loadThread(conversationId);
         const params = new URLSearchParams(searchParams?.toString() ?? "");
         params.set("conversationId", conversationId);
         router.replace(`/account/messages?${params.toString()}`);
-        void loadThread(conversationId);
+        void loadConversations(true);
       }
     } catch {
       // swallow — button re-enables below
@@ -544,9 +550,10 @@ export default function AccountMessagesPage() {
 
   useEffect(() => {
     if (loading) return;
-    // Never close a conversation we were explicitly asked to open (deep link /
-    // "Contacter") — it may not be in the list yet.
-    if (selectedId && selectedId === requestedConversationId) return;
+    // Never close a conversation that's explicitly requested (deep link /
+    // "Contacter") OR already opening/open — a just-created conversation can lag
+    // the list, and the loaded thread is the source of truth, not the list.
+    if (selectedId && (selectedId === requestedConversationId || threadLoading || threadHeader)) return;
     if (rows.length === 0) {
       setSelectedId(null);
       setThreadHeader(null);
@@ -562,7 +569,7 @@ export default function AccountMessagesPage() {
       setViewerId(null);
       setThreadError(null);
     }
-  }, [loading, rows, archivedRows, selectedId, requestedConversationId]);
+  }, [loading, rows, archivedRows, selectedId, requestedConversationId, threadLoading, threadHeader]);
 
   const canSend = text.trim().length > 0 && !sending;
 
@@ -1124,7 +1131,10 @@ export default function AccountMessagesPage() {
               transform: pickerRaised ? "translateY(0)" : "translateY(100%)",
               maxHeight: "75dvh",
               overflowY: "auto",
-              paddingBottom: "calc(max(var(--ds-bottom-nav-h, 0px), 88px) + 24px)",
+              // Clear the bottom nav AND the floating center paw (which sits ~30px
+              // above the bar) so the last row / "Voir les autres dogsitters" isn't
+              // cut off.
+              paddingBottom: "calc(max(var(--ds-bottom-nav-h, 0px), 88px) + 52px)",
             }}
           >
             <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-slate-200" aria-hidden="true" />
@@ -1175,8 +1185,12 @@ export default function AccountMessagesPage() {
                     className="flex w-full items-center gap-3 rounded-2xl px-2 py-3 text-left active:bg-slate-50 disabled:opacity-60"
                   >
                     <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-full bg-slate-100">
-                      {ct.avatarUrl && avatarIsSafe(ct.avatarUrl) ? (
-                        <Image src={ct.avatarUrl} alt={ct.name} fill className="object-cover" sizes="40px" />
+                      {ct.avatarUrl ? (
+                        // Sitter avatars come from R2 / arbitrary hosts that aren't
+                        // configured for next/image — use a plain <img> (same as the
+                        // map fiche) so the real photo shows, not just the initial.
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={ct.avatarUrl} alt={ct.name} className="h-full w-full object-cover" referrerPolicy="no-referrer" loading="lazy" />
                       ) : (
                         <div className="flex h-full w-full items-center justify-center text-sm font-semibold text-slate-600">
                           {initialForName(ct.name)}
