@@ -16,6 +16,7 @@ import {
   resolveCoordsForPublishedSitterMap,
 } from "@/lib/sitterMapGeo";
 import { dogCountsFitSitter } from "@/lib/search/dogCapacityFit";
+import { useIsNativeAppSync } from "@/lib/native/useIsNativeAppSync";
 
 function parseCount(value: string | null): number {
   const n = parseInt(value ?? "0", 10);
@@ -225,6 +226,7 @@ function toUiSitter(row: SitterListItem): UiSitter | null {
 
 export default function SearchResultsClient() {
   const sp = useSearchParams();
+  const isNative = useIsNativeAppSync();
 
   const [flash, setFlash] = useState<string | null>(null);
   const [hydrated, setHydrated] = useState(false);
@@ -473,8 +475,11 @@ export default function SearchResultsClient() {
   const showEmpty = !availabilityPending && filtered.length === 0;
 
   return (
-    <div className="min-h-screen bg-white text-slate-900">
-      <main className="mx-auto max-w-6xl px-4 pb-10 sm:px-6">
+    <div className="ds-search-root min-h-screen bg-white text-slate-900">
+      <main
+        className="mx-auto max-w-6xl px-4 pb-10 sm:px-6"
+        style={isNative ? { paddingBottom: "calc(max(var(--ds-bottom-nav-h, 0px), 88px) + 24px)" } : undefined}
+      >
         {flash ? (
           <div className="mt-4 rounded-3xl border border-slate-200 bg-white p-4 text-sm font-medium text-slate-700 shadow-[0_12px_40px_-32px_rgba(2,6,23,0.18)]">
             {flash}
@@ -506,7 +511,13 @@ export default function SearchResultsClient() {
           </div>
         </div>
 
-        <div className="mt-6 rounded-3xl border border-slate-200 bg-white p-4 shadow-[0_12px_40px_-30px_rgba(2,6,23,0.22)] sm:p-6">
+        <div
+          className={
+            isNative
+              ? "mt-3 rounded-2xl border border-slate-200 bg-white p-2.5"
+              : "mt-6 rounded-3xl border border-slate-200 bg-white p-4 shadow-[0_12px_40px_-30px_rgba(2,6,23,0.22)] sm:p-6"
+          }
+        >
           {/* Mobile-compact bar: location input + "Filtres" toggle on one row.
               Lg+ : revert to the original 6-column grid. */}
           <div className="flex items-center gap-2 lg:hidden">
@@ -627,7 +638,13 @@ export default function SearchResultsClient() {
             </div>
           </div>
 
-          <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div
+            className={
+              isNative
+                ? "mt-2.5 flex items-center justify-between gap-3"
+                : "mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
+            }
+          >
             <p className="text-sm text-slate-600">
               {availabilityPending ? (
                 <span className="text-slate-500">Recherche des disponibilités…</span>
@@ -825,21 +842,40 @@ export default function SearchResultsClient() {
                       ))}
                     </div>
 
-                    <div className="mt-auto flex items-center justify-between gap-2 pt-4 sm:pt-5">
-                      <p className="min-w-0 truncate text-sm text-slate-600">
-                        <span className="text-slate-500">Dès </span>
-                        <span className="text-base font-semibold text-slate-900">CHF {cheapestPrice}</span>
-                        <span className="text-slate-500">{cheapestUnit}</span>
-                      </p>
-                      {/* Purple + small pill (founder: "le bouton contacter doit
-                          etre violet et plus petit"). */}
-                      <span
-                        className="inline-flex shrink-0 items-center justify-center rounded-full bg-[#7c3aed] px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition active:scale-95 md:group-hover:bg-[#6d28d9]"
-                        aria-label={`Contacter ${sitter.name}`}
-                      >
-                        Contacter
-                      </span>
-                    </div>
+                    {isNative ? (
+                      // Native cards are narrow (2-col): stack the price on its own
+                      // line so it never truncates to "Dès C…", then a full-width
+                      // purple Contacter pill below.
+                      <div className="mt-auto pt-3">
+                        <p className="text-sm text-slate-600">
+                          <span className="text-slate-500">Dès </span>
+                          <span className="text-base font-semibold text-slate-900">CHF {cheapestPrice}</span>
+                          <span className="text-slate-500">{cheapestUnit}</span>
+                        </p>
+                        <span
+                          className="mt-2 flex w-full items-center justify-center rounded-full bg-[#7c3aed] px-3 py-2 text-xs font-semibold text-white shadow-sm transition active:scale-95"
+                          aria-label={`Contacter ${sitter.name}`}
+                        >
+                          Contacter
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="mt-auto flex items-center justify-between gap-2 pt-4 sm:pt-5">
+                        <p className="min-w-0 truncate text-sm text-slate-600">
+                          <span className="text-slate-500">Dès </span>
+                          <span className="text-base font-semibold text-slate-900">CHF {cheapestPrice}</span>
+                          <span className="text-slate-500">{cheapestUnit}</span>
+                        </p>
+                        {/* Purple + small pill (founder: "le bouton contacter doit
+                            etre violet et plus petit"). */}
+                        <span
+                          className="inline-flex shrink-0 items-center justify-center rounded-full bg-[#7c3aed] px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition active:scale-95 md:group-hover:bg-[#6d28d9]"
+                          aria-label={`Contacter ${sitter.name}`}
+                        >
+                          Contacter
+                        </span>
+                      </div>
+                    )}
                   </Link>
                 );
               })()
