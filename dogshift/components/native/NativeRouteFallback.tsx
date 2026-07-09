@@ -58,9 +58,13 @@ export default function NativeRouteFallback({ web }: { web: "loader" | "none" | 
     if (pathname.startsWith("/account/bookings") || pathname.startsWith("/account/messages")) {
       return (
         <div
-          className="fixed inset-0 z-40 w-full overflow-y-auto bg-white px-4"
+          // Match OwnerDashboardShell's native content box EXACTLY (px-3 + the
+          // same top padding = safe-area + banner + 0.75rem) so this overlay
+          // skeleton and the in-shell AccountPageSkeleton sit at the identical
+          // position — no vertical jump between the two suspend phases.
+          className="fixed inset-0 z-40 w-full overflow-y-auto bg-white px-3"
           style={{
-            paddingTop: "calc(env(safe-area-inset-top, 0px) + 2rem)",
+            paddingTop: "calc(env(safe-area-inset-top, 0px) + var(--ds-maintenance-banner-height, 0px) + 0.75rem)",
             paddingBottom: "calc(max(var(--ds-bottom-nav-h, 0px), 88px) + 24px)",
           }}
         >
