@@ -1,10 +1,113 @@
 "use client";
 
 import { useState } from "react";
+import { Sparkles, Check, ArrowRight } from "lucide-react";
 import BecomeSitterAccessForm from "@/components/BecomeSitterAccessForm";
+import { useIsNativeAppSync } from "@/lib/native/useIsNativeAppSync";
+
+const HOW_IT_WORKS: Array<{ title: string; desc: string }> = [
+  { title: "Tu candidates", desc: "Un formulaire en 3 étapes, simple et structuré." },
+  { title: "On analyse ton profil", desc: "Sélection manuelle, qualité avant quantité." },
+  { title: "On te contacte", desc: "Mini entretien pour valider l’adéquation." },
+  { title: "Profil activé", desc: "Ton profil est ensuite activé sur la plateforme." },
+];
+
+const ADVANTAGES = ["Revenus flexibles", "Clients locaux", "Paiement sécurisé", "Tu choisis tes disponibilités", "Plateforme 100% suisse"];
 
 export default function DevenirDogsitterPage() {
   const [accessOpen, setAccessOpen] = useState(false);
+  const isNative = useIsNativeAppSync();
+
+  const accessModal = accessOpen ? (
+    <div className="fixed inset-0 z-[1000] flex items-center justify-center px-4" role="dialog" aria-modal="true">
+      <button type="button" className="absolute inset-0 bg-black/30" aria-label="Fermer" onClick={() => setAccessOpen(false)} />
+      <div className="relative z-10">
+        <div className="absolute -right-2 -top-2">
+          <button
+            type="button"
+            onClick={() => setAccessOpen(false)}
+            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 shadow-sm transition hover:bg-slate-50"
+            aria-label="Fermer"
+          >
+            ×
+          </button>
+        </div>
+        <BecomeSitterAccessForm onUnlocked={() => setAccessOpen(false)} />
+      </div>
+    </div>
+  ) : null;
+
+  if (isNative) {
+    return (
+      <main className="min-h-screen bg-white text-slate-900">
+        <section
+          className="mx-auto w-full max-w-lg px-4"
+          style={{
+            paddingTop: "calc(env(safe-area-inset-top, 0px) + 14px)",
+            paddingBottom: "calc(max(var(--ds-bottom-nav-h, 0px), 88px) + 24px)",
+          }}
+        >
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-[#7c3aed]/10 px-3 py-1 text-xs font-semibold text-[#6d28d9]">
+            <Sparkles className="h-3.5 w-3.5" aria-hidden="true" /> Phase pilote · Lausanne &amp; Riviera
+          </span>
+          <h1 className="mt-3 text-2xl font-bold tracking-tight text-slate-900">Deviens dog-sitter DogShift</h1>
+          <p className="mt-2 text-base leading-relaxed text-slate-600">
+            On recrute nos 20 premiers dog-sitters. Profils sélectionnés à la main — qualité avant quantité.
+          </p>
+
+          <a
+            href="/devenir-dogsitter/candidater"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-full bg-[#7c3aed] px-6 py-3.5 text-sm font-semibold text-white active:bg-[#6d28d9]"
+          >
+            Postuler maintenant <ArrowRight className="h-4 w-4" aria-hidden="true" />
+          </a>
+          <p className="mt-2 text-center text-xs text-slate-500">Formulaire en 3 étapes · 4–6 min</p>
+          <button
+            type="button"
+            onClick={() => setAccessOpen(true)}
+            className="mt-3 inline-flex w-full items-center justify-center rounded-full border border-slate-300 bg-white px-6 py-3 text-sm font-semibold text-slate-900 active:bg-slate-50"
+          >
+            J’ai déjà un code d’accès
+          </button>
+
+          <h2 className="mt-9 text-sm font-semibold text-slate-900">Comment ça marche</h2>
+          <div className="mt-3 space-y-3">
+            {HOW_IT_WORKS.map((s, i) => (
+              <div key={s.title} className="flex items-start gap-3">
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#7c3aed]/10 text-sm font-bold text-[#7c3aed]">{i + 1}</span>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-slate-900">{s.title}</p>
+                  <p className="text-sm text-slate-500">{s.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <h2 className="mt-9 text-sm font-semibold text-slate-900">Ce qu’on recherche</h2>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {["Fiabilité", "Amour des chiens", "Disponibilité", "Sérieux"].map((x) => (
+              <span key={x} className="rounded-full bg-slate-100 px-3 py-1.5 text-sm font-medium text-slate-700">{x}</span>
+            ))}
+          </div>
+
+          <h2 className="mt-9 text-sm font-semibold text-slate-900">Tes avantages</h2>
+          <div className="mt-3 space-y-2.5">
+            {ADVANTAGES.map((a) => (
+              <div key={a} className="flex items-center gap-2.5">
+                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-50">
+                  <Check className="h-3.5 w-3.5 text-emerald-600" aria-hidden="true" />
+                </span>
+                <p className="text-sm text-slate-700">{a}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+        {accessModal}
+      </main>
+    );
+  }
 
   return (
     <main className="min-h-screen bg-white text-slate-900">

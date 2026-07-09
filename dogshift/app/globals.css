@@ -150,6 +150,25 @@ html[data-native="true"] [data-ds-dashboard] .ds-native-tight {
   gap: 0.75rem;
 }
 
+/* Legal / text pages (CGU, Confidentialité, Mentions légales) in the native app:
+   drop the big top padding + the frosted background card and shrink the title so
+   the heading sits right at the top of the screen (founder: "titre collé en haut,
+   pas trop gros"). Web keeps the roomy card layout. */
+html[data-native="true"] .ds-legal-main {
+  padding-top: 0.25rem;
+  padding-bottom: calc(max(var(--ds-bottom-nav-h, 0px), 88px) + 1.5rem);
+}
+html[data-native="true"] .ds-legal-card {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  box-shadow: none;
+}
+html[data-native="true"] .ds-legal-title {
+  font-size: 1.5rem;
+  line-height: 2rem;
+}
+
 /* Native vs web dashboard home swap. The owner/sitter home pages render BOTH a
    spacious web dashboard (`.ds-web-only`) and a minimalist native dashboard
    (`.ds-native-only`); CSS picks one based on `data-native` (set synchronously
