@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 
 import PageLoader from "@/components/ui/PageLoader";
 import DashboardSkeleton from "@/components/ui/DashboardSkeleton";
+import AccountPageSkeleton from "@/components/ui/AccountPageSkeleton";
 import HostDashboardSkeletonOverlay from "@/components/native/HostDashboardSkeletonOverlay";
 import MapHomeSkeleton from "@/components/native/MapHomeSkeleton";
 import { RequestsRouteSkeleton, MessagesRouteSkeleton } from "@/components/native/SectionRouteSkeletons";
@@ -47,12 +48,26 @@ export default function NativeRouteFallback({ web }: { web: "loader" | "none" | 
     // `fixed inset-0`), so the hand-off is seamless.
     if (pathname === "/") return <MapHomeSkeleton />;
 
-    // Owner tabs (/account/bookings, /account/messages) render their own
-    // `loading.tsx` (AccountPageSkeleton) as the closest Suspense boundary, and
-    // each page early-returns the SAME AccountPageSkeleton while it fetches — so
-    // the route→page hand-off is one continuous skeleton (founder: "qu'il y'en
-    // ait qu'un et c'est le skeleton"). This group-level fallback isn't reached
-    // for them; the generic skeleton overlay below is the safe fallthrough.
+    // Owner tabs (/account/bookings, /account/messages): the /account layout is
+    // force-dynamic and suspends at THIS group boundary on entry, so this
+    // fallback IS on screen first. It MUST render the SAME AccountPageSkeleton
+    // that the pages' own loading.tsx + client-fetch state show — otherwise the
+    // founder sees TWO different skeletons (the generic DashboardSkeleton here,
+    // then AccountPageSkeleton in the page). Same component everywhere = one
+    // continuous skeleton.
+    if (pathname.startsWith("/account/bookings") || pathname.startsWith("/account/messages")) {
+      return (
+        <div
+          className="fixed inset-0 z-40 w-full overflow-y-auto bg-white px-4"
+          style={{
+            paddingTop: "calc(env(safe-area-inset-top, 0px) + 2rem)",
+            paddingBottom: "calc(max(var(--ds-bottom-nav-h, 0px), 88px) + 24px)",
+          }}
+        >
+          <AccountPageSkeleton />
+        </div>
+      );
+    }
 
     // Réservations / Conversations (sitter side): the layout's force-dynamic DB
     // read is SLOW, so this fallback is on screen for a real moment — it MUST show
