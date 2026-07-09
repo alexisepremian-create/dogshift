@@ -265,6 +265,27 @@ export default function AccountMessagesPage() {
   const [contactsLoading, setContactsLoading] = useState(false);
   const [startingId, setStartingId] = useState<string | null>(null);
 
+  // Capacitor runs with Keyboard `resize: "none"` (the search panel needs it),
+  // so the WebView does NOT shrink when the keyboard opens — we track the
+  // keyboard height ourselves via visualViewport and shrink the chat container,
+  // otherwise the input + last messages hide behind the keyboard (native only).
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+  useEffect(() => {
+    if (!isNative) return;
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const onResize = () => {
+      setKeyboardHeight(Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop)));
+    };
+    vv.addEventListener("resize", onResize);
+    vv.addEventListener("scroll", onResize);
+    onResize();
+    return () => {
+      vv.removeEventListener("resize", onResize);
+      vv.removeEventListener("scroll", onResize);
+    };
+  }, [isNative]);
+
   useEffect(() => {
     if (!isLoaded) return;
     if (!isSignedIn) {
@@ -633,7 +654,21 @@ export default function AccountMessagesPage() {
   const selectedDog = threadHeader?.selectedDog ?? null;
 
   return (
-    <div className="flex h-[calc(100dvh-128px)] flex-col bg-white -mx-4 -mt-4 sm:mx-0 sm:mt-0 sm:rounded-3xl sm:border sm:border-slate-200 sm:shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)] lg:h-[calc(100dvh-80px)]" data-testid="account-messages-page">
+    <div
+      className="flex h-[calc(100dvh-128px)] flex-col bg-white -mx-4 -mt-4 sm:mx-0 sm:mt-0 sm:rounded-3xl sm:border sm:border-slate-200 sm:shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)] lg:h-[calc(100dvh-80px)]"
+      data-testid="account-messages-page"
+      style={
+        isNative
+          ? {
+              // Leave room at the bottom for the keyboard when open, otherwise for
+              // the bottom nav + floating paw so the input bar clears them.
+              height: `calc(100dvh - env(safe-area-inset-top, 0px) - var(--ds-maintenance-banner-height, 0px) - ${
+                keyboardHeight > 0 ? `${keyboardHeight}px` : "calc(max(var(--ds-bottom-nav-h, 0px), 88px) + 20px)"
+              })`,
+            }
+          : undefined
+      }
+    >
       {error ? (
         <div className="rounded-3xl border border-rose-200 bg-rose-50 p-6 text-sm font-medium text-rose-900 sm:p-8">
           <p>{error}</p>
@@ -999,10 +1034,12 @@ export default function AccountMessagesPage() {
                     </div>
                   </div>
 
-                  {/* Input bar — always visible at bottom, above safe area */}
+                  {/* Input bar — always visible at bottom. On native the chat
+                      container height already reserves the nav / keyboard space,
+                      so a plain padding is enough (no double safe-area gap). */}
                   <div
                     className="shrink-0 border-t border-slate-100 bg-white px-4 py-3"
-                    style={{ paddingBottom: "max(12px, env(safe-area-inset-bottom))" }}
+                    style={{ paddingBottom: isNative ? "12px" : "max(12px, env(safe-area-inset-bottom))" }}
                   >
                     <div className="flex items-end gap-3">
                       <textarea
