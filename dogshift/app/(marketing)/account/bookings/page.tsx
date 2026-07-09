@@ -521,16 +521,12 @@ function AccountBookingsContent() {
 
   if (!isLoaded || !isSignedIn) return <AccountPageSkeleton />;
 
-  // Native: one centered purple spinner during the first fetch — same as the
-  // route fallback (NativeRouteFallback) — so the whole route→page transition is
-  // a single continuous loader, never the shell + a second wave of card
-  // skeletons (founder: "un seul skeleton, pas plusieurs").
+  // Native: render the SAME skeleton the route fallback shows (loading.tsx →
+  // AccountPageSkeleton), so route→page is one continuous skeleton — never a
+  // skeleton then a spinner (founder: "qu'il y'en ait qu'un et c'est le
+  // skeleton de chargement").
   if (isNative && loading) {
-    return (
-      <div className="flex min-h-[55vh] items-center justify-center" data-testid="account-bookings-page">
-        <div className="h-7 w-7 animate-spin rounded-full border-2 border-[#7c3aed] border-t-transparent" />
-      </div>
-    );
+    return <AccountPageSkeleton />;
   }
 
   return (

@@ -47,20 +47,12 @@ export default function NativeRouteFallback({ web }: { web: "loader" | "none" | 
     // `fixed inset-0`), so the hand-off is seamless.
     if (pathname === "/") return <MapHomeSkeleton />;
 
-    // Owner tabs (/account/bookings, /account/messages): a SINGLE centered purple
-    // spinner. Those pages render their own "Mon compte" shell (different from the
-    // host RequestsSplitView / messages layout the skeletons replicate), so a
-    // faithful skeleton here would mismatch the page and read as "plusieurs
-    // skeletons" (founder). The pages early-return the same spinner while they
-    // fetch, so route→page is one continuous loader. Host tabs keep the faithful
-    // skeleton (their shell matches the replica 1:1).
-    if (pathname.startsWith("/account/bookings") || pathname.startsWith("/account/messages")) {
-      return (
-        <div className="fixed inset-0 z-40 flex items-center justify-center bg-white">
-          <div className="h-7 w-7 animate-spin rounded-full border-2 border-[#7c3aed] border-t-transparent" />
-        </div>
-      );
-    }
+    // Owner tabs (/account/bookings, /account/messages) render their own
+    // `loading.tsx` (AccountPageSkeleton) as the closest Suspense boundary, and
+    // each page early-returns the SAME AccountPageSkeleton while it fetches — so
+    // the route→page hand-off is one continuous skeleton (founder: "qu'il y'en
+    // ait qu'un et c'est le skeleton"). This group-level fallback isn't reached
+    // for them; the generic skeleton overlay below is the safe fallthrough.
 
     // Réservations / Conversations (sitter side): the layout's force-dynamic DB
     // read is SLOW, so this fallback is on screen for a real moment — it MUST show
