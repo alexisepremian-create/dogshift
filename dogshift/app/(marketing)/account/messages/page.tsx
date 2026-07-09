@@ -8,6 +8,7 @@ import { useSession } from "next-auth/react";
 import { Archive, ChevronDown, Dog, MessageCircle, Pin, Plus, RefreshCw, Trash2, X } from "lucide-react";
 import { publicDogPhotoPath } from "@/lib/dogPhotoMedia";
 import { useIsNativeAppSync } from "@/lib/native/useIsNativeAppSync";
+import AccountPageSkeleton from "@/components/ui/AccountPageSkeleton";
 
 type SitterContact = { id: string; name: string; avatarUrl: string | null };
 
@@ -605,7 +606,7 @@ export default function AccountMessagesPage() {
     }
   }
 
-  if (!isLoaded) return null;
+  if (!isLoaded) return isNative ? <AccountPageSkeleton /> : null;
   if (!isSignedIn) {
     return (
       <div className="ds-card rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)] sm:p-8">
@@ -617,17 +618,12 @@ export default function AccountMessagesPage() {
     );
   }
 
-  // Native: one centered purple spinner during the first fetch — same as the
-  // route fallback (NativeRouteFallback) — so the route→page transition is a
-  // single continuous loader, never a skeleton then a "Chargement…" card
-  // (founder: "un skeleton et après un message de chargement, je veux uniquement
-  // le chargement"). Web keeps its inline loading card below.
+  // Native: render the SAME skeleton the route fallback shows (loading.tsx →
+  // AccountPageSkeleton), so route→page is one continuous skeleton — never a
+  // skeleton then a spinner/"Chargement…" (founder: "qu'il y'en ait qu'un et
+  // c'est le skeleton de chargement"). Web keeps its inline loading card below.
   if (isNative && loading) {
-    return (
-      <div className="flex min-h-[55vh] items-center justify-center" data-testid="account-messages-page">
-        <div className="h-7 w-7 animate-spin rounded-full border-2 border-[#7c3aed] border-t-transparent" />
-      </div>
-    );
+    return <AccountPageSkeleton />;
   }
 
   const selectedDog = threadHeader?.selectedDog ?? null;
