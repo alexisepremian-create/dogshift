@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 
+import { useIsNativeAppSync } from "@/lib/native/useIsNativeAppSync";
+
 export default function BecomeSitterAccessForm({
   onUnlocked,
 }: {
@@ -11,6 +13,7 @@ export default function BecomeSitterAccessForm({
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const isNative = useIsNativeAppSync();
   const [code, setCode] = useState(() => searchParams?.get("code") ?? "");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -124,7 +127,11 @@ export default function BecomeSitterAccessForm({
         <button
           type="submit"
           disabled={loading}
-          className="mt-5 inline-flex w-full items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-6 py-3 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition hover:bg-[var(--dogshift-blue-hover)] disabled:cursor-not-allowed disabled:opacity-60"
+          className={
+            isNative
+              ? "mt-5 inline-flex w-full items-center justify-center rounded-2xl bg-[#7c3aed] px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[#6d28d9] active:bg-[#6d28d9] disabled:cursor-not-allowed disabled:opacity-60"
+              : "mt-5 inline-flex w-full items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-6 py-3 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition hover:bg-[var(--dogshift-blue-hover)] disabled:cursor-not-allowed disabled:opacity-60"
+          }
         >
           {loading ? "Vérification…" : "Déverrouiller"}
         </button>

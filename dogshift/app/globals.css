@@ -169,6 +169,16 @@ html[data-native="true"] .ds-legal-title {
   line-height: 2rem;
 }
 
+/* Native sitter-search page: the DogShift accent is purple in the app, navy on
+   web. Rather than swap every focus ring / badge / CTA class by hand, remap the
+   --dogshift-blue token to purple for this subtree only — every element that
+   references it (location input ring, "Filtres" badge, sort ring, "Voir X"
+   CTA) turns purple at once. Web is untouched (rule is data-native gated). */
+html[data-native="true"] .ds-search-root {
+  --dogshift-blue: #7c3aed;
+  --dogshift-blue-hover: #6d28d9;
+}
+
 /* Native vs web dashboard home swap. The owner/sitter home pages render BOTH a
    spacious web dashboard (`.ds-web-only`) and a minimalist native dashboard
    (`.ds-native-only`); CSS picks one based on `data-native` (set synchronously
