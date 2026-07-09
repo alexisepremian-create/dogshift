@@ -3,10 +3,11 @@
 
 import maplibregl from "maplibre-gl";
 import dynamic from "next/dynamic";
-import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, type TouchEvent as ReactTouchEvent } from "react";
 import Map, { Marker, type MapRef } from "react-map-gl/maplibre";
 import { Search, Locate, Star, X, Minus, Plus, MapPin, Calendar, ArrowLeft, SlidersHorizontal, Check, MessageCircle } from "lucide-react";
+
+import NativeConversationSheet from "@/components/native/NativeConversationSheet";
 
 import {
   LOCATION_HUB_COORDS,
@@ -392,37 +393,9 @@ export default function NativeMapHome() {
     setSearchPanelView("detail");
   }, []);
 
-  // Contact the sitter directly (no booking required). Upserts a conversation
-  // via the account start endpoint (sitterId only — bookingId is optional) and
-  // opens it in the Messages tab. Not signed in → login, then Messages.
-  const router = useRouter();
-  const [contacting, setContacting] = useState(false);
-  const startContact = useCallback(
-    async (sitterId: string) => {
-      if (contacting) return;
-      setContacting(true);
-      try {
-        const res = await fetch("/api/account/messages/conversations/start", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ sitterId }),
-        });
-        if (res.status === 401) {
-          router.push("/login?next=/account/messages");
-          return;
-        }
-        const payload = (await res.json().catch(() => null)) as { ok?: boolean; conversationId?: string } | null;
-        if (res.ok && payload?.ok && payload.conversationId) {
-          router.push(`/account/messages?conversationId=${encodeURIComponent(payload.conversationId)}`);
-        }
-      } catch {
-        // best-effort — button re-enables below
-      } finally {
-        setContacting(false);
-      }
-    },
-    [contacting, router],
-  );
+  // Contact the sitter without booking: open an in-popup chat OVER the map (the
+  // sheet starts/reuses the conversation and can jump to full-screen Messages).
+  const [chatSitter, setChatSitter] = useState<{ id: string; name: string; avatar: string | null } | null>(null);
 
   // Fetch + open the sitter's reviews in a sheet (from the fiche rating tap).
   const openReviews = useCallback(() => {
@@ -1673,9 +1646,8 @@ export default function NativeMapHome() {
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
-                    onClick={() => void startContact(detailSitter.id)}
-                    disabled={contacting}
-                    className="flex items-center justify-center gap-2 rounded-full border border-[#7c3aed] px-5 py-3 text-base font-semibold text-[#7c3aed] active:scale-[0.98] disabled:opacity-50"
+                    onClick={() => setChatSitter({ id: detailSitter.id, name: detailSitter.name, avatar: detailSitter.avatar })}
+                    className="flex items-center justify-center gap-2 rounded-full border border-[#7c3aed] px-5 py-3 text-base font-semibold text-[#7c3aed] active:scale-[0.98]"
                     style={{ touchAction: "manipulation" }}
                   >
                     <MessageCircle className="h-4 w-4" />
@@ -1891,6 +1863,16 @@ export default function NativeMapHome() {
             </div>
           </div>
         </>
+      )}
+
+      {/* In-popup chat over the map, opened from a fiche's "Contacter". */}
+      {chatSitter && (
+        <NativeConversationSheet
+          sitterId={chatSitter.id}
+          sitterName={chatSitter.name}
+          sitterAvatarUrl={chatSitter.avatar}
+          onClose={() => setChatSitter(null)}
+        />
       )}
     </div>
   );
