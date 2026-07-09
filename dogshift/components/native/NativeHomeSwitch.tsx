@@ -5,7 +5,15 @@ import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 
 import { useIsNativeApp } from "@/lib/native/useIsNativeApp";
+import { useIsNativeAppSync } from "@/lib/native/useIsNativeAppSync";
 import NativeMapHome from "@/components/native/NativeMapHome";
+
+// Slate backdrop matching NativeMapHome's root (bg-slate-100) + MapHomeSkeleton,
+// so the brief gaps below never paint a white body (the "flash when tapping
+// Accueil"). fixed inset-0 z-0 sits under the bottom nav.
+function NativeHomeBackdrop() {
+  return <div className="fixed inset-0 z-0 bg-slate-100" aria-hidden="true" />;
+}
 
 /**
  * Client-side switch : renders the full-screen native map home when running
@@ -18,6 +26,10 @@ import NativeMapHome from "@/components/native/NativeMapHome";
  */
 export default function NativeHomeSwitch({ children }: { children: React.ReactNode }) {
   const isNative = useIsNativeApp();
+  // Synchronous read of `data-native` — correct on the very FIRST client render
+  // (unlike useIsNativeApp, which is false for one frame). Used only to paint a
+  // slate backdrop during the gaps below, never to swap SSR content.
+  const isNativeSync = useIsNativeAppSync();
   const { status } = useSession();
   const router = useRouter();
 
@@ -37,17 +49,22 @@ export default function NativeHomeSwitch({ children }: { children: React.ReactNo
   // never paints in the app. `display:contents` keeps it layout-neutral on web.
   if (!isNative) {
     return (
-      <div data-ds-web-home style={{ display: "contents" }}>
-        {children}
-      </div>
+      <>
+        {/* Native only: fill the one-frame gap (before useIsNativeApp confirms
+            native and NativeMapHome mounts) with the slate backdrop so the body
+            never flashes white when tapping Accueil. On web this renders nothing. */}
+        {isNativeSync ? <NativeHomeBackdrop /> : null}
+        <div data-ds-web-home style={{ display: "contents" }}>
+          {children}
+        </div>
+      </>
     );
   }
 
-  // While session is loading, show nothing (splash overlay still covers)
-  if (status === "loading") return null;
-
-  // Unauthenticated → redirect is firing, show nothing
-  if (status === "unauthenticated") return null;
+  // While session is loading / redirect is firing: slate backdrop (never a blank
+  // white body). The cold-launch splash still covers the very first load.
+  if (status === "loading") return <NativeHomeBackdrop />;
+  if (status === "unauthenticated") return <NativeHomeBackdrop />;
 
   return <NativeMapHome />;
 }
