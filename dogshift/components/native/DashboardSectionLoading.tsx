@@ -1,9 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import { usePathname } from "next/navigation";
 
 import PageLoader from "@/components/ui/PageLoader";
 import DashboardSkeleton from "@/components/ui/DashboardSkeleton";
+import AccountPageSkeleton from "@/components/ui/AccountPageSkeleton";
 
 /**
  * Suspense fallback for the dashboard *home* sections (/host, /account).
@@ -19,12 +21,21 @@ import DashboardSkeleton from "@/components/ui/DashboardSkeleton";
  * loading feel; loading.tsx must not be empty on web — footer-flash masking).
  */
 export default function DashboardSectionLoading() {
+  const pathname = usePathname();
   const [isNative] = useState(
     () =>
       typeof document !== "undefined" &&
       document.documentElement.getAttribute("data-native") === "true",
   );
   if (isNative) {
+    // Réservations / Messages (owner) render AccountPageSkeleton in their own
+    // loading.tsx + page — so this fallback must render the SAME skeleton, never
+    // the generic DashboardSkeleton, or the founder sees two different skeletons.
+    const isOwnerListTab =
+      pathname === "/account/bookings" ||
+      pathname === "/account/messages" ||
+      pathname.startsWith("/account/bookings/") ||
+      pathname.startsWith("/account/messages/");
     return (
       <div
         className="w-full px-3"
@@ -33,7 +44,7 @@ export default function DashboardSectionLoading() {
           paddingBottom: "calc(max(var(--ds-bottom-nav-h, 0px), 88px) + 24px)",
         }}
       >
-        <DashboardSkeleton />
+        {isOwnerListTab ? <AccountPageSkeleton /> : <DashboardSkeleton />}
       </div>
     );
   }
