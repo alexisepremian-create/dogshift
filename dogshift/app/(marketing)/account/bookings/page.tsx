@@ -667,7 +667,7 @@ function AccountBookingsContent() {
               {currentTab === "ALL" ? (
                 <div className="mt-5">
                   <Link
-                    href="/search"
+                    href={isNative ? "/" : "/search"}
                     className="inline-flex items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-6 py-3 text-sm font-semibold text-white shadow-sm shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_75%)] transition hover:bg-[var(--dogshift-blue-hover)]"
                   >
                     Trouver un sitter

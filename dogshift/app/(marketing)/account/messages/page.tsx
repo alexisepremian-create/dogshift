@@ -664,7 +664,7 @@ export default function AccountMessagesPage() {
           <p className="mt-5 text-base font-bold text-slate-900">Aucune conversation</p>
           <p className="mt-2 max-w-xs text-sm text-slate-600">Quand tu contactes un dogsitter, la conversation apparaîtra ici.</p>
           <Link
-            href="/search"
+            href={isNative ? "/" : "/search"}
             className={
               "mt-6 inline-flex items-center justify-center rounded-full px-6 py-3 text-sm font-semibold text-white shadow-sm " +
               (isNative ? "bg-[#7c3aed] active:bg-[#6d28d9]" : "bg-[var(--dogshift-blue)] transition hover:bg-[var(--dogshift-blue-hover)]")
@@ -1156,9 +1156,9 @@ export default function AccountMessagesPage() {
             ) : contacts.length === 0 ? (
               <div className="py-8 text-center">
                 <p className="text-sm font-semibold text-slate-900">Aucun dogsitter pour l’instant</p>
-                <p className="mt-1 text-sm text-slate-500">Les dogsitters que tu as réservés apparaîtront ici.</p>
+                <p className="mt-1 text-sm text-slate-500">Trouve un dogsitter sur la carte, puis contacte-le directement depuis son profil.</p>
                 <Link
-                  href="/search"
+                  href="/"
                   onClick={closePicker}
                   className="mt-4 inline-flex items-center justify-center rounded-full bg-[#7c3aed] px-5 py-2.5 text-sm font-semibold text-white active:bg-[#6d28d9]"
                 >

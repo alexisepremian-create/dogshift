@@ -3,9 +3,10 @@
 
 import maplibregl from "maplibre-gl";
 import dynamic from "next/dynamic";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, type TouchEvent as ReactTouchEvent } from "react";
 import Map, { Marker, type MapRef } from "react-map-gl/maplibre";
-import { Search, Locate, Star, X, Minus, Plus, MapPin, Calendar, ArrowLeft, SlidersHorizontal, Check } from "lucide-react";
+import { Search, Locate, Star, X, Minus, Plus, MapPin, Calendar, ArrowLeft, SlidersHorizontal, Check, MessageCircle } from "lucide-react";
 
 import {
   LOCATION_HUB_COORDS,
@@ -386,6 +387,38 @@ export default function NativeMapHome() {
     setSearchOpen(true);
     setSearchPanelView("detail");
   }, []);
+
+  // Contact the sitter directly (no booking required). Upserts a conversation
+  // via the account start endpoint (sitterId only — bookingId is optional) and
+  // opens it in the Messages tab. Not signed in → login, then Messages.
+  const router = useRouter();
+  const [contacting, setContacting] = useState(false);
+  const startContact = useCallback(
+    async (sitterId: string) => {
+      if (contacting) return;
+      setContacting(true);
+      try {
+        const res = await fetch("/api/account/messages/conversations/start", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sitterId }),
+        });
+        if (res.status === 401) {
+          router.push("/login?next=/account/messages");
+          return;
+        }
+        const payload = (await res.json().catch(() => null)) as { ok?: boolean; conversationId?: string } | null;
+        if (res.ok && payload?.ok && payload.conversationId) {
+          router.push(`/account/messages?conversationId=${encodeURIComponent(payload.conversationId)}`);
+        }
+      } catch {
+        // best-effort — button re-enables below
+      } finally {
+        setContacting(false);
+      }
+    },
+    [contacting, router],
+  );
 
   // Fetch + open the sitter's reviews in a sheet (from the fiche rating tap).
   const openReviews = useCallback(() => {
@@ -1630,16 +1663,29 @@ export default function NativeMapHome() {
                 </div>
               </div>
             ) : searchPanelView === "detail" && detailSitter ? (
-              // Réserver opens the in-popup booking view (service + calendar).
+              // "Contacter" starts a conversation with no booking; "Réserver"
+              // opens the in-popup booking view (service + calendar).
               <div className="border-t border-slate-100 px-5 py-3 shrink-0">
-                <button
-                  type="button"
-                  onClick={() => setSearchPanelView("booking")}
-                  className="flex w-full items-center justify-center gap-2 rounded-full bg-[#7c3aed] py-3 text-base font-semibold text-white shadow-[0_8px_24px_rgba(124,58,237,0.35)] active:scale-[0.98]"
-                  style={{ touchAction: "manipulation" }}
-                >
-                  Réserver
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => void startContact(detailSitter.id)}
+                    disabled={contacting}
+                    className="flex items-center justify-center gap-2 rounded-full border border-[#7c3aed] px-5 py-3 text-base font-semibold text-[#7c3aed] active:scale-[0.98] disabled:opacity-50"
+                    style={{ touchAction: "manipulation" }}
+                  >
+                    <MessageCircle className="h-4 w-4" />
+                    Contacter
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSearchPanelView("booking")}
+                    className="flex flex-1 items-center justify-center gap-2 rounded-full bg-[#7c3aed] py-3 text-base font-semibold text-white shadow-[0_8px_24px_rgba(124,58,237,0.35)] active:scale-[0.98]"
+                    style={{ touchAction: "manipulation" }}
+                  >
+                    Réserver
+                  </button>
+                </div>
               </div>
             ) : searchPanelView === "booking" && detailSitter ? (
               // The only step that leaves the popup is the secure Stripe payment.
