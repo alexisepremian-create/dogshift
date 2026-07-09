@@ -730,7 +730,12 @@ const stripeReact = await import("@stripe/react-stripe-js");
               <div className="flex items-center gap-3">
                 <button
                   type="button"
-                  onClick={() => router.back()}
+                  onClick={() => {
+                    // Signal an explicit "back" so the home only reopens the
+                    // reservation sheet for Retour — not when tapping Accueil.
+                    try { sessionStorage.setItem("ds_resume_reservation_intent", "1"); } catch { /* ignore */ }
+                    router.back();
+                  }}
                   aria-label="Retour"
                   className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-600 active:scale-95"
                 >

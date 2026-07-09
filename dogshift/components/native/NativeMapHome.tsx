@@ -492,21 +492,26 @@ export default function NativeMapHome() {
     }
   }, []);
 
-  // On mount, if we just came back from the Stripe checkout page (which is a real
-  // navigation), reopen the reservation sheet we left. One-shot: consumed here.
+  // On mount, reopen the reservation sheet ONLY if the checkout's "Retour" set the
+  // intent flag. Landing on the home tab (Accueil) — or any other navigation to
+  // "/" — must NOT reopen it; it just clears the stored sheet. One-shot.
   useEffect(() => {
     let raw: string | null = null;
+    let intent: string | null = null;
     try {
       raw = sessionStorage.getItem("ds_resume_reservation");
+      intent = sessionStorage.getItem("ds_resume_reservation_intent");
     } catch {
       raw = null;
     }
-    if (!raw) return;
+    // Always consume both so a stale sheet never lingers.
     try {
       sessionStorage.removeItem("ds_resume_reservation");
+      sessionStorage.removeItem("ds_resume_reservation_intent");
     } catch {
       /* ignore */
     }
+    if (!raw || intent !== "1") return; // only resume on an explicit "Retour"
     try {
       const parsed = JSON.parse(raw) as {
         dto?: ReservationSitterDto;
