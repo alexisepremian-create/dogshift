@@ -36,11 +36,17 @@ export default function DashboardSectionLoading() {
       pathname === "/account/messages" ||
       pathname.startsWith("/account/bookings/") ||
       pathname.startsWith("/account/messages/");
+    // For owner list tabs, match OwnerDashboardShell's native content box
+    // (top = safe-area + banner + 0.75rem) so the skeleton doesn't jump position
+    // when the shell + page's own AccountPageSkeleton take over.
+    const topPad = isOwnerListTab
+      ? "calc(env(safe-area-inset-top, 0px) + var(--ds-maintenance-banner-height, 0px) + 0.75rem)"
+      : "calc(env(safe-area-inset-top, 0px) + 2rem)";
     return (
       <div
         className="w-full px-3"
         style={{
-          paddingTop: "calc(env(safe-area-inset-top, 0px) + 2rem)",
+          paddingTop: topPad,
           paddingBottom: "calc(max(var(--ds-bottom-nav-h, 0px), 88px) + 24px)",
         }}
       >

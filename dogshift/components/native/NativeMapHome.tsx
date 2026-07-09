@@ -15,6 +15,7 @@ import {
   normalizeLocationText,
   resolveCoordsForPublishedSitterMap,
 } from "@/lib/sitterMapGeo";
+import { pushRecentSitter } from "@/lib/native/recentSitters";
 
 // The real reservation flow (slots + recap + booking creation + Stripe redirect),
 // lazy-loaded so it only ships when a user actually books. Rendered inside a
@@ -384,6 +385,9 @@ export default function NativeMapHome() {
       return new Date(d.getFullYear(), d.getMonth(), 1);
     });
     setDetailSitter(s);
+    // Remember this profile so the Messages "+" picker can offer it as a
+    // shortcut ("les profils que j'ai regardé").
+    pushRecentSitter({ id: s.id, name: s.name, avatarUrl: s.avatar });
     setSearchOpen(true);
     setSearchPanelView("detail");
   }, []);

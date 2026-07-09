@@ -9,6 +9,7 @@ import { Archive, ChevronDown, Dog, MessageCircle, Pin, Plus, RefreshCw, Trash2,
 import { publicDogPhotoPath } from "@/lib/dogPhotoMedia";
 import { useIsNativeAppSync } from "@/lib/native/useIsNativeAppSync";
 import AccountPageSkeleton from "@/components/ui/AccountPageSkeleton";
+import { getRecentSitters } from "@/lib/native/recentSitters";
 
 type SitterContact = { id: string; name: string; avatarUrl: string | null };
 
@@ -316,23 +317,13 @@ export default function AccountMessagesPage() {
     }
   }
 
-  async function loadContacts() {
+  function loadContacts() {
     setContactsLoading(true);
     try {
-      const res = await fetch("/api/account/bookings", { method: "GET", cache: "no-store" });
-      const payload = (await res.json()) as {
-        ok?: boolean;
-        bookings?: Array<{ sitter?: { sitterId?: string; name?: string; avatarUrl?: string | null } }>;
-      };
-      const seen = new Set<string>();
-      const list: SitterContact[] = [];
-      for (const b of payload.bookings ?? []) {
-        const s = b.sitter;
-        if (!s?.sitterId || seen.has(s.sitterId)) continue;
-        seen.add(s.sitterId);
-        list.push({ id: s.sitterId, name: s.name?.trim() || "Dogsitter", avatarUrl: s.avatarUrl ?? null });
-      }
-      setContacts(list);
+      // Shortcut: the sitters whose profiles you recently viewed on the map
+      // (localStorage) — contacting no longer requires a booking.
+      const recent = getRecentSitters();
+      setContacts(recent.map((s) => ({ id: s.id, name: s.name, avatarUrl: s.avatarUrl })));
     } catch {
       setContacts([]);
     } finally {
@@ -541,15 +532,21 @@ export default function AccountMessagesPage() {
   useEffect(() => {
     if (!requestedConversationId) return;
     if (loading) return;
-    if (!rows.some((c) => c.id === requestedConversationId)) return;
     if (selectedId === requestedConversationId && threadHeader) return;
+    // Open the requested conversation DIRECTLY — the thread endpoint is the
+    // source of truth. Don't gate on the list including it: a just-created
+    // "Contacter" conversation can lag the list by a beat, and gating here left
+    // the thread closed → the founder saw "Aucune conversation" after contacting.
     setSelectedId(requestedConversationId);
     void loadThread(requestedConversationId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loading, requestedConversationId, rows]);
+  }, [loading, requestedConversationId]);
 
   useEffect(() => {
     if (loading) return;
+    // Never close a conversation we were explicitly asked to open (deep link /
+    // "Contacter") — it may not be in the list yet.
+    if (selectedId && selectedId === requestedConversationId) return;
     if (rows.length === 0) {
       setSelectedId(null);
       setThreadHeader(null);
@@ -565,7 +562,7 @@ export default function AccountMessagesPage() {
       setViewerId(null);
       setThreadError(null);
     }
-  }, [loading, rows, archivedRows, selectedId]);
+  }, [loading, rows, archivedRows, selectedId, requestedConversationId]);
 
   const canSend = text.trim().length > 0 && !sending;
 
@@ -649,7 +646,7 @@ export default function AccountMessagesPage() {
         <div className="ds-card rounded-3xl border border-slate-200 bg-white p-6 sm:p-8">
           <p className="text-sm font-semibold text-slate-900">Chargement…</p>
         </div>
-      ) : rows.length === 0 && archivedRows.length === 0 ? (
+      ) : rows.length === 0 && archivedRows.length === 0 && !selectedId ? (
         <div className="flex flex-1 flex-col items-center justify-center px-6 py-16 text-center">
           <div
             className={
@@ -1167,6 +1164,7 @@ export default function AccountMessagesPage() {
               </div>
             ) : (
               <div className="pb-1">
+                <p className="px-2 pb-1 text-xs font-semibold uppercase tracking-wide text-slate-400">Profils récemment consultés</p>
                 {contacts.map((ct) => (
                   <button
                     key={ct.id}
@@ -1189,6 +1187,13 @@ export default function AccountMessagesPage() {
                     {startingId === ct.id ? <span className="text-xs font-medium text-slate-400">Ouverture…</span> : null}
                   </button>
                 ))}
+                <Link
+                  href="/"
+                  onClick={closePicker}
+                  className="mt-2 flex w-full items-center justify-center rounded-full border border-slate-200 px-4 py-3 text-sm font-semibold text-[#7c3aed] active:bg-slate-50"
+                >
+                  Voir les autres dogsitters
+                </Link>
               </div>
             )}
           </div>
