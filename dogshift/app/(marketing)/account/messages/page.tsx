@@ -7,6 +7,9 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { Archive, ChevronDown, Dog, MessageCircle, Pin, Plus, RefreshCw, Trash2, X } from "lucide-react";
 import { publicDogPhotoPath } from "@/lib/dogPhotoMedia";
+import { useIsNativeAppSync } from "@/lib/native/useIsNativeAppSync";
+
+type SitterContact = { id: string; name: string; avatarUrl: string | null };
 
 type ConversationListItem = {
   id: string;
@@ -228,6 +231,7 @@ export default function AccountMessagesPage() {
   const isSignedIn = __sessionStatus === "authenticated";
   const router = useRouter();
   const searchParams = useSearchParams();
+  const isNative = useIsNativeAppSync();
 
   const [conversations, setConversations] = useState<ConversationListItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -249,6 +253,15 @@ export default function AccountMessagesPage() {
   const [settingDog, setSettingDog] = useState(false);
   const [dogProfileOpen, setDogProfileOpen] = useState(false);
   const dogPickerRef = useRef<HTMLDivElement>(null);
+
+  // ── "New conversation" picker (the purple + FAB) — mirrors the sitter (host)
+  // messages layout. Owner contacts = the sitters they already have a booking
+  // with; starting a chat POSTs to the account start endpoint.
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [pickerRaised, setPickerRaised] = useState(false);
+  const [contacts, setContacts] = useState<SitterContact[]>([]);
+  const [contactsLoading, setContactsLoading] = useState(false);
+  const [startingId, setStartingId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isLoaded) return;
@@ -299,6 +312,68 @@ export default function AccountMessagesPage() {
       setDogs(data.dogs ?? []);
     } catch {
       setDogs([]);
+    }
+  }
+
+  async function loadContacts() {
+    setContactsLoading(true);
+    try {
+      const res = await fetch("/api/account/bookings", { method: "GET", cache: "no-store" });
+      const payload = (await res.json()) as {
+        ok?: boolean;
+        bookings?: Array<{ sitter?: { sitterId?: string; name?: string; avatarUrl?: string | null } }>;
+      };
+      const seen = new Set<string>();
+      const list: SitterContact[] = [];
+      for (const b of payload.bookings ?? []) {
+        const s = b.sitter;
+        if (!s?.sitterId || seen.has(s.sitterId)) continue;
+        seen.add(s.sitterId);
+        list.push({ id: s.sitterId, name: s.name?.trim() || "Dogsitter", avatarUrl: s.avatarUrl ?? null });
+      }
+      setContacts(list);
+    } catch {
+      setContacts([]);
+    } finally {
+      setContactsLoading(false);
+    }
+  }
+
+  function openPicker() {
+    setPickerOpen(true);
+    requestAnimationFrame(() => setPickerRaised(true));
+    void loadContacts();
+  }
+
+  function closePicker() {
+    setPickerRaised(false);
+    window.setTimeout(() => setPickerOpen(false), 280);
+  }
+
+  async function startConversation(sitterId: string) {
+    if (startingId) return;
+    setStartingId(sitterId);
+    try {
+      const res = await fetch("/api/account/messages/conversations/start", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sitterId }),
+      });
+      const payload = (await res.json()) as { ok?: boolean; conversationId?: string };
+      if (res.ok && payload.ok && payload.conversationId) {
+        const conversationId = payload.conversationId;
+        closePicker();
+        await loadConversations();
+        setSelectedId(conversationId);
+        const params = new URLSearchParams(searchParams?.toString() ?? "");
+        params.set("conversationId", conversationId);
+        router.replace(`/account/messages?${params.toString()}`);
+        void loadThread(conversationId);
+      }
+    } catch {
+      // swallow — button re-enables below
+    } finally {
+      setStartingId(null);
     }
   }
 
@@ -542,6 +617,19 @@ export default function AccountMessagesPage() {
     );
   }
 
+  // Native: one centered purple spinner during the first fetch — same as the
+  // route fallback (NativeRouteFallback) — so the route→page transition is a
+  // single continuous loader, never a skeleton then a "Chargement…" card
+  // (founder: "un skeleton et après un message de chargement, je veux uniquement
+  // le chargement"). Web keeps its inline loading card below.
+  if (isNative && loading) {
+    return (
+      <div className="flex min-h-[55vh] items-center justify-center" data-testid="account-messages-page">
+        <div className="h-7 w-7 animate-spin rounded-full border-2 border-[#7c3aed] border-t-transparent" />
+      </div>
+    );
+  }
+
   const selectedDog = threadHeader?.selectedDog ?? null;
 
   return (
@@ -566,14 +654,28 @@ export default function AccountMessagesPage() {
           <p className="text-sm font-semibold text-slate-900">Chargement…</p>
         </div>
       ) : rows.length === 0 && archivedRows.length === 0 ? (
-        <div className="ds-card rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)] sm:p-8">
-          <p className="text-sm font-semibold text-slate-900">Aucune conversation</p>
-          <p className="mt-2 text-sm text-slate-600">Quand tu contactes un dogsitter, la conversation apparaîtra ici.</p>
-          <div className="mt-5">
-            <Link href="/search" className="inline-flex items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[var(--dogshift-blue-hover)]">
-              Trouver un sitter
-            </Link>
+        <div className="flex flex-1 flex-col items-center justify-center px-6 py-16 text-center">
+          <div
+            className={
+              "flex h-16 w-16 items-center justify-center rounded-2xl " +
+              (isNative
+                ? "bg-[#7c3aed]/10 text-[#7c3aed]"
+                : "bg-[color-mix(in_srgb,var(--dogshift-blue),transparent_88%)] text-[var(--dogshift-blue)]")
+            }
+          >
+            <MessageCircle className="h-8 w-8" aria-hidden="true" />
           </div>
+          <p className="mt-5 text-base font-bold text-slate-900">Aucune conversation</p>
+          <p className="mt-2 max-w-xs text-sm text-slate-600">Quand tu contactes un dogsitter, la conversation apparaîtra ici.</p>
+          <Link
+            href="/search"
+            className={
+              "mt-6 inline-flex items-center justify-center rounded-full px-6 py-3 text-sm font-semibold text-white shadow-sm " +
+              (isNative ? "bg-[#7c3aed] active:bg-[#6d28d9]" : "bg-[var(--dogshift-blue)] transition hover:bg-[var(--dogshift-blue-hover)]")
+            }
+          >
+            Trouver un sitter
+          </Link>
         </div>
       ) : (
         <div className="flex-1 min-h-0 relative">
@@ -996,6 +1098,106 @@ export default function AccountMessagesPage() {
           </div>
         </div>
       )}
+
+      {/* ── Floating "+" FAB (native) — bottom-right, above the bottom nav ──
+          Start a new conversation with a dogsitter you've booked. Shown on the
+          conversation LIST view (hidden once a thread is open). Native-only so
+          the standalone web layout is unchanged. */}
+      {isNative && !selectedId && !loading ? (
+        <button
+          type="button"
+          onClick={openPicker}
+          aria-label="Nouvelle conversation"
+          style={{ touchAction: "manipulation", bottom: "calc(max(var(--ds-bottom-nav-h, 0px), 88px) + 16px)" }}
+          className="fixed right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-[#7c3aed] text-white shadow-[0_10px_30px_-6px_rgba(124,58,237,0.65)] active:scale-95 lg:hidden"
+        >
+          <Plus className="h-6 w-6" aria-hidden="true" />
+        </button>
+      ) : null}
+
+      {/* ── New-conversation picker (bottom sheet) ── */}
+      {pickerOpen ? (
+        <div className="fixed inset-0 z-[95] flex flex-col justify-end">
+          <button
+            type="button"
+            aria-label="Fermer"
+            onClick={closePicker}
+            className="absolute inset-0 bg-black/40 transition-opacity duration-300"
+            style={{ opacity: pickerRaised ? 1 : 0 }}
+          />
+          <div
+            className="relative w-full rounded-t-[28px] bg-white px-5 pt-3 shadow-2xl transition-transform duration-300 ease-out"
+            style={{
+              transform: pickerRaised ? "translateY(0)" : "translateY(100%)",
+              maxHeight: "75dvh",
+              overflowY: "auto",
+              paddingBottom: "calc(max(var(--ds-bottom-nav-h, 0px), 88px) + 24px)",
+            }}
+          >
+            <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-slate-200" aria-hidden="true" />
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="text-lg font-bold text-slate-900">Nouvelle conversation</h2>
+              <button
+                type="button"
+                onClick={closePicker}
+                aria-label="Fermer"
+                style={{ touchAction: "manipulation" }}
+                className="flex h-9 w-9 items-center justify-center rounded-full text-slate-500 active:scale-95"
+              >
+                <X className="h-5 w-5" aria-hidden="true" />
+              </button>
+            </div>
+
+            {contactsLoading ? (
+              <div className="space-y-2 py-2">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <div key={i} className="flex items-center gap-3 rounded-2xl p-2">
+                    <div className="h-10 w-10 animate-pulse rounded-full bg-slate-100" />
+                    <div className="h-4 w-1/2 animate-pulse rounded-lg bg-slate-100" />
+                  </div>
+                ))}
+              </div>
+            ) : contacts.length === 0 ? (
+              <div className="py-8 text-center">
+                <p className="text-sm font-semibold text-slate-900">Aucun dogsitter pour l’instant</p>
+                <p className="mt-1 text-sm text-slate-500">Les dogsitters que tu as réservés apparaîtront ici.</p>
+                <Link
+                  href="/search"
+                  onClick={closePicker}
+                  className="mt-4 inline-flex items-center justify-center rounded-full bg-[#7c3aed] px-5 py-2.5 text-sm font-semibold text-white active:bg-[#6d28d9]"
+                >
+                  Trouver un sitter
+                </Link>
+              </div>
+            ) : (
+              <div className="pb-1">
+                {contacts.map((ct) => (
+                  <button
+                    key={ct.id}
+                    type="button"
+                    disabled={Boolean(startingId)}
+                    onClick={() => void startConversation(ct.id)}
+                    style={{ touchAction: "manipulation" }}
+                    className="flex w-full items-center gap-3 rounded-2xl px-2 py-3 text-left active:bg-slate-50 disabled:opacity-60"
+                  >
+                    <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-full bg-slate-100">
+                      {ct.avatarUrl && avatarIsSafe(ct.avatarUrl) ? (
+                        <Image src={ct.avatarUrl} alt={ct.name} fill className="object-cover" sizes="40px" />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center text-sm font-semibold text-slate-600">
+                          {initialForName(ct.name)}
+                        </div>
+                      )}
+                    </div>
+                    <span className="min-w-0 flex-1 truncate text-sm font-semibold text-slate-900">{ct.name}</span>
+                    {startingId === ct.id ? <span className="text-xs font-medium text-slate-400">Ouverture…</span> : null}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
