@@ -727,15 +727,17 @@ const stripeReact = await import("@stripe/react-stripe-js");
         <div className={isNative ? "" : "mx-auto max-w-5xl"}>
           {isNative ? (
             <div>
-              <button
-                type="button"
-                onClick={() => router.back()}
-                aria-label="Retour"
-                className="mb-3 flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-slate-600 active:scale-95"
-              >
-                <ArrowLeft className="h-5 w-5" aria-hidden="true" />
-              </button>
-              <h1 className="text-2xl font-bold tracking-tight text-slate-900">Confirmer et payer</h1>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => router.back()}
+                  aria-label="Retour"
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-600 active:scale-95"
+                >
+                  <ArrowLeft className="h-5 w-5" aria-hidden="true" />
+                </button>
+                <h1 className="text-2xl font-bold tracking-tight text-slate-900">Confirmer et payer</h1>
+              </div>
               {booking && (
                 <>
                   <button
