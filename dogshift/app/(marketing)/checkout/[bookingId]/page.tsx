@@ -7,7 +7,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
-import { AlertTriangle, Info, ArrowLeft, Footprints, Home, Moon } from "lucide-react";
+import { AlertTriangle, Info, ArrowLeft, Footprints, Home, Moon, ChevronDown } from "lucide-react";
 
 
 const TravelMap = dynamic(() => import("@/components/TravelMap").then((m) => ({ default: m.TravelMap })), { ssr: false });
@@ -420,6 +420,7 @@ export default function CheckoutBookingPage() {
   const { maintenanceMode, adminNote, loading: maintLoading } = useMaintenance();
   const isNative = useIsNativeAppSync();
   const router = useRouter();
+  const [recapOpen, setRecapOpen] = useState(false);
 
   const [stripeUi, setStripeUi] = useState<{
     stripePromise: Promise<any>;
@@ -725,13 +726,26 @@ const stripeReact = await import("@stripe/react-stripe-js");
       >
         <div className={isNative ? "" : "mx-auto max-w-5xl"}>
           {isNative ? (
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <h1 className="text-2xl font-bold tracking-tight text-slate-900">Confirmer et payer</h1>
-                {booking && (
-                  <div className="mt-2 flex items-center gap-2">
+            <div>
+              <button
+                type="button"
+                onClick={() => router.back()}
+                aria-label="Retour"
+                className="mb-3 flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-slate-600 active:scale-95"
+              >
+                <ArrowLeft className="h-5 w-5" aria-hidden="true" />
+              </button>
+              <h1 className="text-2xl font-bold tracking-tight text-slate-900">Confirmer et payer</h1>
+              {booking && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setRecapOpen((v) => !v)}
+                    aria-expanded={recapOpen}
+                    className="mt-2 flex w-full items-center gap-2 text-left"
+                  >
                     <ServiceGlyph service={booking.service} className="h-5 w-5 shrink-0 text-[#7c3aed]" />
-                    <p className="truncate text-base font-bold text-slate-900">
+                    <span className={"min-w-0 flex-1 text-base font-bold text-slate-900 " + (recapOpen ? "" : "truncate")}>
                       {[
                         booking.service,
                         isHourlyBooking ? bookingDateLabel : null,
@@ -739,18 +753,28 @@ const stripeReact = await import("@stripe/react-stripe-js");
                         !isHourlyBooking && booking.startDate ? formatDateLabel(booking.startDate) : null,
                         !isHourlyBooking && booking.endDate ? `→ ${formatDateLabel(booking.endDate)}` : null,
                       ].filter(Boolean).join(" · ")}
-                    </p>
-                  </div>
-                )}
-              </div>
-              <button
-                type="button"
-                onClick={() => router.back()}
-                aria-label="Retour"
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-600 active:scale-95"
-              >
-                <ArrowLeft className="h-5 w-5" aria-hidden="true" />
-              </button>
+                    </span>
+                    <ChevronDown className={"h-4 w-4 shrink-0 text-slate-400 transition-transform " + (recapOpen ? "rotate-180" : "")} aria-hidden="true" />
+                  </button>
+                  {recapOpen && (
+                    <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                      <SummaryRow label="Service" value={booking.service ?? "—"} />
+                      <div className="mt-3 h-px w-full bg-slate-200" />
+                      {isHourlyBooking ? (
+                        <div className="mt-3 space-y-3">
+                          <SummaryRow label="Date" value={bookingDateLabel} />
+                          <SummaryRow label="Heure" value={bookingTimeRangeLabel} />
+                        </div>
+                      ) : (
+                        <div className="mt-3 space-y-3">
+                          <SummaryRow label="Début" value={bookingStartLabel} />
+                          <SummaryRow label="Fin" value={bookingEndLabel} />
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </>
+              )}
             </div>
           ) : (
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
