@@ -9,9 +9,9 @@ export const metadata: Metadata = {
 export default function MentionsLegalesPage() {
   return (
     <div className="min-h-screen bg-white text-slate-900">
-      <main className="mx-auto max-w-4xl px-4 py-12 sm:px-6 sm:py-16">
-        <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-[0_18px_60px_-44px_rgba(2,6,23,0.25)] sm:p-10">
-          <h1 className="text-balance text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl">
+      <main className="mx-auto max-w-4xl px-4 py-12 sm:px-6 sm:py-16 ds-legal-main">
+        <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-[0_18px_60px_-44px_rgba(2,6,23,0.25)] sm:p-10 ds-legal-card">
+          <h1 className="text-balance text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl ds-legal-title">
             Mentions légales
           </h1>
           <p className="mt-2 text-sm text-slate-500">Dernière mise à jour : avril 2025</p>

@@ -1,16 +1,16 @@
 export default function ConfidentialitePage() {
   return (
     <div className="min-h-screen bg-white text-slate-900">
-      <main className="mx-auto max-w-4xl px-4 py-12 sm:px-6 sm:py-16">
-        <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-[0_18px_60px_-44px_rgba(2,6,23,0.25)] sm:p-10">
-          <h1 className="text-balance text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl">
+      <main className="mx-auto max-w-4xl px-4 py-12 sm:px-6 sm:py-16 ds-legal-main">
+        <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-[0_18px_60px_-44px_rgba(2,6,23,0.25)] sm:p-10 ds-legal-card">
+          <h1 className="text-balance text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl ds-legal-title">
             Politique de confidentialité – DogShift
           </h1>
           <p className="mt-3 text-sm text-slate-600">
             Dernière mise à jour : mai 2026. Cette politique décrit comment DogShift traite les données
             personnelles dans le cadre de la plateforme, conformément à la loi fédérale suisse sur la
             protection des données (nLPD) et, le cas échéant, au Règlement général sur la protection des
-            données (RGPD) de l'Union européenne.
+            données (RGPD) de l’Union européenne.
           </p>
 
           <div className="mt-10 space-y-10 text-sm leading-relaxed text-slate-700">
@@ -21,7 +21,7 @@ export default function ConfidentialitePage() {
               <p className="mt-3">
                 Le responsable du traitement des données personnelles collectées via la plateforme DogShift
                 est DogShift, domicilié en Suisse. Pour toute question relative à vos données personnelles,
-                vous pouvez nous contacter à l'adresse suivante :{" "}
+                vous pouvez nous contacter à l’adresse suivante :{" "}
                 <a href="mailto:support@dogshift.ch" className="text-slate-900 underline underline-offset-2">
                   support@dogshift.ch
                 </a>
@@ -49,8 +49,8 @@ export default function ConfidentialitePage() {
                   <p className="mt-1 text-slate-600">Localisation (ville, code postal, coordonnées GPS), biographie, disponibilités, tarifs, services proposés, taille des chiens acceptés.</p>
                 </div>
                 <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                  <p className="font-semibold text-slate-900">Données de vérification d'identité (sitters)</p>
-                  <p className="mt-1 text-slate-600">Sur base volontaire : pièce d'identité et selfie pour l'obtention du badge « Profil vérifié ».</p>
+                  <p className="font-semibold text-slate-900">Données de vérification d’identité (sitters)</p>
+                  <p className="mt-1 text-slate-600">Sur base volontaire : pièce d’identité et selfie pour l’obtention du badge « Profil vérifié ».</p>
                 </div>
                 <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                   <p className="font-semibold text-slate-900">Données de messagerie</p>
@@ -58,7 +58,7 @@ export default function ConfidentialitePage() {
                 </div>
                 <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                   <p className="font-semibold text-slate-900">Données techniques</p>
-                  <p className="mt-1 text-slate-600">Adresse IP, user-agent, données de session, logs d'erreurs (via Sentry), données de navigation anonymisées.</p>
+                  <p className="mt-1 text-slate-600">Adresse IP, user-agent, données de session, logs d’erreurs (via Sentry), données de navigation anonymisées.</p>
                 </div>
               </div>
             </section>
@@ -81,7 +81,7 @@ export default function ConfidentialitePage() {
                 </div>
                 <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                   <p className="font-semibold text-slate-900">Consentement</p>
-                  <p className="mt-1 text-slate-600">Envoi de communications marketing, utilisation de cookies de mesure d'audience et de publicité (si applicable).</p>
+                  <p className="mt-1 text-slate-600">Envoi de communications marketing, utilisation de cookies de mesure d’audience et de publicité (si applicable).</p>
                 </div>
               </div>
             </section>
@@ -100,23 +100,23 @@ export default function ConfidentialitePage() {
                   <tbody className="divide-y divide-slate-100">
                     <tr>
                       <td className="px-4 py-3 text-slate-700">Données de compte (actif)</td>
-                      <td className="px-4 py-3 text-slate-700">Pendant la durée d'utilisation du compte</td>
+                      <td className="px-4 py-3 text-slate-700">Pendant la durée d’utilisation du compte</td>
                     </tr>
                     <tr className="bg-slate-50/50">
                       <td className="px-4 py-3 text-slate-700">Données de réservation / transactions</td>
                       <td className="px-4 py-3 text-slate-700">10 ans (obligation légale comptable suisse)</td>
                     </tr>
                     <tr>
-                      <td className="px-4 py-3 text-slate-700">Documents d'identité (vérification)</td>
+                      <td className="px-4 py-3 text-slate-700">Documents d’identité (vérification)</td>
                       <td className="px-4 py-3 text-slate-700">30 jours après la décision de vérification</td>
                     </tr>
                     <tr className="bg-slate-50/50">
-                      <td className="px-4 py-3 text-slate-700">Logs d'erreurs (Sentry)</td>
+                      <td className="px-4 py-3 text-slate-700">Logs d’erreurs (Sentry)</td>
                       <td className="px-4 py-3 text-slate-700">90 jours</td>
                     </tr>
                     <tr>
                       <td className="px-4 py-3 text-slate-700">Données de messagerie</td>
-                      <td className="px-4 py-3 text-slate-700">Pendant la durée d'utilisation, suppression sur demande</td>
+                      <td className="px-4 py-3 text-slate-700">Pendant la durée d’utilisation, suppression sur demande</td>
                     </tr>
                   </tbody>
                 </table>
@@ -127,7 +127,7 @@ export default function ConfidentialitePage() {
             <section>
               <h2 className="text-base font-semibold text-slate-900">5. Sous-traitants et prestataires</h2>
               <p className="mt-3">
-                DogShift fait appel aux prestataires suivants dans le cadre de l'exploitation de la
+                DogShift fait appel aux prestataires suivants dans le cadre de l’exploitation de la
                 plateforme. Chacun traite vos données conformément à sa propre politique de confidentialité
                 et selon des garanties contractuelles adéquates.
               </p>
@@ -209,7 +209,7 @@ export default function ConfidentialitePage() {
             <section>
               <h2 className="text-base font-semibold text-slate-900">6. Vos droits</h2>
               <p className="mt-3">
-                Conformément à la nLPD suisse (et au RGPD pour les utilisateurs de l'UE), vous disposez
+                Conformément à la nLPD suisse (et au RGPD pour les utilisateurs de l’UE), vous disposez
                 des droits suivants sur vos données personnelles :
               </p>
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
@@ -259,7 +259,7 @@ export default function ConfidentialitePage() {
               <h2 className="text-base font-semibold text-slate-900">7. Cookies et traceurs</h2>
               <p className="mt-3">
                 DogShift utilise des cookies et technologies similaires pour faire fonctionner la
-                plateforme et, le cas échéant, mesurer l'audience et diffuser des publicités.
+                plateforme et, le cas échéant, mesurer l’audience et diffuser des publicités.
               </p>
               <div className="mt-4 space-y-3">
                 <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
@@ -267,7 +267,7 @@ export default function ConfidentialitePage() {
                   <p className="mt-1 text-slate-600">
                     Nécessaires au fonctionnement de la plateforme : session utilisateur, session admin,
                     accès aux réservations. Ces cookies ne peuvent pas être refusés sans impacter
-                    l'utilisation du service.
+                    l’utilisation du service.
                   </p>
                 </div>
                 <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
@@ -294,12 +294,12 @@ export default function ConfidentialitePage() {
                 DogShift met en œuvre des mesures techniques et organisationnelles appropriées pour
                 protéger vos données : chiffrement des communications (HTTPS/TLS), chiffrement des secrets
                 au repos, mots de passe utilisateurs stockés sous forme de hash bcrypt (jamais en clair),
-                contrôle d'accès strict, protection réseau via Cloudflare, monitoring des erreurs avec
+                contrôle d’accès strict, protection réseau via Cloudflare, monitoring des erreurs avec
                 filtrage des données personnelles, et validations côté serveur sur toutes les entrées.
               </p>
               <p className="mt-3">
                 Si vous découvrez une faille de sécurité, vous pouvez nous la signaler de façon
-                responsable à l'adresse{" "}
+                responsable à l’adresse{" "}
                 <a href="mailto:support@dogshift.ch" className="text-slate-900 underline underline-offset-2">
                   support@dogshift.ch
                 </a>{" "}
@@ -316,15 +316,15 @@ export default function ConfidentialitePage() {
 
             {/* 9. Vérification d'identité */}
             <section>
-              <h2 className="text-base font-semibold text-slate-900">9. Vérification d'identité (sitters)</h2>
+              <h2 className="text-base font-semibold text-slate-900">9. Vérification d’identité (sitters)</h2>
               <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-5">
                 <p className="mt-2">
                   DogShift peut proposer aux dogsitters de soumettre, sur une base volontaire, une copie
-                  d'une pièce d'identité et, le cas échéant, un selfie afin d'obtenir l'affichage d'un
+                  d’une pièce d’identité et, le cas échéant, un selfie afin d’obtenir l’affichage d’un
                   badge « Profil vérifié ».
                 </p>
                 <p className="mt-3">
-                  Ces données font l'objet d'une vérification manuelle visuelle de cohérence. Elles ne
+                  Ces données font l’objet d’une vérification manuelle visuelle de cohérence. Elles ne
                   sont jamais utilisées à des fins commerciales, marketing ou de profilage.
                 </p>
                 <p className="mt-3">
@@ -397,7 +397,7 @@ export default function ConfidentialitePage() {
               <p className="mt-4">
                 Si vous estimez que vos droits ne sont pas respectés, vous pouvez déposer une réclamation
                 auprès du Préposé fédéral à la protection des données et à la transparence (PFPDT) en
-                Suisse, ou de l'autorité de protection des données compétente dans votre pays de résidence
+                Suisse, ou de l’autorité de protection des données compétente dans votre pays de résidence
                 (UE).
               </p>
             </section>
