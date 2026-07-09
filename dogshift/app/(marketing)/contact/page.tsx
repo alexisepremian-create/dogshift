@@ -50,6 +50,20 @@ export default function ContactPage() {
 
         <a
           href={`mailto:${SUPPORT_EMAIL}`}
+          onClick={(e) => {
+            // In the Capacitor WKWebView a plain `mailto:` anchor is often
+            // swallowed (nothing opens). Route it through the system handler so
+            // iOS/Android open the mail composer. On web, let the anchor behave
+            // normally.
+            if (!isNative) return;
+            e.preventDefault();
+            const url = `mailto:${SUPPORT_EMAIL}`;
+            try {
+              window.open(url, "_system");
+            } catch {
+              window.location.href = url;
+            }
+          }}
           className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-full bg-[#7c3aed] px-6 py-3.5 text-sm font-semibold text-white active:bg-[#6d28d9]"
         >
           <Mail className="h-4 w-4" aria-hidden="true" />

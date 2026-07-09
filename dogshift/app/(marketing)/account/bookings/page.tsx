@@ -8,6 +8,7 @@ import { useEffect, useMemo, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import AccountPageSkeleton from "@/components/ui/AccountPageSkeleton";
+import { useIsNativeAppSync } from "@/lib/native/useIsNativeAppSync";
 import {
   ArchiveRestore,
   CalendarDays,
@@ -257,6 +258,7 @@ function AccountBookingsContent() {
   const { status: __sessionStatus } = useSession();
   const isLoaded = __sessionStatus !== "loading";
   const isSignedIn = __sessionStatus === "authenticated";
+  const isNative = useIsNativeAppSync();
 
   const [bookings, setBookings] = useState<BookingListItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -518,6 +520,18 @@ function AccountBookingsContent() {
   }
 
   if (!isLoaded || !isSignedIn) return <AccountPageSkeleton />;
+
+  // Native: one centered purple spinner during the first fetch — same as the
+  // route fallback (NativeRouteFallback) — so the whole route→page transition is
+  // a single continuous loader, never the shell + a second wave of card
+  // skeletons (founder: "un seul skeleton, pas plusieurs").
+  if (isNative && loading) {
+    return (
+      <div className="flex min-h-[55vh] items-center justify-center" data-testid="account-bookings-page">
+        <div className="h-7 w-7 animate-spin rounded-full border-2 border-[#7c3aed] border-t-transparent" />
+      </div>
+    );
+  }
 
   return (
     <div className="relative" data-testid="account-bookings-page">

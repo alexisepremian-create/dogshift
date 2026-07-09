@@ -47,15 +47,30 @@ export default function NativeRouteFallback({ web }: { web: "loader" | "none" | 
     // `fixed inset-0`), so the hand-off is seamless.
     if (pathname === "/") return <MapHomeSkeleton />;
 
-    // Réservations / Conversations: the layout's force-dynamic DB read is SLOW,
-    // so this fallback is on screen for a real moment — it MUST show a skeleton
-    // (returning null painted a white screen = the regression). These replicas
-    // reproduce the page's exact in-shell position + low card counts, so the
-    // route→page hand-off shows the same skeleton and nothing spills under nav.
-    if (pathname.startsWith("/host/requests") || pathname.startsWith("/account/bookings")) {
+    // Owner tabs (/account/bookings, /account/messages): a SINGLE centered purple
+    // spinner. Those pages render their own "Mon compte" shell (different from the
+    // host RequestsSplitView / messages layout the skeletons replicate), so a
+    // faithful skeleton here would mismatch the page and read as "plusieurs
+    // skeletons" (founder). The pages early-return the same spinner while they
+    // fetch, so route→page is one continuous loader. Host tabs keep the faithful
+    // skeleton (their shell matches the replica 1:1).
+    if (pathname.startsWith("/account/bookings") || pathname.startsWith("/account/messages")) {
+      return (
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-white">
+          <div className="h-7 w-7 animate-spin rounded-full border-2 border-[#7c3aed] border-t-transparent" />
+        </div>
+      );
+    }
+
+    // Réservations / Conversations (sitter side): the layout's force-dynamic DB
+    // read is SLOW, so this fallback is on screen for a real moment — it MUST show
+    // a skeleton (returning null painted a white screen = the regression). These
+    // replicas reproduce the page's exact in-shell position + low card counts, so
+    // the route→page hand-off shows the same skeleton and nothing spills under nav.
+    if (pathname.startsWith("/host/requests")) {
       return <RequestsRouteSkeleton />;
     }
-    if (pathname.startsWith("/host/messages") || pathname.startsWith("/account/messages")) {
+    if (pathname.startsWith("/host/messages")) {
       return <MessagesRouteSkeleton />;
     }
 
