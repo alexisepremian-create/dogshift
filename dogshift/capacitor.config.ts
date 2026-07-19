@@ -1,4 +1,5 @@
 import type { CapacitorConfig } from "@capacitor/cli";
+import type { KeyboardResize } from "@capacitor/keyboard";
 
 /**
  * Capacitor native app configuration — DogShift mode B (remote URL).
@@ -113,7 +114,10 @@ const config: CapacitorConfig = {
       // (founder bug : "le clavier ne sort toujours pas snif"). `none` means
       // the app is responsible for its own keyboard avoidance — fine here
       // because the panel scrolls internally.
-      resize: "none",
+      // String value kept (identical native behaviour); cast satisfies the
+      // KeyboardResize enum now that @capacitor/keyboard's types are in the graph
+      // (imported by lib/native/useKeyboardHeight).
+      resize: "none" as KeyboardResize,
       resizeOnFullScreen: false,
     },
   },

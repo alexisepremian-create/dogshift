@@ -8,6 +8,7 @@ import Map, { Marker, type MapRef } from "react-map-gl/maplibre";
 import { Search, Locate, Star, X, Minus, Plus, MapPin, Calendar, ArrowLeft, SlidersHorizontal, Check, MessageCircle } from "lucide-react";
 
 import NativeConversationSheet from "@/components/native/NativeConversationSheet";
+import { useKeyboardHeight } from "@/lib/native/useKeyboardHeight";
 
 import {
   LOCATION_HUB_COORDS,
@@ -396,6 +397,10 @@ export default function NativeMapHome() {
   // Contact the sitter without booking: open an in-popup chat OVER the map (the
   // sheet starts/reuses the conversation and can jump to full-screen Messages).
   const [chatSitter, setChatSitter] = useState<{ id: string; name: string; avatar: string | null } | null>(null);
+
+  // Keyboard height (Capacitor plugin) so overlays with text inputs (the
+  // reservation form) shrink above the keyboard instead of being covered by it.
+  const keyboardHeight = useKeyboardHeight();
 
   // Fetch + open the sitter's reviews in a sheet (from the fiche rating tap).
   const openReviews = useCallback(() => {
@@ -1699,7 +1704,12 @@ export default function NativeMapHome() {
             className="fixed left-2 right-2 z-[1003] flex flex-col overflow-hidden rounded-3xl bg-white shadow-[0_20px_60px_rgba(2,6,23,0.30)]"
             style={{
               top: "calc(env(safe-area-inset-top, 0px) + 70px)",
-              bottom: "calc(max(var(--ds-bottom-nav-h, 0px), 88px) + 20px)",
+              // Shrink above the keyboard when it's open so the form fields stay
+              // reachable; otherwise clear the bottom nav + paw.
+              bottom:
+                keyboardHeight > 0
+                  ? `calc(${keyboardHeight}px + 8px)`
+                  : "calc(max(var(--ds-bottom-nav-h, 0px), 88px) + 20px)",
             }}
           >
             <div className="flex shrink-0 items-center border-b border-slate-100 px-4 py-3">
