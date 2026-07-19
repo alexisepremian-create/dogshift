@@ -130,12 +130,13 @@ export default function NativeConversationSheet({
         className="fixed left-2 right-2 z-[1020] flex flex-col overflow-hidden rounded-3xl bg-white shadow-[0_20px_60px_rgba(2,6,23,0.30)]"
         style={{
           top: "calc(env(safe-area-inset-top, 0px) + 12px)",
-          // Keyboard open → sit just above it. Closed → clear the bottom nav AND
-          // the floating center paw (which overhangs the bar by ~30px).
+          // Match the fiche panel behind it (+16) so the CARD ends at the same
+          // level and nothing peeks; the input clears the paw via its own bottom
+          // padding below. Keyboard open → sit just above it.
           bottom:
             keyboardHeight > 0
               ? `calc(${keyboardHeight}px + 8px)`
-              : "calc(max(var(--ds-bottom-nav-h, 0px), 88px) + 36px)",
+              : "calc(max(var(--ds-bottom-nav-h, 0px), 88px) + 16px)",
         }}
       >
         {/* Header */}
@@ -205,8 +206,12 @@ export default function NativeConversationSheet({
           )}
         </div>
 
-        {/* Input */}
-        <div className="shrink-0 border-t border-slate-100 bg-white px-3 py-2.5">
+        {/* Input — extra bottom padding (keyboard closed) lifts the field above
+            the floating paw while the card itself ends at +16 like the fiche. */}
+        <div
+          className="shrink-0 border-t border-slate-100 bg-white px-3 pt-2.5"
+          style={{ paddingBottom: keyboardHeight > 0 ? "10px" : "22px" }}
+        >
           <div className="flex items-end gap-2">
             <textarea
               value={text}
