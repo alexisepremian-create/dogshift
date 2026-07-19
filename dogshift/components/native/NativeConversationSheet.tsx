@@ -5,6 +5,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Maximize2 } from "lucide-react";
 
+import { useKeyboardHeight } from "@/lib/native/useKeyboardHeight";
+
 type Msg = { id: string; senderId: string; body: string; createdAt: string; readAt: string | null };
 
 function initialForName(name: string) {
@@ -44,7 +46,7 @@ export default function NativeConversationSheet({
   const [error, setError] = useState<string | null>(null);
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
-  const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const keyboardHeight = useKeyboardHeight();
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // Start (or reuse) the conversation, then load its thread.
@@ -89,20 +91,6 @@ export default function NativeConversationSheet({
     };
   }, [sitterId, router]);
 
-  // Keyboard height (Capacitor resize:"none" → track it ourselves).
-  useEffect(() => {
-    const vv = window.visualViewport;
-    if (!vv) return;
-    const onResize = () => setKeyboardHeight(Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop)));
-    vv.addEventListener("resize", onResize);
-    vv.addEventListener("scroll", onResize);
-    onResize();
-    return () => {
-      vv.removeEventListener("resize", onResize);
-      vv.removeEventListener("scroll", onResize);
-    };
-  }, []);
-
   // Keep the latest message in view.
   useEffect(() => {
     const el = scrollRef.current;
@@ -142,10 +130,12 @@ export default function NativeConversationSheet({
         className="fixed left-2 right-2 z-[1020] flex flex-col overflow-hidden rounded-3xl bg-white shadow-[0_20px_60px_rgba(2,6,23,0.30)]"
         style={{
           top: "calc(env(safe-area-inset-top, 0px) + 12px)",
+          // Keyboard open → sit just above it. Closed → clear the bottom nav AND
+          // the floating center paw (which overhangs the bar by ~30px).
           bottom:
             keyboardHeight > 0
               ? `calc(${keyboardHeight}px + 8px)`
-              : "calc(max(var(--ds-bottom-nav-h, 0px), 88px) + 12px)",
+              : "calc(max(var(--ds-bottom-nav-h, 0px), 88px) + 36px)",
         }}
       >
         {/* Header */}

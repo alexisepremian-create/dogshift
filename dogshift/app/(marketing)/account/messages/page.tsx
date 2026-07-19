@@ -10,6 +10,7 @@ import { publicDogPhotoPath } from "@/lib/dogPhotoMedia";
 import { useIsNativeAppSync } from "@/lib/native/useIsNativeAppSync";
 import AccountPageSkeleton from "@/components/ui/AccountPageSkeleton";
 import { getRecentSitters } from "@/lib/native/recentSitters";
+import { useKeyboardHeight } from "@/lib/native/useKeyboardHeight";
 
 type SitterContact = { id: string; name: string; avatarUrl: string | null };
 
@@ -266,25 +267,10 @@ export default function AccountMessagesPage() {
   const [startingId, setStartingId] = useState<string | null>(null);
 
   // Capacitor runs with Keyboard `resize: "none"` (the search panel needs it),
-  // so the WebView does NOT shrink when the keyboard opens — we track the
-  // keyboard height ourselves via visualViewport and shrink the chat container,
-  // otherwise the input + last messages hide behind the keyboard (native only).
-  const [keyboardHeight, setKeyboardHeight] = useState(0);
-  useEffect(() => {
-    if (!isNative) return;
-    const vv = window.visualViewport;
-    if (!vv) return;
-    const onResize = () => {
-      setKeyboardHeight(Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop)));
-    };
-    vv.addEventListener("resize", onResize);
-    vv.addEventListener("scroll", onResize);
-    onResize();
-    return () => {
-      vv.removeEventListener("resize", onResize);
-      vv.removeEventListener("scroll", onResize);
-    };
-  }, [isNative]);
+  // so the WebView does NOT shrink when the keyboard opens — we track the real
+  // keyboard height (Capacitor Keyboard plugin) and shrink the chat container,
+  // otherwise the input + last messages hide behind the keyboard.
+  const keyboardHeight = useKeyboardHeight();
 
   useEffect(() => {
     if (!isLoaded) return;
