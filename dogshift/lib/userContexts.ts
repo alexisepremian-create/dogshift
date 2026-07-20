@@ -13,6 +13,7 @@
  * as `dbUserId`). All known callers treat it as "an opaque current user
  * identifier" and pass it to DB queries — so this swap is safe.
  */
+import { cache } from "react";
 import { unstable_noStore as noStore } from "next/cache";
 
 import { auth } from "@/auth";
@@ -28,7 +29,11 @@ export type UserContexts = {
   hasOwnerContext: boolean;
 };
 
-export async function getUserContexts(): Promise<UserContexts> {
+// Wrapped in React `cache()` so multiple callers in the same request (e.g. the
+// /account layout AND the /account page) share ONE set of DB queries instead of
+// re-running auth() + 4 reads each. `noStore()` keeps the route dynamic
+// (per-request); cache() only dedupes within that request.
+export const getUserContexts = cache(async function getUserContexts(): Promise<UserContexts> {
   noStore();
 
   const session = await auth();
@@ -80,4 +85,4 @@ export async function getUserContexts(): Promise<UserContexts> {
     sitterLifecycleStatus: normalizedStatus,
     hasOwnerContext: Boolean(ownerBooking || ownerConversation),
   };
-}
+});

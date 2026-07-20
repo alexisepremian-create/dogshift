@@ -228,6 +228,10 @@ function SwipeableRow({
   );
 }
 
+// In-session cache of the conversation list (module-scoped, cleared on full
+// reload) so tab re-navigation is instant. Written on every successful load.
+let cachedConversations: ConversationListItem[] | null = null;
+
 export default function AccountMessagesPage() {
   const { status: __sessionStatus } = useSession();
   const isLoaded = __sessionStatus !== "loading";
@@ -236,8 +240,11 @@ export default function AccountMessagesPage() {
   const searchParams = useSearchParams();
   const isNative = useIsNativeAppSync();
 
-  const [conversations, setConversations] = useState<ConversationListItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  // Perceived-speed: hydrate the list from the in-session cache so re-navigating
+  // to Messages shows the conversations INSTANTLY (no skeleton), then revalidates
+  // silently in the background. Only the very first visit shows the skeleton.
+  const [conversations, setConversations] = useState<ConversationListItem[]>(() => cachedConversations ?? []);
+  const [loading, setLoading] = useState(() => cachedConversations === null);
   const [error, setError] = useState<string | null>(null);
   const [archivedOpen, setArchivedOpen] = useState(false);
 
@@ -308,7 +315,9 @@ export default function AccountMessagesPage() {
         setConversations([]);
         return;
       }
-      setConversations(Array.isArray(payload.conversations) ? payload.conversations : []);
+      const list = Array.isArray(payload.conversations) ? payload.conversations : [];
+      cachedConversations = list;
+      setConversations(list);
     } catch {
       setError("Impossible de charger tes messages.");
       setConversations([]);
@@ -446,9 +455,10 @@ export default function AccountMessagesPage() {
 
   useEffect(() => {
     if (!isLoaded || !isSignedIn) return;
-    void loadConversations();
+    // If we already have cached conversations, refresh silently (no skeleton).
+    void loadConversations(cachedConversations !== null);
     void loadDogs();
-     
+
   }, [isLoaded, isSignedIn]);
 
   const rows = useMemo(() => {
