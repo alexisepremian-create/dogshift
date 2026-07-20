@@ -15,6 +15,21 @@ On the native owner dashboard (`/account`), the founder saw:
 - `unreadMessages` now filters `conversation: { ownerId: uid, deletedAt: null }` — matches the conversation list source of truth, so deleted conversations no longer inflate the badge.
 - Regression test: `tests/integrations/ownerDashboardStats.test.ts`.
 
+## Follow-up: phantom "1 Messages" persisted (2026-07-20)
+
+After the `deletedAt: null` fix, the founder still saw **"1 Messages"** on the native
+dashboard while the Messages list showed **"Aucune conversation"**. Root cause was a
+*second* mismatch: the conversation LIST hides conversations attached to an unpaid
+booking (`OR: [{ bookingId: null }, { booking: { status: { notIn: ["DRAFT","PENDING_PAYMENT"] } } }]`),
+but the dashboard unread-message COUNT only filtered `conversation: { ownerId, deletedAt: null }`.
+An unread message in a conversation tied to a DRAFT/PENDING_PAYMENT booking was hidden from
+the list yet still counted → phantom badge.
+
+Fix: extracted the visibility rule into `lib/account/conversationVisibility.ts`
+(`ownerVisibleConversationWhere`) and used the SAME fragment in both the list endpoint
+(`app/api/account/messages/conversations/route.ts`) and the dashboard count
+(`app/(marketing)/account/page.tsx`). Regression: `tests/integrations/ownerConversationVisibility.test.ts`.
+
 ## What NOT to do
 - Don't re-add `PENDING_PAYMENT`/`DRAFT` to the "prochaine réservation" query — those belong to "réservations à payer", not the upcoming card.
 - Deleted bookings are already excluded from the dashboard counts via `archivedAt: null` (you can only delete an archived booking), so no `Booking.deletedAt` filter is needed here.

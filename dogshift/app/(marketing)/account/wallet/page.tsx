@@ -294,39 +294,50 @@ function VerticalBarChart({
 
 
 
+// In-session cache so re-opening "Portefeuille" paints instantly, then
+// revalidates silently. Cleared on a full reload.
+let cachedWallet: WalletPayload | null = null;
+
 function OwnerWalletContent() {
   const { status: __sessionStatus } = useSession();
   const isLoaded = __sessionStatus !== "loading";
   const isSignedIn = __sessionStatus === "authenticated";
 
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => cachedWallet === null);
   const [error, setError] = useState<string | null>(null);
-  const [data, setData] = useState<WalletPayload | null>(null);
+  const [data, setData] = useState<WalletPayload | null>(() => cachedWallet);
   const [timeframe, setTimeframe] = useState<"TODAY" | "WEEK" | "MONTH" | "ALL">("MONTH");
   const [showAllHistory, setShowAllHistory] = useState(false);
 
   useEffect(() => {
     if (!isLoaded || !isSignedIn) return;
     let cancelled = false;
+    // Cached already rendered → refresh silently (no skeleton).
+    const silent = cachedWallet !== null;
     async function load() {
-      setLoading(true);
+      if (!silent) setLoading(true);
       setError(null);
       try {
         const res = await fetch("/api/account/wallet", { method: "GET" });
         const payload = (await res.json()) as WalletPayload;
         if (cancelled) return;
         if (!res.ok || !payload.ok) {
-          setError("Impossible de charger le portefeuille.");
-          setData(null);
+          if (!silent) {
+            setError("Impossible de charger le portefeuille.");
+            setData(null);
+          }
           return;
         }
+        cachedWallet = payload;
         setData(payload);
       } catch {
         if (cancelled) return;
-        setError("Impossible de charger le portefeuille.");
-        setData(null);
+        if (!silent) {
+          setError("Impossible de charger le portefeuille.");
+          setData(null);
+        }
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled && !silent) setLoading(false);
       }
     }
     void load();

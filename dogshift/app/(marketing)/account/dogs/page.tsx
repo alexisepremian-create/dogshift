@@ -69,12 +69,16 @@ function DogAvatar({ photoUrl, name, size = 48 }: { photoUrl: string | null; nam
   );
 }
 
+// In-session cache so re-opening "Mes chiens" (tile sheet or bottom nav) paints
+// instantly, then revalidates silently. Cleared on a full reload.
+let cachedDogs: DogItem[] | null = null;
+
 export default function DogsPage() {
   const { status: __sessionStatus } = useSession();
   const isLoaded = __sessionStatus !== "loading";
   const isSignedIn = __sessionStatus === "authenticated";
-  const [dogs, setDogs] = useState<DogItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [dogs, setDogs] = useState<DogItem[]>(() => cachedDogs ?? []);
+  const [loading, setLoading] = useState(() => cachedDogs === null);
   const [editing, setEditing] = useState<DogItem | null>(null);
   const [adding, setAdding] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
@@ -86,17 +90,20 @@ export default function DogsPage() {
 
   useEffect(() => {
     if (!isLoaded || !isSignedIn) return;
-    void fetchDogs();
+    // Cached already rendered → refresh silently (no skeleton).
+    void fetchDogs(cachedDogs !== null);
   }, [isLoaded, isSignedIn]);
 
-  async function fetchDogs() {
-    setLoading(true);
+  async function fetchDogs(silent = false) {
+    if (!silent) setLoading(true);
     try {
       const res = await fetch("/api/account/dogs");
       const data = (await res.json()) as { dogs?: DogItem[] };
-      setDogs(data.dogs ?? []);
+      const list = data.dogs ?? [];
+      cachedDogs = list;
+      setDogs(list);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }
 
