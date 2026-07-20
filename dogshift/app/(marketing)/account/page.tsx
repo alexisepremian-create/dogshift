@@ -24,6 +24,7 @@ import { getHostUserData } from "@/lib/hostUser";
 import { prisma } from "@/lib/prisma";
 import { getUserContexts } from "@/lib/userContexts";
 import { DASHBOARD_UPCOMING_BOOKING_STATUSES } from "@/lib/account/dashboardStats";
+import { ownerVisibleConversationWhere } from "@/lib/account/conversationVisibility";
 
 export const dynamic = "force-dynamic";
 
@@ -105,9 +106,11 @@ export default async function AccountDashboardPage({
     prisma.message.count({
       where: {
         // Coherence: only count unread messages in conversations the owner can
-        // still see. A deleted conversation (swipe-delete) must not keep
+        // actually OPEN. Same visibility filter as the conversation list — a
+        // soft-deleted conversation OR one attached to an unpaid (DRAFT /
+        // PENDING_PAYMENT) booking is hidden from the list, so it must not keep
         // inflating the "X Messages" badge (founder: "1 Messages" with none).
-        conversation: { ownerId: uid, deletedAt: null },
+        conversation: ownerVisibleConversationWhere(uid),
         senderId: { not: uid },
         readAt: null,
       },

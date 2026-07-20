@@ -312,12 +312,17 @@ function SwipeableBookingRow({
         </div>
       ) : null}
       <div
-        className="relative z-10"
+        className="relative z-10 rounded-2xl bg-white"
         onTouchStart={onTouchStart}
         onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}
         onClickCapture={onClickCapture}
         style={{
+          // `transform` promotes this to its own compositing layer on iOS
+          // WKWebView. Without an opaque background here, the z-0 action button
+          // bleeds THROUGH the transparent layer (founder saw the price/badge
+          // painted over the pink "Supprimer"). The opaque bg masks it until
+          // the row is actually swiped open.
           transform: `translateX(${offset}px)`,
           transition: dragging ? "none" : "transform 0.25s cubic-bezier(0.25,0.46,0.45,0.94)",
         }}

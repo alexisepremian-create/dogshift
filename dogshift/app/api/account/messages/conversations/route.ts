@@ -4,6 +4,7 @@ import type { NextRequest } from "next/server";
 
 import { prisma } from "@/lib/prisma";
 import { resolveDbUserId } from "@/lib/auth/resolveDbUserId";
+import { ownerVisibleConversationWhere } from "@/lib/account/conversationVisibility";
 
 export const runtime = "nodejs";
 
@@ -43,16 +44,10 @@ export async function GET(req: NextRequest) {
     ownerIdForLog = ownerId;
 
     const conversations = await (prisma as any).conversation.findMany({
-      where: {
-        ownerId,
-        deletedAt: null,
-        // Only show conversations linked to a paid/confirmed booking
-        // Conversations with no booking (direct contact) are always shown
-        OR: [
-          { bookingId: null },
-          { booking: { status: { notIn: ["DRAFT", "PENDING_PAYMENT"] } } },
-        ],
-      },
+      // Shared visibility filter — the dashboard unread-message COUNT uses the
+      // exact same fragment so the "X Messages" badge can never disagree with
+      // this list. See lib/account/conversationVisibility.ts.
+      where: ownerVisibleConversationWhere(ownerId),
       orderBy: [{ lastMessageAt: "desc" }, { updatedAt: "desc" }],
       select: {
         id: true,
