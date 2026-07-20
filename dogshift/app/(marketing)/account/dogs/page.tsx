@@ -236,20 +236,21 @@ export default function DogsPage() {
       {/* Header — hidden while the add/edit form is open so it doesn't eat
           vertical space in the native sheet (founder: "le titre prend trop de place"). */}
       {!(adding || editing) && (
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex flex-col gap-3">
           <div>
             <h1 className="text-xl font-bold text-slate-900">Mes chiens</h1>
             <p className="mt-1 text-sm text-slate-500">
               Gérez les profils de vos chiens. Ces informations seront visibles par vos dogsitters.
             </p>
           </div>
+          {/* Own row, left-aligned & compact so it never squeezes the description
+              (founder: "le bouton est trop gros, le texte à sa gauche est tout serré"). */}
           <button
             type="button"
             onClick={openAdd}
-            aria-label="Ajouter un chien"
-            className="inline-flex shrink-0 items-center gap-2 rounded-2xl bg-[var(--dogshift-blue)] px-5 py-3 text-base font-semibold text-white shadow-md shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_70%)] transition hover:bg-[var(--dogshift-blue-hover)] active:scale-95"
+            className="inline-flex items-center gap-2 self-start rounded-2xl bg-[var(--dogshift-blue)] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[var(--dogshift-blue-hover)] active:scale-95"
           >
-            <Plus className="h-6 w-6" strokeWidth={2.5} />
+            <Plus className="h-5 w-5" strokeWidth={2.5} />
             Ajouter un chien
           </button>
         </div>
@@ -313,6 +314,10 @@ export default function DogsPage() {
               <input id="dog-breed" className={INPUT} value={form.breed} onChange={field("breed")} placeholder="Ex. Labrador" maxLength={80} />
             </div>
             <div>
+              <label className={LABEL} htmlFor="dog-year">Année de naissance</label>
+              <input id="dog-year" className={INPUT} type="number" min={2000} max={CURRENT_YEAR} value={form.birthYear} onChange={field("birthYear")} placeholder={String(CURRENT_YEAR - 3)} />
+            </div>
+            <div className="col-span-2">
               <label className={LABEL} htmlFor="dog-weight">Poids (kg) <span className="font-normal text-slate-400">— requis pour la Pension</span></label>
               <input id="dog-weight" className={INPUT} type="number" min={0} max={200} step={0.1} value={form.weightKg} onChange={field("weightKg")} placeholder="Ex. 28" />
               {(() => {
@@ -326,10 +331,6 @@ export default function DogsPage() {
                   </p>
                 );
               })()}
-            </div>
-            <div>
-              <label className={LABEL} htmlFor="dog-year">Année de naissance</label>
-              <input id="dog-year" className={INPUT} type="number" min={2000} max={CURRENT_YEAR} value={form.birthYear} onChange={field("birthYear")} placeholder={String(CURRENT_YEAR - 3)} />
             </div>
             {/* Castration / stérilisation */}
             <div className="col-span-2">
@@ -354,16 +355,16 @@ export default function DogsPage() {
             </div>
 
             <div>
-              <label className={LABEL} htmlFor="dog-vet">Contact vétérinaire</label>
-              <input id="dog-vet" className={INPUT} value={form.vetContact} onChange={field("vetContact")} placeholder="Dr. Martin — 079 000 00 00" maxLength={200} />
-            </div>
-            <div>
               <label className={LABEL} htmlFor="dog-allergies">Allergies</label>
               <input id="dog-allergies" className={INPUT} value={form.allergies} onChange={field("allergies")} placeholder="Ex. plumes de volaille" maxLength={500} />
             </div>
             <div>
               <label className={LABEL} htmlFor="dog-meds">Médicaments</label>
               <input id="dog-meds" className={INPUT} value={form.medications} onChange={field("medications")} placeholder="Ex. Frontline 1x/mois" maxLength={200} />
+            </div>
+            <div className="col-span-2">
+              <label className={LABEL} htmlFor="dog-vet">Contact vétérinaire</label>
+              <input id="dog-vet" className={INPUT} value={form.vetContact} onChange={field("vetContact")} placeholder="Dr. Martin — 079 000 00 00" maxLength={200} />
             </div>
             <div className="col-span-2">
               <label className={LABEL} htmlFor="dog-behavior">Comportement & habitudes</label>
