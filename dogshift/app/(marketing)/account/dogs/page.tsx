@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
-import { Plus, Pencil, Trash2, Star, Dog, X, Check, Camera, Loader2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Star, Dog, X, Check, Camera, Loader2, ChevronDown } from "lucide-react";
 import AccountPageSkeleton from "@/components/ui/AccountPageSkeleton";
 import { publicDogPhotoPath } from "@/lib/dogPhotoMedia";
 import { DOG_SIZE_WEIGHTS, dogSizeKeyFromWeight } from "@/lib/constants/dog-sizes";
@@ -84,6 +84,7 @@ export default function DogsPage() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const photoInputRef = useRef<HTMLInputElement>(null);
@@ -232,25 +233,27 @@ export default function DogsPage() {
 
   return (
     <div className="grid gap-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold text-slate-900">Mes chiens</h1>
-          <p className="mt-1 text-sm text-slate-500">
-            Gérez les profils de vos chiens. Ces informations seront visibles par vos dogsitters.
-          </p>
-        </div>
-        {!adding && !editing && (
+      {/* Header — hidden while the add/edit form is open so it doesn't eat
+          vertical space in the native sheet (founder: "le titre prend trop de place"). */}
+      {!(adding || editing) && (
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <h1 className="text-xl font-bold text-slate-900">Mes chiens</h1>
+            <p className="mt-1 text-sm text-slate-500">
+              Gérez les profils de vos chiens. Ces informations seront visibles par vos dogsitters.
+            </p>
+          </div>
           <button
             type="button"
             onClick={openAdd}
-            className="inline-flex items-center gap-2 rounded-2xl bg-[var(--dogshift-blue)] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[var(--dogshift-blue-hover)]"
+            aria-label="Ajouter un chien"
+            className="inline-flex shrink-0 items-center gap-2 rounded-2xl bg-[var(--dogshift-blue)] px-5 py-3 text-base font-semibold text-white shadow-md shadow-[color-mix(in_srgb,var(--dogshift-blue),transparent_70%)] transition hover:bg-[var(--dogshift-blue-hover)] active:scale-95"
           >
-            <Plus className="h-4 w-4" />
+            <Plus className="h-6 w-6" strokeWidth={2.5} />
             Ajouter un chien
           </button>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Form (add or edit) */}
       {(adding || editing) && (
@@ -300,8 +303,8 @@ export default function DogsPage() {
             />
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="sm:col-span-2">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4">
+            <div className="col-span-2">
               <label className={LABEL} htmlFor="dog-name">Nom du chien *</label>
               <input id="dog-name" className={INPUT} value={form.name} onChange={field("name")} placeholder="Ex. Milo" maxLength={60} />
             </div>
@@ -329,7 +332,7 @@ export default function DogsPage() {
               <input id="dog-year" className={INPUT} type="number" min={2000} max={CURRENT_YEAR} value={form.birthYear} onChange={field("birthYear")} placeholder={String(CURRENT_YEAR - 3)} />
             </div>
             {/* Castration / stérilisation */}
-            <div className="sm:col-span-2">
+            <div className="col-span-2">
               <p className={LABEL}>Castré / stérilisé</p>
               <div className="mt-1 flex gap-2">
                 {([{ label: "Oui", value: true }, { label: "Non", value: false }, { label: "Ne sait pas", value: null }] as { label: string; value: boolean | null }[]).map(({ label, value }) => (
@@ -362,17 +365,17 @@ export default function DogsPage() {
               <label className={LABEL} htmlFor="dog-meds">Médicaments</label>
               <input id="dog-meds" className={INPUT} value={form.medications} onChange={field("medications")} placeholder="Ex. Frontline 1x/mois" maxLength={200} />
             </div>
-            <div className="sm:col-span-2">
+            <div className="col-span-2">
               <label className={LABEL} htmlFor="dog-behavior">Comportement & habitudes</label>
               <textarea id="dog-behavior" className={`${INPUT} resize-none`} rows={3} value={form.behaviorNotes} onChange={field("behaviorNotes")} placeholder="Peur des orages, adore jouer au fetch, câlin avec les enfants…" maxLength={1000} />
             </div>
-            <div className="sm:col-span-2">
+            <div className="col-span-2">
               <label className={LABEL} htmlFor="dog-feeding">Alimentation</label>
               <textarea id="dog-feeding" className={`${INPUT} resize-none`} rows={2} value={form.feedingNotes} onChange={field("feedingNotes")} placeholder="2x/jour, croquettes Royal Canin Maxi Adult, 300g par repas" maxLength={500} />
             </div>
 
             {/* Sitter instructions section */}
-            <div className="sm:col-span-2">
+            <div className="col-span-2">
               <div className="mb-3 mt-2 border-t border-slate-100 pt-4">
                 <p className="text-sm font-semibold text-slate-900">Instructions pour le dogsitter</p>
                 <p className="mt-0.5 text-xs text-slate-500">Consignes spécifiques : routine, interdictions, contacts d&apos;urgence, etc.</p>
@@ -435,40 +438,50 @@ export default function DogsPage() {
         </div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2">
-          {dogs.map((dog) => (
+          {dogs.map((dog) => {
+            const isOpen = expandedId === dog.id;
+            const sizeKey = dogSizeKeyFromWeight(dog.weightKg);
+            const size = sizeKey ? DOG_SIZE_WEIGHTS[sizeKey] : null;
+            const hasDetails = Boolean(
+              dog.medications || dog.allergies || dog.behaviorNotes || dog.feedingNotes || dog.sitterInstructions || dog.vetContact
+            );
+            return (
             <div
               key={dog.id}
-              className={`relative rounded-3xl border bg-white p-6 shadow-[0_4px_20px_-8px_rgba(2,6,23,0.08)] transition ${
+              className={`relative overflow-hidden rounded-3xl border bg-white shadow-[0_4px_20px_-8px_rgba(2,6,23,0.08)] transition ${
                 dog.isDefault ? "border-[var(--dogshift-blue)]/40 ring-2 ring-[var(--dogshift-blue)]/10" : "border-slate-200"
               }`}
             >
-              {dog.isDefault && (
-                <span className="absolute right-4 top-4 inline-flex items-center gap-1 rounded-full bg-[var(--dogshift-blue)]/10 px-2.5 py-1 text-[11px] font-semibold text-[var(--dogshift-blue)]">
-                  <Star className="h-3 w-3 fill-current" />
-                  Principal
-                </span>
-              )}
-
-              <div className="flex items-start gap-3">
+              {/* Preview — tap to expand the full profile (founder: cards must be
+                  a compact preview, details only on tap). */}
+              <button
+                type="button"
+                onClick={() => setExpandedId((cur) => (cur === dog.id ? null : dog.id))}
+                aria-expanded={isOpen}
+                className="flex w-full items-start gap-3 p-5 text-left transition active:bg-slate-50/60"
+              >
                 <DogAvatar photoUrl={dog.photoUrl} name={dog.name} size={48} />
                 <div className="min-w-0 flex-1">
-                  <p className="font-semibold text-slate-900">{dog.name}</p>
-                  <p className="text-sm text-slate-500">
+                  <div className="flex items-center gap-2">
+                    <p className="truncate font-semibold text-slate-900">{dog.name}</p>
+                    {dog.isDefault && (
+                      <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[var(--dogshift-blue)]/10 px-2 py-0.5 text-[11px] font-semibold text-[var(--dogshift-blue)]">
+                        <Star className="h-3 w-3 fill-current" />
+                        Principal
+                      </span>
+                    )}
+                  </div>
+                  <p className="mt-0.5 truncate text-sm text-slate-500">
                     {[dog.breed, dog.birthYear ? `né en ${dog.birthYear}` : null, dog.weightKg ? `${dog.weightKg} kg` : null]
                       .filter(Boolean)
                       .join(" · ") || "Aucune info de base"}
                   </p>
                   <div className="mt-1.5 flex flex-wrap gap-1.5">
-                    {(() => {
-                      const sizeKey = dogSizeKeyFromWeight(dog.weightKg);
-                      if (!sizeKey) return null;
-                      const { label, range } = DOG_SIZE_WEIGHTS[sizeKey];
-                      return (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-[var(--dogshift-blue)]/10 px-2.5 py-0.5 text-xs font-semibold text-[var(--dogshift-blue)]">
-                          {label} <span className="font-normal opacity-70">{range}</span>
-                        </span>
-                      );
-                    })()}
+                    {size && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-[var(--dogshift-blue)]/10 px-2.5 py-0.5 text-xs font-semibold text-[var(--dogshift-blue)]">
+                        {size.label} <span className="font-normal opacity-70">{size.range}</span>
+                      </span>
+                    )}
                     {typeof dog.neutered === "boolean" && (
                       <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
                         dog.neutered
@@ -480,93 +493,102 @@ export default function DogsPage() {
                     )}
                   </div>
                 </div>
-              </div>
+                <ChevronDown className={`mt-1 h-5 w-5 shrink-0 text-slate-400 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} aria-hidden="true" />
+              </button>
 
-              <div className="mt-4 grid gap-2 text-sm">
-                {dog.medications && (
-                  <div>
-                    <span className="font-medium text-slate-700">Médicaments : </span>
-                    <span className="text-slate-600">{dog.medications}</span>
-                  </div>
-                )}
-                {dog.allergies && (
-                  <div>
-                    <span className="font-medium text-slate-700">Allergies : </span>
-                    <span className="text-slate-600">{dog.allergies}</span>
-                  </div>
-                )}
-                {dog.behaviorNotes && (
-                  <div>
-                    <span className="font-medium text-slate-700">Comportement : </span>
-                    <span className="text-slate-600 line-clamp-2">{dog.behaviorNotes}</span>
-                  </div>
-                )}
-                {dog.feedingNotes && (
-                  <div>
-                    <span className="font-medium text-slate-700">Alimentation : </span>
-                    <span className="text-slate-600 line-clamp-1">{dog.feedingNotes}</span>
-                  </div>
-                )}
-                {dog.sitterInstructions && (
-                  <div>
-                    <span className="font-medium text-slate-700">Instructions sitter : </span>
-                    <span className="text-slate-600 line-clamp-2">{dog.sitterInstructions}</span>
-                  </div>
-                )}
-                {dog.vetContact && (
-                  <div>
-                    <span className="font-medium text-slate-700">Vétérinaire : </span>
-                    <span className="text-slate-600">{dog.vetContact}</span>
-                  </div>
-                )}
-              </div>
+              {/* Details + actions — only when expanded */}
+              {isOpen && (
+                <div className="border-t border-slate-100 px-5 pb-5 pt-4">
+                  {hasDetails && (
+                    <div className="grid gap-2 text-sm">
+                      {dog.medications && (
+                        <div>
+                          <span className="font-medium text-slate-700">Médicaments : </span>
+                          <span className="text-slate-600">{dog.medications}</span>
+                        </div>
+                      )}
+                      {dog.allergies && (
+                        <div>
+                          <span className="font-medium text-slate-700">Allergies : </span>
+                          <span className="text-slate-600">{dog.allergies}</span>
+                        </div>
+                      )}
+                      {dog.behaviorNotes && (
+                        <div>
+                          <span className="font-medium text-slate-700">Comportement : </span>
+                          <span className="text-slate-600">{dog.behaviorNotes}</span>
+                        </div>
+                      )}
+                      {dog.feedingNotes && (
+                        <div>
+                          <span className="font-medium text-slate-700">Alimentation : </span>
+                          <span className="text-slate-600">{dog.feedingNotes}</span>
+                        </div>
+                      )}
+                      {dog.sitterInstructions && (
+                        <div>
+                          <span className="font-medium text-slate-700">Instructions sitter : </span>
+                          <span className="text-slate-600">{dog.sitterInstructions}</span>
+                        </div>
+                      )}
+                      {dog.vetContact && (
+                        <div>
+                          <span className="font-medium text-slate-700">Vétérinaire : </span>
+                          <span className="text-slate-600">{dog.vetContact}</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
 
-              <div className="mt-5 flex flex-wrap items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => openEdit(dog)}
-                  className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
-                >
-                  <Pencil className="h-3.5 w-3.5" />
-                  Modifier
-                </button>
-                {!dog.isDefault && (
-                  <button
-                    type="button"
-                    onClick={() => void setDefault(dog.id)}
-                    className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
-                  >
-                    <Star className="h-3.5 w-3.5" />
-                    Définir comme principal
-                  </button>
-                )}
-                {deleteConfirm === dog.id ? (
-                  <span className="inline-flex items-center gap-1.5">
-                    <span className="text-xs text-slate-600">Confirmer ?</span>
+                  <div className={`flex flex-wrap items-center gap-2 ${hasDetails ? "mt-5" : ""}`}>
                     <button
                       type="button"
-                      onClick={() => void deleteDog(dog.id)}
-                      className="rounded-xl bg-rose-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-rose-700"
+                      onClick={() => openEdit(dog)}
+                      className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
                     >
-                      Supprimer
+                      <Pencil className="h-3.5 w-3.5" />
+                      Modifier
                     </button>
-                    <button type="button" onClick={() => setDeleteConfirm(null)} className="text-xs text-slate-500 hover:text-slate-900">
-                      Annuler
-                    </button>
-                  </span>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => setDeleteConfirm(dog.id)}
-                    className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-rose-600 transition hover:bg-rose-50"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                    Supprimer
-                  </button>
-                )}
-              </div>
+                    {!dog.isDefault && (
+                      <button
+                        type="button"
+                        onClick={() => void setDefault(dog.id)}
+                        className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
+                      >
+                        <Star className="h-3.5 w-3.5" />
+                        Définir comme principal
+                      </button>
+                    )}
+                    {deleteConfirm === dog.id ? (
+                      <span className="inline-flex items-center gap-1.5">
+                        <span className="text-xs text-slate-600">Confirmer ?</span>
+                        <button
+                          type="button"
+                          onClick={() => void deleteDog(dog.id)}
+                          className="rounded-xl bg-rose-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-rose-700"
+                        >
+                          Supprimer
+                        </button>
+                        <button type="button" onClick={() => setDeleteConfirm(null)} className="text-xs text-slate-500 hover:text-slate-900">
+                          Annuler
+                        </button>
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setDeleteConfirm(dog.id)}
+                        className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-rose-600 transition hover:bg-rose-50"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                        Supprimer
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
