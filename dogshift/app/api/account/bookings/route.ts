@@ -23,6 +23,8 @@ type AccountBookingListItem = {
   service: string | null;
   startDate: string | null;
   endDate: string | null;
+  startAt: string | null;
+  endAt: string | null;
   status: string;
   hasReview: boolean;
   amount: number;
@@ -56,6 +58,8 @@ export async function GET() {
         // abandoned the Stripe checkout (or had a payment intent expire) can find their
         // reservation again and retry payment. Audit 2026-05-22 (bug I5).
         status: { notIn: ["DRAFT"] },
+        // Soft-deleted (owner removed it from Archivées) → hidden forever.
+        deletedAt: null,
       },
       orderBy: { createdAt: "desc" },
       select: {
@@ -65,6 +69,8 @@ export async function GET() {
         service: true,
         startDate: true,
         endDate: true,
+        startAt: true,
+        endAt: true,
         status: true,
         review: { select: { id: true } },
         amount: true,
@@ -135,6 +141,8 @@ export async function GET() {
         service: typeof b.service === "string" ? b.service : null,
         startDate: b.startDate instanceof Date ? b.startDate.toISOString() : b.startDate ? new Date(b.startDate).toISOString() : null,
         endDate: b.endDate instanceof Date ? b.endDate.toISOString() : b.endDate ? new Date(b.endDate).toISOString() : null,
+        startAt: b.startAt instanceof Date ? b.startAt.toISOString() : b.startAt ? new Date(b.startAt).toISOString() : null,
+        endAt: b.endAt instanceof Date ? b.endAt.toISOString() : b.endAt ? new Date(b.endAt).toISOString() : null,
         status: String(b.status ?? "PENDING_PAYMENT"),
         hasReview: Boolean(b.review?.id),
         amount: typeof b.amount === "number" ? b.amount : 0,

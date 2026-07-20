@@ -4,12 +4,14 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useMemo, useState, Suspense } from "react";
+import { useEffect, useMemo, useRef, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import AccountPageSkeleton from "@/components/ui/AccountPageSkeleton";
 import { useIsNativeAppSync } from "@/lib/native/useIsNativeAppSync";
+import { canOwnerArchiveOrDelete } from "@/lib/bookings/ownerBookingMutation";
 import {
+  Archive,
   ArchiveRestore,
   CalendarDays,
   MapPin,
@@ -37,6 +39,8 @@ type BookingListItem = {
   service: string | null;
   startDate: string | null;
   endDate: string | null;
+  startAt?: string | null;
+  endAt?: string | null;
   status: string;
   hasReview: boolean;
   amount: number;
@@ -225,6 +229,103 @@ function uiStatusForBadge(status: string) {
   const s = String(status ?? "");
   if (s === "PENDING_PAYMENT" || s === "DRAFT" || s === "PENDING_ACCEPTANCE" || s === "PAID") return "PENDING";
   return s;
+}
+
+// Swipe-left to reveal a single action (Archiver / Supprimer). Tap still opens
+// the detail; a swipe suppresses the following click. Disabled when the founder
+// rule blocks the action (an active confirmed booking that hasn't passed).
+function SwipeableBookingRow({
+  children,
+  enabled,
+  tone,
+  label,
+  icon,
+  onAction,
+}: {
+  children: React.ReactNode;
+  enabled: boolean;
+  tone: "archive" | "delete";
+  label: string;
+  icon: React.ReactNode;
+  onAction: () => void;
+}) {
+  const [offset, setOffset] = useState(0);
+  const [dragging, setDragging] = useState(false);
+  const startX = useRef(0);
+  const startY = useRef(0);
+  const horiz = useRef<boolean | null>(null);
+  const ACTION_W = 92;
+  const SNAP = 52;
+
+  function onTouchStart(e: React.TouchEvent) {
+    if (!enabled) return;
+    startX.current = e.touches[0].clientX;
+    startY.current = e.touches[0].clientY;
+    horiz.current = null;
+    setDragging(true);
+  }
+  function onTouchMove(e: React.TouchEvent) {
+    if (!enabled) return;
+    const dx = e.touches[0].clientX - startX.current;
+    const dy = e.touches[0].clientY - startY.current;
+    if (horiz.current === null) horiz.current = Math.abs(dx) > Math.abs(dy);
+    if (!horiz.current) return;
+    setOffset(Math.max(-ACTION_W, Math.min(0, dx)));
+  }
+  function onTouchEnd() {
+    if (!enabled) return;
+    setDragging(false);
+    horiz.current = null;
+    setOffset((prev) => (prev < -SNAP ? -ACTION_W : 0));
+  }
+  // A swipe leaves the row translated; swallow the click that iOS fires after it
+  // so it doesn't also open the booking detail.
+  function onClickCapture(e: React.MouseEvent) {
+    if (offset !== 0) {
+      e.preventDefault();
+      e.stopPropagation();
+      setOffset(0);
+    }
+  }
+
+  return (
+    <div className="relative overflow-hidden rounded-2xl" style={{ touchAction: "pan-y" }}>
+      {enabled ? (
+        <div className="absolute inset-y-0 right-0 z-0 flex" style={{ width: ACTION_W }} aria-hidden={offset === 0}>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onAction();
+              setOffset(0);
+            }}
+            style={{ touchAction: "manipulation" }}
+            className={
+              "flex w-full flex-col items-center justify-center gap-1 text-xs font-semibold text-white active:opacity-90 " +
+              (tone === "delete" ? "bg-rose-600" : "bg-[#7c3aed]")
+            }
+            aria-label={label}
+          >
+            {icon}
+            <span>{label}</span>
+          </button>
+        </div>
+      ) : null}
+      <div
+        className="relative z-10"
+        onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
+        onTouchEnd={onTouchEnd}
+        onClickCapture={onClickCapture}
+        style={{
+          transform: `translateX(${offset}px)`,
+          transition: dragging ? "none" : "transform 0.25s cubic-bezier(0.25,0.46,0.45,0.94)",
+        }}
+      >
+        {children}
+      </div>
+    </div>
+  );
 }
 
 function matchesPendingSubfilter(status: string, sub: "payment" | "acceptance" | "") {
@@ -519,6 +620,46 @@ function AccountBookingsContent() {
     }
   }
 
+  // Swipe → archive (from the Réservations tab). Blocked server-side for an
+  // active confirmed booking; we surface the reason.
+  async function swipeArchiveBooking(bookingId: string) {
+    if (!bookingId) return;
+    setError(null);
+    try {
+      const res = await fetch(`/api/account/bookings/${encodeURIComponent(bookingId)}/archive`, { method: "POST" });
+      const payload = (await res.json().catch(() => null)) as { ok?: boolean; error?: string; archivedAt?: string } | null;
+      if (!res.ok || !payload?.ok) {
+        setError(payload?.error === "CONFIRMED_NOT_PASSED" ? "Impossible d’archiver une réservation confirmée à venir." : "Impossible d’archiver cette réservation.");
+        return;
+      }
+      const archivedAt = typeof payload.archivedAt === "string" && payload.archivedAt.trim() ? payload.archivedAt : new Date().toISOString();
+      setBookings((prev) => prev.map((b) => (b.id === bookingId ? { ...b, archivedAt } : b)));
+      if (selectedId === bookingId) { setSelectedId(null); setMobileDetailOpen(false); }
+    } catch {
+      setError("Impossible d’archiver cette réservation.");
+    }
+  }
+
+  // Swipe → permanently remove (from the Archivées tab). Soft-delete server-side.
+  async function swipeDeleteBooking(bookingId: string) {
+    if (!bookingId) return;
+    setError(null);
+    const snapshot = bookings;
+    setBookings((prev) => prev.filter((b) => b.id !== bookingId));
+    if (selectedId === bookingId) { setSelectedId(null); setMobileDetailOpen(false); }
+    try {
+      const res = await fetch(`/api/account/bookings/${encodeURIComponent(bookingId)}/delete`, { method: "POST" });
+      const payload = (await res.json().catch(() => null)) as { ok?: boolean; error?: string } | null;
+      if (!res.ok || !payload?.ok) {
+        setBookings(snapshot);
+        setError(payload?.error === "CONFIRMED_NOT_PASSED" ? "Impossible de supprimer une réservation confirmée à venir." : "Impossible de supprimer cette réservation.");
+      }
+    } catch {
+      setBookings(snapshot);
+      setError("Impossible de supprimer cette réservation.");
+    }
+  }
+
   if (!isLoaded || !isSignedIn) return <AccountPageSkeleton />;
 
   // Native: render the SAME skeleton the route fallback shows (loading.tsx →
@@ -685,10 +826,19 @@ function AccountBookingsContent() {
                   const canDelete = false; // DRAFT/PENDING_PAYMENT bookings are hidden server-side
                   const canUnarchive = false;
                   const isSelected = b.id === selectedId;
+                  const isArchivedTab = currentTab === "ARCHIVED";
+                  const canSwipe = canOwnerArchiveOrDelete(b);
 
                   return (
-                    <div
+                    <SwipeableBookingRow
                       key={b.id}
+                      enabled={canSwipe}
+                      tone={isArchivedTab ? "delete" : "archive"}
+                      label={isArchivedTab ? "Supprimer" : "Archiver"}
+                      icon={isArchivedTab ? <Trash2 className="h-4 w-4" aria-hidden="true" /> : <Archive className="h-4 w-4" aria-hidden="true" />}
+                      onAction={() => (isArchivedTab ? void swipeDeleteBooking(b.id) : void swipeArchiveBooking(b.id))}
+                    >
+                    <div
                       role="option"
                       aria-selected={isSelected}
                       tabIndex={0}
@@ -774,6 +924,7 @@ function AccountBookingsContent() {
                         </div>
                       </div>
                     </div>
+                    </SwipeableBookingRow>
                   );
                 })}
               </div>
