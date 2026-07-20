@@ -342,6 +342,7 @@ model Booking {
   message                    String?
   canceledAt                 DateTime?
   archivedAt                 DateTime?
+  deletedAt                  DateTime?
   refundedAt                 DateTime?
   stripeRefundId             String?
   stripeApplicationFeeAmount Int                   @default(0)

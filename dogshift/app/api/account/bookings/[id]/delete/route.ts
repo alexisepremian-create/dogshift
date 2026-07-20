@@ -13,6 +13,12 @@ function isMigrationMissingError(err: unknown) {
   return msg.includes("no such table") || msg.includes("does not exist") || msg.includes("P2021");
 }
 
+/**
+ * Soft-delete an ARCHIVED booking from the owner's view. Sets `deletedAt` — the
+ * row (and its immutable finance/audit records) stays in the DB; the list query
+ * filters `deletedAt: null`. Same rule as archive: an active CONFIRMED booking
+ * that hasn't passed yet cannot be deleted.
+ */
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const userId = await resolveDbUserId(req);
@@ -33,6 +39,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         userId: true,
         status: true,
         archivedAt: true,
+        deletedAt: true,
         startAt: true,
         endAt: true,
         startDate: true,
@@ -43,44 +50,36 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     if (!booking) {
       return NextResponse.json({ ok: false, error: "NOT_FOUND" }, { status: 404 });
     }
-
     if (booking.userId !== userId) {
       return NextResponse.json({ ok: false, error: "FORBIDDEN" }, { status: 403 });
     }
-
-    if (booking.archivedAt) {
-      return NextResponse.json({ ok: true, id: bookingId, archivedAt: booking.archivedAt instanceof Date ? booking.archivedAt.toISOString() : String(booking.archivedAt) }, { status: 200 });
+    if (booking.deletedAt) {
+      return NextResponse.json({ ok: true, id: bookingId }, { status: 200 });
     }
-
-    // Block only an active CONFIRMED booking that hasn't happened yet.
+    // Only archived bookings can be permanently removed.
+    if (!booking.archivedAt) {
+      return NextResponse.json({ ok: false, error: "NOT_ARCHIVED" }, { status: 409 });
+    }
     if (!canOwnerArchiveOrDelete(booking)) {
       return NextResponse.json({ ok: false, error: "CONFIRMED_NOT_PASSED" }, { status: 409 });
     }
 
-    const now = new Date();
-    const updated = await (prisma as any).booking.update({
+    await (prisma as any).booking.update({
       where: { id: bookingId },
-      data: { archivedAt: now },
-      select: { id: true, archivedAt: true },
+      data: { deletedAt: new Date() },
+      select: { id: true },
     });
 
-    return NextResponse.json(
-      {
-        ok: true,
-        id: String(updated.id ?? bookingId),
-        archivedAt: updated.archivedAt instanceof Date ? updated.archivedAt.toISOString() : String(updated.archivedAt ?? now.toISOString()),
-      },
-      { status: 200 }
-    );
+    return NextResponse.json({ ok: true, id: bookingId }, { status: 200 });
   } catch (err) {
     if (isMigrationMissingError(err)) {
       return NextResponse.json(
-        { ok: false, error: "MIGRATION_MISSING", message: "Database schema missing. Run: prisma migrate dev" },
+        { ok: false, error: "MIGRATION_MISSING", message: "Run: prisma migrate deploy (Booking.deletedAt)" },
         { status: 500 }
       );
     }
     if (process.env.NODE_ENV !== "production") {
-      console.error("[api][account][bookings][id][archive][POST] error", { err });
+      console.error("[api][account][bookings][id][delete][POST] error", { err });
     }
     return NextResponse.json({ ok: false, error: "INTERNAL_ERROR" }, { status: 500 });
   }
