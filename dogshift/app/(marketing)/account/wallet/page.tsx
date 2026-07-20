@@ -451,7 +451,7 @@ function OwnerWalletContent() {
     }
     const last3 = filteredHistory.slice(0, 3);
     return (
-      <div className="flex h-full flex-col pb-2" data-testid="owner-wallet-page">
+      <div className="flex flex-col pb-2" data-testid="owner-wallet-page">
         <div className="flex items-center justify-between">
           <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight text-slate-900">
             <Wallet className="h-6 w-6 text-[#7c3aed]" aria-hidden="true" />
@@ -534,8 +534,9 @@ function OwnerWalletContent() {
           </div>
         </div>
 
-        {/* Bottom summary — Total payé / Remboursé */}
-        <div className="mt-auto grid grid-cols-2 gap-2">
+        {/* Summary — Total payé / Remboursé, right under the flip card
+            (founder: the two cards were glued to the bottom, move them up). */}
+        <div className="mt-5 grid grid-cols-2 gap-2">
           <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
             <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Total payé</p>
             <p className="mt-0.5 text-lg font-bold text-slate-900">{formatChfCents(totalPaid)}</p>
