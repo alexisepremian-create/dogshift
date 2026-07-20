@@ -23,6 +23,7 @@ import HowItWorksSchema, { OWNER_HOW_IT_WORKS_CONTENT } from "@/components/HowIt
 import { getHostUserData } from "@/lib/hostUser";
 import { prisma } from "@/lib/prisma";
 import { getUserContexts } from "@/lib/userContexts";
+import { DASHBOARD_UPCOMING_BOOKING_STATUSES } from "@/lib/account/dashboardStats";
 
 export const dynamic = "force-dynamic";
 
@@ -103,7 +104,10 @@ export default async function AccountDashboardPage({
     prisma.booking.count({ where: { userId: uid, archivedAt: null, status: "CONFIRMED" } }),
     prisma.message.count({
       where: {
-        conversation: { ownerId: uid },
+        // Coherence: only count unread messages in conversations the owner can
+        // still see. A deleted conversation (swipe-delete) must not keep
+        // inflating the "X Messages" badge (founder: "1 Messages" with none).
+        conversation: { ownerId: uid, deletedAt: null },
         senderId: { not: uid },
         readAt: null,
       },
@@ -121,7 +125,9 @@ export default async function AccountDashboardPage({
         userId: uid,
         archivedAt: null,
         startDate: { gte: now },
-        status: { in: ["CONFIRMED", "PENDING_ACCEPTANCE", "PAID", "PENDING_PAYMENT", "DRAFT"] },
+        // Only a real (accepted/paid/confirmed) booking is a "prochaine
+        // réservation" — never an unpaid draft / abandoned checkout.
+        status: { in: [...DASHBOARD_UPCOMING_BOOKING_STATUSES] },
       },
       orderBy: [{ startDate: "asc" }, { createdAt: "desc" }],
       select: {
