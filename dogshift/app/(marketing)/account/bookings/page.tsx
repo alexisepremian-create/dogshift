@@ -353,6 +353,11 @@ async function copyToClipboard(value: string) {
   }
 }
 
+// In-session cache of the bookings list so tab re-navigation is instant
+// (stale-while-revalidate). Cleared on a full page reload. Mirrors the pattern
+// used for the Messages tab.
+let cachedBookings: BookingListItem[] | null = null;
+
 function AccountBookingsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -361,8 +366,11 @@ function AccountBookingsContent() {
   const isSignedIn = __sessionStatus === "authenticated";
   const isNative = useIsNativeAppSync();
 
-  const [bookings, setBookings] = useState<BookingListItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  // Hydrate from the in-session cache so re-navigating to Réservations shows the
+  // list INSTANTLY (no skeleton), then revalidates silently. First visit only
+  // shows the skeleton.
+  const [bookings, setBookings] = useState<BookingListItem[]>(() => cachedBookings ?? []);
+  const [loading, setLoading] = useState(() => cachedBookings === null);
   const [error, setError] = useState<string | null>(null);
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -383,8 +391,10 @@ function AccountBookingsContent() {
     return () => window.clearTimeout(t);
   }, [copied]);
 
-  async function loadBookings() {
-    setLoading(true);
+  // `silent` = background refresh (no skeleton, keep the cached list on error) —
+  // used when we already rendered from the in-session cache.
+  async function loadBookings(silent = false) {
+    if (!silent) setLoading(true);
     setError(null);
     try {
       const res = await fetch("/api/account/bookings", { method: "GET" });
@@ -393,35 +403,37 @@ function AccountBookingsContent() {
       if (!res.ok || !payload.ok) {
         if (res.status === 401 || payload.error === "UNAUTHORIZED") {
           setError("Connexion requise (401). ");
-          setBookings([]);
+          if (!silent) setBookings([]);
           return;
         }
         if (res.status === 403 || payload.error === "FORBIDDEN") {
           setError("Accès refusé (403).");
-          setBookings([]);
+          if (!silent) setBookings([]);
           return;
         }
         if (res.status === 404 || payload.error === "NOT_FOUND") {
           setError("Introuvable (404).");
-          setBookings([]);
+          if (!silent) setBookings([]);
           return;
         }
         if (res.status >= 500) {
           setError("Erreur serveur (500). ");
-          setBookings([]);
+          if (!silent) setBookings([]);
           return;
         }
         setError("Impossible de charger tes réservations.");
-        setBookings([]);
+        if (!silent) setBookings([]);
         return;
       }
 
-      setBookings(Array.isArray(payload.bookings) ? payload.bookings : []);
+      const list = Array.isArray(payload.bookings) ? payload.bookings : [];
+      cachedBookings = list;
+      setBookings(list);
     } catch {
       setError("Impossible de charger tes réservations.");
-      setBookings([]);
+      if (!silent) setBookings([]);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }
 
@@ -434,9 +446,19 @@ function AccountBookingsContent() {
 
   useEffect(() => {
     if (!isLoaded || !isSignedIn) return;
-    void loadBookings();
-     
+    // Cached already rendered → refresh silently (no skeleton).
+    void loadBookings(cachedBookings !== null);
+
   }, [isLoaded, isSignedIn]);
+
+  // Keep the in-session cache in sync with optimistic mutations (archive,
+  // unarchive, swipe archive/delete) so an instant re-nav never flashes a row
+  // that was just removed. Runs after the mount-load effect, so it never
+  // pre-seeds the cache and hides the first-visit skeleton.
+  useEffect(() => {
+    if (cachedBookings === null && !isSignedIn) return;
+    cachedBookings = bookings;
+  }, [bookings, isSignedIn]);
 
   const activeTabFromQuery = useMemo<TabKey>(() => {
     const tabQ = searchParams?.get("tab");
