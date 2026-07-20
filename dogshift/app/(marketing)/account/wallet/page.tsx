@@ -4,7 +4,8 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState, Suspense } from "react";
 import { useSession, signOut } from "next-auth/react";
-import { ArrowDownRight, ArrowUpRight, Briefcase, CreditCard, Info, RefreshCw, Wallet, CalendarClock, PlayCircle, ShieldCheck, CheckCircle2, Clock, Landmark } from "lucide-react";
+import { ArrowDownRight, ArrowUpRight, Briefcase, CreditCard, Info, RefreshCw, Wallet, CalendarClock, PlayCircle, ShieldCheck, CheckCircle2, Clock, Landmark, RotateCw, ChevronDown } from "lucide-react";
+import { useIsNativeAppSync } from "@/lib/native/useIsNativeAppSync";
 
 
 type WalletSummary = {
@@ -303,6 +304,8 @@ function OwnerWalletContent() {
   const isLoaded = __sessionStatus !== "loading";
   const isSignedIn = __sessionStatus === "authenticated";
 
+  const isNative = useIsNativeAppSync();
+  const [walletFlipped, setWalletFlipped] = useState(false);
   const [loading, setLoading] = useState(() => cachedWallet === null);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<WalletPayload | null>(() => cachedWallet);
@@ -435,6 +438,116 @@ function OwnerWalletContent() {
   }, [timeframe, loading, fireTop]);
 
   if (!isLoaded || !isSignedIn) return null;
+
+  // ── Native app: compact wallet mirroring the sitter dashboard (flip card:
+  //    expense ring ⇄ recent transactions), instead of the long web layout. ──
+  if (isNative) {
+    if (loading) {
+      return (
+        <div className="flex min-h-[55vh] items-center justify-center" data-testid="owner-wallet-page">
+          <div className="h-7 w-7 animate-spin rounded-full border-2 border-[#7c3aed] border-t-transparent" />
+        </div>
+      );
+    }
+    const last3 = filteredHistory.slice(0, 3);
+    return (
+      <div className="flex h-full flex-col pb-2" data-testid="owner-wallet-page">
+        <div className="flex items-center justify-between">
+          <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight text-slate-900">
+            <Wallet className="h-6 w-6 text-[#7c3aed]" aria-hidden="true" />
+            <span>Portefeuille</span>
+          </h1>
+          <button
+            type="button"
+            onClick={() => setWalletFlipped((v) => !v)}
+            aria-label="Retourner la carte"
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-[#7c3aed]/10 text-[#7c3aed] active:scale-95"
+          >
+            <RotateCw className="h-4 w-4" aria-hidden="true" />
+          </button>
+        </div>
+
+        <div className="relative mt-3">
+          <select
+            value={timeframe}
+            onChange={(e) => setTimeframe(e.target.value as any)}
+            className="h-10 w-full appearance-none rounded-xl border border-slate-200 bg-slate-50 pl-3 pr-9 text-sm font-medium text-slate-700 outline-none"
+          >
+            <option value="TODAY">Aujourd&apos;hui</option>
+            <option value="WEEK">7 derniers jours</option>
+            <option value="MONTH">Mois en cours</option>
+            <option value="ALL">Toujours</option>
+          </select>
+          <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#7c3aed]" aria-hidden="true" />
+        </div>
+
+        {/* Flip card: expense ring (front) ⇄ recent transactions (back) */}
+        <div className="mt-3 [perspective:1200px]">
+          <div
+            className={
+              "relative h-[248px] w-full [transform-style:preserve-3d] transition-transform duration-500 " +
+              (walletFlipped ? "[transform:rotateY(180deg)]" : "")
+            }
+          >
+            {/* FRONT — expense ring */}
+            <div className="absolute inset-0 flex items-center justify-center [backface-visibility:hidden]">
+              <div className="relative">
+                <ExpenseRing data={expensesByService} total={totalPaid} trigger={1} />
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Dépenses</p>
+                  <p className="text-2xl font-extrabold text-slate-900">{formatChfCents(totalPaid)}</p>
+                  <p className="text-xs text-slate-500">
+                    {filteredHistory.length} service{filteredHistory.length > 1 ? "s" : ""}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* BACK — 3 dernières transactions */}
+            <div className="absolute inset-0 flex flex-col [backface-visibility:hidden] [transform:rotateY(180deg)]">
+              <p className="text-sm font-semibold text-slate-900">Dernières transactions</p>
+              <div className="mt-2 space-y-2">
+                {last3.length === 0 ? (
+                  <p className="text-sm text-slate-500">Aucune transaction pour l&apos;instant.</p>
+                ) : (
+                  last3.map((item, i) => {
+                    const isPayment = item.type === "payment";
+                    return (
+                      <div key={i} className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2.5">
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-semibold text-slate-900">
+                            {isPayment ? "Paiement" : "Remboursement"}
+                            {item.service ? ` · ${item.service}` : ""}
+                          </p>
+                          <p className="text-xs text-slate-500">{formatDateShort(item.dateIso)}</p>
+                        </div>
+                        <span className={"shrink-0 text-sm font-semibold " + (isPayment ? "text-slate-900" : "text-rose-600")}>
+                          {isPayment ? "" : "+"}
+                          {formatChfCents(item.amount)}
+                        </span>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Bottom summary — Total payé / Remboursé */}
+        <div className="mt-auto grid grid-cols-2 gap-2">
+          <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Total payé</p>
+            <p className="mt-0.5 text-lg font-bold text-slate-900">{formatChfCents(totalPaid)}</p>
+          </div>
+          <div className="rounded-2xl border border-rose-100 bg-rose-50/50 px-4 py-3">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-rose-500">Remboursé</p>
+            <p className="mt-0.5 text-lg font-bold text-rose-900">{formatChfCents(totalRefunded)}</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="relative grid gap-6 overflow-x-hidden overflow-y-visible" data-testid="owner-wallet-page">

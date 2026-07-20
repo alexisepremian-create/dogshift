@@ -291,7 +291,11 @@ function SwipeableBookingRow({
   return (
     <div className="relative overflow-hidden rounded-2xl" style={{ touchAction: "pan-y" }}>
       {enabled ? (
-        <div className="absolute inset-y-0 right-0 z-0 flex" style={{ width: ACTION_W }} aria-hidden={offset === 0}>
+        // The action sits behind the sliding card. It's a fully-rounded card
+        // (rounded-2xl) with an 8px gutter (pl-2) so, once revealed, it reads as
+        // a second rounded card matching the reservation card — not a squared
+        // block butting against it (founder: "que ça vienne compléter la forme").
+        <div className="absolute inset-y-0 right-0 z-0 flex pl-2" style={{ width: ACTION_W }} aria-hidden={offset === 0}>
           <button
             type="button"
             onClick={(e) => {
@@ -301,7 +305,7 @@ function SwipeableBookingRow({
             }}
             style={{ touchAction: "manipulation" }}
             className={
-              "flex w-full flex-col items-center justify-center gap-1 text-xs font-semibold text-white active:opacity-90 " +
+              "flex w-full flex-col items-center justify-center gap-1 rounded-2xl text-xs font-semibold text-white active:opacity-90 " +
               (tone === "delete" ? "bg-rose-600" : "bg-[#7c3aed]")
             }
             aria-label={label}
