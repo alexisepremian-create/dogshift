@@ -4,13 +4,18 @@ import { useEffect, useState } from "react";
 
 import { RequestsSplitView, type HostRequest } from "@/components/host/requests/RequestsSplitView";
 
+// In-session cache so re-opening "Demandes" (tile sheet or bottom nav) paints
+// instantly, then revalidates silently. Cleared on a full reload. Mirrors the
+// owner-side panels.
+let cachedHostRequests: HostRequest[] | null = null;
+
 export default function HostRequestsPage() {
-  const [rows, setRows] = useState<HostRequest[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [rows, setRows] = useState<HostRequest[]>(() => cachedHostRequests ?? []);
+  const [loading, setLoading] = useState(() => cachedHostRequests === null);
   const [error, setError] = useState<string | null>(null);
 
-  async function loadRequests() {
-    setLoading(true);
+  async function loadRequests(silent = false) {
+    if (!silent) setLoading(true);
     setError(null);
     try {
       const res = await fetch("/api/host/requests", { method: "GET" });
@@ -19,40 +24,43 @@ export default function HostRequestsPage() {
       if (!res.ok || !payload.ok) {
         if (res.status === 401 || payload.error === "UNAUTHORIZED") {
           setError("Connexion requise (401). ");
-          setRows([]);
+          if (!silent) setRows([]);
           return;
         }
         if (res.status === 403 || payload.error === "FORBIDDEN") {
           setError("Accès refusé (403).");
-          setRows([]);
+          if (!silent) setRows([]);
           return;
         }
         if (res.status === 404 || payload.error === "NOT_FOUND") {
           setError("Introuvable (404).");
-          setRows([]);
+          if (!silent) setRows([]);
           return;
         }
         if (res.status >= 500) {
           setError("Erreur serveur (500). ");
-          setRows([]);
+          if (!silent) setRows([]);
           return;
         }
         setError("Impossible de charger tes réservations.");
-        setRows([]);
+        if (!silent) setRows([]);
         return;
       }
 
-      setRows(Array.isArray(payload.bookings) ? payload.bookings : []);
+      const list = Array.isArray(payload.bookings) ? payload.bookings : [];
+      cachedHostRequests = list;
+      setRows(list);
     } catch {
       setError("Impossible de charger tes réservations.");
-      setRows([]);
+      if (!silent) setRows([]);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }
 
   useEffect(() => {
-    void loadRequests();
+    // Cached already rendered → refresh silently (no spinner).
+    void loadRequests(cachedHostRequests !== null);
   }, []);
 
   return (

@@ -55,13 +55,17 @@ function formatDateOnly(iso: string) {
 
 type Contact = { id: string; name: string; avatarUrl: string | null };
 
+// In-session cache so re-opening host Messages paints instantly, then revalidates
+// silently. Cleared on a full reload. Mirrors the owner-side panels.
+let cachedHostConversations: ConversationListItem[] | null = null;
+
 export default function HostMessagesLayout({ children }: { children?: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const isNative = useIsNativeAppSync();
 
-  const [conversations, setConversations] = useState<ConversationListItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [conversations, setConversations] = useState<ConversationListItem[]>(() => cachedHostConversations ?? []);
+  const [loading, setLoading] = useState(() => cachedHostConversations === null);
   const [error, setError] = useState<string | null>(null);
 
   // ── "New conversation" picker (the purple + button) ──────────────────────
@@ -133,8 +137,8 @@ export default function HostMessagesLayout({ children }: { children?: React.Reac
     [startingId, closePicker, router],
   );
 
-  async function loadConversations() {
-    setLoading(true);
+  async function loadConversations(silent = false) {
+    if (!silent) setLoading(true);
     setError(null);
     try {
       const res = await fetch("/api/host/messages/conversations", { method: "GET", cache: "no-store" });
@@ -142,39 +146,42 @@ export default function HostMessagesLayout({ children }: { children?: React.Reac
       if (!res.ok || !payload.ok) {
         if (res.status === 401 || payload.error === "UNAUTHORIZED") {
           setError("Connexion requise (401). ");
-          setConversations([]);
+          if (!silent) setConversations([]);
           return;
         }
         if (res.status === 403 || payload.error === "FORBIDDEN") {
           setError("Accès refusé (403).");
-          setConversations([]);
+          if (!silent) setConversations([]);
           return;
         }
         if (res.status === 404 || payload.error === "NOT_FOUND") {
           setError("Introuvable (404).");
-          setConversations([]);
+          if (!silent) setConversations([]);
           return;
         }
         if (res.status >= 500) {
           setError("Erreur serveur (500). ");
-          setConversations([]);
+          if (!silent) setConversations([]);
           return;
         }
         setError("Impossible de charger tes messages.");
-        setConversations([]);
+        if (!silent) setConversations([]);
         return;
       }
-      setConversations(Array.isArray(payload.conversations) ? payload.conversations : []);
+      const list = Array.isArray(payload.conversations) ? payload.conversations : [];
+      cachedHostConversations = list;
+      setConversations(list);
     } catch {
       setError("Impossible de charger tes messages.");
-      setConversations([]);
+      if (!silent) setConversations([]);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }
 
   useEffect(() => {
-    void loadConversations();
+    // Cached already rendered → refresh silently (no spinner).
+    void loadConversations(cachedHostConversations !== null);
   }, []);
 
   const m = pathname.match(/^\/host\/messages\/([^/?#]+)/);
