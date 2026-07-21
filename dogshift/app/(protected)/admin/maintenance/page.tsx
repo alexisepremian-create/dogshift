@@ -15,6 +15,8 @@ import {
   ExternalLink,
 } from "lucide-react";
 
+import { useVisibleInterval } from "@/lib/polling/useVisibleInterval";
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface PackageResult {
@@ -294,7 +296,7 @@ const SENSITIVE_PACKAGES: Array<{
   },
 ];
 
-const POLL_INTERVAL_MS = 30_000;
+const POLL_INTERVAL_MS = 60_000;
 
 export default function MaintenancePage() {
   const [logs, setLogs] = useState<MaintenanceLog[]>([]);
@@ -319,9 +321,13 @@ export default function MaintenancePage() {
 
   useEffect(() => {
     fetchLogs(false);
-    const id = setInterval(() => fetchLogs(true), POLL_INTERVAL_MS);
-    return () => clearInterval(id);
   }, []);
+
+  // Poll maintenance logs only while the tab is visible (relaxed to 60 s).
+  // A backgrounded admin tab must not keep waking Neon.
+  useVisibleInterval(() => {
+    fetchLogs(true);
+  }, POLL_INTERVAL_MS);
 
   const lastRun = logs[0];
   const lastNightly = logs.find(l => l.actionType === "nightly_update");
