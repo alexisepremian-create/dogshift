@@ -4,6 +4,8 @@ import Link from "next/link";
 import { type CSSProperties, useEffect, useMemo, useRef, useState } from "react";
 import { Bell } from "lucide-react";
 
+import { useVisibleInterval } from "@/lib/polling/useVisibleInterval";
+
 type NotificationItem = {
   id: string;
   type: string;
@@ -117,11 +119,13 @@ export default function NotificationBell({ className }: { className?: string }) 
 
   useEffect(() => {
     void refreshUnread();
-    const i = window.setInterval(() => {
-      void refreshUnread();
-    }, 45_000);
-    return () => window.clearInterval(i);
   }, []);
+
+  // Poll the unread count only while the tab is visible — a backgrounded tab
+  // left open would otherwise keep waking Neon every 45 s. Interval relaxed to 60 s.
+  useVisibleInterval(() => {
+    void refreshUnread();
+  }, 60_000);
 
   useEffect(() => {
     if (!open) return;

@@ -34,6 +34,8 @@ import {
   Stethoscope,
 } from "lucide-react";
 
+import { useVisibleInterval } from "@/lib/polling/useVisibleInterval";
+
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 interface AgentNode {
@@ -506,13 +508,21 @@ function AgentDrawer({
   );
 
   // Initial load + live 5 s polling when Logs tab is active
+  const logsTabActive = tab === "logs";
   useEffect(() => {
-    if (tab !== "logs") { setIsLive(false); return; }
+    if (!logsTabActive) { setIsLive(false); return; }
     void fetchModalLogs(0, logsFilter, true);
     setIsLive(true);
-    const interval = setInterval(() => void fetchModalLogs(0, logsFilter, true), 5_000);
-    return () => { clearInterval(interval); setIsLive(false); };
-  }, [tab, logsFilter, fetchModalLogs]);
+    return () => setIsLive(false);
+  }, [logsTabActive, logsFilter, fetchModalLogs]);
+
+  // Live tail only runs while the Logs tab is open AND the browser tab is
+  // visible — a backgrounded tab must not keep polling (and waking Neon).
+  useVisibleInterval(
+    () => { void fetchModalLogs(0, logsFilter, true); },
+    5_000,
+    { enabled: logsTabActive }
+  );
 
   // ── Tester tab ────────────────────────────────────────────────────────────
   const [testerBody, setTesterBody] = useState(JSON.stringify(DEFAULT_BODIES[agent.id] ?? {}, null, 2));
@@ -1522,12 +1532,14 @@ export default function AgentsDashboard() {
     }
   }, []);
 
-  // Immediate fetch on mount + 30 s polling interval
+  // Immediate fetch on mount, then poll only while the tab is visible.
+  // Relaxed 30 s → 60 s: agent status is a non-critical indicator.
   useEffect(() => {
     void fetchStatuses();
-    const interval = setInterval(() => void fetchStatuses(), 30_000);
-    return () => clearInterval(interval);
   }, [fetchStatuses]);
+  useVisibleInterval(() => {
+    void fetchStatuses();
+  }, 60_000);
 
   // ── Config seed + load (once on mount) ─────────────────────────────────────
   useEffect(() => {
