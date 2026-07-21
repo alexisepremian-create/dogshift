@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import dynamic from "next/dynamic";
-import { useState, type ComponentType } from "react";
+import { useEffect, useState, type ComponentType } from "react";
 import { CalendarDays, ChevronRight, CreditCard, Dog, MessageCircle, Search, Settings, Wallet } from "lucide-react";
 
 import { NativeDashTile, NativeStat } from "@/components/native/NativeDashTile";
 import { DashboardSheet } from "@/components/native/DashboardSheet";
+import { prefetchOwnerBookings } from "@/lib/account/ownerBookingsCache";
 
 const PanelLoading = () => (
   <div className="flex min-h-[55vh] items-center justify-center">
@@ -40,6 +41,13 @@ export function OwnerNativeHome({
   const [panel, setPanel] = useState<string | null>(null);
   const active = panel ? PANELS[panel] : null;
   const ActiveComponent = active?.Component ?? null;
+
+  // Warm the Réservations list in the background while the owner is on the
+  // dashboard, so tapping the "Réservations" tab (a full route) paints instantly
+  // instead of waiting on a fresh fetch.
+  useEffect(() => {
+    void prefetchOwnerBookings();
+  }, []);
 
   return (
     <div className="space-y-4 pb-2" data-testid="account-dashboard-native">
