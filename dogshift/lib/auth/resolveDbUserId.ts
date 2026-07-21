@@ -24,7 +24,7 @@
 import type { NextRequest } from "next/server";
 import type { Role } from "@prisma/client";
 
-import { auth } from "@/auth";
+import { resolveEffectiveUserId } from "@/lib/auth/getAuthedDbUser";
 import { prisma } from "@/lib/prisma";
 
 export type DbUserEnsured = {
@@ -149,8 +149,9 @@ export async function ensureDbUserByClerkUserId(params: {
  *  - Session points at a User that no longer exists (race with deletion)
  */
 export async function ensureDbUserFromClerkAuth(): Promise<(DbUserEnsured & { created: boolean }) | null> {
-  const session = await auth();
-  const userId = session?.user?.id;
+  // Impersonation-aware: when an admin is impersonating, this resolves to the
+  // TARGET user id so /account + /host data loads as the target sees it.
+  const userId = await resolveEffectiveUserId();
   if (!userId) return null;
 
   const user = await prisma.user.findUnique({
@@ -169,6 +170,7 @@ export async function ensureDbUserFromClerkAuth(): Promise<(DbUserEnsured & { cr
  */
 export async function resolveDbUserId(req: NextRequest): Promise<string | null> {
   void req;
-  const session = await auth();
-  return session?.user?.id ?? null;
+  // Impersonation-aware (target id when an admin is impersonating), with a
+  // zero-extra-query fast path for normal users. See resolveEffectiveUserId.
+  return resolveEffectiveUserId();
 }
