@@ -110,6 +110,31 @@ async function readImpersonationIfAdmin(realUser: {
 }
 
 /**
+ * Cheap "who is this request acting as" resolver for hot paths that only need
+ * the effective user id (not the whole row). This is the impersonation-aware
+ * replacement for `session.user.id` — every generic identity resolver
+ * (`resolveDbUserId`, `getUserContexts`, `requireSitterOwner`, …) must go
+ * through this so an admin's impersonation cookie is honored everywhere, not
+ * only in the handful of call sites that use `getAuthedDbUser()` directly.
+ *
+ * Fast path: when there is NO impersonation cookie (the 99% case), this does a
+ * single `auth()` read and ZERO extra DB queries — identical cost to the old
+ * `await auth()` path, so no Neon/compute regression for normal users. The
+ * heavier admin-gated resolution (via `getAuthedDbUser`) only runs when the
+ * cookie is actually present.
+ */
+export async function resolveEffectiveUserId(): Promise<string | null> {
+  const cookieStore = await cookies();
+  if (cookieStore.get(IMPERSONATION_COOKIE)?.value) {
+    // Cookie present → fully resolve (admin gate + target lookup + expiry).
+    const authed = await getAuthedDbUser();
+    return authed?.id ?? null;
+  }
+  const session = await auth();
+  return session?.user?.id ?? null;
+}
+
+/**
  * Convenience variant for callers that explicitly want the real signed-in
  * user, bypassing impersonation. Used by `/api/admin/impersonate/stop` and
  * the audit log writer — places where "who's actually clicking the button"

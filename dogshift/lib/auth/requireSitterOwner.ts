@@ -1,6 +1,6 @@
 import type { NextRequest } from "next/server";
 
-import { auth } from "@/auth";
+import { resolveEffectiveUserId } from "@/lib/auth/getAuthedDbUser";
 import { prisma } from "@/lib/prisma";
 
 /**
@@ -20,8 +20,9 @@ export type RequireSitterOwnerResult =
 export async function requireSitterOwner(_req: NextRequest): Promise<RequireSitterOwnerResult> {
   void _req;
 
-  const session = await auth();
-  const dbUserId = session?.user?.id ?? "";
+  // Impersonation-aware: resolves the target sitter's id when an admin is
+  // impersonating, so /api/host/** GETs return the target's data.
+  const dbUserId = (await resolveEffectiveUserId()) ?? "";
   if (!dbUserId) return { ok: false, status: 401, error: "UNAUTHORIZED" };
 
   const sitterProfile = await prisma.sitterProfile.findUnique({

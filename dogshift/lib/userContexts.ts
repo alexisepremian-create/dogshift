@@ -16,7 +16,7 @@
 import { cache } from "react";
 import { unstable_noStore as noStore } from "next/cache";
 
-import { auth } from "@/auth";
+import { resolveEffectiveUserId } from "@/lib/auth/getAuthedDbUser";
 import { prisma } from "@/lib/prisma";
 import { normalizeSitterLifecycleStatus, type SitterLifecycleStatus } from "@/lib/sitterContract";
 
@@ -36,14 +36,15 @@ export type UserContexts = {
 export const getUserContexts = cache(async function getUserContexts(): Promise<UserContexts> {
   noStore();
 
-  const session = await auth();
-  const sessionUserId = session?.user?.id;
-  if (!sessionUserId) {
+  // Impersonation-aware: when an admin is impersonating, this returns the
+  // TARGET user id so the whole /account + role context loads as the target.
+  const effectiveUserId = await resolveEffectiveUserId();
+  if (!effectiveUserId) {
     throw new Error("UNAUTHENTICATED");
   }
 
   const dbUser = await prisma.user.findUnique({
-    where: { id: sessionUserId },
+    where: { id: effectiveUserId },
     select: { id: true, role: true, email: true, sitterId: true },
   });
   if (!dbUser) {
