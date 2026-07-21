@@ -11,6 +11,7 @@ import AccountPageSkeleton from "@/components/ui/AccountPageSkeleton";
 import { useIsNativeAppSync } from "@/lib/native/useIsNativeAppSync";
 import { canOwnerArchiveOrDelete } from "@/lib/bookings/ownerBookingMutation";
 import { isPendingPaymentResumable } from "@/lib/bookings/pendingPayment";
+import { type OwnerBookingListItem, getCachedOwnerBookings, setCachedOwnerBookings } from "@/lib/account/ownerBookingsCache";
 import {
   Archive,
   ArchiveRestore,
@@ -33,22 +34,7 @@ import {
 } from "lucide-react";
 
 
-type BookingListItem = {
-  id: string;
-  createdAt: string;
-  archivedAt?: string | null;
-  service: string | null;
-  startDate: string | null;
-  endDate: string | null;
-  startAt?: string | null;
-  endAt?: string | null;
-  status: string;
-  hasReview: boolean;
-  amount: number;
-  currency: string;
-  platformFeeAmount: number;
-  sitter: { sitterId: string; name: string; avatarUrl: string | null; city?: string | null; postalCode?: string | null };
-};
+type BookingListItem = OwnerBookingListItem;
 
 type BookingDetail = {
   id: string;
@@ -355,11 +341,6 @@ async function copyToClipboard(value: string) {
   }
 }
 
-// In-session cache of the bookings list so tab re-navigation is instant
-// (stale-while-revalidate). Cleared on a full page reload. Mirrors the pattern
-// used for the Messages tab.
-let cachedBookings: BookingListItem[] | null = null;
-
 function AccountBookingsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -371,8 +352,8 @@ function AccountBookingsContent() {
   // Hydrate from the in-session cache so re-navigating to Réservations shows the
   // list INSTANTLY (no skeleton), then revalidates silently. First visit only
   // shows the skeleton.
-  const [bookings, setBookings] = useState<BookingListItem[]>(() => cachedBookings ?? []);
-  const [loading, setLoading] = useState(() => cachedBookings === null);
+  const [bookings, setBookings] = useState<BookingListItem[]>(() => getCachedOwnerBookings() ?? []);
+  const [loading, setLoading] = useState(() => getCachedOwnerBookings() === null);
   const [error, setError] = useState<string | null>(null);
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -429,7 +410,7 @@ function AccountBookingsContent() {
       }
 
       const list = Array.isArray(payload.bookings) ? payload.bookings : [];
-      cachedBookings = list;
+      setCachedOwnerBookings(list);
       setBookings(list);
     } catch {
       setError("Impossible de charger tes réservations.");
@@ -449,7 +430,7 @@ function AccountBookingsContent() {
   useEffect(() => {
     if (!isLoaded || !isSignedIn) return;
     // Cached already rendered → refresh silently (no skeleton).
-    void loadBookings(cachedBookings !== null);
+    void loadBookings(getCachedOwnerBookings() !== null);
 
   }, [isLoaded, isSignedIn]);
 
@@ -458,8 +439,8 @@ function AccountBookingsContent() {
   // that was just removed. Runs after the mount-load effect, so it never
   // pre-seeds the cache and hides the first-visit skeleton.
   useEffect(() => {
-    if (cachedBookings === null && !isSignedIn) return;
-    cachedBookings = bookings;
+    if (getCachedOwnerBookings() === null && !isSignedIn) return;
+    setCachedOwnerBookings(bookings);
   }, [bookings, isSignedIn]);
 
   const activeTabFromQuery = useMemo<TabKey>(() => {

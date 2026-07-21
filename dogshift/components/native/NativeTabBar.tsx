@@ -35,7 +35,9 @@ function Tab({ item, onNavigate }: { item: BottomNavItem; onNavigate: () => void
     >
       <span style={{ color: item.active ? "#ffffff" : "#94a3b8", transition: "color 200ms ease" }}>{item.icon}</span>
       <span
-        className="max-w-full truncate text-[11.5px] font-semibold leading-none"
+        // Smaller + tighter so the longest label ("Réservations") fits on one
+        // line without being clipped, even on a 375px-wide screen.
+        className="max-w-full truncate px-0.5 text-[10px] font-semibold leading-none tracking-tight"
         style={{ color: item.active ? "#ffffff" : "#94a3b8", transition: "color 200ms ease" }}
       >
         {item.label}
