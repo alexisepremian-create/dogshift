@@ -377,22 +377,31 @@ function PaymentCard({
   );
 }
 
+type HostStripeConnectState = {
+  loading: boolean;
+  status: "PENDING" | "ENABLED" | "RESTRICTED" | null;
+  stripeAccountId: string | null;
+  onboardingCompletedAt: string | null;
+  balance: { availableCents: number; pendingCents: number } | null;
+  nextPayoutArrivalDate: string | null;
+  error: string | null;
+};
+
+// In-session caches so re-opening the host Portefeuille paints instantly, then
+// revalidates silently. Cleared on a full reload. Mirrors the owner-side panels.
+let cachedHostWalletBookings: any[] | null = null;
+let cachedHostStripeConnect: HostStripeConnectState | null = null;
+
 export default function HostWalletPage() {
   const isNative = useIsNativeAppSync();
   const [walletFlipped, setWalletFlipped] = useState(false);
-  const [stripeConnect, setStripeConnect] = useState<{
-    loading: boolean;
-    status: "PENDING" | "ENABLED" | "RESTRICTED" | null;
-    stripeAccountId: string | null;
-    onboardingCompletedAt: string | null;
-    balance: { availableCents: number; pendingCents: number } | null;
-    nextPayoutArrivalDate: string | null;
-    error: string | null;
-  }>({ loading: true, status: null, stripeAccountId: null, onboardingCompletedAt: null, balance: null, nextPayoutArrivalDate: null, error: null });
+  const [stripeConnect, setStripeConnect] = useState<HostStripeConnectState>(
+    () => cachedHostStripeConnect ?? { loading: true, status: null, stripeAccountId: null, onboardingCompletedAt: null, balance: null, nextPayoutArrivalDate: null, error: null }
+  );
 
   const [stripeInfoOpen, setStripeInfoOpen] = useState(false);
-  const [allBookings, setAllBookings] = useState<any[]>([]);
-  const [bookingsLoading, setBookingsLoading] = useState(true);
+  const [allBookings, setAllBookings] = useState<any[]>(() => cachedHostWalletBookings ?? []);
+  const [bookingsLoading, setBookingsLoading] = useState(() => cachedHostWalletBookings === null);
   const [timeframe, setTimeframe] = useState<"TODAY" | "WEEK" | "MONTH" | "ALL">("MONTH");
 
   async function fetchBookings() {
@@ -400,6 +409,7 @@ export default function HostWalletPage() {
       const res = await fetch("/api/host/requests");
       const data = await res.json();
       if (data.ok && Array.isArray(data.bookings)) {
+        cachedHostWalletBookings = data.bookings;
         setAllBookings(data.bookings);
       }
     } catch { /* ignore */ } finally {
@@ -517,13 +527,13 @@ export default function HostWalletPage() {
     return () => clearTimeout(t);
   }, [bookingsLoading, onTopEnter, onBottomEnter]);
 
-  async function refreshStripeStatus() {
+  async function refreshStripeStatus(silent = false) {
     try {
-      setStripeConnect((s) => ({ ...s, loading: true, error: null }));
+      if (!silent) setStripeConnect((s) => ({ ...s, loading: true, error: null }));
       const res = await fetch("/api/host/stripe/connect/status", { method: "GET" });
       const payload = (await res.json().catch(() => null)) as any;
       if (!res.ok || !payload?.ok) {
-        setStripeConnect((s) => ({ ...s, loading: false, error: "Impossible de charger le statut Stripe." }));
+        if (!silent) setStripeConnect((s) => ({ ...s, loading: false, error: "Impossible de charger le statut Stripe." }));
         return;
       }
 
@@ -533,7 +543,7 @@ export default function HostWalletPage() {
       const balance = payload?.balance && typeof payload.balance === "object" ? payload.balance : null;
       const nextPayoutArrivalDate = typeof payload?.nextPayoutArrivalDate === "string" ? payload.nextPayoutArrivalDate : null;
 
-      setStripeConnect({
+      const resolved: HostStripeConnectState = {
         loading: false,
         status: st === "PENDING" || st === "ENABLED" || st === "RESTRICTED" ? st : null,
         stripeAccountId: accountId,
@@ -541,14 +551,17 @@ export default function HostWalletPage() {
         balance,
         nextPayoutArrivalDate,
         error: null,
-      });
+      };
+      cachedHostStripeConnect = resolved;
+      setStripeConnect(resolved);
     } catch {
-      setStripeConnect((s) => ({ ...s, loading: false, error: "Impossible de charger le statut Stripe." }));
+      if (!silent) setStripeConnect((s) => ({ ...s, loading: false, error: "Impossible de charger le statut Stripe." }));
     }
   }
 
   useEffect(() => {
-    void refreshStripeStatus();
+    // Cached already rendered → refresh silently (no spinner).
+    void refreshStripeStatus(cachedHostStripeConnect !== null);
     void fetchBookings();
   }, []);
 
