@@ -107,3 +107,29 @@ test("HostDashboardShell must import HostComplianceBlockingModal", async () => {
     "HostDashboardShell must actually render <HostComplianceBlockingModal host={host} />, not just import it.",
   );
 });
+
+// Regression for the follow-up bug (2026-07-21): after the sitter accepts the
+// CGU in the modal, only the modal's local `acceptedOverride` flipped — the
+// HostUserProvider (fed by the server layout) kept the stale termsAcceptedAt.
+// Every other consumer stayed blocked: /host/profile/edit computes
+// `canPublish = termsOk && …`, so the publish toggle remained greyed out
+// ("le bouton pour publier n'est pas cliquable"). In the native WebView, which
+// never hard-reloads, the stale state stuck indefinitely. The modal MUST call
+// router.refresh() after a successful acceptance so server data re-flows.
+test("HostComplianceBlockingModal refreshes server data after accepting", async () => {
+  const { readFileSync } = await import("node:fs");
+  const modal = readFileSync(
+    new URL("../../components/HostComplianceBlockingModal.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(
+    modal,
+    /import\s+\{\s*useRouter\s*\}\s+from\s+"next\/navigation"/,
+    "Modal must import useRouter to refresh the server layout after acceptance.",
+  );
+  assert.match(
+    modal,
+    /router\.refresh\(\)/,
+    "Modal must call router.refresh() after a successful acceptance — otherwise the publish gate keeps the stale termsAcceptedAt and stays blocked (native WebView never hard-reloads).",
+  );
+});

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 
 import type { HostUser } from "@/components/HostUserProvider";
@@ -12,6 +13,7 @@ type Props = {
 };
 
 export default function HostComplianceBlockingModal({ host }: Props) {
+  const router = useRouter();
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [acceptedOverride, setAcceptedOverride] = useState(false);
@@ -55,6 +57,13 @@ export default function HostComplianceBlockingModal({ host }: Props) {
       }
       setAcceptedOverride(true);
       setSubmitting(false);
+      // Re-run the server layout (getHostUserData) so HostUserProvider picks up
+      // the fresh termsAcceptedAt/termsVersion. Without this, every other consumer
+      // (notably the publish gate on /host/profile/edit — `canPublish = termsOk && …`)
+      // keeps the stale value and the publish toggle stays greyed out even though
+      // the sitter just accepted. The native WebView never does a hard reload, so
+      // the stale state sticks there indefinitely. See docs/bugs/sitter-terms-stale-after-accept.md.
+      router.refresh();
     } catch {
       setError("Impossible d’enregistrer votre acceptation. Réessayez.");
       setSubmitting(false);
