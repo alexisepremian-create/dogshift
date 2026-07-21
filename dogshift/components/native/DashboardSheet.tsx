@@ -4,6 +4,8 @@ import { useEffect } from "react";
 import type { ReactNode } from "react";
 import { ArrowLeft } from "lucide-react";
 
+import { InDashboardSheetContext } from "@/components/native/dashboardSheetContext";
+
 /**
  * Floating slide-up sheet for the native dashboards — identical geometry to the
  * in-popup reservation fiche (`left-2 right-2`, rounded on all corners, sits
@@ -68,8 +70,11 @@ export function DashboardSheet({
           </button>
         </div>
 
-        {/* Scrollable body */}
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-3">{children}</div>
+        {/* Scrollable body — flag the subtree as "in a sheet" so panel pages
+            render a spinner (not a skeleton) while loading. */}
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-3">
+          <InDashboardSheetContext.Provider value={true}>{children}</InDashboardSheetContext.Provider>
+        </div>
       </div>
     </>
   );

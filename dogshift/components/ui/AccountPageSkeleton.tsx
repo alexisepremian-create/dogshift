@@ -1,9 +1,18 @@
+"use client";
+
+import { useInDashboardSheet, PanelSpinner } from "@/components/native/dashboardSheetContext";
+
 /**
  * Content-area skeleton for owner account pages.
  * Renders within OwnerDashboardShell — the sidebar/header/bottom-nav
  * are already present from the layout. This only fills the content area.
+ *
+ * Inside a native DashboardSheet (tile popup) it collapses to a plain spinner —
+ * the founder wants the popups to load with only a spinner, no skeleton. Route-
+ * level loading (bottom nav) keeps the skeleton (context defaults to false).
  */
 export default function AccountPageSkeleton() {
+  if (useInDashboardSheet()) return <PanelSpinner />;
   return (
     <div className="animate-pulse space-y-5 py-2">
       {/* Page title */}

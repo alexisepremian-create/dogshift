@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
 import { Plus, Pencil, Trash2, Star, Dog, X, Check, Camera, Loader2, ChevronDown } from "lucide-react";
 import AccountPageSkeleton from "@/components/ui/AccountPageSkeleton";
+import { useInDashboardSheet, PanelSpinner } from "@/components/native/dashboardSheetContext";
 import { publicDogPhotoPath } from "@/lib/dogPhotoMedia";
 import { DOG_SIZE_WEIGHTS, dogSizeKeyFromWeight } from "@/lib/constants/dog-sizes";
 
@@ -86,6 +87,7 @@ export default function DogsPage() {
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const inSheet = useInDashboardSheet();
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const photoInputRef = useRef<HTMLInputElement>(null);
 
@@ -415,6 +417,9 @@ export default function DogsPage() {
 
       {/* Dog list */}
       {loading ? (
+        inSheet ? (
+          <PanelSpinner />
+        ) : (
         <div className="grid gap-4 sm:grid-cols-2">
           {[0, 1].map((i) => (
             <div key={i} className="animate-pulse rounded-3xl border border-slate-200 bg-white p-6">
@@ -423,6 +428,7 @@ export default function DogsPage() {
             </div>
           ))}
         </div>
+        )
       ) : dogs.length === 0 && !adding ? (
         <div className="rounded-3xl border border-dashed border-slate-300 bg-slate-50 p-10 text-center">
           <Dog className="mx-auto h-10 w-10 text-slate-300" />
