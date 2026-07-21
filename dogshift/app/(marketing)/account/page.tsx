@@ -25,6 +25,7 @@ import { prisma } from "@/lib/prisma";
 import { getUserContexts } from "@/lib/userContexts";
 import { DASHBOARD_UPCOMING_BOOKING_STATUSES } from "@/lib/account/dashboardStats";
 import { ownerVisibleConversationWhere } from "@/lib/account/conversationVisibility";
+import { pendingPaymentResumableSince } from "@/lib/bookings/pendingPayment";
 
 export const dynamic = "force-dynamic";
 
@@ -100,7 +101,11 @@ export default async function AccountDashboardPage({
 
   const [total, pendingPayment, pendingAcceptance, confirmed, unreadMessages, stalePaymentCount, nextBooking, dogCount] = await Promise.all([
     prisma.booking.count({ where: activeHistoryWhere }),
-    prisma.booking.count({ where: { userId: uid, archivedAt: null, status: { in: ["PENDING_PAYMENT", "DRAFT"] } } }),
+    // "réservations à payer" = only checkouts that can still be resumed. Old
+    // abandoned PENDING_PAYMENT (expired Stripe session) are NOT counted — they
+    // led to an empty list when tapped (founder). DRAFT (pre-checkout) is excluded
+    // too: the bookings API never returns it, so it could never be shown.
+    prisma.booking.count({ where: { userId: uid, archivedAt: null, status: "PENDING_PAYMENT", createdAt: { gte: pendingPaymentResumableSince(now) } } }),
     prisma.booking.count({ where: { userId: uid, archivedAt: null, status: { in: ["PENDING_ACCEPTANCE", "PAID"] } } }),
     prisma.booking.count({ where: { userId: uid, archivedAt: null, status: "CONFIRMED" } }),
     prisma.message.count({

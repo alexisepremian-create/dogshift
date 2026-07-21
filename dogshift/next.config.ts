@@ -107,6 +107,18 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  // Client-side Router Cache. Dynamic routes default to staleTime 0 → every tab
+  // switch re-fetches the segment RSC from the server and flashes its loading.tsx
+  // skeleton. Caching the RSC for a few minutes makes re-navigation between the
+  // native bottom-nav tabs instant (no server round-trip, no skeleton). Freshness
+  // is handled client-side: each page re-mounts, paints its in-session data cache,
+  // and silently revalidates. First visit in a session still loads normally.
+  experimental: {
+    staleTimes: {
+      dynamic: 300,
+      static: 300,
+    },
+  },
   images: {
     // ⚠️ Si tu affiches des images depuis un nouveau domaine externe (ex: nouveau
     //    bucket R2, CDN, service d'avatars...), ajoute son hostname ici sinon

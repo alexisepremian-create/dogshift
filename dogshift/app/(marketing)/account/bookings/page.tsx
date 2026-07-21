@@ -10,6 +10,7 @@ import { useSession, signOut } from "next-auth/react";
 import AccountPageSkeleton from "@/components/ui/AccountPageSkeleton";
 import { useIsNativeAppSync } from "@/lib/native/useIsNativeAppSync";
 import { canOwnerArchiveOrDelete } from "@/lib/bookings/ownerBookingMutation";
+import { isPendingPaymentResumable } from "@/lib/bookings/pendingPayment";
 import {
   Archive,
   ArchiveRestore,
@@ -337,14 +338,6 @@ function SwipeableBookingRow({
   );
 }
 
-function matchesPendingSubfilter(status: string, sub: "payment" | "acceptance" | "") {
-  if (!sub) return true;
-  const s = String(status ?? "");
-  if (sub === "payment") return s === "PENDING_PAYMENT" || s === "DRAFT";
-  if (sub === "acceptance") return s === "PENDING_ACCEPTANCE" || s === "PAID";
-  return true;
-}
-
 function canLeaveReview(booking: BookingListItem) {
   if (booking.hasReview) return false;
   if (String(booking.status ?? "") !== "CONFIRMED") return false;
@@ -525,9 +518,24 @@ function AccountBookingsContent() {
 
   const rows = useMemo(() => {
     const q = search.trim().toLowerCase();
+    const now = new Date();
     const filtered = bookings
-      .filter((b) => matchesTab(b, currentTab))
-      .filter((b) => (currentTab === "PENDING" ? matchesPendingSubfilter(b.status, pendingSubfilter) : true))
+      .filter((b) => {
+        // The PENDING tab covers two groups: "à payer" (unpaid checkout) and "en
+        // attente d'acceptation". Handle it here so the "à payer" filter actually
+        // shows PENDING_PAYMENT bookings — and ONLY the resumable ones, matching
+        // the dashboard badge. (Previously matchesTab(PENDING) excluded
+        // PENDING_PAYMENT entirely, so the "à payer" view was always empty.)
+        if (currentTab !== "PENDING") return matchesTab(b, currentTab);
+        if (b.archivedAt) return false;
+        const s = String(b.status);
+        const isResumablePayment =
+          (s === "PENDING_PAYMENT" || s === "DRAFT") && isPendingPaymentResumable(b.createdAt, now);
+        const isAcceptance = s === "PENDING_ACCEPTANCE" || s === "PAID";
+        if (pendingSubfilter === "payment") return isResumablePayment;
+        if (pendingSubfilter === "acceptance") return isAcceptance;
+        return isResumablePayment || isAcceptance;
+      })
       .filter((b) => !q || b.sitter.name.toLowerCase().includes(q) || (b.service ?? "").toLowerCase().includes(q));
     return filtered.slice().sort((a, b) => {
       const ta = new Date(a.createdAt).getTime();
