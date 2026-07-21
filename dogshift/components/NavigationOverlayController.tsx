@@ -41,9 +41,21 @@ const SKIP_PATHS = [
   "/verify-email",
 ];
 
+/**
+ * The admin panel is a dense, internal SPA where every section switch
+ * (Dashboard, Utilisateurs, Voir comme…, Agents, …) must feel instant — a
+ * full-screen running-dog loader on every click is jarring for the operator.
+ * Each admin page ships its own lightweight skeleton (`admin/loading.tsx`,
+ * which keeps the sidebar visible), so the overlay is pure noise here. Suppress
+ * it for the whole `/admin` subtree.
+ */
+export function isAdminRoute(pathOnly: string): boolean {
+  return pathOnly === "/admin" || pathOnly.startsWith("/admin/");
+}
+
 function isSkippedHref(href: string): boolean {
   const path = href.split("?")[0]?.split("#")[0] ?? "";
-  return SKIP_PATHS.some((p) => path === p);
+  return isAdminRoute(path) || SKIP_PATHS.some((p) => path === p);
 }
 
 /**
@@ -154,6 +166,7 @@ function shouldShowOverlayFor(nextUrl: unknown, currentPathname: string | null):
   if (!pathOnly.startsWith("/")) return false;
   if (pathOnly === currentPathname) return false;
   if (isNativeInstantRoute(pathOnly)) return false;
+  if (isAdminRoute(pathOnly)) return false;
   return !SKIP_PATHS.some((p) => pathOnly === p);
 }
 
