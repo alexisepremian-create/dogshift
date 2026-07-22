@@ -5,9 +5,9 @@ import { usePathname } from "next/navigation";
 
 import PageLoader from "@/components/ui/PageLoader";
 import DashboardSkeleton from "@/components/ui/DashboardSkeleton";
-import AccountPageSkeleton from "@/components/ui/AccountPageSkeleton";
 import HostDashboardSkeletonOverlay from "@/components/native/HostDashboardSkeletonOverlay";
 import MapHomeSkeleton from "@/components/native/MapHomeSkeleton";
+import OwnerListRouteSkeleton from "@/components/native/OwnerListRouteSkeleton";
 import { RequestsRouteSkeleton, MessagesRouteSkeleton } from "@/components/native/SectionRouteSkeletons";
 
 /**
@@ -56,21 +56,9 @@ export default function NativeRouteFallback({ web }: { web: "loader" | "none" | 
     // then AccountPageSkeleton in the page). Same component everywhere = one
     // continuous skeleton.
     if (pathname.startsWith("/account/bookings") || pathname.startsWith("/account/messages")) {
-      return (
-        <div
-          // Match OwnerDashboardShell's native content box EXACTLY (px-3 + the
-          // same top padding = safe-area + banner + 0.75rem) so this overlay
-          // skeleton and the in-shell AccountPageSkeleton sit at the identical
-          // position — no vertical jump between the two suspend phases.
-          className="fixed inset-0 z-40 w-full overflow-y-auto bg-white px-3"
-          style={{
-            paddingTop: "calc(env(safe-area-inset-top, 0px) + var(--ds-maintenance-banner-height, 0px) + 0.75rem)",
-            paddingBottom: "calc(max(var(--ds-bottom-nav-h, 0px), 88px) + 24px)",
-          }}
-        >
-          <AccountPageSkeleton />
-        </div>
-      );
+      // Identical overlay to the SEGMENT loading.tsx (bookings|messages) so the
+      // group→segment hand-off is one unmoving skeleton, not two.
+      return <OwnerListRouteSkeleton />;
     }
 
     // Réservations / Conversations (sitter side): the layout's force-dynamic DB

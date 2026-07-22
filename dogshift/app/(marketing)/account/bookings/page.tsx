@@ -7,7 +7,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
-import AccountPageSkeleton from "@/components/ui/AccountPageSkeleton";
+import OwnerListRouteSkeleton from "@/components/native/OwnerListRouteSkeleton";
 import { useIsNativeAppSync } from "@/lib/native/useIsNativeAppSync";
 import { canOwnerArchiveOrDelete } from "@/lib/bookings/ownerBookingMutation";
 import { isPendingPaymentResumable } from "@/lib/bookings/pendingPayment";
@@ -680,14 +680,14 @@ function AccountBookingsContent() {
     }
   }
 
-  if (!isLoaded || !isSignedIn) return <AccountPageSkeleton />;
+  if (!isLoaded || !isSignedIn) return <OwnerListRouteSkeleton />;
 
   // Native: render the SAME skeleton the route fallback shows (loading.tsx →
   // AccountPageSkeleton), so route→page is one continuous skeleton — never a
   // skeleton then a spinner (founder: "qu'il y'en ait qu'un et c'est le
   // skeleton de chargement").
   if (isNative && loading) {
-    return <AccountPageSkeleton />;
+    return <OwnerListRouteSkeleton />;
   }
 
   return (
@@ -1253,7 +1253,7 @@ function AccountBookingsContent() {
 
 export default function AccountBookingsPage() {
   return (
-    <Suspense fallback={<AccountPageSkeleton />}>
+    <Suspense fallback={<OwnerListRouteSkeleton />}>
       <AccountBookingsContent />
     </Suspense>
   );

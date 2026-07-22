@@ -8,7 +8,7 @@ import { useSession } from "next-auth/react";
 import { Archive, ChevronDown, Dog, MessageCircle, Pin, Plus, RefreshCw, Trash2, X } from "lucide-react";
 import { publicDogPhotoPath } from "@/lib/dogPhotoMedia";
 import { useIsNativeAppSync } from "@/lib/native/useIsNativeAppSync";
-import AccountPageSkeleton from "@/components/ui/AccountPageSkeleton";
+import OwnerListRouteSkeleton from "@/components/native/OwnerListRouteSkeleton";
 import { getRecentSitters } from "@/lib/native/recentSitters";
 import { useKeyboardHeight } from "@/lib/native/useKeyboardHeight";
 
@@ -627,7 +627,7 @@ export default function AccountMessagesPage() {
     }
   }
 
-  if (!isLoaded) return isNative ? <AccountPageSkeleton /> : null;
+  if (!isLoaded) return isNative ? <OwnerListRouteSkeleton /> : null;
   if (!isSignedIn) {
     return (
       <div className="ds-card rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)] sm:p-8">
@@ -644,7 +644,7 @@ export default function AccountMessagesPage() {
   // skeleton then a spinner/"Chargement…" (founder: "qu'il y'en ait qu'un et
   // c'est le skeleton de chargement"). Web keeps its inline loading card below.
   if (isNative && loading) {
-    return <AccountPageSkeleton />;
+    return <OwnerListRouteSkeleton />;
   }
 
   const selectedDog = threadHeader?.selectedDog ?? null;
