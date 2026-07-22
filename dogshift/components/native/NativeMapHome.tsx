@@ -100,6 +100,13 @@ type UiSitter = {
   verified: boolean;
 };
 
+// In-session caches (cleared on a full reload) so returning to the homepage from
+// another tab is flash-free: the pins + preview cards paint from the last fetch
+// INSTANTLY (then revalidate silently), and the map re-opens at the exact view
+// the user left instead of snapping back to the default Lausanne view + refetching.
+let cachedSitters: UiSitter[] | null = null;
+let cachedView: { longitude: number; latitude: number; zoom: number } | null = null;
+
 function parseServices(value: unknown): Service[] {
   if (Array.isArray(value)) {
     const out: Service[] = [];
@@ -154,6 +161,45 @@ function toUi(row: SitterRow): UiSitter | null {
 }
 
 /**
+ * Multiple sitters in the same city WITHOUT a precise address all resolve to the
+ * exact same city-hub coordinate (e.g. Magali + Marie-Alexine both land on the
+ * Vevey hub). Their 44×44 markers then stack pixel-perfect and only one is ever
+ * visible — the founder saw "8 dogsitters" in the list but not on the map.
+ *
+ * Spread every group that shares a coordinate evenly around a small circle so
+ * each sitter gets a distinct, tappable pin. The offset (~0.6 km) is purely
+ * cosmetic — these are already approximate hub positions, not exact homes.
+ */
+function spreadOverlappingMarkers(list: UiSitter[]): UiSitter[] {
+  // NB: `Map` is shadowed by the react-map-gl <Map> import, so use globalThis.Map.
+  const groups = new globalThis.Map<string, UiSitter[]>();
+  for (const s of list) {
+    const key = `${s.lat.toFixed(4)}:${s.lng.toFixed(4)}`;
+    const g = groups.get(key);
+    if (g) g.push(s);
+    else groups.set(key, [s]);
+  }
+  const out: UiSitter[] = [];
+  for (const group of groups.values()) {
+    if (group.length === 1) {
+      out.push(group[0]);
+      continue;
+    }
+    const R = 0.006; // ~0.6 km in latitude degrees
+    group.forEach((s, i) => {
+      const angle = (2 * Math.PI * i) / group.length;
+      const latRad = (s.lat * Math.PI) / 180;
+      out.push({
+        ...s,
+        lat: s.lat + R * Math.sin(angle),
+        lng: s.lng + (R * Math.cos(angle)) / Math.max(0.1, Math.cos(latRad)),
+      });
+    });
+  }
+  return out;
+}
+
+/**
  * Paw marker — purple circular badge with a stylized paw print.
  * Designed for tap targets (44×44 hit area minimum per Apple HIG).
  */
@@ -192,8 +238,12 @@ export default function NativeMapHome() {
     : "";
 
   const mapRef = useRef<MapRef | null>(null);
-  const [sitters, setSitters] = useState<UiSitter[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [sitters, setSitters] = useState<UiSitter[]>(() => cachedSitters ?? []);
+  const [loading, setLoading] = useState(() => cachedSitters === null);
+  const [mapLoaded, setMapLoaded] = useState(false);
+  // Fit-all-sitters runs once per session (until the user has a cached view we
+  // restore instead). A ref, not state, so it never triggers a re-render.
+  const didInitialFit = useRef(cachedView !== null);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   // Live height while the user is dragging the sheet handle (null = not dragging,
@@ -589,20 +639,24 @@ export default function NativeMapHome() {
     }
   }, [isPension, searchDateStart, searchDateEnd]);
 
-  // Fetch published sitters once on mount.
+  // Fetch published sitters on mount. If we already have a cached list (returning
+  // to the homepage), the pins/cards are already on screen — revalidate silently
+  // without dropping back to the skeleton.
   useEffect(() => {
     let cancelled = false;
+    const silent = cachedSitters !== null;
     (async () => {
       try {
         const res = await fetch("/api/sitters", { cache: "no-store" });
         const payload = (await res.json()) as { ok?: boolean; sitters?: SitterRow[] };
         if (cancelled) return;
-        const mapped = (payload?.sitters ?? []).map(toUi).filter(Boolean) as UiSitter[];
+        const mapped = spreadOverlappingMarkers((payload?.sitters ?? []).map(toUi).filter(Boolean) as UiSitter[]);
+        cachedSitters = mapped;
         setSitters(mapped);
       } catch {
-        if (!cancelled) setSitters([]);
+        if (!cancelled && !silent) setSitters([]);
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled && !silent) setLoading(false);
       }
     })();
     return () => { cancelled = true; };
@@ -632,6 +686,41 @@ export default function NativeMapHome() {
     () => sitters.find((s) => s.id === activeId) ?? null,
     [sitters, activeId],
   );
+
+  // Frame ALL sitters so none is off-screen — with only a handful of sitters the
+  // hard-coded Lausanne view cut off the eastern ones (founder: "on ne voit pas
+  // Magali / Vevey"). Bottom padding keeps pins clear of the collapsed sheet.
+  const fitAllSitters = useCallback((list: UiSitter[]) => {
+    const map = mapRef.current;
+    if (!map || list.length === 0) return;
+    if (list.length === 1) {
+      map.flyTo({ center: [list[0].lng, list[0].lat], zoom: 12, duration: 0 });
+      return;
+    }
+    let minLng = Infinity, minLat = Infinity, maxLng = -Infinity, maxLat = -Infinity;
+    for (const s of list) {
+      if (!Number.isFinite(s.lng) || !Number.isFinite(s.lat)) continue;
+      minLng = Math.min(minLng, s.lng); maxLng = Math.max(maxLng, s.lng);
+      minLat = Math.min(minLat, s.lat); maxLat = Math.max(maxLat, s.lat);
+    }
+    if (!Number.isFinite(minLng)) return;
+    try {
+      map.fitBounds(
+        [[minLng, minLat], [maxLng, maxLat]],
+        { padding: { top: 130, bottom: 280, left: 56, right: 56 }, maxZoom: 12.5, duration: 0 },
+      );
+    } catch {}
+  }, []);
+
+  // Fit once, after both the map and the sitters are ready (only if we're not
+  // restoring a cached view). Subsequent returns to the homepage restore the
+  // user's last view instead (via cachedView → initialViewState).
+  useEffect(() => {
+    if (didInitialFit.current) return;
+    if (!mapLoaded || sitters.length === 0) return;
+    didInitialFit.current = true;
+    fitAllSitters(sitters);
+  }, [mapLoaded, sitters, fitAllSitters]);
 
   // Recenter on the user's location.
   //
@@ -780,11 +869,13 @@ export default function NativeMapHome() {
         {styleUrl ? (
           <Map
             ref={mapRef}
-            initialViewState={{
-              longitude: LAUSANNE[0],
-              latitude: LAUSANNE[1],
-              zoom: DEFAULT_ZOOM,
-            }}
+            initialViewState={
+              cachedView ?? {
+                longitude: LAUSANNE[0],
+                latitude: LAUSANNE[1],
+                zoom: DEFAULT_ZOOM,
+              }
+            }
             mapLib={maplibregl as unknown as never}
             mapStyle={styleUrl}
             style={{ width: "100%", height: "100%" }}
@@ -792,6 +883,13 @@ export default function NativeMapHome() {
             dragRotate={false}
             pitchWithRotate={false}
             touchPitch={false}
+            onLoad={() => setMapLoaded(true)}
+            onMoveEnd={(e) => {
+              // Remember the view so returning to the homepage restores it 1:1
+              // instead of snapping back to the default (founder: flash on return).
+              const v = e.viewState;
+              cachedView = { longitude: v.longitude, latitude: v.latitude, zoom: v.zoom };
+            }}
           >
             {filteredSitters.map((s) => (
               <Marker
@@ -1089,7 +1187,24 @@ export default function NativeMapHome() {
           {/* Expanded = 2-col grid (cards "côte à côte", like the web home).
               Collapsed = horizontal scroll of small cards. */}
           {!loading && (
-            <div className={sheetOpen ? "grid grid-cols-2 gap-3" : "flex gap-3 overflow-x-auto -mx-4 px-4"}>
+            <div
+              className={sheetOpen ? "grid grid-cols-2 gap-3" : "flex gap-3 overflow-x-auto -mx-4 px-4"}
+              style={
+                sheetOpen
+                  ? undefined
+                  : {
+                      // Own the horizontal gesture so real iOS WKWebView routes the
+                      // swipe to THIS scroller (not the map / the sheet's vertical
+                      // scroll). Without an explicit touch-action the carousel felt
+                      // dead on a real iPhone while the simulator's synthetic pointer
+                      // still worked. Momentum + gentle snap complete the feel.
+                      touchAction: "pan-x",
+                      WebkitOverflowScrolling: "touch",
+                      overscrollBehaviorX: "contain",
+                      scrollSnapType: "x proximity",
+                    }
+              }
+            >
               {filteredSitters.map((s) => (
                 <button
                   key={s.id}
@@ -1111,12 +1226,13 @@ export default function NativeMapHome() {
                       ? "flex flex-col items-center gap-1 rounded-2xl border border-slate-200 bg-white p-3 text-center active:scale-[0.99]"
                       : "flex-shrink-0 w-[160px] flex items-center gap-2 rounded-2xl border border-slate-200 bg-white p-2 text-left"
                   }
-                  style={{ touchAction: "manipulation" }}
+                  style={sheetOpen ? { touchAction: "manipulation" } : { touchAction: "manipulation", scrollSnapAlign: "start" }}
                 >
                   <img
                     src={s.avatar}
                     alt=""
-                    className={sheetOpen ? "h-14 w-14 rounded-full object-cover" : "h-10 w-10 rounded-full object-cover"}
+                    decoding="async"
+                    className={sheetOpen ? "h-14 w-14 shrink-0 rounded-full bg-slate-100 object-cover" : "h-10 w-10 shrink-0 rounded-full bg-slate-100 object-cover"}
                   />
                   <div className={sheetOpen ? "min-w-0 w-full" : "min-w-0 flex-1"}>
                     {/* Name + rating on ONE line — the star note sits next to the
