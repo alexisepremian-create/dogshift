@@ -52,16 +52,15 @@ export default function MapHomeSkeleton() {
         <div className="flex w-full flex-col items-center pt-2 pb-1">
           <div className="h-1.5 w-12 rounded-full bg-slate-300" />
         </div>
-        <div className="flex items-baseline justify-between px-4 pt-1 pb-2">
+        <div className="flex items-baseline justify-between px-5 pt-1 pb-2">
           <h2 className="text-base font-semibold text-slate-900">Chargement…</h2>
           <span className="text-sm font-medium text-[var(--dogshift-blue)]">Filtres</span>
         </div>
-        {/* Card row — PIXEL-IDENTICAL to NativeMapHome's collapsed cards (same
-            overflow-y-auto px-4 wrapper, same overflow-x-auto -mx-4 px-5 scroller,
-            same card box: border-slate-200, h-10 w-10 shrink-0 avatar, 3 lines) so
-            the skeleton→real hand-off on return doesn't nudge the cards. */}
-        <div className="overflow-y-auto px-4 pb-3" style={{ maxHeight: "86px" }}>
-          <div className="flex gap-3 overflow-x-auto -mx-4 px-5">
+        {/* Card row — PIXEL-IDENTICAL to NativeMapHome's collapsed cards (parent
+            px-5 insets the first card; the scroller carries no horizontal padding,
+            same card box) so the skeleton→real hand-off on return doesn't nudge. */}
+        <div className="overflow-y-auto px-5 pb-3" style={{ maxHeight: "86px" }}>
+          <div className="flex gap-3 overflow-x-auto">
             {[0, 1, 2, 3].map((i) => (
               <div
                 key={i}

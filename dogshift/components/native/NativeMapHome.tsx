@@ -1113,7 +1113,7 @@ export default function NativeMapHome() {
           <div className="h-1.5 w-12 rounded-full bg-slate-300" />
         </button>
 
-        <div className="px-4 pt-1 pb-2">
+        <div className="px-5 pt-1 pb-2">
           <div className="flex items-baseline justify-between">
             <h2 className="text-base font-semibold text-slate-900">
               {loading ? "Chargement…" : `${filteredSitters.length} dogsitter${filteredSitters.length > 1 ? "s" : ""}`}
@@ -1135,7 +1135,7 @@ export default function NativeMapHome() {
         </div>
 
         <div
-          className={`overflow-y-auto px-4 ${sheetOpen ? "pb-32" : "pb-3"}`}
+          className={`overflow-y-auto px-5 ${sheetOpen ? "pb-32" : "pb-3"}`}
           style={{
             maxHeight: sheetOpen
               ? "calc(70vh - 80px - var(--ds-bottom-nav-h, 0px))"
@@ -1188,7 +1188,11 @@ export default function NativeMapHome() {
               Collapsed = horizontal scroll of small cards. */}
           {!loading && (
             <div
-              className={sheetOpen ? "grid grid-cols-2 gap-3" : "flex gap-3 overflow-x-auto -mx-4 px-5"}
+              // No -mx-4/px trick: WebKit ignores an overflow-x scroller's LEADING
+              // padding at scrollLeft:0, which glued the first card to the sheet
+              // edge. Inset via the PARENT's px-5 instead (rendered reliably); the
+              // scroller itself carries no horizontal padding.
+              className={sheetOpen ? "grid grid-cols-2 gap-3" : "flex gap-3 overflow-x-auto"}
               style={
                 sheetOpen
                   ? undefined
