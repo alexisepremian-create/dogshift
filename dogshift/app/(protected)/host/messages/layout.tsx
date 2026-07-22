@@ -6,6 +6,8 @@ import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Plus, X } from "lucide-react";
 import { useIsNativeAppSync } from "@/lib/native/useIsNativeAppSync";
+import { useInDashboardSheet, PanelSpinner } from "@/components/native/dashboardSheetContext";
+import { MessagesRouteSkeleton } from "@/components/native/SectionRouteSkeletons";
 
 type ConversationListItem = {
   id: string;
@@ -63,6 +65,7 @@ export default function HostMessagesLayout({ children }: { children?: React.Reac
   const pathname = usePathname();
   const router = useRouter();
   const isNative = useIsNativeAppSync();
+  const inSheet = useInDashboardSheet();
 
   const [conversations, setConversations] = useState<ConversationListItem[]>(() => cachedHostConversations ?? []);
   const [loading, setLoading] = useState(() => cachedHostConversations === null);
@@ -203,12 +206,11 @@ export default function HostMessagesLayout({ children }: { children?: React.Reac
   // Native: single spinner during the first fetch (same 55vh position as
   // PanelLoading) so the loading circle never jumps between the import and the
   // conversation fetch.
+  // Native loading: SHEET (dashboard tile) → spinner; ROUTE (bottom-nav tab) →
+  // the faithful Conversations skeleton (same as the route fallback) so tab
+  // navigation is one continuous skeleton, never skeleton-then-spinner.
   if (isNative && loading) {
-    return (
-      <div className="flex min-h-[55vh] items-center justify-center" data-testid="host-messages-layout">
-        <div className="h-7 w-7 animate-spin rounded-full border-2 border-[#7c3aed] border-t-transparent" />
-      </div>
-    );
+    return inSheet ? <PanelSpinner /> : <MessagesRouteSkeleton />;
   }
 
   return (
