@@ -56,17 +56,22 @@ export default function MapHomeSkeleton() {
           <h2 className="text-base font-semibold text-slate-900">Chargement…</h2>
           <span className="text-sm font-medium text-[var(--dogshift-blue)]">Filtres</span>
         </div>
-        <div className="overflow-hidden px-4 pb-3" style={{ maxHeight: "86px" }}>
-          <div className="flex gap-3 -mx-4 px-4">
+        {/* Card row — PIXEL-IDENTICAL to NativeMapHome's collapsed cards (same
+            overflow-y-auto px-4 wrapper, same overflow-x-auto -mx-4 px-5 scroller,
+            same card box: border-slate-200, h-10 w-10 shrink-0 avatar, 3 lines) so
+            the skeleton→real hand-off on return doesn't nudge the cards. */}
+        <div className="overflow-y-auto px-4 pb-3" style={{ maxHeight: "86px" }}>
+          <div className="flex gap-3 overflow-x-auto -mx-4 px-5">
             {[0, 1, 2, 3].map((i) => (
               <div
                 key={i}
-                className="flex-shrink-0 w-[160px] flex items-center gap-2 rounded-2xl border border-slate-100 bg-white p-2"
+                className="flex-shrink-0 w-[160px] flex items-center gap-2 rounded-2xl border border-slate-200 bg-white p-2"
               >
-                <div className="ds-skel h-10 w-10 rounded-full" />
-                <div className="flex-1 space-y-1">
+                <div className="ds-skel h-10 w-10 shrink-0 rounded-full" />
+                <div className="min-w-0 flex-1 space-y-1">
                   <div className="ds-skel ds-skel-line w-full" />
                   <div className="ds-skel ds-skel-line w-2/3" />
+                  <div className="ds-skel ds-skel-line w-1/2" />
                 </div>
               </div>
             ))}

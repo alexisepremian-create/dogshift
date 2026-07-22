@@ -274,8 +274,8 @@ export function RequestsSplitView({
             <div className="flex items-start justify-between gap-4">
               <div>
                 {!isNative && <p className="text-sm font-semibold text-slate-600">Tableau de bord</p>}
-                <h1 className={isNative ? "flex items-center gap-2 text-[26px] font-extrabold tracking-tight text-slate-900" : "mt-2 flex items-center gap-2 text-2xl font-bold tracking-tight text-slate-900"}>
-                  <ClipboardList className="h-6 w-6 text-[var(--dogshift-blue)]" aria-hidden="true" />
+                <h1 className={isNative ? "flex items-center gap-2 whitespace-nowrap text-[22px] font-extrabold tracking-tight text-slate-900" : "mt-2 flex items-center gap-2 text-2xl font-bold tracking-tight text-slate-900"}>
+                  <ClipboardList className="h-6 w-6 shrink-0 text-[var(--dogshift-blue)]" aria-hidden="true" />
                   <span>Demandes de réservations</span>
                 </h1>
                 <p className="mt-2 text-sm text-slate-600">

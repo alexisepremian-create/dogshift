@@ -65,8 +65,8 @@ export function RequestsRouteSkeleton() {
             <section className="min-w-0">
               {/* Header (native: no card, px-1) */}
               <div className="px-1">
-                <h1 className="flex items-center gap-2 text-[26px] font-extrabold tracking-tight text-slate-900">
-                  <ClipboardList className="h-6 w-6 text-[var(--dogshift-blue)]" aria-hidden="true" />
+                <h1 className="flex items-center gap-2 whitespace-nowrap text-[22px] font-extrabold tracking-tight text-slate-900">
+                  <ClipboardList className="h-6 w-6 shrink-0 text-[var(--dogshift-blue)]" aria-hidden="true" />
                   <span>Demandes de réservations</span>
                 </h1>
                 <p className="mt-2 text-sm text-slate-600">

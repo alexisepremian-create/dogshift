@@ -1188,7 +1188,7 @@ export default function NativeMapHome() {
               Collapsed = horizontal scroll of small cards. */}
           {!loading && (
             <div
-              className={sheetOpen ? "grid grid-cols-2 gap-3" : "flex gap-3 overflow-x-auto -mx-4 px-4"}
+              className={sheetOpen ? "grid grid-cols-2 gap-3" : "flex gap-3 overflow-x-auto -mx-4 px-5"}
               style={
                 sheetOpen
                   ? undefined
