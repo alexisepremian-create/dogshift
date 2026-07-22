@@ -17,6 +17,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { RequestDetailPanel } from "./RequestDetailPanel";
 import { RequestListItem, type HostRequest } from "./RequestListItem";
 import { useIsNativeAppSync } from "@/lib/native/useIsNativeAppSync";
+import { useInDashboardSheet, PanelSpinner } from "@/components/native/dashboardSheetContext";
+import { RequestsRouteSkeleton } from "@/components/native/SectionRouteSkeletons";
 
 type FilterKey = "ALL" | "TO_ACCEPT" | "CONFIRMED" | "CANCELLED" | "ARCHIVED";
 
@@ -60,6 +62,7 @@ export function RequestsSplitView({
   // Synchronous read (renders behind HostHydrationGate, client-side) so the
   // native no-card layout is correct on the first render — no web card flash.
   const isNative = useIsNativeAppSync();
+  const inSheet = useInDashboardSheet();
   const [localRows, setLocalRows] = useState<HostRequest[]>(rows);
   const [filter, setFilter] = useState<FilterKey>("ALL");
   const [lastActiveFilter, setLastActiveFilter] = useState<Exclude<FilterKey, "ARCHIVED">>("ALL");
@@ -233,14 +236,11 @@ export function RequestsSplitView({
 
   // Native popup: while the first fetch is in flight show ONLY the spinner
   // (no header + trailing spinner) so the load reads as one continuous circle.
-  // min-h matches PanelLoading (55vh) so the spinner never jumps position
-  // during the import → fetch hand-off.
+  // Native loading: in a dashboard-tile SHEET → a spinner; on the ROUTE (bottom-nav
+  // tab) → the SAME faithful skeleton the route fallback shows, so tab navigation
+  // is one continuous skeleton and NEVER a skeleton-then-spinner (founder rule).
   if (isNative && loading) {
-    return (
-      <div className="flex min-h-[55vh] items-center justify-center" data-testid="host-requests-page">
-        <div className="h-7 w-7 animate-spin rounded-full border-2 border-[#7c3aed] border-t-transparent" />
-      </div>
-    );
+    return inSheet ? <PanelSpinner /> : <RequestsRouteSkeleton />;
   }
 
   return (
