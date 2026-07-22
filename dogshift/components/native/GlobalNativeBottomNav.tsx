@@ -70,10 +70,18 @@ export default function GlobalNativeBottomNav() {
   // encodes the server's decision (`activated ? "/host" : "/account"`), so use
   // it as the single source of truth.
   useEffect(() => {
-    if (status !== "authenticated") {
+    // Only a CONFIRMED sign-out resets to owner. Critically, do NOT reset while
+    // the session is still "loading": that used to clobber the persisted
+    // `ds_is_sitter` seed with `false`, so a returning sitter's nav flashed the
+    // OWNER tabs (Réservations) before flipping to sitter (Demandes) once the
+    // session resolved. Keeping the seed during "loading" shows the correct tab
+    // from the first painted frame (founder: "mets directement la bonne icône").
+    if (status === "unauthenticated") {
       setIsSitter(false);
+      try { window.localStorage.setItem("ds_is_sitter", "0"); } catch {}
       return;
     }
+    if (status !== "authenticated") return; // "loading" → trust the persisted seed
     let cancelled = false;
     (async () => {
       try {
@@ -87,7 +95,7 @@ export default function GlobalNativeBottomNav() {
           // ignore storage errors (private mode, etc.)
         }
       } catch {
-        if (!cancelled) setIsSitter(false);
+        // Keep the current (seeded) value on error — never flip to owner blindly.
       }
     })();
     return () => { cancelled = true; };
