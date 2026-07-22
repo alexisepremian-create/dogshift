@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 
 import PageLoader from "@/components/ui/PageLoader";
 import DashboardSkeleton from "@/components/ui/DashboardSkeleton";
-import AccountPageSkeleton from "@/components/ui/AccountPageSkeleton";
+import OwnerListRouteSkeleton from "@/components/native/OwnerListRouteSkeleton";
 
 /**
  * Suspense fallback for the dashboard *home* sections (/host, /account).
@@ -28,29 +28,24 @@ export default function DashboardSectionLoading() {
       document.documentElement.getAttribute("data-native") === "true",
   );
   if (isNative) {
-    // Réservations / Messages (owner) render AccountPageSkeleton in their own
-    // loading.tsx + page — so this fallback must render the SAME skeleton, never
-    // the generic DashboardSkeleton, or the founder sees two different skeletons.
+    // Réservations / Messages (owner) render the SAME unified overlay skeleton as
+    // their own loading.tsx + the route-group boundary, so the whole load is one
+    // unmoving skeleton — never two different ones.
     const isOwnerListTab =
       pathname === "/account/bookings" ||
       pathname === "/account/messages" ||
       pathname.startsWith("/account/bookings/") ||
       pathname.startsWith("/account/messages/");
-    // For owner list tabs, match OwnerDashboardShell's native content box
-    // (top = safe-area + banner + 0.75rem) so the skeleton doesn't jump position
-    // when the shell + page's own AccountPageSkeleton take over.
-    const topPad = isOwnerListTab
-      ? "calc(env(safe-area-inset-top, 0px) + var(--ds-maintenance-banner-height, 0px) + 0.75rem)"
-      : "calc(env(safe-area-inset-top, 0px) + 2rem)";
+    if (isOwnerListTab) return <OwnerListRouteSkeleton />;
     return (
       <div
         className="w-full px-3"
         style={{
-          paddingTop: topPad,
+          paddingTop: "calc(env(safe-area-inset-top, 0px) + 2rem)",
           paddingBottom: "calc(max(var(--ds-bottom-nav-h, 0px), 88px) + 24px)",
         }}
       >
-        {isOwnerListTab ? <AccountPageSkeleton /> : <DashboardSkeleton />}
+        <DashboardSkeleton />
       </div>
     );
   }
