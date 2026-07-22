@@ -399,6 +399,21 @@ html[data-native="true"][data-auth-transition-exit="true"] .ds-splash-logo {
   to { transform: rotate(360deg); }
 }
 
+/* Loading spinners must keep rotating SMOOTHLY, even while the main thread is
+   busy (parsing a fetch response, running a React render, tearing down the map).
+   iOS WKWebView drops main-thread animation frames when it's busy, so the
+   rotation stutters — "s'arrête et continue" (founder). Promoting each spinner
+   to its own GPU compositor layer runs the rotation on the compositor thread,
+   independent of main-thread jank, so it spins continuously until the content
+   is revealed. `will-change: transform` is the compositing hint; a hidden
+   backface keeps the layer forced in WebKit. We do NOT set a static `transform`
+   here — it would be dead while the `spin` keyframe (which animates
+   `transform: rotate`) runs, and could fight it. */
+.animate-spin {
+  will-change: transform;
+  backface-visibility: hidden;
+}
+
 @keyframes brandReveal {
   from { opacity: 0; }
   to   { opacity: 1; }
