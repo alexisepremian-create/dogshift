@@ -291,7 +291,8 @@ test("route fallbacks: map skeleton on home, matched section skeletons on dashbo
     /fixed inset-0 z-40 w-full overflow-y-auto bg-white/,
     "Section replicas must be a fixed inset-0 overlay (below the nav) so they cover the transition gap / map teardown instantly — no white flash.",
   );
-  assert.match(section, /w-full py-3/, "Section replicas must include the shell's inner py-3 so the position matches.");
+  assert.match(section, /w-full pt-1 pb-3/, "Section replicas must mirror the shell's inner box padding (pt-1 pb-3) EXACTLY so the header lands at the same spot before/after load (was an extra py-3 → ~20px downward shift).");
+  assert.match(section, /data-ds-dashboard/, "Section replicas must carry data-ds-dashboard so --dogshift-blue resolves to the dashboard purple (icon purple during loading, not navy-then-purple).");
 });
 
 test("home: the web marketing homepage is hidden on native so it never flashes before the map", () => {
@@ -407,6 +408,18 @@ test("bottom nav persists isSitter so it doesn't flip owner→sitter at launch",
     nav,
     /setItem\("ds_is_sitter"/,
     "It must persist ds_is_sitter after resolving the account context.",
+  );
+  // It must NOT reset isSitter while the session is still loading — that clobbered
+  // the seed and flashed owner (Réservations) → sitter (Demandes) at launch.
+  assert.match(
+    nav,
+    /status\s*===\s*"unauthenticated"[\s\S]*?setIsSitter\(false\)/,
+    "Only a CONFIRMED unauthenticated status may reset to owner tabs.",
+  );
+  assert.match(
+    nav,
+    /if\s*\(status\s*!==\s*"authenticated"\)\s*return;\s*\/\/[^\n]*seed/,
+    "During 'loading', the effect must keep the persisted seed (return early), never setIsSitter(false).",
   );
 });
 

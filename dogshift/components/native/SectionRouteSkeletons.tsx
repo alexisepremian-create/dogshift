@@ -26,7 +26,15 @@ import { ClipboardList, Plus } from "lucide-react";
  * `py-3` inner wrapper and the `px-1` nesting levels.
  */
 
-const ROOT_PT = "calc(env(safe-area-inset-top, 0px) + var(--ds-maintenance-banner-height, 0px) + 2rem)";
+// Match HostDashboardShell's native <main> top padding EXACTLY (safe-area +
+// banner + 0.5rem); the inner `pt-1` (below) adds the shell's 0.25rem so the
+// header lands at the identical 0.75rem it sits at once the real page mounts in
+// the shell — no vertical jump. (Was 2rem + an extra py-3 → ~20px downward shift.)
+const ROOT_PT = "calc(env(safe-area-inset-top, 0px) + var(--ds-maintenance-banner-height, 0px) + 0.5rem)";
+// `data-ds-dashboard` so `--dogshift-blue` resolves to the dashboard PURPLE
+// (#7c3aed) inside the overlay — otherwise, rendered outside the shell, the icon
+// falls back to the navy default (#2f4d6b) and flips purple only when the real
+// page mounts (founder: "icône grise puis violette").
 const OVERLAY_CLASS = "fixed inset-0 z-40 w-full overflow-y-auto bg-white px-3";
 
 function CardRow() {
@@ -45,10 +53,12 @@ function CardRow() {
 /** Replica of RequestsSplitView's native loading view (Réservations). */
 export function RequestsRouteSkeleton() {
   return (
-    // Fixed overlay (covers the transition gap); inner padding mirrors the shell.
-    <div className={OVERLAY_CLASS} style={{ paddingTop: ROOT_PT }}>
-      {/* shell inner <div w-full py-3> */}
-      <div className="w-full py-3">
+    // Fixed overlay (covers the transition gap); padding mirrors the shell EXACTLY
+    // so the header sits at the identical spot before/after load. data-ds-dashboard
+    // → the icon is dashboard-purple, not navy.
+    <div data-ds-dashboard className={OVERLAY_CLASS} style={{ paddingTop: ROOT_PT }}>
+      {/* shell inner <div w-full pt-1 pb-3> */}
+      <div className="w-full pt-1 pb-3">
         {/* RequestsSplitView outer <div w-full px-1 pb-12> */}
         <div className="w-full px-1 pb-12">
           <div className="grid items-start gap-6 lg:grid-cols-[380px_1fr]">
@@ -57,7 +67,7 @@ export function RequestsRouteSkeleton() {
               <div className="px-1">
                 <h1 className="flex items-center gap-2 text-[26px] font-extrabold tracking-tight text-slate-900">
                   <ClipboardList className="h-6 w-6 text-[var(--dogshift-blue)]" aria-hidden="true" />
-                  <span>Réservations</span>
+                  <span>Demandes de réservations</span>
                 </h1>
                 <p className="mt-2 text-sm text-slate-600">
                   <span className="font-semibold text-slate-900">0</span> en attente
@@ -127,10 +137,10 @@ export function RequestsRouteSkeleton() {
 /** Replica of the host messages layout's native loading view (Conversations). */
 export function MessagesRouteSkeleton() {
   return (
-    // Fixed overlay (covers the transition gap); inner padding mirrors the shell.
-    <div className={OVERLAY_CLASS} style={{ paddingTop: ROOT_PT }}>
-      {/* shell inner <div w-full py-3> */}
-      <div className="w-full py-3">
+    // Fixed overlay; padding mirrors the shell EXACTLY so nothing jumps on load.
+    <div data-ds-dashboard className={OVERLAY_CLASS} style={{ paddingTop: ROOT_PT }}>
+      {/* shell inner <div w-full pt-1 pb-3> */}
+      <div className="w-full pt-1 pb-3">
         {/* HostMessagesLayout root (mobile: -mx-4 -mt-4 bg-white) */}
         <div className="-mx-4 -mt-4 bg-white">
           {/* aside p-4 */}
