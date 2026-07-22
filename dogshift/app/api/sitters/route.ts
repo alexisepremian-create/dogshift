@@ -9,6 +9,25 @@ import { resolveSitterDogSizes } from "@/lib/sitterDogSizes";
 
 export const runtime = "nodejs";
 
+/**
+ * Legacy sitter profiles can have their avatar inlined as a multi-MB
+ * `data:image/...;base64,...` URL. Returning it verbatim makes the native map +
+ * preview cards inline several MB into the DOM `<img src>` → slow/janky paint
+ * (founder: "Magali met du temps à charger"). Rewrite `data:` avatars to the
+ * cached HTTP endpoint so the payload stays tiny and the browser fetches the
+ * image over HTTP/2. Regular R2/CDN URLs pass through untouched. Mirrors the web
+ * homepage's rewriteAvatarUrl in app/(marketing)/page.tsx.
+ */
+function rewriteAvatarUrl(sitterId: string, url: string | null | undefined): string | null {
+  if (!url) return null;
+  const trimmed = String(url).trim();
+  if (!trimmed) return null;
+  if (trimmed.startsWith("data:")) {
+    return `/api/sitters/${encodeURIComponent(sitterId)}/avatar`;
+  }
+  return trimmed;
+}
+
 type SitterListItem = {
   sitterId: string;
   name: string;
@@ -147,7 +166,7 @@ export async function GET(req: NextRequest) {
         city: s.city ?? "",
         postalCode: s.postalCode ?? "",
         bio: s.bio ?? "",
-        avatarUrl: s.avatarUrl ?? s.user?.image ?? null,
+        avatarUrl: rewriteAvatarUrl(String(s.sitterId ?? ""), s.avatarUrl ?? s.user?.image ?? null),
         verified: typeof s.verificationStatus === "string" ? s.verificationStatus === "approved" : false,
         lat: typeof s.lat === "number" && Number.isFinite(s.lat) ? s.lat : null,
         lng: typeof s.lng === "number" && Number.isFinite(s.lng) ? s.lng : null,
