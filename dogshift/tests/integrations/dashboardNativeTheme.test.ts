@@ -29,10 +29,8 @@ test("globals.css flips the dashboard accent to purple in native only", () => {
     /html\[data-native="true"\]\s+\[data-ds-dashboard\]\s*\{[^}]*--dogshift-blue-hover:\s*#6d28d9/,
     "Native dashboard must override the hover accent too.",
   );
-  // The base accent is now purple everywhere (unified with the mobile app —
-  // the whole site moved off navy). The native override is now redundant but
-  // kept; the :root value below is authoritative.
-  assert.match(css, /:root\s*\{[^}]*--dogshift-blue:\s*#7c3aed/, "Base accent is now purple site-wide.");
+  // The base (web) value stays navy.
+  assert.match(css, /--dogshift-blue:\s*#2f4d6b/, "Web accent must stay navy.");
 });
 
 test("globals.css compacts dashboard cards/rows in native via marker classes", () => {
