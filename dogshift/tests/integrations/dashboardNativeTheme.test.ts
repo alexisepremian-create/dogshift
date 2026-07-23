@@ -138,9 +138,16 @@ test("native islands open destinations in the sheet (onClick + dynamic panels)",
     assert.match(src, new RegExp(`data-testid="${tag}"`), `${file} must render the native dashboard.`);
     assert.match(src, /onClick=\{\(\) => setPanel\(/, `${file} tiles must open a panel, not navigate.`);
     assert.match(src, /<DashboardSheet /, `${file} must render the DashboardSheet.`);
-    const dynCount = (src.match(/dynamic\(\(\) => import\(/g) ?? []).length;
+    // Each destination panel is lazy-loaded via an import factory. These live in
+    // a PANEL_IMPORTERS map (so we can also prefetch them on idle) and are passed
+    // to dynamic(); count the `() => import(...)` factories rather than the inline
+    // `dynamic(() => import(` form so the assertion survives that refactor.
+    const dynCount = (src.match(/\(\) => import\(/g) ?? []).length;
     assert.ok(dynCount >= count, `${file} must lazy-load its ${count} destination panels (found ${dynCount}).`);
     // Options must be an inline literal (Next requires it for ssr:false).
     assert.match(src, /\{ ssr: false, loading: PanelLoading \}/, `${file} must inline the dynamic options.`);
+    // The panel chunks must be prefetched on idle so the first tap opens with a
+    // single, uninterrupted spinner (no PanelLoading→page-spinner swap).
+    assert.match(src, /requestIdleCallback/, `${file} must prefetch its panel chunks on idle.`);
   }
 });

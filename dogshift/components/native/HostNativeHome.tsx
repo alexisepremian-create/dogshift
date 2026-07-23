@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import dynamic from "next/dynamic";
-import { useRef, useState, type ComponentType } from "react";
+import { useEffect, useRef, useState, type ComponentType } from "react";
 import { CalendarClock, Clock, MessageCircle, Settings, User, Wallet, ChevronRight, Circle, Camera } from "lucide-react";
 
 import { NativeDashTile, NativeStat } from "@/components/native/NativeDashTile";
@@ -22,17 +22,48 @@ const PanelLoading = () => (
   </div>
 );
 
-const PANELS: Record<string, { title: string; Component: ComponentType }> = {
-  requests: { title: "Demandes", Component: dynamic(() => import("@/app/(protected)/host/requests/page"), { ssr: false, loading: PanelLoading }) },
+// Import factories kept separate from the dynamic() wrappers so we can PREFETCH
+// each destination chunk on idle (see the effect in HostNativeHome). Warming the
+// chunk means that when a tile is tapped, dynamic() resolves instantly and the
+// PanelLoading fallback never paints — so the panel shows ONE continuous spinner
+// (the page's own first-load spinner) instead of a PanelLoading→page-spinner
+// swap that visibly reset the rotation on the heavy pages (availability, wallet,
+// settings). Founder: "les spirales de chargement de 3 trucs qui bug encore".
+const PANEL_IMPORTERS = {
+  requests: () => import("@/app/(protected)/host/requests/page"),
   // The conversation list + "Nouvelle conversation" (+) FAB live in the messages
   // *layout*, not the page (which is just the empty detail placeholder). Render
   // the layout so the panel shows the real conversations section with the +.
-  messages: { title: "Messages", Component: dynamic(() => import("@/app/(protected)/host/messages/layout"), { ssr: false, loading: PanelLoading }) },
-  availability: { title: "Disponibilités", Component: dynamic(() => import("@/app/(protected)/host/availability/page"), { ssr: false, loading: PanelLoading }) },
-  profile: { title: "Mon profil", Component: dynamic(() => import("@/app/(protected)/host/profile/edit/page"), { ssr: false, loading: PanelLoading }) },
-  wallet: { title: "Portefeuille", Component: dynamic(() => import("@/app/(protected)/host/wallet/page"), { ssr: false, loading: PanelLoading }) },
-  settings: { title: "Paramètres", Component: dynamic(() => import("@/app/(protected)/host/settings/page"), { ssr: false, loading: PanelLoading }) },
+  messages: () => import("@/app/(protected)/host/messages/layout"),
+  availability: () => import("@/app/(protected)/host/availability/page"),
+  profile: () => import("@/app/(protected)/host/profile/edit/page"),
+  wallet: () => import("@/app/(protected)/host/wallet/page"),
+  settings: () => import("@/app/(protected)/host/settings/page"),
+} as const;
+
+const PANELS: Record<string, { title: string; Component: ComponentType }> = {
+  requests: { title: "Demandes", Component: dynamic(PANEL_IMPORTERS.requests, { ssr: false, loading: PanelLoading }) },
+  messages: { title: "Messages", Component: dynamic(PANEL_IMPORTERS.messages, { ssr: false, loading: PanelLoading }) },
+  availability: { title: "Disponibilités", Component: dynamic(PANEL_IMPORTERS.availability, { ssr: false, loading: PanelLoading }) },
+  profile: { title: "Mon profil", Component: dynamic(PANEL_IMPORTERS.profile, { ssr: false, loading: PanelLoading }) },
+  wallet: { title: "Portefeuille", Component: dynamic(PANEL_IMPORTERS.wallet, { ssr: false, loading: PanelLoading }) },
+  settings: { title: "Paramètres", Component: dynamic(PANEL_IMPORTERS.settings, { ssr: false, loading: PanelLoading }) },
 };
+
+// Warm every panel chunk shortly after the dashboard mounts (idle time) so the
+// first tap on any tile opens instantly with a single, uninterrupted spinner.
+function usePrefetchPanels() {
+  useEffect(() => {
+    const run = () => { for (const load of Object.values(PANEL_IMPORTERS)) void load(); };
+    const w = window as unknown as { requestIdleCallback?: (cb: () => void) => number };
+    if (typeof w.requestIdleCallback === "function") {
+      w.requestIdleCallback(run);
+      return;
+    }
+    const t = setTimeout(run, 800);
+    return () => clearTimeout(t);
+  }, []);
+}
 
 type HostTodo = { id: string; label: string; href: string };
 
@@ -71,6 +102,7 @@ export function HostNativeHome({
   const [avatarUploading, setAvatarUploading] = useState(false);
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const isCompletion = panel === "completion";
+  usePrefetchPanels();
 
   async function uploadAvatar(file: File) {
     setAvatarUploading(true);

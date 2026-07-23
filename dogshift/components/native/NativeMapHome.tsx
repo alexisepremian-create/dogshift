@@ -241,6 +241,16 @@ export default function NativeMapHome() {
   const [sitters, setSitters] = useState<UiSitter[]>(() => cachedSitters ?? []);
   const [loading, setLoading] = useState(() => cachedSitters === null);
   const [mapLoaded, setMapLoaded] = useState(false);
+  // `mapIdle` = the map has finished drawing every tile for the current view
+  // (maplibre 'idle' event). `ready` gates the WHOLE first paint: we hold the
+  // map hidden + markers + preview cards behind the "Chargement…" sheet until
+  // the sitters are fetched, the map is fully tiled AND the avatars are
+  // preloaded — then reveal everything AT ONCE (founder: "je veux que tout se
+  // charge d'un coup quitte à attendre un peu", no pins/cards popping in one by
+  // one). On a return visit (cache present) we're ready instantly.
+  const [mapIdle, setMapIdle] = useState(false);
+  const [ready, setReady] = useState(() => cachedSitters !== null);
+  const revealDone = useRef(cachedSitters !== null);
   // Fit-all-sitters runs once per session (until the user has a cached view we
   // restore instead). A ref, not state, so it never triggers a re-render.
   const didInitialFit = useRef(cachedView !== null);
@@ -662,6 +672,39 @@ export default function NativeMapHome() {
     return () => { cancelled = true; };
   }, []);
 
+  // Reveal-all-at-once gate. Once the sitters are fetched (`!loading`) and the
+  // map has finished tiling (`mapIdle`), preload every avatar image (capped at
+  // 1.5s so a slow avatar never stalls the reveal) then flip `ready` → the map
+  // fades in with all markers + preview cards together. A 4s hard cap is a
+  // safety net so the screen can never get stuck on the skeleton.
+  useEffect(() => {
+    if (revealDone.current) return;
+    if (loading) return;
+    let cancelled = false;
+    const finish = () => {
+      if (cancelled || revealDone.current) return;
+      revealDone.current = true;
+      setReady(true);
+    };
+    const hardCap = setTimeout(finish, 4000);
+    if (!mapIdle) {
+      return () => { cancelled = true; clearTimeout(hardCap); };
+    }
+    const urls = sitters
+      .map((s) => s.avatar)
+      .filter((u): u is string => !!u && !u.startsWith("data:"));
+    const preload = (url: string) =>
+      new Promise<void>((resolve) => {
+        const img = new window.Image();
+        img.onload = () => resolve();
+        img.onerror = () => resolve();
+        img.src = url;
+      });
+    const cap = new Promise<void>((resolve) => setTimeout(resolve, 1500));
+    Promise.race([Promise.all(urls.map(preload)).then(() => undefined), cap]).then(finish);
+    return () => { cancelled = true; clearTimeout(hardCap); };
+  }, [loading, mapIdle, sitters]);
+
   const filteredSitters = useMemo(() => {
     const q = query.trim().toLowerCase();
     const list = sitters.filter((s) => {
@@ -864,6 +907,11 @@ export default function NativeMapHome() {
         style={{
           filter: sheetOpen ? "blur(5px)" : undefined,
           transform: "translateZ(0)",
+          // Held invisible over the slate-100 backdrop (identical to the route
+          // skeleton) until `ready`, then faded in together with the markers so
+          // the map never reveals "petit à petit".
+          opacity: ready ? 1 : 0,
+          transition: "opacity 280ms ease-out",
         }}
       >
         {styleUrl ? (
@@ -884,6 +932,7 @@ export default function NativeMapHome() {
             pitchWithRotate={false}
             touchPitch={false}
             onLoad={() => setMapLoaded(true)}
+            onIdle={() => setMapIdle(true)}
             onMoveEnd={(e) => {
               // Remember the view so returning to the homepage restores it 1:1
               // instead of snapping back to the default (founder: flash on return).
@@ -891,7 +940,7 @@ export default function NativeMapHome() {
               cachedView = { longitude: v.longitude, latitude: v.latitude, zoom: v.zoom };
             }}
           >
-            {filteredSitters.map((s) => (
+            {ready && filteredSitters.map((s) => (
               <Marker
                 key={s.id}
                 longitude={s.lng}
@@ -1116,7 +1165,7 @@ export default function NativeMapHome() {
         <div className="px-5 pt-1 pb-2">
           <div className="flex items-baseline justify-between">
             <h2 className="text-base font-semibold text-slate-900">
-              {loading ? "Chargement…" : `${filteredSitters.length} dogsitter${filteredSitters.length > 1 ? "s" : ""}`}
+              {!ready ? "Chargement…" : `${filteredSitters.length} dogsitter${filteredSitters.length > 1 ? "s" : ""}`}
             </h2>
             <button
               type="button"
@@ -1146,7 +1195,7 @@ export default function NativeMapHome() {
               shown for BOTH collapsed and expanded states so the founder
               never sees a "popping in" gap between the page skeleton and
               the actual cards. */}
-          {loading && (
+          {!ready && (
             sheetOpen ? (
               <div className="grid grid-cols-2 gap-3">
                 {Array.from({ length: 6 }).map((_, i) => (
@@ -1178,7 +1227,7 @@ export default function NativeMapHome() {
             )
           )}
 
-          {!loading && filteredSitters.length === 0 && (
+          {ready && filteredSitters.length === 0 && (
             <div className="py-6 text-center text-sm text-slate-500">
               Aucun dogsitter trouvé
             </div>
@@ -1186,7 +1235,7 @@ export default function NativeMapHome() {
 
           {/* Expanded = 2-col grid (cards "côte à côte", like the web home).
               Collapsed = horizontal scroll of small cards. */}
-          {!loading && (
+          {ready && (
             <div
               // No -mx-4/px trick: WebKit ignores an overflow-x scroller's LEADING
               // padding at scrollLeft:0, which glued the first card to the sheet
