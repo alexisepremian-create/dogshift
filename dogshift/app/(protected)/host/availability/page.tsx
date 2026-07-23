@@ -315,7 +315,6 @@ export default function AvailabilityStudioPage() {
   const quickActionsWrapRef = useRef<HTMLDivElement | null>(null);
 
   const [availabilityTab, setAvailabilityTab] = useState<ServiceTypeApi>("PROMENADE");
-  const [servicesCarouselIndex, setServicesCarouselIndex] = useState(0);
 
   const todayKeyZurich = useMemo(() => toZurichIsoDate(new Date()), []);
 
@@ -428,12 +427,6 @@ export default function AvailabilityStudioPage() {
     const services: ServiceTypeApi[] = ["PROMENADE", "DOGSITTING", "PENSION"];
     return services.filter((svc) => configByService[svc]?.enabled === true);
   }, [configByService]);
-
-  useEffect(() => {
-    const order: ServiceTypeApi[] = ["PROMENADE", "DOGSITTING", "PENSION"];
-    const idx = order.indexOf(availabilityTab);
-    if (idx >= 0) setServicesCarouselIndex(idx);
-  }, [availabilityTab]);
 
   useEffect(() => {
     const pricing = remoteProfile?.pricing && typeof remoteProfile.pricing === "object" ? (remoteProfile.pricing as Partial<Record<PricingServiceKey, number>>) : {};
@@ -2291,143 +2284,109 @@ export default function AvailabilityStudioPage() {
                   </div>
                 </div>
               </div>
-              <div className="mt-4">
-                <div className="flex items-center justify-between gap-1.5 sm:gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setServicesCarouselIndex((prev) => Math.max(0, prev - 1))}
-                    disabled={servicesCarouselIndex === 0}
-                    className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-base font-semibold text-slate-700 disabled:cursor-default disabled:opacity-35 sm:h-10 sm:w-10 sm:rounded-2xl sm:text-lg"
-                    aria-label="Service précédent"
-                  >
-                    ←
-                  </button>
-
-                  <div className="min-w-0 flex-1 pt-2">
-                    <div className="w-full overflow-hidden rounded-[2rem]">
-                      <div
-                        className="flex w-full transition-transform duration-300 ease-out"
-                        style={{ transform: `translateX(-${servicesCarouselIndex * 100}%)` }}
-                      >
-                        {(["PROMENADE", "DOGSITTING", "PENSION"] as const).map((svc) => {
-                          const metaSvc = serviceMeta(svc);
-                          const cfg = configByService[svc];
-                          const enabled = cfg?.enabled === true;
-                          const tone = serviceDotTone(svc);
-                          const activeSwitchTone = tone === "bg-sky-400" ? "bg-sky-500" : tone === "bg-violet-400" ? "bg-violet-500" : "bg-emerald-500";
-                          const priceInput = pricingInputByService[svc] ?? "";
-                          const priceError = pricingErrorByService[svc];
-                          const priceSaving = pricingSavingByService[svc];
-                          const isActiveCard = availabilityTab === svc;
-                          return (
-                            <div key={svc} className="w-full min-w-full flex-none">
-                              <div
-                                role="button"
-                                tabIndex={0}
-                                onClick={() => setAvailabilityTab(svc)}
-                                onKeyDown={(e) => {
-                                  if (e.key === "Enter" || e.key === " ") {
-                                    e.preventDefault();
-                                    setAvailabilityTab(svc);
-                                  }
-                                }}
-                                className={
-                                  isActiveCard
-                                    ? "m-1 cursor-pointer rounded-2xl border-2 border-[var(--dogshift-blue)] bg-white p-3 text-left shadow-sm sm:m-2 sm:rounded-3xl sm:p-4"
-                                    : "m-1 cursor-pointer rounded-2xl border-2 border-transparent ring-1 ring-inset ring-slate-200 bg-white p-3 text-left sm:m-2 sm:rounded-3xl sm:p-4"
-                                }
-                                aria-pressed={isActiveCard}
-                              >
-                                <div className="flex items-center justify-between">
-                                  <div className="text-left min-w-0">
-                                    <p className="text-sm font-semibold text-slate-900">
-                                      {metaSvc.icon} {metaSvc.label}
-                                    </p>
-                                    <p className="mt-1 text-xs font-semibold text-slate-500">
-                                      {isActiveCard ? "En configuration" : "Configurer"}
-                                    </p>
-                                  </div>
-                                  <button
-                                    type="button"
-                                    role="switch"
-                                    aria-checked={enabled}
-                                    disabled={!enabled ? Boolean(priceError) : false}
-                                    onClick={(e) => {
-                                      e.preventDefault();
-                                      e.stopPropagation();
-                                      void saveServiceEnabled(svc, !enabled);
-                                    }}
-                                    className={
-                                      enabled
-                                        ? `relative inline-flex h-6 w-11 shrink-0 items-center rounded-full ${activeSwitchTone} transition`
-                                        : "relative inline-flex h-6 w-11 shrink-0 items-center rounded-full bg-slate-300 transition disabled:opacity-50"
-                                    }
-                                    aria-label={enabled ? `Désactiver ${metaSvc.label}` : `Activer ${metaSvc.label}`}
-                                  >
-                                    <span
-                                      className={
-                                        enabled
-                                          ? "inline-block h-5 w-5 translate-x-5 rounded-full bg-white shadow transition"
-                                          : "inline-block h-5 w-5 translate-x-1 rounded-full bg-white shadow transition"
-                                      }
-                                    />
-                                  </button>
-                                </div>
-                                {cfg ? null : <div className="mt-3 h-4 w-full max-w-[10rem] animate-pulse rounded bg-slate-100" />}
-
-                                <div className="mt-3 grid gap-2">
-                                  <label className="text-xs font-semibold text-slate-500">Tarif</label>
-                                  <div className="flex items-center gap-2 pr-1">
-                                    <input
-                                      value={priceInput}
-                                      onChange={(e) => {
-                                        e.stopPropagation();
-                                        const val = e.target.value;
-                                        setPricingInputByService((prev) => ({ ...prev, [svc]: val }));
-                                        clearTimeout(pricingDebounceRef.current[svc]);
-                                        pricingDebounceRef.current[svc] = setTimeout(() => {
-                                          void saveServicePricing(svc, val);
-                                        }, 500);
-                                      }}
-                                      onBlur={(e) => {
-                                        clearTimeout(pricingDebounceRef.current[svc]);
-                                        void saveServicePricing(svc, e.target.value);
-                                      }}
-                                      onClick={(e) => e.stopPropagation()}
-                                      inputMode="decimal"
-                                      placeholder={pricingPlaceholderLabel(svc)}
-                                      className="h-10 w-24 rounded-xl border border-slate-200 bg-white px-3 text-base font-medium text-slate-900"
-                                    />
-                                    <span className="text-xs font-semibold text-slate-500 whitespace-nowrap shrink-0">{pricingUnitLabel(svc)}</span>
-                                    {priceSaving ? <span className="text-xs font-semibold text-slate-400 shrink-0">...</span> : null}
-                                  </div>
-                                  <p className="text-[11px] font-semibold text-slate-500">Fourchette : {pricingRangeLabel(svc)}</p>
-                                  {priceError ? <p className="text-xs font-medium text-rose-600">{priceError}</p> : null}
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })}
+              {/* Stacked service cards — all three visible at once (no carousel),
+                  mobile-app style: purple accents, rounded-2xl, one tap to
+                  configure. Handlers unchanged (saveServiceEnabled / pricing). */}
+              <div className="mt-4 grid gap-3">
+                {(["PROMENADE", "DOGSITTING", "PENSION"] as const).map((svc) => {
+                  const metaSvc = serviceMeta(svc);
+                  const cfg = configByService[svc];
+                  const enabled = cfg?.enabled === true;
+                  const priceInput = pricingInputByService[svc] ?? "";
+                  const priceError = pricingErrorByService[svc];
+                  const priceSaving = pricingSavingByService[svc];
+                  const isActiveCard = availabilityTab === svc;
+                  return (
+                    <div
+                      key={svc}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => setAvailabilityTab(svc)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          setAvailabilityTab(svc);
+                        }
+                      }}
+                      style={{ touchAction: "manipulation" }}
+                      className={
+                        isActiveCard
+                          ? "cursor-pointer rounded-2xl border-2 border-[var(--dogshift-blue)] bg-white p-4 text-left shadow-sm transition active:scale-[0.99]"
+                          : "cursor-pointer rounded-2xl border-2 border-transparent bg-white p-4 text-left ring-1 ring-inset ring-slate-200 transition hover:ring-slate-300 active:scale-[0.99]"
+                      }
+                      aria-pressed={isActiveCard}
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex min-w-0 items-center gap-3">
+                          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--dogshift-blue)]/10 text-lg">
+                            {metaSvc.icon}
+                          </span>
+                          <div className="min-w-0">
+                            <p className="text-sm font-semibold text-slate-900">{metaSvc.label}</p>
+                            <p className="mt-0.5 text-xs font-medium text-slate-500">
+                              {enabled ? "Actif" : "Désactivé"}
+                            </p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          role="switch"
+                          aria-checked={enabled}
+                          disabled={!enabled ? Boolean(priceError) : false}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            void saveServiceEnabled(svc, !enabled);
+                          }}
+                          className={
+                            enabled
+                              ? "relative inline-flex h-6 w-11 shrink-0 items-center rounded-full bg-[var(--dogshift-blue)] transition"
+                              : "relative inline-flex h-6 w-11 shrink-0 items-center rounded-full bg-slate-300 transition disabled:opacity-50"
+                          }
+                          aria-label={enabled ? `Désactiver ${metaSvc.label}` : `Activer ${metaSvc.label}`}
+                        >
+                          <span
+                            className={
+                              enabled
+                                ? "inline-block h-5 w-5 translate-x-5 rounded-full bg-white shadow transition"
+                                : "inline-block h-5 w-5 translate-x-1 rounded-full bg-white shadow transition"
+                            }
+                          />
+                        </button>
                       </div>
-                    </div>
-                  </div>
+                      {cfg ? null : <div className="mt-3 h-4 w-full max-w-[10rem] animate-pulse rounded bg-slate-100" />}
 
-                  <button
-                    type="button"
-                    onClick={() => setServicesCarouselIndex((prev) => Math.min(2, prev + 1))}
-                    disabled={servicesCarouselIndex === 2}
-                    className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-base font-semibold text-slate-700 disabled:cursor-default disabled:opacity-35 sm:h-10 sm:w-10 sm:rounded-2xl sm:text-lg"
-                    aria-label="Service suivant"
-                  >
-                    →
-                  </button>
-                </div>
-                <div className="mt-3 flex items-center justify-center gap-2">
-                  {(["PROMENADE", "DOGSITTING", "PENSION"] as const).map((svc, idx) => {
-                    const active = servicesCarouselIndex === idx;
-                    return <span key={`service-dot-${svc}`} className={active ? "h-2 w-2 rounded-full bg-slate-900" : "h-2 w-2 rounded-full bg-slate-300"} aria-hidden="true" />;
-                  })}
-                </div>
+                      <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1.5">
+                        <div className="flex items-center gap-2">
+                          <input
+                            value={priceInput}
+                            onChange={(e) => {
+                              e.stopPropagation();
+                              const val = e.target.value;
+                              setPricingInputByService((prev) => ({ ...prev, [svc]: val }));
+                              clearTimeout(pricingDebounceRef.current[svc]);
+                              pricingDebounceRef.current[svc] = setTimeout(() => {
+                                void saveServicePricing(svc, val);
+                              }, 500);
+                            }}
+                            onBlur={(e) => {
+                              clearTimeout(pricingDebounceRef.current[svc]);
+                              void saveServicePricing(svc, e.target.value);
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                            inputMode="decimal"
+                            placeholder={pricingPlaceholderLabel(svc)}
+                            className="h-10 w-24 rounded-xl border border-slate-200 bg-white px-3 text-base font-medium text-slate-900"
+                          />
+                          <span className="whitespace-nowrap text-xs font-semibold text-slate-500">{pricingUnitLabel(svc)}</span>
+                          {priceSaving ? <span className="text-xs font-semibold text-slate-400">…</span> : null}
+                        </div>
+                        <span className="text-[11px] font-medium text-slate-400">Fourchette {pricingRangeLabel(svc)}</span>
+                      </div>
+                      {priceError ? <p className="mt-1.5 text-xs font-medium text-rose-600">{priceError}</p> : null}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
