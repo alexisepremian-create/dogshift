@@ -155,8 +155,21 @@ test("native islands open destinations in the sheet (onClick + dynamic panels)",
     // that restarts the CSS rotation).
     assert.match(src, /\{ ssr: false, loading: nullLoading \}/, `${file} must use loading:()=>null so the panel owns the only spinner.`);
     assert.match(src, /const nullLoading = \(\) => null;/, `${file} must define the null dynamic-loading fallback.`);
-    // The panel chunks must be prefetched on idle so the first tap resolves the
-    // chunk instantly and the page's own spinner is the first thing painted.
-    assert.match(src, /requestIdleCallback/, `${file} must prefetch its panel chunks on idle.`);
+    // Panel chunks must NOT be prefetched at launch — warming all the heavy
+    // chunks on mount slowed the app launch + the avatar load. Load on tap.
+    assert.doesNotMatch(src, /requestIdleCallback/, `${file} must NOT prefetch panel chunks at launch (keeps launch light).`);
   }
+});
+
+test("native dashboard syncs the completion % instantly after an avatar upload", () => {
+  const home = read("components/native/HostNativeHome.tsx");
+  // The child accepts a callback and fires it with the committed avatar URL.
+  assert.match(home, /onAvatarChange\?:\s*\(url: string\) => void/, "HostNativeHome must accept an onAvatarChange callback.");
+  assert.match(home, /onAvatarChange\?\.\(commit\.avatarUrl\)/, "HostNativeHome must report the committed avatar URL up after upload.");
+
+  const page = read("app/(protected)/host/page.tsx");
+  // The parent wires it to an override that is folded into `profile`, so the
+  // memoised completionPercent + todos recompute without a reload.
+  assert.match(page, /onAvatarChange=\{setAvatarOverride\}/, "host/page must wire onAvatarChange to the avatar override setter.");
+  assert.match(page, /avatarOverride \? \{ \.\.\.base, avatarUrl: avatarOverride \} : base/, "host/page must fold the override into profile so completion recomputes.");
 });
