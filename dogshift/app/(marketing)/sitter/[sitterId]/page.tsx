@@ -527,9 +527,9 @@ function SitterPublicProfileContent({
       lat: 0,
       lng: 0,
       avatarUrl:
-        profile.avatarDataUrl && profile.avatarDataUrl.trim()
-          ? profile.avatarDataUrl
-          : (sessionImage ?? "https://i.pravatar.cc/160?img=7"),
+        (profile.avatarUrl && profile.avatarUrl.trim() ? profile.avatarUrl.trim() : null) ??
+        (profile.avatarDataUrl && profile.avatarDataUrl.trim() ? profile.avatarDataUrl.trim() : null) ??
+        (sessionImage ?? "https://i.pravatar.cc/160?img=7"),
       reviews: apiSitter?.reviews ?? [],
       boardingDetails,
     };
