@@ -88,6 +88,10 @@ test("DashboardSheet is a slide-up overlay with a back header", () => {
   assert.match(sheet, /fixed left-2 right-2 z-\[1201\][\s\S]*rounded-3xl/, "Sheet must float with side margins + rounded corners.");
   assert.match(sheet, /env\(safe-area-inset-top, 0px\) \+ 70px/, "Sheet top must match the reservation fiche offset.");
   assert.match(sheet, /aria-label="Fermer"/, "Sheet must also have a ✕ close button.");
+  // The heavy panel must be mounted AFTER the spinner paints (deferred via rAF)
+  // so its long first render can't drop the spinner's opening frames.
+  assert.match(sheet, /requestAnimationFrame/, "Sheet must defer the panel mount to a later frame.");
+  assert.match(sheet, /bodyReady \? children : <PanelSpinner/, "Sheet must show a spinner until the deferred panel is mounted.");
 });
 
 test("native tab bar is solid/edge-to-edge with a center DogShift logo that opens the menu", () => {

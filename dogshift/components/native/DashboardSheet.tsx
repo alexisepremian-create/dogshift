@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { ArrowLeft } from "lucide-react";
 
-import { InDashboardSheetContext } from "@/components/native/dashboardSheetContext";
+import { InDashboardSheetContext, PanelSpinner } from "@/components/native/dashboardSheetContext";
 
 /**
  * Floating slide-up sheet for the native dashboards — identical geometry to the
@@ -30,6 +30,34 @@ export function DashboardSheet({
     document.body.style.overflow = "hidden";
     return () => {
       document.body.style.overflow = prev;
+    };
+  }, [open]);
+
+  // Defer mounting the (potentially heavy) panel until the sheet + spinner have
+  // painted. The destination pages — availability especially (~3000 lines of
+  // hooks before its early-return), wallet, settings — run a long SYNCHRONOUS
+  // first render. If we mount them in the same frame the sheet opens, that long
+  // task drops the spinner's very first frames → the founder sees the spinner
+  // "lag/bug" on open. Instead we paint an identical PanelSpinner first (its
+  // transform layer gets promoted — see the .animate-spin rule in globals.css),
+  // then mount the panel two frames later. While the panel's heavy render runs,
+  // React hasn't committed yet, so the already-composited spinner keeps rotating
+  // on the compositor thread; the panel's own identical spinner then replaces it
+  // seamlessly. Reset when the sheet closes so the next open re-defers.
+  const [bodyReady, setBodyReady] = useState(false);
+  useEffect(() => {
+    if (!open) return;
+    let r1 = 0;
+    let r2 = 0;
+    r1 = requestAnimationFrame(() => {
+      r2 = requestAnimationFrame(() => setBodyReady(true));
+    });
+    // Reset on close/unmount (in cleanup, not synchronously in the body) so the
+    // next open re-defers the mount behind a freshly-painted spinner.
+    return () => {
+      cancelAnimationFrame(r1);
+      cancelAnimationFrame(r2);
+      setBodyReady(false);
     };
   }, [open]);
 
@@ -73,7 +101,9 @@ export function DashboardSheet({
         {/* Scrollable body — flag the subtree as "in a sheet" so panel pages
             render a spinner (not a skeleton) while loading. */}
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-3">
-          <InDashboardSheetContext.Provider value={true}>{children}</InDashboardSheetContext.Provider>
+          <InDashboardSheetContext.Provider value={true}>
+            {bodyReady ? children : <PanelSpinner />}
+          </InDashboardSheetContext.Provider>
         </div>
       </div>
     </>
