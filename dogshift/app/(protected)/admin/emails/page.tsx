@@ -42,7 +42,7 @@ const CATEGORIES: EmailCategory[] = [
     id: "candidatures",
     label: "Candidatures & Onboarding",
     icon: Users,
-    color: "text-[#2f4d6b]",
+    color: "text-[#7c3aed]",
     templates: [
       {
         id: "pilot-confirmation",
@@ -445,7 +445,7 @@ export default function AdminEmailsPage() {
         {/* Page header */}
         <div className="mb-6">
           <div className="flex items-center gap-2">
-            <Mail className="h-5 w-5 text-[#2f4d6b]" />
+            <Mail className="h-5 w-5 text-[#7c3aed]" />
             <h1 className="text-2xl font-extrabold tracking-tight text-slate-900">
               Aperçu des emails
             </h1>
@@ -494,21 +494,21 @@ export default function AdminEmailsPage() {
                             onClick={() => void loadPreview(tpl.id)}
                             className={`w-full px-4 py-2.5 text-left transition ${
                               isSelected
-                                ? "bg-[#2f4d6b]/5"
+                                ? "bg-[#7c3aed]/5"
                                 : "hover:bg-slate-50"
                             }`}
                           >
                             <div className="flex items-start gap-2">
                               <div
                                 className={`mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full ${
-                                  isSelected ? "bg-[#2f4d6b]" : "bg-slate-300"
+                                  isSelected ? "bg-[#7c3aed]" : "bg-slate-300"
                                 }`}
                               />
                               <div className="min-w-0 flex-1">
                                 <div className="flex items-center gap-1.5 flex-wrap">
                                   <span
                                     className={`text-sm font-medium leading-tight ${
-                                      isSelected ? "text-[#2f4d6b]" : "text-slate-800"
+                                      isSelected ? "text-[#7c3aed]" : "text-slate-800"
                                     }`}
                                   >
                                     {tpl.label}
@@ -521,7 +521,7 @@ export default function AdminEmailsPage() {
                                     </span>
                                   )}
                                   {isSelected && loading && (
-                                    <Loader2 className="h-3 w-3 animate-spin text-[#2f4d6b]" />
+                                    <Loader2 className="h-3 w-3 animate-spin text-[#7c3aed]" />
                                   )}
                                   {isSelected && !loading && previewHtml && (
                                     <CheckCircle2 className="h-3 w-3 text-emerald-500" />
@@ -580,7 +580,7 @@ export default function AdminEmailsPage() {
                       ? "bg-emerald-100 text-emerald-700"
                       : testState === "error"
                         ? "bg-red-100 text-red-600"
-                        : "bg-[#2f4d6b]/10 text-[#2f4d6b] hover:bg-[#2f4d6b]/20"
+                        : "bg-[#7c3aed]/10 text-[#7c3aed] hover:bg-[#7c3aed]/20"
                   }`}
                 >
                   {testState === "sending" ? (
@@ -618,7 +618,7 @@ export default function AdminEmailsPage() {
 
             {selected && loading && (
               <div className="flex flex-1 items-center justify-center gap-3 text-slate-500">
-                <Loader2 className="h-5 w-5 animate-spin text-[#2f4d6b]" />
+                <Loader2 className="h-5 w-5 animate-spin text-[#7c3aed]" />
                 <span className="text-sm font-medium">Rendu en cours…</span>
               </div>
             )}

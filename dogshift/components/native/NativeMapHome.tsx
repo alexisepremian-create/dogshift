@@ -212,7 +212,7 @@ function PawMarker({ active, avatarUrl }: { active: boolean; avatarUrl?: string 
       style={{
         width: 44,
         height: 44,
-        background: "linear-gradient(135deg, #2f4d6b 0%, #4a6b8c 100%)",
+        background: "linear-gradient(135deg, #7c3aed 0%, #4a6b8c 100%)",
         backgroundImage: avatarUrl ? `url(${avatarUrl})` : undefined,
         backgroundSize: "cover",
         backgroundPosition: "center",

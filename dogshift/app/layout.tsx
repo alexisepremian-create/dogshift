@@ -28,7 +28,7 @@ const geistMono = Geist_Mono({
 });
 
 export const viewport: Viewport = {
-  themeColor: "#2f4d6b",
+  themeColor: "#7c3aed",
   width: "device-width",
   initialScale: 1,
   // `viewport-fit=cover` lets the rendered HTML viewport extend into the iOS

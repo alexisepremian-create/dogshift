@@ -33,7 +33,7 @@ import { ClipboardList, Plus } from "lucide-react";
 const ROOT_PT = "calc(env(safe-area-inset-top, 0px) + var(--ds-maintenance-banner-height, 0px) + 0.5rem)";
 // `data-ds-dashboard` so `--dogshift-blue` resolves to the dashboard PURPLE
 // (#7c3aed) inside the overlay — otherwise, rendered outside the shell, the icon
-// falls back to the navy default (#2f4d6b) and flips purple only when the real
+// falls back to the navy default (#7c3aed) and flips purple only when the real
 // page mounts (founder: "icône grise puis violette").
 const OVERLAY_CLASS = "fixed inset-0 z-40 w-full overflow-y-auto bg-white px-3";
 
