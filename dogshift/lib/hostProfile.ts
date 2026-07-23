@@ -208,7 +208,11 @@ export function saveHostProfileToStorage(profile: HostProfileV1) {
   const next: HostProfileV1 = { ...profile, profileVersion: 1, updatedAt: new Date().toISOString() };
   const payload: Record<string, unknown> = { ...next };
   const adu = payload.avatarDataUrl;
-  if (typeof adu === "string" && adu.length > 120_000) {
+  const hasCommittedAvatar = typeof payload.avatarUrl === "string" && payload.avatarUrl.trim().length > 0;
+  // Once a real avatar has been committed (SitterProfile.avatarUrl = an R2 media
+  // path), never keep a legacy base64 blob in localStorage — otherwise it wins
+  // over the fresh photo on the next load and the avatar desyncs everywhere.
+  if (hasCommittedAvatar || (typeof adu === "string" && adu.length > 120_000)) {
     delete payload.avatarDataUrl;
   }
   try {

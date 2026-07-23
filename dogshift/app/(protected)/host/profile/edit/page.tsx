@@ -756,13 +756,13 @@ export default function HostProfileEditPage() {
                           : "Aucun fichier choisi"}
                   </p>
                 </div>
-                {profile.avatarDataUrl || profile.avatarUrl ? (
+                {profile.avatarUrl || profile.avatarDataUrl ? (
                   <Image
-                    src={profile.avatarDataUrl || profile.avatarUrl || ""}
+                    src={profile.avatarUrl || profile.avatarDataUrl || ""}
                     alt="Aperçu"
                     width={64}
                     height={64}
-                    unoptimized={Boolean(profile.avatarDataUrl)}
+                    unoptimized
                     className="mt-3 h-16 w-16 rounded-2xl object-cover ring-1 ring-slate-200"
                   />
                 ) : null}

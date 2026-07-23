@@ -87,7 +87,7 @@ function AccountActivatedBanner({ initialDismissed }: { initialDismissed: boolea
       </button>
       <p className="text-sm font-semibold text-emerald-900">Compte activé</p>
       <p className="mt-1 text-sm text-emerald-900/80">
-        Votre compte dogsitter est activé. Vous pouvez finaliser votre publication si le reste du profil est prêt.
+        Ton compte dogsitter est activé. Tu peux finaliser ta publication si le reste du profil est prêt.
       </p>
     </section>
   );
@@ -404,9 +404,13 @@ export default function HostDashboardPage() {
     (typeof user?.name === "string" && user?.name.trim() ? user?.name.trim() : null) ??
     null;
 
+  // Prefer the committed R2 media path (SitterProfile.avatarUrl, set on avatar
+  // commit) over the legacy base64 avatarDataUrl — otherwise a stale localStorage
+  // base64 blob wins over the freshly uploaded photo and the avatar desyncs vs
+  // the public profile / sitters list (which always read SitterProfile.avatarUrl).
   const avatarSrc =
-    (profile.avatarDataUrl && profile.avatarDataUrl.trim() ? profile.avatarDataUrl.trim() : null) ??
-    (profile.avatarUrl && profile.avatarUrl.trim() ? profile.avatarUrl.trim() : null);
+    (profile.avatarUrl && profile.avatarUrl.trim() ? profile.avatarUrl.trim() : null) ??
+    (profile.avatarDataUrl && profile.avatarDataUrl.trim() ? profile.avatarDataUrl.trim() : null);
 
   // Hold the dashboard skeleton until the profile photo is actually decoded, so
   // the reveal shows everything AT ONCE — otherwise the avatar popped in a beat
@@ -599,7 +603,7 @@ export default function HostDashboardPage() {
                     }
                   >
                     <span aria-hidden="true">●</span>
-                    {isPublished ? "En ligne" : "Brouillon (invisible)"}
+                    {isPublished ? "Annonce publiée" : "Annonce non publiée"}
                   </span>
                   <StatusBadge status={badgeStatus} />
                   <span className="inline-flex items-center rounded-full bg-white px-3 py-1 text-xs font-medium text-slate-600 ring-1 ring-slate-200">
@@ -656,7 +660,7 @@ export default function HostDashboardPage() {
             <div className="flex items-center justify-between gap-4">
               <div>
                 <h2 className="text-base font-semibold text-slate-900">À faire</h2>
-                <p className="mt-1 text-sm text-slate-600">Quelques actions pour optimiser votre profil.</p>
+                <p className="mt-1 text-sm text-slate-600">Quelques actions pour optimiser ton profil.</p>
               </div>
             </div>
 
@@ -665,7 +669,7 @@ export default function HostDashboardPage() {
                 <div className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50 p-5">
                   <p className="text-sm font-semibold text-emerald-900">Tout est en ordre ✓</p>
                   <p className="mt-1 text-sm text-emerald-900/80">
-                    Votre profil est publié et complet. Rien à faire pour l&apos;instant.
+                    Ton profil est publié et complet. Rien à faire pour l&apos;instant.
                   </p>
                 </div>
               ) : (

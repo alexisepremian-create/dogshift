@@ -380,7 +380,7 @@ export default async function AccountDashboardPage({
               {dogCount === 0 ? "Mes chiens" : `Mes chiens (${dogCount})`}
             </h2>
             <p className="mt-1 text-sm text-slate-600">
-              Infos médicales, comportement et alimentation — visibles par vos dogsitters.
+              Infos médicales, comportement et alimentation — visibles par tes dogsitters.
             </p>
           </div>
           <Link
@@ -394,7 +394,7 @@ export default async function AccountDashboardPage({
           <div className="mt-4 rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-5 text-center">
             <Dog className="mx-auto h-8 w-8 text-slate-300" />
             <p className="mt-2 text-sm font-medium text-slate-700">Aucun chien enregistré</p>
-            <p className="mt-1 text-xs text-slate-500">Ajoutez votre chien pour que les sitters aient toutes les infos dès le départ.</p>
+            <p className="mt-1 text-xs text-slate-500">Ajoute ton chien pour que les sitters aient toutes les infos dès le départ.</p>
             <Link
               href="/account/dogs"
               className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-[var(--dogshift-blue)] px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-[var(--dogshift-blue-hover)]"
