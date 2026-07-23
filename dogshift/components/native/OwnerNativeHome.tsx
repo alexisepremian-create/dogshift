@@ -15,12 +15,24 @@ const PanelLoading = () => (
   </div>
 );
 
+// Import factories kept separate from dynamic() so we can PREFETCH each chunk on
+// idle — a warmed chunk makes dynamic() resolve instantly on tap, so PanelLoading
+// never paints and the panel shows ONE continuous spinner instead of a
+// PanelLoading→page-spinner swap that reset the rotation on heavy pages.
+const PANEL_IMPORTERS = {
+  bookings: () => import("@/app/(marketing)/account/bookings/page"),
+  messages: () => import("@/app/(marketing)/account/messages/page"),
+  dogs: () => import("@/app/(marketing)/account/dogs/page"),
+  wallet: () => import("@/app/(marketing)/account/wallet/page"),
+  settings: () => import("@/app/(marketing)/account/settings/page"),
+} as const;
+
 const PANELS: Record<string, { title: string; Component: ComponentType }> = {
-  bookings: { title: "Réservations", Component: dynamic(() => import("@/app/(marketing)/account/bookings/page"), { ssr: false, loading: PanelLoading }) },
-  messages: { title: "Messages", Component: dynamic(() => import("@/app/(marketing)/account/messages/page"), { ssr: false, loading: PanelLoading }) },
-  dogs: { title: "Mes chiens", Component: dynamic(() => import("@/app/(marketing)/account/dogs/page"), { ssr: false, loading: PanelLoading }) },
-  wallet: { title: "Portefeuille", Component: dynamic(() => import("@/app/(marketing)/account/wallet/page"), { ssr: false, loading: PanelLoading }) },
-  settings: { title: "Paramètres", Component: dynamic(() => import("@/app/(marketing)/account/settings/page"), { ssr: false, loading: PanelLoading }) },
+  bookings: { title: "Réservations", Component: dynamic(PANEL_IMPORTERS.bookings, { ssr: false, loading: PanelLoading }) },
+  messages: { title: "Messages", Component: dynamic(PANEL_IMPORTERS.messages, { ssr: false, loading: PanelLoading }) },
+  dogs: { title: "Mes chiens", Component: dynamic(PANEL_IMPORTERS.dogs, { ssr: false, loading: PanelLoading }) },
+  wallet: { title: "Portefeuille", Component: dynamic(PANEL_IMPORTERS.wallet, { ssr: false, loading: PanelLoading }) },
+  settings: { title: "Paramètres", Component: dynamic(PANEL_IMPORTERS.settings, { ssr: false, loading: PanelLoading }) },
 };
 
 export function OwnerNativeHome({
@@ -47,6 +59,19 @@ export function OwnerNativeHome({
   // instead of waiting on a fresh fetch.
   useEffect(() => {
     void prefetchOwnerBookings();
+  }, []);
+
+  // Prefetch the dashboard-tile panel chunks on idle so the first tap opens
+  // instantly with a single, uninterrupted spinner (no PanelLoading swap).
+  useEffect(() => {
+    const run = () => { for (const load of Object.values(PANEL_IMPORTERS)) void load(); };
+    const w = window as unknown as { requestIdleCallback?: (cb: () => void) => number };
+    if (typeof w.requestIdleCallback === "function") {
+      w.requestIdleCallback(run);
+      return;
+    }
+    const t = setTimeout(run, 800);
+    return () => clearTimeout(t);
   }, []);
 
   return (
