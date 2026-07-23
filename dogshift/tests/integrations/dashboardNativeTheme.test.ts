@@ -158,3 +158,16 @@ test("native islands open destinations in the sheet (onClick + dynamic panels)",
     assert.match(src, /requestIdleCallback/, `${file} must prefetch its panel chunks on idle.`);
   }
 });
+
+test("native dashboard syncs the completion % instantly after an avatar upload", () => {
+  const home = read("components/native/HostNativeHome.tsx");
+  // The child accepts a callback and fires it with the committed avatar URL.
+  assert.match(home, /onAvatarChange\?:\s*\(url: string\) => void/, "HostNativeHome must accept an onAvatarChange callback.");
+  assert.match(home, /onAvatarChange\?\.\(commit\.avatarUrl\)/, "HostNativeHome must report the committed avatar URL up after upload.");
+
+  const page = read("app/(protected)/host/page.tsx");
+  // The parent wires it to an override that is folded into `profile`, so the
+  // memoised completionPercent + todos recompute without a reload.
+  assert.match(page, /onAvatarChange=\{setAvatarOverride\}/, "host/page must wire onAvatarChange to the avatar override setter.");
+  assert.match(page, /avatarOverride \? \{ \.\.\.base, avatarUrl: avatarOverride \} : base/, "host/page must fold the override into profile so completion recomputes.");
+});

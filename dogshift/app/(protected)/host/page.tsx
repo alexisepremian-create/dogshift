@@ -238,6 +238,12 @@ export default function HostDashboardPage() {
   const router = useRouter();
   const { sitterId, profile: remoteProfile, published: isPublished } = host;
   const [unreadTick, setUnreadTick] = useState(0);
+  // Instant avatar sync: when the native dashboard uploads a new photo we don't
+  // want to wait for a full reload for the completion % / to-do list to update.
+  // The child reports the committed URL up; we fold it into `profile` so the
+  // memoised completionPercent + todos recompute on the spot (founder: "il faut
+  // que ce soit synchro direct").
+  const [avatarOverride, setAvatarOverride] = useState<string | null>(null);
   const [publishing, setPublishing] = useState(false);
   const [publishError, setPublishError] = useState<string | null>(null);
   const [verificationStatus, setVerificationStatus] = useState<"not_verified" | "pending" | "approved" | "rejected">(
@@ -327,14 +333,19 @@ export default function HostDashboardPage() {
   const baseSitter = useMemo(() => (sitterId ? getSitterById(sitterId) : null), [sitterId]);
 
   const profile = useMemo<HostProfileV1>(() => {
-    if (!sitterId) return getDefaultHostProfile("");
-    const remote = remoteProfile as Partial<HostProfileV1> | null | undefined;
-    if (remote && typeof remote === "object" && remote.profileVersion === 1 && remote.sitterId === sitterId) {
-      return remote as HostProfileV1;
-    }
-    const stored = loadHostProfileFromStorage(sitterId);
-    return stored ?? getDefaultHostProfile(sitterId);
-  }, [sitterId, remoteProfile]);
+    const base = (() => {
+      if (!sitterId) return getDefaultHostProfile("");
+      const remote = remoteProfile as Partial<HostProfileV1> | null | undefined;
+      if (remote && typeof remote === "object" && remote.profileVersion === 1 && remote.sitterId === sitterId) {
+        return remote as HostProfileV1;
+      }
+      const stored = loadHostProfileFromStorage(sitterId);
+      return stored ?? getDefaultHostProfile(sitterId);
+    })();
+    // A just-uploaded avatar (reported by the native dashboard) takes precedence
+    // over the server snapshot until the next reload catches up.
+    return avatarOverride ? { ...base, avatarUrl: avatarOverride } : base;
+  }, [sitterId, remoteProfile, avatarOverride]);
 
   const badgeStatus = useMemo<"verified" | "pending" | "unverified">(() => {
     if (verificationStatus === "approved") return "verified";
@@ -523,6 +534,7 @@ export default function HostDashboardPage() {
           rating={rating}
           pendingRequests={pendingRequests}
           unreadMessages={unreadMessages}
+          onAvatarChange={setAvatarOverride}
           todos={todos.map((t) => ({ id: t.id, label: t.label, href: t.href }))}
         />
       </div>

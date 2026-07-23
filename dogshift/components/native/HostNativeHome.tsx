@@ -84,6 +84,7 @@ export function HostNativeHome({
   rating,
   pendingRequests,
   unreadMessages,
+  onAvatarChange,
   todos,
 }: {
   greetingName: string | null;
@@ -94,6 +95,7 @@ export function HostNativeHome({
   rating: string | number;
   pendingRequests: number;
   unreadMessages: number;
+  onAvatarChange?: (url: string) => void;
   todos: HostTodo[];
 }) {
   const [panel, setPanel] = useState<string | null>(null);
@@ -125,6 +127,9 @@ export function HostNativeHome({
       const commit = (await commitRes.json().catch(() => null)) as { ok?: boolean; avatarUrl?: string } | null;
       if (!commitRes.ok || !commit?.ok || typeof commit.avatarUrl !== "string") return;
       setAvatar(commit.avatarUrl);
+      // Tell the parent so the completion % + to-do list recompute immediately
+      // (the photo check flips to done without waiting for a reload).
+      onAvatarChange?.(commit.avatarUrl);
     } finally {
       setAvatarUploading(false);
     }
