@@ -15,9 +15,10 @@ import { prefetchOwnerBookings } from "@/lib/account/ownerBookingsCache";
 // ("s'arrête et continue"). One node, mounted once, rotates continuously.
 const nullLoading = () => null;
 
-// Import factories kept separate from dynamic() so we can PREFETCH each chunk on
-// idle — a warmed chunk makes dynamic() resolve instantly on tap, so the page's
-// own spinner is the first (and only) thing painted.
+// Lazy import factories — each destination chunk loads on demand when its tile
+// is tapped (with the panel's own single spinner). We do NOT prefetch them at
+// launch: warming all the panel chunks right after mount slowed the app launch
+// and the avatar load (founder). On-tap load keeps launch light.
 const PANEL_IMPORTERS = {
   bookings: () => import("@/app/(marketing)/account/bookings/page"),
   messages: () => import("@/app/(marketing)/account/messages/page"),
@@ -58,19 +59,6 @@ export function OwnerNativeHome({
   // instead of waiting on a fresh fetch.
   useEffect(() => {
     void prefetchOwnerBookings();
-  }, []);
-
-  // Prefetch the dashboard-tile panel chunks on idle so the first tap opens
-  // instantly with a single, uninterrupted spinner (no PanelLoading swap).
-  useEffect(() => {
-    const run = () => { for (const load of Object.values(PANEL_IMPORTERS)) void load(); };
-    const w = window as unknown as { requestIdleCallback?: (cb: () => void) => number };
-    if (typeof w.requestIdleCallback === "function") {
-      w.requestIdleCallback(run);
-      return;
-    }
-    const t = setTimeout(run, 800);
-    return () => clearTimeout(t);
   }, []);
 
   return (
