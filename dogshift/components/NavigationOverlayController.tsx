@@ -53,9 +53,25 @@ export function isAdminRoute(pathOnly: string): boolean {
   return pathOnly === "/admin" || pathOnly.startsWith("/admin/");
 }
 
+/**
+ * The sitter (/host) and owner (/account) dashboards keep a persistent left
+ * sidebar. A full-screen running-dog overlay hides that sidebar on every
+ * section switch, which feels like a hard reload rather than an app. Suppress
+ * the overlay for these subtrees — their section `loading.tsx` renders an
+ * in-flow skeleton INSIDE the content column, so the sidebar stays visible.
+ */
+export function isDashboardRoute(pathOnly: string): boolean {
+  return (
+    pathOnly === "/host" ||
+    pathOnly.startsWith("/host/") ||
+    pathOnly === "/account" ||
+    pathOnly.startsWith("/account/")
+  );
+}
+
 function isSkippedHref(href: string): boolean {
   const path = href.split("?")[0]?.split("#")[0] ?? "";
-  return isAdminRoute(path) || SKIP_PATHS.some((p) => path === p);
+  return isAdminRoute(path) || isDashboardRoute(path) || SKIP_PATHS.some((p) => path === p);
 }
 
 /**
@@ -167,6 +183,7 @@ function shouldShowOverlayFor(nextUrl: unknown, currentPathname: string | null):
   if (pathOnly === currentPathname) return false;
   if (isNativeInstantRoute(pathOnly)) return false;
   if (isAdminRoute(pathOnly)) return false;
+  if (isDashboardRoute(pathOnly)) return false;
   return !SKIP_PATHS.some((p) => pathOnly === p);
 }
 

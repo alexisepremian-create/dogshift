@@ -1,11 +1,10 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable react-hooks/set-state-in-effect */
 "use client";
 
 import Link from "next/link";
 import Image from "next/image";
-import { Suspense, useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import { X } from "lucide-react";
@@ -36,92 +35,38 @@ function formatRating(rating: number) {
   return rating % 1 === 0 ? rating.toFixed(0) : rating.toFixed(1);
 }
 
-// Audit 2026-05-22 follow-up: the dashboard banners ("Compte activé" /
-// "Complète ton profil pour publier") used localStorage keys suffixed by
-// `sitterId`. On page navigation back to /host the component remounted and
-// briefly read with `sitterId === null` (different key) → returned "not
-// dismissed" → the banner flashed back even though the user had closed it
-// moments earlier. localStorage is already per-origin (= per-browser
-// session = effectively per-sitter once they're signed in), so suffixing by
-// sitterId added zero security and a lot of brittleness. We use a single
-// stable key now. v2 suffix forces a clean dismissal state for users coming
-// from the buggy v1 keys.
-const HOST_COMPLETION_CARD_DISMISSED_KEY = "ds_host_completion_card_dismissed_v2";
-const HOST_COMPLETION_CARD_DISMISSED_EVENT = "ds_host_completion_card_dismissed";
-
-function hostCompletionCardDismissedKey(_sitterId: string | null): string {
-  return HOST_COMPLETION_CARD_DISMISSED_KEY;
-}
-
-const DOGSHIFT_BANNER_ACCOUNT_ACTIVATED_CLOSED_KEY = "ds_banner_account_activated_closed_v2";
-const DOGSHIFT_BANNER_ACCOUNT_ACTIVATED_CLOSED_EVENT = "dogshift:banner_account_activated_closed";
-
-function accountActivatedBannerClosedKey(_sitterId: string | null): string {
-  return DOGSHIFT_BANNER_ACCOUNT_ACTIVATED_CLOSED_KEY;
-}
-
-function subscribeAccountActivatedBannerClosed(sitterId: string | null) {
-  const storageKey = accountActivatedBannerClosedKey(sitterId);
-  return (onStoreChange: () => void) => {
-    if (typeof window === "undefined") return () => {};
-
-    const onCustom = () => onStoreChange();
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === storageKey) onStoreChange();
-    };
-    window.addEventListener(DOGSHIFT_BANNER_ACCOUNT_ACTIVATED_CLOSED_EVENT, onCustom);
-    window.addEventListener("storage", onStorage);
-    return () => {
-      window.removeEventListener(DOGSHIFT_BANNER_ACCOUNT_ACTIVATED_CLOSED_EVENT, onCustom);
-      window.removeEventListener("storage", onStorage);
-    };
-  };
-}
-
-function readAccountActivatedBannerClosed(sitterId: string | null): boolean {
+// The two onboarding banners ("Compte activé" / "Complète ton profil pour
+// publier") are now dismissed PERMANENTLY server-side (User.hostProfileJson via
+// POST /api/host/dismiss-banner). localStorage was not durable — wiped on
+// logout / cache clear / private mode — so a closed banner kept coming back.
+// Source of truth = host.dismissedBanners; the close is optimistic + a POST.
+async function postDismissBanner(banner: "accountActivated" | "completionCard") {
   try {
-    return window.localStorage.getItem(accountActivatedBannerClosedKey(sitterId)) === "1";
+    await fetch("/api/host/dismiss-banner", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ banner }),
+    });
   } catch {
-    return false;
+    // Best-effort: the UI already hid it optimistically; the next server load
+    // reflects the persisted state.
   }
 }
 
-function AccountActivatedBanner({ sitterId }: { sitterId: string | null }) {
+function AccountActivatedBanner({ initialDismissed }: { initialDismissed: boolean }) {
   const searchParams = useSearchParams();
   const debugShow = searchParams.get("showBanner") === "1";
-  const subscribe = useMemo(() => subscribeAccountActivatedBannerClosed(sitterId), [sitterId]);
-  const persistedClosed = useSyncExternalStore(
-    subscribe,
-    () => readAccountActivatedBannerClosed(sitterId),
-    () => false
-  );
   const [exiting, setExiting] = useState(false);
-  const [sessionDismissed, setSessionDismissed] = useState(false);
+  const [dismissed, setDismissed] = useState(initialDismissed);
 
-  useEffect(() => {
-    if (searchParams.get("showBanner") === "1") {
-      setSessionDismissed(false);
-    }
-  }, [searchParams]);
-
-  // Audit 2026-05-22: removed the `[sitterId]` reset effect that re-armed
-  // the banner on every navigation back to /host. localStorage already
-  // tracks the persistent dismissal state — the in-component
-  // `sessionDismissed` only needs to be reset by `showBanner=1` query.
-
-  const shouldShow = !sessionDismissed && (debugShow || !persistedClosed || exiting);
+  const shouldShow = debugShow || !dismissed || exiting;
   if (!shouldShow) return null;
 
   function dismiss() {
     setExiting(true);
+    void postDismissBanner("accountActivated");
     window.setTimeout(() => {
-      try {
-        window.localStorage.setItem(accountActivatedBannerClosedKey(sitterId), "1");
-        window.dispatchEvent(new Event(DOGSHIFT_BANNER_ACCOUNT_ACTIVATED_CLOSED_EVENT));
-      } catch {
-        // ignore
-      }
-      setSessionDismissed(true);
+      setDismissed(true);
       setExiting(false);
     }, 200);
   }
@@ -254,38 +199,11 @@ export default function HostDashboardPage() {
   const [verificationLoaded, setVerificationLoaded] = useState(false);
   const [reviewCount, setReviewCount] = useState(0);
   const [averageRating, setAverageRating] = useState<number | null>(null);
-  const completionCardStorageKey = hostCompletionCardDismissedKey(sitterId);
-  const subscribeCompletionCardDismissed = useMemo(() => {
-    return (onStoreChange: () => void) => {
-      if (typeof window === "undefined") return () => {};
-
-      const onCustom = () => onStoreChange();
-      window.addEventListener(HOST_COMPLETION_CARD_DISMISSED_EVENT, onCustom);
-
-      const onStorage = (e: StorageEvent) => {
-        if (e.key === completionCardStorageKey) {
-          onStoreChange();
-        }
-      };
-      window.addEventListener("storage", onStorage);
-
-      return () => {
-        window.removeEventListener(HOST_COMPLETION_CARD_DISMISSED_EVENT, onCustom);
-        window.removeEventListener("storage", onStorage);
-      };
-    };
-  }, [completionCardStorageKey]);
-
-  const completionCardDismissed = useSyncExternalStore(
-    subscribeCompletionCardDismissed,
-    () => {
-      try {
-        return window.localStorage.getItem(completionCardStorageKey) === "1";
-      } catch {
-        return false;
-      }
-    },
-    () => false
+  // Permanent, server-persisted dismissal (see postDismissBanner). Optimistic
+  // local state; the server value (host.dismissedBanners) is the source of
+  // truth on the next load, so a closed card never comes back.
+  const [completionCardDismissed, setCompletionCardDismissed] = useState(
+    Boolean(host.dismissedBanners?.completionCard)
   );
 
   useEffect(() => {
@@ -558,7 +476,7 @@ export default function HostDashboardPage() {
 
       <div className="relative z-10">
         <Suspense fallback={null}>
-          <AccountActivatedBanner sitterId={sitterId} />
+          <AccountActivatedBanner initialDismissed={Boolean(host.dismissedBanners?.accountActivated)} />
         </Suspense>
 
         <div className="grid gap-4 sm:grid-cols-[1fr_auto] sm:items-end">
@@ -580,12 +498,8 @@ export default function HostDashboardPage() {
                           type="button"
                           aria-label="Fermer"
                           onClick={() => {
-                            try {
-                              window.localStorage.setItem(completionCardStorageKey, "1");
-                              window.dispatchEvent(new Event(HOST_COMPLETION_CARD_DISMISSED_EVENT));
-                            } catch {
-                              // ignore
-                            }
+                            setCompletionCardDismissed(true);
+                            void postDismissBanner("completionCard");
                           }}
                           className="absolute right-2 top-2 inline-flex h-7 w-7 items-center justify-center rounded-full text-slate-500 transition hover:text-slate-700"
                         >

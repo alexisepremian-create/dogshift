@@ -94,8 +94,8 @@ test("NativeRouteFallback: native → skeleton, web spacer reserves height (no P
   );
   assert.match(
     src,
-    /web\s*===\s*"loader"\)\s*return\s*<PageLoader static \/>/,
-    "Expected the protected web fallback to keep PageLoader (running dog).",
+    /web\s*===\s*"loader"\)\s*return\s*<WebSectionSkeleton\s*\/>/,
+    "Expected the protected web fallback to render the in-flow WebSectionSkeleton (sidebar stays visible) — no more full-screen running dog on dashboard nav.",
   );
   assert.match(
     src,

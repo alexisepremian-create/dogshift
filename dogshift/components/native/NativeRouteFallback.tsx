@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { usePathname } from "next/navigation";
 
-import PageLoader from "@/components/ui/PageLoader";
+import WebSectionSkeleton from "@/components/skeletons/WebSectionSkeleton";
 import DashboardSkeleton from "@/components/ui/DashboardSkeleton";
 import HostDashboardSkeletonOverlay from "@/components/native/HostDashboardSkeletonOverlay";
 import MapHomeSkeleton from "@/components/native/MapHomeSkeleton";
@@ -96,7 +96,9 @@ export default function NativeRouteFallback({ web }: { web: "loader" | "none" | 
     );
   }
 
-  if (web === "loader") return <PageLoader static />;
+  // Web dashboard sections: an in-flow skeleton (NOT the full-screen running
+  // dog) so the persistent left sidebar stays visible during the transition.
+  if (web === "loader") return <WebSectionSkeleton />;
   // "spacer": reserve a full viewport height while the page's streaming SSR
   // (e.g. the homepage's async getFeaturedSitters DB read) is pending, so the
   // footer/header don't collapse to the top of the screen — the recurring

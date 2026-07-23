@@ -119,7 +119,7 @@ export default function CguUpdateBanner() {
   return (
     <div
       ref={bannerRef}
-      className="relative z-[60] w-full border-b border-black/15 bg-[#2f4d6b] px-4 py-3 text-white shadow-md"
+      className="relative z-[60] w-full border-b border-black/15 bg-[#7c3aed] px-4 py-3 text-white shadow-md"
     >
       <div className="mx-auto flex max-w-5xl items-start gap-3 sm:items-center">
         <FileText className="mt-0.5 h-4 w-4 shrink-0 sm:mt-0" aria-hidden="true" />

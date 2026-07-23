@@ -2,19 +2,15 @@
 
 import { useState } from "react";
 
-import PageLoader from "@/components/ui/PageLoader";
+import WebSectionSkeleton from "@/components/skeletons/WebSectionSkeleton";
 import HostDashboardSkeletonOverlay from "@/components/native/HostDashboardSkeletonOverlay";
 
 /**
  * Route-level Suspense fallback for the SITTER dashboard root (/host).
  *
- * Native: render the SAME faithful host skeleton (HostDashboardSkeletonOverlay)
- * the route-group fallback, the gates and the /host page render — NOT the
- * generic DashboardSectionLoading (title + chips + rows). One shared overlay
- * across every boundary = one continuous skeleton, never a second shape.
- *
- * Web: keep PageLoader (the running-dog loader is the consistent web feel and
- * loading.tsx must not be empty on web — footer-flash masking).
+ * Native: the faithful host skeleton overlay (HostDashboardSkeletonOverlay).
+ * Web: an IN-FLOW skeleton (WebSectionSkeleton) rendered inside the shell's
+ * <main> so the left sidebar stays visible — no more full-screen running dog.
  */
 export default function Loading() {
   const [isNative] = useState(
@@ -24,5 +20,5 @@ export default function Loading() {
   );
 
   if (isNative) return <HostDashboardSkeletonOverlay />;
-  return <PageLoader static />;
+  return <WebSectionSkeleton />;
 }

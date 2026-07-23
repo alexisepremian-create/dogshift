@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { usePathname } from "next/navigation";
 
-import PageLoader from "@/components/ui/PageLoader";
+import WebSectionSkeleton from "@/components/skeletons/WebSectionSkeleton";
 import DashboardSkeleton from "@/components/ui/DashboardSkeleton";
 import OwnerListRouteSkeleton from "@/components/native/OwnerListRouteSkeleton";
 
@@ -49,5 +49,6 @@ export default function DashboardSectionLoading() {
       </div>
     );
   }
-  return <PageLoader static />;
+  // Web: in-flow skeleton inside the shell → the left sidebar stays visible.
+  return <WebSectionSkeleton />;
 }
