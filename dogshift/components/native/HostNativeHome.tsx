@@ -16,19 +16,18 @@ function StarIcon({ className }: { className?: string }) {
   );
 }
 
-const PanelLoading = () => (
-  <div className="flex min-h-[55vh] items-center justify-center">
-    <div className="h-7 w-7 animate-spin rounded-full border-2 border-[#7c3aed] border-t-transparent" />
-  </div>
-);
+// The dynamic() import uses `loading: () => null` (NOT its own spinner) on
+// purpose: the destination page renders the ONE-AND-ONLY loading spinner (its
+// `inSheet` branch). If dynamic() rendered a spinner too, tapping a tile would
+// paint dynamic's spinner, then swap to the page's spinner — two different DOM
+// nodes, so the CSS rotation restarts at 0° on the swap ("s'arrête et
+// continue"). One spinner node, mounted once, rotates continuously instead.
+const nullLoading = () => null;
 
 // Import factories kept separate from the dynamic() wrappers so we can PREFETCH
 // each destination chunk on idle (see the effect in HostNativeHome). Warming the
-// chunk means that when a tile is tapped, dynamic() resolves instantly and the
-// PanelLoading fallback never paints — so the panel shows ONE continuous spinner
-// (the page's own first-load spinner) instead of a PanelLoading→page-spinner
-// swap that visibly reset the rotation on the heavy pages (availability, wallet,
-// settings). Founder: "les spirales de chargement de 3 trucs qui bug encore".
+// chunk means that when a tile is tapped, dynamic() resolves instantly, so the
+// page's own spinner is the first (and only) thing painted.
 const PANEL_IMPORTERS = {
   requests: () => import("@/app/(protected)/host/requests/page"),
   // The conversation list + "Nouvelle conversation" (+) FAB live in the messages
@@ -42,12 +41,12 @@ const PANEL_IMPORTERS = {
 } as const;
 
 const PANELS: Record<string, { title: string; Component: ComponentType }> = {
-  requests: { title: "Demandes", Component: dynamic(PANEL_IMPORTERS.requests, { ssr: false, loading: PanelLoading }) },
-  messages: { title: "Messages", Component: dynamic(PANEL_IMPORTERS.messages, { ssr: false, loading: PanelLoading }) },
-  availability: { title: "Disponibilités", Component: dynamic(PANEL_IMPORTERS.availability, { ssr: false, loading: PanelLoading }) },
-  profile: { title: "Mon profil", Component: dynamic(PANEL_IMPORTERS.profile, { ssr: false, loading: PanelLoading }) },
-  wallet: { title: "Portefeuille", Component: dynamic(PANEL_IMPORTERS.wallet, { ssr: false, loading: PanelLoading }) },
-  settings: { title: "Paramètres", Component: dynamic(PANEL_IMPORTERS.settings, { ssr: false, loading: PanelLoading }) },
+  requests: { title: "Demandes", Component: dynamic(PANEL_IMPORTERS.requests, { ssr: false, loading: nullLoading }) },
+  messages: { title: "Messages", Component: dynamic(PANEL_IMPORTERS.messages, { ssr: false, loading: nullLoading }) },
+  availability: { title: "Disponibilités", Component: dynamic(PANEL_IMPORTERS.availability, { ssr: false, loading: nullLoading }) },
+  profile: { title: "Mon profil", Component: dynamic(PANEL_IMPORTERS.profile, { ssr: false, loading: nullLoading }) },
+  wallet: { title: "Portefeuille", Component: dynamic(PANEL_IMPORTERS.wallet, { ssr: false, loading: nullLoading }) },
+  settings: { title: "Paramètres", Component: dynamic(PANEL_IMPORTERS.settings, { ssr: false, loading: nullLoading }) },
 };
 
 // Warm every panel chunk shortly after the dashboard mounts (idle time) so the

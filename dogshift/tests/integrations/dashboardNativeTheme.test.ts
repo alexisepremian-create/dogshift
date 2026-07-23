@@ -90,10 +90,10 @@ test("DashboardSheet is a slide-up overlay with a back header", () => {
   assert.match(sheet, /fixed left-2 right-2 z-\[1201\][\s\S]*rounded-3xl/, "Sheet must float with side margins + rounded corners.");
   assert.match(sheet, /env\(safe-area-inset-top, 0px\) \+ 70px/, "Sheet top must match the reservation fiche offset.");
   assert.match(sheet, /aria-label="Fermer"/, "Sheet must also have a ✕ close button.");
-  // The heavy panel must be mounted AFTER the spinner paints (deferred via rAF)
-  // so its long first render can't drop the spinner's opening frames.
-  assert.match(sheet, /requestAnimationFrame/, "Sheet must defer the panel mount to a later frame.");
-  assert.match(sheet, /bodyReady \? children : <PanelSpinner/, "Sheet must show a spinner until the deferred panel is mounted.");
+  // The sheet must NOT render its own loading spinner — the panel owns the one
+  // and only spinner so the rotation never restarts on a node swap.
+  assert.doesNotMatch(sheet, /<PanelSpinner/, "Sheet must not add a second spinner (panel owns the only one).");
+  assert.match(sheet, /<InDashboardSheetContext\.Provider value=\{true\}>\{children\}/, "Sheet must render children directly (no defer/spinner wrapper).");
 });
 
 test("native tab bar is solid/edge-to-edge with a center DogShift logo that opens the menu", () => {
@@ -150,10 +150,13 @@ test("native islands open destinations in the sheet (onClick + dynamic panels)",
     // `dynamic(() => import(` form so the assertion survives that refactor.
     const dynCount = (src.match(/\(\) => import\(/g) ?? []).length;
     assert.ok(dynCount >= count, `${file} must lazy-load its ${count} destination panels (found ${dynCount}).`);
-    // Options must be an inline literal (Next requires it for ssr:false).
-    assert.match(src, /\{ ssr: false, loading: PanelLoading \}/, `${file} must inline the dynamic options.`);
-    // The panel chunks must be prefetched on idle so the first tap opens with a
-    // single, uninterrupted spinner (no PanelLoading→page-spinner swap).
+    // dynamic() must NOT render its own loading spinner — `loading: () => null`
+    // so the panel's own spinner is the single, continuous one (no node swap
+    // that restarts the CSS rotation).
+    assert.match(src, /\{ ssr: false, loading: nullLoading \}/, `${file} must use loading:()=>null so the panel owns the only spinner.`);
+    assert.match(src, /const nullLoading = \(\) => null;/, `${file} must define the null dynamic-loading fallback.`);
+    // The panel chunks must be prefetched on idle so the first tap resolves the
+    // chunk instantly and the page's own spinner is the first thing painted.
     assert.match(src, /requestIdleCallback/, `${file} must prefetch its panel chunks on idle.`);
   }
 });
