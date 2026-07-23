@@ -121,6 +121,27 @@ function serviceSolidTone(svc: ServiceTypeApi) {
   return "bg-emerald-500 text-white border-emerald-500";
 }
 
+// Soft tint for the service icon chip (per-service colour, matching the legend).
+function serviceChipTone(svc: ServiceTypeApi) {
+  if (svc === "PROMENADE") return "bg-sky-50 text-sky-600";
+  if (svc === "DOGSITTING") return "bg-violet-50 text-violet-600";
+  return "bg-emerald-50 text-emerald-600";
+}
+
+// Solid background for the ON toggle (per-service colour).
+function serviceToggleTone(svc: ServiceTypeApi) {
+  if (svc === "PROMENADE") return "bg-sky-500";
+  if (svc === "DOGSITTING") return "bg-violet-500";
+  return "bg-emerald-500";
+}
+
+// Selected-card border (per-service colour).
+function serviceSelectedBorderTone(svc: ServiceTypeApi) {
+  if (svc === "PROMENADE") return "border-sky-500";
+  if (svc === "DOGSITTING") return "border-violet-500";
+  return "border-emerald-500";
+}
+
 function pricingUnitLabel(svc: ServiceTypeApi) {
   return svc === "PENSION" ? "CHF / jour" : "CHF / heure";
 }
@@ -2285,8 +2306,9 @@ export default function AvailabilityStudioPage() {
                 </div>
               </div>
               {/* Stacked service cards — all three visible at once (no carousel),
-                  mobile-app style: purple accents, rounded-2xl, one tap to
-                  configure. Handlers unchanged (saveServiceEnabled / pricing). */}
+                  mobile-app style: rounded-2xl, real icons, and each service
+                  keeps its own colour (matching the legend: Promenade = sky,
+                  Dogsitting = violet, Pension = emerald). Handlers unchanged. */}
               <div className="mt-4 grid gap-3">
                 {(["PROMENADE", "DOGSITTING", "PENSION"] as const).map((svc) => {
                   const metaSvc = serviceMeta(svc);
@@ -2311,15 +2333,15 @@ export default function AvailabilityStudioPage() {
                       style={{ touchAction: "manipulation" }}
                       className={
                         isActiveCard
-                          ? "cursor-pointer rounded-2xl border-2 border-[var(--dogshift-blue)] bg-white p-4 text-left shadow-sm transition active:scale-[0.99]"
+                          ? `cursor-pointer rounded-2xl border-2 ${serviceSelectedBorderTone(svc)} bg-white p-4 text-left shadow-sm transition active:scale-[0.99]`
                           : "cursor-pointer rounded-2xl border-2 border-transparent bg-white p-4 text-left ring-1 ring-inset ring-slate-200 transition hover:ring-slate-300 active:scale-[0.99]"
                       }
                       aria-pressed={isActiveCard}
                     >
                       <div className="flex items-center justify-between gap-3">
                         <div className="flex min-w-0 items-center gap-3">
-                          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--dogshift-blue)]/10 text-lg">
-                            {metaSvc.icon}
+                          <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${serviceChipTone(svc)}`}>
+                            <ServiceIcon svc={svc} className="h-5 w-5" />
                           </span>
                           <div className="min-w-0">
                             <p className="text-sm font-semibold text-slate-900">{metaSvc.label}</p>
@@ -2340,7 +2362,7 @@ export default function AvailabilityStudioPage() {
                           }}
                           className={
                             enabled
-                              ? "relative inline-flex h-6 w-11 shrink-0 items-center rounded-full bg-[var(--dogshift-blue)] transition"
+                              ? `relative inline-flex h-6 w-11 shrink-0 items-center rounded-full ${serviceToggleTone(svc)} transition`
                               : "relative inline-flex h-6 w-11 shrink-0 items-center rounded-full bg-slate-300 transition disabled:opacity-50"
                           }
                           aria-label={enabled ? `Désactiver ${metaSvc.label}` : `Activer ${metaSvc.label}`}
@@ -2433,10 +2455,10 @@ export default function AvailabilityStudioPage() {
 
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-2">
-                  <p className="text-sm font-semibold text-slate-900">
-                    {serviceMeta(availabilityTab).icon} {serviceMeta(availabilityTab).label}
-                  </p>
-                  <span className={`h-2 w-2 rounded-full ${serviceDotTone(availabilityTab)}`} aria-hidden="true" />
+                  <span className={`flex h-7 w-7 items-center justify-center rounded-lg ${serviceChipTone(availabilityTab)}`}>
+                    <ServiceIcon svc={availabilityTab} className="h-4 w-4" />
+                  </span>
+                  <p className="text-sm font-semibold text-slate-900">{serviceMeta(availabilityTab).label}</p>
                 </div>
                 <div ref={quickActionsWrapRef} className="relative">
                   <button
