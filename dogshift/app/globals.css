@@ -3,10 +3,13 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
-  --dogshift-blue: #2f4d6b;
-  --dogshift-blue-hover: #263f58;
+  /* DogShift accent — unified with the mobile app (purple). Kept the
+     `--dogshift-blue` name to avoid a repo-wide rename of ~537 usages; the
+     value is now violet-600 everywhere. */
+  --dogshift-blue: #7c3aed;
+  --dogshift-blue-hover: #6d28d9;
   --dogshift-blue-pin: color-mix(in_srgb, var(--dogshift-blue), white 78%);
-  --dogshift-blue-pin-solid: #b9d6ff;
+  --dogshift-blue-pin-solid: #ddd6fe;
   --ds-page-top-offset: 64px;
   --header-h: 64px;
 }

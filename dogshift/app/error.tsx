@@ -16,13 +16,13 @@ export default function GlobalError({
         <span
           className="select-none text-[10rem] leading-none opacity-10"
           aria-hidden="true"
-          style={{ color: "#2f4d6b" }}
+          style={{ color: "#7c3aed" }}
         >
           🐾
         </span>
         <span
           className="absolute text-5xl font-black leading-none"
-          style={{ color: "#2f4d6b" }}
+          style={{ color: "#7c3aed" }}
         >
           500
         </span>
@@ -43,7 +43,7 @@ export default function GlobalError({
           type="button"
           onClick={() => reset()}
           className="inline-flex h-11 items-center justify-center rounded-2xl px-7 text-sm font-semibold text-white shadow-sm transition hover:opacity-90 active:scale-[.98]"
-          style={{ backgroundColor: "#2f4d6b" }}
+          style={{ backgroundColor: "#7c3aed" }}
         >
           Réessayer
         </button>
@@ -57,7 +57,7 @@ export default function GlobalError({
 
       {/* Brand footer */}
       <p className="mt-16 text-xs text-slate-400">
-        <span className="font-semibold" style={{ color: "#2f4d6b" }}>DogShift</span>
+        <span className="font-semibold" style={{ color: "#7c3aed" }}>DogShift</span>
         {" "}— Dog-sitting premium en Suisse
       </p>
     </div>

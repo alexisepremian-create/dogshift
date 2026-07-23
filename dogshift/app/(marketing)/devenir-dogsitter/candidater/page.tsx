@@ -27,7 +27,7 @@ export default async function CandidaterPage() {
     <main className="relative min-h-screen overflow-hidden bg-slate-50 text-slate-900">
       <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
         <Dog
-          className="absolute right-8 top-32 h-48 w-48 rotate-12 text-[#2f4d6b]/[0.06]"
+          className="absolute right-8 top-32 h-48 w-48 rotate-12 text-[#7c3aed]/[0.06]"
           strokeWidth={1.5}
         />
         <Bone
@@ -106,7 +106,7 @@ function AlreadySitterNotice({ email }: { email: string | null }) {
       <div className="flex flex-wrap gap-3 pt-2">
         <Link
           href="/host"
-          className="inline-flex items-center justify-center rounded-full bg-[#2f4d6b] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#24405a]"
+          className="inline-flex items-center justify-center rounded-full bg-[#7c3aed] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#24405a]"
         >
           Aller sur mon espace sitter
         </Link>

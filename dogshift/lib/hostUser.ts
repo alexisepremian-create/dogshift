@@ -3,6 +3,7 @@ import { getAuthedDbUser } from "@/lib/auth/getAuthedDbUser";
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { getSitterAvailabilityCoverage } from "@/lib/availability/coverage";
 import { getHostContractAmendmentState, type HostContractAmendmentState } from "@/lib/contractAmendments";
+import { readDismissedBanners, type DismissedBanners } from "@/lib/hostBannerDismissal";
 import { prisma } from "@/lib/prisma";
 import { ensureDbUserFromClerkAuth } from "@/lib/auth/resolveDbUserId";
 import { normalizeSitterLifecycleStatus, type SitterLifecycleStatus } from "@/lib/sitterContract";
@@ -43,6 +44,7 @@ export type HostUserData = {
   enabledServices?: string[];
   availabilityCoverageOk?: boolean;
   missingAvailabilityServices?: string[];
+  dismissedBanners?: DismissedBanners;
 };
 
 export function makeHostUserValuePreview(args: {
@@ -278,6 +280,7 @@ export async function getHostUserData(): Promise<HostUserData> {
     enabledServices,
     availabilityCoverageOk: availabilityCoverage.ok,
     missingAvailabilityServices: availabilityCoverage.missing,
+    dismissedBanners: readDismissedBanners(hostProfileJson),
     publishedAt: sitterProfile?.publishedAt instanceof Date ? sitterProfile.publishedAt.toISOString() : null,
     profile,
     termsAcceptedAt,

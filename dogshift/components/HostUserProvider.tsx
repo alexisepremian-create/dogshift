@@ -26,6 +26,8 @@ export type HostUser = {
   availabilityCoverageOk?: boolean;
   /** Enabled services with no bookable availability (the publish blockers). */
   missingAvailabilityServices?: string[];
+  /** Permanently-dismissed onboarding banners (persisted server-side). */
+  dismissedBanners?: { accountActivated?: boolean; completionCard?: boolean };
 };
 
 export function makeHostUserValuePreview(args: { sitterId: string | null; profile: unknown }): HostUser {
