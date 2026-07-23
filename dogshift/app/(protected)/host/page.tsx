@@ -199,6 +199,9 @@ export default function HostDashboardPage() {
   const [verificationLoaded, setVerificationLoaded] = useState(false);
   const [reviewCount, setReviewCount] = useState(0);
   const [averageRating, setAverageRating] = useState<number | null>(null);
+  // Gates the dashboard reveal on the profile photo being decoded (see effect
+  // near avatarSrc) so nothing (incl. the avatar) pops in after the skeleton.
+  const [avatarReady, setAvatarReady] = useState(false);
   // Permanent, server-persisted dismissal (see postDismissBanner). Optimistic
   // local state; the server value (host.dismissedBanners) is the source of
   // truth on the next load, so a closed card never comes back.
@@ -405,9 +408,47 @@ export default function HostDashboardPage() {
     (profile.avatarDataUrl && profile.avatarDataUrl.trim() ? profile.avatarDataUrl.trim() : null) ??
     (profile.avatarUrl && profile.avatarUrl.trim() ? profile.avatarUrl.trim() : null);
 
+  // Hold the dashboard skeleton until the profile photo is actually decoded, so
+  // the reveal shows everything AT ONCE — otherwise the avatar popped in a beat
+  // after the skeleton handed off (founder). Instant for no/`data:` avatars;
+  // capped at 2.5s so a slow or broken image never traps the dashboard on the
+  // skeleton. Only gates the FIRST reveal — once ready it stays ready, so a
+  // later photo change (avatarOverride) never re-flashes the skeleton.
+  useEffect(() => {
+    let done = false;
+    const finish = () => {
+      if (!done) {
+        done = true;
+        setAvatarReady(true);
+      }
+    };
+    if (!avatarSrc || avatarSrc.startsWith("data:")) {
+      const raf = requestAnimationFrame(finish);
+      return () => {
+        done = true;
+        cancelAnimationFrame(raf);
+      };
+    }
+    const img = new window.Image();
+    img.onload = finish;
+    img.onerror = finish;
+    img.src = avatarSrc;
+    const t = setTimeout(finish, 2500);
+    return () => {
+      done = true;
+      clearTimeout(t);
+    };
+  }, [avatarSrc]);
+
   if (!isLoaded || !isSignedIn) return <HostDashboardSkeleton />;
 
   if (sitterId && !verificationLoaded) {
+    return <HostDashboardSkeleton />;
+  }
+
+  // Everything else is ready; wait only for the avatar to be decoded so the
+  // dashboard reveals with the photo already in place (never an empty circle).
+  if (sitterId && !avatarReady) {
     return <HostDashboardSkeleton />;
   }
 
