@@ -155,9 +155,9 @@ test("native islands open destinations in the sheet (onClick + dynamic panels)",
     // that restarts the CSS rotation).
     assert.match(src, /\{ ssr: false, loading: nullLoading \}/, `${file} must use loading:()=>null so the panel owns the only spinner.`);
     assert.match(src, /const nullLoading = \(\) => null;/, `${file} must define the null dynamic-loading fallback.`);
-    // The panel chunks must be prefetched on idle so the first tap resolves the
-    // chunk instantly and the page's own spinner is the first thing painted.
-    assert.match(src, /requestIdleCallback/, `${file} must prefetch its panel chunks on idle.`);
+    // Panel chunks must NOT be prefetched at launch — warming all the heavy
+    // chunks on mount slowed the app launch + the avatar load. Load on tap.
+    assert.doesNotMatch(src, /requestIdleCallback/, `${file} must NOT prefetch panel chunks at launch (keeps launch light).`);
   }
 });
 

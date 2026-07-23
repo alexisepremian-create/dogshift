@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import dynamic from "next/dynamic";
-import { useEffect, useRef, useState, type ComponentType } from "react";
+import { useRef, useState, type ComponentType } from "react";
 import { CalendarClock, Clock, MessageCircle, Settings, User, Wallet, ChevronRight, Circle, Camera } from "lucide-react";
 
 import { NativeDashTile, NativeStat } from "@/components/native/NativeDashTile";
@@ -24,10 +24,12 @@ function StarIcon({ className }: { className?: string }) {
 // continue"). One spinner node, mounted once, rotates continuously instead.
 const nullLoading = () => null;
 
-// Import factories kept separate from the dynamic() wrappers so we can PREFETCH
-// each destination chunk on idle (see the effect in HostNativeHome). Warming the
-// chunk means that when a tile is tapped, dynamic() resolves instantly, so the
-// page's own spinner is the first (and only) thing painted.
+// Lazy import factories — each destination chunk is loaded on demand when its
+// tile is tapped (with the panel's own single spinner while it loads). We do NOT
+// prefetch them at launch: warming all 6 heavy chunks (availability alone is
+// ~3000 lines) right after the dashboard mounts saturated the network + blocked
+// the main thread parsing them, which made the app launch — and the avatar
+// image — noticeably slower (founder). On-tap load keeps launch light.
 const PANEL_IMPORTERS = {
   requests: () => import("@/app/(protected)/host/requests/page"),
   // The conversation list + "Nouvelle conversation" (+) FAB live in the messages
@@ -48,21 +50,6 @@ const PANELS: Record<string, { title: string; Component: ComponentType }> = {
   wallet: { title: "Portefeuille", Component: dynamic(PANEL_IMPORTERS.wallet, { ssr: false, loading: nullLoading }) },
   settings: { title: "Paramètres", Component: dynamic(PANEL_IMPORTERS.settings, { ssr: false, loading: nullLoading }) },
 };
-
-// Warm every panel chunk shortly after the dashboard mounts (idle time) so the
-// first tap on any tile opens instantly with a single, uninterrupted spinner.
-function usePrefetchPanels() {
-  useEffect(() => {
-    const run = () => { for (const load of Object.values(PANEL_IMPORTERS)) void load(); };
-    const w = window as unknown as { requestIdleCallback?: (cb: () => void) => number };
-    if (typeof w.requestIdleCallback === "function") {
-      w.requestIdleCallback(run);
-      return;
-    }
-    const t = setTimeout(run, 800);
-    return () => clearTimeout(t);
-  }, []);
-}
 
 type HostTodo = { id: string; label: string; href: string };
 
@@ -103,7 +90,6 @@ export function HostNativeHome({
   const [avatarUploading, setAvatarUploading] = useState(false);
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const isCompletion = panel === "completion";
-  usePrefetchPanels();
 
   async function uploadAvatar(file: File) {
     setAvatarUploading(true);
