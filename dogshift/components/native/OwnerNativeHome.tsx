@@ -9,16 +9,15 @@ import { NativeDashTile, NativeStat } from "@/components/native/NativeDashTile";
 import { DashboardSheet } from "@/components/native/DashboardSheet";
 import { prefetchOwnerBookings } from "@/lib/account/ownerBookingsCache";
 
-const PanelLoading = () => (
-  <div className="flex min-h-[55vh] items-center justify-center">
-    <div className="h-7 w-7 animate-spin rounded-full border-2 border-[#7c3aed] border-t-transparent" />
-  </div>
-);
+// `loading: () => null` (NOT a spinner): the destination page renders the one
+// and only loading spinner (its `inSheet` branch). A dynamic() spinner + the
+// page spinner would be two DOM nodes → the CSS rotation restarts on the swap
+// ("s'arrête et continue"). One node, mounted once, rotates continuously.
+const nullLoading = () => null;
 
 // Import factories kept separate from dynamic() so we can PREFETCH each chunk on
-// idle — a warmed chunk makes dynamic() resolve instantly on tap, so PanelLoading
-// never paints and the panel shows ONE continuous spinner instead of a
-// PanelLoading→page-spinner swap that reset the rotation on heavy pages.
+// idle — a warmed chunk makes dynamic() resolve instantly on tap, so the page's
+// own spinner is the first (and only) thing painted.
 const PANEL_IMPORTERS = {
   bookings: () => import("@/app/(marketing)/account/bookings/page"),
   messages: () => import("@/app/(marketing)/account/messages/page"),
@@ -28,11 +27,11 @@ const PANEL_IMPORTERS = {
 } as const;
 
 const PANELS: Record<string, { title: string; Component: ComponentType }> = {
-  bookings: { title: "Réservations", Component: dynamic(PANEL_IMPORTERS.bookings, { ssr: false, loading: PanelLoading }) },
-  messages: { title: "Messages", Component: dynamic(PANEL_IMPORTERS.messages, { ssr: false, loading: PanelLoading }) },
-  dogs: { title: "Mes chiens", Component: dynamic(PANEL_IMPORTERS.dogs, { ssr: false, loading: PanelLoading }) },
-  wallet: { title: "Portefeuille", Component: dynamic(PANEL_IMPORTERS.wallet, { ssr: false, loading: PanelLoading }) },
-  settings: { title: "Paramètres", Component: dynamic(PANEL_IMPORTERS.settings, { ssr: false, loading: PanelLoading }) },
+  bookings: { title: "Réservations", Component: dynamic(PANEL_IMPORTERS.bookings, { ssr: false, loading: nullLoading }) },
+  messages: { title: "Messages", Component: dynamic(PANEL_IMPORTERS.messages, { ssr: false, loading: nullLoading }) },
+  dogs: { title: "Mes chiens", Component: dynamic(PANEL_IMPORTERS.dogs, { ssr: false, loading: nullLoading }) },
+  wallet: { title: "Portefeuille", Component: dynamic(PANEL_IMPORTERS.wallet, { ssr: false, loading: nullLoading }) },
+  settings: { title: "Paramètres", Component: dynamic(PANEL_IMPORTERS.settings, { ssr: false, loading: nullLoading }) },
 };
 
 export function OwnerNativeHome({
