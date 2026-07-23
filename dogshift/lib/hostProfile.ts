@@ -235,6 +235,16 @@ export function getHostTodos(profile: HostProfileV1): HostTodoItem[] {
   if (!checks.avatar) {
     items.push({ id: "avatar", label: "Ajouter une photo", href: "/host/profile/edit#photo" });
   }
+  // Identity (nom + ville) and postal address feed the completion % but had no
+  // to-do, so a sitter missing one sat below 100 % with an empty checklist
+  // ("Tout est complété" at 88 %). Surface them so the list always mirrors the %
+  // — and the address is genuinely required to publish.
+  if (!checks.identity) {
+    items.push({ id: "identity", label: "Compléter ton nom et ta ville", href: "/host/profile/edit#identity" });
+  }
+  if (!checks.address) {
+    items.push({ id: "address", label: "Ajouter ton adresse", href: "/host/profile/edit#address" });
+  }
   if (!checks.services) {
     items.push({ id: "services", label: "Activer un service", href: "/host/availability" });
   }
