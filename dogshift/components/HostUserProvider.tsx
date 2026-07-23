@@ -20,6 +20,12 @@ export type HostUser = {
   activatedAt: string | null;
   activationCodeIssuedAt: string | null;
   contractAmendment: HostContractAmendmentState;
+  /** Services enabled in ServiceConfig (enum strings). */
+  enabledServices?: string[];
+  /** True when every enabled service has ≥1 bookable availability rule. */
+  availabilityCoverageOk?: boolean;
+  /** Enabled services with no bookable availability (the publish blockers). */
+  missingAvailabilityServices?: string[];
 };
 
 export function makeHostUserValuePreview(args: { sitterId: string | null; profile: unknown }): HostUser {

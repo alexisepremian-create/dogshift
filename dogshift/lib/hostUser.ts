@@ -1,6 +1,7 @@
 import { getAuthedDbUser } from "@/lib/auth/getAuthedDbUser";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { getSitterAvailabilityCoverage } from "@/lib/availability/coverage";
 import { getHostContractAmendmentState, type HostContractAmendmentState } from "@/lib/contractAmendments";
 import { prisma } from "@/lib/prisma";
 import { ensureDbUserFromClerkAuth } from "@/lib/auth/resolveDbUserId";
@@ -39,6 +40,9 @@ export type HostUserData = {
   activatedAt: string | null;
   activationCodeIssuedAt: string | null;
   contractAmendment: HostContractAmendmentState;
+  enabledServices?: string[];
+  availabilityCoverageOk?: boolean;
+  missingAvailabilityServices?: string[];
 };
 
 export function makeHostUserValuePreview(args: {
@@ -258,9 +262,22 @@ export async function getHostUserData(): Promise<HostUserData> {
     sitterProfileId: typeof sitterProfile?.id === "string" ? sitterProfile.id : null,
     contractVersion,
   });
+
+  // Availability coverage — which enabled services have ≥1 bookable rule.
+  // Drives the "define your availability" guidance + the publish blocker.
+  const enabledServiceRows = await prisma.serviceConfig.findMany({
+    where: { sitterId, enabled: true },
+    select: { serviceType: true },
+  });
+  const enabledServices = enabledServiceRows.map((r) => r.serviceType);
+  const availabilityCoverage = await getSitterAvailabilityCoverage(sitterId, enabledServices);
+
   const hostUserData: HostUserData = {
     sitterId,
     published: Boolean(sitterProfile?.published),
+    enabledServices,
+    availabilityCoverageOk: availabilityCoverage.ok,
+    missingAvailabilityServices: availabilityCoverage.missing,
     publishedAt: sitterProfile?.publishedAt instanceof Date ? sitterProfile.publishedAt.toISOString() : null,
     profile,
     termsAcceptedAt,

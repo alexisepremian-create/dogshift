@@ -4,7 +4,11 @@ import type { NextRequest } from "next/server";
 import { getAuthedDbUser } from "@/lib/auth/getAuthedDbUser";
 import { Prisma } from "@prisma/client";
 
+import type { ServiceType } from "@prisma/client";
+
 import { prisma } from "@/lib/prisma";
+import { getSitterAvailabilityCoverage } from "@/lib/availability/coverage";
+import { serviceLabelToEnum } from "@/lib/search/serviceAndDuration";
 import { buildEffectiveSitterCompletionProfile, computeSitterProfileCompletion } from "@/lib/sitterCompletion";
 import { checkSitterSensitiveActionGate } from "@/lib/sitterGuards";
 import { getHostContractAmendmentState } from "@/lib/contractAmendments";
@@ -418,7 +422,7 @@ export async function POST(req: NextRequest) {
     const wantsPublish = Boolean(publishedFlag);
     const isCurrentlyPublished = Boolean(existingProfile?.published);
     const attemptingFirstPublish = wantsPublish && !isCurrentlyPublished;
-    let publishBlocked: null | { error: string; status: number; profileCompletion?: number; termsVersion: string } = null;
+    let publishBlocked: null | { error: string; status: number; profileCompletion?: number; termsVersion: string; missingServices?: string[] } = null;
 
     const lifecycleStatus = normalizeSitterLifecycleStatus(existingProfile?.lifecycleStatus, Boolean(existingProfile?.published));
 
@@ -428,6 +432,23 @@ export async function POST(req: NextRequest) {
         sitterProfileId: existingProfile?.id ?? null,
         contractVersion: typeof existingProfile?.contractVersion === "string" ? existingProfile.contractVersion : null,
       });
+
+      // Availability coverage: every enabled service must have at least one
+      // bookable rule, else the published profile is invisible in search.
+      // Prefer the services in this request; fall back to persisted ServiceConfig
+      // (e.g. a bare `{ published: true }` toggle that omits the services map).
+      let coverageServices = enabledServices
+        .map((s) => serviceLabelToEnum(s))
+        .filter((s): s is ServiceType => s !== null);
+      if (coverageServices.length === 0) {
+        const cfgs = await prisma.serviceConfig.findMany({
+          where: { sitterId, enabled: true },
+          select: { serviceType: true },
+        });
+        coverageServices = cfgs.map((c) => c.serviceType);
+      }
+      const coverage = await getSitterAvailabilityCoverage(sitterId, coverageServices);
+
       const gate = checkSitterSensitiveActionGate({
         termsAcceptedAt: existingProfile?.termsAcceptedAt ?? null,
         termsVersion: existingProfile?.termsVersion ?? null,
@@ -435,6 +456,8 @@ export async function POST(req: NextRequest) {
         lifecycleStatus,
         isContractAmendmentUpToDate: contractAmendmentState.isUpToDate,
         skipContractChecks: inviteActivated,
+        hasAvailabilityForActiveServices: coverage.ok,
+        missingAvailabilityServices: coverage.missing,
       });
 
       if (!gate.ok) {
@@ -442,6 +465,7 @@ export async function POST(req: NextRequest) {
           error: gate.error,
           status: gate.status,
           ...(gate.error === "PROFILE_INCOMPLETE" ? { profileCompletion: gate.profileCompletion } : null),
+          ...(gate.error === "NO_AVAILABILITY" && gate.missingServices ? { missingServices: gate.missingServices } : null),
           termsVersion: CURRENT_TERMS_VERSION,
         };
       }

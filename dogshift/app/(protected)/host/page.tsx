@@ -6,7 +6,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { Suspense, useEffect, useMemo, useState, useSyncExternalStore } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import { X } from "lucide-react";
 import { HostNativeHome } from "@/components/native/HostNativeHome";
@@ -217,14 +217,29 @@ function HostAvatar({ src, alt }: { src: string | null; alt: string }) {
   );
 }
 
+function publishBlockedMessage(code: string): string {
+  const msgs: Record<string, string> = {
+    TERMS_NOT_ACCEPTED: "Accepte le règlement avant de publier ton annonce.",
+    PROFILE_INCOMPLETE: "Complète ton profil à 100 % avant de publier.",
+    CONTRACT_NOT_SIGNED: "Signe le contrat avant de publier ton annonce.",
+    ACCOUNT_NOT_ACTIVATED: "Ton compte doit être activé pour publier.",
+    CONTRACT_AMENDMENT_REQUIRED: "Un avenant au contrat doit être accepté avant de publier.",
+    NO_AVAILABILITY: "Ajoute au moins un créneau de disponibilité avant de publier.",
+  };
+  return msgs[code] ?? "La publication a été bloquée.";
+}
+
 export default function HostDashboardPage() {
   const { data: __session, status: __sessionStatus } = useSession();
   const user = __session?.user ?? null;
   const isLoaded = __sessionStatus !== "loading";
   const isSignedIn = __sessionStatus === "authenticated";
   const host = useHostUser();
+  const router = useRouter();
   const { sitterId, profile: remoteProfile, published: isPublished } = host;
   const [unreadTick, setUnreadTick] = useState(0);
+  const [publishing, setPublishing] = useState(false);
+  const [publishError, setPublishError] = useState<string | null>(null);
   const [verificationStatus, setVerificationStatus] = useState<"not_verified" | "pending" | "approved" | "rejected">(
     (host.verificationStatus === "approved" || host.verificationStatus === "pending" || host.verificationStatus === "rejected")
       ? host.verificationStatus
@@ -395,13 +410,55 @@ export default function HostDashboardPage() {
 
   const rating = averageRating === null ? "—" : formatRating(averageRating);
 
+  const needsAvailability = host.availabilityCoverageOk === false && (host.enabledServices?.length ?? 0) > 0;
+
   const todos = useMemo(() => {
     const base = getHostTodos({ ...profile, stripeAccountStatus: host.stripeAccountStatus });
-    if (verificationStatus === "approved" || verificationStatus === "pending") {
-      return base.filter((item) => item.id !== "verify");
+    const filtered =
+      verificationStatus === "approved" || verificationStatus === "pending"
+        ? base.filter((item) => item.id !== "verify")
+        : base;
+    // Availability isn't part of the profile-completion %, but a sitter with no
+    // bookable schedule is invisible in search — surface it as a to-do (and it
+    // keeps the "Publier" CTA hidden until they set it).
+    if (needsAvailability && !filtered.some((i) => i.id === "availability")) {
+      filtered.push({ id: "availability", label: "Définir tes disponibilités", href: "/host/availability" });
     }
-    return base;
-  }, [profile, verificationStatus, host.stripeAccountStatus]);
+    return filtered;
+  }, [profile, verificationStatus, host.stripeAccountStatus, needsAvailability]);
+
+  // Publish from the dashboard. Only rendered when todos.length === 0, i.e. the
+  // profile is complete AND authoritative (getHostTodos passed on the remote
+  // profile), so re-posting it back with published:true is safe.
+  async function onPublish() {
+    if (publishing) return;
+    setPublishError(null);
+    setPublishing(true);
+    try {
+      const res = await fetch("/api/host/profile", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ ...profile, published: true }),
+      });
+      const payload = (await res.json().catch(() => null)) as
+        | { ok?: boolean; published?: boolean; publishBlocked?: { error: string } | null }
+        | null;
+      if (payload?.publishBlocked) {
+        setPublishError(publishBlockedMessage(payload.publishBlocked.error));
+        setPublishing(false);
+        return;
+      }
+      if (!res.ok || !payload?.ok) {
+        setPublishError("La publication a échoué. Réessaie.");
+        setPublishing(false);
+        return;
+      }
+      router.refresh();
+    } catch {
+      setPublishError("La publication a échoué. Réessaie.");
+      setPublishing(false);
+    }
+  }
 
   const bookings = useMemo(() => (sitterId ? loadHostBookings(sitterId) : []), [sitterId]);
   const statuses = useMemo(() => (sitterId ? loadHostRequestStatus(sitterId) : {}), [sitterId]);
@@ -567,6 +624,16 @@ export default function HostDashboardPage() {
             <div className="mt-3 flex min-h-[32px] flex-wrap items-center gap-2">
               {completionUiReady ? (
                 <>
+                  <span
+                    className={
+                      isPublished
+                        ? "inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-200"
+                        : "inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-800 ring-1 ring-amber-200"
+                    }
+                  >
+                    <span aria-hidden="true">●</span>
+                    {isPublished ? "En ligne" : "Brouillon (invisible)"}
+                  </span>
                   <StatusBadge status={badgeStatus} />
                   <span className="inline-flex items-center rounded-full bg-white px-3 py-1 text-xs font-medium text-slate-600 ring-1 ring-slate-200">
                     Profil {completionPercent}%
@@ -576,6 +643,21 @@ export default function HostDashboardPage() {
             </div>
           </div>
         </div>
+
+        {completionUiReady && isPublished && needsAvailability ? (
+          <div className="mt-6 rounded-2xl border border-amber-300 bg-amber-50 p-4">
+            <p className="text-sm font-semibold text-amber-900">Ton annonce est en ligne, mais invisible</p>
+            <p className="mt-1 text-sm text-amber-900/80">
+              Tu n&apos;as aucune disponibilité : les clients ne peuvent pas te réserver. Ajoute tes créneaux pour apparaître dans la recherche.
+            </p>
+            <Link
+              href="/host/availability"
+              className="mt-2 inline-flex items-center gap-1 text-sm font-semibold text-amber-900 underline"
+            >
+              Définir mes disponibilités →
+            </Link>
+          </div>
+        ) : null}
 
         <div className="mt-8 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
           <div className="ds-stat rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.2)]">
@@ -612,16 +694,31 @@ export default function HostDashboardPage() {
             </div>
 
             {todos.length === 0 ? (
-              <div className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50 p-5">
-                <p className="text-sm font-semibold text-emerald-900">
-                  {isPublished ? "Tout est en ordre ✓" : "Profil complet"}
-                </p>
-                <p className="mt-1 text-sm text-emerald-900/80">
-                  {isPublished
-                    ? "Votre profil est publié et complet. Rien à faire pour l'instant."
-                    : "Votre profil est complet. Rendez-vous dans l'onglet profil pour le publier."}
-                </p>
-              </div>
+              isPublished ? (
+                <div className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50 p-5">
+                  <p className="text-sm font-semibold text-emerald-900">Tout est en ordre ✓</p>
+                  <p className="mt-1 text-sm text-emerald-900/80">
+                    Votre profil est publié et complet. Rien à faire pour l&apos;instant.
+                  </p>
+                </div>
+              ) : (
+                <div className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50 p-5">
+                  <p className="text-sm font-semibold text-emerald-900">Ton profil est prêt 🎉</p>
+                  <p className="mt-1 text-sm text-emerald-900/80">
+                    Tout est complet. Publie ton annonce pour apparaître dans la recherche et recevoir des réservations.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => void onPublish()}
+                    aria-disabled={publishing}
+                    style={{ touchAction: "manipulation" }}
+                    className="mt-3 inline-flex items-center justify-center rounded-2xl bg-[var(--dogshift-blue)] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[var(--dogshift-blue-hover)]"
+                  >
+                    {publishing ? "Publication…" : "Publier mon annonce"}
+                  </button>
+                  {publishError ? <p className="mt-2 text-sm font-medium text-rose-600">{publishError}</p> : null}
+                </div>
+              )
             ) : (
               <div className="mt-5 space-y-3">
                 {todos.map((item) => (
