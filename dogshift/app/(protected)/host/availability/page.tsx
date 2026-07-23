@@ -1744,6 +1744,12 @@ export default function AvailabilityStudioPage() {
     );
   }
 
+  const activeServiceEnabled = configByService[availabilityTab]?.enabled ?? true;
+  const activeServiceHasRules = (rulesByService[availabilityTab]?.length ?? 0) > 0;
+  const showAvailabilityNudge = initialLoaded && activeServiceEnabled && !activeServiceHasRules;
+  const activeServiceLabel =
+    availabilityTab === "PROMENADE" ? "la promenade" : availabilityTab === "DOGSITTING" ? "la garde" : "la pension";
+
   return (
     <div className="w-full py-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -1759,6 +1765,15 @@ export default function AvailabilityStudioPage() {
           ) : null}
         </div>
       </div>
+
+      {showAvailabilityNudge ? (
+        <div className="mt-4 rounded-2xl border border-amber-300 bg-amber-50 p-4">
+          <p className="text-sm font-semibold text-amber-900">Aucune disponibilité pour {activeServiceLabel}</p>
+          <p className="mt-1 text-sm text-amber-900/80">
+            Tant que ton agenda est vide, tu restes <b>invisible</b> pour les clients sur ce service. Clique sur les jours de la semaine où tu es disponible ci-dessous — ou utilise « Rendre tout le mois disponible ».
+          </p>
+        </div>
+      ) : null}
 
       {topError ? (
         <div className="mt-4 flex flex-col gap-3 rounded-2xl border border-rose-200 bg-rose-50 p-4 sm:flex-row sm:items-start sm:justify-between">

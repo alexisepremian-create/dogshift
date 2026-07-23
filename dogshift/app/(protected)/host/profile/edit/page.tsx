@@ -137,7 +137,11 @@ export default function HostProfileEditPage() {
   const completionPercent = completionDetails.percent;
   const completionChecks = completionDetails.checks;
 
-  const canPublish = termsOk && completionPercent >= 100 && isActivatedStatus(lifecycleStatus);
+  // Availability isn't part of completion %, but a bookable schedule is required
+  // to publish (else the profile is invisible). Server is the source of truth;
+  // this mirrors it client-side so the toggle + checklist stay honest.
+  const needsAvailability = host.availabilityCoverageOk === false && (host.enabledServices?.length ?? 0) > 0;
+  const canPublish = termsOk && completionPercent >= 100 && isActivatedStatus(lifecycleStatus) && !needsAvailability;
   const canTogglePublish = published || canPublish;
 
   useEffect(() => {
@@ -471,6 +475,7 @@ export default function HostProfileEditPage() {
             CONTRACT_NOT_SIGNED: "Signe le contrat avant de publier ton annonce.",
             ACCOUNT_NOT_ACTIVATED: "Ton compte doit être activé pour publier.",
             CONTRACT_AMENDMENT_REQUIRED: "Un avenant au contrat doit être accepté avant de publier.",
+            NO_AVAILABILITY: "Ajoute au moins un créneau de disponibilité avant de publier.",
           };
           setError(msgs[payload.publishBlocked.error] ?? "La publication a été bloquée.");
           setPublished(false);
@@ -1587,33 +1592,72 @@ export default function HostProfileEditPage() {
                     {!canPublish && !published ? (
                       <div className="mt-1.5 text-sm text-slate-500">
                         <p>Avant de publier ton annonce, il te reste à&nbsp;:</p>
-                        <ul className="mt-1 space-y-0.5">
+                        <ul className="mt-1.5 space-y-1">
                           {!completionChecks.stripeConnected && (
-                            <li>⚠️ Connecter ton compte Stripe (encaisser tes paiements)</li>
+                            <li>
+                              <Link href="/host/wallet" className="inline-flex items-center gap-1 font-medium text-[var(--dogshift-blue)] underline">
+                                ⚠️ Connecter ton compte Stripe (encaisser tes paiements) →
+                              </Link>
+                            </li>
                           )}
                           {!completionChecks.address && (
-                            <li>⚠️ Renseigner ton adresse postale complète (rue, NPA, ville)</li>
+                            <li>
+                              <Link href="#identity" className="inline-flex items-center gap-1 font-medium text-[var(--dogshift-blue)] underline">
+                                ⚠️ Renseigner ton adresse postale complète (rue, NPA, ville) →
+                              </Link>
+                            </li>
                           )}
                           {!completionChecks.avatar && (
-                            <li>⚠️ Ajouter une photo de profil</li>
+                            <li>
+                              <Link href="#photo" className="inline-flex items-center gap-1 font-medium text-[var(--dogshift-blue)] underline">
+                                ⚠️ Ajouter une photo de profil →
+                              </Link>
+                            </li>
                           )}
                           {!completionChecks.identity && (
-                            <li>⚠️ Compléter ton prénom et ta ville</li>
+                            <li>
+                              <Link href="#identity" className="inline-flex items-center gap-1 font-medium text-[var(--dogshift-blue)] underline">
+                                ⚠️ Compléter ton prénom et ta ville →
+                              </Link>
+                            </li>
                           )}
                           {!completionChecks.bio && (
-                            <li>⚠️ Rédiger une courte biographie</li>
+                            <li>
+                              <Link href="#description" className="inline-flex items-center gap-1 font-medium text-[var(--dogshift-blue)] underline">
+                                ⚠️ Rédiger une courte biographie →
+                              </Link>
+                            </li>
                           )}
                           {!completionChecks.services && (
-                            <li>⚠️ Activer au moins un service (promenade, garde, pension)</li>
+                            <li>
+                              <Link href="/host/availability" className="inline-flex items-center gap-1 font-medium text-[var(--dogshift-blue)] underline">
+                                ⚠️ Activer au moins un service (promenade, garde, pension) →
+                              </Link>
+                            </li>
                           )}
                           {!completionChecks.pricing && (
-                            <li>⚠️ Définir les tarifs des services activés</li>
+                            <li>
+                              <Link href="/host/availability" className="inline-flex items-center gap-1 font-medium text-[var(--dogshift-blue)] underline">
+                                ⚠️ Définir les tarifs des services activés →
+                              </Link>
+                            </li>
                           )}
                           {!completionChecks.dogSizes && (
-                            <li>⚠️ Indiquer les tailles de chiens que tu acceptes</li>
+                            <li>
+                              <Link href="#dogSizes" className="inline-flex items-center gap-1 font-medium text-[var(--dogshift-blue)] underline">
+                                ⚠️ Indiquer les tailles de chiens que tu acceptes →
+                              </Link>
+                            </li>
+                          )}
+                          {completionChecks.services && completionChecks.pricing && needsAvailability && (
+                            <li>
+                              <Link href="/host/availability" className="inline-flex items-center gap-1 font-medium text-[var(--dogshift-blue)] underline">
+                                ⚠️ Définir tes disponibilités (au moins un jour) →
+                              </Link>
+                            </li>
                           )}
                           {!termsOk && (
-                            <li>⚠️ Accepter le règlement DogShift</li>
+                            <li>⚠️ Accepter le règlement DogShift (une fenêtre te le demandera)</li>
                           )}
                         </ul>
                       </div>

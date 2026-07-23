@@ -7,7 +7,8 @@ export type SitterGateState =
   | { ok: false; status: 403; error: "PROFILE_INCOMPLETE"; profileCompletion: number }
   | { ok: false; status: 403; error: "CONTRACT_NOT_SIGNED" }
   | { ok: false; status: 403; error: "ACCOUNT_NOT_ACTIVATED" }
-  | { ok: false; status: 403; error: "CONTRACT_AMENDMENT_REQUIRED" };
+  | { ok: false; status: 403; error: "CONTRACT_AMENDMENT_REQUIRED" }
+  | { ok: false; status: 403; error: "NO_AVAILABILITY"; missingServices?: string[] };
 
 export function checkSitterSensitiveActionGate(args: {
   termsAcceptedAt: Date | null;
@@ -16,6 +17,11 @@ export function checkSitterSensitiveActionGate(args: {
   lifecycleStatus: SitterLifecycleStatus;
   isContractAmendmentUpToDate?: boolean;
   skipContractChecks?: boolean;
+  // When provided (publish path), require at least one bookable availability
+  // rule for every enabled service — a published-but-empty agenda makes the
+  // profile invisible in search. Omitted (undefined) = check skipped.
+  hasAvailabilityForActiveServices?: boolean;
+  missingAvailabilityServices?: string[];
 }): SitterGateState {
   const termsOk = Boolean(args.termsAcceptedAt) && args.termsVersion === CURRENT_TERMS_VERSION;
   if (!termsOk) {
@@ -38,6 +44,17 @@ export function checkSitterSensitiveActionGate(args: {
 
   if (!args.skipContractChecks && args.isContractAmendmentUpToDate === false) {
     return { ok: false, status: 403, error: "CONTRACT_AMENDMENT_REQUIRED" };
+  }
+
+  if (args.hasAvailabilityForActiveServices === false) {
+    return {
+      ok: false,
+      status: 403,
+      error: "NO_AVAILABILITY",
+      ...(args.missingAvailabilityServices && args.missingAvailabilityServices.length > 0
+        ? { missingServices: args.missingAvailabilityServices }
+        : null),
+    };
   }
 
   return { ok: true };
