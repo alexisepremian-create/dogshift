@@ -4,21 +4,7 @@
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
-import {
-  House,
-  Heart,
-  Calendar,
-  MessageCircle,
-  Inbox,
-  Info,
-  HelpCircle,
-  ScrollText,
-  Shield,
-  Lock,
-  Mail,
-  LogOut,
-  User,
-} from "lucide-react";
+import { House, Calendar, MessageCircle, Inbox, User } from "lucide-react";
 
 import { type BottomNavItem } from "@/components/MobileBottomNav";
 import NativeTabBar from "@/components/native/NativeTabBar";
@@ -43,7 +29,7 @@ import { fetchAccountContext } from "@/lib/accountContext";
 export default function GlobalNativeBottomNav() {
   const isNative = useIsNativeApp();
   const pathname = usePathname();
-  const { data: session, status } = useSession();
+  const { status } = useSession();
   // Seed from a persisted flag so a returning sitter doesn't see the bottom nav
   // flip owner→sitter (Réservations/calendar icon → Demandes/inbox icon) at
   // launch while fetchAccountContext resolves (founder bug: "la nav barre pour
@@ -128,7 +114,6 @@ export default function GlobalNativeBottomNav() {
     return null;
   }
 
-  const role = (session?.user as { role?: string } | undefined)?.role ?? null;
   const isAuthed = status === "authenticated";
 
   // The native app is auth-gated: an unauthenticated user is confined to the
@@ -137,32 +122,18 @@ export default function GlobalNativeBottomNav() {
   // — there are simply no nav targets to tap until they sign in.
   if (!isAuthed) return null;
 
-  // Shared "Plus" overflow items
-  const moreCommon: BottomNavItem[] = [
-    { key: "devenir-sitter", label: "Devenir dogsitter", href: "/devenir-dogsitter", icon: <HelpCircle className="h-5 w-5" />, active: pathname === "/devenir-dogsitter" },
-    { key: "contact", label: "Contact", href: "/contact", icon: <Mail className="h-5 w-5" />, active: pathname === "/contact" },
-    { key: "cgu", label: "Conditions d'utilisation", href: "/cgu", icon: <ScrollText className="h-5 w-5" />, active: pathname === "/cgu" },
-    { key: "confidentialite", label: "Confidentialité", href: "/confidentialite", icon: <Lock className="h-5 w-5" />, active: pathname === "/confidentialite" },
-    { key: "mentions", label: "Mentions légales", href: "/mentions-legales", icon: <Info className="h-5 w-5" />, active: pathname === "/mentions-legales" },
-  ];
-
+  // NB: the old "more menu" (Mon compte, Admin, legal, Déconnexion…) used to open
+  // from the center FAB. The center FAB now opens the breeding "Rencontres"
+  // feature, so that menu moved to the homepage search-bar button — built by the
+  // shared `useNativeMenuItems()` hook (single source of truth).
   if (isSitter) {
-    // ── Sitter (also has owner side) ──
-    // 4 flanking tabs (2 left of the center logo, 2 right). The person icon →
-    // the sitter dashboard (/host). The center DogShift logo opens `moreItems`.
     const items: BottomNavItem[] = [
       { key: "home", label: "Accueil", href: "/", icon: <House className="h-6 w-6" />, active: pathname === "/" },
       { key: "requests", label: "Demandes", href: "/host/requests", icon: <Inbox className="h-6 w-6" />, active: pathname.startsWith("/host/requests") },
       { key: "messages", label: "Messages", href: "/host/messages", icon: <MessageCircle className="h-6 w-6" />, active: pathname.startsWith("/host/messages") },
       { key: "dashboard", label: "Compte", href: "/host", icon: <User className="h-6 w-6" />, active: pathname === "/host" },
     ];
-    const moreSitter: BottomNavItem[] = [
-      { key: "account", label: "Mon compte (owner)", href: "/account", icon: <Heart className="h-5 w-5" />, active: pathname === "/account" },
-      ...(role === "ADMIN" ? [{ key: "admin", label: "Admin", href: "/admin/dashboard", icon: <Shield className="h-5 w-5" />, active: pathname.startsWith("/admin") }] : []),
-      ...moreCommon,
-      { key: "logout", label: "Déconnexion", href: "/sign-out", icon: <LogOut className="h-5 w-5" />, active: false },
-    ];
-    return <NativeTabBar items={items} moreItems={moreSitter} />;
+    return <NativeTabBar items={items} />;
   }
 
   // ── Owner (authed, not sitter) ──
@@ -172,11 +143,5 @@ export default function GlobalNativeBottomNav() {
     { key: "messages", label: "Messages", href: "/account/messages", icon: <MessageCircle className="h-6 w-6" />, active: pathname.startsWith("/account/messages") },
     { key: "dashboard", label: "Compte", href: "/account", icon: <User className="h-6 w-6" />, active: pathname === "/account" },
   ];
-  const moreOwner: BottomNavItem[] = [
-    { key: "devenir-sitter", label: "Devenir dogsitter", href: "/devenir-dogsitter", icon: <HelpCircle className="h-5 w-5" />, active: pathname === "/devenir-dogsitter" },
-    ...(role === "ADMIN" ? [{ key: "admin", label: "Admin", href: "/admin/dashboard", icon: <Shield className="h-5 w-5" />, active: pathname.startsWith("/admin") }] : []),
-    ...moreCommon.filter((m) => m.key !== "devenir-sitter"),
-    { key: "logout", label: "Déconnexion", href: "/sign-out", icon: <LogOut className="h-5 w-5" />, active: false },
-  ];
-  return <NativeTabBar items={items} moreItems={moreOwner} />;
+  return <NativeTabBar items={items} />;
 }

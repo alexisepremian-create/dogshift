@@ -5,10 +5,12 @@ import maplibregl from "maplibre-gl";
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useRef, useState, type TouchEvent as ReactTouchEvent } from "react";
 import Map, { Marker, type MapRef } from "react-map-gl/maplibre";
-import { Search, Locate, Star, X, Minus, Plus, MapPin, Calendar, ArrowLeft, SlidersHorizontal, Check, MessageCircle } from "lucide-react";
+import Link from "next/link";
+import { Search, Locate, Star, X, Minus, Plus, MapPin, Calendar, ArrowLeft, SlidersHorizontal, Check, MessageCircle, Menu } from "lucide-react";
 
 import NativeConversationSheet from "@/components/native/NativeConversationSheet";
 import { useKeyboardHeight } from "@/lib/native/useKeyboardHeight";
+import { useNativeMenuItems } from "@/lib/native/useNativeMenuItems";
 
 import {
   LOCATION_HUB_COORDS,
@@ -304,6 +306,8 @@ export default function NativeMapHome() {
   // behind the nav).
   const lieuInputRef = useRef<HTMLInputElement>(null);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuItems = useNativeMenuItems();
   // "main" = search form ; "filters" = filter form (same panel, slides in
   // like a second page). Founder request : "rajoute une option filtre aussi
   // la dans le pop up de recherche … genre que ca fasse comme une deuxieme
@@ -976,18 +980,31 @@ export default function NativeMapHome() {
             an input visually but is actually a button : the WKWebView keyboard
             on a single map-overlay input was unreliable, and a 3-section bar
             is the right UX for booking-intent searches anyway. */}
-        <button
-          type="button"
-          onClick={() => setSearchOpen(true)}
-          className="flex w-full items-center gap-2 rounded-full bg-white/95 px-4 py-3 text-left shadow-[0_8px_24px_rgba(2,6,23,0.18)] backdrop-blur active:scale-[0.99]"
-          style={{ touchAction: "manipulation" }}
-          aria-label="Ouvrir la recherche détaillée"
-        >
-          <Search className="h-5 w-5 text-slate-500" />
-          <span className="flex-1 truncate text-base text-slate-400">
-            Lieu, dates, service…
-          </span>
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setSearchOpen(true)}
+            className="flex flex-1 items-center gap-2 rounded-full bg-white/95 px-4 py-3 text-left shadow-[0_8px_24px_rgba(2,6,23,0.18)] backdrop-blur active:scale-[0.99]"
+            style={{ touchAction: "manipulation" }}
+            aria-label="Ouvrir la recherche détaillée"
+          >
+            <Search className="h-5 w-5 text-slate-500" />
+            <span className="flex-1 truncate text-base text-slate-400">
+              Lieu, dates, service…
+            </span>
+          </button>
+          {/* Menu button — hosts what used to live in the center-FAB "more" sheet
+              (the center FAB now opens the Rencontres feature). */}
+          <button
+            type="button"
+            onClick={() => setMenuOpen(true)}
+            className="flex h-[46px] w-[46px] shrink-0 items-center justify-center rounded-full bg-white/95 shadow-[0_8px_24px_rgba(2,6,23,0.18)] backdrop-blur active:scale-95"
+            style={{ touchAction: "manipulation" }}
+            aria-label="Menu"
+          >
+            <Menu className="h-5 w-5 text-slate-600" />
+          </button>
+        </div>
 
         {/* Horizontal-scroll service filter chips. Tap to apply, tap the
             active chip again to clear. Same UX pattern as Airbnb / HoneyPaws. */}
@@ -1013,6 +1030,40 @@ export default function NativeMapHome() {
           })}
         </div>
       </div>
+
+      {/* ── Menu sheet (opened by the search-bar menu button) ────────────── */}
+      {menuOpen ? (
+        <>
+          <div className="fixed inset-0 z-[1200] bg-black/30" onClick={() => setMenuOpen(false)} aria-hidden="true" />
+          <div
+            className="fixed inset-x-0 bottom-0 z-[1201] rounded-t-3xl bg-white pt-3 shadow-[0_-16px_40px_rgba(2,6,23,0.22)]"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Menu"
+          >
+            <div className="mx-auto mb-2 h-1.5 w-12 rounded-full bg-slate-300" />
+            <div className="flex items-center justify-between px-5 pb-1">
+              <span className="text-sm font-semibold text-slate-700">Menu</span>
+              <button type="button" onClick={() => setMenuOpen(false)} aria-label="Fermer" className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-slate-500 active:scale-95">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="max-h-[60vh] overflow-y-auto" style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 10px)" }}>
+              {menuItems.map((item) => (
+                <Link
+                  key={item.key}
+                  href={item.href}
+                  onClick={() => setMenuOpen(false)}
+                  className={"flex items-center gap-3 px-5 py-3 text-sm " + (item.active ? "font-semibold text-slate-900" : "font-medium text-slate-600 active:bg-slate-50")}
+                >
+                  <span className={item.active ? "text-[#7c3aed]" : "text-slate-400"}>{item.icon}</span>
+                  {item.label}
+                </Link>
+              ))}
+            </div>
+          </div>
+        </>
+      ) : null}
 
       {/* ── Geolocate button (bottom-right above sheet) ──────────────────── */}
       {/* Bottom offset adds : 140px (sheet collapsed) + 16px breathing room +
