@@ -2,8 +2,8 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
-import { X } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useEffect, useRef } from "react";
 
 import type { BottomNavItem } from "@/components/MobileBottomNav";
 
@@ -46,8 +46,8 @@ function Tab({ item, onNavigate }: { item: BottomNavItem; onNavigate: () => void
   );
 }
 
-export default function NativeTabBar({ items, moreItems = [] }: { items: BottomNavItem[]; moreItems?: BottomNavItem[] }) {
-  const [moreOpen, setMoreOpen] = useState(false);
+export default function NativeTabBar({ items }: { items: BottomNavItem[] }) {
+  const router = useRouter();
   const navRef = useRef<HTMLElement>(null);
   const barRef = useRef<HTMLDivElement>(null);
 
@@ -83,55 +83,12 @@ export default function NativeTabBar({ items, moreItems = [] }: { items: BottomN
     };
   }, []);
 
-  useEffect(() => {
-    if (!moreOpen) return;
-    const close = (e: MouseEvent) => {
-      if (navRef.current?.contains(e.target as Node)) return;
-      setMoreOpen(false);
-    };
-    document.addEventListener("pointerdown", close, true);
-    return () => document.removeEventListener("pointerdown", close, true);
-  }, [moreOpen]);
-
   return (
     <nav
       ref={navRef}
       aria-label="Navigation principale"
       className="fixed inset-x-0 bottom-0 z-50 lg:hidden"
     >
-      {/* ── "More" sheet (opened by the center logo) ── */}
-      {moreOpen && moreItems.length > 0 ? (
-        <div className="mx-2 mb-2 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_-8px_30px_rgba(2,6,23,0.14)]">
-          <div className="flex items-center justify-between border-b border-slate-100 px-5 py-3">
-            <span className="text-[13px] font-semibold text-slate-700">Menu</span>
-            <button
-              type="button"
-              onClick={() => setMoreOpen(false)}
-              className="flex h-7 w-7 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
-              aria-label="Fermer"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-          <div className="flex max-h-[50vh] flex-col overflow-y-auto py-1">
-            {moreItems.map((item) => (
-              <Link
-                key={item.key}
-                href={item.href}
-                onClick={() => setMoreOpen(false)}
-                className={
-                  "flex items-center gap-3 px-5 py-3 text-sm transition " +
-                  (item.active ? "bg-slate-900/5 font-semibold text-slate-900" : "font-medium text-slate-600 active:bg-slate-50")
-                }
-              >
-                <span className={item.active ? "text-slate-900" : "text-slate-400"}>{item.icon}</span>
-                {item.label}
-              </Link>
-            ))}
-          </div>
-        </div>
-      ) : null}
-
       {/* ── Solid bar — white fills through the safe area so nothing shows below ── */}
       <div
         ref={barRef}
@@ -153,24 +110,23 @@ export default function NativeTabBar({ items, moreItems = [] }: { items: BottomN
           ) : null}
 
           {left.map((item) => (
-            <Tab key={item.key} item={item} onNavigate={() => setMoreOpen(false)} />
+            <Tab key={item.key} item={item} onNavigate={() => undefined} />
           ))}
 
-          {/* Center DogShift app-icon logo → opens the more sheet */}
+          {/* Center DogShift logo → opens the breeding "Rencontres" feature */}
           <div className="flex w-[80px] shrink-0 items-start justify-center">
             <button
               type="button"
-              onClick={() => setMoreOpen((v) => !v)}
-              aria-label="Menu"
-              aria-expanded={moreOpen}
+              onClick={() => router.push("/breeding")}
+              aria-label="Rencontres"
               className="-mt-7 h-[68px] w-[68px] overflow-hidden rounded-full bg-[#7c3aed] shadow-[0_12px_28px_-6px_rgba(124,58,237,0.65)] active:scale-95"
             >
-              <Image src="/apple-touch-icon.png" alt="DogShift" width={68} height={68} className="h-full w-full object-cover" priority />
+              <Image src="/apple-touch-icon.png" alt="Rencontres" width={68} height={68} className="h-full w-full object-cover" priority />
             </button>
           </div>
 
           {right.map((item) => (
-            <Tab key={item.key} item={item} onNavigate={() => setMoreOpen(false)} />
+            <Tab key={item.key} item={item} onNavigate={() => undefined} />
           ))}
         </div>
       </div>
