@@ -19,7 +19,7 @@
  * the dots; layout stacks. Animations are transform/opacity only, per
  * docs/PERFORMANCE.md (no backdrop-blur, no transition-all, no layout anims).
  *
- * Screen 3 photos: `public/iphone_1.jpg`, `iphone_2.jpg`, `iphone_3.jpg`.
+ * Screen 3 photos: `public/slide_1.jpg`, `slide_2.jpg`, `slide_3.jpg`.
  * They're layered over a gradient, so if a file is missing the tile still looks
  * good (gradient fallback).
  */
@@ -28,13 +28,13 @@ import Link from "next/link";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   ArrowRight,
+  CheckCircle2,
   Clock,
   Heart,
   Lock,
   MapPin,
   MessagesSquare,
   PawPrint,
-  Quote,
   ShieldCheck,
   Sparkles,
   Star,
@@ -63,6 +63,50 @@ function DetailRow({ icon: Icon, label, value }: { icon: typeof Clock; label: st
       </span>
       <span className="text-[11px] text-slate-500">{label}</span>
       <span className="ml-auto text-[12px] font-semibold text-slate-900">{value}</span>
+    </div>
+  );
+}
+
+// Stylised mini-map (SVG) — streets, a park, water. `location` drops a pin,
+// `route` draws a GPS-style walk track with start/end markers.
+function MiniMap({ variant, className }: { variant: "location" | "route"; className?: string }) {
+  return (
+    <div className={`relative overflow-hidden rounded-2xl border border-slate-200 ${className ?? ""}`}>
+      <svg viewBox="0 0 240 120" preserveAspectRatio="xMidYMid slice" className="h-full w-full" aria-hidden>
+        <rect width="240" height="120" fill="#eef2f7" />
+        <rect x="152" y="8" width="74" height="44" rx="9" fill="#dcfce7" />
+        <path d="M0 92 Q60 74 120 94 T240 90 V120 H0 Z" fill="#dbeafe" />
+        <g stroke="#e2e8f0" strokeWidth="7" strokeLinecap="round">
+          <line x1="-5" y1="42" x2="245" y2="42" />
+          <line x1="-5" y1="78" x2="245" y2="78" />
+          <line x1="72" y1="-5" x2="72" y2="125" />
+          <line x1="152" y1="-5" x2="152" y2="125" />
+        </g>
+        <g stroke="#d3dbe6" strokeWidth="2">
+          <line x1="-5" y1="20" x2="245" y2="20" />
+          <line x1="112" y1="-5" x2="112" y2="125" />
+          <line x1="202" y1="-5" x2="202" y2="125" />
+        </g>
+        {variant === "route" ? (
+          <>
+            <path
+              d="M34 96 C 66 62, 104 104, 150 58 S 196 30, 212 24"
+              fill="none"
+              stroke="#7c3aed"
+              strokeWidth="3.5"
+              strokeLinecap="round"
+              strokeDasharray="0.5 7"
+            />
+            <circle cx="34" cy="96" r="5" fill="#10b981" stroke="#fff" strokeWidth="2.5" />
+            <circle cx="212" cy="24" r="5" fill="#7c3aed" stroke="#fff" strokeWidth="2.5" />
+          </>
+        ) : null}
+      </svg>
+      {variant === "location" ? (
+        <span className="absolute left-1/2 top-1/2 inline-flex h-8 w-8 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-[var(--dogshift-blue)] text-white shadow-lg ring-4 ring-[var(--dogshift-blue)]/20">
+          <MapPin className="h-4 w-4" aria-hidden />
+        </span>
+      ) : null}
     </div>
   );
 }
@@ -127,33 +171,34 @@ function ScreenTrust() {
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-1.5">
-        {["Vérifiée", "Assurée", "Répond en ~1 h"].map((b) => (
-          <span
-            key={b}
-            className="rounded-full bg-[var(--dogshift-blue)]/10 px-2.5 py-1 text-[10px] font-semibold text-[var(--dogshift-blue)]"
-          >
-            {b}
-          </span>
-        ))}
-      </div>
-
-      <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-3">
-        <Quote className="h-4 w-4 text-[var(--dogshift-blue)]/40" aria-hidden />
-        <p className="mt-1 text-[11px] leading-relaxed text-slate-600">
-          Léa est adorable, Milo l’attend déjà à la porte à chaque fois !
-        </p>
-        <p className="mt-1.5 text-[10px] font-semibold text-slate-400">— Sophie, propriétaire de Milo</p>
-      </div>
-
-      <div className="relative mt-auto h-24 overflow-hidden rounded-2xl border border-slate-200 bg-[radial-gradient(circle_at_30%_30%,#ede9fe,transparent_60%),radial-gradient(circle_at_75%_70%,#fae8ff,transparent_55%)]">
-        <span className="absolute left-1/2 top-1/2 inline-flex h-8 w-8 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-[var(--dogshift-blue)] text-white shadow-lg">
-          <MapPin className="h-4 w-4" aria-hidden />
-        </span>
-        <span className="absolute bottom-2 left-3 text-[10px] font-medium text-slate-500">
+      <div className="relative">
+        <MiniMap variant="location" className="h-24" />
+        <span className="absolute bottom-2 left-2 rounded-full bg-white/90 px-2 py-0.5 text-[10px] font-medium text-slate-600 shadow-sm">
           À 1.2 km de toi · dispo cette semaine
         </span>
       </div>
+
+      <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-3">
+        <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+          Chaque dogsitter a
+        </p>
+        <ul className="mt-2 flex flex-col gap-2">
+          {[
+            "Assurance RC compatible dogsitter",
+            "Casier judiciaire vierge",
+            "Expérience avec les chiens",
+          ].map((g) => (
+            <li key={g} className="flex items-center gap-2">
+              <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-500" aria-hidden />
+              <span className="text-[11px] font-medium text-slate-700">{g}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      <p className="mt-auto text-center text-[11px] font-semibold text-[var(--dogshift-blue)]">
+        Rien à faire — plus qu’à réserver.
+      </p>
     </Screen>
   );
 }
@@ -161,9 +206,9 @@ function ScreenTrust() {
 // ── Screen 3 — Nouvelles ──────────────────────────────────────────────────────
 
 const NEWS_TILES = [
-  { src: "/iphone_1.jpg", tone: "linear-gradient(135deg,#ddd6fe,#ede9fe)" },
-  { src: "/iphone_2.jpg", tone: "linear-gradient(135deg,#fde68a,#fef3c7)" },
-  { src: "/iphone_3.jpg", tone: "linear-gradient(135deg,#a7f3d0,#d1fae5)" },
+  { src: "/slide_1.jpg", tone: "linear-gradient(135deg,#ddd6fe,#ede9fe)" },
+  { src: "/slide_2.jpg", tone: "linear-gradient(135deg,#fde68a,#fef3c7)" },
+  { src: "/slide_3.jpg", tone: "linear-gradient(135deg,#a7f3d0,#d1fae5)" },
 ];
 
 function ScreenNews() {
@@ -182,6 +227,14 @@ function ScreenNews() {
             style={{ backgroundImage: `url('${t.src}'), ${t.tone}` }}
           />
         ))}
+      </div>
+
+      {/* Walk route (GPS track) — part of the service report */}
+      <div className="relative">
+        <MiniMap variant="route" className="h-[68px]" />
+        <span className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-full bg-white/90 px-2 py-0.5 text-[10px] font-semibold text-slate-700 shadow-sm">
+          <MapPin className="h-3 w-3 text-[var(--dogshift-blue)]" aria-hidden /> Trajet · 3.1 km
+        </span>
       </div>
 
       <div className="flex items-start gap-2 rounded-2xl rounded-tl-sm border border-slate-200 bg-slate-50/70 p-3">
@@ -226,8 +279,8 @@ const FEATURES: Feature[] = [
   {
     key: "trust",
     label: "Confiance",
-    title: "Des dogsitters vérifiés près de toi.",
-    text: "Profils vérifiés, avis réels et localisation sur la carte — de Lausanne à la Riviera vaudoise.",
+    title: "Des dogsitters vraiment vérifiés.",
+    text: "Assurance RC dogsitter, casier judiciaire vierge et expérience avec les chiens : tu réserves l’esprit tranquille.",
     screen: <ScreenTrust />,
   },
   {
