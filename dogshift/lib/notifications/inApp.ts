@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { prisma } from "@/lib/prisma";
 
 export type NotificationType =
@@ -5,7 +6,11 @@ export type NotificationType =
   | "newBookingRequest"
   | "paymentReceived"
   | "bookingConfirmed"
-  | "bookingReminder";
+  | "bookingReminder"
+  | "newMatch"
+  | "serviceReportSelfie"
+  | "serviceReportReminder"
+  | "serviceReportReceived";
 
 export type CreateNotificationInput = {
   userId: string;
@@ -78,29 +83,6 @@ export async function listNotifications(userId: string, limit: number) {
     const cleaned = (name ?? "").trim();
     if (!cleaned) return null;
     return cleaned.split(/\s+/)[0] ?? null;
-  };
-
-  const resolveFromName = async (conversationId: string) => {
-    try {
-      const c = await (prisma as any).conversation.findUnique({
-        where: { id: conversationId },
-        select: {
-          owner: { select: { name: true } },
-          sitter: { select: { name: true, user: { select: { name: true } } } },
-        },
-      });
-      if (!c) return null;
-      if (hasSitterProfile) {
-        const ownerName = typeof c?.owner?.name === "string" && c.owner.name.trim() ? c.owner.name.trim() : null;
-        return ownerName;
-      }
-      const sitterName =
-        (typeof c?.sitter?.user?.name === "string" && c.sitter.user.name.trim() ? c.sitter.user.name.trim() : null) ??
-        (typeof c?.sitter?.name === "string" && c.sitter.name.trim() ? c.sitter.name.trim() : null);
-      return sitterName;
-    } catch {
-      return null;
-    }
   };
 
   const resolveSenderNameById = async (senderId: string) => {
