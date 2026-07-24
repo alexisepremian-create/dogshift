@@ -11,6 +11,7 @@ import { Search, Locate, Star, X, Minus, Plus, MapPin, Calendar, ArrowLeft, Slid
 import NativeConversationSheet from "@/components/native/NativeConversationSheet";
 import { useKeyboardHeight } from "@/lib/native/useKeyboardHeight";
 import { useNativeMenuItems } from "@/lib/native/useNativeMenuItems";
+import SitterCameraButton from "@/components/native/serviceReport/SitterCameraButton";
 
 import {
   LOCATION_HUB_COORDS,
@@ -993,6 +994,9 @@ export default function NativeMapHome() {
               Lieu, dates, service…
             </span>
           </button>
+          {/* Camera button — sitters only. Quick-attaches a photo to the live
+              service's report (renders null for owners). */}
+          <SitterCameraButton />
           {/* Menu button — hosts what used to live in the center-FAB "more" sheet
               (the center FAB now opens the Rencontres feature). */}
           <button

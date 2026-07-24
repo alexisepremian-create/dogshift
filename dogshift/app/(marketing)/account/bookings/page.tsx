@@ -9,6 +9,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import OwnerListRouteSkeleton from "@/components/native/OwnerListRouteSkeleton";
 import { useIsNativeAppSync } from "@/lib/native/useIsNativeAppSync";
+import OwnerServiceReportCard from "@/components/native/serviceReport/OwnerServiceReportCard";
 import { canOwnerArchiveOrDelete } from "@/lib/bookings/ownerBookingMutation";
 import { isPendingPaymentResumable } from "@/lib/bookings/pendingPayment";
 import { type OwnerBookingListItem, getCachedOwnerBookings, setCachedOwnerBookings } from "@/lib/account/ownerBookingsCache";
@@ -1122,6 +1123,8 @@ function AccountBookingsContent() {
                   </div>
                 </section>
               ) : null}
+
+              {selectedId ? <OwnerServiceReportCard bookingId={selectedId} /> : null}
 
               <section className="border-t border-slate-100 bg-slate-50/30 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-colors hover:bg-slate-50/80">
                 <div className="w-full sm:w-auto flex-shrink-0 flex flex-col gap-3 sm:flex-row sm:items-center">
