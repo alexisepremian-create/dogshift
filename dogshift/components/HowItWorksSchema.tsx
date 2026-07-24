@@ -22,23 +22,23 @@ const CARD_BASE =
 export const OWNER_HOW_IT_WORKS_CONTENT = {
   title: "Comment fonctionnent les réservations",
   intro: "Un rappel simple pour comprendre le flow de réservation, de confirmation et de remboursement.",
-  note: "Si votre réservation n’est pas acceptée à temps (24h avant), elle est automatiquement annulée et remboursée.",
+  note: "Si ta réservation n’est pas acceptée à temps (24h avant), elle est automatiquement annulée et remboursée.",
   moreHref: "/help",
   moreLabel: "En savoir plus",
   steps: [
     {
       title: "Réservez en quelques clics",
-      description: "Choisissez un dogsitter, sélectionnez la date et envoyez votre demande.",
+      description: "Choisis un dogsitter, sélectionne la date et envoie ta demande.",
       icon: CalendarDays,
     },
     {
       title: "Paiement sécurisé",
-      description: "Votre paiement est effectué au moment de la réservation pour garantir le créneau.",
+      description: "Ton paiement est effectué au moment de la réservation pour garantir le créneau.",
       icon: CreditCard,
     },
     {
       title: "Confirmation du dogsitter",
-      description: "Le dogsitter doit accepter votre demande avant la date prévue.",
+      description: "Le dogsitter doit accepter ta demande avant la date prévue.",
       icon: UserCheck,
     },
     {
@@ -52,18 +52,18 @@ export const OWNER_HOW_IT_WORKS_CONTENT = {
 export const SITTER_HOW_IT_WORKS_CONTENT = {
   title: "Comment fonctionnent les demandes",
   intro: "Un aperçu clair du flow côté dogsitter pour éviter toute confusion sur les délais et confirmations.",
-  note: "Vous devez répondre avant la date prévue (minimum 24h avant), sinon la demande expire automatiquement.",
+  note: "Tu dois répondre avant la date prévue (minimum 24h avant), sinon la demande expire automatiquement.",
   moreHref: "/help",
   moreLabel: "En savoir plus",
   steps: [
     {
-      title: "Recevez une demande",
-      description: "Vous recevez une demande avec les détails du service.",
+      title: "Reçois une demande",
+      description: "Tu reçois une demande avec les détails du service.",
       icon: CalendarDays,
     },
     {
-      title: "Acceptez rapidement",
-      description: "Acceptez la demande pour confirmer la réservation.",
+      title: "Accepte rapidement",
+      description: "Accepte la demande pour confirmer la réservation.",
       icon: CheckCircle2,
     },
     {
@@ -73,7 +73,7 @@ export const SITTER_HOW_IT_WORKS_CONTENT = {
     },
     {
       title: "Attention aux délais",
-      description: "Si vous ne répondez pas à temps, la réservation est annulée automatiquement et le client est remboursé.",
+      description: "Si tu ne réponds pas à temps, la réservation est annulée automatiquement et le client est remboursé.",
       icon: AlertTriangle,
     },
   ],
