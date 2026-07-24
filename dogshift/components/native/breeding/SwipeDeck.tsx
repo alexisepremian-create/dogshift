@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Heart, X, SlidersHorizontal, RefreshCw, PawPrint } from "lucide-react";
 
 import MatingCard from "./MatingCard";
+import BreedingEmptyState from "./BreedingEmptyState";
 import type { DeckCard } from "./types";
 
 export type DeckFilterState = {
@@ -128,20 +129,20 @@ export default function SwipeDeck({
             <div className="h-7 w-7 animate-spin rounded-full border-2 border-[#7c3aed] border-t-transparent" />
           </div>
         ) : !top ? (
-          <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
-            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#7c3aed]/10">
-              <PawPrint className="h-8 w-8 text-[#7c3aed]" />
-            </div>
-            <p className="text-base font-semibold text-slate-900">Plus personne pour l&apos;instant</p>
-            <p className="max-w-[260px] text-sm text-slate-500">Reviens plus tard ou élargis tes filtres — de nouveaux chiens arrivent régulièrement.</p>
-            <button
-              type="button"
-              onClick={() => void fetchDeck()}
-              className="mt-1 inline-flex items-center gap-1.5 rounded-full bg-[#7c3aed] px-4 py-2 text-sm font-semibold text-white active:scale-95"
-            >
-              <RefreshCw className="h-4 w-4" /> Rafraîchir
-            </button>
-          </div>
+          <BreedingEmptyState
+            icon={<PawPrint className="h-8 w-8 text-[#7c3aed]" />}
+            title="Plus personne pour l'instant"
+            subtitle="Reviens plus tard ou élargis tes filtres — de nouveaux chiens arrivent régulièrement."
+            action={
+              <button
+                type="button"
+                onClick={() => void fetchDeck()}
+                className="inline-flex items-center gap-1.5 rounded-full bg-[#7c3aed] px-4 py-2 text-sm font-semibold text-white active:scale-95"
+              >
+                <RefreshCw className="h-4 w-4" /> Rafraîchir
+              </button>
+            }
+          />
         ) : (
           <div className="relative h-full">
             {next ? (

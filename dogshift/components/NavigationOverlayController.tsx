@@ -39,6 +39,10 @@ const SKIP_PATHS = [
   "/forgot-password",
   "/reset-password",
   "/verify-email",
+  // The breeding "Rencontres" screen renders its own single spinner while it
+  // loads the mating profiles — the global running-dog overlay on top of it read
+  // as "skeleton then spinner" (founder). Suppress the overlay here.
+  "/breeding",
 ];
 
 /**

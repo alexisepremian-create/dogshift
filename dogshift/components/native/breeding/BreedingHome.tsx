@@ -3,7 +3,9 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { X, Dog, Heart } from "lucide-react";
+import { X, Heart } from "lucide-react";
+
+import BreedingEmptyState, { CrossingCards } from "./BreedingEmptyState";
 
 import SwipeDeck, { type DeckFilterState } from "./SwipeDeck";
 import DeckFilters from "./DeckFilters";
@@ -78,14 +80,16 @@ export default function BreedingHome() {
           ) : activeId ? (
             <SwipeDeck activeDogId={activeId} filters={filters} onOpenFilters={() => setShowFilters(true)} onMatched={(c) => setMatchCard(c)} />
           ) : (
-            <div className="flex h-full flex-col items-center justify-center gap-3 px-8 text-center">
-              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#7c3aed]/10">
-                <Dog className="h-8 w-8 text-[#7c3aed]" />
-              </div>
-              <p className="text-base font-semibold text-slate-900">Active ton chien</p>
-              <p className="text-sm text-slate-500">Configure le profil d&apos;accouplement de ton chien pour commencer à swiper.</p>
-              <button type="button" onClick={() => setTab("profile")} className="mt-1 rounded-full bg-[#7c3aed] px-5 py-2.5 text-sm font-semibold text-white active:scale-95">Configurer</button>
-            </div>
+            <BreedingEmptyState
+              illustration={<CrossingCards />}
+              title="Active ton chien"
+              subtitle="Configure le profil d'accouplement de ton chien pour commencer à swiper."
+              action={
+                <button type="button" onClick={() => setTab("profile")} className="rounded-full bg-[#7c3aed] px-5 py-2.5 text-sm font-semibold text-white active:scale-95">
+                  Configurer
+                </button>
+              }
+            />
           )
         ) : tab === "matches" ? (
           <MatchesTab />

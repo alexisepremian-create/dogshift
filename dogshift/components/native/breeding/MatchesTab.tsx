@@ -2,8 +2,9 @@
 /* eslint-disable @next/next/no-img-element */
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowLeft, Send, Heart, Dog } from "lucide-react";
+import { ArrowLeft, Send, MessageCircle, Dog } from "lucide-react";
 
+import BreedingEmptyState from "./BreedingEmptyState";
 import { ageLabel, type MatchSummary } from "./types";
 
 type ChatMessage = { id: string; body: string; mine: boolean; createdAt: string };
@@ -130,13 +131,11 @@ export default function MatchesTab() {
 
   if (matches.length === 0) {
     return (
-      <div className="flex h-full flex-col items-center justify-center gap-3 px-8 text-center">
-        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#7c3aed]/10">
-          <Heart className="h-8 w-8 fill-[#7c3aed] text-[#7c3aed]" />
-        </div>
-        <p className="text-base font-semibold text-slate-900">Pas encore de match</p>
-        <p className="text-sm text-slate-500">Swipe à droite les chiens qui te plaisent. Quand c&apos;est réciproque, vous matchez et pouvez discuter ici.</p>
-      </div>
+      <BreedingEmptyState
+        icon={<MessageCircle className="h-8 w-8 text-[#7c3aed]" />}
+        title="Pas encore de match"
+        subtitle="Swipe à droite les chiens qui te plaisent. Quand c'est réciproque, vous matchez et pouvez discuter ici."
+      />
     );
   }
 
