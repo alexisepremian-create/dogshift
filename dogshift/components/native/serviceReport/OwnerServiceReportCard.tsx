@@ -3,6 +3,9 @@
 import { useEffect, useState } from "react";
 import { Camera } from "lucide-react";
 
+import { buildRouteMapUrl } from "@/lib/serviceReport/routeStaticMap";
+import type { LatLng } from "@/lib/serviceReport/track";
+
 type OwnerReport = {
   id: string;
   note: string | null;
@@ -15,6 +18,7 @@ type OwnerReport = {
   energy: number | null;
   incidents: string | null;
   distanceMeters: number | null;
+  routeJson: LatLng[] | null;
   sentAt: string | null;
   dogName: string | null;
   photos: { id: string; url: string; caption: string | null }[];
@@ -61,6 +65,9 @@ export default function OwnerServiceReportCard({ bookingId }: { bookingId: strin
   if (!report) return null;
   const lines = checklistLines(report);
   const km = typeof report.distanceMeters === "number" && report.distanceMeters > 0 ? (report.distanceMeters / 1000).toFixed(2) : null;
+  const routeMapUrl = Array.isArray(report.routeJson) && report.routeJson.length >= 2
+    ? buildRouteMapUrl({ route: report.routeJson, width: 720, height: 360 })
+    : null;
 
   return (
     <section className="border-t border-slate-100 bg-white p-5">
@@ -78,6 +85,11 @@ export default function OwnerServiceReportCard({ bookingId }: { bookingId: strin
             <img key={p.id} src={p.url} alt="Photo" className="aspect-square w-full rounded-xl object-cover" />
           ))}
         </div>
+      ) : null}
+
+      {routeMapUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={routeMapUrl} alt="Parcours de la balade" className="mt-4 w-full rounded-2xl object-cover" style={{ aspectRatio: "2 / 1" }} />
       ) : null}
 
       {km ? <p className="mt-4 text-sm text-slate-600">Distance parcourue : <span className="font-semibold text-slate-900">{km} km</span></p> : null}
