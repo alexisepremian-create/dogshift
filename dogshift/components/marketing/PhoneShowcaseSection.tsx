@@ -4,29 +4,37 @@
  * Homepage "phone showcase" section (marketing).
  *
  * Left: a CSS iPhone mock cycling through 3 screens (users' favourite
- * features). Right: a violet card whose copy is synced to the active screen.
+ * features). Right: the section title + a violet card whose copy is synced to
+ * the active screen, ending with a "Réserve maintenant" CTA on the last screen.
  *
- * Scroll behaviour (desktop ≥ lg): the section is tall (`lg:h-[340vh]`) with an
+ * Scroll behaviour (desktop ≥ lg): the section is tall (`lg:h-[360vh]`) with an
  * inner `sticky top-0 h-screen` container. As the user scrolls, the sticky
  * container stays pinned (the page appears frozen) while a passive + rAF scroll
  * listener maps scroll progress to the active screen (0→1→2). Once the 3 screens
- * are consumed the sticky releases and the page continues scrolling to the
- * "Rencontre" teaser below. No scroll hijacking (`preventDefault`) — that breaks
- * iOS/touch and a11y — we only read native scroll.
+ * are consumed the sticky releases and the page continues to the "Rencontre"
+ * teaser below. No scroll hijacking (`preventDefault`) — that breaks iOS/touch
+ * and a11y — we only read native scroll.
  *
- * Mobile (< lg): no pin. The screens auto-advance on a timer and can be tapped
- * via the dots; layout stacks. Animations are transform/opacity only, per
+ * Mobile (< lg): no pin. Screens auto-advance on a timer and can be tapped via
+ * the dots; layout stacks. Animations are transform/opacity only, per
  * docs/PERFORMANCE.md (no backdrop-blur, no transition-all, no layout anims).
+ *
+ * Screen 3 photos: drop real images in `public/home-showcase/` named
+ * `dog-1.jpg`, `dog-2.jpg`, `dog-3.jpg`. They're layered over a gradient, so if
+ * a file is missing the tile still looks good (gradient fallback).
  */
 
+import Link from "next/link";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
-  CalendarCheck,
+  ArrowRight,
+  Clock,
   Heart,
   Lock,
   MapPin,
   MessagesSquare,
   PawPrint,
+  Quote,
   ShieldCheck,
   Sparkles,
   Star,
@@ -34,30 +42,57 @@ import {
 
 const clamp = (n: number, min: number, max: number) => Math.min(max, Math.max(min, n));
 
-// ── Phone screens ─────────────────────────────────────────────────────────────
+// Screen shell — consistent padding that clears the notch at the top.
+function Screen({ children }: { children: ReactNode }) {
+  return <div className="flex h-full w-full flex-col gap-3 bg-white px-4 pb-4 pt-9">{children}</div>;
+}
+
+function ScreenLabel({ children }: { children: ReactNode }) {
+  return (
+    <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--dogshift-blue)]">
+      {children}
+    </span>
+  );
+}
+
+function DetailRow({ icon: Icon, label, value }: { icon: typeof Clock; label: string; value: string }) {
+  return (
+    <div className="flex items-center gap-2.5">
+      <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[var(--dogshift-blue)]/10 text-[var(--dogshift-blue)]">
+        <Icon className="h-3.5 w-3.5" aria-hidden />
+      </span>
+      <span className="text-[11px] text-slate-500">{label}</span>
+      <span className="ml-auto text-[12px] font-semibold text-slate-900">{value}</span>
+    </div>
+  );
+}
+
+// ── Screen 1 — Réservation ────────────────────────────────────────────────────
 
 function ScreenBooking() {
   return (
-    <div className="flex h-full w-full flex-col gap-3 bg-white p-4">
+    <Screen>
       <div className="flex items-center justify-between">
-        <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--dogshift-blue)]">
-          Réservation
-        </span>
+        <ScreenLabel>Réservation</ScreenLabel>
         <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
           <ShieldCheck className="h-3 w-3" aria-hidden /> Confirmée
         </span>
       </div>
 
-      <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-3">
-        <div className="flex items-center gap-2">
-          <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--dogshift-blue)]/10 text-[var(--dogshift-blue)]">
-            <CalendarCheck className="h-4 w-4" aria-hidden />
-          </span>
-          <div>
-            <p className="text-[12px] font-semibold text-slate-900">Balade avec Léa</p>
-            <p className="text-[11px] text-slate-500">Sam. 26 juil. · 14 h 00</p>
-          </div>
+      <div className="flex items-center gap-2.5 rounded-2xl border border-slate-200 bg-slate-50/70 p-3">
+        <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-[var(--dogshift-blue)] to-fuchsia-400 text-white">
+          <PawPrint className="h-5 w-5" aria-hidden />
+        </span>
+        <div>
+          <p className="text-[13px] font-semibold text-slate-900">Balade avec Léa</p>
+          <p className="text-[11px] text-slate-500">Sam. 26 juil. · 14 h 00</p>
         </div>
+      </div>
+
+      <div className="flex flex-col gap-2.5 rounded-2xl border border-slate-200 p-3">
+        <DetailRow icon={MapPin} label="Lieu" value="Vevey centre" />
+        <DetailRow icon={Clock} label="Durée" value="1 h de balade" />
+        <DetailRow icon={PawPrint} label="Chien" value="Milo · moyen" />
       </div>
 
       <div className="mt-auto flex items-center justify-between rounded-2xl bg-[var(--dogshift-blue)] px-3 py-2.5 text-white">
@@ -66,16 +101,16 @@ function ScreenBooking() {
         </span>
         <span className="text-[13px] font-semibold">25 CHF</span>
       </div>
-    </div>
+    </Screen>
   );
 }
 
+// ── Screen 2 — Confiance ──────────────────────────────────────────────────────
+
 function ScreenTrust() {
   return (
-    <div className="flex h-full w-full flex-col gap-3 bg-white p-4">
-      <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--dogshift-blue)]">
-        Dogsitter vérifié
-      </span>
+    <Screen>
+      <ScreenLabel>Dogsitter vérifié</ScreenLabel>
 
       <div className="flex items-center gap-3">
         <span className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-[var(--dogshift-blue)] to-fuchsia-400 text-white">
@@ -92,41 +127,70 @@ function ScreenTrust() {
         </div>
       </div>
 
-      <div className="relative mt-1 flex-1 overflow-hidden rounded-2xl border border-slate-200 bg-[radial-gradient(circle_at_30%_30%,#ede9fe,transparent_60%),radial-gradient(circle_at_75%_70%,#fae8ff,transparent_55%)]">
+      <div className="flex flex-wrap gap-1.5">
+        {["Vérifiée", "Assurée", "Répond en ~1 h"].map((b) => (
+          <span
+            key={b}
+            className="rounded-full bg-[var(--dogshift-blue)]/10 px-2.5 py-1 text-[10px] font-semibold text-[var(--dogshift-blue)]"
+          >
+            {b}
+          </span>
+        ))}
+      </div>
+
+      <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-3">
+        <Quote className="h-4 w-4 text-[var(--dogshift-blue)]/40" aria-hidden />
+        <p className="mt-1 text-[11px] leading-relaxed text-slate-600">
+          Léa est adorable, Milo l’attend déjà à la porte à chaque fois !
+        </p>
+        <p className="mt-1.5 text-[10px] font-semibold text-slate-400">— Sophie, propriétaire de Milo</p>
+      </div>
+
+      <div className="relative mt-auto h-24 overflow-hidden rounded-2xl border border-slate-200 bg-[radial-gradient(circle_at_30%_30%,#ede9fe,transparent_60%),radial-gradient(circle_at_75%_70%,#fae8ff,transparent_55%)]">
         <span className="absolute left-1/2 top-1/2 inline-flex h-8 w-8 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-[var(--dogshift-blue)] text-white shadow-lg">
           <MapPin className="h-4 w-4" aria-hidden />
         </span>
+        <span className="absolute bottom-2 left-3 text-[10px] font-medium text-slate-500">
+          À 1.2 km de toi · dispo cette semaine
+        </span>
       </div>
-
-      <p className="text-[11px] text-slate-500">À 1.2 km de toi · dispo cette semaine</p>
-    </div>
+    </Screen>
   );
 }
 
+// ── Screen 3 — Nouvelles ──────────────────────────────────────────────────────
+
+const NEWS_TILES = [
+  { src: "/home-showcase/dog-1.jpg", tone: "linear-gradient(135deg,#ddd6fe,#ede9fe)" },
+  { src: "/home-showcase/dog-2.jpg", tone: "linear-gradient(135deg,#fde68a,#fef3c7)" },
+  { src: "/home-showcase/dog-3.jpg", tone: "linear-gradient(135deg,#a7f3d0,#d1fae5)" },
+];
+
 function ScreenNews() {
-  const tiles = [
-    "from-violet-200 to-violet-100",
-    "from-amber-200 to-amber-100",
-    "from-emerald-200 to-emerald-100",
-  ];
   return (
-    <div className="flex h-full w-full flex-col gap-3 bg-white p-4">
-      <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--dogshift-blue)]">
-        Nouvelles · Aujourd’hui
-      </span>
+    <Screen>
+      <ScreenLabel>Nouvelles · Aujourd’hui</ScreenLabel>
       <p className="text-[13px] font-semibold leading-snug text-slate-900">
         Milo a passé une super journée 🐾
       </p>
 
       <div className="grid grid-cols-3 gap-1.5">
-        {tiles.map((t, i) => (
+        {NEWS_TILES.map((t, i) => (
           <div
             key={i}
-            className={`flex aspect-square items-center justify-center rounded-xl bg-gradient-to-br ${t}`}
-          >
-            <PawPrint className="h-4 w-4 text-white/80" aria-hidden />
-          </div>
+            className="aspect-square rounded-xl bg-cover bg-center"
+            style={{ backgroundImage: `url('${t.src}'), ${t.tone}` }}
+          />
         ))}
+      </div>
+
+      <div className="flex items-start gap-2 rounded-2xl rounded-tl-sm border border-slate-200 bg-slate-50/70 p-3">
+        <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[var(--dogshift-blue)] to-fuchsia-400 text-white">
+          <PawPrint className="h-3 w-3" aria-hidden />
+        </span>
+        <p className="text-[11px] leading-relaxed text-slate-600">
+          Il a adoré courir au parc, gros dodo maintenant 🥰
+        </p>
       </div>
 
       <div className="mt-auto grid grid-cols-2 gap-2">
@@ -139,7 +203,7 @@ function ScreenNews() {
           <p className="text-[12px] font-semibold text-slate-900">Détendu</p>
         </div>
       </div>
-    </div>
+    </Screen>
   );
 }
 
@@ -289,13 +353,17 @@ export default function PhoneShowcaseSection() {
   }, []);
 
   const current = FEATURES[active];
+  const isLast = active === FEATURES.length - 1;
 
   return (
     <>
-      <section ref={sectionRef} className="relative bg-white lg:h-[340vh]">
-        <div className="flex items-center py-16 sm:py-20 lg:sticky lg:top-0 lg:h-screen lg:py-0">
-          <div className="mx-auto w-full max-w-6xl px-6 sm:px-8 lg:px-10">
-            <div className="mx-auto max-w-2xl text-center">
+      <section ref={sectionRef} className="relative bg-white lg:h-[360vh]">
+        <div className="flex flex-col justify-center px-6 py-16 sm:px-8 sm:py-20 lg:sticky lg:top-0 lg:h-screen lg:px-10 lg:py-0 lg:pt-24">
+          <div className="mx-auto grid w-full max-w-6xl items-center gap-10 lg:grid-cols-2 lg:gap-16">
+            <PhoneFrame active={active} />
+
+            <div>
+              {/* Section title — above the violet card so it stays visible while pinned */}
               <p className="text-xs font-semibold uppercase tracking-wider text-[var(--dogshift-blue)]">
                 Fonctionnalités
               </p>
@@ -305,23 +373,17 @@ export default function PhoneShowcaseSection() {
               <p className="mt-3 text-sm leading-relaxed text-slate-600 sm:text-base">
                 Trois raisons de garder DogShift à portée de main.
               </p>
-            </div>
 
-            <div className="mt-10 grid items-center gap-10 lg:mt-14 lg:grid-cols-2 lg:gap-16">
-              <PhoneFrame active={active} />
-
-              <div className="rounded-3xl bg-[var(--dogshift-blue)] p-8 text-white shadow-[0_30px_80px_-50px_rgba(124,58,237,0.7)] sm:p-10">
+              <div className="mt-6 rounded-3xl bg-[var(--dogshift-blue)] p-7 text-white shadow-[0_30px_80px_-50px_rgba(124,58,237,0.7)] sm:p-8">
                 <p className="text-xs font-semibold uppercase tracking-wider text-white/70">
                   {current.label}
                 </p>
-                <h3 className="mt-2 text-2xl font-semibold tracking-tight sm:text-3xl">
+                <h3 className="mt-2 text-xl font-semibold tracking-tight sm:text-2xl">
                   {current.title}
                 </h3>
-                <p className="mt-3 text-sm leading-relaxed text-white/85 sm:text-base">
-                  {current.text}
-                </p>
+                <p className="mt-3 text-sm leading-relaxed text-white/85">{current.text}</p>
 
-                <div className="mt-7 flex items-center gap-2">
+                <div className="mt-6 flex items-center gap-2">
                   {FEATURES.map((f, i) => (
                     <button
                       key={f.key}
@@ -336,10 +398,20 @@ export default function PhoneShowcaseSection() {
                   ))}
                 </div>
 
-                <p className="mt-5 inline-flex items-center gap-2 text-xs font-medium text-white/70">
-                  <MessagesSquare className="h-4 w-4" aria-hidden />
-                  Pensé pour te simplifier la vie.
-                </p>
+                {isLast ? (
+                  <Link
+                    href="/search"
+                    className="mt-6 inline-flex items-center gap-2 rounded-full bg-white px-6 py-3 text-sm font-semibold text-[var(--dogshift-blue)] shadow-sm transition hover:bg-white/90"
+                  >
+                    Réserve maintenant
+                    <ArrowRight className="h-4 w-4" aria-hidden />
+                  </Link>
+                ) : (
+                  <p className="mt-6 inline-flex items-center gap-2 text-xs font-medium text-white/70">
+                    <MessagesSquare className="h-4 w-4" aria-hidden />
+                    Continue de défiler pour tout voir.
+                  </p>
+                )}
               </div>
             </div>
           </div>
