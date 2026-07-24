@@ -41,6 +41,7 @@ model User {
   sitterProfile          SitterProfile?
   pushSubscriptions      PushSubscription[]
   nativePushTokens       NativePushToken[]
+  matchMessagesSent      MatchMessage[]          @relation("MatchMessagesSent")
 }
 
 model Notification {
@@ -728,11 +729,109 @@ model DogProfile {
   sitterInstructions String?
   /// Whether the dog is neutered/spayed — used to validate sitter acceptance criteria
   neutered           Boolean?
+  /// Sex of the dog — required to opt into the breeding-match feature.
+  sex                DogSex?
   bookings           Booking[]
   conversations      Conversation[]
   user               User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  matingProfile      MatingProfile?
 
   @@index([userId])
+}
+
+/// Opt-in breeding profile for a dog ("Tinder for dogs"). A dog is only
+/// discoverable in the swipe deck when `enabled` is true. Kept 1:1 with
+/// DogProfile so the hot DogProfile row stays lean and disabling/erasing is a
+/// single-row delete.
+model MatingProfile {
+  id              String     @id @default(cuid())
+  dogProfileId    String     @unique
+  /// Denormalised owner id (== DogProfile.userId) for cheap "exclude my own dogs" filters.
+  userId          String
+  enabled         Boolean    @default(false)
+  goal            MatingGoal @default(EXPLORING)
+  bio             String?    @db.Text
+  /// Canton / region text — v1 distance proxy (owners are not geocoded).
+  region          String?
+  /// Set when the owner ticks the single legal-compliance checkbox.
+  acceptedTermsAt DateTime?
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  dog        DogProfile @relation(fields: [dogProfileId], references: [id], onDelete: Cascade)
+  swipesMade Swipe[]    @relation("SwiperMating")
+  swipesGot  Swipe[]    @relation("TargetMating")
+  matchesA   Match[]    @relation("MatchDogA")
+  matchesB   Match[]    @relation("MatchDogB")
+
+  @@index([userId])
+  @@index([enabled])
+}
+
+/// One directed swipe from a dog's mating profile onto another's.
+model Swipe {
+  id          String         @id @default(cuid())
+  swiperDogId String
+  targetDogId String
+  direction   SwipeDirection
+  createdAt   DateTime       @default(now())
+
+  swiper MatingProfile @relation("SwiperMating", fields: [swiperDogId], references: [id], onDelete: Cascade)
+  target MatingProfile @relation("TargetMating", fields: [targetDogId], references: [id], onDelete: Cascade)
+
+  @@unique([swiperDogId, targetDogId])
+  @@index([targetDogId, direction])
+  @@index([swiperDogId])
+}
+
+/// A mutual LIKE between two mating profiles. Canonical pair: dogAId < dogBId.
+model Match {
+  id         String    @id @default(cuid())
+  dogAId     String
+  dogBId     String
+  createdAt  DateTime  @default(now())
+  closedAt   DateTime?
+  closedById String?
+
+  dogA   MatingProfile @relation("MatchDogA", fields: [dogAId], references: [id], onDelete: Cascade)
+  dogB   MatingProfile @relation("MatchDogB", fields: [dogBId], references: [id], onDelete: Cascade)
+  thread MatchThread?
+
+  @@unique([dogAId, dogBId])
+  @@index([dogAId])
+  @@index([dogBId])
+}
+
+/// Dedicated owner↔owner chat for a match (the existing Conversation model is
+/// owner↔sitter only and cannot be reused here).
+model MatchThread {
+  id                 String    @id @default(cuid())
+  matchId            String    @unique
+  lastMessageAt      DateTime?
+  lastMessagePreview String?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  match    Match          @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  messages MatchMessage[]
+
+  @@index([lastMessageAt])
+}
+
+model MatchMessage {
+  id        String    @id @default(cuid())
+  threadId  String
+  senderId  String
+  body      String    @db.Text
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  thread MatchThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  sender User        @relation("MatchMessagesSent", fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@index([threadId])
+  @@index([senderId])
+  @@index([createdAt])
 }
 
 model LeadMagnet {
@@ -901,6 +1000,25 @@ enum NotificationType {
   paymentReceived
   bookingConfirmed
   bookingReminder
+  newMatch
+}
+
+/// Sex of a dog — required for the breeding-match feature (opposite-sex matching).
+enum DogSex {
+  MALE
+  FEMALE
+}
+
+enum SwipeDirection {
+  LIKE
+  PASS
+}
+
+/// What the owner is looking for in the breeding-match feature.
+enum MatingGoal {
+  LITTER
+  STUD
+  EXPLORING
 }
 
 enum InviteCodeType {
