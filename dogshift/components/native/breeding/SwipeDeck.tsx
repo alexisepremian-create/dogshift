@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Heart, X, SlidersHorizontal, RefreshCw } from "lucide-react";
+import { Heart, X, SlidersHorizontal, RefreshCw, PawPrint } from "lucide-react";
 
 import MatingCard from "./MatingCard";
 import type { DeckCard } from "./types";
@@ -129,7 +129,9 @@ export default function SwipeDeck({
           </div>
         ) : !top ? (
           <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
-            <div className="text-5xl">🐾</div>
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#7c3aed]/10">
+              <PawPrint className="h-8 w-8 text-[#7c3aed]" />
+            </div>
             <p className="text-base font-semibold text-slate-900">Plus personne pour l&apos;instant</p>
             <p className="max-w-[260px] text-sm text-slate-500">Reviens plus tard ou élargis tes filtres — de nouveaux chiens arrivent régulièrement.</p>
             <button

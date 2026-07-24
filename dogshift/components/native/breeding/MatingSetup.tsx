@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Check } from "lucide-react";
+import { Check, Dog } from "lucide-react";
 
 import { BREEDING_ACCEPT_LABEL, BREEDING_DISCLAIMER, MATING_GOAL_LABELS, SWISS_CANTONS } from "@/lib/breeding/legalCopy";
 import type { MatingGoalValue, OwnerDog } from "./types";
@@ -131,7 +131,9 @@ export default function MatingSetup({ onChanged }: { onChanged?: () => void }) {
   if (dogs.length === 0) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-3 px-8 text-center">
-        <div className="text-5xl">🐶</div>
+        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#7c3aed]/10">
+          <Dog className="h-8 w-8 text-[#7c3aed]" />
+        </div>
         <p className="text-base font-semibold text-slate-900">Ajoute d&apos;abord ton chien</p>
         <p className="text-sm text-slate-500">Crée le profil de ton chien dans « Mes chiens », puis reviens ici pour lui trouver un partenaire.</p>
       </div>
