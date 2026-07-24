@@ -1,7 +1,7 @@
 "use client";
 /* eslint-disable @next/next/no-img-element */
 
-import { MapPin } from "lucide-react";
+import { MapPin, Dog } from "lucide-react";
 
 import { MATING_GOAL_LABELS, qualzuchtNotice } from "@/lib/breeding/legalCopy";
 import { ageLabel, type DeckCard } from "./types";
@@ -17,7 +17,9 @@ export default function MatingCard({ card }: { card: DeckCard }) {
       {card.photoUrl ? (
         <img src={card.photoUrl} alt={card.dogName} className="h-full w-full object-cover" draggable={false} />
       ) : (
-        <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-[#7c3aed]/20 to-slate-200 text-6xl">🐶</div>
+        <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-[#7c3aed]/25 to-slate-200">
+          <Dog className="h-24 w-24 text-white/80" />
+        </div>
       )}
 
       {/* Bottom gradient + info */}

@@ -3,7 +3,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { X } from "lucide-react";
+import { X, Dog, Heart } from "lucide-react";
 
 import SwipeDeck, { type DeckFilterState } from "./SwipeDeck";
 import DeckFilters from "./DeckFilters";
@@ -49,7 +49,9 @@ export default function BreedingHome() {
     `flex-1 rounded-full py-2 text-sm font-semibold transition ${tab === t ? "bg-white text-[#7c3aed] shadow-sm" : "text-slate-500"}`;
 
   return (
-    <div className="fixed inset-0 z-[60] flex flex-col bg-slate-50">
+    // Floors above the global bottom nav (var --ds-bottom-nav-h) so the app's
+    // bottom navigation stays visible + tappable on this screen (founder).
+    <div className="fixed inset-x-0 top-0 z-[45] flex flex-col bg-slate-50" style={{ bottom: "var(--ds-bottom-nav-h, 0px)" }}>
       {/* Header */}
       <div className="shrink-0 bg-white px-4 pb-2" style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 10px)" }}>
         <div className="flex items-center justify-between">
@@ -77,7 +79,9 @@ export default function BreedingHome() {
             <SwipeDeck activeDogId={activeId} filters={filters} onOpenFilters={() => setShowFilters(true)} onMatched={(c) => setMatchCard(c)} />
           ) : (
             <div className="flex h-full flex-col items-center justify-center gap-3 px-8 text-center">
-              <div className="text-5xl">🐕</div>
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#7c3aed]/10">
+                <Dog className="h-8 w-8 text-[#7c3aed]" />
+              </div>
               <p className="text-base font-semibold text-slate-900">Active ton chien</p>
               <p className="text-sm text-slate-500">Configure le profil d&apos;accouplement de ton chien pour commencer à swiper.</p>
               <button type="button" onClick={() => setTab("profile")} className="mt-1 rounded-full bg-[#7c3aed] px-5 py-2.5 text-sm font-semibold text-white active:scale-95">Configurer</button>
@@ -109,7 +113,8 @@ export default function BreedingHome() {
       {/* "It's a match" overlay */}
       {matchCard ? (
         <div className="fixed inset-0 z-[1300] flex flex-col items-center justify-center bg-[#7c3aed]/95 px-8 text-center text-white">
-          <p className="text-3xl font-extrabold">C&apos;est un match ! 💜</p>
+          <Heart className="mb-3 h-14 w-14 fill-white text-white" />
+          <p className="text-3xl font-extrabold">C&apos;est un match !</p>
           <p className="mt-2 text-base text-white/90">Toi et {matchCard.dogName} vous plaisez.</p>
           {matchCard.photoUrl ? <img src={matchCard.photoUrl} alt={matchCard.dogName} className="mt-6 h-32 w-32 rounded-full border-4 border-white object-cover" /> : null}
           <button type="button" onClick={() => { setMatchCard(null); setTab("matches"); }} className="mt-8 w-full max-w-[280px] rounded-full bg-white py-3 text-base font-bold text-[#7c3aed] active:scale-95">Envoyer un message</button>

@@ -2,7 +2,7 @@
 /* eslint-disable @next/next/no-img-element */
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowLeft, Send } from "lucide-react";
+import { ArrowLeft, Send, Heart, Dog } from "lucide-react";
 
 import { ageLabel, type MatchSummary } from "./types";
 
@@ -61,7 +61,7 @@ function MatchChat({ match, onBack }: { match: MatchSummary; onBack: () => void 
         {match.otherDog.photoUrl ? (
           <img src={match.otherDog.photoUrl} alt={match.otherDog.dogName} className="h-9 w-9 rounded-full object-cover" />
         ) : (
-          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#7c3aed]/15 text-sm">🐶</div>
+          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#7c3aed]/15"><Dog className="h-5 w-5 text-[#7c3aed]" /></div>
         )}
         <div className="min-w-0">
           <p className="truncate text-sm font-semibold text-slate-900">{match.otherDog.dogName}</p>
@@ -71,7 +71,7 @@ function MatchChat({ match, onBack }: { match: MatchSummary; onBack: () => void 
 
       <div ref={scrollRef} className="min-h-0 flex-1 space-y-2 overflow-y-auto px-4 py-3">
         {messages.length === 0 ? (
-          <p className="py-8 text-center text-sm text-slate-400">Dites-vous bonjour 👋</p>
+          <p className="py-8 text-center text-sm text-slate-400">Envoyez-vous un premier message</p>
         ) : (
           messages.map((m) => (
             <div key={m.id} className={`flex ${m.mine ? "justify-end" : "justify-start"}`}>
@@ -131,7 +131,9 @@ export default function MatchesTab() {
   if (matches.length === 0) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-3 px-8 text-center">
-        <div className="text-5xl">💜</div>
+        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#7c3aed]/10">
+          <Heart className="h-8 w-8 fill-[#7c3aed] text-[#7c3aed]" />
+        </div>
         <p className="text-base font-semibold text-slate-900">Pas encore de match</p>
         <p className="text-sm text-slate-500">Swipe à droite les chiens qui te plaisent. Quand c&apos;est réciproque, vous matchez et pouvez discuter ici.</p>
       </div>
@@ -146,7 +148,7 @@ export default function MatchesTab() {
             {m.otherDog.photoUrl ? (
               <img src={m.otherDog.photoUrl} alt={m.otherDog.dogName} className="h-12 w-12 rounded-full object-cover" />
             ) : (
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#7c3aed]/15 text-lg">🐶</div>
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#7c3aed]/15"><Dog className="h-6 w-6 text-[#7c3aed]" /></div>
             )}
             <div className="min-w-0 flex-1">
               <p className="truncate text-base font-semibold text-slate-900">
