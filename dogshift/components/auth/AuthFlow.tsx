@@ -25,7 +25,8 @@
 import { useEffect, useState } from "react";
 import TurnstileWidget, { TURNSTILE_ENABLED } from "@/components/security/TurnstileWidget";
 import { useRouter, useSearchParams } from "next/navigation";
-import { signIn, useSession } from "next-auth/react";
+import { getSession, signIn, useSession } from "next-auth/react";
+import { resolveCredentialsLoginOutcome } from "@/lib/auth/loginOutcome";
 import { Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
 
@@ -300,33 +301,37 @@ export default function AuthFlow() {
         redirect: false,
       });
 
-      if (!res) {
+      // The SESSION is the single source of truth — not signIn()'s return value.
+      // Auth.js v5 (beta) can resolve signIn("credentials", { redirect: false })
+      // with { error: "CredentialsSignin" } even when the JWT cookie WAS set
+      // server-side (bug: "Email ou mot de passe incorrect" shown, then a reload
+      // lands the user in their dashboard). So whenever signIn reports anything
+      // other than a clean success, re-check the real session before failing.
+      const hasSession = res && !res.error ? true : Boolean((await getSession())?.user);
+      const outcome = resolveCredentialsLoginOutcome(res, hasSession);
+
+      if (outcome === "success") {
+        if (isNative) beginAuthTransition();
+        router.replace(callbackUrl);
+        return;
+      }
+
+      if (outcome === "migrated_no_password") {
+        setError(
+          "Ce compte n'a pas encore de mot de passe DogShift. Clique sur « Mot de passe oublié ? » pour en définir un.",
+        );
+      } else if (outcome === "wrong_credentials") {
+        setError("Email ou mot de passe incorrect.");
+      } else {
         setError("Connexion impossible pour l'instant. Réessaie dans un instant.");
-        setLoading(false);
-        return;
       }
-
-      if (res.error) {
-        if (res.error === "MIGRATED_NO_PASSWORD" || res.code === "MIGRATED_NO_PASSWORD") {
-          setError(
-            "Ce compte n'a pas encore de mot de passe DogShift. Clique sur « Mot de passe oublié ? » pour en définir un.",
-          );
-        } else if (res.error === "CredentialsSignin") {
-          setError("Email ou mot de passe incorrect.");
-        } else {
-          setError("Connexion impossible. Vérifie tes identifiants et réessaie.");
-        }
-        reportApiError({
-          kind: "unauthorized",
-          code: res.error || "LOGIN_FAILED",
-          route: "auth.flow.login",
-        });
-        setLoading(false);
-        return;
-      }
-
-      if (isNative) beginAuthTransition();
-      router.replace(callbackUrl);
+      reportApiError({
+        kind: "unauthorized",
+        code: res?.error || "LOGIN_FAILED",
+        route: "auth.flow.login",
+      });
+      setLoading(false);
+      return;
     } catch (err) {
       reportApiError({
         kind: "internal_error",
@@ -395,7 +400,12 @@ export default function AuthFlow() {
         password,
         redirect: false,
       });
-      if (!loginRes || loginRes.error) {
+      // Same Auth.js v5 quirk as handleLogin: a spurious signIn error must not
+      // bounce a freshly-registered user who is, in fact, already authenticated.
+      // Trust the session, not loginRes.error.
+      const hasSessionAfterSignup =
+        loginRes && !loginRes.error ? true : Boolean((await getSession())?.user);
+      if (resolveCredentialsLoginOutcome(loginRes, hasSessionAfterSignup) !== "success") {
         router.replace("/login?registered=1");
         return;
       }
