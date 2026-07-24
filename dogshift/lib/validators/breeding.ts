@@ -25,3 +25,30 @@ export const matingEnableSchema = z
   });
 
 export type MatingEnableBody = z.infer<typeof matingEnableSchema>;
+
+/** One swipe of the active dog onto a candidate. */
+export const swipeSchema = z.object({
+  swiperDogId: z.string().min(1),
+  targetDogId: z.string().min(1),
+  direction: z.enum(SWIPE_DIRECTIONS),
+});
+
+export type SwipeBody = z.infer<typeof swipeSchema>;
+
+/** Deck query filters (all optional). */
+export const deckQuerySchema = z.object({
+  swiperDogId: z.string().min(1),
+  breedMode: z.enum(["same", "any"]).optional().default("any"),
+  size: z.enum(["small", "medium", "large"]).optional().nullable(),
+  region: z.string().max(80).optional().nullable(),
+  limit: z.coerce.number().int().min(1).max(30).optional().default(10),
+});
+
+export type DeckQuery = z.infer<typeof deckQuerySchema>;
+
+/** A message inside a match thread. */
+export const matchMessageSchema = z.object({
+  body: z.string().min(1).max(2000),
+});
+
+export type MatchMessageBody = z.infer<typeof matchMessageSchema>;
