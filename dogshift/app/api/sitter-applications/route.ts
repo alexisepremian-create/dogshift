@@ -38,6 +38,7 @@ import { calculateCandidatureScore, buildCandidatureTelegramMessage } from "@/li
 import { sendTelegramMessage } from "@/lib/telegram/sendTelegramMessage";
 import { logAudit } from "@/lib/audit";
 import { reportApiError } from "@/lib/observability/reportApiError";
+import { verifyTurnstileToken } from "@/lib/security/verifyTurnstile";
 
 export const runtime = "nodejs";
 
@@ -162,6 +163,19 @@ export async function POST(req: NextRequest) {
     // Honeypot: silently succeed for bots that fill the hidden `company` field.
     if (rawBody && typeof rawBody === "object" && (rawBody as Record<string, unknown>).company) {
       return NextResponse.json({ ok: true }, { status: 200 });
+    }
+
+    // Cloudflare Turnstile "verify you are human" check. No-op unless
+    // TURNSTILE_SECRET_KEY is configured (see lib/security/verifyTurnstile).
+    const turnstileToken =
+      rawBody && typeof rawBody === "object" &&
+      typeof (rawBody as Record<string, unknown>).turnstileToken === "string"
+        ? ((rawBody as Record<string, unknown>).turnstileToken as string)
+        : null;
+    const turnstile = await verifyTurnstileToken(turnstileToken, readIp(req));
+    if (!turnstile.ok) {
+      reportApiError({ kind: "forbidden", code: "TURNSTILE_FAILED", route: "sitter-applications.post" });
+      return NextResponse.json({ ok: false, error: "TURNSTILE_FAILED" }, { status: 403 });
     }
 
     // Defensive phone normalisation BEFORE zod validation so legacy clients

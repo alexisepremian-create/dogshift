@@ -23,6 +23,7 @@
  */
 
 import { useEffect, useState } from "react";
+import TurnstileWidget, { TURNSTILE_ENABLED } from "@/components/security/TurnstileWidget";
 import { useRouter, useSearchParams } from "next/navigation";
 import { signIn, useSession } from "next-auth/react";
 import { Eye, EyeOff } from "lucide-react";
@@ -72,6 +73,7 @@ export default function AuthFlow() {
   const [oauthInFlight, setOauthInFlight] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [autoGoogleStarted, setAutoGoogleStarted] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
 
   const isNative = useIsNativeApp();
   const busy = checking || loading || oauthInFlight;
@@ -348,6 +350,11 @@ export default function AuthFlow() {
       return;
     }
 
+    if (TURNSTILE_ENABLED && !turnstileToken) {
+      setError("Confirme que tu n'es pas un robot avant de continuer.");
+      return;
+    }
+
     setError(null);
     setLoading(true);
     try {
@@ -358,6 +365,7 @@ export default function AuthFlow() {
           email,
           password,
           name: name.trim() || null,
+          turnstileToken,
         }),
       });
       const body = (await registerRes.json().catch(() => ({}))) as {
@@ -372,6 +380,9 @@ export default function AuthFlow() {
           setError("Un compte existe déjà pour cet email. Entre ton mot de passe pour te connecter.");
         } else if (body.error === "WEAK_PASSWORD") {
           setError("Mot de passe trop faible : 8 caractères, avec majuscule et chiffre.");
+        } else if (body.error === "TURNSTILE_FAILED") {
+          setError("La vérification anti-robot a échoué. Réessaie.");
+          setTurnstileToken(null);
         } else {
           setError("Inscription impossible. Réessaie dans un instant.");
         }
@@ -637,6 +648,12 @@ export default function AuthFlow() {
               <p className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-center text-sm text-rose-900">
                 {error}
               </p>
+            ) : null}
+
+            {TURNSTILE_ENABLED ? (
+              <div className="flex justify-center">
+                <TurnstileWidget onToken={setTurnstileToken} />
+              </div>
             ) : null}
 
             <button

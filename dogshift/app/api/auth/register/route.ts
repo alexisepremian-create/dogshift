@@ -28,6 +28,7 @@ import { sendEmail } from "@/lib/email/sendEmail";
 import { renderEmailVerificationEmail } from "@/lib/email/templates/emailVerificationEmail";
 import { generateResetToken } from "@/lib/auth/passwordResetToken";
 import { reportApiError } from "@/lib/observability/reportApiError";
+import { verifyTurnstileToken } from "@/lib/security/verifyTurnstile";
 
 export const runtime = "nodejs";
 
@@ -68,6 +69,21 @@ export async function POST(req: Request) {
       route: "auth.register",
     });
     return NextResponse.json({ ok: false, error: code }, { status: 400 });
+  }
+
+  // Cloudflare Turnstile "verify you are human" check. No-op unless
+  // TURNSTILE_SECRET_KEY is configured (see lib/security/verifyTurnstile).
+  const turnstileToken =
+    typeof (body as { turnstileToken?: unknown }).turnstileToken === "string"
+      ? (body as { turnstileToken: string }).turnstileToken
+      : null;
+  const turnstile = await verifyTurnstileToken(
+    turnstileToken,
+    req.headers.get("cf-connecting-ip") ?? req.headers.get("x-forwarded-for"),
+  );
+  if (!turnstile.ok) {
+    reportApiError({ kind: "forbidden", code: "TURNSTILE_FAILED", route: "auth.register" });
+    return NextResponse.json({ ok: false, error: "TURNSTILE_FAILED" }, { status: 403 });
   }
 
   const email = parsed.data.email.trim().toLowerCase();
