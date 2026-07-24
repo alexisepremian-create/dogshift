@@ -8,6 +8,8 @@ import { canSendReport } from "@/lib/serviceReport/eligibility";
 import { presignGetObject } from "@/lib/r2";
 import { sendEmail } from "@/lib/email/sendEmail";
 import { buildServiceReportEmail } from "@/lib/email/serviceReportEmail";
+import { buildRouteMapUrl } from "@/lib/serviceReport/routeStaticMap";
+import type { LatLng } from "@/lib/serviceReport/track";
 import { createNotification } from "@/lib/notifications/inApp";
 import { sendPushToUser } from "@/lib/push/send";
 import { sendNativePushToUser } from "@/lib/push/native";
@@ -108,6 +110,9 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
     }
 
     const reportUrl = `${APP_URL}/account/bookings?id=${encodeURIComponent(booking.id)}`;
+    const routeMapUrl = Array.isArray(sent.routeJson) && (sent.routeJson as unknown[]).length >= 2
+      ? buildRouteMapUrl({ route: sent.routeJson as unknown as LatLng[], baseUrl: APP_URL })
+      : null;
 
     if (owner?.email) {
       const email = buildServiceReportEmail({
@@ -128,6 +133,7 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
           distanceMeters: sent.distanceMeters,
         },
         photoUrls,
+        routeMapUrl,
         reportUrl,
         baseUrl: APP_URL,
       });

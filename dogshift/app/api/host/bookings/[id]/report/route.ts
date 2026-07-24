@@ -39,6 +39,7 @@ function serializeReport(
     energy: number | null;
     incidents: string | null;
     distanceMeters: number | null;
+    routeJson: unknown;
     sentAt: Date | null;
     photos: { id: string; r2Key: string; caption: string | null; position: number }[];
   } | null,
@@ -57,6 +58,7 @@ function serializeReport(
     energy: report.energy,
     incidents: report.incidents,
     distanceMeters: report.distanceMeters,
+    routeJson: report.routeJson ?? null,
     sentAt: report.sentAt,
     photos: report.photos
       .slice()

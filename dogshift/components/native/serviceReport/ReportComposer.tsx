@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { Camera, Check, Loader2, Send } from "lucide-react";
 
 import { uploadReportPhoto, type UploadedPhoto } from "./reportClient";
+import WalkTracker from "./WalkTracker";
+import type { LatLng } from "@/lib/serviceReport/track";
 
 type Mood = "HAPPY" | "CALM" | "TIRED" | "PLAYFUL" | "ANXIOUS";
 
@@ -24,6 +26,8 @@ type LoadedReport = ReportState & {
   id: string;
   status: string;
   photos: UploadedPhoto[];
+  routeJson: LatLng[] | null;
+  distanceMeters: number | null;
 };
 
 type BookingCtx = {
@@ -75,6 +79,8 @@ export default function ReportComposer({ bookingId }: { bookingId: string }) {
   const [state, setState] = useState<ReportState>(EMPTY);
   const [photos, setPhotos] = useState<UploadedPhoto[]>([]);
   const [alreadySent, setAlreadySent] = useState(false);
+  const [initialRoute, setInitialRoute] = useState<LatLng[] | null>(null);
+  const [initialDistance, setInitialDistance] = useState<number | null>(null);
   const [uploading, setUploading] = useState(false);
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
@@ -101,6 +107,8 @@ export default function ReportComposer({ bookingId }: { bookingId: string }) {
           });
           setPhotos(r.photos ?? []);
           setAlreadySent(r.status === "SENT");
+          setInitialRoute(Array.isArray(r.routeJson) ? r.routeJson : null);
+          setInitialDistance(r.distanceMeters ?? null);
         }
       } catch {
         if (!cancelled) setNotFound(true);
@@ -239,6 +247,9 @@ export default function ReportComposer({ bookingId }: { bookingId: string }) {
         </div>
         <input ref={fileRef} type="file" accept="image/*" capture="environment" onChange={onPickPhoto} className="hidden" />
       </section>
+
+      {/* GPS walk tracker (optional) */}
+      <WalkTracker bookingId={bookingId} initialRoute={initialRoute} initialDistanceMeters={initialDistance} />
 
       {/* Checklist */}
       <section className="mb-6">

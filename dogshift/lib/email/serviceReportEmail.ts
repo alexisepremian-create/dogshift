@@ -55,10 +55,12 @@ export function buildServiceReportEmail(params: {
   dateLabel: string;
   report: ReportEmailData;
   photoUrls: string[];
+  /** Optional server-rendered route-map image (see lib/serviceReport/routeStaticMap). */
+  routeMapUrl?: string | null;
   reportUrl: string;
   baseUrl: string;
 }): { subject: string; html: string; text: string } {
-  const { dogName, sitterName, serviceLabel, dateLabel, report, photoUrls, reportUrl, baseUrl } = params;
+  const { dogName, sitterName, serviceLabel, dateLabel, report, photoUrls, routeMapUrl, reportUrl, baseUrl } = params;
   const dog = dogName || "Ton chien";
   const sitter = sitterName || "Ton dogsitter";
 
@@ -75,7 +77,11 @@ export function buildServiceReportEmail(params: {
     ? `<p style="margin:14px 0 4px;font-weight:700;color:#b45309;font-size:14px;">À signaler</p><p style="margin:0;color:#92400e;font-size:14px;line-height:1.5;">${esc(report.incidents)}</p>`
     : "";
 
-  const extraHtml = `${photosHtml(photoUrls)}${checklistHtml(lines)}${noteHtml}${incidentsHtml}`;
+  const routeHtml = routeMapUrl
+    ? `<img src="${esc(routeMapUrl)}" alt="Parcours de la balade" width="516" style="width:100%;max-width:516px;border-radius:12px;display:block;margin:8px 0;" />`
+    : "";
+
+  const extraHtml = `${photosHtml(photoUrls)}${routeHtml}${checklistHtml(lines)}${noteHtml}${incidentsHtml}`;
 
   const { html } = renderEmailLayout({
     logoUrl: `${baseUrl}/dogshift-logo.png`,
