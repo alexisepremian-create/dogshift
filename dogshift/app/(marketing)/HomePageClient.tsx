@@ -34,6 +34,7 @@ import MapPreview from "@/components/MapPreview";
 import SitterCard, { type SitterPreview } from "@/components/ui/SitterCard";
 import { DogSmallIcon, DogMediumIcon, DogLargeIcon } from "@/components/DogSizeIcon";
 import { MONTHS_FR, WEEK_FR, calendarDays, toISO, isDatePast, isToday } from "@/components/ui/Calendar";
+import PhoneShowcaseSection from "@/components/marketing/PhoneShowcaseSection";
 
 // ── LAZY SECTION ──────────────────────────────────────────────────────────────
 // Defers mounting of below-the-fold sections until they're 200px from the
@@ -3077,6 +3078,7 @@ export default function HomePageClient({ sitters = [] }: { sitters?: SitterPrevi
         <ReassuranceSection />
         <ServicesSection />
         <HowItWorksSection />
+        <PhoneShowcaseSection />
         <SecuritySection />
 
         <LazySection minHeight={300}>
