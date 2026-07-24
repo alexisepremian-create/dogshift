@@ -18,6 +18,7 @@ import {
   User,
 } from "lucide-react";
 
+import TurnstileWidget, { TURNSTILE_ENABLED } from "@/components/security/TurnstileWidget";
 import AvailabilityGrid from "@/components/form/AvailabilityGrid";
 import Checkbox from "@/components/form/Checkbox";
 import Field from "@/components/form/Field";
@@ -178,6 +179,7 @@ export default function SitterApplicationForm({
   // submit the current step. Resets on step change so a fresh step never
   // greets the user with inherited red messages.
   const [showErrors, setShowErrors] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const [emailEligibility, setEmailEligibility] =
     useState<EmailEligibilityState>({ kind: "ok" });
   const topAnchorRef = useRef<HTMLDivElement | null>(null);
@@ -358,6 +360,10 @@ export default function SitterApplicationForm({
       setStep(0);
       return;
     }
+    if (TURNSTILE_ENABLED && !turnstileToken) {
+      setServerError("Confirme que tu n'es pas un robot avant d'envoyer.");
+      return;
+    }
     setStatus("submitting");
     try {
       const sp = new URLSearchParams(
@@ -420,6 +426,7 @@ export default function SitterApplicationForm({
         consentInterview: data.consentInterview,
         consentPrivacy: data.consentPrivacy,
         company: data.company ?? "",
+        turnstileToken,
       };
 
       const res = await fetch("/api/sitter-applications", {
@@ -451,6 +458,12 @@ export default function SitterApplicationForm({
           });
           setStep(0);
           setStatus("idle");
+          return;
+        }
+        if (res.status === 403 && json?.error === "TURNSTILE_FAILED") {
+          setTurnstileToken(null);
+          setServerError("La vérification anti-robot a échoué. Réessaie.");
+          setStatus("error");
           return;
         }
         setServerError(msg);
@@ -1131,6 +1144,15 @@ export default function SitterApplicationForm({
               )}
             />
           </FormSection>
+        </div>
+      ) : null}
+
+      {/* ------------------------------------------------------------------ */}
+      {/* Human check (Cloudflare Turnstile) — only on the final step         */}
+      {/* ------------------------------------------------------------------ */}
+      {TURNSTILE_ENABLED && step === 2 ? (
+        <div className="flex justify-center">
+          <TurnstileWidget onToken={setTurnstileToken} />
         </div>
       ) : null}
 
