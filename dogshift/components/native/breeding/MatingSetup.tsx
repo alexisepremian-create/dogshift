@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Check, Dog } from "lucide-react";
+import { Check, Dog, Plus } from "lucide-react";
 
 import { BREEDING_ACCEPT_LABEL, BREEDING_DISCLAIMER, MATING_GOAL_LABELS, SWISS_CANTONS } from "@/lib/breeding/legalCopy";
+import BreedingEmptyState from "./BreedingEmptyState";
 import type { MatingGoalValue, OwnerDog } from "./types";
 
 type MatingProfileRow = {
@@ -31,6 +32,9 @@ export default function MatingSetup({ onChanged }: { onChanged?: () => void }) {
   const [editor, setEditor] = useState<Editor | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [adding, setAdding] = useState(false);
+  const [newDog, setNewDog] = useState<{ name: string; breed: string; sex: "MALE" | "FEMALE" | null }>({ name: "", breed: "", sex: null });
+  const [addErr, setAddErr] = useState<string | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -120,6 +124,54 @@ export default function MatingSetup({ onChanged }: { onChanged?: () => void }) {
     }
   };
 
+  const sexBtn = (active: boolean) =>
+    `flex-1 rounded-2xl py-3 text-sm font-semibold transition active:scale-95 ${active ? "bg-[#7c3aed] text-white" : "bg-slate-100 text-slate-700"}`;
+
+  const addDog = async () => {
+    setAddErr(null);
+    const name = newDog.name.trim();
+    if (!name) {
+      setAddErr("Donne un nom à ton chien.");
+      return;
+    }
+    setSaving(true);
+    try {
+      const res = await fetch("/api/account/dogs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, breed: newDog.breed.trim() || null, sex: newDog.sex }),
+      });
+      if (!res.ok) {
+        setAddErr("Impossible d'ajouter le chien.");
+        return;
+      }
+      setNewDog({ name: "", breed: "", sex: null });
+      setAdding(false);
+      await load();
+    } catch {
+      setAddErr("Impossible d'ajouter le chien.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const addForm = (
+    <div className="rounded-2xl border border-[#7c3aed]/30 bg-[#7c3aed]/5 p-4">
+      <p className="text-sm font-semibold text-slate-900">Nouveau chien</p>
+      <input value={newDog.name} onChange={(e) => setNewDog({ ...newDog, name: e.target.value.slice(0, 60) })} placeholder="Nom (ex. Milo)" className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-base text-slate-900" />
+      <input value={newDog.breed} onChange={(e) => setNewDog({ ...newDog, breed: e.target.value.slice(0, 80) })} placeholder="Race (ex. Labrador)" className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-base text-slate-900" />
+      <div className="mt-2 flex gap-2">
+        <button type="button" className={sexBtn(newDog.sex === "MALE")} onClick={() => setNewDog({ ...newDog, sex: "MALE" })}>Mâle</button>
+        <button type="button" className={sexBtn(newDog.sex === "FEMALE")} onClick={() => setNewDog({ ...newDog, sex: "FEMALE" })}>Femelle</button>
+      </div>
+      {addErr ? <p className="mt-2 text-sm font-medium text-rose-600">{addErr}</p> : null}
+      <div className="mt-3 flex gap-2">
+        <button type="button" onClick={() => { setAdding(false); setAddErr(null); }} className="flex-1 rounded-full bg-slate-100 py-2.5 text-sm font-semibold text-slate-700 active:scale-95">Annuler</button>
+        <button type="button" onClick={addDog} disabled={saving} className="flex-1 rounded-full bg-[#7c3aed] py-2.5 text-sm font-semibold text-white active:scale-95 disabled:opacity-50">Ajouter</button>
+      </div>
+    </div>
+  );
+
   if (loading) {
     return (
       <div className="flex h-full items-center justify-center">
@@ -130,22 +182,33 @@ export default function MatingSetup({ onChanged }: { onChanged?: () => void }) {
 
   if (dogs.length === 0) {
     return (
-      <div className="flex h-full flex-col items-center justify-center gap-3 px-8 text-center">
-        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#7c3aed]/10">
-          <Dog className="h-8 w-8 text-[#7c3aed]" />
-        </div>
-        <p className="text-base font-semibold text-slate-900">Ajoute d&apos;abord ton chien</p>
-        <p className="text-sm text-slate-500">Crée le profil de ton chien dans « Mes chiens », puis reviens ici pour lui trouver un partenaire.</p>
+      <div className="h-full overflow-y-auto px-4 py-4">
+        {adding ? (
+          addForm
+        ) : (
+          <BreedingEmptyState
+            icon={<Dog className="h-8 w-8 text-[#7c3aed]" />}
+            title="Ajoute ton chien"
+            subtitle="Crée le profil de ton chien ici pour lui trouver un partenaire."
+            action={
+              <button type="button" onClick={() => setAdding(true)} className="inline-flex items-center gap-1.5 rounded-full bg-[#7c3aed] px-5 py-2.5 text-sm font-semibold text-white active:scale-95">
+                <Plus className="h-4 w-4" /> Ajouter un chien
+              </button>
+            }
+          />
+        )}
       </div>
     );
   }
 
-  const sexBtn = (active: boolean) =>
-    `flex-1 rounded-2xl py-3 text-sm font-semibold transition active:scale-95 ${active ? "bg-[#7c3aed] text-white" : "bg-slate-100 text-slate-700"}`;
-
   return (
     <div className="h-full overflow-y-auto px-4 pb-6">
       <p className="px-1 pb-2 pt-1 text-sm text-slate-500">Active un chien pour le rendre visible dans les rencontres.</p>
+      {adding ? <div className="mb-3">{addForm}</div> : (
+        <button type="button" onClick={() => setAdding(true)} className="mb-3 flex w-full items-center justify-center gap-1.5 rounded-2xl border border-dashed border-[#7c3aed]/40 bg-[#7c3aed]/5 py-3 text-sm font-semibold text-[#7c3aed] active:scale-[0.99]">
+          <Plus className="h-4 w-4" /> Ajouter un chien
+        </button>
+      )}
       <div className="space-y-3">
         {dogs.map((dog) => {
           const p = profiles[dog.id];
