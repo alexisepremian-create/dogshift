@@ -71,6 +71,10 @@
     {
       "path": "/api/cron/profile-health-check",
       "schedule": "13 4 * * *"
+    },
+    {
+      "path": "/api/cron/service-reports",
+      "schedule": "*/5 * * * *"
     }
   ],
   "buildCommand": "npm run build",
