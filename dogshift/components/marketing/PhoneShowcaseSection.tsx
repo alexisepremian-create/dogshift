@@ -19,9 +19,9 @@
  * the dots; layout stacks. Animations are transform/opacity only, per
  * docs/PERFORMANCE.md (no backdrop-blur, no transition-all, no layout anims).
  *
- * Screen 3 photos: drop real images in `public/home-showcase/` named
- * `dog-1.jpg`, `dog-2.jpg`, `dog-3.jpg`. They're layered over a gradient, so if
- * a file is missing the tile still looks good (gradient fallback).
+ * Screen 3 photos: `public/iphone_1.jpg`, `iphone_2.jpg`, `iphone_3.jpg`.
+ * They're layered over a gradient, so if a file is missing the tile still looks
+ * good (gradient fallback).
  */
 
 import Link from "next/link";
@@ -161,9 +161,9 @@ function ScreenTrust() {
 // ── Screen 3 — Nouvelles ──────────────────────────────────────────────────────
 
 const NEWS_TILES = [
-  { src: "/home-showcase/dog-1.jpg", tone: "linear-gradient(135deg,#ddd6fe,#ede9fe)" },
-  { src: "/home-showcase/dog-2.jpg", tone: "linear-gradient(135deg,#fde68a,#fef3c7)" },
-  { src: "/home-showcase/dog-3.jpg", tone: "linear-gradient(135deg,#a7f3d0,#d1fae5)" },
+  { src: "/iphone_1.jpg", tone: "linear-gradient(135deg,#ddd6fe,#ede9fe)" },
+  { src: "/iphone_2.jpg", tone: "linear-gradient(135deg,#fde68a,#fef3c7)" },
+  { src: "/iphone_3.jpg", tone: "linear-gradient(135deg,#a7f3d0,#d1fae5)" },
 ];
 
 function ScreenNews() {
