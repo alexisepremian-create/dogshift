@@ -378,12 +378,68 @@ model Booking {
   financeEvents              BookingFinanceEvent[]
   conversations              Conversation[]        @relation("BookingConversations")
   review                     Review?
+  serviceReport              ServiceReport?
 
   @@index([userId])
   @@index([sitterId])
   @@index([dogProfileId])
   @@index([stripeSessionId])
   @@index([stripePaymentIntentId])
+}
+
+/// A sitter's post-service report to the owner: photos, a structured checklist,
+/// a free note, and an optional GPS walk track. One per booking (1:1).
+model ServiceReport {
+  id             String              @id @default(cuid())
+  bookingId      String              @unique
+  /// Sitter (User.sitterId) who authored the report.
+  sitterId       String
+  /// Owner (User.id) — denormalised for cheap owner-side lookups.
+  ownerId        String
+  status         ServiceReportStatus @default(DRAFT)
+  note           String?             @db.Text
+  /// Checklist (nullable = not answered).
+  peed           Boolean?
+  pooed          Boolean?
+  drankWater     Boolean?
+  ate            Boolean?
+  played         Boolean?
+  mood           DogMood?
+  /// Energy level 1..5.
+  energy         Int?
+  incidents      String?             @db.Text
+  /// Optional GPS walk track: polyline as JSON [[lat,lng], …].
+  routeJson      Json?
+  distanceMeters Int?
+  trackStartedAt DateTime?
+  trackEndedAt   DateTime?
+  sentAt         DateTime?
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  booking Booking              @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  photos  ServiceReportPhoto[]
+
+  @@index([sitterId, createdAt])
+  @@index([ownerId, createdAt])
+}
+
+model ServiceReportPhoto {
+  id        String    @id @default(cuid())
+  reportId  String
+  /// R2 object key (report-photos/{sitterId}/{bookingId}/{uuid}.ext).
+  r2Key     String
+  caption   String?
+  /// Where the photo was taken (optional, for the walk timeline).
+  lat       Float?
+  lng       Float?
+  takenAt   DateTime?
+  position  Int       @default(0)
+  createdAt DateTime  @default(now())
+
+  report ServiceReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  @@index([reportId])
 }
 
 model BookingFinanceEvent {
@@ -1001,6 +1057,24 @@ enum NotificationType {
   bookingConfirmed
   bookingReminder
   newMatch
+  serviceReportSelfie
+  serviceReportReminder
+  serviceReportReceived
+}
+
+/// Status of a sitter's service report.
+enum ServiceReportStatus {
+  DRAFT
+  SENT
+}
+
+/// Dog mood recorded in a service report checklist.
+enum DogMood {
+  HAPPY
+  CALM
+  TIRED
+  PLAYFUL
+  ANXIOUS
 }
 
 /// Sex of a dog — required for the breeding-match feature (opposite-sex matching).
