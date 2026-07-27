@@ -9,6 +9,7 @@ import NativeHomeSwitch from "@/components/native/NativeHomeSwitch";
 import type { SitterPreview } from "@/components/ui/SitterCard";
 import { prisma } from "@/lib/prisma";
 import { resolvePublicEnabledServices, normalizePersistedPublicPricing } from "@/lib/sitterEnabledServices";
+import { loadBookableServiceTypes } from "@/lib/availability/serviceActivation";
 
 export const revalidate = 300;
 
@@ -84,7 +85,7 @@ async function getFeaturedSitters(): Promise<SitterPreview[]> {
       .map((r: any) => String(r.sitterId ?? "").trim())
       .filter(Boolean);
 
-    const [configRows, reviewAggs] = await Promise.all([
+    const [configRows, reviewAggs, bookableBySitter] = await Promise.all([
       sitterIds.length > 0
         ? (prisma as any).serviceConfig.findMany({
             where: { sitterId: { in: sitterIds } },
@@ -99,6 +100,9 @@ async function getFeaturedSitters(): Promise<SitterPreview[]> {
             _avg: { rating: true },
           })
         : Promise.resolve([]),
+      // Batched, so a service that is activated but has zero availability never
+      // reaches a homepage card (it would answer UNAVAILABLE on every date).
+      loadBookableServiceTypes(prisma as any, sitterIds),
     ]);
 
     const configsBySitter = new Map<string, any[]>();
@@ -132,6 +136,7 @@ async function getFeaturedSitters(): Promise<SitterPreview[]> {
           serviceConfigs: configsBySitter.get(sid) ?? [],
           pricing: s.pricing,
           servicesJson: s.services,
+          bookableServiceTypes: bookableBySitter.get(sid) ?? [],
         });
 
         const pricing = normalizePersistedPublicPricing(s.pricing);

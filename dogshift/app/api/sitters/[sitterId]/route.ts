@@ -10,6 +10,7 @@ import {
   normalizePersistedPublicPricing,
   resolvePublicEnabledServices,
 } from "@/lib/sitterEnabledServices";
+import { loadBookableServiceTypes } from "@/lib/availability/serviceActivation";
 
 export const runtime = "nodejs";
 
@@ -180,10 +181,15 @@ export async function GET(
       }
     }
 
-    const serviceConfigs = await (prisma as any).serviceConfig.findMany({
-      where: { sitterId },
-      select: { serviceType: true, enabled: true },
-    });
+    const [serviceConfigs, bookableBySitter] = await Promise.all([
+      (prisma as any).serviceConfig.findMany({
+        where: { sitterId },
+        select: { serviceType: true, enabled: true },
+      }),
+      // An activated service with zero availability answers UNAVAILABLE on every
+      // date — don't advertise it on the fiche.
+      loadBookableServiceTypes(prisma as any, [sitterId]),
+    ]);
 
     const enabledServices = resolvePublicEnabledServices({
       serviceConfigs: Array.isArray(serviceConfigs)
@@ -194,6 +200,7 @@ export async function GET(
         : [],
       pricing: sitterProfile.pricing,
       servicesJson: sitterProfile.services,
+      bookableServiceTypes: bookableBySitter.get(sitterId) ?? [],
     });
     const lifecycleStatus = normalizeSitterLifecycleStatus(sitterProfile.lifecycleStatus, Boolean(sitterProfile.published));
     const verified = typeof (sitterProfile as any)?.verificationStatus === "string" ? (sitterProfile as any).verificationStatus === "approved" : false;

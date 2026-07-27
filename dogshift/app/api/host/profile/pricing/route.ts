@@ -1,9 +1,11 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getAuthedDbUser } from "@/lib/auth/getAuthedDbUser";
 import { Prisma } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
+import { SERVICE_DEFAULTS } from "@/lib/availability/slotEngine";
 import { buildEffectiveSitterCompletionProfile, computeSitterProfileCompletion } from "@/lib/sitterCompletion";
 import { zodParse } from "@/lib/validators/common";
 import { pricingUpdateSchema } from "@/lib/validators/sitter";
@@ -150,6 +152,9 @@ export async function PUT(req: NextRequest) {
           (prisma as any).serviceConfig.upsert({
             where: { sitterId_serviceType: { sitterId, serviceType } },
             create: {
+              // SERVICE_DEFAULTS fills the required Int columns that have no
+              // Prisma default — without them the create branch throws.
+              ...SERVICE_DEFAULTS[serviceType],
               sitterId,
               serviceType,
               enabled: false,

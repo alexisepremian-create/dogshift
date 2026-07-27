@@ -31,6 +31,10 @@ import type { PrismaClient } from "@prisma/client";
 
 import type { Prisma } from "@prisma/client";
 
+// Relative (not `@/`) so the node test runner can resolve it — tests/ runs
+// without the tsconfig path aliases.
+import { SERVICE_DEFAULTS } from "../availability/slotEngine.ts";
+
 /** UI labels used by SitterProfile.services + the dashboard. */
 export const UI_SERVICE_LABELS = ["Promenade", "Garde", "Pension"] as const;
 export type UiServiceLabel = (typeof UI_SERVICE_LABELS)[number];
@@ -160,7 +164,12 @@ export async function syncSitterServices(
       const serviceType = ENUM_BY_UI_LABEL[label];
       await txAny.serviceConfig.upsert({
         where: { sitterId_serviceType: { sitterId: input.sitterId, serviceType } },
-        create: { sitterId: input.sitterId, serviceType, enabled: canonical[label] },
+        // ServiceConfig has NO Prisma default for slotStepMin / minDurationMin /
+        // maxDurationMin / leadTimeMin / bufferBefore|AfterMin. Omitting them made
+        // the create branch throw PrismaClientValidationError, rolling back the whole
+        // transaction — so a sitter missing even one row could NEVER get synced
+        // (the caller swallows the error). Spread SERVICE_DEFAULTS to fill them.
+        create: { ...SERVICE_DEFAULTS[serviceType], sitterId: input.sitterId, serviceType, enabled: canonical[label] },
         update: { enabled: canonical[label] },
       });
       serviceConfigsUpserted++;

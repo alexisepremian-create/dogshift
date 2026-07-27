@@ -485,6 +485,16 @@ export default function AvailabilityStudioPage() {
     return (configByService[availabilityTab]?.enabled === true) && !pricingErrorByService[availabilityTab];
   }, [availabilityTab, configByService, pricingErrorByService]);
 
+  // A service can be activated and priced and still be unbookable: with zero
+  // rules and zero exceptions the slot engine answers UNAVAILABLE on every date,
+  // and the public fiche now hides it. Tell the sitter instead of letting them
+  // wonder why nobody books.
+  const tabHasNoAvailability = useMemo(() => {
+    if (!canEditAvailabilityForTab) return false;
+    return (rulesByService[availabilityTab]?.length ?? 0) === 0
+      && (exceptionsByService[availabilityTab]?.length ?? 0) === 0;
+  }, [availabilityTab, canEditAvailabilityForTab, exceptionsByService, rulesByService]);
+
   useEffect(() => {
     if (!bookingInfoOpen) return;
 
@@ -2449,6 +2459,14 @@ export default function AvailabilityStudioPage() {
                     {configByService[availabilityTab]?.enabled !== true
                       ? "Active d’abord ce service pour modifier ses disponibilités."
                       : pricingErrorByService[availabilityTab] ?? "Ajoute un tarif valide pour modifier les disponibilités."}
+                  </p>
+                </div>
+              ) : null}
+
+              {tabHasNoAvailability ? (
+                <div className="mb-3 rounded-2xl border border-amber-200 bg-amber-50 p-3">
+                  <p className="text-sm font-semibold text-amber-900">
+                    Ce service est activé mais tu n’as encore aucune disponibilité : il reste masqué pour les propriétaires.
                   </p>
                 </div>
               ) : null}

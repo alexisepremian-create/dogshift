@@ -35,6 +35,8 @@ const API_CODE_TO_FR: Record<string, string> = {
   PRICING_REQUIRED:
     "Tu dois d'abord définir un tarif pour ce service avant de pouvoir l'activer ou ajouter des disponibilités. Tu peux le faire dans la section Services & tarifs.",
   SERVICE_NOT_CONFIGURED: "Ce service n'est pas configuré pour ton profil.",
+  SERVICE_DISABLED:
+    "Ce service est désactivé. Active-le d'abord dans Services & tarifs — sinon tes disponibilités ne seront jamais visibles par les propriétaires.",
   SLOT_CONFLICT: "Ce créneau chevauche une autre règle. Ajuste les horaires.",
   OUT_OF_RANGE: "La valeur saisie est hors de la plage autorisée.",
 
