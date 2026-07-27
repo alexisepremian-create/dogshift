@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Check, Dog, Plus, X } from "lucide-react";
+import { Check, Dog, Plus, X, Navigation, Loader2 } from "lucide-react";
 
-import { BREEDING_ACCEPT_LABEL, BREEDING_DISCLAIMER, MATING_GOAL_LABELS, SWISS_CANTONS } from "@/lib/breeding/legalCopy";
+import { BREEDING_ACCEPT_LABEL, BREEDING_DISCLAIMER, MATING_GOAL_LABELS } from "@/lib/breeding/legalCopy";
 import BreedingEmptyState from "./BreedingEmptyState";
 import GenderToggle from "./GenderToggle";
 import type { MatingGoalValue, OwnerDog } from "./types";
@@ -14,6 +14,9 @@ type MatingProfileRow = {
   goal: MatingGoalValue;
   bio: string | null;
   region: string | null;
+  lat: number | null;
+  lng: number | null;
+  locationLabel: string | null;
   acceptedTermsAt: string | null;
 };
 
@@ -21,7 +24,9 @@ type Editor = {
   dogId: string;
   sex: "MALE" | "FEMALE" | null;
   goal: MatingGoalValue;
-  region: string;
+  lat: number | null;
+  lng: number | null;
+  locationLabel: string | null;
   bio: string;
   accept: boolean;
 };
@@ -32,6 +37,7 @@ export default function MatingSetup({ onChanged }: { onChanged?: () => void }) {
   const [loading, setLoading] = useState(true);
   const [editor, setEditor] = useState<Editor | null>(null);
   const [saving, setSaving] = useState(false);
+  const [locating, setLocating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const [newDog, setNewDog] = useState<{ name: string; breed: string; sex: "MALE" | "FEMALE" | null }>({ name: "", breed: "", sex: null });
@@ -49,7 +55,7 @@ export default function MatingSetup({ onChanged }: { onChanged?: () => void }) {
       setDogs(dData?.dogs ?? []);
       const map: Record<string, MatingProfileRow> = {};
       (pData?.profiles ?? []).forEach((p) => {
-        map[p.dogProfileId] = { dogProfileId: p.dogProfileId, enabled: p.enabled, goal: p.goal, bio: p.bio, region: p.region, acceptedTermsAt: p.acceptedTermsAt };
+        map[p.dogProfileId] = { dogProfileId: p.dogProfileId, enabled: p.enabled, goal: p.goal, bio: p.bio, region: p.region, lat: p.lat, lng: p.lng, locationLabel: p.locationLabel, acceptedTermsAt: p.acceptedTermsAt };
       });
       setProfiles(map);
     } catch {
@@ -70,10 +76,38 @@ export default function MatingSetup({ onChanged }: { onChanged?: () => void }) {
       dogId: dog.id,
       sex: dog.sex,
       goal: p?.goal ?? "EXPLORING",
-      region: p?.region ?? "",
+      lat: p?.lat ?? null,
+      lng: p?.lng ?? null,
+      locationLabel: p?.locationLabel ?? null,
       bio: p?.bio ?? "",
       accept: Boolean(p?.acceptedTermsAt),
     });
+  };
+
+  const captureLocation = async () => {
+    setLocating(true);
+    setError(null);
+    try {
+      const { Geolocation } = await import("@capacitor/geolocation");
+      try { await Geolocation.requestPermissions(); } catch { /* web fallback */ }
+      const pos = await Geolocation.getCurrentPosition({ enableHighAccuracy: true });
+      const lat = pos.coords.latitude;
+      const lng = pos.coords.longitude;
+      let label: string | null = null;
+      try {
+        const key = process.env.NEXT_PUBLIC_MAPTILER_KEY;
+        if (key) {
+          const r = await fetch(`https://api.maptiler.com/geocoding/${lng},${lat}.json?key=${encodeURIComponent(key)}&language=fr&limit=1&types=municipality,locality,place`);
+          const j = (await r.json().catch(() => null)) as { features?: Array<{ text?: string }> } | null;
+          label = (typeof j?.features?.[0]?.text === "string" && j.features[0].text.trim()) || null;
+        }
+      } catch { /* keep coords without a label */ }
+      setEditor((prev) => (prev ? { ...prev, lat, lng, locationLabel: label } : prev));
+    } catch {
+      setError("Impossible d'obtenir ta position. Vérifie l'autorisation de localisation.");
+    } finally {
+      setLocating(false);
+    }
   };
 
   const save = async (enable: boolean) => {
@@ -105,7 +139,9 @@ export default function MatingSetup({ onChanged }: { onChanged?: () => void }) {
           dogProfileId: editor.dogId,
           enabled: enable,
           goal: editor.goal,
-          region: editor.region || null,
+          lat: editor.lat,
+          lng: editor.lng,
+          locationLabel: editor.locationLabel,
           bio: editor.bio || null,
           acceptTerms: editor.accept,
         }),
@@ -246,11 +282,20 @@ export default function MatingSetup({ onChanged }: { onChanged?: () => void }) {
                     ))}
                   </select>
 
-                  <p className="mt-4 text-sm font-semibold text-slate-900">Région</p>
-                  <select value={editor.region} onChange={(e) => setEditor({ ...editor, region: e.target.value })} className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-base text-slate-900">
-                    <option value="">Non précisée</option>
-                    {SWISS_CANTONS.map((c) => <option key={c} value={c}>{c}</option>)}
-                  </select>
+                  <p className="mt-4 text-sm font-semibold text-slate-900">Position</p>
+                  <button
+                    type="button"
+                    onClick={captureLocation}
+                    disabled={locating}
+                    style={{ touchAction: "manipulation" }}
+                    className="mt-2 flex w-full items-center justify-center gap-2 rounded-2xl border border-[#7c3aed]/30 bg-[#7c3aed]/5 px-4 py-3 text-sm font-semibold text-[#7c3aed] active:scale-[0.99] disabled:opacity-60"
+                  >
+                    {locating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Navigation className="h-4 w-4" />}
+                    {editor.lat != null && editor.lng != null
+                      ? `Position : ${editor.locationLabel ?? "enregistrée"}`
+                      : "Utiliser ma position"}
+                  </button>
+                  <p className="mt-1.5 text-[11px] leading-snug text-slate-400">Ta position sert à afficher la distance aux autres chiens. On ne montre jamais ton adresse exacte.</p>
 
                   <p className="mt-4 text-sm font-semibold text-slate-900">Description</p>
                   <textarea value={editor.bio} onChange={(e) => setEditor({ ...editor, bio: e.target.value.slice(0, 500) })} rows={3} placeholder="Caractère, pedigree, ce que tu recherches…" className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-base text-slate-900" />

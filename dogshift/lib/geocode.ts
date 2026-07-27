@@ -26,3 +26,27 @@ export async function geocodeSwissLocation({ city, postalCode }: { city: string;
     return null;
   }
 }
+
+/**
+ * Reverse-geocode coordinates to a short human-readable place label
+ * (municipality / locality), e.g. "Lausanne". Returns null on any failure.
+ */
+export async function reverseGeocode(lat: number, lng: number): Promise<string | null> {
+  const key = process.env.NEXT_PUBLIC_MAPTILER_KEY;
+  if (!key || !Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+
+  try {
+    const url = `https://api.maptiler.com/geocoding/${lng},${lat}.json?key=${encodeURIComponent(key)}&language=fr&limit=1&types=municipality,locality,place`;
+    const res = await fetch(url, { method: "GET", headers: { Accept: "application/json" }, cache: "no-store" });
+    if (!res.ok) return null;
+    const data = (await res.json().catch(() => null)) as {
+      features?: Array<{ text?: string; place_name?: string }>;
+    } | null;
+    const f = data?.features?.[0];
+    const label = (typeof f?.text === "string" && f.text.trim()) || (typeof f?.place_name === "string" && f.place_name.split(",")[0]?.trim()) || null;
+    return label && label.length > 0 ? label.slice(0, 80) : null;
+  } catch (err) {
+    console.error("[geocode] reverseGeocode error", err);
+    return null;
+  }
+}

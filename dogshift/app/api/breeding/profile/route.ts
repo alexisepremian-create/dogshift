@@ -7,6 +7,7 @@ import { reportApiError } from "@/lib/observability/reportApiError";
 import { zodParse } from "@/lib/validators/common";
 import { matingEnableSchema } from "@/lib/validators/breeding";
 import { canEnableMating } from "@/lib/breeding/eligibility";
+import { reverseGeocode } from "@/lib/geocode";
 
 export const runtime = "nodejs";
 
@@ -50,7 +51,7 @@ export async function PUT(req: NextRequest) {
       route: "breeding.profile.put",
     });
     if (!parsed.ok) return parsed.response;
-    const { dogProfileId, enabled, goal, bio, region, acceptTerms } = parsed.data;
+    const { dogProfileId, enabled, goal, bio, region, lat, lng, locationLabel, acceptTerms } = parsed.data;
 
     const dog = await prisma.dogProfile.findUnique({
       where: { id: dogProfileId },
@@ -72,6 +73,17 @@ export async function PUT(req: NextRequest) {
     });
     const acceptedTermsAt = existing?.acceptedTermsAt ?? (acceptTerms ? new Date() : null);
 
+    // If coordinates are provided without a label, reverse-geocode the place name.
+    const hasCoords = typeof lat === "number" && typeof lng === "number";
+    let resolvedLabel = locationLabel ?? null;
+    if (hasCoords && !resolvedLabel) {
+      resolvedLabel = await reverseGeocode(lat as number, lng as number);
+    }
+
+    const geoData = hasCoords
+      ? { lat: lat as number, lng: lng as number, locationLabel: resolvedLabel }
+      : {};
+
     const profile = await prisma.matingProfile.upsert({
       where: { dogProfileId },
       create: {
@@ -82,8 +94,9 @@ export async function PUT(req: NextRequest) {
         bio: bio ?? null,
         region: region ?? null,
         acceptedTermsAt,
+        ...geoData,
       },
-      update: { enabled, goal, bio: bio ?? null, region: region ?? null, acceptedTermsAt },
+      update: { enabled, goal, bio: bio ?? null, region: region ?? null, acceptedTermsAt, ...geoData },
     });
     return NextResponse.json({ ok: true, profile });
   } catch (err) {

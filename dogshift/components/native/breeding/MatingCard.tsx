@@ -4,6 +4,7 @@
 import { MapPin, Dog } from "lucide-react";
 
 import { MATING_GOAL_LABELS, qualzuchtNotice } from "@/lib/breeding/legalCopy";
+import { formatDistanceKm } from "@/lib/breeding/geo";
 import { ageLabel, type DeckCard } from "./types";
 
 /** A single swipe card (photo-first, à la Tinder). Purely presentational. */
@@ -11,6 +12,12 @@ export default function MatingCard({ card }: { card: DeckCard }) {
   const age = ageLabel(card.birthYear);
   const notice = qualzuchtNotice(card.breed);
   const sexLabel = card.sex === "MALE" ? "Mâle" : card.sex === "FEMALE" ? "Femelle" : null;
+  const distanceLabel = formatDistanceKm(card.distanceKm);
+  const placeLabel = distanceLabel
+    ? card.locationLabel
+      ? `${distanceLabel} · ${card.locationLabel}`
+      : distanceLabel
+    : card.locationLabel ?? card.region;
 
   return (
     <div className="relative h-full w-full overflow-hidden rounded-3xl bg-slate-100 shadow-[0_20px_50px_rgba(2,6,23,0.25)]">
@@ -33,9 +40,9 @@ export default function MatingCard({ card }: { card: DeckCard }) {
         <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[13px] font-medium">
           {card.breed ? <span className="rounded-full bg-white/20 px-2.5 py-1 backdrop-blur">{card.breed}</span> : null}
           {sexLabel ? <span className="rounded-full bg-white/20 px-2.5 py-1 backdrop-blur">{sexLabel}</span> : null}
-          {card.region ? (
+          {placeLabel ? (
             <span className="inline-flex items-center gap-1 rounded-full bg-white/20 px-2.5 py-1 backdrop-blur">
-              <MapPin className="h-3 w-3" /> {card.region}
+              <MapPin className="h-3 w-3" /> {placeLabel}
             </span>
           ) : null}
         </div>

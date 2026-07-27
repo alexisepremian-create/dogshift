@@ -7,8 +7,11 @@ export type DeckCard = {
   birthYear: number | null;
   sex: "MALE" | "FEMALE" | null;
   region: string | null;
+  locationLabel: string | null;
+  distanceKm: number | null;
   bio: string | null;
   goal: MatingGoalValue;
+  photos: string[];
   photoUrl: string | null;
 };
 

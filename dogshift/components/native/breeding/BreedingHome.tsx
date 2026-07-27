@@ -11,6 +11,7 @@ import SwipeDeck, { type DeckFilterState } from "./SwipeDeck";
 import DeckFilters from "./DeckFilters";
 import MatchesTab from "./MatchesTab";
 import MatingSetup from "./MatingSetup";
+import GeoLoader from "./GeoLoader";
 import type { DeckCard } from "./types";
 
 type Tab = "deck" | "matches" | "profile";
@@ -23,7 +24,7 @@ export default function BreedingHome() {
   const [enabled, setEnabled] = useState<EnabledProfile[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [profilesLoaded, setProfilesLoaded] = useState(false);
-  const [filters, setFilters] = useState<DeckFilterState>({ breedMode: "any", size: null, region: null });
+  const [filters, setFilters] = useState<DeckFilterState>({ breedMode: "any", size: null, radiusKm: null });
   const [showFilters, setShowFilters] = useState(false);
   const [matchCard, setMatchCard] = useState<DeckCard | null>(null);
 
@@ -74,9 +75,7 @@ export default function BreedingHome() {
       <div className="min-h-0 flex-1">
         {tab === "deck" ? (
           !profilesLoaded ? (
-            <div className="flex h-full items-center justify-center">
-              <div className="h-7 w-7 animate-spin rounded-full border-2 border-[#7c3aed] border-t-transparent" />
-            </div>
+            <GeoLoader />
           ) : activeId ? (
             <SwipeDeck activeDogId={activeId} filters={filters} onOpenFilters={() => setShowFilters(true)} onMatched={(c) => setMatchCard(c)} />
           ) : (
