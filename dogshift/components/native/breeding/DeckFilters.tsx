@@ -2,13 +2,20 @@
 
 import { X } from "lucide-react";
 
-import { SWISS_CANTONS } from "@/lib/breeding/legalCopy";
 import type { DeckFilterState } from "./SwipeDeck";
 
 const SIZES: { key: "small" | "medium" | "large"; label: string }[] = [
   { key: "small", label: "Petit" },
   { key: "medium", label: "Moyen" },
   { key: "large", label: "Grand" },
+];
+
+const RADII: { value: number | null; label: string }[] = [
+  { value: 10, label: "10 km" },
+  { value: 25, label: "25 km" },
+  { value: 50, label: "50 km" },
+  { value: 100, label: "100 km" },
+  { value: null, label: "Partout" },
 ];
 
 /** Bottom-sheet filters for the swipe deck. */
@@ -65,19 +72,14 @@ export default function DeckFilters({
           ))}
         </div>
 
-        <p className="mt-4 text-sm font-semibold text-slate-900">Région</p>
-        <select
-          value={value.region ?? ""}
-          onChange={(e) => onChange({ ...value, region: e.target.value || null })}
-          className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-base text-slate-900"
-        >
-          <option value="">Toute la Suisse</option>
-          {SWISS_CANTONS.map((c) => (
-            <option key={c} value={c}>
-              {c}
-            </option>
+        <p className="mt-4 text-sm font-semibold text-slate-900">Distance</p>
+        <div className="mt-2 flex flex-wrap gap-2">
+          {RADII.map((r) => (
+            <button key={r.label} type="button" className={chip(value.radiusKm === r.value)} onClick={() => onChange({ ...value, radiusKm: r.value })}>
+              {r.label}
+            </button>
           ))}
-        </select>
+        </div>
 
         <button
           type="button"
