@@ -11,6 +11,7 @@ import SwipeDeck, { type DeckFilterState } from "./SwipeDeck";
 import DeckFilters from "./DeckFilters";
 import MatchesTab from "./MatchesTab";
 import MatingSetup from "./MatingSetup";
+import GeoLoader from "./GeoLoader";
 import type { DeckCard } from "./types";
 
 type Tab = "deck" | "matches" | "profile";
@@ -23,7 +24,7 @@ export default function BreedingHome() {
   const [enabled, setEnabled] = useState<EnabledProfile[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [profilesLoaded, setProfilesLoaded] = useState(false);
-  const [filters, setFilters] = useState<DeckFilterState>({ breedMode: "any", size: null, region: null });
+  const [filters, setFilters] = useState<DeckFilterState>({ breedMode: "any", size: null, radiusKm: null });
   const [showFilters, setShowFilters] = useState(false);
   const [matchCard, setMatchCard] = useState<DeckCard | null>(null);
 
@@ -74,16 +75,14 @@ export default function BreedingHome() {
       <div className="min-h-0 flex-1">
         {tab === "deck" ? (
           !profilesLoaded ? (
-            <div className="flex h-full items-center justify-center">
-              <div className="h-7 w-7 animate-spin rounded-full border-2 border-[#7c3aed] border-t-transparent" />
-            </div>
+            <GeoLoader />
           ) : activeId ? (
             <SwipeDeck activeDogId={activeId} filters={filters} onOpenFilters={() => setShowFilters(true)} onMatched={(c) => setMatchCard(c)} />
           ) : (
             <BreedingEmptyState
               illustration={<CrossingCards />}
-              title="Rencontres pour ton chien"
-              subtitle="Fais matcher ton chien avec d'autres près de chez toi — pour une portée ou juste une belle amitié. Swipe, matche, discute."
+              title="Aucune rencontre à proximité"
+              subtitle="Configure le profil de ton chien pour découvrir les chiens autour de toi."
               action={
                 <button type="button" onClick={() => setTab("profile")} className="rounded-full bg-[#7c3aed] px-5 py-2.5 text-sm font-semibold text-white active:scale-95">
                   Configurer

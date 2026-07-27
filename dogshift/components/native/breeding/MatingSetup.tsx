@@ -1,11 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Check, Dog, Plus, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Check, Dog, Plus, X, Navigation, Loader2, ImagePlus, Settings } from "lucide-react";
 
-import { BREEDING_ACCEPT_LABEL, BREEDING_DISCLAIMER, MATING_GOAL_LABELS, SWISS_CANTONS } from "@/lib/breeding/legalCopy";
+import { BREEDING_ACCEPT_LABEL, BREEDING_DISCLAIMER, MATING_GOAL_LABELS } from "@/lib/breeding/legalCopy";
+import { openNativeAppSettings } from "@/lib/native/capacitorBridge";
 import BreedingEmptyState from "./BreedingEmptyState";
 import GenderToggle from "./GenderToggle";
+import { uploadBreedingPhoto, saveBreedingPhotos, type PhotoItem } from "./photoClient";
 import type { MatingGoalValue, OwnerDog } from "./types";
 
 type MatingProfileRow = {
@@ -14,6 +16,10 @@ type MatingProfileRow = {
   goal: MatingGoalValue;
   bio: string | null;
   region: string | null;
+  lat: number | null;
+  lng: number | null;
+  locationLabel: string | null;
+  photoItems: PhotoItem[];
   acceptedTermsAt: string | null;
 };
 
@@ -21,10 +27,15 @@ type Editor = {
   dogId: string;
   sex: "MALE" | "FEMALE" | null;
   goal: MatingGoalValue;
-  region: string;
+  lat: number | null;
+  lng: number | null;
+  locationLabel: string | null;
+  photos: PhotoItem[];
   bio: string;
   accept: boolean;
 };
+
+const MAX_PHOTOS = 6;
 
 export default function MatingSetup({ onChanged }: { onChanged?: () => void }) {
   const [dogs, setDogs] = useState<OwnerDog[]>([]);
@@ -32,7 +43,11 @@ export default function MatingSetup({ onChanged }: { onChanged?: () => void }) {
   const [loading, setLoading] = useState(true);
   const [editor, setEditor] = useState<Editor | null>(null);
   const [saving, setSaving] = useState(false);
+  const [locating, setLocating] = useState(false);
+  const [permDenied, setPermDenied] = useState(false);
+  const [photoBusy, setPhotoBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const photoInputRef = useRef<HTMLInputElement | null>(null);
   const [adding, setAdding] = useState(false);
   const [newDog, setNewDog] = useState<{ name: string; breed: string; sex: "MALE" | "FEMALE" | null }>({ name: "", breed: "", sex: null });
   const [addErr, setAddErr] = useState<string | null>(null);
@@ -49,7 +64,7 @@ export default function MatingSetup({ onChanged }: { onChanged?: () => void }) {
       setDogs(dData?.dogs ?? []);
       const map: Record<string, MatingProfileRow> = {};
       (pData?.profiles ?? []).forEach((p) => {
-        map[p.dogProfileId] = { dogProfileId: p.dogProfileId, enabled: p.enabled, goal: p.goal, bio: p.bio, region: p.region, acceptedTermsAt: p.acceptedTermsAt };
+        map[p.dogProfileId] = { dogProfileId: p.dogProfileId, enabled: p.enabled, goal: p.goal, bio: p.bio, region: p.region, lat: p.lat, lng: p.lng, locationLabel: p.locationLabel, photoItems: p.photoItems ?? [], acceptedTermsAt: p.acceptedTermsAt };
       });
       setProfiles(map);
     } catch {
@@ -66,14 +81,89 @@ export default function MatingSetup({ onChanged }: { onChanged?: () => void }) {
   const openEditor = (dog: OwnerDog) => {
     const p = profiles[dog.id];
     setError(null);
+    setPermDenied(false);
     setEditor({
       dogId: dog.id,
       sex: dog.sex,
       goal: p?.goal ?? "EXPLORING",
-      region: p?.region ?? "",
+      lat: p?.lat ?? null,
+      lng: p?.lng ?? null,
+      locationLabel: p?.locationLabel ?? null,
+      photos: p?.photoItems ?? [],
       bio: p?.bio ?? "",
       accept: Boolean(p?.acceptedTermsAt),
     });
+  };
+
+  const onPickPhotos = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    e.target.value = "";
+    if (files.length === 0 || !editor) return;
+    setPhotoBusy(true);
+    setError(null);
+    try {
+      const room = MAX_PHOTOS - editor.photos.length;
+      const toAdd = files.slice(0, Math.max(0, room));
+      const keys = await Promise.all(toAdd.map((f) => uploadBreedingPhoto(f)));
+      const nextKeys = [...editor.photos.map((p) => p.key), ...keys];
+      const saved = await saveBreedingPhotos(editor.dogId, nextKeys);
+      setEditor((prev) => (prev ? { ...prev, photos: saved } : prev));
+    } catch {
+      setError("L'ajout de la photo a échoué.");
+    } finally {
+      setPhotoBusy(false);
+    }
+  };
+
+  const removePhoto = async (key: string) => {
+    if (!editor || photoBusy) return;
+    setPhotoBusy(true);
+    setError(null);
+    try {
+      const nextKeys = editor.photos.filter((p) => p.key !== key).map((p) => p.key);
+      const saved = await saveBreedingPhotos(editor.dogId, nextKeys);
+      setEditor((prev) => (prev ? { ...prev, photos: saved } : prev));
+    } catch {
+      setError("La suppression a échoué.");
+    } finally {
+      setPhotoBusy(false);
+    }
+  };
+
+  const captureLocation = async () => {
+    setLocating(true);
+    setError(null);
+    setPermDenied(false);
+    try {
+      const { Geolocation } = await import("@capacitor/geolocation");
+      try {
+        const perm = await Geolocation.requestPermissions();
+        if (perm.location === "denied" && perm.coarseLocation !== "granted") {
+          setPermDenied(true);
+          setError("La localisation est désactivée pour DogShift.");
+          return;
+        }
+      } catch { /* web fallback — the browser prompt handles it */ }
+      const pos = await Geolocation.getCurrentPosition({ enableHighAccuracy: true });
+      const lat = pos.coords.latitude;
+      const lng = pos.coords.longitude;
+      let label: string | null = null;
+      try {
+        const key = process.env.NEXT_PUBLIC_MAPTILER_KEY;
+        if (key) {
+          const r = await fetch(`https://api.maptiler.com/geocoding/${lng},${lat}.json?key=${encodeURIComponent(key)}&language=fr&limit=1&types=municipality,locality,place`);
+          const j = (await r.json().catch(() => null)) as { features?: Array<{ text?: string }> } | null;
+          label = (typeof j?.features?.[0]?.text === "string" && j.features[0].text.trim()) || null;
+        }
+      } catch { /* keep coords without a label */ }
+      setEditor((prev) => (prev ? { ...prev, lat, lng, locationLabel: label } : prev));
+    } catch {
+      // Most failures here are a denied/disabled permission — offer the shortcut.
+      setPermDenied(true);
+      setError("Impossible d'obtenir ta position. Vérifie l'autorisation de localisation.");
+    } finally {
+      setLocating(false);
+    }
   };
 
   const save = async (enable: boolean) => {
@@ -105,7 +195,9 @@ export default function MatingSetup({ onChanged }: { onChanged?: () => void }) {
           dogProfileId: editor.dogId,
           enabled: enable,
           goal: editor.goal,
-          region: editor.region || null,
+          lat: editor.lat,
+          lng: editor.lng,
+          locationLabel: editor.locationLabel,
           bio: editor.bio || null,
           acceptTerms: editor.accept,
         }),
@@ -239,6 +331,37 @@ export default function MatingSetup({ onChanged }: { onChanged?: () => void }) {
                     <p className="mt-2 rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-700">Ton chien est indiqué stérilisé — il n&apos;apparaîtra pas dans les rencontres des autres.</p>
                   ) : null}
 
+                  <p className="mt-4 text-sm font-semibold text-slate-900">Photos</p>
+                  <div className="mt-2 grid grid-cols-3 gap-2">
+                    {editor.photos.map((ph) => (
+                      <div key={ph.key} className="relative aspect-square overflow-hidden rounded-xl bg-slate-100">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={ph.url} alt="Photo" className="h-full w-full object-cover" />
+                        <button
+                          type="button"
+                          onClick={() => removePhoto(ph.key)}
+                          disabled={photoBusy}
+                          aria-label="Retirer la photo"
+                          className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-black/55 text-white active:scale-90"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                    {editor.photos.length < MAX_PHOTOS ? (
+                      <button
+                        type="button"
+                        onClick={() => photoInputRef.current?.click()}
+                        disabled={photoBusy}
+                        style={{ touchAction: "manipulation" }}
+                        className="flex aspect-square items-center justify-center rounded-xl border-2 border-dashed border-[#7c3aed]/40 bg-[#7c3aed]/5 text-[#7c3aed] active:scale-95 disabled:opacity-60"
+                      >
+                        {photoBusy ? <Loader2 className="h-6 w-6 animate-spin" /> : <ImagePlus className="h-6 w-6" />}
+                      </button>
+                    ) : null}
+                  </div>
+                  <input ref={photoInputRef} type="file" accept="image/*" multiple onChange={onPickPhotos} className="hidden" />
+
                   <p className="mt-4 text-sm font-semibold text-slate-900">Objectif</p>
                   <select value={editor.goal} onChange={(e) => setEditor({ ...editor, goal: e.target.value as MatingGoalValue })} className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-base text-slate-900">
                     {(Object.keys(MATING_GOAL_LABELS) as MatingGoalValue[]).map((g) => (
@@ -246,11 +369,30 @@ export default function MatingSetup({ onChanged }: { onChanged?: () => void }) {
                     ))}
                   </select>
 
-                  <p className="mt-4 text-sm font-semibold text-slate-900">Région</p>
-                  <select value={editor.region} onChange={(e) => setEditor({ ...editor, region: e.target.value })} className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-base text-slate-900">
-                    <option value="">Non précisée</option>
-                    {SWISS_CANTONS.map((c) => <option key={c} value={c}>{c}</option>)}
-                  </select>
+                  <p className="mt-4 text-sm font-semibold text-slate-900">Position</p>
+                  <button
+                    type="button"
+                    onClick={captureLocation}
+                    disabled={locating}
+                    style={{ touchAction: "manipulation" }}
+                    className="mt-2 flex w-full items-center justify-center gap-2 rounded-2xl border border-[#7c3aed]/30 bg-[#7c3aed]/5 px-4 py-3 text-sm font-semibold text-[#7c3aed] active:scale-[0.99] disabled:opacity-60"
+                  >
+                    {locating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Navigation className="h-4 w-4" />}
+                    {editor.lat != null && editor.lng != null
+                      ? `Position : ${editor.locationLabel ?? "enregistrée"}`
+                      : "Utiliser ma position"}
+                  </button>
+                  {permDenied ? (
+                    <button
+                      type="button"
+                      onClick={() => void openNativeAppSettings()}
+                      style={{ touchAction: "manipulation" }}
+                      className="mt-2 flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white active:scale-[0.99]"
+                    >
+                      <Settings className="h-4 w-4" /> Ouvrir les réglages
+                    </button>
+                  ) : null}
+                  <p className="mt-1.5 text-[11px] leading-snug text-slate-400">Ta position sert à afficher la distance aux autres chiens. On ne montre jamais ton adresse exacte.</p>
 
                   <p className="mt-4 text-sm font-semibold text-slate-900">Description</p>
                   <textarea value={editor.bio} onChange={(e) => setEditor({ ...editor, bio: e.target.value.slice(0, 500) })} rows={3} placeholder="Caractère, pedigree, ce que tu recherches…" className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-base text-slate-900" />

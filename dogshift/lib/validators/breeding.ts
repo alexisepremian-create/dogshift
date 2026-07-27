@@ -17,6 +17,9 @@ export const matingEnableSchema = z
     goal: z.enum(MATING_GOALS).optional().default("EXPLORING"),
     bio: z.string().max(500).optional().nullable(),
     region: z.string().max(80).optional().nullable(),
+    lat: z.number().min(-90).max(90).optional().nullable(),
+    lng: z.number().min(-180).max(180).optional().nullable(),
+    locationLabel: z.string().max(80).optional().nullable(),
     acceptTerms: z.boolean(),
   })
   .refine((d) => !d.enabled || d.acceptTerms === true, {
@@ -41,10 +44,19 @@ export const deckQuerySchema = z.object({
   breedMode: z.enum(["same", "any"]).optional().default("any"),
   size: z.enum(["small", "medium", "large"]).optional().nullable(),
   region: z.string().max(80).optional().nullable(),
+  radiusKm: z.coerce.number().int().min(1).max(1000).optional().nullable(),
   limit: z.coerce.number().int().min(1).max(30).optional().default(10),
 });
 
 export type DeckQuery = z.infer<typeof deckQuerySchema>;
+
+/** Set the ordered photo gallery for a dog's mating profile (max 6 R2 keys). */
+export const matingPhotosSchema = z.object({
+  dogProfileId: z.string().min(1),
+  photos: z.array(z.string().min(1).max(400)).max(6),
+});
+
+export type MatingPhotosBody = z.infer<typeof matingPhotosSchema>;
 
 /** A message inside a match thread. */
 export const matchMessageSchema = z.object({

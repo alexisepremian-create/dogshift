@@ -5,12 +5,13 @@ import { Heart, X, SlidersHorizontal, RefreshCw, PawPrint } from "lucide-react";
 
 import MatingCard from "./MatingCard";
 import BreedingEmptyState from "./BreedingEmptyState";
+import GeoLoader from "./GeoLoader";
 import type { DeckCard } from "./types";
 
 export type DeckFilterState = {
   breedMode: "same" | "any";
   size: "small" | "medium" | "large" | null;
-  region: string | null;
+  radiusKm: number | null;
 };
 
 const THRESHOLD = 90;
@@ -37,7 +38,7 @@ export default function SwipeDeck({
     try {
       const qs = new URLSearchParams({ swiperDogId: activeDogId, breedMode: filters.breedMode, limit: "12" });
       if (filters.size) qs.set("size", filters.size);
-      if (filters.region) qs.set("region", filters.region);
+      if (filters.radiusKm) qs.set("radiusKm", String(filters.radiusKm));
       const res = await fetch(`/api/breeding/deck?${qs.toString()}`, { cache: "no-store" });
       const data = (await res.json().catch(() => null)) as { ok?: boolean; cards?: DeckCard[] } | null;
       setCards(data?.ok && Array.isArray(data.cards) ? data.cards : []);
@@ -46,7 +47,7 @@ export default function SwipeDeck({
     } finally {
       setLoading(false);
     }
-  }, [activeDogId, filters.breedMode, filters.size, filters.region]);
+  }, [activeDogId, filters.breedMode, filters.size, filters.radiusKm]);
 
   useEffect(() => {
     void fetchDeck();
@@ -125,9 +126,7 @@ export default function SwipeDeck({
       {/* Card stack */}
       <div className="relative flex-1 px-4">
         {loading ? (
-          <div className="flex h-full items-center justify-center">
-            <div className="h-7 w-7 animate-spin rounded-full border-2 border-[#7c3aed] border-t-transparent" />
-          </div>
+          <GeoLoader />
         ) : !top ? (
           <BreedingEmptyState
             icon={<PawPrint className="h-8 w-8 text-[#7c3aed]" />}
