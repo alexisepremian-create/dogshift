@@ -807,8 +807,15 @@ model MatingProfile {
   enabled         Boolean    @default(false)
   goal            MatingGoal @default(EXPLORING)
   bio             String?    @db.Text
-  /// Canton / region text — v1 distance proxy (owners are not geocoded).
+  /// Canton / region text — legacy v1 distance proxy, superseded by lat/lng.
   region          String?
+  /// Geolocated position of the owner (Tinder-style distance matching).
+  lat             Float?
+  lng             Float?
+  /// Human-readable place label (reverse-geocoded, e.g. "Lausanne").
+  locationLabel   String?
+  /// Tinder-style photo gallery — ordered array of R2 object keys (first = primary).
+  photos          String[]
   /// Set when the owner ticks the single legal-compliance checkbox.
   acceptedTermsAt DateTime?
   createdAt       DateTime   @default(now())
