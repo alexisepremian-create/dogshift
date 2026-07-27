@@ -8,6 +8,7 @@ import { zodParse } from "@/lib/validators/common";
 import { matingEnableSchema } from "@/lib/validators/breeding";
 import { canEnableMating } from "@/lib/breeding/eligibility";
 import { reverseGeocode } from "@/lib/geocode";
+import { publicDogPhotoPath } from "@/lib/dogPhotoMedia";
 
 export const runtime = "nodejs";
 
@@ -28,11 +29,15 @@ export async function GET() {
     const user = await getAuthedDbUser();
     if (!user) return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
 
-    const profiles = await prisma.matingProfile.findMany({
+    const rows = await prisma.matingProfile.findMany({
       where: { userId: user.id },
       include: { dog: { select: DOG_SELECT } },
       orderBy: { createdAt: "asc" },
     });
+    const profiles = rows.map((p) => ({
+      ...p,
+      photoItems: (p.photos ?? []).map((k) => ({ key: k, url: publicDogPhotoPath(k) })),
+    }));
     return NextResponse.json({ ok: true, profiles });
   } catch (err) {
     console.error("[GET /api/breeding/profile]", err);

@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Check, Dog, Plus, X, Navigation, Loader2 } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Check, Dog, Plus, X, Navigation, Loader2, ImagePlus } from "lucide-react";
 
 import { BREEDING_ACCEPT_LABEL, BREEDING_DISCLAIMER, MATING_GOAL_LABELS } from "@/lib/breeding/legalCopy";
 import BreedingEmptyState from "./BreedingEmptyState";
 import GenderToggle from "./GenderToggle";
+import { uploadBreedingPhoto, saveBreedingPhotos, type PhotoItem } from "./photoClient";
 import type { MatingGoalValue, OwnerDog } from "./types";
 
 type MatingProfileRow = {
@@ -17,6 +18,7 @@ type MatingProfileRow = {
   lat: number | null;
   lng: number | null;
   locationLabel: string | null;
+  photoItems: PhotoItem[];
   acceptedTermsAt: string | null;
 };
 
@@ -27,9 +29,12 @@ type Editor = {
   lat: number | null;
   lng: number | null;
   locationLabel: string | null;
+  photos: PhotoItem[];
   bio: string;
   accept: boolean;
 };
+
+const MAX_PHOTOS = 6;
 
 export default function MatingSetup({ onChanged }: { onChanged?: () => void }) {
   const [dogs, setDogs] = useState<OwnerDog[]>([]);
@@ -38,7 +43,9 @@ export default function MatingSetup({ onChanged }: { onChanged?: () => void }) {
   const [editor, setEditor] = useState<Editor | null>(null);
   const [saving, setSaving] = useState(false);
   const [locating, setLocating] = useState(false);
+  const [photoBusy, setPhotoBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const photoInputRef = useRef<HTMLInputElement | null>(null);
   const [adding, setAdding] = useState(false);
   const [newDog, setNewDog] = useState<{ name: string; breed: string; sex: "MALE" | "FEMALE" | null }>({ name: "", breed: "", sex: null });
   const [addErr, setAddErr] = useState<string | null>(null);
@@ -55,7 +62,7 @@ export default function MatingSetup({ onChanged }: { onChanged?: () => void }) {
       setDogs(dData?.dogs ?? []);
       const map: Record<string, MatingProfileRow> = {};
       (pData?.profiles ?? []).forEach((p) => {
-        map[p.dogProfileId] = { dogProfileId: p.dogProfileId, enabled: p.enabled, goal: p.goal, bio: p.bio, region: p.region, lat: p.lat, lng: p.lng, locationLabel: p.locationLabel, acceptedTermsAt: p.acceptedTermsAt };
+        map[p.dogProfileId] = { dogProfileId: p.dogProfileId, enabled: p.enabled, goal: p.goal, bio: p.bio, region: p.region, lat: p.lat, lng: p.lng, locationLabel: p.locationLabel, photoItems: p.photoItems ?? [], acceptedTermsAt: p.acceptedTermsAt };
       });
       setProfiles(map);
     } catch {
@@ -79,9 +86,45 @@ export default function MatingSetup({ onChanged }: { onChanged?: () => void }) {
       lat: p?.lat ?? null,
       lng: p?.lng ?? null,
       locationLabel: p?.locationLabel ?? null,
+      photos: p?.photoItems ?? [],
       bio: p?.bio ?? "",
       accept: Boolean(p?.acceptedTermsAt),
     });
+  };
+
+  const onPickPhotos = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    e.target.value = "";
+    if (files.length === 0 || !editor) return;
+    setPhotoBusy(true);
+    setError(null);
+    try {
+      const room = MAX_PHOTOS - editor.photos.length;
+      const toAdd = files.slice(0, Math.max(0, room));
+      const keys = await Promise.all(toAdd.map((f) => uploadBreedingPhoto(f)));
+      const nextKeys = [...editor.photos.map((p) => p.key), ...keys];
+      const saved = await saveBreedingPhotos(editor.dogId, nextKeys);
+      setEditor((prev) => (prev ? { ...prev, photos: saved } : prev));
+    } catch {
+      setError("L'ajout de la photo a échoué.");
+    } finally {
+      setPhotoBusy(false);
+    }
+  };
+
+  const removePhoto = async (key: string) => {
+    if (!editor || photoBusy) return;
+    setPhotoBusy(true);
+    setError(null);
+    try {
+      const nextKeys = editor.photos.filter((p) => p.key !== key).map((p) => p.key);
+      const saved = await saveBreedingPhotos(editor.dogId, nextKeys);
+      setEditor((prev) => (prev ? { ...prev, photos: saved } : prev));
+    } catch {
+      setError("La suppression a échoué.");
+    } finally {
+      setPhotoBusy(false);
+    }
   };
 
   const captureLocation = async () => {
@@ -267,7 +310,38 @@ export default function MatingSetup({ onChanged }: { onChanged?: () => void }) {
 
               {open && editor ? (
                 <div className="border-t border-slate-100 px-4 py-4">
-                  <p className="text-sm font-semibold text-slate-900">Sexe</p>
+                  <p className="text-sm font-semibold text-slate-900">Photos</p>
+                  <div className="mt-2 grid grid-cols-3 gap-2">
+                    {editor.photos.map((ph) => (
+                      <div key={ph.key} className="relative aspect-square overflow-hidden rounded-xl bg-slate-100">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={ph.url} alt="Photo" className="h-full w-full object-cover" />
+                        <button
+                          type="button"
+                          onClick={() => removePhoto(ph.key)}
+                          disabled={photoBusy}
+                          aria-label="Retirer la photo"
+                          className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-black/55 text-white active:scale-90"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                    {editor.photos.length < MAX_PHOTOS ? (
+                      <button
+                        type="button"
+                        onClick={() => photoInputRef.current?.click()}
+                        disabled={photoBusy}
+                        style={{ touchAction: "manipulation" }}
+                        className="flex aspect-square items-center justify-center rounded-xl border-2 border-dashed border-[#7c3aed]/40 bg-[#7c3aed]/5 text-[#7c3aed] active:scale-95 disabled:opacity-60"
+                      >
+                        {photoBusy ? <Loader2 className="h-6 w-6 animate-spin" /> : <ImagePlus className="h-6 w-6" />}
+                      </button>
+                    ) : null}
+                  </div>
+                  <input ref={photoInputRef} type="file" accept="image/*" multiple onChange={onPickPhotos} className="hidden" />
+
+                  <p className="mt-4 text-sm font-semibold text-slate-900">Sexe</p>
                   <div className="mt-2">
                     <GenderToggle value={editor.sex} onChange={(sex) => setEditor({ ...editor, sex })} />
                   </div>

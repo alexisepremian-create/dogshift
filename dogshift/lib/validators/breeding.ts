@@ -50,6 +50,14 @@ export const deckQuerySchema = z.object({
 
 export type DeckQuery = z.infer<typeof deckQuerySchema>;
 
+/** Set the ordered photo gallery for a dog's mating profile (max 6 R2 keys). */
+export const matingPhotosSchema = z.object({
+  dogProfileId: z.string().min(1),
+  photos: z.array(z.string().min(1).max(400)).max(6),
+});
+
+export type MatingPhotosBody = z.infer<typeof matingPhotosSchema>;
+
 /** A message inside a match thread. */
 export const matchMessageSchema = z.object({
   body: z.string().min(1).max(2000),
