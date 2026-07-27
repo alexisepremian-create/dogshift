@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { haversineKm, formatDistanceKm } from "../../lib/breeding/geo.ts";
+import { haversineKm, formatDistanceKm } from "../../lib/adoption/geo.ts";
 
 test("haversineKm: known distance + symmetry + zero", () => {
   const lausanne = { lat: 46.5197, lng: 6.6323 };
