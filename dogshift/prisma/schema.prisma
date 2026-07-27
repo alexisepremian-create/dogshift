@@ -41,7 +41,12 @@ model User {
   sitterProfile          SitterProfile?
   pushSubscriptions      PushSubscription[]
   nativePushTokens       NativePushToken[]
-  matchMessagesSent      MatchMessage[]          @relation("MatchMessagesSent")
+  adoptionListings       AdoptionListing[]       @relation("AdoptionListingAuthor")
+  adopterProfile         AdopterProfile?
+  adoptionApplications   AdoptionApplication[]   @relation("AdoptionApplicant")
+  adoptionMessagesSent   AdoptionMessage[]       @relation("AdoptionMessagesSent")
+  adoptionSavedSearches  AdoptionSavedSearch[]
+  rescueOrganization     RescueOrganization?
 }
 
 model Notification {
@@ -785,103 +790,238 @@ model DogProfile {
   sitterInstructions String?
   /// Whether the dog is neutered/spayed — used to validate sitter acceptance criteria
   neutered           Boolean?
-  /// Sex of the dog — required to opt into the breeding-match feature.
+  /// Sex of the dog.
   sex                DogSex?
   bookings           Booking[]
   conversations      Conversation[]
   user               User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  matingProfile      MatingProfile?
 
   @@index([userId])
 }
 
-/// Opt-in breeding profile for a dog ("Tinder for dogs"). A dog is only
-/// discoverable in the swipe deck when `enabled` is true. Kept 1:1 with
-/// DogProfile so the hot DogProfile row stays lean and disabling/erasing is a
-/// single-row delete.
-model MatingProfile {
-  id              String     @id @default(cuid())
-  dogProfileId    String     @unique
-  /// Denormalised owner id (== DogProfile.userId) for cheap "exclude my own dogs" filters.
-  userId          String
-  enabled         Boolean    @default(false)
-  goal            MatingGoal @default(EXPLORING)
-  bio             String?    @db.Text
-  /// Canton / region text — legacy v1 distance proxy, superseded by lat/lng.
-  region          String?
-  /// Geolocated position of the owner (Tinder-style distance matching).
-  lat             Float?
-  lng             Float?
-  /// Human-readable place label (reverse-geocoded, e.g. "Lausanne").
-  locationLabel   String?
-  /// Tinder-style photo gallery — ordered array of R2 object keys (first = primary).
-  photos          String[]
-  /// Set when the owner ticks the single legal-compliance checkbox.
+// ─────────────────────────────────────────────────────────────────────────────
+// Adoption ("Adopter un chien")
+//
+// Swiss law drives most of the non-obvious columns here. The load-bearing rules:
+//   - OPAn art. 76d al. 1 — a public dog-cession ad MUST carry the cédant's
+//     first + last name and address, the dog's provenance and its country of
+//     breeding. Al. 2 puts the completeness duty on the PLATFORM, so these are
+//     non-nullable columns, not optional profile fields.
+//   - OPAn art. 70 al. 4 — a puppy cannot leave its mother before 56 days, so
+//     `birthDate` is required and gates publication.
+//   - OFE art. 16-18 (AMICUS) — the dog must be chipped before any cession and
+//     both parties declare the transfer within 10 days. `microchipNumber` is
+//     what we nudge them with.
+//   - Cantonal breed bans / permits (GE, VS, ZH, FR, VD) key off `canton` +
+//     `breed`; the matrix lives in lib/adoption/breedRestrictions.ts.
+//   - Deliberately NO "price": money is a `feeAmount` ("participation aux
+//     frais") settled off-platform. DogShift takes no commission — a cut on an
+//     animal transaction risks requalifying us as a professional seller
+//     (OPAn art. 2 al. 3 let. a) and dragging in CO art. 197 ss warranty.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// A rescue / shelter account. Manually verified by an admin before its badge
+/// shows up on listings (anibis/VeriPet-style trust anchor).
+model RescueOrganization {
+  id           String             @id @default(cuid())
+  /// Owner of the org account. One user manages at most one organisation.
+  userId       String             @unique
+  name         String
+  status       RescueOrgStatus    @default(PENDING)
+  /// Cantonal authorisation number (OPAn art. 101) when the org holds one.
+  cantonalAuthNumber String?
+  websiteUrl   String?
+  email        String?
+  phone        String?
+  address      String?
+  postalCode   String?
+  city         String?
+  canton       String?
+  logoUrl      String?
+  description  String?            @db.Text
+  verifiedAt   DateTime?
+  verifiedBy   String?
+  rejectedReason String?
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+
+  user     User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  listings AdoptionListing[]
+
+  @@index([status])
+}
+
+/// A dog offered for adoption, by a private owner or a verified organisation.
+model AdoptionListing {
+  id             String                @id @default(cuid())
+  /// The cédant's DogShift account.
+  userId         String
+  /// Set when the listing is published on behalf of a verified organisation.
+  organizationId String?
+  status         AdoptionListingStatus @default(DRAFT)
+
+  // ── Dog identity ──────────────────────────────────────────────────────────
+  dogName        String
+  breed          String?
+  secondaryBreed String?
+  isCrossbreed   Boolean               @default(false)
+  sex            DogSex
+  /// Required — drives the 56-day rule (OPAn art. 70 al. 4) and the age filter.
+  birthDate      DateTime
+  sizeCategory   DogSize
+  weightKg       Float?
+  neutered       Boolean?
+  vaccinated     Boolean?
+  dewormed       Boolean?
+
+  // ── Legal disclosure (OPAn art. 76d al. 1 + AMICUS) ────────────────────────
+  /// AMICUS microchip number. Nullable only so a DRAFT can be saved before it
+  /// is known; publication requires it.
+  microchipNumber String?
+  provenance      DogProvenance
+  /// ISO-3166-1 alpha-2 country where the dog was bred (e.g. "CH", "RO").
+  breedingCountry String
+  cedantFullName   String
+  cedantAddress    String
+  cedantPostalCode String
+  cedantCity       String
+
+  // ── Placement details ──────────────────────────────────────────────────────
+  /// "Participation aux frais" in centimes (0 = gratuit). Never a sale price,
+  /// never transits DogShift.
+  feeAmount        Int      @default(0)
+  /// Why the dog is being rehomed — the single most-read field by adopters.
+  reason           String?  @db.Text
+  description      String   @db.Text
+  idealHome        String?  @db.Text
+  goodWithChildren Boolean?
+  goodWithDogs     Boolean?
+  goodWithCats     Boolean?
+  houseTrained     Boolean?
+  /// 1 (canapé) … 5 (marathonien).
+  energyLevel      Int?
+  specialNeeds     String?  @db.Text
+
+  // ── Location ───────────────────────────────────────────────────────────────
+  /// Two-letter canton code (VD, GE, ZH…). Drives breed restrictions + filters.
+  canton   String
+  city     String
+  lat      Float?
+  lng      Float?
+
+  /// Ordered array of R2 object keys (first = cover photo).
+  photos   String[]
+
+  publishedAt     DateTime?
+  /// Last time the cédant confirmed the dog is still available. Powers the
+  /// freshness cron + auto-archive (the #1 complaint about Petfinder).
+  lastConfirmedAt DateTime?
+  adoptedAt       DateTime?
+  archivedAt      DateTime?
+  /// Set when the cédant ticks the legal-compliance checkbox at publication.
   acceptedTermsAt DateTime?
-  createdAt       DateTime   @default(now())
-  updatedAt       DateTime   @updatedAt
 
-  dog        DogProfile @relation(fields: [dogProfileId], references: [id], onDelete: Cascade)
-  swipesMade Swipe[]    @relation("SwiperMating")
-  swipesGot  Swipe[]    @relation("TargetMating")
-  matchesA   Match[]    @relation("MatchDogA")
-  matchesB   Match[]    @relation("MatchDogB")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
+  user         User                  @relation("AdoptionListingAuthor", fields: [userId], references: [id], onDelete: Cascade)
+  organization RescueOrganization?   @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  applications AdoptionApplication[]
+
+  @@index([status, publishedAt])
   @@index([userId])
-  @@index([enabled])
+  @@index([canton])
+  @@index([organizationId])
 }
 
-/// One directed swipe from a dog's mating profile onto another's.
-model Swipe {
-  id          String         @id @default(cuid())
-  swiperDogId String
-  targetDogId String
-  direction   SwipeDirection
-  createdAt   DateTime       @default(now())
+/// Reusable adopter dossier — filled once, attached to every application
+/// (PetRescue's killer feature). Pre-fillable from the user's existing
+/// DogShift data (dogs, bookings, reviews).
+model AdopterProfile {
+  id       String @id @default(cuid())
+  userId   String @unique
 
-  swiper MatingProfile @relation("SwiperMating", fields: [swiperDogId], references: [id], onDelete: Cascade)
-  target MatingProfile @relation("TargetMating", fields: [targetDogId], references: [id], onDelete: Cascade)
+  housingType       HousingType
+  /// Renters must confirm the landlord allows dogs.
+  isHomeOwner       Boolean
+  landlordApproval  Boolean?
+  hasGarden         Boolean     @default(false)
+  gardenFenced      Boolean?
+  householdAdults   Int         @default(1)
+  householdChildren Int         @default(0)
+  /// Age of the youngest child, when there are children.
+  youngestChildAge  Int?
+  hasOtherDogs      Boolean     @default(false)
+  hasCats           Boolean     @default(false)
+  otherPetsNote     String?     @db.Text
+  /// Typical hours the dog would be left alone on a weekday.
+  hoursAlonePerDay  Int?
+  /// Self-declared experience level, 1 (première fois) … 5 (éducateur).
+  experienceLevel   Int
+  previousDogsNote  String?     @db.Text
+  activityLevel     Int?
+  canton            String?
+  city              String?
+  motivation        String?     @db.Text
+  /// nLPD — explicit consent to share this dossier with cédants.
+  consentSharedAt   DateTime?
+  completedAt       DateTime?
 
-  @@unique([swiperDogId, targetDogId])
-  @@index([targetDogId, direction])
-  @@index([swiperDogId])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
-/// A mutual LIKE between two mating profiles. Canonical pair: dogAId < dogBId.
-model Match {
-  id         String    @id @default(cuid())
-  dogAId     String
-  dogBId     String
-  createdAt  DateTime  @default(now())
-  closedAt   DateTime?
-  closedById String?
+/// One adopter's candidature on one listing.
+model AdoptionApplication {
+  id        String                    @id @default(cuid())
+  listingId String
+  /// The candidate adopter.
+  userId    String
+  status    AdoptionApplicationStatus @default(PENDING)
+  message   String?                   @db.Text
+  /// Frozen copy of the adopter dossier at submission time (nLPD: the cédant
+  /// sees what was actually sent, later profile edits don't rewrite history).
+  answers   Json?
 
-  dogA   MatingProfile @relation("MatchDogA", fields: [dogAId], references: [id], onDelete: Cascade)
-  dogB   MatingProfile @relation("MatchDogB", fields: [dogBId], references: [id], onDelete: Cascade)
-  thread MatchThread?
+  respondedAt DateTime?
+  declineReason String?
+  withdrawnAt DateTime?
+  /// Set when the cédant confirms this adopter took the dog.
+  adoptedAt   DateTime?
+  /// AMICUS transfer declaration (10-day deadline) confirmed by both parties.
+  amicusConfirmedAt DateTime?
 
-  @@unique([dogAId, dogBId])
-  @@index([dogAId])
-  @@index([dogBId])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  listing AdoptionListing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  user    User            @relation("AdoptionApplicant", fields: [userId], references: [id], onDelete: Cascade)
+  thread  AdoptionThread?
+
+  @@unique([listingId, userId])
+  @@index([listingId, status])
+  @@index([userId])
 }
 
-/// Dedicated owner↔owner chat for a match (the existing Conversation model is
-/// owner↔sitter only and cannot be reused here).
-model MatchThread {
+/// Cédant ↔ adopter chat scoped to one application. The existing Conversation
+/// model is owner↔sitter only and cannot be reused.
+model AdoptionThread {
   id                 String    @id @default(cuid())
-  matchId            String    @unique
+  applicationId      String    @unique
   lastMessageAt      DateTime?
   lastMessagePreview String?
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
 
-  match    Match          @relation(fields: [matchId], references: [id], onDelete: Cascade)
-  messages MatchMessage[]
+  application AdoptionApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  messages    AdoptionMessage[]
 
   @@index([lastMessageAt])
 }
 
-model MatchMessage {
+model AdoptionMessage {
   id        String    @id @default(cuid())
   threadId  String
   senderId  String
@@ -889,12 +1029,32 @@ model MatchMessage {
   readAt    DateTime?
   createdAt DateTime  @default(now())
 
-  thread MatchThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
-  sender User        @relation("MatchMessagesSent", fields: [senderId], references: [id], onDelete: Cascade)
+  thread AdoptionThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  sender User           @relation("AdoptionMessagesSent", fields: [senderId], references: [id], onDelete: Cascade)
 
   @@index([threadId])
   @@index([senderId])
   @@index([createdAt])
+}
+
+/// A saved adoption search that fires a push/email alert when a new listing
+/// matches. The one feature every shelter platform users ask for.
+model AdoptionSavedSearch {
+  id         String   @id @default(cuid())
+  userId     String
+  label      String?
+  /// Serialized filter state (cantons, sizes, ages, compatibilities…).
+  filters    Json
+  alertsOn   Boolean  @default(true)
+  /// Watermark so the cron only notifies about listings newer than this.
+  lastNotifiedAt DateTime?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([alertsOn])
 }
 
 model LeadMagnet {
@@ -1063,10 +1223,17 @@ enum NotificationType {
   paymentReceived
   bookingConfirmed
   bookingReminder
-  newMatch
   serviceReportSelfie
   serviceReportReminder
   serviceReportReceived
+  adoptionApplicationReceived
+  adoptionApplicationAccepted
+  adoptionApplicationDeclined
+  adoptionMessage
+  adoptionListingFreshness
+  adoptionSearchAlert
+  adoptionAmicusReminder
+  adoptionCheckIn
 }
 
 /// Status of a sitter's service report.
@@ -1084,22 +1251,61 @@ enum DogMood {
   ANXIOUS
 }
 
-/// Sex of a dog — required for the breeding-match feature (opposite-sex matching).
+/// Sex of a dog.
 enum DogSex {
   MALE
   FEMALE
 }
 
-enum SwipeDirection {
-  LIKE
-  PASS
+/// Size bracket used by adoption listings + adopter filters.
+enum DogSize {
+  SMALL
+  MEDIUM
+  LARGE
+  GIANT
 }
 
-/// What the owner is looking for in the breeding-match feature.
-enum MatingGoal {
-  LITTER
-  STUD
-  EXPLORING
+/// Lifecycle of an adoption listing. ADOPTED and ARCHIVED are terminal;
+/// PENDING means a candidate was accepted but the cession isn't done yet.
+enum AdoptionListingStatus {
+  DRAFT
+  PUBLISHED
+  PENDING
+  ADOPTED
+  ARCHIVED
+}
+
+/// OPAn art. 76d al. 1 — mandatory "provenance" disclosure on any public
+/// dog-cession ad.
+enum DogProvenance {
+  PRIVATE_OWNER
+  SWISS_BREEDER
+  SWISS_SHELTER
+  FOREIGN_SHELTER
+  FOREIGN_BREEDER
+  FOUND_STRAY
+  OTHER
+}
+
+enum AdoptionApplicationStatus {
+  PENDING
+  SHORTLISTED
+  ACCEPTED
+  DECLINED
+  WITHDRAWN
+}
+
+enum HousingType {
+  APARTMENT
+  HOUSE
+  FARM
+}
+
+/// Manual admin verification state of a rescue / shelter account.
+enum RescueOrgStatus {
+  PENDING
+  VERIFIED
+  REJECTED
 }
 
 enum InviteCodeType {

@@ -1,4 +1,4 @@
-// Pure distance helpers for the breeding deck. `node --test` safe (no imports).
+// Pure distance helpers for the adoption feed. `node --test` safe (no imports).
 
 export type LatLng = { lat: number; lng: number };
 
@@ -18,7 +18,7 @@ export function haversineKm(a: LatLng, b: LatLng): number {
   return 2 * EARTH_RADIUS_KM * Math.asin(Math.min(1, Math.sqrt(h)));
 }
 
-/** Tinder-style short distance label, French. `null` when distance is unknown. */
+/** Short distance label, French. `null` when the distance is unknown. */
 export function formatDistanceKm(km: number | null | undefined): string | null {
   if (km == null || !Number.isFinite(km)) return null;
   if (km < 1) return "à moins d'1 km";

@@ -10,7 +10,7 @@ import type { BottomNavItem } from "@/components/MobileBottomNav";
 
 /**
  * The "more menu" that used to open from the center bottom-nav FAB — now hosted
- * on the homepage search bar (the FAB opens the breeding feature instead). Kept
+ * on the homepage search bar (the FAB opens the adoption feature instead). Kept
  * as a shared builder so there's a single source of truth for the items.
  */
 export function buildNativeMenuItems(opts: { role: string | null; isSitter: boolean; pathname: string }): BottomNavItem[] {

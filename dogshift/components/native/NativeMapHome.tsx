@@ -998,7 +998,7 @@ export default function NativeMapHome() {
               service's report (renders null for owners). */}
           <SitterCameraButton />
           {/* Menu button — hosts what used to live in the center-FAB "more" sheet
-              (the center FAB now opens the Rencontres feature). */}
+              (the center FAB now opens the Adoption feature). */}
           <button
             type="button"
             onClick={() => setMenuOpen(true)}
