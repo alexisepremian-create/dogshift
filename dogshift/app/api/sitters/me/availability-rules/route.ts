@@ -4,9 +4,11 @@ import type { NextRequest } from "next/server";
 
 import { prisma } from "@/lib/prisma";
 import { requireSitterOwner } from "@/lib/auth/requireSitterOwner";
-import { SERVICE_DEFAULTS, type ServiceType } from "@/lib/availability/slotEngine";
+import { type ServiceType } from "@/lib/availability/slotEngine";
 import { clampMinute, normalizeRanges } from "@/lib/availability/rangeValidation";
 import { writeAvailabilityAuditLog } from "@/lib/availability/auditLog";
+import { assertServiceEnabledOrThrow, SERVICE_DISABLED } from "@/lib/availability/serviceActivation";
+import { reportApiError } from "@/lib/observability/reportApiError";
 
 export const runtime = "nodejs";
 
@@ -124,6 +126,19 @@ export async function PUT(req: NextRequest) {
     if (!normalizedLegacy?.ok) return NextResponse.json({ ok: false, error: normalizedLegacy?.error ?? "INVALID_RANGES" }, { status: 400 });
   }
 
+  // A sitter must not be able to fill a calendar the slot engine ignores.
+  // This also materializes the ServiceConfig row when it is missing, so the
+  // public calendar reflects the service as active.
+  try {
+    await assertServiceEnabledOrThrow(prisma as any, auth.sitterId, serviceType);
+  } catch (e) {
+    if (e instanceof Error && e.message === SERVICE_DISABLED) {
+      reportApiError({ kind: "validation_error", code: SERVICE_DISABLED, route: "sitters.me.availability-rules.put" });
+      return NextResponse.json({ ok: false, error: SERVICE_DISABLED }, { status: 400 });
+    }
+    throw e;
+  }
+
   // Replace-all semantics for that day+service.
   await (prisma as any).availabilityRule.deleteMany({ where: { sitterId: auth.sitterId, serviceType, dayOfWeek } });
 
@@ -144,24 +159,6 @@ export async function PUT(req: NextRequest) {
         status: r.status,
       })),
     });
-
-    // Ensure a serviceConfig row exists so the public calendar reflects this
-    // service as active. Only create if missing — never force-disable on uncheck
-    // (the service stays enabled until explicitly toggled off).
-    const existingConfig = await (prisma as any).serviceConfig.findUnique({
-      where: { sitterId_serviceType: { sitterId: auth.sitterId, serviceType } },
-      select: { id: true },
-    });
-    if (!existingConfig) {
-      await (prisma as any).serviceConfig.create({
-        data: {
-          sitterId: auth.sitterId,
-          ...SERVICE_DEFAULTS[serviceType],
-          serviceType,
-          enabled: true,
-        },
-      });
-    }
   }
 
   try {

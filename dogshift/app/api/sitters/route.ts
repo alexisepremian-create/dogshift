@@ -5,6 +5,7 @@ import type { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSitterReviewSnapshot } from "@/lib/sitterReviews";
 import { resolvePublicEnabledServices } from "@/lib/sitterEnabledServices";
+import { loadBookableServiceTypes } from "@/lib/availability/serviceActivation";
 import { resolveSitterDogSizes } from "@/lib/sitterDogSizes";
 
 export const runtime = "nodejs";
@@ -147,6 +148,10 @@ export async function GET(req: NextRequest) {
       configsBySitter.set(row.sitterId, list);
     }
 
+    // An activated service with no availability at all is not bookable — hide it
+    // rather than let the owner open the fiche and hit UNAVAILABLE on every date.
+    const bookableBySitter = await loadBookableServiceTypes(prisma as any, sitterIds);
+
     const rowsRaw = await Promise.all(
       sitters.map(async (s: DbRow): Promise<SitterListItem | null> => {
       const name = String(s.displayName ?? "").trim();
@@ -174,6 +179,7 @@ export async function GET(req: NextRequest) {
           serviceConfigs: configsBySitter.get(String(s.sitterId ?? "")) ?? [],
           pricing: s.pricing,
           servicesJson: s.services,
+          bookableServiceTypes: bookableBySitter.get(String(s.sitterId ?? "")) ?? [],
         }),
         pricing: s.pricing ?? null,
         // Resolve from the authoritative capacity booleans (what the sitter

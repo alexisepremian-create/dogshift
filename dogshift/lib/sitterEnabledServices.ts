@@ -47,8 +47,30 @@ type ServiceConfigRow = { serviceType: string; enabled: boolean };
  * 1) Au moins un service avec `enabled: true` dans ServiceConfig → liste dérivée uniquement de là.
  * 2) Sinon, clés de tarif public (> 0).
  * 3) Sinon, champ JSON `services` du profil.
+ *
+ * `bookableServiceTypes` (optionnel) : liste des `ServiceType` pour lesquels le
+ * sitter a au moins une disponibilité. Quand elle est fournie, un service activé
+ * mais sans aucune dispo est retiré de la liste publique — sinon le owner voit
+ * « Pension » sur la fiche et chaque date répond UNAVAILABLE.
  */
 export function resolvePublicEnabledServices(params: {
+  serviceConfigs: ServiceConfigRow[];
+  pricing: unknown;
+  servicesJson: unknown;
+  bookableServiceTypes?: Iterable<string>;
+}): PublicServiceLabel[] {
+  const resolved = resolveBeforeAvailabilityFilter(params);
+  if (!params.bookableServiceTypes) return resolved;
+
+  const bookable = new Set<PublicServiceLabel>();
+  for (const serviceType of params.bookableServiceTypes) {
+    const label = serviceTypeEnumToPublicLabel(String(serviceType));
+    if (label) bookable.add(label);
+  }
+  return resolved.filter((service) => bookable.has(service));
+}
+
+function resolveBeforeAvailabilityFilter(params: {
   serviceConfigs: ServiceConfigRow[];
   pricing: unknown;
   servicesJson: unknown;

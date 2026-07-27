@@ -1,11 +1,14 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 import { prisma } from "@/lib/prisma";
 import { requireSitterOwner } from "@/lib/auth/requireSitterOwner";
-import { SERVICE_DEFAULTS, type ServiceType } from "@/lib/availability/slotEngine";
+import { type ServiceType } from "@/lib/availability/slotEngine";
 import { normalizeRanges } from "@/lib/availability/rangeValidation";
 import { writeAvailabilityAuditLog } from "@/lib/availability/auditLog";
+import { assertServiceEnabledOrThrow, SERVICE_DISABLED } from "@/lib/availability/serviceActivation";
+import { reportApiError } from "@/lib/observability/reportApiError";
 
 export const runtime = "nodejs";
 
@@ -112,6 +115,17 @@ export async function POST(req: NextRequest) {
     throw e;
   }
 
+  // A sitter must not be able to fill a calendar the slot engine ignores.
+  try {
+    await assertServiceEnabledOrThrow(prisma as any, auth.sitterId, serviceType);
+  } catch (e) {
+    if (e instanceof Error && e.message === SERVICE_DISABLED) {
+      reportApiError({ kind: "validation_error", code: SERVICE_DISABLED, route: "sitters.me.availability-exceptions.post" });
+      return NextResponse.json({ ok: false, error: SERVICE_DISABLED }, { status: 400 });
+    }
+    throw e;
+  }
+
   const dateIso = typeof body.date === "string" ? body.date.trim() : "";
   if (!isValidIsoDate(dateIso)) return NextResponse.json({ ok: false, error: "INVALID_DATE" }, { status: 400 });
 
@@ -169,6 +183,19 @@ export async function PUT(req: NextRequest) {
     throw e;
   }
 
+  // Same invariant as POST: no availability for a service that is not active.
+  // `ensureServiceConfigRow` also materializes the row when missing, which is
+  // what the old inline auto-create below used to do.
+  try {
+    await assertServiceEnabledOrThrow(prisma as any, auth.sitterId, serviceType);
+  } catch (e) {
+    if (e instanceof Error && e.message === SERVICE_DISABLED) {
+      reportApiError({ kind: "validation_error", code: SERVICE_DISABLED, route: "sitters.me.availability-exceptions.put" });
+      return NextResponse.json({ ok: false, error: SERVICE_DISABLED }, { status: 400 });
+    }
+    throw e;
+  }
+
   const dateIso = typeof body.date === "string" ? body.date.trim() : "";
   if (!isValidIsoDate(dateIso)) return NextResponse.json({ ok: false, error: "INVALID_DATE" }, { status: 400 });
 
@@ -196,25 +223,6 @@ export async function PUT(req: NextRequest) {
       status,
     })),
   });
-
-  // Ensure a serviceConfig row exists so the calendar engine can find the service.
-  // Without this row, the compute logic treats the service as disabled and ignores exceptions.
-  if (status === "AVAILABLE" || status === "ON_REQUEST") {
-    const existingConfig = await (prisma as any).serviceConfig.findUnique({
-      where: { sitterId_serviceType: { sitterId: auth.sitterId, serviceType } },
-      select: { id: true },
-    });
-    if (!existingConfig) {
-      await (prisma as any).serviceConfig.create({
-        data: {
-          sitterId: auth.sitterId,
-          ...SERVICE_DEFAULTS[serviceType],
-          serviceType,
-          enabled: true,
-        },
-      });
-    }
-  }
 
   try {
     await writeAvailabilityAuditLog({
