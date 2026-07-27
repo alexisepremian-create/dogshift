@@ -233,6 +233,25 @@ export async function requestNativePushPermission(): Promise<boolean> {
  *
  * On the web (non-native) this is just a regular link click.
  */
+/**
+ * Opens the OS settings page for the app (iOS) so the user can flip a
+ * permission they previously denied — geolocation, notifications, camera.
+ *
+ * Capacitor's WKWebView delegate hands any top-level navigation to a scheme it
+ * doesn't own over to `UIApplication.open`, so navigating to `app-settings:`
+ * is enough. Returns false when there is nothing to open (web).
+ */
+export async function openNativeAppSettings(): Promise<boolean> {
+  try {
+    const { Capacitor } = await import("@capacitor/core");
+    if (!Capacitor.isNativePlatform() || Capacitor.getPlatform() !== "ios") return false;
+    window.location.href = "app-settings:";
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export async function openExternalBrowser(url: string): Promise<void> {
   try {
     const { Capacitor } = await import("@capacitor/core");

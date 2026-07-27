@@ -81,8 +81,8 @@ export default function BreedingHome() {
           ) : (
             <BreedingEmptyState
               illustration={<CrossingCards />}
-              title="Rencontres pour ton chien"
-              subtitle="Fais matcher ton chien avec d'autres près de chez toi — pour une portée ou juste une belle amitié. Swipe, matche, discute."
+              title="Aucune rencontre à proximité"
+              subtitle="Configure le profil de ton chien pour découvrir les chiens autour de toi."
               action={
                 <button type="button" onClick={() => setTab("profile")} className="rounded-full bg-[#7c3aed] px-5 py-2.5 text-sm font-semibold text-white active:scale-95">
                   Configurer

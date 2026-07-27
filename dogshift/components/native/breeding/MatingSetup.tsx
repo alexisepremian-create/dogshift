@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Check, Dog, Plus, X, Navigation, Loader2, ImagePlus } from "lucide-react";
+import { Check, Dog, Plus, X, Navigation, Loader2, ImagePlus, Settings } from "lucide-react";
 
 import { BREEDING_ACCEPT_LABEL, BREEDING_DISCLAIMER, MATING_GOAL_LABELS } from "@/lib/breeding/legalCopy";
+import { openNativeAppSettings } from "@/lib/native/capacitorBridge";
 import BreedingEmptyState from "./BreedingEmptyState";
 import GenderToggle from "./GenderToggle";
 import { uploadBreedingPhoto, saveBreedingPhotos, type PhotoItem } from "./photoClient";
@@ -43,6 +44,7 @@ export default function MatingSetup({ onChanged }: { onChanged?: () => void }) {
   const [editor, setEditor] = useState<Editor | null>(null);
   const [saving, setSaving] = useState(false);
   const [locating, setLocating] = useState(false);
+  const [permDenied, setPermDenied] = useState(false);
   const [photoBusy, setPhotoBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const photoInputRef = useRef<HTMLInputElement | null>(null);
@@ -79,6 +81,7 @@ export default function MatingSetup({ onChanged }: { onChanged?: () => void }) {
   const openEditor = (dog: OwnerDog) => {
     const p = profiles[dog.id];
     setError(null);
+    setPermDenied(false);
     setEditor({
       dogId: dog.id,
       sex: dog.sex,
@@ -130,9 +133,17 @@ export default function MatingSetup({ onChanged }: { onChanged?: () => void }) {
   const captureLocation = async () => {
     setLocating(true);
     setError(null);
+    setPermDenied(false);
     try {
       const { Geolocation } = await import("@capacitor/geolocation");
-      try { await Geolocation.requestPermissions(); } catch { /* web fallback */ }
+      try {
+        const perm = await Geolocation.requestPermissions();
+        if (perm.location === "denied" && perm.coarseLocation !== "granted") {
+          setPermDenied(true);
+          setError("La localisation est désactivée pour DogShift.");
+          return;
+        }
+      } catch { /* web fallback — the browser prompt handles it */ }
       const pos = await Geolocation.getCurrentPosition({ enableHighAccuracy: true });
       const lat = pos.coords.latitude;
       const lng = pos.coords.longitude;
@@ -147,6 +158,8 @@ export default function MatingSetup({ onChanged }: { onChanged?: () => void }) {
       } catch { /* keep coords without a label */ }
       setEditor((prev) => (prev ? { ...prev, lat, lng, locationLabel: label } : prev));
     } catch {
+      // Most failures here are a denied/disabled permission — offer the shortcut.
+      setPermDenied(true);
       setError("Impossible d'obtenir ta position. Vérifie l'autorisation de localisation.");
     } finally {
       setLocating(false);
@@ -310,7 +323,15 @@ export default function MatingSetup({ onChanged }: { onChanged?: () => void }) {
 
               {open && editor ? (
                 <div className="border-t border-slate-100 px-4 py-4">
-                  <p className="text-sm font-semibold text-slate-900">Photos</p>
+                  <p className="text-sm font-semibold text-slate-900">Sexe</p>
+                  <div className="mt-2">
+                    <GenderToggle value={editor.sex} onChange={(sex) => setEditor({ ...editor, sex })} />
+                  </div>
+                  {dog.neutered === true ? (
+                    <p className="mt-2 rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-700">Ton chien est indiqué stérilisé — il n&apos;apparaîtra pas dans les rencontres des autres.</p>
+                  ) : null}
+
+                  <p className="mt-4 text-sm font-semibold text-slate-900">Photos</p>
                   <div className="mt-2 grid grid-cols-3 gap-2">
                     {editor.photos.map((ph) => (
                       <div key={ph.key} className="relative aspect-square overflow-hidden rounded-xl bg-slate-100">
@@ -341,14 +362,6 @@ export default function MatingSetup({ onChanged }: { onChanged?: () => void }) {
                   </div>
                   <input ref={photoInputRef} type="file" accept="image/*" multiple onChange={onPickPhotos} className="hidden" />
 
-                  <p className="mt-4 text-sm font-semibold text-slate-900">Sexe</p>
-                  <div className="mt-2">
-                    <GenderToggle value={editor.sex} onChange={(sex) => setEditor({ ...editor, sex })} />
-                  </div>
-                  {dog.neutered === true ? (
-                    <p className="mt-2 rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-700">Ton chien est indiqué stérilisé — il n&apos;apparaîtra pas dans les rencontres des autres.</p>
-                  ) : null}
-
                   <p className="mt-4 text-sm font-semibold text-slate-900">Objectif</p>
                   <select value={editor.goal} onChange={(e) => setEditor({ ...editor, goal: e.target.value as MatingGoalValue })} className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-base text-slate-900">
                     {(Object.keys(MATING_GOAL_LABELS) as MatingGoalValue[]).map((g) => (
@@ -369,6 +382,16 @@ export default function MatingSetup({ onChanged }: { onChanged?: () => void }) {
                       ? `Position : ${editor.locationLabel ?? "enregistrée"}`
                       : "Utiliser ma position"}
                   </button>
+                  {permDenied ? (
+                    <button
+                      type="button"
+                      onClick={() => void openNativeAppSettings()}
+                      style={{ touchAction: "manipulation" }}
+                      className="mt-2 flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white active:scale-[0.99]"
+                    >
+                      <Settings className="h-4 w-4" /> Ouvrir les réglages
+                    </button>
+                  ) : null}
                   <p className="mt-1.5 text-[11px] leading-snug text-slate-400">Ta position sert à afficher la distance aux autres chiens. On ne montre jamais ton adresse exacte.</p>
 
                   <p className="mt-4 text-sm font-semibold text-slate-900">Description</p>
