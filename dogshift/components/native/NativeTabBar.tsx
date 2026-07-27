@@ -113,15 +113,15 @@ export default function NativeTabBar({ items }: { items: BottomNavItem[] }) {
             <Tab key={item.key} item={item} onNavigate={() => undefined} />
           ))}
 
-          {/* Center DogShift logo → opens the breeding "Rencontres" feature */}
+          {/* Center DogShift logo → opens the "Adoption" feature */}
           <div className="flex w-[80px] shrink-0 items-start justify-center">
             <button
               type="button"
-              onClick={() => router.push("/breeding")}
-              aria-label="Rencontres"
+              onClick={() => router.push("/adoption")}
+              aria-label="Adoption"
               className="-mt-7 h-[68px] w-[68px] overflow-hidden rounded-full bg-[#7c3aed] shadow-[0_12px_28px_-6px_rgba(124,58,237,0.65)] active:scale-95"
             >
-              <Image src="/apple-touch-icon.png" alt="Rencontres" width={68} height={68} className="h-full w-full object-cover" priority />
+              <Image src="/apple-touch-icon.png" alt="Adoption" width={68} height={68} className="h-full w-full object-cover" priority />
             </button>
           </div>
 

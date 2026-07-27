@@ -123,8 +123,8 @@ export default function GlobalNativeBottomNav() {
   if (!isAuthed) return null;
 
   // NB: the old "more menu" (Mon compte, Admin, legal, Déconnexion…) used to open
-  // from the center FAB. The center FAB now opens the breeding "Rencontres"
-  // feature, so that menu moved to the homepage search-bar button — built by the
+  // from the center FAB. The center FAB now opens the "Adoption" feature, so
+  // that menu moved to the homepage search-bar button — built by the
   // shared `useNativeMenuItems()` hook (single source of truth).
   if (isSitter) {
     const items: BottomNavItem[] = [

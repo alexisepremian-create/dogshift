@@ -96,7 +96,7 @@ test("DashboardSheet is a slide-up overlay with a back header", () => {
   assert.match(sheet, /<InDashboardSheetContext\.Provider value=\{true\}>\{children\}/, "Sheet must render children directly (no defer/spinner wrapper).");
 });
 
-test("native tab bar is solid/edge-to-edge with a center DogShift logo that opens the breeding feature", () => {
+test("native tab bar is solid/edge-to-edge with a center DogShift logo that opens the adoption feature", () => {
   const bar = read("components/native/NativeTabBar.tsx");
   assert.match(bar, /"use client"/, "NativeTabBar must be a client component.");
   // Solid bar anchored to the bottom — NOT the floating rounded pill.
@@ -105,9 +105,9 @@ test("native tab bar is solid/edge-to-edge with a center DogShift logo that open
   // Center raised real DogShift logo (the app icon), full purple, no white ring.
   assert.match(bar, /apple-touch-icon\.png/, "Center button must use the real DogShift app-icon logo.");
   assert.doesNotMatch(bar, /ring-4 ring-white/, "Center logo must be full purple, no white ring.");
-  // The center FAB now opens the breeding "Rencontres" feature (the old more
-  // menu moved to the homepage search bar).
-  assert.match(bar, /router\.push\("\/breeding"\)/, "Center logo must open the breeding feature.");
+  // The center FAB now opens the "Adoption" feature (the old more menu moved
+  // to the homepage search bar).
+  assert.match(bar, /router\.push\("\/adoption"\)/, "Center logo must open the adoption feature.");
   // Sliding purple pill behind the active tab (animated between tabs).
   assert.match(bar, /absolute inset-y-\[8px\][\s\S]*bg-\[#7c3aed\]/, "Active tab must have a purple pill.");
   assert.match(bar, /transition: "left 320ms/, "The pill must slide between tabs.");
