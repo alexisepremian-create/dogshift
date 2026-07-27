@@ -202,6 +202,46 @@ Toutes ces routes nécessitent le rôle admin (vérifié via Auth.js session rol
 
 ---
 
+## Adoption (`/api/adoption/`)
+
+Pas sous un préfixe protégé par `proxy.ts` : le feed est public, chaque route écrit sa propre garde via `getAuthedDbUser()`.
+
+### Annonces
+| Méthode | Route | Description |
+|---------|-------|-------------|
+| GET | `/api/adoption/listings` | Feed public (PUBLISHED uniquement). Filtres : `cantons`, `sizes`, `sex`, `minAgeMonths`, `maxAgeMonths`, `goodWith*`, `verifiedOnly`, `freeOnly`, `lat`/`lng`/`maxDistanceKm`, `sort`, `offset`, `limit` |
+| POST | `/api/adoption/listings` | Créer un brouillon (requiert seulement nom + sexe + naissance + taille + provenance) |
+| GET | `/api/adoption/listings/mine` | Mes annonces, tous statuts, avec `legalIssues[]` (checklist art. 76d) |
+| GET | `/api/adoption/listings/[id]` | Fiche complète (DRAFT/ARCHIVED = 404 sauf pour l'auteur) |
+| PATCH | `/api/adoption/listings/[id]` | Éditer (gelé si ADOPTED/ARCHIVED → `LISTING_LOCKED`) |
+| DELETE | `/api/adoption/listings/[id]` | Supprimer — brouillon uniquement (`ARCHIVE_INSTEAD` sinon) |
+| POST | `/api/adoption/listings/[id]/publish` | Publier. **Bloque** sur `checkListingLegality()` → `LISTING_INCOMPLETE` + `issues[]` |
+| POST | `/api/adoption/listings/[id]/actions` | `CONFIRM_AVAILABLE` / `MARK_ADOPTED` / `ARCHIVE` / `UNARCHIVE` |
+| POST | `/api/adoption/listings/[id]/photos` | Commit d'une photo uploadée (presign partagé : `/api/account/dogs/photo/presign`) |
+| PUT | `/api/adoption/listings/[id]/photos` | Réordonner (doit être une permutation des clés existantes) |
+| DELETE | `/api/adoption/listings/[id]/photos?key=` | Détacher une photo |
+
+### Adoptants & candidatures
+| Méthode | Route | Description |
+|---------|-------|-------------|
+| GET/PUT | `/api/adoption/adopter-profile` | Dossier adoptant réutilisable (+ `trustSignals`) |
+| POST | `/api/adoption/listings/[id]/apply` | Candidater (requiert un dossier avec consentement nLPD) |
+| GET | `/api/adoption/applications?role=adopter\|cedant` | Les deux boîtes de réception |
+| GET | `/api/adoption/applications/[id]` | Détail (le dossier gelé n'est exposé qu'au cédant) |
+| PATCH | `/api/adoption/applications/[id]` | Décision du cédant (`SHORTLISTED` / `ACCEPTED` / `DECLINED` + motif obligatoire) |
+| DELETE | `/api/adoption/applications/[id]` | Retrait de la candidature par l'adoptant |
+| GET/POST | `/api/adoption/applications/[id]/messages` | Messagerie cédant ↔ adoptant (fermée si DECLINED/WITHDRAWN) |
+| POST | `/api/adoption/applications/[id]/amicus` | Le cédant confirme la déclaration AMICUS (délai 10 jours) |
+
+### Alertes
+| Méthode | Route | Description |
+|---------|-------|-------------|
+| GET/POST/DELETE | `/api/adoption/saved-searches` | Recherches sauvegardées (max 5) qui alimentent le cron d'alertes |
+
+Les règles légales suisses ne sont jamais réimplémentées inline : elles vivent dans `lib/adoption/legal.ts`, `breedRestrictions.ts` et `cantons.ts`.
+
+---
+
 ## Cron Jobs (`/api/cron/`)
 
 Ces routes sont appelées par Vercel selon le planning de `vercel.json`. Protégées par `CRON_SECRET` Vercel.
