@@ -22,6 +22,7 @@ import SunCornerGlow from "@/components/SunCornerGlow";
 import HowItWorksSchema, { OWNER_HOW_IT_WORKS_CONTENT } from "@/components/HowItWorksSchema";
 import { getHostUserData } from "@/lib/hostUser";
 import { prisma } from "@/lib/prisma";
+import { hasSitterSide } from "@/lib/sitter/sitterRole";
 import { getUserContexts } from "@/lib/userContexts";
 import { DASHBOARD_UPCOMING_BOOKING_STATUSES } from "@/lib/account/dashboardStats";
 import { ownerVisibleConversationWhere } from "@/lib/account/conversationVisibility";
@@ -75,15 +76,23 @@ export default async function AccountDashboardPage({
   }
 
   const uid = contexts.dbUserId;
-  // Business rule: an OWNER must never see the sitter contract amendment modal.
-  // `contexts.hasSitterProfile` only means a SitterProfile exists, not the user's actual role.
+  // Business rule: a pure OWNER must never see the sitter contract amendment modal.
+  // `contexts.hasSitterProfile` only means a SitterProfile row exists, which is
+  // true from the application stage onwards — too early. But `role === "SITTER"`
+  // alone is too strict: activation historically never promoted the role, so
+  // published sitters can still be OWNER. `hasSitterSide()` reads both.
   const dbUserRole = await prisma.user.findUnique({
     where: { id: uid },
-    select: { role: true, name: true },
+    select: {
+      role: true,
+      name: true,
+      sitterId: true,
+      sitterProfile: { select: { published: true, activatedAt: true, lifecycleStatus: true } },
+    },
   });
 
-  const isSitterRole = dbUserRole?.role === "SITTER";
-  const hostUser = contexts.hasSitterProfile && isSitterRole ? await getHostUserData().catch(() => null) : null;
+  const isSitter = hasSitterSide(dbUserRole ?? {});
+  const hostUser = contexts.hasSitterProfile && isSitter ? await getHostUserData().catch(() => null) : null;
 
   // Priority: DB name → email prefix (DB is now the source of truth, post-Clerk)
   const rawName = dbUserRole?.name ?? "";

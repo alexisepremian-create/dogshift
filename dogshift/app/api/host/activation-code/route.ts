@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
+import { promoteUserToSitterRole } from "@/lib/sitter/sitterRole";
 import { hashActivationCode, normalizeSitterLifecycleStatus } from "@/lib/sitterContract";
 import { sendSitterOnboardingNudge } from "@/lib/sitterOnboardingNudge";
 import { sendTelegramMessage } from "@/lib/telegram/sendTelegramMessage";
@@ -77,6 +78,13 @@ export async function POST(req: Request) {
       },
       select: { id: true },
     });
+
+    // Activation is the moment a User becomes a sitter, so it must also promote
+    // `User.role`. Before this, `role: "SITTER"` was only ever written by
+    // `/api/become-sitter/apply`; anyone activated through another path stayed
+    // OWNER forever (docs/bugs/sitter-role-not-promoted-on-activation.md).
+    // Scoped to `role: "OWNER"` so an ADMIN is never demoted.
+    await promoteUserToSitterRole(prisma, sitterProfile.userId);
 
     // Best-effort Telegram admin notification.
     const name = typeof sitterProfile.user?.name === "string" ? sitterProfile.user.name.trim() : "";
