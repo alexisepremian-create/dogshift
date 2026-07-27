@@ -24,7 +24,23 @@ export default async function BecomeSitterFormPage() {
       ? (__authed ? { id: __authed.id, role: __authed.role, sitterId: __authed.sitterId, created: false } : null)
       : null;
 
-    if (dbUser?.role === "SITTER") {
+    // A published sitter has nothing to do in the application form — whatever
+    // her role column says. Sonia was published with `role = OWNER` and could
+    // still re-submit the form from here (see lib/sitter/sitterRole.ts).
+    const ownProfile = await prisma.sitterProfile.findUnique({
+      where: { userId },
+      select: { published: true },
+    });
+    if (ownProfile?.published) {
+      redirect("/host");
+    }
+
+    // `role === "SITTER"` used to mean "the application was submitted", because
+    // /api/become-sitter/apply was the only writer. Activation now promotes the
+    // role too, so the role alone would bounce a freshly-activated sitter out of
+    // the onboarding form she still has to fill. The activation cookie marks
+    // exactly that window, so skip the redirect while it is present.
+    if (dbUser?.role === "SITTER" && !activationProfileId) {
       redirect("/host");
     }
 

@@ -10,8 +10,15 @@ Base de données : **PostgreSQL (Neon)** — `prisma/schema.prisma`
 ```
 OWNER    — Propriétaire de chien (peut réserver)
 SITTER   — Prestataire de garde (peut recevoir des réservations)
+ADMIN    — Accès au panel admin
 ```
-Un User peut avoir les deux rôles simultanément.
+Un User peut réserver ET recevoir des réservations : la colonne ne porte qu'un
+rôle, le côté sitter vit dans `SitterProfile`.
+
+> ⚠️ **Ne jamais autoriser sur `role === "SITTER"` seul.** Le rôle a dérivé
+> (activation qui ne le promouvait pas — voir
+> `docs/bugs/sitter-role-not-promoted-on-activation.md`). La lecture canonique
+> est `hasSitterSide()` dans `lib/sitter/sitterRole.ts`.
 
 ### `BookingStatus`
 ```

@@ -16,6 +16,7 @@ import ImpersonateRowButton from "@/components/admin/ImpersonateRowButton";
 import InstantSearchForm from "@/components/admin/InstantSearchForm";
 import { requireAdminPageAccess } from "@/lib/adminAuth";
 import { prisma } from "@/lib/prisma";
+import { hasSitterSide, sitterSideWhere } from "@/lib/sitter/sitterRole";
 
 export const dynamic = "force-dynamic";
 
@@ -52,7 +53,10 @@ export default async function AdminImpersonatePage({
       // Never list admins — impersonating another admin is forbidden by the
       // /start endpoint anyway, and showing the row would just be misleading.
       role: { not: "ADMIN" },
-      ...(role ? { role } : {}),
+      // The "Owners / Sitters" filter is semantic, not a raw role-column read:
+      // a published sitter may still carry `role = OWNER` (see sitterRole.ts).
+      ...(role === "SITTER" ? sitterSideWhere() : {}),
+      ...(role === "OWNER" ? { NOT: sitterSideWhere() } : {}),
       ...(q
         ? {
             OR: [
@@ -71,7 +75,15 @@ export default async function AdminImpersonatePage({
       role: true,
       createdAt: true,
       sitterId: true,
-      sitterProfile: { select: { displayName: true, city: true, published: true, lifecycleStatus: true } },
+      sitterProfile: {
+        select: {
+          displayName: true,
+          city: true,
+          published: true,
+          lifecycleStatus: true,
+          activatedAt: true,
+        },
+      },
     },
   });
 
@@ -137,19 +149,27 @@ export default async function AdminImpersonatePage({
                   </td>
                 </tr>
               ) : (
-                users.map((u) => (
+                users.map((u) => {
+                  // Show what the user actually *is*, not just what the role
+                  // column says — those two can disagree (see sitterRole.ts).
+                  const isSitter = hasSitterSide(u);
+                  const roleMismatch = isSitter && u.role !== "SITTER";
+                  return (
                   <tr key={u.id} className="hover:bg-slate-50">
                     <td className="px-4 py-3 font-mono text-xs text-slate-700">{u.email}</td>
                     <td className="px-4 py-3 text-slate-900">{u.name ?? "—"}</td>
                     <td className="px-4 py-3">
                       <span
+                        title={roleMismatch ? "Sitter actif mais User.role n'est pas SITTER" : undefined}
                         className={
-                          u.role === "SITTER"
-                            ? "rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700"
-                            : "rounded-full bg-sky-100 px-2 py-0.5 text-xs font-medium text-sky-700"
+                          roleMismatch
+                            ? "rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800"
+                            : isSitter
+                              ? "rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700"
+                              : "rounded-full bg-sky-100 px-2 py-0.5 text-xs font-medium text-sky-700"
                         }
                       >
-                        {u.role.toLowerCase()}
+                        {roleMismatch ? "sitter ⚠ role owner" : u.role.toLowerCase()}
                       </span>
                     </td>
                     <td className="px-4 py-3 text-xs text-slate-600">
@@ -177,7 +197,8 @@ export default async function AdminImpersonatePage({
                       <ImpersonateRowButton userId={u.id} targetEmail={u.email ?? ""} />
                     </td>
                   </tr>
-                ))
+                  );
+                })
               )}
             </tbody>
           </table>

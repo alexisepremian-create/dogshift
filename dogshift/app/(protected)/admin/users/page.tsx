@@ -10,9 +10,13 @@
  *
  * Row click → goes to the existing role-specific detail page so we don't
  * have to duplicate the per-user UI right away:
- *   - role=SITTER → /admin/sitters/[user.id-or-sitterId]
- *   - role=OWNER  → /admin/owners/[user.id]
- *   - role=ADMIN  → no detail page yet, just show the row inert
+ *   - has a sitter side → /admin/sitters/[user.id]
+ *   - role=ADMIN        → no detail page yet, just show the row inert
+ *   - otherwise         → /admin/owners/[user.id]
+ *
+ * "Has a sitter side" is `hasSitterSide()`, not `role === "SITTER"`: activation
+ * historically never promoted the role, so published sitters can still be
+ * OWNER. Those rows get an amber `OWNER ⚠ sitter` badge.
  */
 import Link from "next/link";
 import { Role } from "@prisma/client";
@@ -21,6 +25,7 @@ import AdminShell from "@/components/admin/AdminShell";
 import InstantSearchForm from "@/components/admin/InstantSearchForm";
 import { requireAdminPageAccess } from "@/lib/adminAuth";
 import { prisma } from "@/lib/prisma";
+import { hasSitterSide } from "@/lib/sitter/sitterRole";
 
 export const dynamic = "force-dynamic";
 
@@ -88,7 +93,9 @@ export default async function AdminUsersPage({
       passwordHash: true,
       sitterId: true,
       accounts: { select: { provider: true } },
-      sitterProfile: { select: { id: true, lifecycleStatus: true, published: true } },
+      sitterProfile: {
+        select: { id: true, lifecycleStatus: true, published: true, activatedAt: true },
+      },
       _count: {
         select: { bookings: true, dogProfiles: true, sitterBookings: true },
       },
@@ -97,8 +104,10 @@ export default async function AdminUsersPage({
 
   // ── Stats over the unfiltered fetched set (before auth-method filter) ───
   const totalUsers = users.length;
-  const ownerCount = users.filter((u) => u.role === "OWNER").length;
-  const sitterCount = users.filter((u) => u.role === "SITTER").length;
+  // Counted with `hasSitterSide()` rather than `role === "SITTER"`: activation
+  // historically didn't promote the role, so published sitters can be OWNER.
+  const sitterCount = users.filter((u) => hasSitterSide(u)).length;
+  const ownerCount = users.filter((u) => u.role !== "ADMIN" && !hasSitterSide(u)).length;
   const adminCount = users.filter((u) => u.role === "ADMIN").length;
   const verifiedCount = users.filter((u) => u.emailVerified !== null).length;
   const hasPasswordCount = users.filter((u) => u.passwordHash !== null).length;
@@ -140,12 +149,11 @@ export default async function AdminUsersPage({
   }
 
   function detailHref(u: (typeof users)[number]): string | null {
-    if (u.role === "SITTER") {
-      const target = u.sitterProfile?.id ? u.id : u.id;
-      return `/admin/sitters/${target}`;
-    }
-    if (u.role === "OWNER") return `/admin/owners/${u.id}`;
-    return null;
+    // Sitter side wins over the role column — a sitter whose role stayed OWNER
+    // must still link to her sitter file, not to /admin/owners.
+    if (hasSitterSide(u)) return `/admin/sitters/${u.id}`;
+    if (u.role === "ADMIN") return null;
+    return `/admin/owners/${u.id}`;
   }
 
   const sectionTitleStyle = "text-xs font-medium uppercase tracking-wider text-slate-500";
@@ -289,7 +297,7 @@ export default async function AdminUsersPage({
                       <td className="px-4 py-3 font-medium text-slate-900">{u.email}</td>
                       <td className="px-4 py-3 text-slate-700">{u.name ?? "—"}</td>
                       <td className="px-4 py-3">
-                        <RoleBadge role={u.role} />
+                        <RoleBadge role={u.role} roleMismatch={u.role === "OWNER" && hasSitterSide(u)} />
                       </td>
                       <td className="px-4 py-3 text-slate-700">
                         {u.emailVerified ? (
@@ -391,16 +399,22 @@ function StatCard({
   );
 }
 
-function RoleBadge({ role }: { role: Role }) {
-  const styles =
-    role === "ADMIN"
+function RoleBadge({ role, roleMismatch = false }: { role: Role; roleMismatch?: boolean }) {
+  // `roleMismatch` = the user has a live sitter side but the role column says
+  // otherwise. Surfaced in amber so the anomaly is visible instead of silent.
+  const styles = roleMismatch
+    ? "bg-amber-50 text-amber-800 ring-1 ring-amber-200"
+    : role === "ADMIN"
       ? "bg-violet-50 text-violet-700 ring-1 ring-violet-200"
       : role === "SITTER"
         ? "bg-sky-50 text-sky-700 ring-1 ring-sky-200"
         : "bg-slate-50 text-slate-700 ring-1 ring-slate-200";
   return (
-    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${styles}`}>
-      {role}
+    <span
+      className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${styles}`}
+      title={roleMismatch ? "Sitter actif mais User.role n'est pas SITTER" : undefined}
+    >
+      {roleMismatch ? `${role} ⚠ sitter` : role}
     </span>
   );
 }

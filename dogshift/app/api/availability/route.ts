@@ -1,8 +1,10 @@
+/* eslint-disable @typescript-eslint/no-explicit-any -- legacy `prisma as any` route, pre-existing. */
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 import { prisma } from "@/lib/prisma";
 import { resolveDbUserId } from "@/lib/auth/resolveDbUserId";
+import { hasSitterSide } from "@/lib/sitter/sitterRole";
 
 export const runtime = "nodejs";
 
@@ -54,14 +56,22 @@ async function requireSitterUser(req: NextRequest) {
   const user = await withTimeout<any>(
     (prisma as any).user.findUnique({
       where: { id: userId },
-      select: { id: true, role: true, sitterId: true },
+      select: {
+        id: true,
+        role: true,
+        sitterId: true,
+        sitterProfile: { select: { published: true, activatedAt: true, lifecycleStatus: true } },
+      },
     }),
     8_000,
     "user.findUnique"
   );
 
   const sitterId = typeof user?.sitterId === "string" ? user.sitterId : null;
-  if (!user?.id || user.role !== "SITTER" || !sitterId) {
+  // `role !== "SITTER"` alone used to 403 activated sitters whose role column
+  // never got promoted (see lib/sitter/sitterRole.ts). The sitterId is still
+  // required — it is the FK every availability row hangs off.
+  if (!user?.id || !sitterId || !hasSitterSide(user)) {
     return { ok: false as const, status: 403 as const, error: "FORBIDDEN" };
   }
 

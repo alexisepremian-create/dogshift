@@ -102,7 +102,7 @@ Easy to confuse. Be precise:
 
 | Word in code | What it actually means |
 |---|---|
-| `User` | Any account on the platform. Has `role: OWNER \| ADMIN`. Owners can also become sitters. |
+| `User` | Any account on the platform. Has `role: OWNER \| SITTER \| ADMIN`. **Never authorize on `role === "SITTER"` alone** — use `hasSitterSide()` from `lib/sitter/sitterRole.ts`. |
 | `SitterProfile` | A `User`'s sitter side. Exists only if the user has applied + been activated. |
 | `owner` / `dog owner` | Person who books a sitter for their dog (the client) |
 | `sitter` / `host` | Person providing the dogsitting service (the supplier). **In the UI we say "dogsitter" or "hôte" in French; in code mostly `sitter`.** |
@@ -142,7 +142,7 @@ Easy to confuse. Be precise:
 
 ### Data Model Highlights
 
-- **Users** have a dual role (owner and/or sitter). `role: OWNER | ADMIN`. Admin is a hard whitelist (`ADMIN_EMAILS` env var). Sitter is implicit (a `User` with a non-null `SitterProfile`).
+- **Users** have a dual role (owner and/or sitter). `role: OWNER | SITTER | ADMIN`. Admin is a hard whitelist (`ADMIN_EMAILS` env var). **The `role` column is not authoritative for "is this a sitter?"** — it drifted for years because activation never promoted it. Read `hasSitterSide()` from `lib/sitter/sitterRole.ts` instead (see `docs/bugs/sitter-role-not-promoted-on-activation.md`).
 - **Bookings** flow: `draft → confirmed → paid → completed` (or `cancelled` at various stages). Stripe webhooks drive `paid` and `completed` transitions.
 - **SitterProfile** tracks verification status + contract state + activation. Profiles only appear in `/sitters` search once `published: true` (which happens after verification + contract sign + activation).
 - **Availability** = weekly `AvailabilityRule`s (on `User`, not `SitterProfile` — important Prisma-level distinction, see PR #336 for the bug it caused) + date-specific `AvailabilityException`s, resolved against existing Bookings at query time (no pre-computed slots).
