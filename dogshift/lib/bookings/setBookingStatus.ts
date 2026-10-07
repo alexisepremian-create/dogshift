@@ -22,7 +22,7 @@ export async function setBookingStatus(
 
   const booking = await prisma.booking.findUnique({
     where: { id },
-    select: { id: true, status: true, startDate: true, endDate: true, amount: true, currency: true, sitterId: true },
+    select: { id: true, status: true, startDate: true, endDate: true, amount: true, currency: true, sitterId: true, paidAt: true },
   });
 
   if (!booking) return { ok: false as const, error: "NOT_FOUND" as const };
@@ -58,17 +58,17 @@ export async function setBookingStatus(
     return { ok: true as const, changed: false as const, previousStatus: currentStatus, nextStatus };
   }
 
-  if (nextStatus === "PAID" && (currentStatus === "CONFIRMED" || currentStatus === "CANCELLED" || currentStatus === "REFUNDED")) {
+  if ((nextStatus === "PAID" || nextStatus === "CONFIRMED") &&
+      !["PENDING_PAYMENT", "PAYMENT_FAILED", "PAID", "PENDING_ACCEPTANCE"].includes(currentStatus)) {
     return { ok: true as const, changed: false as const, previousStatus: currentStatus, nextStatus };
   }
 
-  const updated = await prisma.booking.update({
-    where: { id },
-    data: { status: nextStatus },
-    select: { id: true, status: true },
+  const updated = await prisma.booking.updateMany({
+    where: { id, status: currentStatus },
+    data: { status: nextStatus, ...((nextStatus === "PAID" || nextStatus === "CONFIRMED") && !booking.paidAt ? { paidAt: new Date() } : {}) },
   });
 
-  const changed = String(updated?.status ?? "") === nextStatus;
+  const changed = updated.count === 1;
   if (!changed) {
     return { ok: true as const, changed: false as const, previousStatus: currentStatus, nextStatus };
   }

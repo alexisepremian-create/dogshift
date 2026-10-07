@@ -5,7 +5,7 @@ import { useSession, signOut } from "next-auth/react";
 import { usePathname } from "next/navigation";
 import { X, Gift, ArrowRight, CheckCircle2 } from "lucide-react";
 
-const PAYMENT_FLOW_PATHS = ["/checkout", "/paiement", "/reservation"];
+const PAYMENT_FLOW_PATHS = ["/checkout", "/paiement", "/reservation", "/sitter/", "/login", "/signup"];
 
 import { fetchAccountContext } from "@/lib/accountContext";
 

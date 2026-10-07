@@ -421,10 +421,10 @@ export default function PhoneShowcaseSection() {
                 Fonctionnalités
               </p>
               <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">
-                Ce que nos utilisateurs préfèrent.
+                Découvrez le fonctionnement.
               </h2>
               <p className="mt-3 text-sm leading-relaxed text-slate-600 sm:text-base">
-                Trois raisons de garder DogShift à portée de main.
+                Aperçu de l’application. Les profils, notes et réservations présentés ci-dessous sont des exemples illustratifs.
               </p>
 
               <div className="mt-6 rounded-3xl bg-[var(--dogshift-blue)] p-7 text-white shadow-[0_30px_80px_-50px_rgba(124,58,237,0.7)] sm:p-8">

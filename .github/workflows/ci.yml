@@ -5,6 +5,7 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review]
 
 jobs:
   quality:
@@ -64,7 +65,7 @@ jobs:
     # Requires secrets: VERCEL_AUTOMATION_BYPASS_SECRET, CLERK_SECRET_KEY,
     # PLAYWRIGHT_SITTER_EMAIL, PLAYWRIGHT_SITTER_PASSWORD,
     # PLAYWRIGHT_OWNER_EMAIL, PLAYWRIGHT_OWNER_PASSWORD
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request' && github.event.pull_request.draft == false
     needs: quality
     runs-on: ubuntu-latest
     defaults:

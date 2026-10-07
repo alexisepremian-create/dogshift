@@ -1,3 +1,5 @@
+import { checkRateLimit, getClientIp } from "@/lib/rateLimit";
+import { z } from "zod";
 import { NextRequest, NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
@@ -18,21 +20,21 @@ async function sendTelegram(text: string) {
 }
 
 export async function POST(req: NextRequest) {
+  if (!checkRateLimit(`lead-magnet:${getClientIp(req)}`, { limit: 3, windowMs: 60 * 60 * 1000 }).allowed) {
+    return NextResponse.json({ error: "RATE_LIMITED" }, { status: 429 });
+  }
   const guard = await checkAgentActive("lead-magnet");
   if (guard) return guard;
 
   const start = Date.now();
   try {
-    const body = await req.json();
-    const { email, prenom, source = "homepage_banner" } = body as {
-      email?: string;
-      prenom?: string;
-      source?: string;
-    };
-
-    if (!email) {
-      return NextResponse.json({ error: "email requis" }, { status: 400 });
-    }
+    const parsed = z.object({
+      email: z.string().trim().email().max(254).transform(v => v.toLowerCase()),
+      prenom: z.string().trim().max(80).optional(),
+      source: z.enum(["homepage_banner", "chatbot"]).default("homepage_banner"),
+    }).safeParse(await req.json().catch(() => null));
+    if (!parsed.success) return NextResponse.json({ error: "INVALID_BODY" }, { status: 400 });
+    const { email, prenom, source } = parsed.data;
 
     // 1. Check for duplicate
     const existing = await prisma.leadMagnet.findUnique({ where: { email } });

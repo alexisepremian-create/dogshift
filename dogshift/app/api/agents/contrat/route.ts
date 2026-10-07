@@ -1,3 +1,4 @@
+import { isInternalAgentRequest } from "@/lib/security/internalAgentAuth";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { sendTelegramMessage } from "@/lib/telegram/sendTelegramMessage";
@@ -18,6 +19,7 @@ async function sendTelegram(text: string) {
  * - contract_signed : contrat signé, envoie code d'activation
  */
 export async function POST(req: NextRequest) {
+  if (!(await isInternalAgentRequest(req))) return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
   const start = Date.now();
   try {
     const body = await req.json();

@@ -5,7 +5,7 @@
 //   - auth/payment     → NetworkOnly (never cache)
 //   - everything else  → NetworkFirst (10s timeout, 24h fallback)
 
-const CACHE_VERSION = "ds-v2";
+const CACHE_VERSION = "ds-v3";
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
 const ASSETS_CACHE = `${CACHE_VERSION}-assets`;
 const PAGES_CACHE = `${CACHE_VERSION}-pages`;
@@ -71,6 +71,9 @@ self.addEventListener("fetch", (event) => {
     return;
   }
   if (!url.protocol.startsWith("http")) return;
+  // Never cache personalized HTML or development bundles. Cached account pages
+  // can otherwise survive sign-out on shared devices; stale dev bundles hide fixes.
+  if (request.mode === "navigate" || url.hostname === "localhost" || url.hostname === "127.0.0.1") return;
 
   // Auth + payment: always go to the network
   if (isNetworkOnly(url)) return;

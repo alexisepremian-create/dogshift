@@ -1,3 +1,4 @@
+import { internalAgentHeaders } from "@/lib/security/internalAgentAuth";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
@@ -132,7 +133,7 @@ export async function GET(req: NextRequest) {
       try {
         await fetch(`${appUrl}/api/agents/relance-owner`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { ...internalAgentHeaders(), "Content-Type": "application/json" },
           body: JSON.stringify({
             userId: owner.id,
             email: owner.email,

@@ -1,3 +1,5 @@
+import { internalAgentHeaders } from "@/lib/security/internalAgentAuth";
+import { isInternalAgentRequest } from "@/lib/security/internalAgentAuth";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
@@ -209,6 +211,7 @@ export const AGENTS_TREE = {
 
 // ─── POST /api/maestro ───
 export async function POST(req: NextRequest) {
+  if (!(await isInternalAgentRequest(req))) return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
   const start = Date.now();
   try {
     const body = await req.json();
@@ -238,7 +241,7 @@ export async function POST(req: NextRequest) {
     // Appeler le sous-agent
     const response = await fetch(route.url, {
       method: route.method,
-      headers: { "Content-Type": "application/json" },
+      headers: { ...internalAgentHeaders(), "Content-Type": "application/json" },
       body: route.method === "POST" ? JSON.stringify(requestBody) : undefined,
     });
 
@@ -287,7 +290,8 @@ export async function POST(req: NextRequest) {
 }
 
 // ─── GET /api/maestro (pour le dashboard) ───
-export async function GET() {
+export async function GET(req: Request) {
+  if (!(await isInternalAgentRequest(req))) return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
   const agentList = AGENTS_TREE.children.map(async (agent) => {
     const lastLog = await prisma.agentLog.findFirst({
       where: { agentName: agent.id },

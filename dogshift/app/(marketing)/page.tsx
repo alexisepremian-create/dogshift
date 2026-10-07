@@ -1,3 +1,4 @@
+import { loadPublicAvatarUrls } from "@/lib/sitter/publicAvatars";
 /* eslint-disable @typescript-eslint/no-explicit-any -- Prisma generated types
  * lag behind the schema for SitterProfile shape; pre-existing usage in this
  * file. Tracked separately from this perf fix. */
@@ -53,16 +54,6 @@ export const metadata: Metadata = {
  *
  * Regular (R2 / external) URLs pass through untouched.
  */
-function rewriteAvatarUrl(sitterId: string, url: string | null | undefined): string | null {
-  if (!url) return null;
-  const trimmed = String(url).trim();
-  if (!trimmed) return null;
-  if (trimmed.startsWith("data:")) {
-    return `/api/sitters/${encodeURIComponent(sitterId)}/avatar`;
-  }
-  return trimmed;
-}
-
 async function getFeaturedSitters(): Promise<SitterPreview[]> {
   try {
     const rows = await (prisma as any).sitterProfile.findMany({
@@ -73,11 +64,10 @@ async function getFeaturedSitters(): Promise<SitterPreview[]> {
         sitterId: true,
         displayName: true,
         city: true,
-        avatarUrl: true,
         verificationStatus: true,
         services: true,
         pricing: true,
-        user: { select: { name: true, image: true } },
+        user: { select: { name: true } },
       },
     });
 
@@ -85,7 +75,7 @@ async function getFeaturedSitters(): Promise<SitterPreview[]> {
       .map((r: any) => String(r.sitterId ?? "").trim())
       .filter(Boolean);
 
-    const [configRows, reviewAggs, bookableBySitter] = await Promise.all([
+    const [configRows, reviewAggs, bookableBySitter, avatarUrls] = await Promise.all([
       sitterIds.length > 0
         ? (prisma as any).serviceConfig.findMany({
             where: { sitterId: { in: sitterIds } },
@@ -103,6 +93,7 @@ async function getFeaturedSitters(): Promise<SitterPreview[]> {
       // Batched, so a service that is activated but has zero availability never
       // reaches a homepage card (it would answer UNAVAILABLE on every date).
       loadBookableServiceTypes(prisma as any, sitterIds),
+      loadPublicAvatarUrls(sitterIds),
     ]);
 
     const configsBySitter = new Map<string, any[]>();
@@ -151,7 +142,7 @@ async function getFeaturedSitters(): Promise<SitterPreview[]> {
           sitterId: sid,
           displayName: String(s.displayName ?? s.user?.name ?? "").trim() || "Dogsitter",
           city: String(s.city ?? "").trim(),
-          avatarUrl: rewriteAvatarUrl(sid, s.avatarUrl ?? s.user?.image ?? null),
+          avatarUrl: avatarUrls.get(sid) ?? null,
           verified: s.verificationStatus === "approved",
           services,
           minPrice,

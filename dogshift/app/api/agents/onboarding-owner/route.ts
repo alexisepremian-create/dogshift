@@ -1,3 +1,4 @@
+import { isInternalAgentRequest } from "@/lib/security/internalAgentAuth";
 import { NextRequest, NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
@@ -18,6 +19,7 @@ async function sendTelegram(text: string) {
 }
 
 export async function POST(req: NextRequest) {
+  if (!(await isInternalAgentRequest(req))) return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
   const guard = await checkAgentActive("onboarding-owner");
   if (guard) return guard;
 

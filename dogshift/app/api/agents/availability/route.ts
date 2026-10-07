@@ -1,3 +1,4 @@
+import { isInternalAgentRequest } from "@/lib/security/internalAgentAuth";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
@@ -6,6 +7,7 @@ import { prisma } from "@/lib/prisma";
  * Agent Disponibilité : vérifier les créneaux dispo d'un sitter
  */
 export async function POST(req: NextRequest) {
+  if (!(await isInternalAgentRequest(req))) return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
   try {
     const body = await req.json();
     const { sitterId, date, serviceType } = body;

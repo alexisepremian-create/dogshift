@@ -10,8 +10,8 @@ import { selfieDue, reportDue, selfieKey, reportKey } from "@/lib/serviceReport/
 
 export const runtime = "nodejs";
 
-// Cron cadence — keep in sync with vercel.json (*/5 * * * *).
-const TICK_MS = 5 * 60 * 1000;
+// Cron cadence — keep in sync with vercel.json (*/15 * * * *).
+const TICK_MS = 15 * 60 * 1000;
 const REPORT_GRACE_MS = 6 * 60 * 60 * 1000;
 
 function readCronSecret(req: NextRequest) {

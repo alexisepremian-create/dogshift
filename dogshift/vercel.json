@@ -74,7 +74,7 @@
     },
     {
       "path": "/api/cron/service-reports",
-      "schedule": "*/5 * * * *"
+      "schedule": "*/15 * * * *"
     }
   ],
   "buildCommand": "npm run build",

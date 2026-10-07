@@ -15,9 +15,8 @@
  * Conflict handling:
  *  - If a User already exists with that email and has a passwordHash → 409
  *    EMAIL_ALREADY_REGISTERED (we don't reveal more — they should go log in).
- *  - If a User exists but has NO passwordHash (Clerk-imported / Google-only),
- *    we set the new passwordHash so they regain access. This is the natural
- *    "I forgot I had an account" recovery for migrated users.
+ *  - Existing OAuth/migrated accounts must use sign-in or email-token reset.
+ *    Registration never claims an existing account.
  */
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
@@ -104,27 +103,10 @@ export async function POST(req: Request) {
     let userId: string;
 
     if (existing?.id) {
-      if (existing.passwordHash) {
-        reportApiError({
-          kind: "conflict",
-          code: "EMAIL_ALREADY_REGISTERED",
-          route: "auth.register",
-        });
-        return NextResponse.json(
-          { ok: false, error: "EMAIL_ALREADY_REGISTERED" },
-          { status: 409 },
-        );
-      }
-      // Account exists with no password yet (Clerk-imported or Google-only) —
-      // claim it by setting the new password.
-      await prisma.user.update({
-        where: { id: existing.id },
-        data: {
-          passwordHash,
-          ...(name && !existing.name ? { name } : {}),
-        },
-      });
-      userId = existing.id;
+      return NextResponse.json(
+        { ok: false, error: "EMAIL_ALREADY_REGISTERED" },
+        { status: 409 },
+      );
     } else {
       const created = await prisma.user.create({
         data: {

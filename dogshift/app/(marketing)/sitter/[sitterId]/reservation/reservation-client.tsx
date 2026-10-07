@@ -101,7 +101,7 @@ const SECONDARY_BTN =
   "inline-flex items-center justify-center rounded-2xl border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50";
 
 function pricingUnitForService(service: string): PricingUnit {
-  return service === "Pension" || service === "Garde" ? "DAILY" : "HOURLY";
+  return service === "Pension" ? "DAILY" : "HOURLY";
 }
 
 function isFinitePositiveNumber(x: unknown): x is number {

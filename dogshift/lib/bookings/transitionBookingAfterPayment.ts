@@ -228,6 +228,11 @@ export async function transitionBookingAfterStripePaymentSuccess(
   }
 
   const statusBefore = String(booking.status ?? "");
+  // A retry must not change an already processed request when the clock moves
+  // into the last-minute window, or revive a cancelled/refunded reservation.
+  if (!["PENDING_PAYMENT", "PAYMENT_FAILED"].includes(statusBefore)) {
+    return { ok: true as const, changed: false as const };
+  }
 
   const startDate =
     booking.startDate instanceof Date ? booking.startDate : booking.startDate ? new Date(booking.startDate) : null;

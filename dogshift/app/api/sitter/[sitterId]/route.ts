@@ -1,3 +1,4 @@
+import { loadPublicAvatarUrls } from "@/lib/sitter/publicAvatars";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
@@ -23,7 +24,6 @@ export async function GET(
       city: true,
       postalCode: true,
       bio: true,
-      avatarUrl: true,
       verificationStatus: true,
       lat: true,
       lng: true,
@@ -33,7 +33,7 @@ export async function GET(
       acceptanceCriteria: true,
       maxDogsBySize: true,
       updatedAt: true,
-      user: { select: { name: true, image: true } },
+      user: { select: { name: true } },
     };
 
     const capacityFields = {
@@ -85,6 +85,7 @@ export async function GET(
       return NextResponse.json({ ok: false, error: "NOT_FOUND" }, { status: 404 });
     }
 
+    const avatarUrls = await loadPublicAvatarUrls([sitterId]);
     const name = String((sitterProfile.displayName ?? sitterProfile.user?.name ?? "") ?? "").trim();
 
     return NextResponse.json(
@@ -93,7 +94,7 @@ export async function GET(
         sitter: {
           sitterId: String(sitterProfile.sitterId),
           name,
-          image: sitterProfile.avatarUrl ?? sitterProfile.user?.image ?? null,
+          image: avatarUrls.get(sitterId) ?? null,
         },
         profile: {
           sitterId: String(sitterProfile.sitterId),
@@ -101,7 +102,7 @@ export async function GET(
           city: sitterProfile.city ?? null,
           postalCode: sitterProfile.postalCode ?? null,
           bio: sitterProfile.bio ?? null,
-          avatarUrl: sitterProfile.avatarUrl ?? null,
+          avatarUrl: avatarUrls.get(sitterId) ?? null,
           verified: sitterProfile.verificationStatus === "approved",
           lat: sitterProfile.lat ?? null,
           lng: sitterProfile.lng ?? null,

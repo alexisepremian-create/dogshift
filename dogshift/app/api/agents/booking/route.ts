@@ -1,3 +1,4 @@
+import { isInternalAgentRequest } from "@/lib/security/internalAgentAuth";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
@@ -6,6 +7,7 @@ import { prisma } from "@/lib/prisma";
  * Agent Booking : créer, modifier, annuler une réservation
  */
 export async function POST(req: NextRequest) {
+  if (!(await isInternalAgentRequest(req))) return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
   try {
     const body = await req.json();
     const { action, bookingId, sitterId, userId, startAt, endAt, serviceType, message } = body;

@@ -13,7 +13,7 @@ const travelFields = z.object({
 
 const dailyBookingBody = z.object({
   sitterId: z.string().min(1, "sitterId is required"),
-  service: z.enum(["Pension", "Garde"]),
+  service: z.literal("Pension"),
   startDate: isoDateString,
   endDate: isoDateString,
   message: z.string().max(2000).optional().nullable(),
@@ -26,7 +26,7 @@ const dailyBookingBody = z.object({
 
 const hourlyBookingBody = z.object({
   sitterId: z.string().min(1, "sitterId is required"),
-  service: z.literal("Promenade"),
+  service: z.enum(["Promenade", "Garde"]),
   startAt: isoDatetimeString,
   endAt: isoDatetimeString,
   message: z.string().max(2000).optional().nullable(),
@@ -38,13 +38,13 @@ const hourlyBookingBody = z.object({
 
 /**
  * Union schema: validates a booking creation body.
- * - Daily services (Pension, Garde) require startDate + endDate.
- * - Hourly services (Promenade) require startAt + endAt.
+ * - Daily services (Pension) require startDate + endDate.
+ * - Hourly services (Promenade, Garde) require startAt + endAt.
  */
 export const createBookingSchema = z
   .union([dailyBookingBody, hourlyBookingBody])
   .superRefine((val, ctx) => {
-    if (val.service === "Pension" || val.service === "Garde") {
+    if (val.service === "Pension") {
       const v = val as z.infer<typeof dailyBookingBody>;
       if (v.startDate >= v.endDate && val.service === "Pension") {
         ctx.addIssue({

@@ -1,3 +1,5 @@
+import { internalAgentHeaders } from "@/lib/security/internalAgentAuth";
+import { isInternalAgentRequest } from "@/lib/security/internalAgentAuth";
 import { NextResponse } from 'next/server';
 
 import { sendTelegramMessage } from "@/lib/telegram/sendTelegramMessage";
@@ -41,6 +43,7 @@ async function sendEnrichedTelegram(payload: {
 }
 
 export async function POST(req: Request) {
+  if (!(await isInternalAgentRequest(req))) return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
   try {
     const body = await req.json();
 
@@ -49,13 +52,13 @@ export async function POST(req: Request) {
     const [classiqueResult, iaResult] = await Promise.allSettled([
       fetch(`${BASE_URL}/api/agents/candidature`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { ...internalAgentHeaders(), 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       }).then((r) => r.json()),
 
       fetch(`${BASE_URL}/api/agents/candidature-ai-review`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { ...internalAgentHeaders(), 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       }).then((r) => r.json()),
     ]);

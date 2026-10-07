@@ -205,8 +205,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, error: "INVALID_DATES" }, { status: 400 });
     }
 
-    const isDailyService = service === "Pension" || service === "Garde";
-    const isHourlyService = service === "Promenade";
+    const isDailyService = service === "Pension";
+    const isHourlyService = service === "Promenade" || service === "Garde";
 
     // Service-specific expected payload.
     if (isDailyService) {
@@ -657,6 +657,8 @@ export async function POST(req: NextRequest) {
         service,
         startDate: startDateTime,
         endDate: endDateTime,
+        startAt: startDateTime,
+        endAt: endDateTime,
         message,
         status: "PENDING_PAYMENT",
         amount,

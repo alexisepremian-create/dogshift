@@ -97,6 +97,12 @@ export async function POST(req: NextRequest) {
     if (typeof booking.stripePaymentIntentId === "string" && booking.stripePaymentIntentId.trim()) {
       try {
         const existing = await stripe.paymentIntents.retrieve(booking.stripePaymentIntentId);
+        if (existing.status === "succeeded") {
+          return NextResponse.json({ ok: false, error: "PAYMENT_ALREADY_COMPLETED" }, { status: 409 });
+        }
+        if (existing.status === "processing" || existing.status === "requires_capture") {
+          return NextResponse.json({ ok: false, error: "PAYMENT_IN_PROGRESS" }, { status: 409 });
+        }
         const existingTypes = Array.isArray((existing as any).payment_method_types) ? ((existing as any).payment_method_types as unknown[]) : [];
         const normalizedTypes = existingTypes.map((t) => String(t)).filter(Boolean).sort();
         const canReuse = normalizedTypes.length === 2 && normalizedTypes[0] === "card" && normalizedTypes[1] === "twint";
@@ -147,7 +153,7 @@ export async function POST(req: NextRequest) {
         // Do not reuse intents that allow other payment methods (Klarna/Amazon/etc.),
         // otherwise they can reappear in the UI even if the backend was updated.
         try {
-          if (existing.status !== "succeeded" && existing.status !== "canceled") {
+          if (existing.status !== "canceled") {
             await stripe.paymentIntents.cancel(existing.id);
           }
         } catch (cancelErr) {
@@ -156,9 +162,11 @@ export async function POST(req: NextRequest) {
             paymentIntentId: existing.id,
           });
           void cancelErr;
+          return NextResponse.json({ ok: false, error: "PAYMENT_RETRY_LATER" }, { status: 503 });
         }
       } catch (err) {
         console.error("[api][stripe][payment-intent] retrieve existing PI failed", err);
+        return NextResponse.json({ ok: false, error: "PAYMENT_RETRY_LATER" }, { status: 503 });
       }
     }
 
@@ -175,6 +183,8 @@ export async function POST(req: NextRequest) {
         paymentFeeAmount: String(paymentFeeAmount),
         totalOwnerAmount: String(totalOwnerAmount),
       },
+    }, {
+      idempotencyKey: `booking:${booking.id}:${booking.stripePaymentIntentId || "initial"}:${totalOwnerAmount}`,
     });
 
     console.log("[api][stripe][payment-intent] created", {

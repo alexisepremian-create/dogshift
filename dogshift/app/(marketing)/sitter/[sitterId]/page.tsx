@@ -856,7 +856,8 @@ function SitterPublicProfileContent({
     if (effectivePreviewMode) {
       qp.set("mode", "preview");
     }
-    router.push(`/sitter/${encodeURIComponent(id)}/reservation?${qp.toString()}`);
+    const target = `/sitter/${encodeURIComponent(id)}/reservation?${qp.toString()}`;
+    router.push(isSignedIn ? target : `/login?next=${encodeURIComponent(target)}`);
   }
 
   async function pay() {
@@ -2215,7 +2216,7 @@ function SitterPublicProfileContent({
   const handleReserve = () => {
     if (maintenanceMode) { setBookingCtaError(maintenanceBookingUserMessage(adminNote)); return; }
     if (!isLoaded) { setBookingCtaError("Chargement de la session… Réessaie dans une seconde."); return; }
-    if (!isSignedIn) { setBookingCtaError("Veuillez vous connecter pour demander une réservation."); return; }
+    if (!isSignedIn) { void continueToReservation(); return; }
     if (!canRequestBooking) {
       setBookingCtaError(
         slotsServiceType === "PENSION"
@@ -2842,7 +2843,7 @@ function SitterPublicProfileContent({
                                   e.stopPropagation();
                                   if (maintenanceMode) { setBookingCtaError(maintenanceBookingUserMessage(adminNote)); return; }
                                   if (!isLoaded) { setBookingCtaError("Chargement de la session… Réessaie dans une seconde."); return; }
-                                  if (!isSignedIn) { setBookingCtaError("Veuillez vous connecter pour demander une réservation."); return; }
+                                  if (!isSignedIn) { void continueToReservation(); return; }
                                   if (!canRequestBooking) {
                                     setBookingCtaError(slotsServiceType === "PENSION" ? "Sélectionnez une arrivée et une date de départ valides pour continuer." : "Sélectionnez un service et une date dans l'agenda pour continuer.");
                                     return;

@@ -1,3 +1,4 @@
+import { internalAgentHeaders } from "@/lib/security/internalAgentAuth";
 import { NextRequest, NextResponse } from "next/server";
 
 import { getRequestAdminAccess } from "@/lib/adminAuth";
@@ -51,7 +52,7 @@ export async function POST(
   try {
     const res = await fetch(url, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { ...internalAgentHeaders(), "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
     const json: unknown = await res.json().catch(() => ({}));

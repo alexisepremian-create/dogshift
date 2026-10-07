@@ -1,3 +1,4 @@
+import { isInternalAgentRequest } from "@/lib/security/internalAgentAuth";
 import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
@@ -8,7 +9,8 @@ export const runtime = "nodejs";
  * GET /api/agents/dog-news
  * Health check — always returns 200 so the health endpoint marks agent "online".
  */
-export async function GET() {
+export async function GET(req: Request) {
+  if (!(await isInternalAgentRequest(req))) return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
   const lastLog = await prisma.agentLog.findFirst({
     where: { agentName: "dog-news" },
     orderBy: { createdAt: "desc" },
@@ -30,7 +32,8 @@ export async function GET() {
  * Returns the latest report metadata.
  * Actual runs happen via Vercel cron at 08:00 every day.
  */
-export async function POST() {
+export async function POST(req: Request) {
+  if (!(await isInternalAgentRequest(req))) return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
   const lastLog = await prisma.agentLog.findFirst({
     where: { agentName: "dog-news" },
     orderBy: { createdAt: "desc" },

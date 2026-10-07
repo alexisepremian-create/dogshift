@@ -43,3 +43,13 @@ test("idempotency keys: report is once-ever, selfie is per Zurich day", () => {
   // A late-evening UTC instant still maps to the correct Zurich day.
   assert.equal(zurichDateKey(at("2026-07-24T23:30:00Z")), "2026-07-25");
 });
+
+test("15-minute pilot cadence retains daily and short-service reminders", () => {
+  const tick = 15 * 60 * 1000;
+  const daily = { status: "CONFIRMED", service: "Pension", startDate: at("2026-07-20T00:00:00Z"), endDate: at("2026-07-24T00:00:00Z") };
+  assert.equal(selfieDue(daily, at("2026-07-22T12:14:00Z"), tick), true);
+  assert.equal(selfieDue(daily, at("2026-07-22T12:15:00Z"), tick), false);
+  const short = { ...hourly, startAt: at("2026-07-24T14:01:00Z"), endAt: at("2026-07-24T14:31:00Z") };
+  assert.equal(selfieDue(short, at("2026-07-24T14:30:00Z"), tick), true);
+  assert.equal(reportDue(short, at("2026-07-24T14:45:00Z")), true);
+});
