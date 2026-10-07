@@ -1,50 +1,29 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import Script from "next/script";
-
 import { getConsentCookie, type ConsentLevel } from "@/lib/cookieConsent";
+import { analyticsConfigured, enableFunnel, trackFunnel } from "@/lib/analytics/funnel";
 import CookieBanner from "./CookieBanner";
 
-const GA_ID = "AW-18081650051";
-
-/**
- * Manages cookie consent banner + conditional loading of Google Ads.
- * Rendered client-side so it never blocks the server render.
- */
 export default function ConsentScriptLoader() {
-  const [adsConsented, setAdsConsented] = useState(false);
-
+  const [consented, setConsented] = useState(false);
+  const pathname = usePathname();
   useEffect(() => {
-    // Check existing consent on mount
-    const level = getConsentCookie();
-    if (level === "all") setAdsConsented(true);
+    setConsented(getConsentCookie() === "all"); // eslint-disable-line react-hooks/set-state-in-effect -- read browser cookie after hydration
   }, []);
-
-  function handleConsent(level: ConsentLevel) {
-    if (level === "all") setAdsConsented(true);
-  }
-
-  return (
-    <>
-      <CookieBanner onConsent={handleConsent} />
-
-      {adsConsented && (
-        <>
-          <Script
-            src={`https://www.googletagmanager.com/gtag/js?id=${GA_ID}`}
-            strategy="afterInteractive"
-          />
-          <Script id="google-ads-init" strategy="afterInteractive">
-            {`
-              window.dataLayer = window.dataLayer || [];
-              function gtag(){dataLayer.push(arguments);}
-              gtag('js', new Date());
-              gtag('config', '${GA_ID}');
-            `}
-          </Script>
-        </>
-      )}
-    </>
-  );
+  useEffect(() => {
+    if (!consented || !enableFunnel()) return;
+    trackFunnel("visit", "session");
+    if (/^\/sitter\/[^/]+\/?$/.test(pathname)) trackFunnel("sitter_view", pathname);
+  }, [pathname, consented]);
+  function handleConsent(level: ConsentLevel) { setConsented(level === "all"); }
+  return <>
+    <CookieBanner onConsent={handleConsent} />
+    {consented && analyticsConfigured() && <Script
+      src={`https://www.googletagmanager.com/gtag/js?id=${process.env.NEXT_PUBLIC_GA4_MEASUREMENT_ID}`}
+      strategy="afterInteractive"
+    />}
+  </>;
 }

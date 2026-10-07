@@ -1918,9 +1918,9 @@ export function StickySearchBar({ visible = true, hero = false }: { visible?: bo
 
 
 const HERO_TRUST_ITEMS = [
-  { icon: BadgeCheck, label: "Profils vérifiés" },
-  { icon: ShieldCheck, label: "Casier judiciaire vierge" },
-  { icon: Shield, label: "Assurance RC incluse" },
+  { icon: BadgeCheck, label: "Profils détaillés" },
+  { icon: ShieldCheck, label: "Échange avant la garde" },
+  { icon: Shield, label: "Tarifs affichés" },
   { icon: Lock, label: "Paiement sécurisé" },
 ] as const;
 
@@ -2213,8 +2213,8 @@ function FeaturedSittersSection({ sitters }: { sitters: SitterPreview[] }) {
 const REASSURANCE_ITEMS = [
   {
     icon: BadgeCheck,
-    title: "Profils vérifiés",
-    desc: "Sélectionnés manuellement avec vérification du casier judiciaire et entretien préalable.",
+    title: "Profils détaillés",
+    desc: "Consultez l’expérience, les services et les disponibilités de chaque dogsitter.",
     iconClass: "text-[var(--dogshift-blue)]",
     iconBg: "bg-[var(--dogshift-blue)]/10 ring-[var(--dogshift-blue)]/20",
   },
@@ -2228,14 +2228,14 @@ const REASSURANCE_ITEMS = [
   {
     icon: Lock,
     title: "Paiement sécurisé",
-    desc: "Paiement en ligne sécurisé via Stripe. Votre argent est protégé jusqu'à la fin de la prestation.",
+    desc: "Paiement en ligne via Stripe. Le statut de votre demande est accessible dans votre compte.",
     iconClass: "text-[var(--dogshift-blue)]",
     iconBg: "bg-[var(--dogshift-blue)]/10 ring-[var(--dogshift-blue)]/20",
   },
   {
     icon: ShieldCheck,
     title: "Support humain",
-    desc: "Une équipe à votre écoute pour vous accompagner à chaque étape de la garde.",
+    desc: "Une question sur votre réservation ? Contactez support@dogshift.ch.",
     iconClass: "text-[var(--dogshift-blue)]",
     iconBg: "bg-[var(--dogshift-blue)]/10 ring-[var(--dogshift-blue)]/20",
   },

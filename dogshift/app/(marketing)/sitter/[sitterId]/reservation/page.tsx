@@ -1,3 +1,4 @@
+import { loadPublicAvatarUrls } from "@/lib/sitter/publicAvatars";
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { notFound } from "next/navigation";
@@ -44,19 +45,19 @@ export default async function ReservationPage({
       city: true,
       postalCode: true,
       bio: true,
-      avatarUrl: true,
       services: true,
       pricing: true,
       lat: true,
       lng: true,
       pensionVerifStatus: true,
       pensionAcceptedSizes: true,
-      user: { select: { name: true, image: true } },
+      user: { select: { name: true } },
     },
   });
 
   if (!sitterProfile) notFound();
 
+  const avatarUrls = await loadPublicAvatarUrls([sitterId]);
   const pricing = sitterProfile.pricing && typeof sitterProfile.pricing === "object" ? (sitterProfile.pricing as Record<string, unknown>) : {};
   const rawServices = Array.isArray(sitterProfile.services) ? (sitterProfile.services as unknown[]).filter((s): s is string => typeof s === "string") : [];
   const allowedServiceLabels = new Set(["Promenade", "Garde", "Pension"]);
@@ -82,7 +83,7 @@ export default async function ReservationPage({
     city: sitterProfile.city ?? "",
     postalCode: sitterProfile.postalCode ?? "",
     bio: sitterProfile.bio ?? "",
-    avatarUrl: sitterProfile.avatarUrl ?? sitterProfile.user?.image ?? "",
+    avatarUrl: avatarUrls.get(sitterId) ?? "",
     services,
     pricing,
     lat: sitterLat,

@@ -1,6 +1,7 @@
 "use client";
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, @next/next/no-img-element */
 
+import { trackFunnel } from "@/lib/analytics/funnel";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Check, ChevronDown, PawPrint, Search, SlidersHorizontal, X } from "lucide-react";
@@ -264,6 +265,7 @@ export default function SearchResultsClient() {
 
         const next = payload.sitters.map(toUiSitter).filter(Boolean) as UiSitter[];
         setSitters(next);
+
         setSittersLoaded(true);
       } catch {
         setSitters([]);
@@ -271,6 +273,14 @@ export default function SearchResultsClient() {
       }
     })();
   }, [hydrated]);
+
+  useEffect(() => {
+    if (!sittersLoaded) return;
+    const track = () => trackFunnel("sitter_search", "session");
+    track();
+    window.addEventListener("dogshift:consent", track);
+    return () => window.removeEventListener("dogshift:consent", track);
+  }, [sittersLoaded]);
 
   const initialService = (sp.get("service") ?? "").trim();
   // Accept BOTH `location` (web home links) and `q` (native map search +

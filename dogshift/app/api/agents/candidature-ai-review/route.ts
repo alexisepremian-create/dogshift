@@ -1,3 +1,4 @@
+import { isInternalAgentRequest } from "@/lib/security/internalAgentAuth";
 import { generateObject } from 'ai';
 import { anthropic } from '@ai-sdk/anthropic';
 import { NextResponse } from 'next/server';
@@ -16,6 +17,7 @@ const CandidatureAnalysisSchema = z.object({
 });
 
 export async function POST(req: Request) {
+  if (!(await isInternalAgentRequest(req))) return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
   try {
     const candidat = await req.json();
 

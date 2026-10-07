@@ -7,6 +7,8 @@ import { commerceBlockedResponse } from "@/lib/platform/maintenance";
 import { resolveDbUserId } from "@/lib/auth/resolveDbUserId";
 import { estimateStripePaymentFeeCents } from "@/lib/stripe/paymentFeeEstimate";
 
+import { withSitterBookingLock, expireUnpaidBooking } from "@/lib/bookings/bookingHold";
+
 export const runtime = "nodejs";
 
 type Body = {
@@ -19,7 +21,6 @@ export async function POST(req: NextRequest) {
     if (maintenance) return maintenance;
 
     const stripe = getStripe();
-    const db = prisma as any;
     const userId = await resolveDbUserId(req);
     if (!userId) {
       return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
@@ -29,6 +30,10 @@ export async function POST(req: NextRequest) {
     const bookingId = typeof body?.bookingId === "string" ? body.bookingId.trim() : "";
     if (!bookingId) return NextResponse.json({ ok: false, error: "INVALID_BOOKING" }, { status: 400 });
 
+    const reference = await prisma.booking.findFirst({ where: { id: bookingId, userId }, select: { sitterId: true } });
+    if (!reference) return NextResponse.json({ ok: false, error: "NOT_FOUND" }, { status: 404 });
+    return await withSitterBookingLock(reference.sitterId, async (tx) => {
+    const db = tx;
     const startedAt = Date.now();
     const booking = await db.booking.findUnique({
       where: { id: bookingId },
@@ -39,6 +44,7 @@ export async function POST(req: NextRequest) {
         status: true,
         amount: true,
         currency: true,
+        createdAt: true,
         stripePaymentIntentId: true,
       },
     });
@@ -46,6 +52,9 @@ export async function POST(req: NextRequest) {
     if (!booking) return NextResponse.json({ ok: false, error: "NOT_FOUND" }, { status: 404 });
     if (booking.userId !== userId) return NextResponse.json({ ok: false, error: "FORBIDDEN" }, { status: 403 });
 
+    if (await expireUnpaidBooking(tx, booking)) {
+      return NextResponse.json({ ok: false, error: "BOOKING_EXPIRED" }, { status: 409 });
+    }
     if (booking.status !== "PENDING_PAYMENT") {
       return NextResponse.json({ ok: false, error: "INVALID_STATUS" }, { status: 409 });
     }
@@ -97,6 +106,12 @@ export async function POST(req: NextRequest) {
     if (typeof booking.stripePaymentIntentId === "string" && booking.stripePaymentIntentId.trim()) {
       try {
         const existing = await stripe.paymentIntents.retrieve(booking.stripePaymentIntentId);
+        if (existing.status === "succeeded") {
+          return NextResponse.json({ ok: false, error: "PAYMENT_ALREADY_COMPLETED" }, { status: 409 });
+        }
+        if (existing.status === "processing" || existing.status === "requires_capture") {
+          return NextResponse.json({ ok: false, error: "PAYMENT_IN_PROGRESS" }, { status: 409 });
+        }
         const existingTypes = Array.isArray((existing as any).payment_method_types) ? ((existing as any).payment_method_types as unknown[]) : [];
         const normalizedTypes = existingTypes.map((t) => String(t)).filter(Boolean).sort();
         const canReuse = normalizedTypes.length === 2 && normalizedTypes[0] === "card" && normalizedTypes[1] === "twint";
@@ -147,7 +162,7 @@ export async function POST(req: NextRequest) {
         // Do not reuse intents that allow other payment methods (Klarna/Amazon/etc.),
         // otherwise they can reappear in the UI even if the backend was updated.
         try {
-          if (existing.status !== "succeeded" && existing.status !== "canceled") {
+          if (existing.status !== "canceled") {
             await stripe.paymentIntents.cancel(existing.id);
           }
         } catch (cancelErr) {
@@ -156,9 +171,11 @@ export async function POST(req: NextRequest) {
             paymentIntentId: existing.id,
           });
           void cancelErr;
+          return NextResponse.json({ ok: false, error: "PAYMENT_RETRY_LATER" }, { status: 503 });
         }
       } catch (err) {
         console.error("[api][stripe][payment-intent] retrieve existing PI failed", err);
+        return NextResponse.json({ ok: false, error: "PAYMENT_RETRY_LATER" }, { status: 503 });
       }
     }
 
@@ -175,6 +192,8 @@ export async function POST(req: NextRequest) {
         paymentFeeAmount: String(paymentFeeAmount),
         totalOwnerAmount: String(totalOwnerAmount),
       },
+    }, {
+      idempotencyKey: `booking:${booking.id}:${booking.stripePaymentIntentId || "initial"}:${totalOwnerAmount}`,
     });
 
     console.log("[api][stripe][payment-intent] created", {
@@ -212,6 +231,7 @@ export async function POST(req: NextRequest) {
       },
       { status: 200 }
     );
+    });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     if (message === "Missing STRIPE_SECRET_KEY") {

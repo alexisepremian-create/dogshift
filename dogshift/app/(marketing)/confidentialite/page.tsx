@@ -176,8 +176,8 @@ export default function ConfidentialitePage() {
                     link: "https://resend.com/privacy",
                   },
                   {
-                    name: "Google Ads",
-                    role: "Publicité en ligne (si applicable, selon consentement)",
+                    name: "Google Analytics",
+                    role: "Mesure facultative du parcours de réservation, selon consentement",
                     location: "États-Unis",
                     link: "https://policies.google.com/privacy",
                   },
@@ -278,10 +278,14 @@ export default function ConfidentialitePage() {
                   </p>
                 </div>
                 <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                  <p className="font-semibold text-slate-900">Cookies publicitaires (Google Ads)</p>
+                  <p className="font-semibold text-slate-900">Mesure d’audience (Google Analytics)</p>
                   <p className="mt-1 text-slate-600">
-                    Utilisés pour la mesure des conversions publicitaires. Soumis à consentement
-                    conformément aux règles applicables.
+                    Avec votre accord, nous mesurons les étapes de recherche, consultation de profil,
+                    réservation et paiement. Aucun nom, email, téléphone, adresse, identifiant de
+                    réservation ni contenu de formulaire n’est envoyé dans ces événements.
+                    Google peut traiter les identifiants techniques nécessaires à la mesure aux États-Unis.
+                    Vous pouvez refuser ou retirer votre accord via « Gérer les cookies » en bas de page,
+                    sans empêcher une réservation.
                   </p>
                 </div>
               </div>

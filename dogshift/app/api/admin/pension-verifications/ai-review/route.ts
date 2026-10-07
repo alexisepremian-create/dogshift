@@ -1,3 +1,4 @@
+import { internalAgentHeaders } from "@/lib/security/internalAgentAuth";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getRequestAdminAccess } from "@/lib/adminAuth";
@@ -17,7 +18,7 @@ export async function POST(req: NextRequest) {
 
     const res = await fetch(`${BASE}/api/agents/pension-verification`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { ...internalAgentHeaders(), "Content-Type": "application/json" },
       body: JSON.stringify({ sitterId }),
     });
     const data = await res.json().catch(() => ({}));

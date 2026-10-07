@@ -6,6 +6,8 @@ import { resolveDbUserId } from "@/lib/auth/resolveDbUserId";
 import { setBookingStatus } from "@/lib/bookings/setBookingStatus";
 import { stripe } from "@/lib/stripe";
 
+import { cancelUnpaidBooking } from "@/lib/bookings/bookingHold";
+
 export const runtime = "nodejs";
 
 function warn409(params: {
@@ -117,24 +119,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const canceledAt = new Date();
 
     if (status === "DRAFT" || status === "PENDING_PAYMENT" || status === "PAYMENT_FAILED") {
-      const updated = await (prisma as any).booking.update({
-        where: { id: bookingId },
-        data: {
-          canceledAt,
-        },
-        select: {
-          id: true,
-          startDate: true,
-          endDate: true,
-          updatedAt: true,
-          canceledAt: true,
-        },
-      });
-
-      const res = await setBookingStatus(bookingId, "CANCELLED" as any, { req });
-      if (!res.ok) return NextResponse.json({ ok: false, error: res.error }, { status: 500 });
-
-      return NextResponse.json({ ok: true, booking: { ...updated, status: "CANCELLED" } }, { status: 200 });
+      const result = await cancelUnpaidBooking(bookingId, userId);
+      return NextResponse.json(result, { status: result.ok ? 200 : 409 });
     }
 
     if (status === "PAID" || status === "PENDING_ACCEPTANCE" || status === "CONFIRMED") {

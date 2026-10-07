@@ -1,3 +1,4 @@
+import { isInternalAgentRequest } from "@/lib/security/internalAgentAuth";
 import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
@@ -9,7 +10,8 @@ export const runtime = "nodejs";
  * Health check — returns 200 as long as the route exists.
  * The health endpoint (agents-health) uses this to mark the agent "online".
  */
-export async function GET() {
+export async function GET(req: Request) {
+  if (!(await isInternalAgentRequest(req))) return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
   const lastLog = await prisma.agentLog.findFirst({
     where: { agentName: "deps-agent" },
     orderBy: { createdAt: "desc" },
@@ -31,7 +33,8 @@ export async function GET() {
  * Returns the current maintenance status.
  * Actual runs are triggered nightly by GitHub Actions — no manual dispatch here.
  */
-export async function POST() {
+export async function POST(req: Request) {
+  if (!(await isInternalAgentRequest(req))) return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
   const lastLog = await prisma.agentLog.findFirst({
     where: { agentName: "deps-agent" },
     orderBy: { createdAt: "desc" },

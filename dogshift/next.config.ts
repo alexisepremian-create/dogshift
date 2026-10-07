@@ -10,7 +10,7 @@ console.log("[boot][env]", {
   NEXTAUTH_URL: envNextAuthUrl ?? null,
   NEXTAUTH_SECRET: envNextAuthSecretPresent ? "present" : "missing",
   GOOGLE_CLIENT_ID: envGoogleClientId ? `${envGoogleClientId.slice(0, 6)}…` : "missing",
-  DATABASE_URL: envDatabaseUrl ?? null,
+  DATABASE_URL: envDatabaseUrl ? "present" : "missing",
 });
 
 /**

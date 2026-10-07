@@ -91,9 +91,9 @@ export default function DogSitterVeveyPage() {
             "La sécurité de votre chien est notre priorité. Tous les profils DogShift passent par une vérification sérieuse avant activation.",
         },
         {
-          title: "Assurance RC incluse",
+          title: "Assurance du dogsitter",
           description:
-            "Les dogsitters présents sur DogShift disposent d'une assurance responsabilité civile couvrant la garde d'animaux.",
+            "Les CGU demandent au dogsitter une RC adaptée à la garde rémunérée. Demandez-lui confirmation de sa couverture ; DogShift ne fournit pas d’assurance pour la prestation.",
         },
       ]}
       ctaEyebrow="Service disponible sur la Riviera"

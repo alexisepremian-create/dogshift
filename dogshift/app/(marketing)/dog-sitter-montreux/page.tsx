@@ -91,7 +91,7 @@ export default function DogSitterMontreuxPage() {
             "La sécurité de votre chien est notre priorité. Tous les profils DogShift à Montreux sont vérifiés avant d'être activés sur la plateforme.",
         },
         {
-          title: "Assurance RC incluse",
+          title: "Assurance du dogsitter",
           description:
             "Les dogsitters DogShift à Montreux disposent d'une assurance responsabilité civile valide, couvrant la garde d'animaux.",
         },

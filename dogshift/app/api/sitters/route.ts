@@ -1,9 +1,9 @@
+import { loadPublicAvatarUrls } from "@/lib/sitter/publicAvatars";
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 import { prisma } from "@/lib/prisma";
-import { getSitterReviewSnapshot } from "@/lib/sitterReviews";
 import { resolvePublicEnabledServices } from "@/lib/sitterEnabledServices";
 import { loadBookableServiceTypes } from "@/lib/availability/serviceActivation";
 import { resolveSitterDogSizes } from "@/lib/sitterDogSizes";
@@ -19,16 +19,6 @@ export const runtime = "nodejs";
  * image over HTTP/2. Regular R2/CDN URLs pass through untouched. Mirrors the web
  * homepage's rewriteAvatarUrl in app/(marketing)/page.tsx.
  */
-function rewriteAvatarUrl(sitterId: string, url: string | null | undefined): string | null {
-  if (!url) return null;
-  const trimmed = String(url).trim();
-  if (!trimmed) return null;
-  if (trimmed.startsWith("data:")) {
-    return `/api/sitters/${encodeURIComponent(sitterId)}/avatar`;
-  }
-  return trimmed;
-}
-
 type SitterListItem = {
   sitterId: string;
   name: string;
@@ -85,7 +75,6 @@ export async function GET(req: NextRequest) {
       city: true,
       postalCode: true,
       bio: true,
-      avatarUrl: true,
       verificationStatus: true,
       lat: true,
       lng: true,
@@ -93,7 +82,7 @@ export async function GET(req: NextRequest) {
       pricing: true,
       dogSizes: true,
       updatedAt: true,
-      user: { select: { name: true, image: true } },
+      user: { select: { name: true } },
     };
 
     const capacityFields = {
@@ -152,26 +141,26 @@ export async function GET(req: NextRequest) {
     // rather than let the owner open the fiche and hit UNAVAILABLE on every date.
     const bookableBySitter = await loadBookableServiceTypes(prisma as any, sitterIds);
 
+    const avatarUrls = await loadPublicAvatarUrls(sitterIds);
+    const reviewAggs = await prisma.review.groupBy({ by: ["sitterId"], where: { sitterId: { in: sitterIds } }, _avg: { rating: true }, _count: { id: true } });
+    const reviewMap = new Map(reviewAggs.map(row => [row.sitterId, row]));
+
     const rowsRaw = await Promise.all(
       sitters.map(async (s: DbRow): Promise<SitterListItem | null> => {
       const name = String(s.displayName ?? "").trim();
       if (!String(s.sitterId ?? "").trim()) return null;
       let averageRating: number | null = null;
       let countReviews = 0;
-      try {
-        const snapshot = await getSitterReviewSnapshot(String(s.sitterId ?? ""));
-        averageRating = snapshot.averageRating;
-        countReviews = snapshot.countReviews;
-      } catch (err) {
-        console.error("[api][sitters] review aggregate failed", err);
-      }
+      const aggregate = reviewMap.get(String(s.sitterId));
+      averageRating = aggregate?._avg.rating ?? null;
+      countReviews = aggregate?._count.id ?? 0;
       return {
         sitterId: String(s.sitterId ?? ""),
         name,
         city: s.city ?? "",
         postalCode: s.postalCode ?? "",
         bio: s.bio ?? "",
-        avatarUrl: rewriteAvatarUrl(String(s.sitterId ?? ""), s.avatarUrl ?? s.user?.image ?? null),
+        avatarUrl: avatarUrls.get(String(s.sitterId)) ?? null,
         verified: typeof s.verificationStatus === "string" ? s.verificationStatus === "approved" : false,
         lat: typeof s.lat === "number" && Number.isFinite(s.lat) ? s.lat : null,
         lng: typeof s.lng === "number" && Number.isFinite(s.lng) ? s.lng : null,

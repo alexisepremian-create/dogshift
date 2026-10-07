@@ -158,6 +158,9 @@ export async function POST(req: NextRequest) {
 
     if (event.type === "checkout.session.completed") {
       const session = event.data.object as Stripe.Checkout.Session;
+      if (session.payment_status !== "paid") {
+        return NextResponse.json({ received: true, ignored: true, reason: "PAYMENT_NOT_PAID" }, { status: 200 });
+      }
       const bookingId = typeof session.metadata?.bookingId === "string" ? session.metadata.bookingId : "";
       const sessionId = typeof session.id === "string" ? session.id : "";
       const paymentIntentId = typeof session.payment_intent === "string" ? session.payment_intent : "";

@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { DOG_SIZE_WEIGHTS, type DogSizeKey } from "@/lib/constants/dog-sizes";
+import { DOG_SIZE_WEIGHTS, dogSizeKeyFromWeight, type DogSizeKey } from "@/lib/constants/dog-sizes";
 
 /**
  * Map French dog size labels to DogSizeKey.
@@ -61,21 +61,14 @@ export async function checkCapacityForBooking(args: {
       endDate: { gte: new Date(`${startDate}T00:00:00.000Z`) },
       ...(excludeBookingId ? { id: { not: excludeBookingId } } : {}),
     },
-    select: { id: true, dogProfileId: true },
+    select: { id: true, selectedDog: { select: { weightKg: true } } },
   });
 
   let usedPlaces = 0;
   for (const booking of overlapping) {
-    if (booking.dogProfileId) {
-      const dog = await (prisma as unknown as Record<string, unknown> & { dogProfile: { findUnique: (a: unknown) => Promise<{ size?: string | null } | null> } }).dogProfile.findUnique({
-        where: { id: booking.dogProfileId },
-        select: { size: true },
-      });
-      const key = dog?.size ? toDogSizeKey(dog.size) : null;
-      usedPlaces += key ? DOG_SIZE_WEIGHTS[key].weight : 1;
-    } else {
-      usedPlaces += 1;
-    }
+    const key = dogSizeKeyFromWeight(booking.selectedDog?.weightKg);
+    // Legacy unknown weights must not under-count a large dog.
+    usedPlaces += key ? DOG_SIZE_WEIGHTS[key].weight : DOG_SIZE_WEIGHTS.large.weight;
   }
 
   const available = capacityPlaces - usedPlaces;

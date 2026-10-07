@@ -86,6 +86,15 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       return NextResponse.json({ ok: false, error: "INVALID_STATUS" }, { status: 409 });
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const res = await setBookingStatus(bookingId, "CONFIRMED" as any, { req });
+    if (!res.ok) {
+      return NextResponse.json({ ok: false, error: res.error }, { status: 500 });
+    }
+    if (!res.changed) {
+      return NextResponse.json({ ok: false, error: "STATUS_CHANGED_RETRY" }, { status: 409 });
+    }
+
     try {
       const participants = await resolveBookingParticipants(bookingId);
       if (participants?.owner?.id) {
@@ -143,11 +152,6 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       console.error("[api][host][requests][accept][POST] notification failed", err);
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const res = await setBookingStatus(bookingId, "CONFIRMED" as any, { req });
-    if (!res.ok) {
-      return NextResponse.json({ ok: false, error: res.error }, { status: 500 });
-    }
 
     return NextResponse.json({ ok: true, id: bookingId, status: "CONFIRMED" }, { status: 200 });
   } catch (err) {

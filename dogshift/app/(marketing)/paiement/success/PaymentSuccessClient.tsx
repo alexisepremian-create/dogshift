@@ -1,6 +1,7 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 "use client";
 
+import { trackFunnel } from "@/lib/analytics/funnel";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
@@ -150,6 +151,7 @@ export default function PaymentSuccessClient({ bookingId }: { bookingId: string 
         }
 
         const nextBooking = payload.booking;
+        if (["PAID", "CONFIRMED", "PENDING_ACCEPTANCE"].includes(nextBooking.status)) trackFunnel("payment_success", nextBooking.id);
         setBooking(nextBooking);
 
         // Fetch sitter lat/lng for travel map if AT_OWNER booking

@@ -1,3 +1,4 @@
+import { isInternalAgentRequest } from "@/lib/security/internalAgentAuth";
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
@@ -7,6 +8,7 @@ export const runtime = "nodejs";
 export const maxDuration = 60;
 
 export async function POST(req: Request) {
+  if (!(await isInternalAgentRequest(req))) return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
   try {
     const body = (await req.json().catch(() => null)) as null | { sitterId?: string };
     const sitterId = typeof body?.sitterId === "string" ? body.sitterId.trim() : "";

@@ -957,8 +957,10 @@ export async function checkBoardingRange(input: CheckBoardingRangeInput): Promis
       (prisma as any).booking.findMany({
         where: {
           sitterId,
-          startAt: { lt: endDt },
-          endAt: { gt: startDt },
+          OR: [
+            { startAt: { lt: endDt }, endAt: { gt: startDt } },
+            { startAt: null, startDate: { lt: endDt }, endDate: { gt: startDt } },
+          ],
         },
         select: {
           status: true,

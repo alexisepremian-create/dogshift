@@ -5,6 +5,7 @@
  
 "use client";
 
+import { trackFunnel } from "@/lib/analytics/funnel";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -101,7 +102,7 @@ const SECONDARY_BTN =
   "inline-flex items-center justify-center rounded-2xl border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50";
 
 function pricingUnitForService(service: string): PricingUnit {
-  return service === "Pension" || service === "Garde" ? "DAILY" : "HOURLY";
+  return service === "Pension" ? "DAILY" : "HOURLY";
 }
 
 function isFinitePositiveNumber(x: unknown): x is number {
@@ -778,7 +779,13 @@ export default function ReservationClient({
   const [durationHours, setDurationHours] = useState<number | null>(null);
   const [message, setMessage] = useState("");
   const [dogSize, setDogSize] = useState<string | null>(null);
-  const [numberOfDogs, setNumberOfDogs] = useState<number>(1);
+  useEffect(() => {
+    const track = () => trackFunnel("booking_start", sitter.sitterId);
+    track();
+    window.addEventListener("dogshift:consent", track);
+    return () => window.removeEventListener("dogshift:consent", track);
+  }, [sitter.sitterId]);
+  const numberOfDogs = 1;
 
   const [locationMode, setLocationMode] = useState<"AT_SITTER" | "AT_OWNER">("AT_SITTER");
   const [ownerStreet, setOwnerStreet] = useState("");
@@ -1905,6 +1912,11 @@ export default function ReservationClient({
         payload.endAt = endLocal.toISOString();
       }
 
+      const chosenDog = dogs.find((d) => d.id === selectedDogIds[0]);
+      if (!chosenDog || !dogSizeKeyFromWeight(chosenDog.weightKg)) {
+        setError("Sélectionne ton chien et complète son poids dans sa fiche pour réserver.");
+        return;
+      }
       const bookingRes = await fetch("/api/bookings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1927,6 +1939,7 @@ export default function ReservationClient({
       }
 
       if (!bookingRes.ok || !bookingPayload?.ok || !bookingId) {
+        trackFunnel("funnel_error", undefined, "booking");
         if (typeof bookingPayload?.message === "string" && bookingPayload.message) {
           setError(bookingPayload.message);
           return;
@@ -1939,6 +1952,7 @@ export default function ReservationClient({
         return;
       }
 
+      trackFunnel("booking_submit", bookingId);
       router.push(`/checkout/${encodeURIComponent(bookingId)}`);
     } catch {
       setError("Impossible de démarrer la réservation. Réessayez.");
@@ -2375,42 +2389,7 @@ export default function ReservationClient({
               )}
             </div>
 
-            {/* Number of dogs picker — shown when sitter has a maxDogs limit */}
-            {sitter.acceptanceCriteria?.maxDogs != null && sitter.acceptanceCriteria.maxDogs > 0 && (
-              <div className={embedded ? "rounded-3xl border border-slate-200 bg-white p-4" : "rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-46px_rgba(2,6,23,0.12)] sm:p-8"}>
-                <p className="text-sm font-semibold text-slate-900">Nombre de chiens</p>
-                <p className="mt-1 text-xs text-slate-500">
-                  Ce sitter accepte au maximum {sitter.acceptanceCriteria.maxDogs} chien{sitter.acceptanceCriteria.maxDogs > 1 ? "s" : ""} simultanément.
-                </p>
-                {sitter.acceptanceCriteria.neuteredRequired && (
-                  <p className="mt-1 flex items-center gap-1 text-xs font-medium text-amber-600">
-                    <Scissors className="h-3 w-3 flex-shrink-0" />
-                    Chiens castrés/stérilisés uniquement.
-                  </p>
-                )}
-                <div className="mt-4 flex items-center gap-4">
-                  <button
-                    type="button"
-                    aria-label="Diminuer"
-                    disabled={numberOfDogs <= 1}
-                    onClick={() => setNumberOfDogs((n) => Math.max(1, n - 1))}
-                    className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-600 transition hover:bg-slate-50 disabled:opacity-30"
-                  >
-                    −
-                  </button>
-                  <span className="min-w-[2rem] text-center text-lg font-bold text-slate-900">{numberOfDogs}</span>
-                  <button
-                    type="button"
-                    aria-label="Augmenter"
-                    disabled={numberOfDogs >= sitter.acceptanceCriteria.maxDogs}
-                    onClick={() => setNumberOfDogs((n) => Math.min(sitter.acceptanceCriteria!.maxDogs!, n + 1))}
-                    className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-600 transition hover:bg-slate-50 disabled:opacity-30"
-                  >
-                    +
-                  </button>
-                </div>
-              </div>
-            )}
+            <p className="text-sm text-slate-600">Une réservation concerne un seul chien pendant cette phase pilote.</p>
 
             {/* Neutered-only notice (when no maxDogs limit set) */}
             {sitter.acceptanceCriteria?.neuteredRequired && !sitter.acceptanceCriteria?.maxDogs && (
@@ -2470,7 +2449,7 @@ export default function ReservationClient({
                     const photoSrc = dog.photoUrl ? publicDogPhotoPath(dog.photoUrl) : null;
                     const toggle = () => {
                       setSelectedDogIds((prev) => {
-                        const next = prev.includes(dog.id) ? prev.filter((id) => id !== dog.id) : [...prev, dog.id];
+                        const next = prev.includes(dog.id) ? prev.filter((id) => id !== dog.id) : [dog.id];
                         const firstDog = dogs.find((d) => d.id === (next[0] ?? null));
                         const sk = firstDog ? dogSizeKeyFromWeight(firstDog.weightKg) : null;
                         if (sk) setDogSize(sk);
@@ -2546,7 +2525,7 @@ export default function ReservationClient({
                           setSelectedDogIds((prev) => {
                             const next = prev.includes(dog.id)
                               ? prev.filter((id) => id !== dog.id)
-                              : [...prev, dog.id];
+                              : [dog.id];
                             // Update dog size to reflect the first selected dog
                             const firstId = next[0] ?? null;
                             const firstDog = dogs.find((d) => d.id === firstId);

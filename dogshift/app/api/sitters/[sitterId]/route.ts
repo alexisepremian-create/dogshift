@@ -1,3 +1,4 @@
+import { loadPublicAvatarUrls, loadPublicLegacyDetails } from "@/lib/sitter/publicAvatars";
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
@@ -112,7 +113,6 @@ export async function GET(
         city: true,
         postalCode: true,
         bio: true,
-        avatarUrl: true,
         verificationStatus: true,
         lifecycleStatus: true,
         lat: true,
@@ -124,7 +124,7 @@ export async function GET(
         acceptanceCriteria: true,
         pensionVerifStatus: true,
         pensionAcceptedSizes: true,
-        user: { select: { image: true, hostProfileJson: true } },
+
       },
     });
 
@@ -144,6 +144,7 @@ export async function GET(
       }
     }
 
+    const avatarUrls = await loadPublicAvatarUrls([sitterId]);
     const name = String(sitterProfile.displayName ?? "").trim();
     const pricing = normalizePersistedPublicPricing(sitterProfile.pricing);
 
@@ -151,9 +152,8 @@ export async function GET(
     let resolvedBio = sitterProfile.bio ?? "";
     let boardingDetails: BoardingDetails | null = null;
     try {
-      const raw = typeof sitterProfile.user?.hostProfileJson === "string" ? sitterProfile.user.hostProfileJson : null;
-      if (raw) {
-        const parsed = JSON.parse(raw) as Record<string, unknown>;
+      const parsed = await loadPublicLegacyDetails(sitterId);
+      if (parsed) {
         if (!resolvedBio) {
           const jsonBio = typeof parsed?.bio === "string" ? parsed.bio.trim() : "";
           if (jsonBio) resolvedBio = jsonBio;
@@ -211,7 +211,7 @@ export async function GET(
       city: sitterProfile.city ?? "",
       postalCode: sitterProfile.postalCode ?? "",
       bio: resolvedBio,
-      avatarUrl: sitterProfile.avatarUrl ?? sitterProfile.user?.image ?? null,
+      avatarUrl: avatarUrls.get(sitterId) ?? null,
       services: enabledServices,
       pricing,
       dogSizes: sitterProfile.dogSizes ?? null,

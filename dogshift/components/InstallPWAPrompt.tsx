@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
+import { usePathname } from "next/navigation";
 
 const DISMISSED_KEY = "pwa-install-dismissed";
 
@@ -23,6 +24,7 @@ function isIOS(): boolean {
 }
 
 export default function InstallPWAPrompt() {
+  const pathname = usePathname();
   const [state, setState] = useState<InstallState>({ status: "hidden" });
 
   useEffect(() => {
@@ -54,7 +56,7 @@ export default function InstallPWAPrompt() {
     dismiss();
   }
 
-  if (state.status === "hidden") return null;
+  if (state.status === "hidden" || pathname !== "/") return null;
 
   return (
     <div
@@ -82,7 +84,7 @@ export default function InstallPWAPrompt() {
           </p>
         ) : (
           <p className="text-xs text-gray-500 mt-0.5">
-            Accès rapide, fonctionne hors-ligne
+            Accès rapide depuis ton écran d’accueil
           </p>
         )}
       </div>

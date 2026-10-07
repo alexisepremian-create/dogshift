@@ -1,3 +1,4 @@
+import { isInternalAgentRequest } from "@/lib/security/internalAgentAuth";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
@@ -5,7 +6,8 @@ import { prisma } from "@/lib/prisma";
  * GET /api/agents/supervision
  * Agent Supervision : surveiller l'état des agents
  */
-export async function GET() {
+export async function GET(req: Request) {
+  if (!(await isInternalAgentRequest(req))) return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
   try {
     const start = Date.now();
 
