@@ -27,5 +27,24 @@ try{
  const signature=stripe.webhooks.generateTestHeaderString({payload,secret:'whsec_local_audit_only'});
  const r=await fetch(base+'/api/stripe/webhook',{method:'POST',headers:{'content-type':'application/json','stripe-signature':signature},body:payload});assert.equal(r.status,200,await r.text());
  const saved=await db.booking.findUnique({where:{id:bookingId}});assert.equal(saved.status,'PAID');assert.ok(saved.paidAt);
- console.log(JSON.stringify({bookingId,paymentIntentId:pi,livemode:false,status:confirmed.status,amount:confirmed.amount,currency:confirmed.currency,concurrentCreation:'same intent',retryAfterSuccess:'blocked 409',localWebhook:saved.status,chargeRecorded:Boolean(saved.stripeChargeId),limitations:['No real charge','No live webhook connectivity validation','No Connect payout to a sitter tested','TWINT/3DS/refund not tested']},null,2));
+ // Unpaid cancellation invalidates the old client secret before freeing the slot.
+ const freeSlots=availability.slots.filter(s=>s.status==='AVAILABLE'&&new Date(s.startAt).getTime()>end.getTime()+3600000);
+ assert.ok(freeSlots.length);const extraSlot=freeSlots[0];
+ const extraBody={sitterId:'s-audit',service:'Garde',startAt:extraSlot.startAt,endAt:extraSlot.endAt,dogProfileId:'audit-dog'};
+ const extra=await post('/api/bookings',extraBody);assert.equal(extra.status,200,JSON.stringify(extra));
+ const extraIntent=await post('/api/stripe/payment-intent',{bookingId:extra.body.bookingId});assert.equal(extraIntent.status,200);
+ const canceled=await post('/api/bookings/'+extra.body.bookingId+'/cancel',{});assert.equal(canceled.status,200,JSON.stringify(canceled));
+ assert.equal((await stripe.paymentIntents.retrieve(extraIntent.body.intentId)).status,'canceled');
+ const next=await post('/api/bookings',extraBody);assert.equal(next.status,200,JSON.stringify(next));
+ const nextIntent=await post('/api/stripe/payment-intent',{bookingId:next.body.bookingId});assert.equal(nextIntent.status,200);
+ await db.booking.update({where:{id:next.body.bookingId},data:{createdAt:new Date(Date.now()-31*60000)}});
+ const afterExpiry=await post('/api/bookings',extraBody);assert.equal(afterExpiry.status,200,JSON.stringify(afterExpiry));
+ assert.equal((await stripe.paymentIntents.retrieve(nextIntent.body.intentId)).status,'canceled');
+ await post('/api/bookings/'+afterExpiry.body.bookingId+'/cancel',{});
+ // Actual refund workflow on a sandbox payment only.
+ const refundResponse=await fetch(base+'/api/account/bookings/'+bookingId+'/cancel',{method:'PATCH',headers:{cookie}});
+ const refunded=await refundResponse.json();assert.equal(refundResponse.status,200,JSON.stringify(refunded));
+ const final=await db.booking.findUnique({where:{id:bookingId}});assert.equal(final.status,'REFUNDED');assert.ok(final.stripeRefundId);
+ const refund=await stripe.refunds.retrieve(final.stripeRefundId);assert.equal(refund.status,'succeeded');
+ console.log(JSON.stringify({bookingId,paymentIntentId:pi,livemode:false,status:confirmed.status,amount:confirmed.amount,currency:confirmed.currency,concurrentCreation:'same intent',retryAfterSuccess:'blocked 409',localWebhook:saved.status,chargeRecorded:Boolean(saved.stripeChargeId),unpaidCancellation:'old intent canceled before slot reuse',expiredPayment:'old intent canceled before replacement',refund:'sandbox succeeded',limitations:['No real charge','No live webhook connectivity validation','No Connect payout to a sitter tested','TWINT/3DS not tested']},null,2));
 }finally{await db.$disconnect();}

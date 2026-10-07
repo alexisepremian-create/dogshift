@@ -99,11 +99,9 @@ export default function MentionsLegalesPage() {
               <p className="mt-3">
                 Le site utilise des cookies essentiels au bon fonctionnement de la plateforme
                 (session, authentification, réservations). Avec votre consentement, des cookies
-                publicitaires{" "}
-                <span className="font-medium text-slate-700">(Google Ads – AW-18081650051)</span>{" "}
-                sont également déposés afin de mesurer l&apos;efficacité de nos campagnes
-                marketing. Vous pouvez retirer votre consentement à tout moment via la
-                bannière cookies présente sur le site.
+                de mesure d’audience{" "}
+                <span className="font-medium text-slate-700">(Google Analytics)</span>{" "}
+                sont utilisés pour mesurer les étapes de réservation. Vous pouvez retirer votre consentement à tout moment via « Gérer les cookies » en bas de page.
               </p>
             </section>
 

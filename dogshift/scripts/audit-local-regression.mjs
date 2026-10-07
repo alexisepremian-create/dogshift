@@ -36,6 +36,32 @@ try {
    r=await post('/api/bookings',{...common,...c}); assert.equal(r.status,200,JSON.stringify(r)); ids.push(r.body.bookingId);
  }
  passed.push('Garde hourly, Promenade hourly and Pension overnight create valid bookings');
+ const raceDay=new Date(Date.now()+41*86400000).toISOString().slice(0,10);
+ const racePayload={...common,service:'Garde',startAt:raceDay+'T08:00:00Z',endAt:raceDay+'T10:00:00Z'};
+ for(const bad of [{numberOfDogs:2},{additionalDogProfileIds:['audit-dog']},{dogProfileId:null},{dogProfileId:'not-owned'}]){
+   assert.equal((await post('/api/bookings',{...racePayload,...bad})).status,400);
+ }
+ await db.dogProfile.update({where:{id:'audit-dog'},data:{weightKg:30}});
+ await db.sitterProfile.update({where:{sitterId:'s-audit'},data:{acceptsLarge:false}});
+ assert.equal((await post('/api/bookings',{...racePayload,dogSize:'small'})).body.error,'DOG_SIZE_NOT_ACCEPTED');
+ await db.dogProfile.update({where:{id:'audit-dog'},data:{weightKg:8,neutered:false}});
+ await db.sitterProfile.update({where:{sitterId:'s-audit'},data:{acceptsLarge:true,neuteredRequired:true}});
+ assert.equal((await post('/api/bookings',racePayload)).body.error,'DOG_NOT_NEUTERED');
+ await db.dogProfile.update({where:{id:'audit-dog'},data:{neutered:true}});
+ await db.sitterProfile.update({where:{sitterId:'s-audit'},data:{neuteredRequired:false}});
+ passed.push('Single owned dog required; real weight and sterilization cannot be bypassed by client fields');
+ const race=await Promise.all([post('/api/bookings',racePayload),post('/api/bookings',racePayload)]);
+ assert.deepEqual(race.map(x=>x.status).sort(),[200,409],JSON.stringify(race));
+ const heldId=race.find(x=>x.status===200).body.bookingId;
+ await db.booking.update({where:{id:heldId},data:{status:'PAYMENT_FAILED'}});
+ assert.equal((await post('/api/bookings',racePayload)).status,409,'Failed but retryable payment must keep its slot');
+ await db.booking.update({where:{id:heldId},data:{createdAt:new Date(Date.now()-31*60000)}});
+ const replacement=await post('/api/bookings',racePayload);assert.equal(replacement.status,200,JSON.stringify(replacement));
+ assert.equal((await db.booking.findUnique({where:{id:heldId}})).status,'CANCELLED');
+ const expiredId=replacement.body.bookingId;
+ await db.booking.update({where:{id:expiredId},data:{createdAt:new Date(Date.now()-31*60000)}});
+ const expired=await post('/api/stripe/payment-intent',{bookingId:expiredId});assert.equal(expired.status,409);assert.equal(expired.body.error,'BOOKING_EXPIRED');
+ passed.push('Concurrent slot creation has one winner; unpaid old holds expire and cannot start payment');
  const id=ids[0];
  const stripe=new Stripe('sk_test_local_audit_placeholder');
  async function webhook(paymentStatus,eventId){

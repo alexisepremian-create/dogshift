@@ -13,10 +13,13 @@ import { zodParse } from "@/lib/validators/common";
 import { createBookingSchema } from "@/lib/validators/bookings";
 import { logAudit } from "@/lib/audit";
 import { recordBookingFinanceEvent } from "@/lib/financeEvents";
-import { isSizeAccepted, checkCapacityForBooking } from "@/lib/bookings/capacityCheck";
+import { isSizeAccepted } from "@/lib/bookings/capacityCheck";
 import { sendPushToUser } from "@/lib/push/send";
 import { geocodeAddress } from "@/lib/travel/geocode";
 import { computeTravelFee } from "@/lib/travel/distance";
+
+import { dogSizeKeyFromWeight, DOG_SIZE_WEIGHTS } from "@/lib/constants/dog-sizes";
+import { withSitterBookingLock, expireUnpaidBooking, RESERVED_STATUSES } from "@/lib/bookings/bookingHold";
 
 export const runtime = "nodejs";
 
@@ -305,91 +308,25 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, error: "SERVICE_NOT_AVAILABLE" }, { status: 400 });
     }
 
-    // Validate acceptance criteria (neutered, max dogs) — applies to all services
-    const acceptanceCriteria = sitterProfile.acceptanceCriteria && typeof sitterProfile.acceptanceCriteria === "object"
-      ? (sitterProfile.acceptanceCriteria as { neuteredRequired?: boolean; maxDogs?: number | null })
-      : null;
-    if (acceptanceCriteria) {
-      const numberOfDogs = typeof (body as { numberOfDogs?: unknown }).numberOfDogs === "number"
-        ? (body as { numberOfDogs: number }).numberOfDogs
-        : 1;
-      if (acceptanceCriteria.maxDogs && numberOfDogs > acceptanceCriteria.maxDogs) {
-        return NextResponse.json({
-          ok: false,
-          error: "TOO_MANY_DOGS",
-          message: `Ce sitter accepte au maximum ${acceptanceCriteria.maxDogs} chien${acceptanceCriteria.maxDogs > 1 ? "s" : ""} simultanément.`,
-        }, { status: 400 });
-      }
-      // neuteredRequired: validated against dogProfile if dogProfileId is provided
-      if (acceptanceCriteria.neuteredRequired) {
-        const dogProfileId = typeof (body as { dogProfileId?: unknown }).dogProfileId === "string"
-          ? (body as { dogProfileId: string }).dogProfileId
-          : null;
-        if (dogProfileId) {
-          const dogProfile = await (prisma as any).dogProfile.findUnique({
-            where: { id: dogProfileId },
-            select: { neutered: true },
-          });
-          if (dogProfile && dogProfile.neutered === false) {
-            return NextResponse.json({
-              ok: false,
-              error: "DOG_NOT_NEUTERED",
-              message: "Ce sitter n'accepte que les chiens castrés ou stérilisés.",
-            }, { status: 400 });
-          }
-        }
-      }
+    const dogProfileId = typeof body?.dogProfileId === "string" ? body.dogProfileId.trim() : "";
+    const dog = dogProfileId ? await prisma.dogProfile.findFirst({
+      where: { id: dogProfileId, userId }, select: { id: true, weightKg: true, neutered: true },
+    }) : null;
+    if (!dog) return NextResponse.json({ ok: false, error: "DOG_REQUIRED", message: "Sélectionne la fiche de ton chien pour réserver." }, { status: 400 });
+    const sizeKey = dogSizeKeyFromWeight(dog.weightKg);
+    if (!sizeKey) return NextResponse.json({ ok: false, error: "DOG_WEIGHT_REQUIRED", message: "Complète le poids de ton chien dans sa fiche." }, { status: 400 });
+    const criteria = sitterProfile.acceptanceCriteria as { neuteredRequired?: boolean; maxDogs?: number } | null;
+    if ((criteria?.neuteredRequired || sitterProfile.neuteredRequired) && dog.neutered !== true) {
+      return NextResponse.json({ ok: false, error: "DOG_NOT_NEUTERED", message: "Ce sitter accepte uniquement les chiens dont la stérilisation est renseignée." }, { status: 400 });
     }
-
-    // Validate dog size for Pension if the sitter has pensionAcceptedSizes
-    if (service === "Pension") {
-      const isPensionApproved = sitterProfile.pensionVerifStatus === "approved" || sitterProfile.pensionVerifStatus === "ai_approved";
-      const pensionAcceptedSizes = isPensionApproved && Array.isArray(sitterProfile.pensionAcceptedSizes) && sitterProfile.pensionAcceptedSizes.length > 0
-        ? sitterProfile.pensionAcceptedSizes as string[]
-        : null;
-      if (pensionAcceptedSizes) {
-        const dogSize = typeof (body as { dogSize?: unknown }).dogSize === "string" ? (body as { dogSize: string }).dogSize : null;
-        if (!dogSize) {
-          return NextResponse.json({ ok: false, error: "DOG_SIZE_REQUIRED", message: "Indiquez la taille de votre chien pour ce sitter." }, { status: 400 });
-        }
-        if (!pensionAcceptedSizes.includes(dogSize)) {
-          return NextResponse.json({ ok: false, error: "DOG_SIZE_NOT_ACCEPTED", message: `Ce sitter n'accepte pas les chiens de taille ${dogSize} en pension.` }, { status: 400 });
-        }
-      }
+    if (!isSizeAccepted(sitterProfile, sizeKey).accepted) {
+      return NextResponse.json({ ok: false, error: "DOG_SIZE_NOT_ACCEPTED", message: "Ce sitter n’accepte pas cette taille de chien." }, { status: 400 });
     }
-
-    // Weighted capacity check: verify dog size acceptance + available places
-    const bookingDogSize = typeof (body as { dogSize?: unknown }).dogSize === "string" ? (body as { dogSize: string }).dogSize : null;
-    if (
-      bookingDogSize &&
-      typeof sitterProfile.acceptsSmall === "boolean" &&
-      typeof sitterProfile.acceptsMedium === "boolean" &&
-      typeof sitterProfile.acceptsLarge === "boolean"
-    ) {
-      const { accepted, sizeKey } = isSizeAccepted(sitterProfile as { acceptsSmall: boolean; acceptsMedium: boolean; acceptsLarge: boolean }, bookingDogSize);
-      if (!accepted) {
-        return NextResponse.json({
-          ok: false,
-          error: "DOG_SIZE_NOT_ACCEPTED",
-          message: `Ce sitter n'accepte pas les chiens de taille « ${bookingDogSize} ».`,
-        }, { status: 400 });
-      }
-      if (sizeKey && typeof sitterProfile.capacityPlaces === "number" && hasDailyDates) {
-        const capCheck = await checkCapacityForBooking({
-          sitterId,
-          capacityPlaces: sitterProfile.capacityPlaces,
-          dogSizeKey: sizeKey,
-          startDate: startDate as string,
-          endDate: endDate as string,
-        });
-        if (!capCheck.ok) {
-          return NextResponse.json({
-            ok: false,
-            error: "CAPACITY_FULL",
-            message: "Ce sitter n'a plus assez de places disponibles sur cette période. Essaie une autre date ou un autre sitter.",
-          }, { status: 400 });
-        }
-      }
+    if (service === "Pension" && Array.isArray(sitterProfile.pensionAcceptedSizes) && sitterProfile.pensionAcceptedSizes.length && !sitterProfile.pensionAcceptedSizes.includes(sizeKey)) {
+      return NextResponse.json({ ok: false, error: "DOG_SIZE_NOT_ACCEPTED" }, { status: 400 });
+    }
+    if (typeof sitterProfile.capacityPlaces === "number" && sitterProfile.capacityPlaces < DOG_SIZE_WEIGHTS[sizeKey].weight) {
+      return NextResponse.json({ ok: false, error: "CAPACITY_FULL" }, { status: 400 });
     }
 
     let totalChf: number | null = null;
@@ -619,38 +556,18 @@ export async function POST(req: NextRequest) {
 
     const platformFeeAmount = Math.round(amount * DOGSHIFT_COMMISSION_RATE);
 
-    const dogProfileId = typeof body?.dogProfileId === "string" && body.dogProfileId.trim() ? body.dogProfileId.trim() : null;
     const ownerPhone = typeof body?.ownerPhone === "string" && body.ownerPhone.trim() ? body.ownerPhone.trim() : null;
 
-    // Additional dog profile IDs (for multi-dog bookings)
-    const rawAdditionalIds = Array.isArray((body as { additionalDogProfileIds?: unknown }).additionalDogProfileIds)
-      ? ((body as { additionalDogProfileIds: unknown[] }).additionalDogProfileIds).filter(
-          (id): id is string => typeof id === "string" && id.trim().length > 0
-        )
-      : [];
-
-    // Validate that the dog profile belongs to the current user if provided
-    if (dogProfileId) {
-      const dog = await (prisma as any).dogProfile.findFirst({
-        where: { id: dogProfileId, userId },
-        select: { id: true },
+    const booking = await withSitterBookingLock(sitterId, async (tx) => {
+      const where = { sitterId, startDate: { lt: candidateWindowEnd }, endDate: { gt: candidateWindowStart } };
+      const stale = await tx.booking.findMany({
+        where: { ...where, status: { in: ["PENDING_PAYMENT", "PAYMENT_FAILED"] }, createdAt: { lt: new Date(Date.now() - 30 * 60 * 1000) } },
+        select: { id: true, status: true, createdAt: true, stripePaymentIntentId: true }, take: 20,
       });
-      if (!dog) {
-        return NextResponse.json({ ok: false, error: "DOG_NOT_FOUND" }, { status: 400 });
-      }
-    }
-
-    // Validate additional dogs belong to the current user
-    let additionalDogProfileIds: string[] = [];
-    if (rawAdditionalIds.length > 0) {
-      const validAdditional = await (prisma as any).dogProfile.findMany({
-        where: { id: { in: rawAdditionalIds }, userId },
-        select: { id: true },
-      });
-      additionalDogProfileIds = (validAdditional as { id: string }[]).map((d) => d.id);
-    }
-
-    const booking = await (prisma as any).booking.create({
+      for (const hold of stale) await expireUnpaidBooking(tx, hold);
+      const conflict = await tx.booking.findFirst({ where: { ...where, status: { in: [...RESERVED_STATUSES] } }, select: { id: true } });
+      if (conflict) return null;
+      return tx.booking.create({
       data: {
         userId,
         sitterId,
@@ -671,11 +588,13 @@ export async function POST(req: NextRequest) {
         ownerLng,
         ownerAddress: resolvedOwnerAddress,
         dogProfileId,
-        additionalDogProfileIds: additionalDogProfileIds.length > 0 ? JSON.stringify(additionalDogProfileIds) : null,
+        additionalDogProfileIds: null,
         ownerPhone,
       },
       select: { id: true },
+      });
     });
+    if (!booking) return NextResponse.json({ ok: false, error: "SLOT_NOT_AVAILABLE", message: "Ce créneau est déjà réservé ou un paiement est en cours. Choisis un autre horaire." }, { status: 409 });
 
     try {
       const db = prisma as any;

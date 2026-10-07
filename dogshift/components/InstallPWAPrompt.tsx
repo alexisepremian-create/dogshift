@@ -56,7 +56,7 @@ export default function InstallPWAPrompt() {
     dismiss();
   }
 
-  if (state.status === "hidden" || /^\/(sitter|checkout|paiement|reservation|login|signup)(\/|$)/.test(pathname ?? "")) return null;
+  if (state.status === "hidden" || pathname !== "/") return null;
 
   return (
     <div

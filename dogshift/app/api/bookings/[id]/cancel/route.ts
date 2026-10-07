@@ -1,70 +1,16 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-
-import { prisma } from "@/lib/prisma";
 import { resolveDbUserId } from "@/lib/auth/resolveDbUserId";
-import { setBookingStatus } from "@/lib/bookings/setBookingStatus";
-import { logAudit } from "@/lib/audit";
-
+import { cancelUnpaidBooking } from "@/lib/bookings/bookingHold";
 export const runtime = "nodejs";
-
-export async function POST(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const resolvedParams = await params;
-    const bookingId = typeof resolvedParams?.id === "string" ? resolvedParams.id : "";
-    if (!bookingId) {
-      return NextResponse.json({ ok: false, error: "INVALID_ID" }, { status: 400 });
-    }
-
     const userId = await resolveDbUserId(req);
-    if (!userId) {
-      return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
-    }
-
-    const db = prisma as unknown as { booking: any };
-    const booking = await db.booking.findUnique({
-      where: { id: bookingId },
-      select: { id: true, userId: true, status: true },
-    });
-
-    if (!booking) {
-      return NextResponse.json({ ok: false, error: "NOT_FOUND" }, { status: 404 });
-    }
-
-    if (booking.userId !== userId) {
-      return NextResponse.json({ ok: false, error: "FORBIDDEN" }, { status: 403 });
-    }
-
-    if (booking.status === "PAID" || booking.status === "CONFIRMED") {
-      return NextResponse.json({ ok: false, error: "CANNOT_CANCEL_PAID" }, { status: 409 });
-    }
-
-    await db.booking.update({
-      where: { id: bookingId },
-      data: { canceledAt: new Date() },
-      select: { id: true },
-    });
-
-    const res = await setBookingStatus(bookingId, "CANCELLED" as any, { req });
-    if (!res.ok) return NextResponse.json({ ok: false, error: res.error }, { status: 500 });
-
-    void logAudit({
-      action: "booking.cancelled",
-      actorType: "user",
-      actorId: userId,
-      targetId: bookingId,
-      targetType: "BOOKING",
-      metadata: { previousStatus: booking.status },
-    });
-
-    const updated = { id: bookingId, status: "CANCELLED" };
-
-    return NextResponse.json({ ok: true, booking: updated }, { status: 200 });
-  } catch (err) {
-    console.error("[api][bookings][id][cancel] error", err);
+    if (!userId) return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
+    const { id } = await params;
+    const result = await cancelUnpaidBooking(id, userId);
+    return NextResponse.json(result, { status: result.ok ? 200 : result.error === "NOT_FOUND" ? 404 : 409 });
+  } catch {
     return NextResponse.json({ ok: false, error: "INTERNAL_ERROR" }, { status: 500 });
   }
 }

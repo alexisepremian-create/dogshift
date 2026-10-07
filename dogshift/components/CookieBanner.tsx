@@ -76,9 +76,9 @@ export default function CookieBanner({ onConsent }: Props) {
 
           <p className="mt-3 text-xs leading-relaxed text-slate-600">
             DogShift utilise des cookies essentiels (connexion, réservations) et, avec votre accord,
-            des cookies publicitaires{" "}
-            <span className="font-medium text-slate-700">(Google Ads)</span>{" "}
-            pour mesurer l&apos;efficacité de nos campagnes. Vos données ne sont jamais vendues.
+            des cookies de mesure d’audience{" "}
+            <span className="font-medium text-slate-700">(Google Analytics)</span>{" "}
+            pour comprendre où le parcours de réservation est abandonné. Ce choix est facultatif et modifiable en bas de page.
           </p>
 
           <div className="mt-4 flex flex-col gap-2 sm:flex-row">

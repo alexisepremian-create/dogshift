@@ -2,6 +2,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 "use client";
 
+import { trackFunnel } from "@/lib/analytics/funnel";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
@@ -365,7 +366,7 @@ function CheckoutForm({
         ) : null}
 
         <div className="w-full">
-          <PaymentElement options={paymentElementOptions} />
+          <PaymentElement options={paymentElementOptions} onReady={() => trackFunnel("payment_start", bookingId)} />
         </div>
       </div>
       {error ? <p className="mt-4 text-sm font-medium text-rose-600">{error}</p> : null}
@@ -546,7 +547,10 @@ const stripeReact = await import("@stripe/react-stripe-js");
           return;
         }
         if (!piRes.ok || !piPayload.ok || typeof piPayload.clientSecret !== "string") {
-          setError("Impossible d’initialiser le paiement.");
+          trackFunnel("funnel_error", undefined, "payment");
+          setError(piPayload.error === "BOOKING_EXPIRED"
+            ? "Le délai de paiement de 30 minutes est dépassé. Retourne au profil du sitter pour choisir à nouveau ton créneau."
+            : "Impossible d’initialiser le paiement. Réessaie ou contacte le support.");
           setLoading(false);
           return;
         }

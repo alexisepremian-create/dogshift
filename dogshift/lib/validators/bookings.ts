@@ -18,9 +18,9 @@ const dailyBookingBody = z.object({
   endDate: isoDateString,
   message: z.string().max(2000).optional().nullable(),
   dogSize: z.enum(["small", "medium", "large", "Petit", "Moyen", "Grand"]).optional().nullable(),
-  numberOfDogs: z.number().int().min(1).max(20).optional().nullable(),
+  numberOfDogs: z.number().int().min(1).max(1, "Une réservation est limitée à un chien pendant le pilote").optional().nullable(),
   dogProfileId: z.string().optional().nullable(),
-  additionalDogProfileIds: z.array(z.string()).optional().nullable(),
+  additionalDogProfileIds: z.array(z.string()).max(0, "Un seul chien par réservation").optional().nullable(),
   ownerPhone: z.string().max(30).optional().nullable(),
 }).merge(travelFields);
 
@@ -30,9 +30,9 @@ const hourlyBookingBody = z.object({
   startAt: isoDatetimeString,
   endAt: isoDatetimeString,
   message: z.string().max(2000).optional().nullable(),
-  numberOfDogs: z.number().int().min(1).max(20).optional().nullable(),
+  numberOfDogs: z.number().int().min(1).max(1, "Une réservation est limitée à un chien pendant le pilote").optional().nullable(),
   dogProfileId: z.string().optional().nullable(),
-  additionalDogProfileIds: z.array(z.string()).optional().nullable(),
+  additionalDogProfileIds: z.array(z.string()).max(0, "Un seul chien par réservation").optional().nullable(),
   ownerPhone: z.string().max(30).optional().nullable(),
 }).merge(travelFields);
 

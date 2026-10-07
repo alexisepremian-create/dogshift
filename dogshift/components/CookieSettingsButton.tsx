@@ -1,5 +1,6 @@
 "use client";
 
+import { clearFunnelStorage } from "@/lib/analytics/funnel";
 import { CONSENT_COOKIE_NAME } from "@/lib/cookieConsent";
 
 /**
@@ -8,7 +9,16 @@ import { CONSENT_COOKIE_NAME } from "@/lib/cookieConsent";
  */
 export default function CookieSettingsButton() {
   function handleClick() {
+    clearFunnelStorage();
     document.cookie = `${CONSENT_COOKIE_NAME}=; Max-Age=0; Path=/; SameSite=Lax`;
+    for (const item of document.cookie.split(";")) {
+      const name = item.trim().split("=")[0];
+      if (name === "_ga" || name.startsWith("_ga_") || name.startsWith("_gcl_")) {
+        for (const domain of ["", `; Domain=${location.hostname}`, "; Domain=.dogshift.ch"]) {
+          document.cookie = `${name}=; Max-Age=0; Path=/${domain}`;
+        }
+      }
+    }
     window.location.reload();
   }
 

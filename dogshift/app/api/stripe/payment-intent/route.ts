@@ -7,6 +7,8 @@ import { commerceBlockedResponse } from "@/lib/platform/maintenance";
 import { resolveDbUserId } from "@/lib/auth/resolveDbUserId";
 import { estimateStripePaymentFeeCents } from "@/lib/stripe/paymentFeeEstimate";
 
+import { withSitterBookingLock, expireUnpaidBooking } from "@/lib/bookings/bookingHold";
+
 export const runtime = "nodejs";
 
 type Body = {
@@ -19,7 +21,6 @@ export async function POST(req: NextRequest) {
     if (maintenance) return maintenance;
 
     const stripe = getStripe();
-    const db = prisma as any;
     const userId = await resolveDbUserId(req);
     if (!userId) {
       return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 });
@@ -29,6 +30,10 @@ export async function POST(req: NextRequest) {
     const bookingId = typeof body?.bookingId === "string" ? body.bookingId.trim() : "";
     if (!bookingId) return NextResponse.json({ ok: false, error: "INVALID_BOOKING" }, { status: 400 });
 
+    const reference = await prisma.booking.findFirst({ where: { id: bookingId, userId }, select: { sitterId: true } });
+    if (!reference) return NextResponse.json({ ok: false, error: "NOT_FOUND" }, { status: 404 });
+    return await withSitterBookingLock(reference.sitterId, async (tx) => {
+    const db = tx;
     const startedAt = Date.now();
     const booking = await db.booking.findUnique({
       where: { id: bookingId },
@@ -39,6 +44,7 @@ export async function POST(req: NextRequest) {
         status: true,
         amount: true,
         currency: true,
+        createdAt: true,
         stripePaymentIntentId: true,
       },
     });
@@ -46,6 +52,9 @@ export async function POST(req: NextRequest) {
     if (!booking) return NextResponse.json({ ok: false, error: "NOT_FOUND" }, { status: 404 });
     if (booking.userId !== userId) return NextResponse.json({ ok: false, error: "FORBIDDEN" }, { status: 403 });
 
+    if (await expireUnpaidBooking(tx, booking)) {
+      return NextResponse.json({ ok: false, error: "BOOKING_EXPIRED" }, { status: 409 });
+    }
     if (booking.status !== "PENDING_PAYMENT") {
       return NextResponse.json({ ok: false, error: "INVALID_STATUS" }, { status: 409 });
     }
@@ -222,6 +231,7 @@ export async function POST(req: NextRequest) {
       },
       { status: 200 }
     );
+    });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     if (message === "Missing STRIPE_SECRET_KEY") {
